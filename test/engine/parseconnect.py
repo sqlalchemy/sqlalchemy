@@ -116,7 +116,6 @@ class CreateEngineTest(PersistTest):
         except TypeError:
             assert True
             
-        e = create_engine('sqlite://', echo=True)
         e = create_engine('mysql://', module=MockDBAPI(), connect_args={'use_unicode':True}, convert_unicode=True)
         
         e = create_engine('sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)

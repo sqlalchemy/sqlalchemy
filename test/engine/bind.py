@@ -149,9 +149,10 @@ class BindTest(testbase.PersistTest):
                     assert False
                 except exceptions.InvalidRequestError, e:
                     assert str(e) == "This Compiled object is not bound to any Engine or Connection."
-                
+
         finally:
-            bind.close()
+            if isinstance(bind, engine.Connection):
+                bind.close()
             metadata.drop_all(bind=testbase.db)
     
     def test_session(self):
@@ -165,7 +166,9 @@ class BindTest(testbase.PersistTest):
         mapper(Foo, table)
         metadata.create_all(bind=testbase.db)
         try:
-            for bind in (testbase.db, testbase.db.connect()):
+            for bind in (testbase.db, 
+                testbase.db.connect()
+                ):
                 for args in ({'bind':bind},):
                     sess = create_session(**args)
                     assert sess.bind is bind
@@ -173,6 +176,9 @@ class BindTest(testbase.PersistTest):
                     sess.save(f)
                     sess.flush()
                     assert sess.get(Foo, f.foo) is f
+
+                if isinstance(bind, engine.Connection):
+                    bind.close()
                     
             sess = create_session()
             f = Foo()
@@ -182,9 +188,11 @@ class BindTest(testbase.PersistTest):
                 assert False
             except exceptions.InvalidRequestError, e:
                 assert str(e).startswith("Could not locate any Engine or Connection bound to mapper")
+
                 
         finally:
-            bind.close()
+            if isinstance(bind, engine.Connection):
+                bind.close()
             metadata.drop_all(bind=testbase.db)
         
                

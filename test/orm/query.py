@@ -112,14 +112,14 @@ class OperatorTest(QueryTest):
                                 (operator.sub, '-'), (operator.div, '/'),
                                 ):
             for (lhs, rhs, res) in (
-                ('a', User.id, ':users_id %s users.id'),
-                ('a', literal('b'), ':literal %s :literal_1'),
-                (User.id, 'b', 'users.id %s :users_id'),
+                (5, User.id, ':users_id %s users.id'),
+                (5, literal(6), ':literal %s :literal_1'),
+                (User.id, 5, 'users.id %s :users_id'),
                 (User.id, literal('b'), 'users.id %s :literal'),
                 (User.id, User.id, 'users.id %s users.id'),
-                (literal('a'), 'b', ':literal %s :literal_1'),
-                (literal('a'), User.id, ':literal %s users.id'),
-                (literal('a'), literal('b'), ':literal %s :literal_1'),
+                (literal(5), 'b', ':literal %s :literal_1'),
+                (literal(5), User.id, ':literal %s users.id'),
+                (literal(5), literal(6), ':literal %s :literal_1'),
                 ):
                 self._test(py_op(lhs, rhs), res % sql_op)
 
@@ -503,7 +503,6 @@ class InstancesTest(QueryTest):
         l = q.add_column("count").from_statement(s).all()
         assert l == expected
 
-    @testbase.unsupported('mysql') # only because of "+" operator requiring "concat" in mysql (fix #475)
     def test_two_columns(self):
         sess = create_session()
         (user7, user8, user9, user10) = sess.query(User).all()

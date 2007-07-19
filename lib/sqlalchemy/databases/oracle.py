@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string, re, warnings
+import sys, StringIO, string, re, warnings, operator
 
 from sqlalchemy import util, sql, engine, schema, ansisql, exceptions, logging
 from sqlalchemy.engine import default, base
@@ -460,6 +460,13 @@ class OracleCompiler(ansisql.ANSICompiler):
     the use_ansi flag is False.
     """
 
+    operators = ansisql.ANSICompiler.operators.copy()
+    operators.update(
+        {
+            operator.mod : lambda x, y:"mod(%s, %s)" % (x, y)
+        }
+    )
+
     def default_from(self):
         """Called when a ``SELECT`` statement has no froms, and no ``FROM`` clause is to be appended.
 
@@ -496,13 +503,8 @@ class OracleCompiler(ansisql.ANSICompiler):
 
         self.traverse_single(self.wheres[join])
 
-    def visit_insert_sequence(self, column, sequence, parameters):
-        """This is the `sequence` equivalent to ``ANSICompiler``'s
-        `visit_insert_column_default` which ensures that the column is
-        present in the generated column list.
-        """
-
-        parameters.setdefault(column.key, None)
+    def uses_sequences_for_inserts(self):
+        return True
 
     def visit_alias(self, alias):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
@@ -571,12 +573,6 @@ class OracleCompiler(ansisql.ANSICompiler):
         else:
             return super(OracleCompiler, self).for_update_clause(select)
 
-    def visit_binary(self, binary):
-        if binary.operator == '%': 
-            self.strings[binary] = ("MOD(%s,%s)"%(self.strings[binary.left], self.strings[binary.right]))
-        else:
-            return ansisql.ANSICompiler.visit_binary(self, binary)
-        
 
 class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):

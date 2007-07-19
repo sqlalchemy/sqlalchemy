@@ -32,45 +32,12 @@ __all__ = ['AbstractDialect', 'Alias', 'ClauseElement', 'ClauseParameters',
            'ClauseVisitor', 'ColumnCollection', 'ColumnElement',
            'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 
            'Select', 'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc',
-           'between_', 'between', 'bindparam', 'case', 'cast', 'column', 'delete',
+           'between', 'bindparam', 'case', 'cast', 'column', 'delete',
            'desc', 'distinct', 'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
            'insert', 'intersect', 'intersect_all', 'join', 'literal',
            'literal_column', 'not_', 'null', 'or_', 'outerjoin', 'select',
            'subquery', 'table', 'text', 'union', 'union_all', 'update',]
 
-# precedence ordering for common operators.  if an operator is not present in this list,
-# it will be parenthesized when grouped against other operators
-PRECEDENCE = {
-    'FROM':15,
-    '*':7,
-    '/':7,
-	'%':7,
-    '+':6,
-    '-':6,
-    'ILIKE':5,
-    'NOT ILIKE':5,
-    'LIKE':5,
-    'NOT LIKE':5,
-    'IN':5,
-    'NOT IN':5,
-    'IS':5,
-    'IS NOT':5,
-    '=':5,
-    '!=':5,
-    '>':5,
-    '<':5,
-    '>=':5,
-    '<=':5,
-    'BETWEEN':5,
-    'NOT':4,
-    'AND':3,
-    'OR':2,
-    ',':-1,
-    'AS':-1,
-    'EXISTS':0,
-    '_smallest': -1000,
-    '_largest': 1000
-}
 BIND_PARAMS = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
 
 def desc(column):
@@ -368,7 +335,7 @@ def and_(*clauses):
     """
     if len(clauses) == 1:
         return clauses[0]
-    return ClauseList(operator='AND', *clauses)
+    return ClauseList(operator=operator.and_, *clauses)
 
 def or_(*clauses):
     """Join a list of clauses together using the ``OR`` operator.
@@ -379,7 +346,7 @@ def or_(*clauses):
 
     if len(clauses) == 1:
         return clauses[0]
-    return ClauseList(operator='OR', *clauses)
+    return ClauseList(operator=operator.or_, *clauses)
 
 def not_(clause):
     """Return a negation of the given clause, i.e. ``NOT(clause)``.
@@ -388,7 +355,7 @@ def not_(clause):
     subclasses to produce the same result.
     """
 
-    return clause._negate()
+    return operator.inv(clause)
 
 def distinct(expr):
     """return a ``DISTINCT`` clause."""
@@ -404,12 +371,8 @@ def between(ctest, cleft, cright):
     provides similar functionality.
     """
 
-    return _BinaryExpression(ctest, ClauseList(_literal_as_binds(cleft, type=ctest.type), _literal_as_binds(cright, type=ctest.type), operator='AND', group=False), 'BETWEEN')
+    return _BinaryExpression(ctest, ClauseList(_literal_as_binds(cleft, type_=ctest.type), _literal_as_binds(cright, type_=ctest.type), operator=operator.and_, group=False), ColumnOperators.between_op)
 
-def between_(*args, **kwargs):
-    """synonym for [sqlalchemy.sql#between()] (deprecated)."""
-    
-    return between(*args, **kwargs)
 
 def case(whens, value=None, else_=None):
     """Produce a ``CASE`` statement.
@@ -432,7 +395,7 @@ def case(whens, value=None, else_=None):
         type = list(whenlist[-1])[-1].type
     else:
         type = None
-    cc = _CalculatedClause(None, 'CASE', value, type=type, operator=None, group_contents=False, *whenlist + ['END'])
+    cc = _CalculatedClause(None, 'CASE', value, type_=type, operator=None, group_contents=False, *whenlist + ['END'])
     return cc
 
 def cast(clause, totype, **kwargs):
@@ -454,7 +417,7 @@ def cast(clause, totype, **kwargs):
 def extract(field, expr):
     """Return the clause ``extract(field FROM expr)``."""
 
-    expr = _BinaryExpression(text(field), expr, "FROM")
+    expr = _BinaryExpression(text(field), expr, Operators.from_)
     return func.extract(expr)
 
 def exists(*args, **kwargs):
@@ -584,7 +547,7 @@ def alias(selectable, alias=None):
     return Alias(selectable, alias=alias)
 
 
-def literal(value, type=None):
+def literal(value, type_=None):
     """Return a literal clause, bound to a bind parameter.
 
     Literal clauses are created automatically when non-
@@ -606,7 +569,7 @@ def literal(value, type=None):
 
     """
 
-    return _BindParamClause('literal', value, type=type, unique=True)
+    return _BindParamClause('literal', value, type_=type_, unique=True)
 
 def label(name, obj):
     """Return a [sqlalchemy.sql#_Label] object for the given [sqlalchemy.sql#ColumnElement].
@@ -627,7 +590,7 @@ def label(name, obj):
 
     return _Label(name, obj)
 
-def column(text, type=None):
+def column(text, type_=None):
     """Return a textual column clause, as would be in the columns 
     clause of a ``SELECT`` statement.
     
@@ -647,9 +610,9 @@ def column(text, type=None):
         
     """
 
-    return _ColumnClause(text, type=type)
+    return _ColumnClause(text, type_=type_)
 
-def literal_column(text, type=None):
+def literal_column(text, type_=None):
     """Return a textual column clause, as would be in the columns
     clause of a ``SELECT`` statement.
   
@@ -671,7 +634,7 @@ def literal_column(text, type=None):
       
     """
 
-    return _ColumnClause(text, type=type, is_literal=True)
+    return _ColumnClause(text, type_=type_, is_literal=True)
 
 def table(name, *columns):
     """Return a [sqlalchemy.sql#Table] object.
@@ -682,7 +645,7 @@ def table(name, *columns):
 
     return TableClause(name, *columns)
 
-def bindparam(key, value=None, type=None, shortname=None, unique=False):
+def bindparam(key, value=None, type_=None, shortname=None, unique=False):
     """Create a bind parameter clause with the given key.
 
         value
@@ -704,9 +667,9 @@ def bindparam(key, value=None, type=None, shortname=None, unique=False):
     """
 
     if isinstance(key, _ColumnClause):
-        return _BindParamClause(key.name, value, type=key.type, shortname=shortname, unique=unique)
+        return _BindParamClause(key.name, value, type_=key.type, shortname=shortname, unique=unique)
     else:
-        return _BindParamClause(key, value, type=type, shortname=shortname, unique=unique)
+        return _BindParamClause(key, value, type_=type_, shortname=shortname, unique=unique)
 
 def text(text, bind=None, *args, **kwargs):
     """Create literal text to be inserted into a query.
@@ -781,19 +744,19 @@ def _is_literal(element):
     return not isinstance(element, ClauseElement)
 
 def _literal_as_text(element):
-    if isinstance(element, Comparator):
+    if isinstance(element, Operators):
         return element.clause_element()
     elif _is_literal(element):
         return _TextClause(unicode(element))
     else:
         return element
 
-def _literal_as_binds(element, name='literal', type=None):
+def _literal_as_binds(element, name='literal', type_=None):
     if _is_literal(element):
         if element is None:
             return null()
         else:
-            return _BindParamClause(name, element, shortname=name, type=type, unique=True)
+            return _BindParamClause(name, element, shortname=name, type_=type_, unique=True)
     else:
         return element
         
@@ -1134,15 +1097,66 @@ class ClauseElement(object):
         if hasattr(self, 'negation_clause'):
             return self.negation_clause
         else:
-            return _UnaryExpression(self.self_group(against="NOT"), operator="NOT", negate=None)
+            return _UnaryExpression(self.self_group(against=operator.inv), operator=operator.inv, negate=None)
 
 
-class Comparator(object):
+class Operators(object):
+    def from_():
+        raise NotImplementedError()
+    from_ = staticmethod(from_)
+    
+    def as_():
+        raise NotImplementedError()
+    as_ = staticmethod(as_)
+    
+    def exists():
+        raise NotImplementedError()
+    exists = staticmethod(exists)
+
+    def is_():
+        raise NotImplementedError()
+    is_ = staticmethod(is_)
+    
+    def isnot():
+        raise NotImplementedError()
+    isnot = staticmethod(isnot)
+    
+    def __and__(self, other):
+        return self.operate(operator.and_, other)
+
+    def __or__(self, other):
+        return self.operate(operator.or_, other)
+
+    def __invert__(self):
+        return self.operate(operator.inv)
+
+    def clause_element(self):
+        raise NotImplementedError()
+
+    def operate(self, op, *other):
+        raise NotImplementedError()
+
+    def reverse_operate(self, op, *other):
+        raise NotImplementedError()
+
+class ColumnOperators(Operators):
     """defines comparison and math operations"""
 
     def like_op(a, b):
         return a.like(b)
     like_op = staticmethod(like_op)
+    
+    def notlike_op(a, b):
+        raise NotImplementedError()
+    notlike_op = staticmethod(notlike_op)
+
+    def ilike_op(a, b):
+        return a.ilike(b)
+    ilike_op = staticmethod(ilike_op)
+    
+    def notilike_op(a, b):
+        raise NotImplementedError()
+    notilike_op = staticmethod(notilike_op)
     
     def between_op(a, b):
         return a.between(b)
@@ -1151,6 +1165,10 @@ class Comparator(object):
     def in_op(a, b):
         return a.in_(*b)
     in_op = staticmethod(in_op)
+
+    def notin_op(a, b):
+        raise NotImplementedError()
+    notin_op = staticmethod(notin_op)
     
     def startswith_op(a, b):
         return a.startswith(b)
@@ -1159,15 +1177,14 @@ class Comparator(object):
     def endswith_op(a, b):
         return a.endswith(b)
     endswith_op = staticmethod(endswith_op)
-    
-    def clause_element(self):
-        raise NotImplementedError()
-        
-    def operate(self, op, other):
-        raise NotImplementedError()
 
-    def reverse_operate(self, op, other):
+    def comma_op(a, b):
         raise NotImplementedError()
+    comma_op = staticmethod(comma_op)
+
+    def concat_op(a, b):
+        return a.concat(b)
+    concat_op = staticmethod(concat_op)
     
     def __lt__(self, other):
         return self.operate(operator.lt, other)
@@ -1187,17 +1204,20 @@ class Comparator(object):
     def __ge__(self, other):
         return self.operate(operator.ge, other)
 
+    def concat(self, other):
+        return self.operate(ColumnOperators.concat_op, other)
+        
     def like(self, other):
-        return self.operate(Comparator.like_op, other)
-
+        return self.operate(ColumnOperators.like_op, other)
+    
     def in_(self, *other):
-        return self.operate(Comparator.in_op, other)
-
+        return self.operate(ColumnOperators.in_op, other)
+    
     def startswith(self, other):
-        return self.operate(Comparator.startswith_op, other)
+        return self.operate(ColumnOperators.startswith_op, other)
 
     def endswith(self, other):
-        return self.operate(Comparator.endswith_op, other)
+        return self.operate(ColumnOperators.endswith_op, other)
 
     def __radd__(self, other):
         return self.reverse_operate(operator.add, other)
@@ -1212,7 +1232,7 @@ class Comparator(object):
         return self.reverse_operate(operator.div, other)
 
     def between(self, cleft, cright):
-        return self.operate(Comparator.between_op, (cleft, cright))
+        return self.operate(Operators.between_op, (cleft, cright))
 
     def __add__(self, other):
         return self.operate(operator.add, other)
@@ -1232,51 +1252,97 @@ class Comparator(object):
     def __truediv__(self, other):
         return self.operate(operator.truediv, other)
 
-class _CompareMixin(Comparator):
+# precedence ordering for common operators.  if an operator is not present in this list,
+# it will be parenthesized when grouped against other operators
+_smallest = object()
+_largest = object()
+
+PRECEDENCE = {
+    Operators.from_:15,
+    operator.mul:7,
+    operator.div:7,
+    operator.mod:7,
+    operator.add:6,
+    operator.sub:6,
+    ColumnOperators.concat_op:6,
+    ColumnOperators.ilike_op:5,
+    ColumnOperators.notilike_op:5,
+    ColumnOperators.like_op:5,
+    ColumnOperators.notlike_op:5,
+    ColumnOperators.in_op:5,
+    ColumnOperators.notin_op:5,
+    Operators.is_:5,
+    Operators.isnot:5,
+    operator.eq:5,
+    operator.ne:5,
+    operator.gt:5,
+    operator.lt:5,
+    operator.ge:5,
+    operator.le:5,
+    ColumnOperators.between_op:5,
+    operator.inv:4,
+    operator.and_:3,
+    operator.or_:2,
+    ColumnOperators.comma_op:-1,
+    Operators.as_:-1,
+    Operators.exists:0,
+    _smallest: -1000,
+    _largest: 1000
+}
+
+class _CompareMixin(ColumnOperators):
     """Defines comparison and math operations for ``ClauseElement`` instances."""
 
-    def __compare(self, operator, obj, negate=None):
+    def __compare(self, op, obj, negate=None):
         if obj is None or isinstance(obj, _Null):
-            if operator == '=':
-                return _BinaryExpression(self.clause_element(), null(), 'IS', negate='IS NOT')
-            elif operator == '!=':
-                return _BinaryExpression(self.clause_element(), null(), 'IS NOT', negate='IS')
+            if op == operator.eq:
+                return _BinaryExpression(self.clause_element(), null(), Operators.is_, negate=Operators.isnot)
+            elif op == operator.ne:
+                return _BinaryExpression(self.clause_element(), null(), Operators.isnot, negate=Operators.is_)
             else:
                 raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
         else:
             obj = self._check_literal(obj)
 
-        return _BinaryExpression(self.clause_element(), obj, operator, type=sqltypes.Boolean, negate=negate)
+            
+        return _BinaryExpression(self.clause_element(), obj, op, type_=sqltypes.Boolean, negate=negate)
 
-    def __operate(self, operator, obj):
+    def __operate(self, op, obj):
         obj = self._check_literal(obj)
-        return _BinaryExpression(self.clause_element(), obj, operator, type=self._compare_type(obj))
+
+        type_ = self._compare_type(obj)
+        if op == operator.add and isinstance(type_, (sqltypes.Concatenable)):
+            op = ColumnOperators.concat_op
+        
+        return _BinaryExpression(self.clause_element(), obj, op, type_=type_)
 
     operators = {
-        operator.add : (__operate, '+'),
-        operator.mul : (__operate, '*'),
-        operator.sub : (__operate, '-'),
-        operator.div : (__operate, '/'),
-        operator.mod : (__operate, '%'),
-        operator.truediv : (__operate, '/'),
-        operator.lt : (__compare, '<', '=>'),
-        operator.le : (__compare, '<=', '>'),
-        operator.ne : (__compare, '!=', '='),
-        operator.gt : (__compare, '>', '<='),
-        operator.ge : (__compare, '>=', '<'),
-        operator.eq : (__compare, '=', '!='),
-        Comparator.like_op : (__compare, 'LIKE', 'NOT LIKE'),
+        operator.add : (__operate,),
+        operator.mul : (__operate,),
+        operator.sub : (__operate,),
+        operator.div : (__operate,),
+        operator.mod : (__operate,),
+        operator.truediv : (__operate,),
+        operator.lt : (__compare, operator.ge),
+        operator.le : (__compare, operator.gt),
+        operator.ne : (__compare, operator.eq),
+        operator.gt : (__compare, operator.le),
+        operator.ge : (__compare, operator.lt),
+        operator.eq : (__compare, operator.ne),
+        ColumnOperators.like_op : (__compare, ColumnOperators.notlike_op),
     }
 
     def operate(self, op, other):
         o = _CompareMixin.operators[op]
-        return o[0](self, o[1], other, *o[2:])
+        return o[0](self, op, other, *o[1:])
     
     def reverse_operate(self, op, other):
         return self._bind_param(other).operate(op, self)
 
     def in_(self, *other):
-        """produce an ``IN`` clause."""
+        return self._in_impl(ColumnOperators.in_op, ColumnOperators.notin_op, *other)
+        
+    def _in_impl(self, op, negate_op, *other):
         if len(other) == 0:
             return _Grouping(case([(self.__eq__(None), text('NULL'))], else_=text('0')).__eq__(text('1')))
         elif len(other) == 1:
@@ -1285,7 +1351,7 @@ class _CompareMixin(Comparator):
                 return self.__eq__( o)    #single item -> ==
             else:
                 assert hasattr( o, '_selectable')   #better check?
-                return self.__compare( 'IN', o, negate='NOT IN')   #single selectable
+                return self.__compare( op, o, negate=negate_op)   #single selectable
 
         args = []
         for o in other:
@@ -1295,19 +1361,21 @@ class _CompareMixin(Comparator):
             else:
                 o = self._bind_param(o)
             args.append(o)
-        return self.__compare( 'IN', ClauseList(*args).self_group(against='IN'), negate='NOT IN')
+        return self.__compare(op, ClauseList(*args).self_group(against=op), negate=negate_op)
 
     def startswith(self, other):
         """produce the clause ``LIKE '<other>%'``"""
-        perc = isinstance(other,(str,unicode)) and '%' or literal('%',type= sqltypes.String)
+        
+        perc = isinstance(other,(str,unicode)) and '%' or literal('%',type_= sqltypes.String)
         return self.__compare('LIKE', other + perc)
 
     def endswith(self, other):
         """produce the clause ``LIKE '%<other>'``"""
+        
         if isinstance(other,(str,unicode)): po = '%' + other
         else:
-            po = literal('%', type= sqltypes.String) + other
-            po.type = sqltypes.to_instance( sqltypes.String)     #force!
+            po = literal('%', type_=sqltypes.String) + other
+            po.type = sqltypes.to_instance(sqltypes.String)     #force!
         return self.__compare('LIKE', po)
 
     def label(self, name):
@@ -1320,7 +1388,7 @@ class _CompareMixin(Comparator):
 
     def between(self, cleft, cright):
         """produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND <cright>``"""
-        return _BinaryExpression(self, ClauseList(self._check_literal(cleft), self._check_literal(cright), operator='AND', group=False), 'BETWEEN')
+        return _BinaryExpression(self, ClauseList(self._check_literal(cleft), self._check_literal(cright), operator=operator.and_, group=False), 'BETWEEN')
 
     def op(self, operator):
         """produce a generic operator function.
@@ -1342,10 +1410,10 @@ class _CompareMixin(Comparator):
         return lambda other: self.__operate(operator, other)
 
     def _bind_param(self, obj):
-        return _BindParamClause('literal', obj, shortname=None, type=self.type, unique=True)
+        return _BindParamClause('literal', obj, shortname=None, type_=self.type, unique=True)
 
     def _check_literal(self, other):
-        if isinstance(other, Comparator):
+        if isinstance(other, Operators):
             return other.clause_element()
         elif _is_literal(other):
             return self._bind_param(other)
@@ -1764,7 +1832,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
 
     __visit_name__ = 'bindparam'
     
-    def __init__(self, key, value, shortname=None, type=None, unique=False):
+    def __init__(self, key, value, shortname=None, type_=None, unique=False):
         """Construct a _BindParamClause.
 
         key
@@ -1787,7 +1855,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
           execution may match either the key or the shortname of the
           corresponding ``_BindParamClause`` objects.
 
-        type
+        type_
           A ``TypeEngine`` object that will be used to pre-process the
           value corresponding to this ``_BindParamClause`` at
           execution time.
@@ -1803,8 +1871,20 @@ class _BindParamClause(ClauseElement, _CompareMixin):
         self.value = value
         self.shortname = shortname or key
         self.unique = unique
-        self.type = sqltypes.to_instance(type)
-
+        type_ = sqltypes.to_instance(type_)
+        if isinstance(type_, sqltypes.NullType) and type(value) in _BindParamClause.type_map:
+            self.type = sqltypes.to_instance(_BindParamClause.type_map[type(value)])
+        else:
+            self.type = type_
+    
+    # TODO: move to types module, obviously
+    type_map = {
+        str : sqltypes.String,
+        unicode : sqltypes.Unicode,
+        int : sqltypes.Integer,
+        float : sqltypes.Numeric
+    }
+    
     def _get_from_objects(self, **modifiers):
         return []
 
@@ -1822,7 +1902,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
         return isinstance(other, _BindParamClause) and other.type.__class__ == self.type.__class__
 
     def __repr__(self):
-        return "_BindParamClause(%s, %s, type=%s)" % (repr(self.key), repr(self.value), repr(self.type))
+        return "_BindParamClause(%s, %s, type_=%s)" % (repr(self.key), repr(self.value), repr(self.type))
 
 class _TypeClause(ClauseElement):
     """Handle a type keyword in a SQL statement.
@@ -1907,10 +1987,9 @@ class ClauseList(ClauseElement):
     
     def __init__(self, *clauses, **kwargs):
         self.clauses = []
-        self.operator = kwargs.pop('operator', ',')
+        self.operator = kwargs.pop('operator', ColumnOperators.comma_op)
         self.group = kwargs.pop('group', True)
         self.group_contents = kwargs.pop('group_contents', True)
-        self.negate_operator = kwargs.pop('negate', None)
         for c in clauses:
             if c is None: 
                 continue
@@ -1932,14 +2011,6 @@ class ClauseList(ClauseElement):
     def _copy_internals(self):
         self.clauses = [clause._clone() for clause in self.clauses]
 
-    def _negate(self):
-        if hasattr(self, 'negation_clause'):
-            return self.negation_clause
-        elif self.negate_operator is None:
-            return super(ClauseList, self)._negate()
-        else:
-            return ClauseList(operator=self.negate_operator, negate=self.operator, *(not_(c) for c in self.clauses))
-
     def get_children(self, **kwargs):
         return self.clauses
 
@@ -1950,7 +2021,7 @@ class ClauseList(ClauseElement):
         return f
 
     def self_group(self, against=None):
-        if self.group and self.operator != against and PRECEDENCE.get(self.operator, PRECEDENCE['_smallest']) <= PRECEDENCE.get(against, PRECEDENCE['_largest']):
+        if self.group and self.operator != against and PRECEDENCE.get(self.operator, PRECEDENCE[_smallest]) <= PRECEDENCE.get(against, PRECEDENCE[_largest]):
             return _Grouping(self)
         else:
             return self
@@ -1981,7 +2052,7 @@ class _CalculatedClause(ColumnElement):
     
     def __init__(self, name, *clauses, **kwargs):
         self.name = name
-        self.type = sqltypes.to_instance(kwargs.get('type', None))
+        self.type = sqltypes.to_instance(kwargs.get('type_', None))
         self._bind = kwargs.get('bind', None)
         self.group = kwargs.pop('group', True)
         self.clauses = ClauseList(operator=kwargs.get('operator', None), group_contents=kwargs.get('group_contents', True), *clauses)
@@ -2002,7 +2073,7 @@ class _CalculatedClause(ColumnElement):
         return self.clauses._get_from_objects(**modifiers)
 
     def _bind_param(self, obj):
-        return _BindParamClause(self.name, obj, type=self.type, unique=True)
+        return _BindParamClause(self.name, obj, type_=self.type, unique=True)
 
     def select(self):
         return select([self])
@@ -2024,10 +2095,8 @@ class _Function(_CalculatedClause, FromClause):
     """
 
     def __init__(self, name, *clauses, **kwargs):
-        self.type = sqltypes.to_instance(kwargs.get('type', None))
         self.packagenames = kwargs.get('packagenames', None) or []
-        kwargs['operator'] = ','
-        self._bind = kwargs.get('bind', None)
+        kwargs['operator'] = ColumnOperators.comma_op
         _CalculatedClause.__init__(self, name, **kwargs)
         for c in clauses:
             self.append(c)
@@ -2065,7 +2134,7 @@ class _Cast(ColumnElement):
 
     def _make_proxy(self, selectable, name=None):
         if name is not None:
-            co = _ColumnClause(name, selectable, type=self.type)
+            co = _ColumnClause(name, selectable, type_=self.type)
             co._distance = self._distance + 1
             co.orig_set = self.orig_set
             selectable.columns[name]= co
@@ -2075,12 +2144,12 @@ class _Cast(ColumnElement):
 
 
 class _UnaryExpression(ColumnElement):
-    def __init__(self, element, operator=None, modifier=None, type=None, negate=None):
+    def __init__(self, element, operator=None, modifier=None, type_=None, negate=None):
         self.operator = operator
         self.modifier = modifier
         
         self.element = _literal_as_text(element).self_group(against=self.operator or self.modifier)
-        self.type = sqltypes.to_instance(type)
+        self.type = sqltypes.to_instance(type_)
         self.negate = negate
         
     def _get_from_objects(self, **modifiers):
@@ -2103,12 +2172,12 @@ class _UnaryExpression(ColumnElement):
 
     def _negate(self):
         if self.negate is not None:
-            return _UnaryExpression(self.element, operator=self.negate, negate=self.operator, modifier=self.modifier, type=self.type)
+            return _UnaryExpression(self.element, operator=self.negate, negate=self.operator, modifier=self.modifier, type_=self.type)
         else:
             return super(_UnaryExpression, self)._negate()
     
     def self_group(self, against):
-        if self.operator and PRECEDENCE.get(self.operator, PRECEDENCE['_smallest']) <= PRECEDENCE.get(against, PRECEDENCE['_largest']):
+        if self.operator and PRECEDENCE.get(self.operator, PRECEDENCE[_smallest]) <= PRECEDENCE.get(against, PRECEDENCE[_largest]):
             return _Grouping(self)
         else:
             return self
@@ -2117,11 +2186,11 @@ class _UnaryExpression(ColumnElement):
 class _BinaryExpression(ColumnElement):
     """Represent an expression that is ``LEFT <operator> RIGHT``."""
     
-    def __init__(self, left, right, operator, type=None, negate=None):
+    def __init__(self, left, right, operator, type_=None, negate=None):
         self.left = _literal_as_text(left).self_group(against=operator)
         self.right = _literal_as_text(right).self_group(against=operator)
         self.operator = operator
-        self.type = sqltypes.to_instance(type)
+        self.type = sqltypes.to_instance(type_)
         self.negate = negate
 
     def _get_from_objects(self, **modifiers):
@@ -2142,7 +2211,7 @@ class _BinaryExpression(ColumnElement):
                 (
                     self.left.compare(other.left) and self.right.compare(other.right)
                     or (
-                        self.operator in ['=', '!=', '+', '*'] and
+                        self.operator in [operator.eq, operator.ne, operator.add, operator.mul] and
                         self.left.compare(other.right) and self.right.compare(other.left)
                     )
                 )
@@ -2150,14 +2219,14 @@ class _BinaryExpression(ColumnElement):
         
     def self_group(self, against=None):
         # use small/large defaults for comparison so that unknown operators are always parenthesized
-        if self.operator != against and (PRECEDENCE.get(self.operator, PRECEDENCE['_smallest']) <= PRECEDENCE.get(against, PRECEDENCE['_largest'])):
+        if self.operator != against and (PRECEDENCE.get(self.operator, PRECEDENCE[_smallest]) <= PRECEDENCE.get(against, PRECEDENCE[_largest])):
             return _Grouping(self)
         else:
             return self
     
     def _negate(self):
         if self.negate is not None:
-            return _BinaryExpression(self.left, self.right, self.negate, negate=self.operator, type=self.type)
+            return _BinaryExpression(self.left, self.right, self.negate, negate=self.operator, type_=self.type)
         else:
             return super(_BinaryExpression, self)._negate()
 
@@ -2167,7 +2236,7 @@ class _Exists(_UnaryExpression):
     def __init__(self, *args, **kwargs):
         kwargs['correlate'] = True
         s = select(*args, **kwargs).self_group()
-        _UnaryExpression.__init__(self, s, operator="EXISTS")
+        _UnaryExpression.__init__(self, s, operator=Operators.exists)
 
     def _hide_froms(self, **modifiers):
         return self._get_from_objects(**modifiers)
@@ -2208,7 +2277,7 @@ class Join(FromClause):
                     
         class BinaryVisitor(ClauseVisitor):
             def visit_binary(self, binary):
-                if binary.operator == '=':
+                if binary.operator == operator.eq:
                     add_equiv(binary.left, binary.right)
         BinaryVisitor().traverse(self.onclause)
         
@@ -2290,7 +2359,7 @@ class Join(FromClause):
             equivs = util.Set()
         class LocateEquivs(NoColumnVisitor):
             def visit_binary(self, binary):
-                if binary.operator == '=' and binary.left.name == binary.right.name:
+                if binary.operator == operator.eq and binary.left.name == binary.right.name:
                     equivs.add(binary.right)
                     equivs.add(binary.left)
         LocateEquivs().traverse(self.onclause)
@@ -2463,14 +2532,14 @@ class _Label(ColumnElement):
     
     """
     
-    def __init__(self, name, obj, type=None):
+    def __init__(self, name, obj, type_=None):
         while isinstance(obj, _Label):
             obj = obj.obj
         self.name = name or "{ANON %d %s}" % (id(self), getattr(obj, 'name', 'anon'))
 
-        self.obj = obj.self_group(against='AS')
+        self.obj = obj.self_group(against=Operators.as_)
         self.case_sensitive = getattr(obj, "case_sensitive", True)
-        self.type = sqltypes.to_instance(type or getattr(obj, 'type', None))
+        self.type = sqltypes.to_instance(type_ or getattr(obj, 'type', None))
 
     key = property(lambda s: s.name)
     _label = property(lambda s: s.name)
@@ -2528,11 +2597,11 @@ class _ColumnClause(ColumnElement):
     
     """
 
-    def __init__(self, text, selectable=None, type=None, _is_oid=False, case_sensitive=True, is_literal=False):
+    def __init__(self, text, selectable=None, type_=None, _is_oid=False, case_sensitive=True, is_literal=False):
         self.key = self.name = text
         self.encodedname = isinstance(self.name, unicode) and self.name.encode('ascii', 'backslashreplace') or self.name
         self.table = selectable
-        self.type = sqltypes.to_instance(type)
+        self.type = sqltypes.to_instance(type_)
         self._is_oid = _is_oid
         self._distance = 0
         self.__label = None
@@ -2586,13 +2655,13 @@ class _ColumnClause(ColumnElement):
             return []
 
     def _bind_param(self, obj):
-        return _BindParamClause(self._label, obj, shortname = self.name, type=self.type, unique=True)
+        return _BindParamClause(self._label, obj, shortname=self.name, type_=self.type, unique=True)
 
     def _make_proxy(self, selectable, name = None):
         # propigate the "is_literal" flag only if we are keeping our name,
         # otherwise its considered to be a label
         is_literal = self.is_literal and (name is None or name == self.name)
-        c = _ColumnClause(name or self.name, selectable=selectable, _is_oid=self._is_oid, type=self.type, is_literal=is_literal)
+        c = _ColumnClause(name or self.name, selectable=selectable, _is_oid=self._is_oid, type_=self.type, is_literal=is_literal)
         c.orig_set = self.orig_set
         c._distance = self._distance + 1
         if not self._is_oid:
@@ -3050,7 +3119,7 @@ class Select(_SelectBaseMixin, FromClause):
             column = literal_column(str(column))
 
         if isinstance(column, Select) and column.is_scalar:
-            column = column.self_group(against=',')
+            column = column.self_group(against=ColumnOperators.comma_op)
 
         self._raw_columns.append(column)
 
@@ -3191,7 +3260,7 @@ class _UpdateBase(ClauseElement):
         for key in parameters.keys():
             value = parameters[key]
             if isinstance(value, ClauseElement):
-                pass
+                parameters[key] = value.self_group()
             elif _is_literal(value):
                 if _is_literal(key):
                     col = self.table.c[key]

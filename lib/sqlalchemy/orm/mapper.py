@@ -10,7 +10,7 @@ from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier
 from sqlalchemy.orm import sync
 from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext, EXT_PASS, MapperExtension, SynonymProperty
-import weakref, warnings
+import weakref, warnings, operator
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
 
@@ -587,7 +587,7 @@ class Mapper(object):
         
         _get_clause = sql.and_()
         for primary_key in self.primary_key:
-            _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type, unique=True))
+            _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type_=primary_key.type, unique=True))
         self._get_clause = _get_clause
 
     def _get_equivalent_columns(self):
@@ -620,7 +620,7 @@ class Mapper(object):
 
         result = {}
         def visit_binary(binary):
-            if binary.operator == '=':
+            if binary.operator == operator.eq:
                 if binary.left in result:
                     result[binary.left].add(binary.right)
                 else:
@@ -1221,9 +1221,9 @@ class Mapper(object):
                 mapper = table_to_mapper[table]
                 clause = sql.and_()
                 for col in mapper.pks_by_table[table]:
-                    clause.clauses.append(col == sql.bindparam(col._label, type=col.type, unique=True))
+                    clause.clauses.append(col == sql.bindparam(col._label, type_=col.type, unique=True))
                 if mapper.version_id_col is not None:
-                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type=col.type, unique=True))
+                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type_=col.type, unique=True))
                 statement = table.update(clause)
                 rows = 0
                 supports_sane_rowcount = True
@@ -1358,9 +1358,9 @@ class Mapper(object):
                 delete.sort(comparator)
                 clause = sql.and_()
                 for col in mapper.pks_by_table[table]:
-                    clause.clauses.append(col == sql.bindparam(col.key, type=col.type, unique=True))
+                    clause.clauses.append(col == sql.bindparam(col.key, type_=col.type, unique=True))
                 if mapper.version_id_col is not None:
-                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col.key, type=mapper.version_id_col.type, unique=True))
+                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col.key, type_=mapper.version_id_col.type, unique=True))
                 statement = table.delete(clause)
                 c = connection.execute(statement, delete)
                 if c.supports_sane_rowcount() and c.rowcount != len(delete):
@@ -1567,10 +1567,10 @@ class Mapper(object):
             if leftcol is None or rightcol is None:
                 return
             if leftcol.table not in needs_tables:
-                binary.left = sql.bindparam(leftcol.name, None, type=binary.right.type, unique=True)
+                binary.left = sql.bindparam(leftcol.name, None, type_=binary.right.type, unique=True)
                 param_names.append(leftcol)
             elif rightcol not in needs_tables:
-                binary.right = sql.bindparam(rightcol.name, None, type=binary.right.type, unique=True)
+                binary.right = sql.bindparam(rightcol.name, None, type_=binary.right.type, unique=True)
                 param_names.append(rightcol)
         cond = mapperutil.BinaryVisitor(visit_binary).traverse(cond, clone=True)
         return cond, param_names

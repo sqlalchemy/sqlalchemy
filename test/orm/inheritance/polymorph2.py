@@ -737,18 +737,18 @@ class MultiLevelTest(testbase.ORMTest):
     def define_tables(self, metadata):
         global table_Employee, table_Engineer, table_Manager
         table_Employee = Table( 'Employee', metadata,
-            Column( 'name', type= String(100), ),
-            Column( 'id', primary_key= True, type= Integer, ),
-            Column( 'atype', type= String(100), ),
+            Column( 'name', type_= String(100), ),
+            Column( 'id', primary_key= True, type_= Integer, ),
+            Column( 'atype', type_= String(100), ),
         )
 
         table_Engineer = Table( 'Engineer', metadata,
-            Column( 'machine', type= String(100), ),
+            Column( 'machine', type_= String(100), ),
             Column( 'id', Integer, ForeignKey( 'Employee.id', ), primary_key= True, ),
         )
 
         table_Manager = Table( 'Manager', metadata,
-            Column( 'duties', type= String(100), ),
+            Column( 'duties', type_= String(100), ),
             Column( 'id', Integer, ForeignKey( 'Engineer.id', ), primary_key= True, ),
         )
     def test_threelevels(self):

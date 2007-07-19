@@ -347,12 +347,6 @@ class SQLiteCompiler(ansisql.ANSICompiler):
         # sqlite has no "FOR UPDATE" AFAICT
         return ''
 
-    def binary_operator_string(self, binary):
-        if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
-            return '||'
-        else:
-            return ansisql.ANSICompiler.binary_operator_string(self, binary)
-
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
 
     def get_column_specification(self, column, **kwargs):

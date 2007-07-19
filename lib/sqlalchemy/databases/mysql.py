@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import re, datetime, inspect, warnings, weakref
+import re, datetime, inspect, warnings, weakref, operator
 
 from sqlalchemy import sql, schema, ansisql
 from sqlalchemy.engine import default
@@ -1284,6 +1284,14 @@ class _MySQLPythonRowProxy(object):
 
 
 class MySQLCompiler(ansisql.ANSICompiler):
+    operators = ansisql.ANSICompiler.operators.copy()
+    operators.update(
+        {
+            sql.ColumnOperators.concat_op : lambda x, y:"concat(%s, %s)" % (x, y),
+            operator.mod : '%%'
+        }
+    )
+
     def visit_cast(self, cast):
         if isinstance(cast.type, (sqltypes.Date, sqltypes.Time, sqltypes.DateTime)):
             return super(MySQLCompiler, self).visit_cast(cast)
@@ -1309,11 +1317,6 @@ class MySQLCompiler(ansisql.ANSICompiler):
             text += " OFFSET " + str(select._offset)
         return text
         
-    def binary_operator_string(self, binary):
-        if binary.operator == '%':
-            return '%%'
-        else:
-            return ansisql.ANSICompiler.binary_operator_string(self, binary)   
 
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):

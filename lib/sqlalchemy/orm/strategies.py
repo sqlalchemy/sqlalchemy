@@ -407,7 +407,7 @@ class LazyLoader(AbstractRelationLoader):
             if should_bind(leftcol, rightcol):
                 col = leftcol
                 binary.left = binds.setdefault(leftcol,
-                        sql.bindparam(None, None, shortname=leftcol.name, type=binary.right.type, unique=True))
+                        sql.bindparam(None, None, shortname=leftcol.name, type_=binary.right.type, unique=True))
                 reverse[rightcol] = binds[col]
 
             # the "left is not right" compare is to handle part of a join clause that is "table.c.col1==table.c.col1",
@@ -415,7 +415,7 @@ class LazyLoader(AbstractRelationLoader):
             if leftcol is not rightcol and should_bind(rightcol, leftcol):
                 col = rightcol
                 binary.right = binds.setdefault(rightcol,
-                        sql.bindparam(None, None, shortname=rightcol.name, type=binary.left.type, unique=True))
+                        sql.bindparam(None, None, shortname=rightcol.name, type_=binary.left.type, unique=True))
                 reverse[leftcol] = binds[col]
 
         lazywhere = primaryjoin

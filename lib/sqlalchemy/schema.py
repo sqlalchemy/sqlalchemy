@@ -396,7 +396,7 @@ class Column(SchemaItem, sql._ColumnClause):
     ``TableClause``/``Table``.
     """
 
-    def __init__(self, name, type, *args, **kwargs):
+    def __init__(self, name, type_, *args, **kwargs):
         """Construct a new ``Column`` object.
 
         Arguments are:
@@ -405,7 +405,7 @@ class Column(SchemaItem, sql._ColumnClause):
           The name of this column.  This should be the identical name
           as it appears, or will appear, in the database.
 
-        type
+        type_
           The ``TypeEngine`` for this column.  This can be any
           subclass of ``types.AbstractType``, including the
           database-agnostic types defined in the types module,
@@ -495,7 +495,7 @@ class Column(SchemaItem, sql._ColumnClause):
             identifier contains mixed case.
         """
 
-        super(Column, self).__init__(name, None, type)
+        super(Column, self).__init__(name, None, type_)
         self.args = args
         self.key = kwargs.pop('key', name)
         self._primary_key = kwargs.pop('primary_key', False)

@@ -28,9 +28,9 @@ class CaseTest(testbase.PersistTest):
     def testcase(self):
         inner = select([case([
 		[info_table.c.pk < 3, 
-                        literal('lessthan3', type=String)],
+                        literal('lessthan3', type_=String)],
         	[and_(info_table.c.pk >= 3, info_table.c.pk < 7), 
-                        literal('gt3', type=String)]]).label('x'),
+                        literal('gt3', type_=String)]]).label('x'),
         	info_table.c.pk, info_table.c.info], 
                 from_obj=[info_table]).alias('q_inner')
 
@@ -67,9 +67,9 @@ class CaseTest(testbase.PersistTest):
 
         w_else = select([case([
 		[info_table.c.pk < 3, 
-                        literal(3, type=Integer)],
+                        literal(3, type_=Integer)],
         	[and_(info_table.c.pk >= 3, info_table.c.pk < 6), 
-                        literal(6, type=Integer)]],
+                        literal(6, type_=Integer)]],
                 else_ = 0).label('x'),
         	info_table.c.pk, info_table.c.info], 
                 from_obj=[info_table]).alias('q_inner')

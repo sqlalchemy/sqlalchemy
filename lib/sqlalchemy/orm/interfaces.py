@@ -337,7 +337,7 @@ class MapperProperty(object):
 
         return operator(self.comparator, value)
 
-class PropComparator(sql.Comparator):
+class PropComparator(sql.ColumnOperators):
     """defines comparison operations for MapperProperty objects"""
 
     def contains_op(a, b):

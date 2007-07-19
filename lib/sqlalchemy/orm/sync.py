@@ -12,6 +12,7 @@ clause that compares column values.
 from sqlalchemy import sql, schema, exceptions
 from sqlalchemy import logging
 from sqlalchemy.orm import util as mapperutil
+import operator
 
 ONETOMANY = 0
 MANYTOONE = 1
@@ -42,7 +43,7 @@ class ClauseSynchronizer(object):
         def compile_binary(binary):
             """Assemble a SyncRule given a single binary condition."""
 
-            if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
+            if binary.operator != operator.eq or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                 return
 
             source_column = None

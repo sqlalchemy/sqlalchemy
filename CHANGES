@@ -87,6 +87,9 @@
     style of Hibernate
     
 - sql
+  - all "type" keyword arguments, such as those to bindparam(), column(),
+    Column(), and func.<something>(), renamed to "type_".  those objects
+    still name their "type" attribute as "type".
   - transactions:
     - added context manager (with statement) support for transactions
     - added support for two phase commit, works with mysql and postgres so far.
@@ -95,6 +98,11 @@
   - MetaData:
     - DynamicMetaData has been renamed to ThreadLocalMetaData
     - BoundMetaData has been removed- regular MetaData is equivalent
+  - new SQL operator implementation which removes all hardcoded operators
+    from expression structures and moves them into compilation; 
+    allows greater flexibility of operator compilation; for example, "+" 
+    compiles to "||" when used in a string context, or "concat(a,b)" on 
+    MySQL; whereas in a numeric context it compiles to "+".  fixes [ticket:475].
   - "anonymous" alias and label names are now generated at SQL compilation
     time in a completely deterministic fashion...no more random hex IDs
   - significant architectural overhaul to SQL elements (ClauseElement).  

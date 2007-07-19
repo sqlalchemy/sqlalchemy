@@ -11,21 +11,21 @@ import unittest, re, operator
 # so SQLAlchemy's SQL construction engine can be used with no database dependencies at all.
 
 table1 = table('mytable', 
-    column('myid'),
-    column('name'),
-    column('description'),
+    column('myid', Integer),
+    column('name', String),
+    column('description', String),
 )
 
 table2 = table(
     'myothertable', 
-    column('otherid'),
-    column('othername'),
+    column('otherid', Integer),
+    column('othername', String),
 )
 
 table3 = table(
     'thirdtable', 
-    column('userid'),
-    column('otherstuff'),
+    column('userid', Integer),
+    column('otherstuff', String),
 )
 
 metadata = MetaData()
@@ -273,14 +273,14 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                                 (operator.sub, '-'), (operator.div, '/'),
                                 ):
             for (lhs, rhs, res) in (
-                ('a', table1.c.myid, ':mytable_myid %s mytable.myid'),
-                ('a', literal('b'), ':literal %s :literal_1'),
+                (5, table1.c.myid, ':mytable_myid %s mytable.myid'),
+                (5, literal(5), ':literal %s :literal_1'),
                 (table1.c.myid, 'b', 'mytable.myid %s :mytable_myid'),
-                (table1.c.myid, literal('b'), 'mytable.myid %s :literal'),
+                (table1.c.myid, literal(2.7), 'mytable.myid %s :literal'),
                 (table1.c.myid, table1.c.myid, 'mytable.myid %s mytable.myid'),
-                (literal('a'), 'b', ':literal %s :literal_1'),
-                (literal('a'), table1.c.myid, ':literal %s mytable.myid'),
-                (literal('a'), literal('b'), ':literal %s :literal_1'),
+                (literal(5), 8, ':literal %s :literal_1'),
+                (literal(6), table1.c.myid, ':literal %s mytable.myid'),
+                (literal(7), literal(5.5), ':literal %s :literal_1'),
                 ):
                 self.runtest(py_op(lhs, rhs), res % sql_op)
 
@@ -328,7 +328,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
 
         self.runtest(
-         literal("a") + literal("b") * literal("c"), ":literal + :literal_1 * :literal_2"
+         literal("a") + literal("b") * literal("c"), ":literal || :literal_1 * :literal_2"
         )
 
         # test the op() function, also that its results are further usable in expressions
@@ -540,7 +540,7 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
     def testliteral(self):
         self.runtest(select([literal("foo") + literal("bar")], from_obj=[table1]), 
-            "SELECT :literal + :literal_1 FROM mytable")
+            "SELECT :literal || :literal_1 FROM mytable")
 
     def testcalculatedcolumns(self):
          value_tbl = table('values',
@@ -866,16 +866,16 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
         self.runtest(select([table1], table1.c.myid.in_('a', literal('b'))),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :literal)")
 
-        self.runtest(select([table1], table1.c.myid.in_(literal('a') + 'a')),
+        self.runtest(select([table1], table1.c.myid.in_(literal(1) + 'a')),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :literal + :literal_1")
 
         self.runtest(select([table1], table1.c.myid.in_(literal('a') +'a', 'b')),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal + :literal_1, :mytable_myid)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal || :literal_1, :mytable_myid)")
 
         self.runtest(select([table1], table1.c.myid.in_(literal('a') + literal('a'), literal('b'))),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal + :literal_1, :literal_2)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal || :literal_1, :literal_2)")
 
-        self.runtest(select([table1], table1.c.myid.in_('a', literal('b') +'b')),
+        self.runtest(select([table1], table1.c.myid.in_(1, literal(3) + 4)),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :literal + :literal_1)")
 
         self.runtest(select([table1], table1.c.myid.in_(literal('a') < 'b')),
@@ -893,7 +893,7 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
         self.runtest(select([table1], table1.c.myid.in_(literal('a'), table1.c.myid +'a')),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal, mytable.myid + :mytable_myid)")
 
-        self.runtest(select([table1], table1.c.myid.in_(literal('a'), 'a' + table1.c.myid)),
+        self.runtest(select([table1], table1.c.myid.in_(literal(1), 'a' + table1.c.myid)),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal, :mytable_myid + mytable.myid)")
 
         self.runtest(select([table1], table1.c.myid.in_(1, 2, 3)),
@@ -1040,12 +1040,16 @@ class CRUDTest(SQLTest):
             values = {
             table1.c.name : table1.c.name + "lala",
             table1.c.myid : func.do_stuff(table1.c.myid, literal('hoho'))
-            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :literal_2), name=mytable.name + :mytable_name WHERE mytable.myid = hoho(:hoho) AND mytable.name = :literal + mytable.name + :literal_1")
+            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :literal_2), name=(mytable.name || :mytable_name) WHERE mytable.myid = hoho(:hoho) AND mytable.name = :literal || mytable.name || :literal_1")
         
     def testcorrelatedupdate(self):
         # test against a straight text subquery
-        u = update(table1, values = {table1.c.name : text("select name from mytable where id=mytable.id")})
+        u = update(table1, values = {table1.c.name : text("(select name from mytable where id=mytable.id)")})
         self.runtest(u, "UPDATE mytable SET name=(select name from mytable where id=mytable.id)")
+
+        mt = table1.alias()
+        u = update(table1, values = {table1.c.name : select([mt.c.name], mt.c.myid==table1.c.myid)})
+        self.runtest(u, "UPDATE mytable SET name=(SELECT mytable_1.name FROM mytable AS mytable_1 WHERE mytable_1.myid = mytable.myid)")
         
         # test against a regular constructed subquery
         s = select([table2], table2.c.otherid == table1.c.myid)

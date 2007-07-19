@@ -192,7 +192,11 @@ class NullType(TypeEngine):
         return value
 NullTypeEngine = NullType
 
-class String(TypeEngine):
+class Concatenable(object):
+    """marks a type as supporting 'concatenation'"""
+    pass
+    
+class String(TypeEngine, Concatenable):
     def __init__(self, length=None, convert_unicode=False):
         self.length = length
         self.convert_unicode = convert_unicode

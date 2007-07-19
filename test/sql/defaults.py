@@ -25,7 +25,7 @@ class DefaultTest(PersistTest):
  
         # select "count(1)" returns different results on different DBs
         # also correct for "current_date" compatible as column default, value differences
-        currenttime = func.current_date(type=Date, bind=db);
+        currenttime = func.current_date(type_=Date, bind=db);
         if is_oracle:
             ts = db.func.trunc(func.sysdate(), literal_column("'DAY'")).scalar()
             f = select([func.count(1) + 5], bind=db).scalar()
@@ -230,7 +230,7 @@ class SequenceTest(PersistTest):
         )
         sometable = Table( 'Manager', metadata,
                Column( 'obj_id', Integer, Sequence('obj_id_seq'), ),
-               Column( 'name', type= String, ),
+               Column( 'name', String, ),
                Column( 'id', Integer, primary_key= True, ),
            )
         

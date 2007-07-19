@@ -281,6 +281,10 @@ class QueryTest(PersistTest):
         y = testbase.db.func.current_date().select().execute().scalar()
         z = testbase.db.func.current_date().scalar()
         assert x == y == z
+        
+        x = testbase.db.func.current_date(type_=Date)
+        assert isinstance(x.type, Date)
+        assert isinstance(x.execute().scalar(), datetime.date)
 
     def test_conn_functions(self):
         conn = testbase.db.connect()
@@ -351,7 +355,7 @@ class QueryTest(PersistTest):
         w = select(['*'], from_obj=[testbase.db.func.current_date()]).scalar()
         
         # construct a column-based FROM object out of a function, like in [ticket:172]
-        s = select([column('date', type=DateTime)], from_obj=[testbase.db.func.current_date()])
+        s = select([column('date', type_=DateTime)], from_obj=[testbase.db.func.current_date()])
         q = s.execute().fetchone()[s.c.date]
         r = s.alias('datequery').select().scalar()
         
