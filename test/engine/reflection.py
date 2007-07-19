@@ -579,9 +579,12 @@ class SchemaTest(PersistTest):
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
     
-    @testbase.unsupported('sqlite')
+    @testbase.supported('mysql','postgres')
     def testcreate(self):
-        schema = testbase.db.url.database
+        if testbase.db.name == 'mysql':
+            schema = testbase.db.url.database
+        else:
+            schema = 'public'
         metadata = MetaData(testbase.db)
         table1 = Table('table1', metadata, 
             Column('col1', Integer, primary_key=True),
