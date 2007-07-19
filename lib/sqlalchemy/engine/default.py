@@ -326,7 +326,6 @@ class DefaultExecutionContext(base.ExecutionContext):
                             self._lastrow_has_defaults = True
                         newid = drunner.get_column_default(c)
                         if newid is not None:
-                            print "GOT GENERATED DEFAULT", c, repr(newid)
                             param.set_value(c.key, newid)
                             if c.primary_key:
                                 last_inserted_ids.append(param.get_processed(c.key))
