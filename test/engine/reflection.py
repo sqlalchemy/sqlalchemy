@@ -472,6 +472,41 @@ class ReflectionTest(PersistTest):
     def testreserved(self):
         # check a table that uses an SQL reserved name doesn't cause an error
         meta = MetaData(testbase.db)
+        table_a = Table('select', meta, 
+                       Column('not', Integer, primary_key=True),
+                       Column('from', String(12), nullable=False),
+                       UniqueConstraint('from', name='when'))
+        Index('where', table_a.c['from'])
+
+        quoter = meta.bind.dialect.identifier_preparer.quote_identifier
+
+        table_b = Table('false', meta,
+                        Column('create', Integer, primary_key=True),
+                        Column('true', Integer, ForeignKey('select.not')),
+                        CheckConstraint('%s <> 1' % quoter('true'), name='limit'))
+
+        table_c = Table('is', meta,
+                        Column('or', Integer, nullable=False, primary_key=True),
+                        Column('join', Integer, nullable=False, primary_key=True),
+                        PrimaryKeyConstraint('or', 'join', name='to'))
+
+        index_c = Index('else', table_c.c.join)
+
+        #meta.bind.echo = True
+        meta.create_all()
+
+        index_c.drop()
+        
+        meta2 = MetaData(testbase.db)
+        try:
+            table_a2 = Table('select', meta2, autoload=True)
+            table_b2 = Table('false', meta2, autoload=True)
+            table_c2 = Table('is', meta2, autoload=True)
+        finally:
+            meta.drop_all()
+
+
+        meta = MetaData(testbase.db)
         table = Table(
             'select', meta, 
             Column('col1', Integer, primary_key=True)
@@ -575,7 +610,9 @@ class SchemaTest(PersistTest):
 
     @testbase.unsupported('sqlite')
     def testcreate(self):
-        schema = testbase.db.url.database
+        engine = testbase.db
+        schema = engine.dialect.get_default_schema_name(engine)
+
         metadata = MetaData(testbase.db)
         table1 = Table('table1', metadata, 
             Column('col1', Integer, primary_key=True),

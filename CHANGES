@@ -1,5 +1,6 @@
 0.3.10
 - sql
+    - better quoting of identifiers when manipulating schemas
     - got connection-bound metadata to work with implicit execution
     - foreign key specs can have any chararcter in their identifiers
      [ticket:667]
@@ -7,6 +8,8 @@
       each other, improves ORM lazy load optimization [ticket:664]
 - orm
     - cleanup to connection-bound sessions, SessionTransaction
+- mysql
+    - fixed issue with tables in alternate schemas [ticket:662]
 - postgres
     - fixed max identifier length (63) [ticket:571]
 

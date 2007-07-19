@@ -224,7 +224,8 @@ class SQLiteDialect(ansisql.ANSIDialect):
         return "oid"
 
     def has_table(self, connection, table_name, schema=None):
-        cursor = connection.execute("PRAGMA table_info(" + table_name + ")", {})
+        cursor = connection.execute("PRAGMA table_info(%s)" %
+           self.identifier_preparer.quote_identifier(table_name), {})
         row = cursor.fetchone()
 
         # consume remaining rows, to work around: http://www.sqlite.org/cvstrac/tktview?tn=1884

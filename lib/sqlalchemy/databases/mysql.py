@@ -1038,10 +1038,13 @@ class MySQLDialect(ansisql.ANSIDialect):
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.OperationalError) and e.args[0] in (2006, 2013, 2014, 2045, 2055)
 
-    def get_default_schema_name(self):
-        if not hasattr(self, '_default_schema_name'):
-            self._default_schema_name = sql.text("select database()", self).scalar()
-        return self._default_schema_name
+    def get_default_schema_name(self, connection):
+        try:
+            return self._default_schema_name
+        except AttributeError:
+            name = self._default_schema_name = \
+              connection.execute('SELECT DATABASE()').scalar()
+            return name
 
     def has_table(self, connection, table_name, schema=None):
         # SHOW TABLE STATUS LIKE and SHOW TABLES LIKE do not function properly
@@ -1054,7 +1057,10 @@ class MySQLDialect(ansisql.ANSIDialect):
         else:
             st = "DESCRIBE `%s`" % table_name
         try:
-            return connection.execute(st).rowcount > 0
+            rs = connection.execute(st)
+            have = rs.rowcount > 0
+            rs.close()
+            return have
         except exceptions.SQLError, e:
             if e.orig.args[0] == 1146:
                 return False
@@ -1286,11 +1292,15 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
 
 class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_index(self, index):
-        self.append("\nDROP INDEX " + index.name + " ON " + index.table.name)
+        self.append("\nDROP INDEX %s ON %s" %
+                    (self.preparer.format_index(index),
+                     self.preparer.format_table(index.table)))
         self.execute()
 
     def drop_foreignkey(self, constraint):
-        self.append("ALTER TABLE %s DROP FOREIGN KEY %s" % (self.preparer.format_table(constraint.table), constraint.name))
+        self.append("ALTER TABLE %s DROP FOREIGN KEY %s" %
+                    (self.preparer.format_table(constraint.table),
+                     self.preparer.format_constraint(constraint)))
         self.execute()
 
 class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
@@ -1301,8 +1311,7 @@ class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         return RESERVED_WORDS
 
     def _escape_identifier(self, value):
-        #TODO: determine MySQL's escaping rules
-        return value
+        return value.replace('`', '``')
 
     def _fold_identifier_case(self, value):
         #TODO: determine MySQL's case folding rules

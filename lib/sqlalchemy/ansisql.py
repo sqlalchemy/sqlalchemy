@@ -856,11 +856,11 @@ class ANSISchemaGenerator(ANSISchemaBase):
     def visit_check_constraint(self, constraint):
         self.append(", \n\t")
         if constraint.name is not None:
-            self.append("CONSTRAINT %s " % constraint.name)
+            self.append("CONSTRAINT %s " %
+                        self.preparer.format_constraint(constraint))
         self.append(" CHECK (%s)" % constraint.sqltext)
 
     def visit_column_check_constraint(self, constraint):
-        self.append(" ")
         self.append(" CHECK (%s)" % constraint.sqltext)
 
     def visit_primary_key_constraint(self, constraint):
@@ -868,7 +868,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
             return
         self.append(", \n\t")
         if constraint.name is not None:
-            self.append("CONSTRAINT %s " % constraint.name)
+            self.append("CONSTRAINT %s " % self.preparer.format_constraint(constraint))
         self.append("PRIMARY KEY ")
         self.append("(%s)" % (string.join([self.preparer.format_column(c) for c in constraint],', ')))
 
@@ -884,12 +884,14 @@ class ANSISchemaGenerator(ANSISchemaBase):
         self.execute()
 
     def define_foreign_key(self, constraint):
+        preparer = self.preparer
         if constraint.name is not None:
-            self.append("CONSTRAINT %s " % constraint.name)
+            self.append("CONSTRAINT %s " %
+                        preparer.format_constraint(constraint))
         self.append("FOREIGN KEY(%s) REFERENCES %s (%s)" % (
-            string.join([self.preparer.format_column(f.parent) for f in constraint.elements], ', '),
-            self.preparer.format_table(list(constraint.elements)[0].column.table),
-            string.join([self.preparer.format_column(f.column) for f in constraint.elements], ', ')
+            string.join([preparer.format_column(f.parent) for f in constraint.elements], ', '),
+            preparer.format_table(list(constraint.elements)[0].column.table),
+            string.join([preparer.format_column(f.column) for f in constraint.elements], ', ')
         ))
         if constraint.ondelete is not None:
             self.append(" ON DELETE %s" % constraint.ondelete)
@@ -899,20 +901,22 @@ class ANSISchemaGenerator(ANSISchemaBase):
     def visit_unique_constraint(self, constraint):
         self.append(", \n\t")
         if constraint.name is not None:
-            self.append("CONSTRAINT %s " % constraint.name)
-        self.append(" UNIQUE ")
-        self.append("(%s)" % (string.join([self.preparer.format_column(c) for c in constraint],', ')))
+            self.append("CONSTRAINT %s " %
+                        self.preparer.format_constraint(constraint))
+        self.append(" UNIQUE (%s)" % (string.join([self.preparer.format_column(c) for c in constraint],', ')))
 
     def visit_column(self, column):
         pass
 
     def visit_index(self, index):
+        preparer = self.preparer        
         self.append('CREATE ')
         if index.unique:
             self.append('UNIQUE ')
         self.append('INDEX %s ON %s (%s)' \
-                    % (index.name, self.preparer.format_table(index.table),
-                       string.join([self.preparer.format_column(c) for c in index.columns], ', ')))
+                    % (preparer.format_index(index),
+                       preparer.format_table(index.table),
+                       string.join([preparer.format_column(c) for c in index.columns], ', ')))
         self.execute()
 
 class ANSISchemaDropper(ANSISchemaBase):
@@ -932,11 +936,13 @@ class ANSISchemaDropper(ANSISchemaBase):
             table.accept_visitor(self)
 
     def visit_index(self, index):
-        self.append("\nDROP INDEX " + index.name)
+        self.append("\nDROP INDEX " + self.preparer.format_index(index))
         self.execute()
 
     def drop_foreignkey(self, constraint):
-        self.append("ALTER TABLE %s DROP CONSTRAINT %s" % (self.preparer.format_table(constraint.table), constraint.name))
+        self.append("ALTER TABLE %s DROP CONSTRAINT %s" % (
+            self.preparer.format_table(constraint.table),
+            self.preparer.format_constraint(constraint)))
         self.execute()
 
     def visit_table(self, table):
@@ -982,7 +988,7 @@ class ANSIIdentifierPreparer(object):
 
         return value.replace('"', '""')
 
-    def _quote_identifier(self, value):
+    def quote_identifier(self, value):
         """Quote an identifier.
 
         Subclasses should override this to provide database-dependent
@@ -1022,20 +1028,20 @@ class ANSIIdentifierPreparer(object):
 
     def __generic_obj_format(self, obj, ident):
         if getattr(obj, 'quote', False):
-            return self._quote_identifier(ident)
+            return self.quote_identifier(ident)
         if self.dialect.cache_identifiers:
             case_sens = getattr(obj, 'case_sensitive', None)
             try:
                 return self.__strings[(ident, case_sens)]
             except KeyError:
                 if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident == ident.lower())):
-                    self.__strings[(ident, case_sens)] = self._quote_identifier(ident)
+                    self.__strings[(ident, case_sens)] = self.quote_identifier(ident)
                 else:
                     self.__strings[(ident, case_sens)] = ident
                 return self.__strings[(ident, case_sens)]
         else:
             if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident == ident.lower())):
-                return self._quote_identifier(ident)
+                return self.quote_identifier(ident)
             else:
                 return ident
 
@@ -1053,6 +1059,12 @@ class ANSIIdentifierPreparer(object):
 
     def format_alias(self, alias):
         return self.__generic_obj_format(alias, alias.name)
+
+    def format_constraint(self, constraint):
+        return self.__generic_obj_format(constraint, constraint.name)
+
+    def format_index(self, index):
+        return self.__generic_obj_format(index, index.name)
 
     def format_table(self, table, use_schema=True, name=None):
         """Prepare a quoted table and schema name."""
