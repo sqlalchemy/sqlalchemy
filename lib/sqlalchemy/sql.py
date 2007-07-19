@@ -2497,7 +2497,8 @@ class _Grouping(ColumnElement):
     def __init__(self, elem):
         self.elem = elem
         self.type = getattr(elem, 'type', None)
-
+        
+            
     key = property(lambda s: s.elem.key)
     _label = property(lambda s: s.elem._label)
     orig_set = property(lambda s:s.elem.orig_set)
@@ -2516,7 +2517,6 @@ class _Grouping(ColumnElement):
         return self.elem._get_from_objects(**modifiers)
 
     def __getattr__(self, attr):
-        print "GROUPING ATTR", attr
         return getattr(self.elem, attr)
 
 class _Label(ColumnElement):
@@ -3064,7 +3064,9 @@ class Select(_SelectBaseMixin, FromClause):
 
     def _get_inner_columns(self):
         for c in self._raw_columns:
-            if hasattr(c, '_selectable'):
+            # TODO: need to have Select, as well as a Select inside a _Grouping,
+            # give us a clearer idea of if we want its column list or not
+            if hasattr(c, '_selectable') and not getattr(c, 'is_scalar', False):
                 for co in c._selectable().columns:
                     yield co
             else:
