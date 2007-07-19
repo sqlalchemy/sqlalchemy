@@ -77,6 +77,29 @@ Type objects are specified to table meta data using either the class itself, or 
         Column('value', Number(7,4)) 
     )
 
+### Dialect Specific Types {@name=dialect}
+
+Each dialect has its own set of types, many of which are available only within that dialect.  For example, MySQL has a `BigInteger` type and Postgres has an `Inet` type.  To use these, import them from the module explicitly:
+
+    {python}
+    from sqlalchemy.databases.mysql import MSEnum, MSBigInteger
+    
+    table = Table('foo', meta,
+        Column('enumerates', MSEnum('a', 'b', 'c')),
+        Column('id', MSBigInteger)
+    )
+        
+Or some postgres types:
+
+    {python}
+    from sqlalchemy.databases.postgres import PGInet, PGArray
+    
+    table = Table('foo', meta,
+        Column('ipaddress', PGInet),
+        Column('elements', PGArray(str))   # PGArray is available in 0.4, and takes a type argument
+        )
+
+
 ### Creating your Own Types {@name=custom}
 
 User-defined types can be created, to support either database-specific types, or customized pre-processing of query parameters as well as post-processing of result set data.  You can make your own classes to perform these operations.  To augment the behavior of a `TypeEngine` type, such as `String`, the `TypeDecorator` class is used:
@@ -93,7 +116,7 @@ User-defined types can be created, to support either database-specific types, or
         def convert_result_value(self, value, engine):
             return value[7:]
             
-The `Unicode` and `PickleType` classes are instances of `TypeDecorator` already and can be subclassed directly.
+The `PickleType` class is an instance of `TypeDecorator` already and can be subclassed directly.
 
 To build a type object from scratch, which will not have a corresponding database-specific implementation, subclass `TypeEngine`:
 
@@ -110,3 +133,12 @@ To build a type object from scratch, which will not have a corresponding databas
         def convert_result_value(self, value, engine):
             return value
 
+Once you make your type, its immediately useable:
+
+    {python}
+    table = Table('foo', meta,
+        Column('id', Integer, primary_key=True),
+        Column('data', MyType(16))
+        )
+        
+        
