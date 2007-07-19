@@ -288,7 +288,7 @@ class ANSICompiler(engine.Compiled):
         return ""
     
     def visit_grouping(self, grouping):
-        self.strings[grouping] = "(" + self.strings[grouping.elem] + ")"
+        self.strings[grouping] = self.froms[grouping] = "(" + self.strings[grouping.elem] + ")"
         
     def visit_label(self, label):
         labelname = self._truncated_identifier("colident", label.name)
@@ -634,8 +634,6 @@ class ANSICompiler(engine.Compiled):
 
     def visit_join(self, join):
         righttext = self.froms[join.right]
-        if join.right._group_parenthesized():
-            righttext = "(" + righttext + ")"
         if join.isouter:
             self.froms[join] = (self.froms[join.left] + " LEFT OUTER JOIN " + righttext +
             " ON " + self.strings[join.onclause])

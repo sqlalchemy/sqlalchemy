@@ -1454,12 +1454,6 @@ class Selectable(ClauseElement):
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
 
-    def _group_parenthesized(self):
-        """Indicate if this ``Selectable`` requires parenthesis when
-        grouped into a compound statement.
-        """
-
-        return True
 
         
 class ColumnElement(Selectable, _CompareMixin):
@@ -2253,7 +2247,7 @@ class Join(FromClause):
     """
     def __init__(self, left, right, onclause=None, isouter = False):
         self.left = left._selectable()
-        self.right = right._selectable()
+        self.right = right._selectable().self_group()
         if onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
         else:
@@ -2267,7 +2261,7 @@ class Join(FromClause):
 
     def _init_primary_key(self):
         pkcol = util.Set([c for c in self._flatten_exportable_columns() if c.primary_key])
-    
+     
         equivs = {}
         def add_equiv(a, b):
             for x, y in ((a, b), (b, a)):
@@ -2298,6 +2292,9 @@ class Join(FromClause):
         self.__primary_key = ColumnSet([c for c in self._flatten_exportable_columns() if c.primary_key and c not in omit])
 
     primary_key = property(lambda s:s.__primary_key)
+
+    def self_group(self, against=None):
+        return _Grouping(self)
         
     def _locate_oid_column(self):
         return self.left.oid_column
@@ -2349,9 +2346,6 @@ class Join(FromClause):
             return (crit[0])
         else:
             return and_(*crit)
-
-    def _group_parenthesized(self):
-        return True
 
     def _get_folded_equivalents(self, equivs=None):
         if self.__folded_equivalents is not None:
@@ -2494,9 +2488,6 @@ class Alias(FromClause):
     def _get_from_objects(self):
         return [self]
 
-    def _group_parenthesized(self):
-        return False
-
     bind = property(lambda s: s.selectable.bind)
 
 class _Grouping(ColumnElement):
@@ -2507,6 +2498,7 @@ class _Grouping(ColumnElement):
     key = property(lambda s: s.elem.key)
     _label = property(lambda s: s.elem._label)
     orig_set = property(lambda s:s.elem.orig_set)
+    columns = c = property(lambda s:s.elem.columns)
     
     def _copy_internals(self):
         self.elem = self.elem._clone()
@@ -2521,6 +2513,7 @@ class _Grouping(ColumnElement):
         return self.elem._get_from_objects(**modifiers)
 
     def __getattr__(self, attr):
+        print "GROUPING ATTR", attr
         return getattr(self.elem, attr)
 
 class _Label(ColumnElement):
@@ -2672,9 +2665,6 @@ class _ColumnClause(ColumnElement):
     def _compare_type(self, obj):
         return self.type
 
-    def _group_parenthesized(self):
-        return False
-
 class TableClause(FromClause):
     """represents a "table" construct.
     
@@ -2729,9 +2719,6 @@ class TableClause(FromClause):
 
     def _exportable_columns(self):
         raise NotImplementedError()
-
-    def _group_parenthesized(self):
-        return False
 
     def count(self, whereclause=None, **params):
         if len(self.primary_key):
