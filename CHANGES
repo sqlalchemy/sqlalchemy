@@ -128,6 +128,7 @@
   - added "explcit" create/drop/execute support for sequences 
     (i.e. you can pass a "connectable" to each of those methods
     on Sequence)
+  - better quoting of identifiers when manipulating schemas
   - standardized the behavior for table reflection where types can't be located;
     NullType is substituted instead, warning is raised.
 - extensions
