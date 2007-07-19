@@ -167,10 +167,8 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
         fr = util.OrderedSet()
         for elem in select._froms:
             n = self.convert_element(elem)
-            if n is None:
-                fr.add(elem)
-            else:
-                fr.add(n)
+            if n is not None:
+                fr.add((elem, n))
         select._recorrelate_froms(fr)
 
         col = []

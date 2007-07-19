@@ -2450,10 +2450,13 @@ class Alias(FromClause):
 
     def is_derived_from(self, fromclause):
         x = self.selectable
-        while isinstance(x, Alias):
-            x = x.selectable
+        while True:
             if x is fromclause:
                 return True
+            if isinstance(x, Alias):
+                x = x.selectable
+            else:
+                break
         return False
 
     def supports_execution(self):
@@ -2937,7 +2940,7 @@ class Select(_SelectBaseMixin, FromClause):
         _calculate_correlations() method.  
         
         """
-        froms = util.Set()
+        froms = util.OrderedSet()
         hide_froms = util.Set()
         
         for col in self._raw_columns:
@@ -3072,7 +3075,7 @@ class Select(_SelectBaseMixin, FromClause):
     def _copy_internals(self):
         self._clone_from_clause()
         self._raw_columns = [c._clone() for c in self._raw_columns]
-        self._recorrelate_froms([f._clone() for f in self._froms])
+        self._recorrelate_froms([(f, f._clone()) for f in self._froms])
         for attr in ('_whereclause', '_having', '_order_by_clause', '_group_by_clause'):
             if getattr(self, attr) is not None:
                 setattr(self, attr, getattr(self, attr)._clone())
@@ -3084,12 +3087,17 @@ class Select(_SelectBaseMixin, FromClause):
 
     def _recorrelate_froms(self, froms):
         newcorrelate = util.Set()
-        for f in froms:
-            if f in self.__correlate:
-                newcorrelate.add(cl)
-                self.__correlate.remove(f)
+        newfroms = util.Set()
+        oldfroms = util.Set(self._froms)
+        for old, new in froms:
+            if old in self.__correlate:
+                newcorrelate.add(new)
+                self.__correlate.remove(old)
+            if old in oldfroms:
+                newfroms.add(new)
+                oldfroms.remove(old)
         self.__correlate = self.__correlate.union(newcorrelate)
-        self._froms = froms
+        self._froms = [f for f in oldfroms.union(newfroms)]
         
     def column(self, column):
         s = self._generate()
@@ -3116,7 +3124,7 @@ class Select(_SelectBaseMixin, FromClause):
         s.append_from(fromclause)
         return s
     
-    def correlate_to(self, fromclause):
+    def correlate(self, fromclause):
         s = self._generate()
         s.append_correlation(fromclause)
         return s
