@@ -1365,9 +1365,9 @@ class _CompareMixin(ColumnOperators):
 
     def startswith(self, other):
         """produce the clause ``LIKE '<other>%'``"""
-        
+
         perc = isinstance(other,(str,unicode)) and '%' or literal('%',type_= sqltypes.String)
-        return self.__compare('LIKE', other + perc)
+        return self.__compare(ColumnOperators.like_op, other + perc)
 
     def endswith(self, other):
         """produce the clause ``LIKE '%<other>'``"""
@@ -1376,7 +1376,7 @@ class _CompareMixin(ColumnOperators):
         else:
             po = literal('%', type_=sqltypes.String) + other
             po.type = sqltypes.to_instance(sqltypes.String)     #force!
-        return self.__compare('LIKE', po)
+        return self.__compare(ColumnOperators.like_op, po)
 
     def label(self, name):
         """produce a column label, i.e. ``<columnname> AS <name>``"""
@@ -1388,7 +1388,8 @@ class _CompareMixin(ColumnOperators):
 
     def between(self, cleft, cright):
         """produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND <cright>``"""
-        return _BinaryExpression(self, ClauseList(self._check_literal(cleft), self._check_literal(cright), operator=operator.and_, group=False), 'BETWEEN')
+
+        return _BinaryExpression(self, ClauseList(self._check_literal(cleft), self._check_literal(cright), operator=operator.and_, group=False), ColumnOperators.between_op)
 
     def op(self, operator):
         """produce a generic operator function.
