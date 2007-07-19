@@ -243,32 +243,11 @@ class TypesTest(AssertMixin):
         enum_table.insert().execute(e1='a', e2='a', e3='a', e4='a')
         enum_table.insert().execute(e1='b', e2='b', e3='b', e4='b')
 
-        # Insert out of range enums, push stderr aside to avoid expected
-        # warnings cluttering test output
-        con = db.connect()
-        if not hasattr(con.connection, 'show_warnings'):
-            con.execute(insert(enum_table, {'e1':'c', 'e2':'c',
-                                            'e3':'a', 'e4':'a'}))
-        else:
-            try:
-                aside = sys.stderr
-                sys.stderr = StringIO.StringIO()
-
-                self.assert_(not con.connection.show_warnings())
-
-                con.execute(insert(enum_table, {'e1':'c', 'e2':'c',
-                                                'e3':'a', 'e4':'a'}))
-
-                self.assert_(con.connection.show_warnings())
-            finally:
-                sys.stderr = aside
-
         res = enum_table.select().execute().fetchall()
 
         expected = [(None, 'a', None, 'a'),
                     ('a', 'a', 'a', 'a'),
-                    ('b', 'b', 'b', 'b'),
-                    ('', '', 'a', 'a')]
+                    ('b', 'b', 'b', 'b')]
 
         # This is known to fail with MySQLDB 1.2.2 beta versions
         # which return these as sets.Set(['a']), sets.Set(['b'])
