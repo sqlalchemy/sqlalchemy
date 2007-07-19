@@ -1,28 +1,22 @@
-import sqlalchemy.sql as sql
-import sqlalchemy.engine as engine
-import sqlalchemy.schema as schema
-import sqlalchemy.ansisql as ansisql
-import sqlalchemy.types as sqltypes
-import sqlalchemy.exceptions as exceptions
-from sqlalchemy import *
-from sqlalchemy.ansisql import *
+from sqlalchemy import sql, schema, exceptions, select, MetaData, Table, Column, String, Integer
+from sqlalchemy.schema import PassiveDefault, ForeignKeyConstraint
 
 ischema = MetaData()
 
-schemata = schema.Table("schemata", ischema,
+schemata = Table("schemata", ischema,
     Column("catalog_name", String),
     Column("schema_name", String),
     Column("schema_owner", String),
     schema="information_schema")
 
-tables = schema.Table("tables", ischema,
+tables = Table("tables", ischema,
     Column("table_catalog", String),
     Column("table_schema", String),
     Column("table_name", String),
     Column("table_type", String),
     schema="information_schema")
 
-columns = schema.Table("columns", ischema,
+columns = Table("columns", ischema,
     Column("table_schema", String),
     Column("table_name", String),
     Column("column_name", String),
@@ -35,21 +29,21 @@ columns = schema.Table("columns", ischema,
     Column("column_default", Integer),
     schema="information_schema")
     
-constraints = schema.Table("table_constraints", ischema,
+constraints = Table("table_constraints", ischema,
     Column("table_schema", String),
     Column("table_name", String),
     Column("constraint_name", String),
     Column("constraint_type", String),
     schema="information_schema")
 
-column_constraints = schema.Table("constraint_column_usage", ischema,
+column_constraints = Table("constraint_column_usage", ischema,
     Column("table_schema", String),
     Column("table_name", String),
     Column("column_name", String),
     Column("constraint_name", String),
     schema="information_schema")
 
-pg_key_constraints = schema.Table("key_column_usage", ischema,
+pg_key_constraints = Table("key_column_usage", ischema,
     Column("table_schema", String),
     Column("table_name", String),
     Column("column_name", String),
@@ -57,7 +51,7 @@ pg_key_constraints = schema.Table("key_column_usage", ischema,
     Column("ordinal_position", Integer),
     schema="information_schema")
 
-#mysql_key_constraints = schema.Table("key_column_usage", ischema,
+#mysql_key_constraints = Table("key_column_usage", ischema,
 #    Column("table_schema", String),
 #    Column("table_name", String),
 #    Column("column_name", String),
@@ -69,7 +63,7 @@ pg_key_constraints = schema.Table("key_column_usage", ischema,
 
 key_constraints = pg_key_constraints
 
-ref_constraints = schema.Table("referential_constraints", ischema,
+ref_constraints = Table("referential_constraints", ischema,
     Column("constraint_catalog", String),
     Column("constraint_schema", String),
     Column("constraint_name", String),
@@ -97,7 +91,7 @@ class ISchema(object):
             try:
                 gen_tbl = globals()['gen_'+name]
             except KeyError:
-                raise ArgumentError('information_schema table %s not found' % name)
+                raise exceptions.ArgumentError('information_schema table %s not found' % name)
             self.cache[name] = gen_tbl.toengine(self.engine)
         return self.cache[name]
 
@@ -186,10 +180,10 @@ def reflecttable(connection, table, ischema_names):
             if current_schema == referred_schema:
                 referred_schema = table.schema
             if referred_schema is not None:
-                schema.Table(referred_table, table.metadata, autoload=True, schema=referred_schema, autoload_with=connection)
+                Table(referred_table, table.metadata, autoload=True, schema=referred_schema, autoload_with=connection)
                 refspec = ".".join([referred_schema, referred_table, referred_column])
             else:
-                schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection)
+                Table(referred_table, table.metadata, autoload=True, autoload_with=connection)
                 refspec = ".".join([referred_table, referred_column])
             if constrained_column not in fk[0]:
                 fk[0].append(constrained_column)

@@ -25,9 +25,8 @@ def __figure_version():
             return '(not installed)'
     except:
         return '(not installed)'
-        
+
 __version__ = __figure_version()
-    
+
 def global_connect(*args, **kwargs):
     default_metadata.connect(*args, **kwargs)
-    

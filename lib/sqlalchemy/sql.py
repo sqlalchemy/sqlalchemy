@@ -2163,10 +2163,10 @@ class _UnaryExpression(ColumnElement):
         visitor.visit_unary(self)
 
     def compare(self, other):
-        """Compare this ``_UnaryClause`` against the given ``ClauseElement``."""
+        """Compare this ``_UnaryExpression`` against the given ``ClauseElement``."""
 
         return (
-            isinstance(other, _UnaryClause) and self.operator == other.operator and
+            isinstance(other, _UnaryExpression) and self.operator == other.operator and
             self.modifier == other.modifier and 
             self.element.compare(other.element)
         )
