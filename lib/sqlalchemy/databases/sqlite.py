@@ -5,9 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string, types, re
+import re
 
-from sqlalchemy import sql, engine, schema, ansisql, exceptions, pool, PassiveDefault
+from sqlalchemy import schema, ansisql, exceptions, pool, PassiveDefault
 import sqlalchemy.engine.default as default
 import sqlalchemy.types as sqltypes
 import datetime,time, warnings

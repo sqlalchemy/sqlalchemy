@@ -11,13 +11,14 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
         'SMALLINT', 'DATE', 'TIME','Interval'
             ]
 
-from sqlalchemy import util, exceptions
 import inspect
 import datetime as dt
 try:
     import cPickle as pickle
 except:
     import pickle
+
+from sqlalchemy import exceptions
 
 class AbstractType(object):
     def __init__(self, *args, **kwargs):

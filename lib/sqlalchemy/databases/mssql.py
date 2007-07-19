@@ -39,9 +39,9 @@ Known issues / TODO:
   
 """
 
-import sys, StringIO, string, types, re, datetime, random, warnings
+import datetime, random, warnings
 
-from sqlalchemy import sql, engine, schema, ansisql, exceptions
+from sqlalchemy import sql, schema, ansisql, exceptions
 import sqlalchemy.types as sqltypes
 from sqlalchemy.engine import default
     
@@ -838,7 +838,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
 
     def label_select_column(self, select, column):
         if isinstance(column, sql._Function):
-            return co.label(co.name + "_" + hex(random.randint(0, 65535))[2:])        
+            return column.label(column.name + "_" + hex(random.randint(0, 65535))[2:])        
         else:
             return super(MSSQLCompiler, self).label_select_column(select, column)
 

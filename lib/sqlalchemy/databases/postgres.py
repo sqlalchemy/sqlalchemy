@@ -4,9 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import datetime, string, types, re, random, warnings, operator
+import re, random, warnings, operator
 
-from sqlalchemy import util, sql, schema, ansisql, exceptions
+from sqlalchemy import sql, schema, ansisql, exceptions
 from sqlalchemy.engine import base, default
 import sqlalchemy.types as sqltypes
 from sqlalchemy.databases import information_schema as ischema

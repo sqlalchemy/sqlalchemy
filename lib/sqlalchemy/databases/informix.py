@@ -5,12 +5,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import datetime, warnings
 
-import sys, StringIO, string , random, warnings
-import datetime
-from decimal import Decimal
-
-from sqlalchemy import util, sql, engine, schema, ansisql, exceptions, pool
+from sqlalchemy import sql, schema, ansisql, exceptions, pool
 import sqlalchemy.engine.default as default
 import sqlalchemy.types as sqltypes
 
@@ -426,9 +423,9 @@ class InfoCompiler(ansisql.ANSICompiler):
         except:
             li = [ c for c in list.clauses ]
         if list.parens:
-            self.strings[list] = "(" + string.join([s for s in [self.strings[c] for c in li] if s is not None ], ', ') + ")"
+            self.strings[list] = "(" + ', '.join([s for s in [self.strings[c] for c in li] if s is not None ]) + ")"
         else:
-            self.strings[list] = string.join([s for s in [self.strings[c] for c in li] if s is not None], ', ')
+            self.strings[list] = ', '.join([s for s in [self.strings[c] for c in li] if s is not None])
 
 class InfoSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, first_pk=False):

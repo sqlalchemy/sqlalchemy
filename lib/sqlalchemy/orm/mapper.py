@@ -4,12 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import sql, schema, util, exceptions, logging
+from sqlalchemy import sql, util, exceptions, logging
 from sqlalchemy import sql_util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier
 from sqlalchemy.orm import sync
-from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext, EXT_PASS, MapperExtension, SynonymProperty
+from sqlalchemy.orm.interfaces import MapperProperty, EXT_PASS, MapperExtension, SynonymProperty
 import weakref, warnings, operator
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
@@ -25,9 +25,12 @@ global_extensions = []
 # column
 NO_ATTRIBUTE = object()
 
-
 # lock used to synchronize the "mapper compile" step
 _COMPILE_MUTEX = util.threading.Lock()
+
+# initialize these two lazily
+attribute_manager = None
+ColumnProperty = None
 
 class Mapper(object):
     """Define the correlation of class attributes to database table

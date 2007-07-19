@@ -312,7 +312,6 @@ Boring tests here.  Nothing of real expository value.
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
-from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy.exceptions import *
 
 

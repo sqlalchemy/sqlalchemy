@@ -4,12 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import weakref
+
 from sqlalchemy import util, exceptions, sql, engine
-from sqlalchemy.orm import unitofwork, query
+from sqlalchemy.orm import unitofwork, query, util as mapperutil
 from sqlalchemy.orm.mapper import object_mapper as _object_mapper
 from sqlalchemy.orm.mapper import class_mapper as _class_mapper
-import weakref
-import sqlalchemy
 
 class SessionTransaction(object):
     """Represents a Session-level Transaction.
@@ -730,6 +730,7 @@ def object_session(obj):
         return _sessions.get(hashkey)
     return None
 
+# Lazy initialization to avoid circular imports
 unitofwork.object_session = object_session
 from sqlalchemy.orm import mapper
 mapper.attribute_manager = attribute_manager

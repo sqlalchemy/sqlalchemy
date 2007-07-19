@@ -4,11 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import util, sql
+import weakref
+
+from sqlalchemy import util
 from sqlalchemy.orm import util as orm_util, interfaces, collections
 from sqlalchemy.orm.mapper import class_mapper
 from sqlalchemy import logging, exceptions
-import weakref
 
 
 PASSIVE_NORESULT = object()

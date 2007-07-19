@@ -1,7 +1,6 @@
-from sqlalchemy             import join, ThreadLocalMetaData, util, Integer
-from sqlalchemy             import and_, or_
+from sqlalchemy             import ThreadLocalMetaData, util, Integer
 from sqlalchemy             import Table, Column, ForeignKey
-from sqlalchemy.orm         import class_mapper, relation, mapper, create_session
+from sqlalchemy.orm         import class_mapper, relation, create_session
                                    
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy.ext.assignmapper import assign_mapper

@@ -6,8 +6,8 @@
 
 """Provide default implementations of per-dialect sqlalchemy.engine classes"""
 
-from sqlalchemy import schema, exceptions, util, sql, types
-import StringIO, sys, re
+from sqlalchemy import schema, exceptions, sql, types
+import sys, re
 from sqlalchemy.engine import base
 
 
@@ -162,7 +162,7 @@ class DefaultDialect(base.Dialect):
             # to appropriate character upon compilation
             self.positional = True
         else:
-            raise DBAPIError("Unsupported paramstyle '%s'" % self._paramstyle)
+            raise exceptions.DBAPIError("Unsupported paramstyle '%s'" % self._paramstyle)
 
     def _get_ischema(self):
         if self._ischema is None:

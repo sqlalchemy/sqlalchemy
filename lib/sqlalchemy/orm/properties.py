@@ -16,7 +16,7 @@ from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 import operator
-from sqlalchemy.orm.interfaces import *
+from sqlalchemy.orm.interfaces import StrategizedProperty, PropComparator
 
 __all__ = ['ColumnProperty', 'CompositeProperty', 'PropertyLoader', 'BackRef']
 

@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string, types, warnings
+import warnings
 
 from sqlalchemy import util, sql, schema, ansisql, exceptions
 import sqlalchemy.engine.default as default

@@ -13,7 +13,7 @@ automatically, based on module type and connect arguments, simply by
 calling regular DBAPI connect() methods.
 """
 
-import weakref, string, time, sys, traceback
+import weakref, time
 try:
     import cPickle as pickle
 except:

@@ -95,10 +95,10 @@ The owning object and InstrumentedCollectionAttribute are also reachable
 through the adapter, allowing for some very sophisticated behavior.
 """
 
+import copy, inspect, sys, weakref
+
 from sqlalchemy import exceptions, schema, util as sautil
 from sqlalchemy.orm import mapper
-import copy, sys, warnings, weakref
-import new
 
 try:
     from threading import Lock
@@ -739,7 +739,7 @@ def _instrument_membership_mutator(method, before, argument, after):
                 executor = getattr(args[0], '_sa_adapter', None)
 
             if before and executor:
-                getattr(executor, op)(value, initiator)
+                getattr(executor, before)(value, initiator)
 
             if not after or not executor:
                 return method(*args, **kw)

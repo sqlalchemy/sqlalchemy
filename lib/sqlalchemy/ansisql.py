@@ -10,9 +10,10 @@ Contains default implementations for the abstract objects in the sql
 module.
 """
 
-from sqlalchemy import schema, sql, engine, util, sql_util, exceptions
+import string, re, sets, operator
+
+from sqlalchemy import schema, sql, engine, util, exceptions
 from  sqlalchemy.engine import default
-import string, re, sets, random, operator
 
 ANSI_FUNCS = sets.ImmutableSet(['CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
                                 'CURRENT_USER', 'LOCALTIME', 'LOCALTIMESTAMP',

@@ -19,13 +19,15 @@ new, dirty, or deleted and provides the capability to flush all those
 changes at once.
 """
 
-from sqlalchemy import util, logging, topological
+from sqlalchemy import util, logging, topological, exceptions
 from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
-from sqlalchemy.orm.mapper import object_mapper, class_mapper
-from sqlalchemy.exceptions import *
+from sqlalchemy.orm.mapper import object_mapper
 import StringIO
 import weakref
+
+# Load lazily
+object_session = None
 
 class UOWEventHandler(interfaces.AttributeExtension):
     """An event handler added to all class attributes which handles
@@ -116,7 +118,7 @@ class UnitOfWork(object):
     def _validate_obj(self, obj):
         if (hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key)) or \
             (not hasattr(obj, '_instance_key') and obj not in self.new):
-            raise InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj))
+            raise exceptions.InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj))
 
     def _is_valid(self, obj):
         if (hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key)) or \
@@ -142,7 +144,7 @@ class UnitOfWork(object):
         """register the given object as 'new' (i.e. unsaved) within this unit of work."""
 
         if hasattr(obj, '_instance_key'):
-            raise InvalidRequestError("Object '%s' already has an identity - it can't be registered as new" % repr(obj))
+            raise exceptions.InvalidRequestError("Object '%s' already has an identity - it can't be registered as new" % repr(obj))
         if obj not in self.new:
             self.new.add(obj)
             obj._sa_insert_order = len(self.new)

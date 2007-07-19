@@ -19,7 +19,7 @@ objects as well as the visitor interface, so that the schema package
 
 from sqlalchemy import sql, types, exceptions,util, databases
 import sqlalchemy
-import copy, re, string
+import re, string
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index', 'ForeignKeyConstraint',
             'PrimaryKeyConstraint', 'CheckConstraint', 'UniqueConstraint', 'DefaultGenerator', 'Constraint',

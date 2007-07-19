@@ -1,6 +1,5 @@
-from sqlalchemy import schema, exceptions, util, sql, types
-import StringIO, sys, re
-from sqlalchemy.engine import base, default
+from sqlalchemy import util
+from sqlalchemy.engine import base
 
 """Provide a thread-local transactional wrapper around the root Engine class.
 

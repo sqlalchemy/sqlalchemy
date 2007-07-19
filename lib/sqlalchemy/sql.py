@@ -24,9 +24,9 @@ are less guaranteed to stay the same in future releases.
 
 """
 
-from sqlalchemy import util, exceptions, logging
+from sqlalchemy import util, exceptions
 from sqlalchemy import types as sqltypes
-import string, re, sets, operator
+import re, operator
 
 __all__ = ['AbstractDialect', 'Alias', 'ClauseElement', 'ClauseParameters',
            'ClauseVisitor', 'ColumnCollection', 'ColumnElement',
@@ -2157,10 +2157,10 @@ class _UnaryExpression(ColumnElement):
         return self.element,
 
     def compare(self, other):
-        """Compare this ``_UnaryClause`` against the given ``ClauseElement``."""
+        """Compare this ``_UnaryExpression`` against the given ``ClauseElement``."""
 
         return (
-            isinstance(other, _UnaryClause) and self.operator == other.operator and
+            isinstance(other, _UnaryExpression) and self.operator == other.operator and
             self.modifier == other.modifier and 
             self.element.compare(other.element)
         )

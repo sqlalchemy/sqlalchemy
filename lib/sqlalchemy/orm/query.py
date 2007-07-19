@@ -4,18 +4,16 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import sql, util, exceptions, sql_util, logging, schema
-from sqlalchemy.orm import mapper, class_mapper, object_mapper
+from sqlalchemy import sql, util, exceptions, sql_util, logging
+from sqlalchemy.orm import mapper, object_mapper
 from sqlalchemy.orm.interfaces import OperationContext
 import operator
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
 
 class Query(object):
-    """Encapsulates the object-fetching operations provided by Mappers.
+    """Encapsulates the object-fetching operations provided by Mappers."""
     
-    """
-
     def __init__(self, class_or_mapper, session=None, entity_name=None):
         if isinstance(class_or_mapper, type):
             self.mapper = mapper.class_mapper(class_or_mapper, entity_name=entity_name)
@@ -250,7 +248,7 @@ class Query(object):
     def filter_by(self, *args, **kwargs):
         """apply the given filtering criterion to the query and return the newly resulting ``Query``."""
 
-        import properties
+        #import properties
         
         if len(args) > 1:
             raise exceptions.ArgumentError("filter_by() takes either zero positional arguments, or one scalar or list argument indicating a property search path.")
@@ -954,7 +952,7 @@ class Query(object):
     def execute(self, clauseelement, params=None, *args, **kwargs):
         """DEPRECATED.  use query.from_statement().all()"""
 
-        return self._select_statement(statement, params, **kwargs)
+        return self._select_statement(clauseelement, params, **kwargs)
 
     def select_statement(self, statement, **params):
         """DEPRECATED.  Use query.from_statement(statement)"""
@@ -964,7 +962,7 @@ class Query(object):
     def select_text(self, text, **params):
         """DEPRECATED.  Use query.from_statement(statement)"""
 
-        return self._select_statement(statement, params)
+        return self._select_statement(text, params)
 
     def _select_statement(self, statement, params=None, **kwargs):
         q = self.from_statement(statement)

@@ -48,7 +48,6 @@ The package is represented among several individual modules, including:
 from sqlalchemy import databases
 from sqlalchemy.engine.base import *
 from sqlalchemy.engine import strategies
-import re
 
 def engine_descriptors():
     """Provide a listing of all the database implementations supported.

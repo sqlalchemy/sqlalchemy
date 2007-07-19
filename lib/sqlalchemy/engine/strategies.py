@@ -8,7 +8,7 @@ object which will add itself to the list of available strategies.
 """
 
 
-from sqlalchemy.engine import base, default, threadlocal, url
+from sqlalchemy.engine import base, threadlocal, url
 from sqlalchemy import util, exceptions
 from sqlalchemy import pool as poollib
 
