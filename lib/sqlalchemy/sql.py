@@ -2927,6 +2927,16 @@ class Select(_SelectBaseMixin, FromClause):
         _SelectBaseMixin.__init__(self, **kwargs)
 
     def _get_display_froms(self, correlation_state=None):
+        """return the full list of 'from' clauses to be displayed.
+        
+        takes into account an optional 'correlation_state' 
+        dictionary which contains information about this Select's
+        correlation to an enclosing select, which may cause some 'from'
+        clauses to not display in this Select's FROM clause.  
+        this dictionary is generated during compile time by the 
+        _calculate_correlations() method.  
+        
+        """
         froms = util.Set()
         hide_froms = util.Set()
         
@@ -2978,6 +2988,18 @@ class Select(_SelectBaseMixin, FromClause):
         return froms
         
     def _calculate_correlations(self, correlation_state):
+        """generate a 'correlation_state' dictionary used by the _get_display_froms() method.
+        
+        The dictionary is passed in initially empty, or already 
+        containing the state information added by an enclosing 
+        Select construct.  The method will traverse through all 
+        embedded Select statements and add information about their 
+        position and "from" objects to the dictionary.  Those Select 
+        statements will later consult the 'correlation_state' dictionary 
+        when their list of 'FROM' clauses are generated using their 
+        _get_display_froms() method.
+        """
+        
         if self not in correlation_state:
             correlation_state[self] = {}
 
