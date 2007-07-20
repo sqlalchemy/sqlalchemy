@@ -10,9 +10,11 @@ mcid = 1
 class MockDBAPI(object):
     def __init__(self):
         self.throw_error = False
-    def connect(self, argument):
+    def connect(self, argument, delay=0):
         if self.throw_error:
             raise Exception("couldnt connect !")
+        if delay:
+            time.sleep(delay)
         return MockConnection()
 class MockConnection(object):
     def __init__(self):
@@ -118,16 +120,48 @@ class PoolTest(PersistTest):
     
     def test_timeout(self):
         p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = 0, use_threadlocal = False, timeout=2)
-        c1 = p.get()
-        c2 = p.get()
-        c3 = p.get()
+        c1 = p.connect()
+        c2 = p.connect()
+        c3 = p.connect()
         now = time.time()
         try:
-            c4 = p.get()
+            c4 = p.connect()
             assert False
         except exceptions.TimeoutError, e:
             assert int(time.time() - now) == 2
 
+    def test_timeout_race(self):
+        # test a race condition where the initial connecting threads all race to queue.Empty, then block on the mutex.
+        # each thread consumes a connection as they go in.  when the limit is reached, the remaining threads
+        # go in, and get TimeoutError; even though they never got to wait for the timeout on queue.get().
+        # the fix involves checking the timeout again within the mutex, and if so, unlocking and throwing them back to the start
+        # of do_get()
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db', delay=.05), pool_size = 2, max_overflow = 1, use_threadlocal = False, timeout=3)
+        timeouts = []
+        def checkout():
+            for x in xrange(1):
+                now = time.time()
+                try:
+                    c1 = p.connect()
+                except exceptions.TimeoutError, e:
+                    timeouts.append(int(time.time()) - now)
+                    continue
+                time.sleep(4)
+                c1.close()
+            
+        threads = []
+        for i in xrange(10):
+            th = threading.Thread(target=checkout)
+            th.start()
+            threads.append(th)
+        for th in threads:
+            th.join()
+        
+        print timeouts
+        assert len(timeouts) > 0
+        for t in timeouts:
+            assert abs(t - 3) < 1, "Not all timeouts were 3 seconds: " + repr(timeouts)
+        
     def _test_overflow(self, thread_count, max_overflow):
         def creator():
             time.sleep(.05)

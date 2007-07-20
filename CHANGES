@@ -159,6 +159,12 @@
   - Added PGArray datatype for using postgres array datatypes
   
 0.3.10
+- general
+    - a new mutex that was added in 0.3.9 causes the pool_timeout
+      feature to fail during a race condition; threads would 
+      raise TimeoutError immediately with no delay if many threads 
+      push the pool into overflow at the same time.  this issue has been
+      fixed.
 - sql
   - got connection-bound metadata to work with implicit execution
   - foreign key specs can have any chararcter in their identifiers
