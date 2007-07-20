@@ -608,11 +608,13 @@ class SchemaTest(PersistTest):
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
 
-    @testbase.unsupported('sqlite')
-    def testcreate(self):
+    @testbase.unsupported('sqlite', 'postgres')
+    def test_create_with_defaultschema(self):
         engine = testbase.db
         schema = engine.dialect.get_default_schema_name(engine)
 
+        # test reflection of tables with an explcit schemaname
+        # matching the default
         metadata = MetaData(testbase.db)
         table1 = Table('table1', metadata, 
             Column('col1', Integer, primary_key=True),
@@ -626,6 +628,8 @@ class SchemaTest(PersistTest):
         metadata.clear()
         table1 = Table('table1', metadata, autoload=True, schema=schema)
         table2 = Table('table2', metadata, autoload=True, schema=schema)
+        assert table1.schema == table2.schema == schema
+        assert len(metadata.tables) == 2
         metadata.drop_all()
     
         
