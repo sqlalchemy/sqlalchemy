@@ -10,7 +10,8 @@ def _monkeypatch_session_method(name, ctx, class_):
         do.__name__ = name
     except:
         pass
-    setattr(class_, name, do)
+    if not hasattr(class_, name): 
+        setattr(class_, name, do)
         
 def assign_mapper(ctx, class_, *args, **kwargs):
     extension = kwargs.pop('extension', None)
@@ -36,7 +37,9 @@ def assign_mapper(ctx, class_, *args, **kwargs):
             return getattr(ctx.current.query(class_), key)
         def __call__(self):
             return ctx.current.query(class_)
-    class_.query = query()
+
+    if not hasattr(class_, 'query'): 
+        class_.query = query()
     
     for name in ['refresh', 'expire', 'delete', 'expunge', 'update']:
         _monkeypatch_session_method(name, ctx, class_)

@@ -43,8 +43,10 @@ class AssignMapperTest(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
     def tearDown(self):
+        for table in metadata.table_iterator(reverse=True):
+            table.delete().execute()
         clear_mappers()
-
+        
     def test_override_attributes(self):
         
         sso = SomeOtherObject.query().first()
@@ -64,6 +66,14 @@ class AssignMapperTest(PersistTest):
         except exceptions.ArgumentError:
             pass
     
+    def test_dont_clobber_methods(self):
+        class MyClass(object):
+            def expunge(self):
+                return "an expunge !"
+        
+        assign_mapper(ctx, MyClass, table2)
+        
+        assert MyClass().expunge() == "an expunge !"
 
         
 if __name__ == '__main__':
