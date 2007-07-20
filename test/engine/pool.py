@@ -160,7 +160,7 @@ class PoolTest(PersistTest):
         print timeouts
         assert len(timeouts) > 0
         for t in timeouts:
-            assert abs(t - 2) < 1
+            assert abs(t - 3) < 1
         
     def _test_overflow(self, thread_count, max_overflow):
         def creator():
