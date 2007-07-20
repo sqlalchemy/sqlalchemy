@@ -55,13 +55,12 @@ class MapperTest(MapperSuperTest):
         assert not hasattr(u, 'user_name')
           
     def testrefresh(self):
-        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
+        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), backref='user')})
         s = create_session()
         u = s.get(User, 7)
         u.user_name = 'foo'
         a = Address()
-        import sqlalchemy.orm.session
-        assert sqlalchemy.orm.session.object_session(a) is None
+        assert object_session(a) is None
         u.addresses.append(a)
 
         self.assert_(a in u.addresses)
@@ -87,6 +86,7 @@ class MapperTest(MapperSuperTest):
         # get the attribute, it refreshes
         self.assert_(u.user_name == 'jack')
         self.assert_(a not in u.addresses)
+
     
     def testexpirecascade(self):
         mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), cascade="all, refresh-expire")})
@@ -616,8 +616,8 @@ class MapperTest(MapperSuperTest):
         
         
         print "-------MARK----------"
-        # eagerload orders, orders.items, orders.items.keywords
-        q2 = sess.query(User).options(eagerload('orders'), eagerload('orders.items'), eagerload('orders.items.keywords'))
+        # eagerload orders.items.keywords; eagerload_all() implies eager load of orders, orders.items
+        q2 = sess.query(User).options(eagerload_all('orders.items.keywords'))
         u = q2.select()
         def go():
             print u[0].orders[1].items[0].keywords[1]

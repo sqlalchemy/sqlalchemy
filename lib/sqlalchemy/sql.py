@@ -1311,6 +1311,8 @@ class _CompareMixin(ColumnOperators):
         obj = self._check_literal(obj)
 
         type_ = self._compare_type(obj)
+        
+        # TODO: generalize operator overloading like this out into the types module
         if op == operator.add and isinstance(type_, (sqltypes.Concatenable)):
             op = ColumnOperators.concat_op
         

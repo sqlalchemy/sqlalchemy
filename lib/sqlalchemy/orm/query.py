@@ -122,6 +122,22 @@ class Query(object):
         criterion = prop.compare(operator.eq, instance, value_is_parent=True)
         return Query(target, **kwargs).filter(criterion)
     query_from_parent = classmethod(query_from_parent)
+    
+    def populate_existing(self):
+        """return a Query that will refresh all instances loaded.
+        
+        this includes all entities accessed from the database, including
+        secondary entities, eagerly-loaded collection items.
+        
+        All changes present on entities which are already present in the session will 
+        be reset and the entities will all be marked "clean".
+        
+        This is essentially the en-masse version of load().
+        """
+        
+        q = self._clone()
+        q._populate_existing = True
+        return q
         
     def with_parent(self, instance, property=None):
         """add a join criterion corresponding to a relationship to the given parent instance.

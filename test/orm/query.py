@@ -73,7 +73,6 @@ class QueryTest(testbase.ORMTest):
         })
         mapper(Keyword, keywords)
 
-            
 class GetTest(QueryTest):
     def test_get(self):
         s = create_session()
@@ -85,6 +84,33 @@ class GetTest(QueryTest):
         u2 = s.query(User).get(7)
         assert u is not u2
 
+    def test_load(self):
+        s = create_session()
+        
+        try:
+            assert s.query(User).load(19) is None
+            assert False
+        except exceptions.InvalidRequestError:
+            assert True
+            
+        u = s.query(User).load(7)
+        u2 = s.query(User).load(7)
+        assert u is u2
+        s.clear()
+        u2 = s.query(User).load(7)
+        assert u is not u2
+        
+        u2.name = 'some name'
+        a = Address(name='some other name')
+        u2.addresses.append(a)
+        assert u2 in s.dirty
+        assert a in u2.addresses
+        
+        s.query(User).load(7)
+        assert u2 not in s.dirty
+        assert u2.name =='jack'
+        assert a not in u2.addresses
+        
     def test_unicode(self):
         """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail 
         on postgres, mysql and oracle unless it is converted to an encoded string"""
@@ -99,6 +125,38 @@ class GetTest(QueryTest):
         mapper(LocalFoo, table)
         assert create_session().query(LocalFoo).get(ustring) == LocalFoo(id=ustring, data=ustring)
 
+    def test_populate_existing(self):
+        s = create_session()
+
+        userlist = s.query(User).all()
+
+        u = userlist[0]
+        u.name = 'foo'
+        a = Address(name='ed')
+        u.addresses.append(a)
+
+        self.assert_(a in u.addresses)
+
+        s.query(User).populate_existing().all()
+
+        self.assert_(u not in s.dirty)
+
+        self.assert_(u.name == 'jack')
+
+        self.assert_(a not in u.addresses)
+
+        u.addresses[0].email_address = 'lala'
+        u.orders[1].items[2].description = 'item 12'
+        # test that lazy load doesnt change child items
+        s.query(User).populate_existing().all()
+        assert u.addresses[0].email_address == 'lala'
+        assert u.orders[1].items[2].description == 'item 12'
+        
+        # eager load does
+        s.query(User).options(eagerload('addresses'), eagerload_all('orders.items')).populate_existing().all()
+        assert u.addresses[0].email_address == 'jack@bean.com'
+        assert u.orders[1].items[2].description == 'item 5'
+        
 class OperatorTest(QueryTest):
     """test sql.Comparator implementation for MapperProperties"""
     

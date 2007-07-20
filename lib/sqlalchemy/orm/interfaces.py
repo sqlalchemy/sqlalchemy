@@ -497,28 +497,30 @@ class PropertyOption(MapperOption):
     def __init__(self, key):
         self.key = key
 
-    def process_query_property(self, context, property):
+    def process_query_property(self, context, properties):
         pass
 
-    def process_selection_property(self, context, property):
+    def process_selection_property(self, context, properties):
         pass
 
     def process_query_context(self, context):
-        self.process_query_property(context, self._get_property(context))
+        self.process_query_property(context, self._get_properties(context))
 
     def process_selection_context(self, context):
-        self.process_selection_property(context, self._get_property(context))
+        self.process_selection_property(context, self._get_properties(context))
 
-    def _get_property(self, context):
+    def _get_properties(self, context):
         try:
-            prop = self.__prop
+            l = self.__prop
         except AttributeError:
+            l = []
             mapper = context.mapper
             for token in self.key.split('.'):
                 prop = mapper.get_property(token, resolve_synonyms=True)
+                l.append(prop)
                 mapper = getattr(prop, 'mapper', None)
-            self.__prop = prop
-        return prop
+            self.__prop = l
+        return l
 
 PropertyOption.logger = logging.class_logger(PropertyOption)
 
@@ -543,13 +545,24 @@ class StrategizedOption(PropertyOption):
     for an operation by a StrategizedProperty.
     """
 
-    def process_query_property(self, context, property):
+    def is_chained(self):
+        return False
+        
+    def process_query_property(self, context, properties):
         self.logger.debug("applying option to QueryContext, property key '%s'" % self.key)
-        context.attributes[("loaderstrategy", property)] = self.get_strategy_class()
+        if self.is_chained():
+            for prop in properties:
+                context.attributes[("loaderstrategy", prop)] = self.get_strategy_class()
+        else:
+            context.attributes[("loaderstrategy", properties[-1])] = self.get_strategy_class()
 
-    def process_selection_property(self, context, property):
+    def process_selection_property(self, context, properties):
         self.logger.debug("applying option to SelectionContext, property key '%s'" % self.key)
-        context.attributes[("loaderstrategy", property)] = self.get_strategy_class()
+        if self.is_chained():
+            for prop in properties:
+                context.attributes[("loaderstrategy", prop)] = self.get_strategy_class()
+        else:     
+            context.attributes[("loaderstrategy", properties[-1])] = self.get_strategy_class()
 
     def get_strategy_class(self):
         raise NotImplementedError()

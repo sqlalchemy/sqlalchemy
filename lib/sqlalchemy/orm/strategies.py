@@ -740,17 +740,22 @@ class EagerLoader(AbstractRelationLoader):
 EagerLoader.logger = logging.class_logger(EagerLoader)
 
 class EagerLazyOption(StrategizedOption):
-    def __init__(self, key, lazy=True):
+    def __init__(self, key, lazy=True, chained=False):
         super(EagerLazyOption, self).__init__(key)
         self.lazy = lazy
-
-    def process_query_property(self, context, prop):
+        self.chained = chained
+        
+    def is_chained(self):
+        return not self.lazy and self.chained
+        
+    def process_query_property(self, context, properties):
         if self.lazy:
-            if prop in context.eager_loaders:
-                context.eager_loaders.remove(prop)
+            if properties[-1] in context.eager_loaders:
+                context.eager_loaders.remove(properties[-1])
         else:
-            context.eager_loaders.add(prop)
-        super(EagerLazyOption, self).process_query_property(context, prop)
+            for prop in properties:
+                context.eager_loaders.add(prop)
+        super(EagerLazyOption, self).process_query_property(context, properties)
 
     def get_strategy_class(self):
         if self.lazy:
@@ -775,8 +780,8 @@ class FetchModeOption(PropertyOption):
             raise exceptions.ArgumentError("Fetchmode must be one of 'join' or 'select'")
         self.type = type
         
-    def process_selection_property(self, context, property):
-        context.attributes[('fetchmode', property)] = self.type
+    def process_selection_property(self, context, properties):
+        context.attributes[('fetchmode', properties[-1])] = self.type
         
 class RowDecorateOption(PropertyOption):
     def __init__(self, key, decorator=None, alias=None):
@@ -784,17 +789,17 @@ class RowDecorateOption(PropertyOption):
         self.decorator = decorator
         self.alias = alias
 
-    def process_selection_property(self, context, property):
+    def process_selection_property(self, context, properties):
         if self.alias is not None and self.decorator is None:
             if isinstance(self.alias, basestring):
-                self.alias = property.target.alias(self.alias)
+                self.alias = properties[-1].target.alias(self.alias)
             def decorate(row):
                 d = {}
-                for c in property.target.columns:
+                for c in properties[-1].target.columns:
                     d[c] = row[self.alias.corresponding_column(c)]
                 return d
             self.decorator = decorate
-        context.attributes[("eager_row_processor", property)] = self.decorator
+        context.attributes[("eager_row_processor", properties[-1])] = self.decorator
 
 RowDecorateOption.logger = logging.class_logger(RowDecorateOption)
         

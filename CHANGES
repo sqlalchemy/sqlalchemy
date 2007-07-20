@@ -25,12 +25,24 @@
         - AttributeExtension moved to interfaces, and .delete is now
           .remove The event method signature has also been swapped around.
 
-    - major interface pare-down for Query:  all selectXXX methods
+    - major overhaul for Query:  all selectXXX methods
       are deprecated.  generative methods are now the standard
       way to do things, i.e. filter(), filter_by(), all(), one(),
       etc.  Deprecated methods are docstring'ed with their 
       new replacements.
+
+        - Class-level properties are now usable as query elements ...no 
+          more '.c.' !  "Class.c.propname" is now superceded by "Class.propname".
+          All clause operators are supported, as well as higher level operators
+          such as Class.prop==<some instance> for scalar attributes and 
+          Class.prop.contains(<some instance>) for collection-based attributes
+          (both are also negatable).  Table-based column expressions as well as 
+          columns mounted on mapped classes via 'c' are of course still fully available
+          and can be freely mixed with the new attributes.
+          [ticket:643]
+      
         - removed ancient query.select_by_attributename() capability.
+        
         - added "aliased joins" positional argument to the front of
           filter_by(). this allows auto-creation of joins that are aliased
           locally to the individual filter_by() call. This allows the
@@ -38,6 +50,13 @@
           querying divergent criteria. ClauseElements at the front of
           filter_by() are removed (use filter()).
 
+        - added query.populate_existing().. - marks the query to reload
+          all attributes and collections of all instances touched in the query,
+          including eagerly-loaded entities [ticket:660]
+
+        - added eagerload_all(), allows eagerload_all('x.y.z') to specify eager
+          loading of all properties in the given path
+          
     - Eager loading has been enhanced to allow even more joins in more places.
       It now functions at any arbitrary depth along self-referential 
       and cyclical structures.  When loading cyclical structures, specify "join_depth" 
@@ -47,15 +66,6 @@
       scheme now and are a lot easier on the eyes, as well as of course
       completely deterministic. [ticket:659]
 
-    - Class-level properties are now usable as query elements ...no 
-      more '.c.' !  "Class.c.propname" is now superceded by "Class.propname".
-      All clause operators are supported, as well as higher level operators
-      such as Class.prop==<some instance> for scalar attributes and 
-      Class.prop.contains(<some instance>) for collection-based attributes
-      (both are also negatable).  Table-based column expressions as well as 
-      columns mounted on mapped classes via 'c' are of course still fully available
-      and can be freely mixed with the new attributes.
-      [ticket:643]
       
     - added composite column properties. This allows you to create a 
       type which is represented by more than one column, when using the 

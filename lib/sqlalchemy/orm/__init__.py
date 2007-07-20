@@ -22,7 +22,7 @@ from sqlalchemy.orm.session import Session as create_session
 from sqlalchemy.orm.session import object_session, attribute_manager
 
 __all__ = ['relation', 'column_property', 'composite', 'backref', 'eagerload',
-           'lazyload', 'noload', 'deferred', 'defer', 'undefer',
+           'eagerload_all', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
            'undefer_group', 'extension', 'mapper', 'clear_mappers',
            'compile_mappers', 'class_mapper', 'object_mapper',
            'MapperExtension', 'Query', 'polymorphic_union', 'create_session',
@@ -152,6 +152,22 @@ def eagerload(name):
     """
 
     return strategies.EagerLazyOption(name, lazy=False)
+
+def eagerload_all(name):
+    """Return a ``MapperOption`` that will convert all
+    properties along the given dot-separated path into an 
+    eager load.
+    
+    e.g::
+        query.options(eagerload_all('orders.items.keywords'))...
+        
+    will set all of 'orders', 'orders.items', and 'orders.items.keywords'
+    to load in one eager load.
+
+    Used with ``query.options()``.
+    """
+
+    return strategies.EagerLazyOption(name, lazy=False, chained=True)
 
 def lazyload(name):
     """Return a ``MapperOption`` that will convert the property of the
