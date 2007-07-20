@@ -77,29 +77,35 @@ class BindTest(testbase.PersistTest):
                 table.create()
                 table.drop()
                 assert not table.exists()
+                if isinstance(bind, engine.Connection):
+                    bind.close()
 
     def test_create_drop_constructor_bound(self):
         for bind in (
             testbase.db,
             testbase.db.connect()
         ):
-            for args in (
-                ([bind], {}),
-                ([], {'engine_or_url':bind}),
-                ([], {'bind':bind}),
-                ([], {'engine':bind})
-            ):
-                metadata = MetaData(*args[0], **args[1])
-                table = Table('test_table', metadata,   
-                              Column('foo', Integer))
+            try:
+                for args in (
+                    ([bind], {}),
+                    ([], {'engine_or_url':bind}),
+                    ([], {'bind':bind}),
+                    ([], {'engine':bind})
+                ):
+                    metadata = MetaData(*args[0], **args[1])
+                    table = Table('test_table', metadata,   
+                                  Column('foo', Integer))
 
-                assert metadata.bind is metadata.engine is table.bind is table.engine is bind
-                metadata.create_all()
-                assert table.exists()
-                metadata.drop_all()
-                table.create()
-                table.drop()
-                assert not table.exists()
+                    assert metadata.bind is metadata.engine is table.bind is table.engine is bind
+                    metadata.create_all()
+                    assert table.exists()
+                    metadata.drop_all()
+                    table.create()
+                    table.drop()
+                    assert not table.exists()
+            finally:
+                if isinstance(bind, engine.Connection):
+                    bind.close()
 
     def test_implicit_execution(self):
         metadata = MetaData()
@@ -139,12 +145,16 @@ class BindTest(testbase.PersistTest):
                     testbase.db,
                     testbase.db.connect()
                 ):
-                    e = elem(bind=bind)
-                    assert e.bind is e.engine is bind
-                    e.execute()
-                    e = elem(engine=bind)
-                    assert e.bind is e.engine is bind
-                    e.execute()
+                    try:
+                        e = elem(bind=bind)
+                        assert e.bind is e.engine is bind
+                        e.execute()
+                        e = elem(engine=bind)
+                        assert e.bind is e.engine is bind
+                        e.execute()
+                    finally:
+                        if isinstance(bind, engine.Connection):
+                            bind.close()
 
                 try:
                     e = elem()
@@ -168,13 +178,17 @@ class BindTest(testbase.PersistTest):
         metadata.create_all(bind=testbase.db)
         try:
             for bind in (testbase.db, testbase.db.connect()):
-                for args in ({'bind':bind}, {'bind_to':bind}):
-                    sess = create_session(**args)
-                    assert sess.bind is sess.bind_to is bind
-                    f = Foo()
-                    sess.save(f)
-                    sess.flush()
-                    assert sess.get(Foo, f.foo) is f
+                try:
+                    for args in ({'bind':bind}, {'bind_to':bind}):
+                        sess = create_session(**args)
+                        assert sess.bind is sess.bind_to is bind
+                        f = Foo()
+                        sess.save(f)
+                        sess.flush()
+                        assert sess.get(Foo, f.foo) is f
+                finally:
+                    if isinstance(bind, engine.Connection):
+                        bind.close()
                     
             sess = create_session()
             f = Foo()
