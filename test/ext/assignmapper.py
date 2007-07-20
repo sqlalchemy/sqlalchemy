@@ -8,7 +8,7 @@ from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy.ext.sessioncontext import SessionContext
 from testbase import Table, Column
 
-class OverrideAttributesTest(PersistTest):
+class AssignMapperTest(PersistTest):
     def setUpAll(self):
         global metadata, table, table2
         metadata = MetaData(testbase.db)
@@ -20,13 +20,9 @@ class OverrideAttributesTest(PersistTest):
             Column('someid', None, ForeignKey('sometable.id'))
             )
         metadata.create_all()
-    def tearDownAll(self):
-        metadata.drop_all()
-    def tearDown(self):
-        clear_mappers()
+
     def setUp(self):
-        pass
-    def test_override_attributes(self):
+        global SomeObject, SomeOtherObject, ctx
         class SomeObject(object):pass
         class SomeOtherObject(object):pass
         
@@ -35,7 +31,7 @@ class OverrideAttributesTest(PersistTest):
             'options':relation(SomeOtherObject)
         })
         assign_mapper(ctx, SomeOtherObject, table2)
-        class_mapper(SomeObject)
+
         s = SomeObject()
         s.id = 1
         s.data = 'hello'
@@ -43,8 +39,17 @@ class OverrideAttributesTest(PersistTest):
         s.options.append(sso)
         ctx.current.flush()
         ctx.current.clear()
+
+    def tearDownAll(self):
+        metadata.drop_all()
+    def tearDown(self):
+        clear_mappers()
+
+    def test_override_attributes(self):
         
-        assert SomeObject.get_by(id=s.id).options[0].id == sso.id
+        sso = SomeOtherObject.query().first()
+        
+        assert SomeObject.query.filter_by(id=1).one().options[0].id == sso.id
 
         s2 = SomeObject(someid=12)
         s3 = SomeOtherObject(someid=123, bogus=345)
@@ -58,6 +63,8 @@ class OverrideAttributesTest(PersistTest):
             assert False
         except exceptions.ArgumentError:
             pass
+    
+
         
 if __name__ == '__main__':
     testbase.main()
