@@ -1,36 +1,37 @@
-# this program should open three connections.  then after five seconds, the remaining
-# 45 threads should receive a timeout error.  then the program will just stop until
-# ctrl-C is pressed.  it should *NOT* open a bunch of new connections.
+# load test of connection pool
 
 from sqlalchemy import *
 import sqlalchemy.pool as pool
-import psycopg2 as psycopg
 import thread,time
-psycopg = pool.manage(psycopg,pool_size=2,max_overflow=1, timeout=5, echo=True)
-print psycopg
-db = create_engine('postgres://scott:tiger@127.0.0.1/test',pool=psycopg,strategy='threadlocal')
-print db.connection_provider._pool
+db = create_engine('mysql://scott:tiger@127.0.0.1/test', pool_timeout=30, echo_pool=True)
+
 metadata = MetaData(db)
 
 users_table = Table('users', metadata,
   Column('user_id', Integer, primary_key=True),
   Column('user_name', String(40)),
   Column('password', String(10)))
+metadata.drop_all()
 metadata.create_all()
 
-class User(object):
-    pass
-usermapper = mapper(User, users_table)
+users_table.insert().execute([{'user_name':'user#%d' % i, 'password':'pw#%d' % i} for i in range(1000)])
 
-#Then i create loads of threads and in run() of each thread:
-def run():
-    session = create_session()
-    transaction = session.create_transaction()
-    query = session.query(User)
-    u1=query.select(User.c.user_id==3)
-    
-for x in range(0,50):
-    thread.start_new_thread(run, ())
+def runfast():
+    while True:
+        c = db.connection_provider._pool.connect()
+        time.sleep(.5)
+        c.close()
+#        result = users_table.select(limit=100).execute()
+#        d = {}
+#        for row in result:
+#            for col in row.keys():
+#                d[col] = row[col]
+#        time.sleep(.005)
+#        result.close()
+        print "runfast cycle complete"
+        
+#thread.start_new_thread(runslow, ())                
+for x in xrange(0,50):
+    thread.start_new_thread(runfast, ())
 
-while True:
-    time.sleep(5)
+time.sleep(100)
