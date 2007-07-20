@@ -221,6 +221,11 @@ class FilterTest(QueryTest):
             assert True
             
         #assert [User(id=7), User(id=9), User(id=10)] == sess.query(User).filter(User.addresses!=address).all()
+    
+    def test_any(self):
+        sess = create_session()
+        address = sess.query(Address).get(3)
+        assert [User(id=8), User(id=9)] == sess.query(User).filter(User.addresses.any(Address.email_address.like('%ed%'))).all()
         
     def test_contains_m2m(self):
         sess = create_session()

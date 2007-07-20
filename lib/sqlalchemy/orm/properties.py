@@ -182,6 +182,14 @@ class PropertyLoader(StrategizedProperty):
             else:  
                 return self.prop._optimized_compare(other)
         
+        def any(self, criterion):
+            if not self.prop.uselist:
+                raise exceptions.InvalidRequestError("'any' not implemented for scalar attributes")
+            j = self.prop.primaryjoin
+            if self.prop.secondaryjoin:
+                j = j & self.prop.secondaryjoin
+            return sql.exists([1], j & criterion)
+                
         def contains(self, other):
             if not self.prop.uselist:
                 raise exceptions.InvalidRequestError("'contains' not implemented for scalar attributes")

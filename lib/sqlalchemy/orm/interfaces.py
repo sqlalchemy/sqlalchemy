@@ -344,12 +344,20 @@ class PropComparator(sql.ColumnOperators):
         return a.contains(b)
     contains_op = staticmethod(contains_op)
     
+    def any_op(a, b):
+        return a.any(b)
+    any_op = staticmethod(any_op)
+    
     def __init__(self, prop):
         self.prop = prop
 
     def contains(self, other):
         """return true if this collection contains other"""
         return self.operate(PropComparator.contains_op, other)
+
+    def any(self, criterion):
+        """return true if this collection contains any member that meets the given criterion"""
+        return self.operate(PropComparator.any_op, criterion)
         
 class StrategizedProperty(MapperProperty):
     """A MapperProperty which uses selectable strategies to affect
