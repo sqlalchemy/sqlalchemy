@@ -491,10 +491,14 @@ class QueuePool(Pool):
 
     def do_get(self):
         try:
-            return self._pool.get(self._max_overflow > -1 and self._overflow >= self._max_overflow, self._timeout)
+            wait = self._max_overflow > -1 and self._overflow >= self._max_overflow
+            return self._pool.get(wait, self._timeout)
         except Queue.Empty:
             if self._max_overflow > -1 and self._overflow >= self._max_overflow:
-                raise exceptions.TimeoutError("QueuePool limit of size %d overflow %d reached, connection timed out, timeout %d" % (self.size(), self.overflow(), self._timeout))
+                if not wait:
+                    return self.do_get()
+                else:
+                    raise exceptions.TimeoutError("QueuePool limit of size %d overflow %d reached, connection timed out, timeout %d" % (self.size(), self.overflow(), self._timeout))
 
             if self._overflow_lock is not None:
                 self._overflow_lock.acquire()
