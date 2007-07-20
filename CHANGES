@@ -38,15 +38,32 @@
           querying divergent criteria. ClauseElements at the front of
           filter_by() are removed (use filter()).
 
-    - added operator support to class-instrumented attributes. you can now
-      filter() (or whatever) using <classname>.<attributename>==<whatever>.
-      for column based properties, all column operators work (i.e. ==, <, >,
-      like(), in_(), etc.).  For relation() and composite column properties,
-      ==<instance>, !=<instance>, and ==<None> are implemented so far.
+    - Eager loading has been enhanced to allow even more joins in more places.
+      It now functions at any arbitrary depth along self-referential 
+      and cyclical structures.  When loading cyclical structures, specify "join_depth" 
+      on relation() indicating how many times you'd like the table to join 
+      to itself; each level gets a distinct table alias.  The alias names
+      themselves are generated at compile time using a simple counting
+      scheme now and are a lot easier on the eyes, as well as of course
+      completely deterministic. [ticket:659]
+
+    - Class-level properties are now usable as query elements ...no 
+      more '.c.' !  "Class.c.propname" is now superceded by "Class.propname".
+      All clause operators are supported, as well as higher level operators
+      such as Class.prop==<some instance> for scalar attributes and 
+      Class.prop.contains(<some instance>) for collection-based attributes
+      (both are also negatable).  Table-based column expressions as well as 
+      columns mounted on mapped classes via 'c' are of course still fully available
+      and can be freely mixed with the new attributes.
       [ticket:643]
       
-    - added composite column properties. using the composite(cls, *columns)
-      function inside of the "properties" dict, instances of cls will be
+    - added composite column properties. This allows you to create a 
+      type which is represented by more than one column, when using the 
+      ORM.  Objects of the new type are fully functional in query expressions,
+      comparisons, query.get() clauses, etc. and act as though they are regular
+      single-column scalars..except they're not !
+      Use the function composite(cls, *columns) inside of the 
+      mapper's "properties" dict, and instances of cls will be
       created/mapped to a single attribute, comprised of the values
       correponding to *columns [ticket:211]
 

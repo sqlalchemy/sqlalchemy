@@ -185,6 +185,46 @@ class EagerTest(QueryTest):
 
             ] == q.all()
         self.assert_sql_count(testbase.db, go, 1)
+
+    def test_double_same_mappers(self):
+        """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
+
+        mapper(Address, addresses)
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items, lazy=False, order_by=items.c.id),
+        })
+        mapper(Item, items)
+        mapper(User, users, properties = dict(
+            addresses = relation(Address, lazy=False),
+            open_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 1, users.c.id==orders.c.user_id), lazy=False),
+            closed_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy=False)
+        ))
+        q = create_session().query(User)
+
+        def go():
+            assert [
+                User(
+                    id=7,
+                    addresses=[Address(id=1)],
+                    open_orders = [Order(id=3, items=[Item(id=3), Item(id=4), Item(id=5)])],
+                    closed_orders = [Order(id=1, items=[Item(id=1), Item(id=2), Item(id=3)]), Order(id=5, items=[Item(id=5)])]
+                ),
+                User(
+                    id=8,
+                    addresses=[Address(id=2), Address(id=3), Address(id=4)],
+                    open_orders = [],
+                    closed_orders = []
+                ),
+                User(
+                    id=9,
+                    addresses=[Address(id=5)],
+                    open_orders = [Order(id=4, items=[Item(id=1), Item(id=5)])],
+                    closed_orders = [Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)])]
+                ),
+                User(id=10)
+
+            ] == q.all()
+        self.assert_sql_count(testbase.db, go, 1)
         
     def test_limit(self):
         """test limit operations combined with lazy-load relationships."""
@@ -398,5 +438,44 @@ class EagerTest(QueryTest):
         l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(Address.user_id==User.id)
         assert fixtures.user_address_result[1:2] == l.all()
 
+class SelfReferentialEagerTest(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global nodes
+        nodes = Table('nodes', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')),
+            Column('data', String(30)))
+    
+    def test_basic(self):
+        class Node(Base):
+            def append(self, node):
+                self.children.append(node)
+                
+        mapper(Node, nodes, properties={
+            'children':relation(Node, lazy=False, join_depth=3)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
+        sess.save(n1)
+        sess.flush()
+        sess.clear()
+        def go():
+            d = sess.query(Node).filter_by(data='n1').first()
+            assert Node(data='n1', children=[
+                Node(data='n11'),
+                Node(data='n12', children=[
+                    Node(data='n121'),
+                    Node(data='n122'),
+                    Node(data='n123')
+                ]),
+                Node(data='n13')
+            ]) == d
+        self.assert_sql_count(testbase.db, go, 1)
 if __name__ == '__main__':
     testbase.main()

@@ -805,6 +805,7 @@ class Mapper(object):
     def base_mapper(self):
         """Return the ultimate base mapper in an inheritance chain."""
 
+        # TODO: calculate this at mapper setup time
         if self.inherits is not None:
             return self.inherits.base_mapper()
         else:
@@ -1596,8 +1597,8 @@ class Mapper(object):
     def populate_instance(self, selectcontext, instance, row, ispostselect=None, **flags):
         """populate an instance from a result row."""
 
-
-        populators = selectcontext.attributes.get(('instance_populators', self, ispostselect), None)
+        selectcontext.stack.push_mapper(self)
+        populators = selectcontext.attributes.get(('instance_populators', self, selectcontext.stack.snapshot(), ispostselect), None)
         if populators is None:
             populators = []
             post_processors = []
@@ -1612,11 +1613,13 @@ class Mapper(object):
             if poly_select_loader is not None:
                 post_processors.append(poly_select_loader)
                 
-            selectcontext.attributes[('instance_populators', self, ispostselect)] = populators
+            selectcontext.attributes[('instance_populators', self, selectcontext.stack.snapshot(), ispostselect)] = populators
             selectcontext.attributes[('post_processors', self, ispostselect)] = post_processors
 
         for p in populators:
             p(instance, row, ispostselect=ispostselect, **flags)
+        
+        selectcontext.stack.pop()
             
         if self.non_primary:
             selectcontext.attributes[('populating_mapper', instance)] = self

@@ -439,18 +439,12 @@ class EagerLoader(AbstractRelationLoader):
     
     def init(self):
         super(EagerLoader, self).init()
-        if self.parent.isa(self.mapper):
-            raise exceptions.ArgumentError(
-                "Error creating eager relationship '%s' on parent class '%s' "
-                "to child class '%s': Cant use eager loading on a self "
-                "referential relationship." %
-                (self.key, repr(self.parent.class_), repr(self.mapper.class_)))
         if self.is_default:
             self.parent._eager_loaders.add(self.parent_property)
 
         self.clauses = {}
-        self.clauses_by_lead_mapper = {}
-
+        self.join_depth = self.parent_property.join_depth
+        
     class AliasedClauses(object):
         """Defines a set of join conditions and table aliases which
         are aliased on a randomly-generated alias name, corresponding
@@ -471,17 +465,6 @@ class EagerLoader(AbstractRelationLoader):
                         (EagerLoader 'keywords') --> 
                             mapper C
             
-        will generate::
-            
-            EagerLoader 'items' --> {
-                None : AliasedClauses(items, None, alias_suffix='AB34')        # mappera JOIN mapperb_AB34
-            }
-            
-            EagerLoader 'keywords' --> [
-                None : AliasedClauses(keywords, None, alias_suffix='43EF')     # mapperb JOIN mapperc_43EF
-                AliasedClauses(items, None, alias_suffix='AB34') : 
-                        AliasedClauses(keywords, items, alias_suffix='8F44')   # mapperb_AB34 JOIN mapperc_8F44
-            ]
         """
         
         def __init__(self, eagerloader, parentclauses=None):
@@ -489,6 +472,10 @@ class EagerLoader(AbstractRelationLoader):
             self.target = eagerloader.select_table
             self.eagertarget = eagerloader.select_table.alias(None)
             self.extra_cols = {}
+            if parentclauses is not None:
+                self.path = parentclauses.path + (self.parent.parent, self.parent.key)
+            else:
+                self.path = (self.parent.parent, self.parent.key)
 
             if eagerloader.secondary:
                 self.eagersecondary = eagerloader.secondary.alias(None)
@@ -505,11 +492,20 @@ class EagerLoader(AbstractRelationLoader):
                 self.eagerprimary = aliasizer.traverse(self.eagerprimary, clone=True)
             else:
                 self.eagerprimary = eagerloader.polymorphic_primaryjoin
+                
+                # for self-referential eager load, the "aliasing" of each side of the join condition
+                # must be limited to exactly the cols we know are on "our side".  for non-self-referntial,
+                # be more liberal to include other elements of the join condition which deal with "our" table
+                if eagerloader.parent_property._is_self_referential():
+                    include = eagerloader.parent_property.remote_side
+                else:
+                    include = None
+                    
                 if parentclauses is not None: 
-                    aliasizer = sql_util.ClauseAdapter(self.eagertarget)
+                    aliasizer = sql_util.ClauseAdapter(self.eagertarget, include=include)
                     aliasizer.chain(sql_util.ClauseAdapter(parentclauses.eagertarget, exclude=eagerloader.parent_property.remote_side))
                 else:
-                    aliasizer = sql_util.ClauseAdapter(self.eagertarget)
+                    aliasizer = sql_util.ClauseAdapter(self.eagertarget, include=include)
                 self.eagerprimary = aliasizer.traverse(self.eagerprimary, clone=True)
 
             if eagerloader.order_by:
@@ -518,7 +514,10 @@ class EagerLoader(AbstractRelationLoader):
                 self.eager_order_by = None
 
             self._row_decorator = self._create_decorator_row()
-        
+                
+        def __str__(self):
+            return "->".join([str(s) for s in self.path])
+            
         def aliased_column(self, column):
             """return the aliased version of the given column, creating a new label for it if not already
             present in this AliasedClauses eagertable."""
@@ -573,16 +572,30 @@ class EagerLoader(AbstractRelationLoader):
     def setup_query(self, context, eagertable=None, parentclauses=None, parentmapper=None, **kwargs):
         """Add a left outer join to the statement thats being constructed."""
         
+        # build a path as we setup the query.  the format of this path
+        # matches that of interfaces.LoaderStack, and will be used in the 
+        # row-loading phase to match up AliasedClause objects with the current
+        # LoaderStack position.
+        if parentclauses:
+            path = parentclauses.path + (self.parent.base_mapper(), self.key)
+        else:
+            path = (self.parent.base_mapper(), self.key)
+
+        
+        if self.join_depth:
+            if len(path) / 2 > self.join_depth:
+                return
+        else:
+            if self.mapper in path:
+                return
+        
+        #print "CREATING EAGER PATH FOR", "->".join([str(s) for s in path])
+        
         if parentmapper is None:
             localparent = context.mapper
         else:
             localparent = parentmapper
         
-        if self.mapper in context.recursion_stack:
-            return
-        else:
-            context.recursion_stack.add(self.parent)
-
         statement = context.statement
         
         if hasattr(statement, '_outerjoin'):
@@ -604,16 +617,13 @@ class EagerLoader(AbstractRelationLoader):
                         break
             else:
                 raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join to, in query '%s' %s" % (str(statement), localparent.mapped_table))
-
+            
         try:
-            clauses = self.clauses[parentclauses]
+            clauses = self.clauses[path]
         except KeyError:
             clauses = EagerLoader.AliasedClauses(self, parentclauses)
-            self.clauses[parentclauses] = clauses
-            
-        if context.mapper not in self.clauses_by_lead_mapper:
-            self.clauses_by_lead_mapper[context.mapper] = clauses
-
+            self.clauses[path] = clauses
+        
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(towrap, clauses.eagersecondary, clauses.eagerprimary).outerjoin(clauses.eagertarget, clauses.eagersecondaryjoin)
             if self.order_by is False and self.secondary.default_order_by() is not None:
@@ -630,14 +640,16 @@ class EagerLoader(AbstractRelationLoader):
 
         for value in self.select_mapper.iterate_properties:
             value.setup(context, eagertable=clauses.eagertarget, parentclauses=clauses, parentmapper=self.select_mapper)
-
-    def _create_row_decorator(self, selectcontext, row):
+        
+    def _create_row_decorator(self, selectcontext, row, path):
         """Create a *row decorating* function that will apply eager
         aliasing to the row.
         
         Also check that an identity key can be retrieved from the row,
         else return None.
         """
+        
+        #print "creating row decorator for path ", "->".join([str(s) for s in path])
         
         # check for a user-defined decorator in the SelectContext (which was set up by the contains_eager() option)
         if selectcontext.attributes.has_key(("eager_row_processor", self.parent_property)):
@@ -649,11 +661,13 @@ class EagerLoader(AbstractRelationLoader):
         else:
             try:
                 # decorate the row according to the stored AliasedClauses for this eager load
-                clauses = self.clauses_by_lead_mapper[selectcontext.mapper]
+                clauses = self.clauses[path]
                 decorator = clauses._row_decorator
             except KeyError, k:
                 # no stored AliasedClauses: eager loading was not set up in the query and
                 # AliasedClauses never got initialized
+                if self._should_log_debug:
+                    self.logger.debug("Could not locate aliased clauses for key: " + str(path))
                 return None
 
         try:
@@ -669,54 +683,60 @@ class EagerLoader(AbstractRelationLoader):
             return None
 
     def create_row_processor(self, selectcontext, mapper, row):
-        row_decorator = self._create_row_decorator(selectcontext, row)
+        selectcontext.stack.push_property(self.key)
+        path = selectcontext.stack.snapshot()
+
+        row_decorator = self._create_row_decorator(selectcontext, row, path)
         if row_decorator is not None:
             def execute(instance, row, isnew, **flags):
-                if self in selectcontext.recursion_stack:
-                    return
                 decorated_row = row_decorator(row)
 
-                # TODO: recursion check a speed hit...?  try to get a "termination point" into the AliasedClauses
-                # or EagerRowAdapter ?
-                selectcontext.recursion_stack.add(self)
-                try:
-                    if not self.uselist:
-                        if self._should_log_debug:
-                            self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
-                        if isnew:
-                            # set a scalar object instance directly on the
-                            # parent object, bypassing InstrumentedAttribute
-                            # event handlers.
-                            #
-                            # FIXME: instead of...
-                            sessionlib.attribute_manager.get_attribute(instance, self.key).set_raw_value(instance, self.mapper._instance(selectcontext, decorated_row, None))
-                            # bypass and set directly:
-                            #instance.__dict__[self.key] = ...
-                        else:
-                            # call _instance on the row, even though the object has been created,
-                            # so that we further descend into properties
-                            self.mapper._instance(selectcontext, decorated_row, None)
+                selectcontext.stack.push_property(self.key)
+                
+                if not self.uselist:
+                    if self._should_log_debug:
+                        self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
+                    if isnew:
+                        # set a scalar object instance directly on the
+                        # parent object, bypassing InstrumentedAttribute
+                        # event handlers.
+                        #
+                        # FIXME: instead of...
+                        sessionlib.attribute_manager.get_attribute(instance, self.key).set_raw_value(instance, self.mapper._instance(selectcontext, decorated_row, None))
+                        # bypass and set directly:
+                        #instance.__dict__[self.key] = ...
                     else:
-                        if isnew:
-                            if self._should_log_debug:
-                                self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
-
-                            collection = sessionlib.attribute_manager.init_collection(instance, self.key)
-                            appender = util.UniqueAppender(collection, 'append_without_event')
-
-                            # store it in the "scratch" area, which is local to this load operation.
-                            selectcontext.attributes[(instance, self.key)] = appender
-                        result_list = selectcontext.attributes[(instance, self.key)]
+                        # call _instance on the row, even though the object has been created,
+                        # so that we further descend into properties
+                        self.mapper._instance(selectcontext, decorated_row, None)
+                else:
+                    if isnew:
                         if self._should_log_debug:
-                            self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
-                        self.select_mapper._instance(selectcontext, decorated_row, result_list)
-                finally:
-                    selectcontext.recursion_stack.remove(self)
+                            self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
+
+                        collection = sessionlib.attribute_manager.init_collection(instance, self.key)
+                        appender = util.UniqueAppender(collection, 'append_without_event')
+
+                        # store it in the "scratch" area, which is local to this load operation.
+                        selectcontext.attributes[(instance, self.key)] = appender
+                    result_list = selectcontext.attributes[(instance, self.key)]
+                    if self._should_log_debug:
+                        self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
+                        
+                    self.select_mapper._instance(selectcontext, decorated_row, result_list)
+                selectcontext.stack.pop()
+
+            selectcontext.stack.pop()
             return (execute, None)
         else:
             self.logger.debug("eager loader %s degrading to lazy loader" % str(self))
+            selectcontext.stack.pop()
             return self.parent_property._get_strategy(LazyLoader).create_row_processor(selectcontext, mapper, row)
+        
             
+    def __str__(self):
+        return str(self.parent) + "." + self.key
+        
 EagerLoader.logger = logging.class_logger(EagerLoader)
 
 class EagerLazyOption(StrategizedOption):

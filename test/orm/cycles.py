@@ -109,22 +109,6 @@ class SelfReferentialTest(AssertMixin):
         
         sess.delete(a)
         sess.flush()
-    def testeagerassertion(self):
-        """test that an eager self-referential relationship raises an error."""
-        class C1(Tester):
-            pass
-        class C2(Tester):
-            pass
-        
-        m1 = mapper(C1, t1, properties = {
-            'c1s' : relation(C1, lazy=False),
-        })
-        
-        try:
-            m1.compile()
-            assert False
-        except exceptions.ArgumentError:
-            assert True
 
 class SelfReferentialNoPKTest(AssertMixin):
     """test self-referential relationship that joins on a column other than the primary key column"""

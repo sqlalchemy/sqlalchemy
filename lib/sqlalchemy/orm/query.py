@@ -6,7 +6,7 @@
 
 from sqlalchemy import sql, util, exceptions, sql_util, logging
 from sqlalchemy.orm import mapper, object_mapper
-from sqlalchemy.orm.interfaces import OperationContext
+from sqlalchemy.orm.interfaces import OperationContext, LoaderStack
 import operator
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
@@ -1137,6 +1137,7 @@ class SelectionContext(OperationContext):
         self.session = session
         self.extension = extension
         self.identity_map = {}
+        self.stack = LoaderStack()
         super(SelectionContext, self).__init__(mapper, kwargs.pop('with_options', []), **kwargs)
 
     def accept_option(self, opt):

@@ -388,6 +388,31 @@ class StrategizedProperty(MapperProperty):
         if self.is_primary():
             self.strategy.init_class_attribute()
 
+class LoaderStack(object):
+    """a stack object used during load operations to track the 
+    current position among a chain of mappers to eager loaders."""
+    
+    def __init__(self):
+        self.__stack = []
+        
+    def push_property(self, key):
+        self.__stack.append(key)
+        
+    def push_mapper(self, mapper):
+        self.__stack.append(mapper.base_mapper())
+        
+    def pop(self):
+        self.__stack.pop()
+        
+    def snapshot(self):
+        """return an 'snapshot' of this stack.
+        
+        this is a tuple form of the stack which can be used as a hash key."""
+        return tuple(self.__stack)
+        
+    def __str__(self):
+        return "->".join([str(s) for s in self.__stack])
+        
 class OperationContext(object):
     """Serve as a context during a query construction or instance
     loading operation.
