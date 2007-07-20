@@ -91,7 +91,7 @@ class BindTest(testbase.PersistTest):
             ):
                 metadata = MetaData(*args[0], **args[1])
                 table = Table('test_table', metadata,   
-                    Column('foo', Integer))
+                              Column('foo', Integer))
 
                 assert metadata.bind is metadata.engine is table.bind is table.engine is bind
                 metadata.create_all()
@@ -104,7 +104,8 @@ class BindTest(testbase.PersistTest):
     def test_implicit_execution(self):
         metadata = MetaData()
         table = Table('test_table', metadata,   
-            Column('foo', Integer))
+            Column('foo', Integer),
+            mysql_engine='InnoDB')
         conn = testbase.db.connect()
         metadata.create_all(bind=conn)
         try:
