@@ -1,7 +1,7 @@
+import testbase
 from sqlalchemy import *
 from sqlalchemy import ansisql
 from sqlalchemy.orm import *
-import testbase
 from testbase import Table, Column
 from fixtures import *
 import operator
