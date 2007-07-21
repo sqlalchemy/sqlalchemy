@@ -870,6 +870,9 @@ class Query(object):
     def __log_debug(self, msg):
         self.logger.debug(msg)
 
+    def __str__(self):
+        return str(self.compile())
+
     # DEPRECATED LAND !
 
     def list(self):
