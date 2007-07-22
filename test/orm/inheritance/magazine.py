@@ -23,7 +23,7 @@ class Location(BaseObject):
 
     def _set_name(self, name):
         session = create_session()
-        s = session.query(LocationName).selectfirst(location_name_table.c.name==name)
+        s = session.query(LocationName).filter(LocationName.name==name).first()
         session.clear()
         if s is not None:
             self._name = s
@@ -203,7 +203,7 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
 
         session.flush()
         session.clear()
-        p = session.query(Publication).selectone_by(name='Test')
+        p = session.query(Publication).filter(Publication.name=="Test").one()
 
         print p.issues[0].locations[0].magazine.pages
         print [page, page2, page3]

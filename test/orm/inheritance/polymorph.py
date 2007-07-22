@@ -285,10 +285,10 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         dilbert2 = session.query(Engineer).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
         assert dilbert is dilbert2
 
-        session.query(Person).selectfirst((engineers.c.engineer_name=="engineer1") & (engineers.c.person_id==people.c.person_id))
-        dilbert2 = session.query(Engineer).selectfirst(engineers.c.engineer_name=="engineer1")
+        session.query(Person).filter((Engineer.engineer_name=="engineer1") & (Engineer.person_id==people.c.person_id)).first()
+        
+        dilbert2 = session.query(Engineer).filter(Engineer.engineer_name=="engineer1")[0]
         assert dilbert is dilbert2
-    
     
         dilbert.engineer_name = 'hes dibert!'
 

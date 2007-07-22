@@ -369,8 +369,8 @@ class RelationTest4(testbase.ORMTest):
 
         session.flush()
 
-        engineer4 = session.query(Engineer).selectfirst_by(name="E4")
-        manager3 = session.query(Manager).selectfirst_by(name="M3")
+        engineer4 = session.query(Engineer).filter(Engineer.name=="E4").first()
+        manager3 = session.query(Manager).filter(Manager.name=="M3").first()
         
         car1 = Car(employee=engineer4)
         session.save(car1)
@@ -402,7 +402,7 @@ class RelationTest4(testbase.ORMTest):
 
         session.clear()
         s = session.query(Car)
-        c = s.join("employee").select(employee_join.c.name=="E4")[0]
+        c = s.join("employee").filter(Person.name=="E4")[0]
         assert c.car_id==car1.car_id
 
 class RelationTest5(testbase.ORMTest):
