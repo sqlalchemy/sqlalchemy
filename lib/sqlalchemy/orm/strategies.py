@@ -400,10 +400,6 @@ class LazyLoader(AbstractRelationLoader):
             if leftcol is None or rightcol is None:
                 return
             
-            # TODO: comprehensive negation support for expressions    
-            if op == '!=' and binary.operator == '==':
-                binary.operator = '!='
-                
             if should_bind(leftcol, rightcol):
                 col = leftcol
                 binary.left = binds.setdefault(leftcol,
