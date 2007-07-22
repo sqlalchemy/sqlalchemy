@@ -148,7 +148,7 @@ class EagerTest(QueryTest):
         assert fixtures.user_address_result == sess.query(User).all()
         
     def test_double(self):
-        """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
+        """tests eager loading with two relations simulatneously, from the same table, using aliases.  """
         openorders = alias(orders, 'openorders')
         closedorders = alias(orders, 'closedorders')
 
@@ -187,7 +187,7 @@ class EagerTest(QueryTest):
         self.assert_sql_count(testbase.db, go, 1)
 
     def test_double_same_mappers(self):
-        """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
+        """tests eager loading with two relations simulatneously, from the same table, using aliases.  """
 
         mapper(Address, addresses)
         mapper(Order, orders, properties={

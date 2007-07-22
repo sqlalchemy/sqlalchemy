@@ -7,6 +7,8 @@ from sqlalchemy.orm import *
 from sqlalchemy import exceptions
 from testbase import Table, Column
 
+# TODO: these are more tests that should be updated to be part of test/orm/query.py
+
 class Foo(object):
     def __init__(self, **kwargs):
         for k in kwargs:
@@ -256,13 +258,13 @@ class SelfRefTest(ORMTest):
             sess.query(T).join('children').select_by(id=7)
             assert False
         except exceptions.InvalidRequestError, e:
-            assert str(e) == "Self-referential query on 'T.children (T)' property must be constructed manually using an Alias object for the related table.", str(e)
+            assert str(e) == "Self-referential query on 'T.children (T)' property requries create_aliases=True argument.", str(e)
 
         try:
             sess.query(T).join(['children']).select_by(id=7)
             assert False
         except exceptions.InvalidRequestError, e:
-            assert str(e) == "Self-referential query on 'T.children (T)' property must be constructed manually using an Alias object for the related table.", str(e)
+            assert str(e) == "Self-referential query on 'T.children (T)' property requries create_aliases=True argument.", str(e)
         
             
             

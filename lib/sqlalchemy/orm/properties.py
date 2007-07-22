@@ -488,16 +488,13 @@ class PropertyLoader(StrategizedProperty):
                     "argument." % (str(self)))
 
     def _determine_remote_side(self):
-        if len(self.remote_side):
-            return
-        self.remote_side = util.Set()
+        if not len(self.remote_side):
+            if self.direction is sync.MANYTOONE:
+                self.remote_side = util.Set(self._opposite_side)
+            elif self.direction is sync.ONETOMANY or self.direction is sync.MANYTOMANY:
+                self.remote_side = util.Set(self.foreign_keys)
 
-        if self.direction is sync.MANYTOONE:
-            for c in self._opposite_side:
-                self.remote_side.add(c)
-        elif self.direction is sync.ONETOMANY or self.direction is sync.MANYTOMANY:
-            for c in self.foreign_keys:
-                self.remote_side.add(c)
+        self.local_side = util.Set(self._opposite_side).union(util.Set(self.foreign_keys)).difference(self.remote_side)
 
     def _create_polymorphic_joins(self):
         # get ready to create "polymorphic" primary/secondary join clauses.
@@ -575,18 +572,20 @@ class PropertyLoader(StrategizedProperty):
     def _is_self_referential(self):
         return self.parent.mapped_table is self.target or self.parent.select_table is self.target
 
-    def get_join(self, parent, primary=True, secondary=True):
+    def get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
         try:
-            return self._parent_join_cache[(parent, primary, secondary)]
+            return self._parent_join_cache[(parent, primary, secondary, polymorphic_parent)]
         except KeyError:
             parent_equivalents = parent._get_equivalent_columns()
             secondaryjoin = self.polymorphic_secondaryjoin
-            if self.direction is sync.ONETOMANY:
-                primaryjoin = sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
-            elif self.direction is sync.MANYTOONE:
-                primaryjoin = sql_util.ClauseAdapter(parent.select_table, include=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
-            elif self.secondaryjoin:
-                primaryjoin = sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
+            if polymorphic_parent:
+                # adapt the "parent" side of our join condition to the "polymorphic" select of the parent
+                if self.direction is sync.ONETOMANY:
+                    primaryjoin = sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
+                elif self.direction is sync.MANYTOONE:
+                    primaryjoin = sql_util.ClauseAdapter(parent.select_table, include=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
+                elif self.secondaryjoin:
+                    primaryjoin = sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
 
             if secondaryjoin is not None:
                 if secondary and not primary:
@@ -597,7 +596,7 @@ class PropertyLoader(StrategizedProperty):
                     j = primaryjoin
             else:
                 j = primaryjoin
-            self._parent_join_cache[(parent, primary, secondary)] = j
+            self._parent_join_cache[(parent, primary, secondary, polymorphic_parent)] = j
             return j
 
     def register_dependencies(self, uowcommit):

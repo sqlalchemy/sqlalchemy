@@ -24,6 +24,8 @@ class ColumnLoader(LoaderStrategy):
         for c in self.columns:
             if parentclauses is not None:
                 context.statement.append_column(parentclauses.aliased_column(c))
+            elif eagertable is not None:
+                context.statement.append_column(eagertable.corresponding_column(c))
             else:
                 context.statement.append_column(c)
         
@@ -493,19 +495,11 @@ class EagerLoader(AbstractRelationLoader):
             else:
                 self.eagerprimary = eagerloader.polymorphic_primaryjoin
                 
-                # for self-referential eager load, the "aliasing" of each side of the join condition
-                # must be limited to exactly the cols we know are on "our side".  for non-self-referntial,
-                # be more liberal to include other elements of the join condition which deal with "our" table
-                if eagerloader.parent_property._is_self_referential():
-                    include = eagerloader.parent_property.remote_side
-                else:
-                    include = None
-                    
                 if parentclauses is not None: 
-                    aliasizer = sql_util.ClauseAdapter(self.eagertarget, include=include)
+                    aliasizer = sql_util.ClauseAdapter(self.eagertarget, exclude=eagerloader.parent_property.local_side)
                     aliasizer.chain(sql_util.ClauseAdapter(parentclauses.eagertarget, exclude=eagerloader.parent_property.remote_side))
                 else:
-                    aliasizer = sql_util.ClauseAdapter(self.eagertarget, include=include)
+                    aliasizer = sql_util.ClauseAdapter(self.eagertarget, exclude=eagerloader.parent_property.local_side)
                 self.eagerprimary = aliasizer.traverse(self.eagerprimary, clone=True)
 
             if eagerloader.order_by:
@@ -513,7 +507,7 @@ class EagerLoader(AbstractRelationLoader):
             else:
                 self.eager_order_by = None
 
-            self._row_decorator = self._create_decorator_row()
+            self._row_decorator = sql_util.create_row_adapter(self.eagertarget, self.target)
                 
         def __str__(self):
             return "->".join([str(s) for s in self.path])
@@ -543,29 +537,6 @@ class EagerLoader(AbstractRelationLoader):
             self.extra_cols[column] = aliased_column
             return aliased_column
             
-        def _create_decorator_row(self):
-            class EagerRowAdapter(object):
-                def __init__(self, row):
-                    self.row = row
-                def __contains__(self, key):
-                    return key in map or key in self.row
-                def has_key(self, key):
-                    return key in self
-                def __getitem__(self, key):
-                    if key in map:
-                        key = map[key]
-                    return self.row[key]
-                def keys(self):
-                    return map.keys()
-            map = {}        
-            for c in self.eagertarget.c:
-                parent = self.target.corresponding_column(c)
-                map[parent] = c
-                map[parent._label] = c
-                map[parent.name] = c
-            EagerRowAdapter.map = map
-            return EagerRowAdapter
-
     def init_class_attribute(self):
         self.parent_property._get_strategy(LazyLoader).init_class_attribute()
         
@@ -639,7 +610,7 @@ class EagerLoader(AbstractRelationLoader):
         statement.append_from(statement._outerjoin)
 
         for value in self.select_mapper.iterate_properties:
-            value.setup(context, eagertable=clauses.eagertarget, parentclauses=clauses, parentmapper=self.select_mapper)
+            value.setup(context, parentclauses=clauses, parentmapper=self.select_mapper)
         
     def _create_row_decorator(self, selectcontext, row, path):
         """Create a *row decorating* function that will apply eager

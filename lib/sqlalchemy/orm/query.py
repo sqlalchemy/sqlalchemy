@@ -38,6 +38,7 @@ class Query(object):
         self._column_aggregate = None
         self._joinpoint = self.mapper
         self._aliases = None
+        self._alias_ids = {}
         self._from_obj = [self.table]
         self._populate_existing = False
         self._version_check = False
@@ -167,7 +168,7 @@ class Query(object):
             prop = mapper.get_property(property, resolve_synonyms=True)
         return self.filter(prop.compare(operator.eq, instance, value_is_parent=True))
 
-    def add_entity(self, entity):
+    def add_entity(self, entity, alias=None, id=None):
         """add a mapped entity to the list of result columns to be returned.
         
         This will have the effect of all result-returning methods returning a tuple
@@ -183,9 +184,16 @@ class Query(object):
             entity
                 a class or mapper which will be added to the results.
                 
+            alias
+                a sqlalchemy.sql.Alias object which will be used to select rows.  this
+                will match the usage of the given Alias in filter(), order_by(), etc. expressions
+                
+            id
+                a string ID matching that given to query.join() or query.outerjoin(); rows will be 
+                selected from the aliased join created via those methods.
         """
         q = self._clone()
-        q._entities = q._entities + [entity]
+        q._entities = q._entities + [(entity, alias, id)]
         return q
         
     def add_column(self, column):
@@ -255,11 +263,11 @@ class Query(object):
         if criterion is not None and not isinstance(criterion, sql.ClauseElement):
             raise exceptions.ArgumentError("filter() argument must be of type sqlalchemy.sql.ClauseElement or string")
         
+        
         if self._aliases is not None:
-            adapter = sql_util.ClauseAdapter(self._aliases[0])
-            for alias in self._aliases[1:]:
-                adapter.chain(sql_util.ClauseAdapter(alias))
-            criterion = adapter.traverse(criterion, clone=True)
+            # adapt only the *last* alias in the list for now.
+            # this helps a self-referential join to work, i.e. table.join(table.alias(a)).join(table.alias(b))
+            criterion = sql_util.ClauseAdapter(self._aliases[-1]).traverse(criterion, clone=True)
             
         q = self._clone()
         if q._criterion is not None:
@@ -316,6 +324,8 @@ class Query(object):
                 # TODO: create_aliases automatically ? probably
                 raise exceptions.InvalidRequestError("Self-referential query on '%s' property requries create_aliases=True argument." % str(prop))
             # dont re-join to a table already in our from objects
+            # TODO: this code has a little bit of overlap with strategies.EagerLoader.AliasedClauses.  possibly
+            # look into generalizing that functionality for usage in both places
             if prop.select_table not in currenttables or create_aliases:
                 if outerjoin:
                     if prop.secondary:
@@ -346,10 +356,10 @@ class Query(object):
                         if create_aliases:
                             join = prop.get_join(mapper)
                             if alias is not None:
-                                join = sql_util.ClauseAdapter(alias).traverse(join, clone=True)
+                                join = sql_util.ClauseAdapter(alias, exclude=prop.remote_side).traverse(join, clone=True)
                             alias = prop.select_table.alias()
                             aliases.append(alias)
-                            join = sql_util.ClauseAdapter(alias).traverse(join, clone=True)
+                            join = sql_util.ClauseAdapter(alias, exclude=prop.local_side).traverse(join, clone=True)
                             clause = clause.join(alias, join)
                         else:
                             clause = clause.join(prop.select_table, prop.get_join(mapper))
@@ -447,7 +457,7 @@ class Query(object):
             q._group_by = q._group_by + util.to_list(criterion)
         return q
 
-    def join(self, prop, aliased=False):
+    def join(self, prop, aliased=False, id=None):
         """create a join of this ``Query`` object's criterion
         to a relationship and return the newly resulting ``Query``.
 
@@ -460,9 +470,11 @@ class Query(object):
         q._from_obj = [clause]
         q._joinpoint = mapper
         q._aliases = aliases
+        if id:
+            q._alias_ids[id] = aliases[-1]
         return q
 
-    def outerjoin(self, prop, aliased=False):
+    def outerjoin(self, prop, aliased=False, id=None):
         """create a left outer join of this ``Query`` object's criterion
         to a relationship and return the newly resulting ``Query``.
         
@@ -474,6 +486,8 @@ class Query(object):
         q._from_obj = [clause]
         q._joinpoint = mapper
         q._aliases = aliases
+        if id:
+            q._alias_ids[id] = aliases[-1]
         return q
 
     def reset_joinpoint(self):
@@ -645,13 +659,23 @@ class Query(object):
         mappers_or_columns = tuple(self._entities) + mappers_or_columns
         if mappers_or_columns:
             for m in mappers_or_columns:
+                if isinstance(m, tuple):
+                    (m, alias, alias_id) = m
+                    if alias_id is not None:
+                        try:
+                            alias = self._alias_ids[alias_id]
+                        except KeyError:
+                            raise exceptions.InvalidRequestError("Query has no alias identified by '%s'" % alias_id)
+                else:
+                    alias = alias_id = None
                 if isinstance(m, type):
                     m = mapper.class_mapper(m)
                 if isinstance(m, mapper.Mapper):
                     def x(m):
+                        row_adapter = sql_util.create_row_adapter(alias, m.select_table)
                         appender = []
                         def proc(context, row):
-                            if not m._instance(context, row, appender):
+                            if not m._instance(context, row_adapter(row), appender):
                                 appender.append(None)
                         process.append((proc, appender))
                     x(m)
@@ -865,11 +889,18 @@ class Query(object):
         
         # additional entities/columns, add those to selection criterion
         for m in self._entities:
-            if isinstance(m, type):
-                m = mapper.class_mapper(m)
-            if isinstance(m, mapper.Mapper):
-                for value in m.iterate_properties:
-                    value.setup(context)
+            if isinstance(m, tuple):
+                (m, alias, alias_id) = m
+                if alias_id is not None:
+                    try:
+                        alias = self._alias_ids[alias_id]
+                    except KeyError:
+                        raise exceptions.InvalidRequestError("Query has no alias identified by '%s'" % alias_id)
+                if isinstance(m, type):
+                    m = mapper.class_mapper(m)
+                if isinstance(m, mapper.Mapper):
+                    for value in m.iterate_properties:
+                        value.setup(context, eagertable=alias)
             elif isinstance(m, sql.ColumnElement):
                 statement.append_column(m)
                 

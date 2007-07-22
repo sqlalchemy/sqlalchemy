@@ -233,3 +233,39 @@ class ClauseAdapter(AbstractClauseProcessor):
                 if newcol:
                     return newcol
         return newcol
+
+
+def create_row_adapter(alias, table):
+    """given a sql.Alias and a target selectable, return a callable which, 
+    when passed a RowProxy, will return a new dict-like object
+    that translates Column objects to that of the Alias before calling upon the row.
+    
+    This allows a regular Table to be used to target columns in a row that was in reality generated from an alias
+    of that table, in such a way that the row can be passed to logic which knows nothing about the aliased form
+    of the table.
+    """
+    
+    if alias is None:
+        return lambda row:row
+        
+    class AliasedRowAdapter(object):
+        def __init__(self, row):
+            self.row = row
+        def __contains__(self, key):
+            return key in map or key in self.row
+        def has_key(self, key):
+            return key in self
+        def __getitem__(self, key):
+            if key in map:
+                key = map[key]
+            return self.row[key]
+        def keys(self):
+            return map.keys()
+    map = {}        
+    for c in alias.c:
+        parent = table.corresponding_column(c)
+        map[parent] = c
+        map[parent._label] = c
+        map[parent.name] = c
+    AliasedRowAdapter.map = map
+    return AliasedRowAdapter

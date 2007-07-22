@@ -34,23 +34,34 @@
         - Class-level properties are now usable as query elements ...no 
           more '.c.' !  "Class.c.propname" is now superceded by "Class.propname".
           All clause operators are supported, as well as higher level operators
-          such as Class.prop==<some instance> for scalar attributes and 
-          Class.prop.contains(<some instance>) for collection-based attributes
-          (both are also negatable).  Table-based column expressions as well as 
-          columns mounted on mapped classes via 'c' are of course still fully available
-          and can be freely mixed with the new attributes.
+          such as Class.prop==<some instance> for scalar attributes, 
+          Class.prop.contains(<some instance>) and Class.prop.any(<some expression>)
+          for collection-based attributes (all are also negatable).  Table-based column 
+          expressions as well as columns mounted on mapped classes via 'c' are of 
+          course still fully available and can be freely mixed with the new attributes.
           [ticket:643]
       
         - removed ancient query.select_by_attributename() capability.
-        
-        - added "aliased joins" positional argument to the front of
-          filter_by(). this allows auto-creation of joins that are aliased
-          locally to the individual filter_by() call. This allows the
-          auto-construction of joins which cross the same paths but are
-          querying divergent criteria. ClauseElements at the front of
-          filter_by() are removed (use filter()).
 
-        - added query.populate_existing().. - marks the query to reload
+        - the aliasing logic used by eager loading has been generalized, so that
+          it also adds full automatic aliasing support to Query.  It's no longer 
+          necessary to create an explicit Alias to join to the same tables multiple times;
+          *even for self-referential relationships!!*
+            - join() and outerjoin() take arguments "aliased=True".  this causes
+            their joins to be built on aliased tables; subsequent calls
+            to filter() and filter_by() will translate all table expressions
+            (yes, real expressions using the original mapped Table) to be that of
+            the Alias for the duration of that join() (i.e. until reset_joinpoint()
+            or another join() is called). 
+            - join() and outerjoin() take arguments "id=<somestring>".  when used 
+            with "aliased=True", the id can be referenced by add_entity(cls, id=<somestring>)
+            so that you can select the joined instances even if they're from an alias.
+            - join() and outerjoin() now work with self-referential relationships!  using
+            "aliased=True", you can join as many levels deep as desired, i.e.
+            query.join(['children', 'children'], aliased=True); filter criterion will 
+            be against the rightmost joined table
+
+        - added query.populate_existing() - marks the query to reload
           all attributes and collections of all instances touched in the query,
           including eagerly-loaded entities [ticket:660]
 

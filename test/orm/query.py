@@ -429,6 +429,27 @@ class JoinTest(QueryTest):
         assert [] == q.all()
         assert q.count() == 0
 
+    def test_aliased_add_entity(self):
+        """test the usage of aliased joins with add_entity()"""
+        sess = create_session()
+        q = sess.query(User).join('orders', aliased=True, id='order1').filter(Order.description=="order 3").join(['orders', 'items'], aliased=True, id='item1').filter(Item.description=="item 1")
+
+        try:
+            q.add_entity(Order, id='fakeid').compile()
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Query has no alias identified by 'fakeid'"
+
+        try:
+            q.add_entity(Order, id='fakeid').instances(None)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Query has no alias identified by 'fakeid'"
+            
+        q = q.add_entity(Order, id='order1').add_entity(Item, id='item1')
+        assert q.count() == 1
+        assert [(User(id=7), Order(description='order 3'), Item(description='item 1'))] == q.all()
+        
 
 class SynonymTest(QueryTest):
     keep_mappers = True
@@ -573,6 +594,30 @@ class InstancesTest(QueryTest):
         q = sess.query(User, Address).join('addresses').options(eagerload('addresses')).filter_by(email_address='ed@bettyboop.com')
         assert q.all() == [(user8, address3)]
 
+    def test_aliased_multi_mappers(self):
+        sess = create_session()
+
+        (user7, user8, user9, user10) = sess.query(User).all()
+        (address1, address2, address3, address4, address5) = sess.query(Address).all()
+
+        # note the result is a cartesian product
+        expected = [(user7, address1),
+            (user8, address2),
+            (user8, address3),
+            (user8, address4),
+            (user9, address5),
+            (user10, None)]
+        
+        q = sess.query(User)
+        adalias = addresses.alias('adalias')
+        q = q.add_entity(Address, alias=adalias).select_from(users.outerjoin(adalias))
+        l = q.all()
+        assert l == expected
+
+        q = sess.query(User).add_entity(Address, alias=adalias)
+        l = q.select_from(users.outerjoin(adalias)).filter(adalias.c.email_address=='ed@bettyboop.com').all()
+        assert l == [(user8, address3)]
+        
     def test_multi_columns(self):
         sess = create_session()
         (user7, user8, user9, user10) = sess.query(User).all()
@@ -612,8 +657,29 @@ class InstancesTest(QueryTest):
             
         assert q.all() == expected
 
-# this test not working yet
-class SelfReferentialTest(object): #testbase.ORMTest):
+class CustomJoinTest(QueryTest):
+    keep_mappers = False
+
+    def setup_mappers(self):
+        pass
+
+    def test_double_same_mappers(self):
+        """test aliasing of joins with a custom join condition"""
+        mapper(Address, addresses)
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items, lazy=False, order_by=items.c.id),
+        })
+        mapper(Item, items)
+        mapper(User, users, properties = dict(
+            addresses = relation(Address, lazy=False),
+            open_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 1, users.c.id==orders.c.user_id), lazy=False),
+            closed_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy=False)
+        ))
+        q = create_session().query(User)
+
+        assert [User(id=7)] == q.join(['open_orders', 'items'], aliased=True).filter(Item.id==4).join(['closed_orders', 'items'], aliased=True).filter(Item.id==3).all()
+
+class SelfReferentialJoinTest(testbase.ORMTest):
     def define_tables(self, metadata):
         global nodes
         nodes = Table('nodes', metadata,
@@ -646,6 +712,9 @@ class SelfReferentialTest(object): #testbase.ORMTest):
         # also implement this idea in EagerLoader
         node = sess.query(Node).join('children', aliased=True).filter_by(data='n122').first()
         assert node.data=='n12'
+
+        node = sess.query(Node).join(['children', 'children'], aliased=True).filter_by(data='n122').first()
+        assert node.data=='n1'
 
 if __name__ == '__main__':
     testbase.main()
