@@ -37,6 +37,7 @@ class Query(object):
         self._criterion = None
         self._column_aggregate = None
         self._joinpoint = self.mapper
+        self._aliases = None
         self._from_obj = [self.table]
         self._populate_existing = False
         self._version_check = False
@@ -253,6 +254,12 @@ class Query(object):
             
         if criterion is not None and not isinstance(criterion, sql.ClauseElement):
             raise exceptions.ArgumentError("filter() argument must be of type sqlalchemy.sql.ClauseElement or string")
+        
+        if self._aliases is not None:
+            adapter = sql_util.ClauseAdapter(self._aliases[0])
+            for alias in self._aliases[1:]:
+                adapter.chain(sql_util.ClauseAdapter(alias))
+            criterion = adapter.traverse(criterion, clone=True)
             
         q = self._clone()
         if q._criterion is not None:
@@ -261,22 +268,15 @@ class Query(object):
             q._criterion = criterion
         return q
 
-    def filter_by(self, *args, **kwargs):
+    def filter_by(self, **kwargs):
         """apply the given filtering criterion to the query and return the newly resulting ``Query``."""
 
         #import properties
         
-        if len(args) > 1:
-            raise exceptions.ArgumentError("filter_by() takes either zero positional arguments, or one scalar or list argument indicating a property search path.")
-        if len(args) == 1:
-            path = args[0]
-            (join, joinpoint, alias) = self._join_to(path, outerjoin=False, start=self.mapper, create_aliases=True)
-            clause = None
-        else:
-            alias = None
-            join = None
-            clause = None
-            joinpoint = self._joinpoint
+        alias = None
+        join = None
+        clause = None
+        joinpoint = self._joinpoint
 
         for key, value in kwargs.iteritems():
             prop = joinpoint.get_property(key, resolve_synonyms=True)
@@ -309,12 +309,14 @@ class Query(object):
             
         mapper = start
         alias = None
+        aliases = []
         for key in util.to_list(keys):
             prop = mapper.get_property(key, resolve_synonyms=True)
-            if prop._is_self_referential():
-                raise exceptions.InvalidRequestError("Self-referential query on '%s' property must be constructed manually using an Alias object for the related table." % str(prop))
+            if prop._is_self_referential() and not create_aliases:
+                # TODO: create_aliases automatically ? probably
+                raise exceptions.InvalidRequestError("Self-referential query on '%s' property requries create_aliases=True argument." % str(prop))
             # dont re-join to a table already in our from objects
-            if prop.select_table not in currenttables:
+            if prop.select_table not in currenttables or create_aliases:
                 if outerjoin:
                     if prop.secondary:
                         clause = clause.outerjoin(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
@@ -326,11 +328,13 @@ class Query(object):
                         if create_aliases:
                             join = prop.get_join(mapper, primary=True, secondary=False)
                             secondary_alias = prop.secondary.alias()
+                            aliases.append(secondary_alias)
                             if alias is not None:
                                 join = sql_util.ClauseAdapter(alias).traverse(join, clone=True)
                             sql_util.ClauseAdapter(secondary_alias).traverse(join)
                             clause = clause.join(secondary_alias, join)
                             alias = prop.select_table.alias()
+                            aliases.append(alias)
                             join = prop.get_join(mapper, primary=False)
                             join = sql_util.ClauseAdapter(secondary_alias).traverse(join, clone=True)
                             sql_util.ClauseAdapter(alias).traverse(join)
@@ -344,15 +348,16 @@ class Query(object):
                             if alias is not None:
                                 join = sql_util.ClauseAdapter(alias).traverse(join, clone=True)
                             alias = prop.select_table.alias()
+                            aliases.append(alias)
                             join = sql_util.ClauseAdapter(alias).traverse(join, clone=True)
                             clause = clause.join(alias, join)
                         else:
                             clause = clause.join(prop.select_table, prop.get_join(mapper))
             mapper = prop.mapper
         if create_aliases:
-            return (clause, mapper, alias)
+            return (clause, mapper, aliases)
         else:
-            return (clause, mapper)
+            return (clause, mapper, None)
 
     def _generative_col_aggregate(self, col, func):
         """apply the given aggregate function to the query and return the newly
@@ -442,7 +447,7 @@ class Query(object):
             q._group_by = q._group_by + util.to_list(criterion)
         return q
 
-    def join(self, prop):
+    def join(self, prop, aliased=False):
         """create a join of this ``Query`` object's criterion
         to a relationship and return the newly resulting ``Query``.
 
@@ -451,12 +456,13 @@ class Query(object):
         """
         
         q = self._clone()
-        (clause, mapper) = self._join_to(prop, outerjoin=False, start=self.mapper)
+        (clause, mapper, aliases) = self._join_to(prop, outerjoin=False, start=self.mapper, create_aliases=aliased)
         q._from_obj = [clause]
         q._joinpoint = mapper
+        q._aliases = aliases
         return q
 
-    def outerjoin(self, prop):
+    def outerjoin(self, prop, aliased=False):
         """create a left outer join of this ``Query`` object's criterion
         to a relationship and return the newly resulting ``Query``.
         
@@ -464,9 +470,10 @@ class Query(object):
         property names.
         """
         q = self._clone()
-        (clause, mapper) = self._join_to(prop, outerjoin=True, start=self.mapper)
+        (clause, mapper, aliases) = self._join_to(prop, outerjoin=True, start=self.mapper, create_aliases=aliased)
         q._from_obj = [clause]
         q._joinpoint = mapper
+        q._aliases = aliases
         return q
 
     def reset_joinpoint(self):
@@ -480,6 +487,7 @@ class Query(object):
 
         q = self._clone()
         q._joinpoint = q.mapper
+        q._aliases = None
         return q
 
 

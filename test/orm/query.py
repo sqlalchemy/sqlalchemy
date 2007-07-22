@@ -403,6 +403,32 @@ class JoinTest(QueryTest):
         result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_("order 1", "order 2", "order 3")).join(['orders', 'items']).filter_by(id=4).all()
         assert [User(id=7, name='jack')] == result
 
+    def test_aliased(self):
+        """test automatic generation of aliased joins."""
+
+        sess = create_session()
+
+        # test a basic aliasized path
+        q = sess.query(User).join('addresses', aliased=True).filter_by(email_address='jack@bean.com')
+        assert [User(id=7)] == q.all()
+
+        q = sess.query(User).join('addresses', aliased=True).filter(Address.email_address=='jack@bean.com')
+        assert [User(id=7)] == q.all()
+
+        # test two aliasized paths, one to 'orders' and the other to 'orders','items'.
+        # one row is returned because user 7 has order 3 and also has order 1 which has item 1
+        # this tests a o2m join and a m2m join.
+        q = sess.query(User).join('orders', aliased=True).filter(Order.description=="order 3").join(['orders', 'items'], aliased=True).filter(Item.description=="item 1")
+        assert q.count() == 1
+        assert [User(id=7)] == q.all()
+
+        # test the control version - same joins but not aliased.  rows are not returned because order 3 does not have item 1
+        # addtionally by placing this test after the previous one, test that the "aliasing" step does not corrupt the
+        # join clauses that are cached by the relationship.
+        q = sess.query(User).join('orders').filter(Order.description=="order 3").join(['orders', 'items']).filter(Order.description=="item 1")
+        assert [] == q.all()
+        assert q.count() == 0
+
 
 class SynonymTest(QueryTest):
     keep_mappers = True
@@ -586,32 +612,40 @@ class InstancesTest(QueryTest):
             
         assert q.all() == expected
 
-class FilterByTest(QueryTest):
-    def test_aliased(self):
-        """test automatic generation of aliased joins using filter_by()."""
-        
-        sess = create_session()
-        
-        # test a basic aliasized path
-        q = sess.query(User).filter_by(['addresses'], email_address='jack@bean.com')
-        assert [User(id=7)] == q.all()
+# this test not working yet
+class SelfReferentialTest(object): #testbase.ORMTest):
+    def define_tables(self, metadata):
+        global nodes
+        nodes = Table('nodes', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')),
+            Column('data', String(30)))
 
-        # test two aliasized paths, one to 'orders' and the other to 'orders','items'.
-        # one row is returned because user 7 has order 3 and also has order 1 which has item 1
-        # this tests a o2m join and a m2m join.
-        q = sess.query(User).filter_by(['orders'], description="order 3").filter_by(['orders', 'items'], description="item 1")
-        assert q.count() == 1
-        assert [User(id=7)] == q.all()
+    def test_join(self):
+        class Node(Base):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relation(Node, lazy=True, join_depth=3)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
+        sess.save(n1)
+        sess.flush()
+        sess.clear()
         
-        # test the control version - same joins but not aliased.  rows are not returned because order 3 does not have item 1
-        # addtionally by placing this test after the previous one, test that the "aliasing" step does not corrupt the
-        # join clauses that are cached by the relationship.
-        q = sess.query(User).join('orders').filter_by(description="order 3").join(['orders', 'items']).filter_by(description="item 1")
-        assert [] == q.all()
-        assert q.count() == 0
-        
-        
-        
+        # TODO: the aliasing of the join in query._join_to has to limit the aliasing
+        # among local_side / remote_side (add local_side as an attribute on PropertyLoader)
+        # also implement this idea in EagerLoader
+        node = sess.query(Node).join('children', aliased=True).filter_by(data='n122').first()
+        assert node.data=='n12'
 
 if __name__ == '__main__':
     testbase.main()

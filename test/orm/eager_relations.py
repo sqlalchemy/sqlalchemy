@@ -477,5 +477,6 @@ class SelfReferentialEagerTest(testbase.ORMTest):
                 Node(data='n13')
             ]) == d
         self.assert_sql_count(testbase.db, go, 1)
+
 if __name__ == '__main__':
     testbase.main()
