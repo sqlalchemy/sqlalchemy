@@ -48,7 +48,7 @@ The `session` represents a "workspace" which can load objects and persist change
 
     {python}
     # select
-    {sql}user = session.query(User).filter_by(user_name='fred').first()
+    {sql}user = session.query(User).filter_by(user_name='fred')[0]
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
@@ -93,12 +93,22 @@ A query which joins across multiple tables may also be used to request multiple 
     {python}
     query = session.query(User, Address)
     
-Once we have a query, we can start loading objects.  The methods `filter()` and `filter_by()` handle narrowing results, and the methods `all()`, `one()`, and `first()` exist to return all, exactly one, or the first result of the total set of results.   Note that all methods are *generative*, meaning that on each call that doesn't return results, you get a **new** `Query` instance.
-
-The `filter_by()` method works with keyword arguments, which are combined together via AND:
+Once we have a query, we can start loading objects.  The Query object, when first created, represents all the instances of its main class.  You can iterate through it directly:
 
     {python}
-    {sql}result = session.query(User).filter_by(name='john', fullname='John Smith').all()
+    {sql}for user in session.query(User):
+        print user.name
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    ORDER BY users.oid
+    {}
+
+and the SQL will be issued at the point where the query is evaluated as a list.  To narrow results, the two main methods are `filter()` and `filter_by()`.  `filter_by()` uses keyword arguments, which each represent criterion which are joined together via 'AND':
+
+    {python}
+    {sql}for user in session.query(User).filter_by(name='john', fullname='John Smith'):
+        print user.name
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
@@ -106,10 +116,11 @@ The `filter_by()` method works with keyword arguments, which are combined togeth
     ORDER BY users.oid
     {'users_user_name': 'john', 'users_fullname': 'John Smith'}
 
-Whereas `filter()` works with constructed SQL expressions, i.e. those described in [sql](rel:sql):
+Alternatively, `filter()` works with constructed SQL expressions, i.e. those described in [sql](rel:sql):
 
     {python}
-    {sql}result = session.query(User).filter(users_table.c.name=='john').all()
+    {sql}for user in session.query(User).filter(users_table.c.name=='john'):
+        print user.name
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
@@ -117,7 +128,64 @@ Whereas `filter()` works with constructed SQL expressions, i.e. those described 
     ORDER BY users.oid
     {'users_user_name': 'john'}
 
-Sometimes, constructing SQL via expressions can be cumbersome.  For quick SQL expression, the `filter()` method can also accomodate straight text:
+Evaluating the query using an array slice returns a new Query which will apply LIMIT and OFFSET clauses when iterated:
+
+    {python}
+    {sql}for u in session.query(User)[1:3]:
+        print u
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users ORDER BY users.oid
+    LIMIT 2 OFFSET 1
+    {}
+
+A single array index adds LIMIT/OFFSET and returns a result immediately:
+
+    {python}
+    {sql}user = session.query(User).filter(user_table.c.name=='john')[2]
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.user_name = :users_user_name 
+    ORDER BY users.oid
+    LIMIT 1 OFFSET 2
+    {'users_user_name': 'john'}
+
+There are also methods to immediately issue the SQL represented by a `Query` without using an iterative context or array index; these methods are `all()`, `one()`, and `first()` which exist to immediately return all, exactly one, or the first result of the total set of results.  `all()` returns a list whereas `one()` and `first()` return a scalar instance.   
+
+    {python}
+    query = session.query(User).filter(users_table.c.name=='john')
+
+    # get all results into a list
+    allusers = query.all()
+
+    # get the first user
+    user = query.first()
+
+    # get exactly one user; raises an exception if not exactly one result is returned
+    user = query.one()
+
+Note that most methods on `Query` are *generative*, in that they return a new `Query` instance that is a modified version of the previous one.  It's only when you evaluate the query in an iterative context, use an array index, or call `all()`, `first()`, or `one()` (as well as some other methods we'll cover later), that the SQL is issued.   Such as, you can issue `filter()` or `filter_by()` as many times as needed, and they are all joined together using `AND`:
+
+    {python}
+    result = session.query(User).filter(users_table.c.user_id>224).filter_by(name='john').
+    {sql}            filter(users.c.fullname=='John Smith').all()
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.user_id>:users_user_id AND users.user_name = :users_user_name 
+    AND users.fullname = :users_fullname
+    ORDER BY users.oid
+    {'users_user_name': 'john', 'users_fullname': 'John Smith', 'users_user_id': 224}
+
+If you need to use other conjunctions besides `AND`, all SQL conjunctions are available explicitly within expressions, such as `and_()` and `or_()`, when using `filter()`:
+
+    {python}
+    result = session.query(User).filter(
+        and_(users_table.c.user_id>224, or_(users_table.c.name=='john', users_table.c.name=='ed'))
+        ).all()
+
+Sometimes, constructing criterion via expressions can be cumbersome.  For quick string-based expression, the `filter()` method can also accomodate straight text:
 
     {python}
     {sql}result = session.query(User).filter("user_id>224").all()
@@ -131,35 +199,13 @@ Sometimes, constructing SQL via expressions can be cumbersome.  For quick SQL ex
 When using text, bind parameters can be specified the same way as in a `text()` clause, using a colon.  To specify the bind parameter values, use the `params()` method:
 
     {python}
-    {sql}result = session.query(User).filter("user_id>:value").params(value=224).all()
+    {sql}result = session.query(User).filter("user_id>:value and user_name=:name").params(value=224, name='jack').all()
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
     WHERE users.user_id>:value
     ORDER BY users.oid
     {'value': 224}
-
-Multiple `filter()` and `filter_by()` expressions may be combined together.  The resulting statement groups them using AND.
-
-    {python}
-    result = session.query(User).filter(users_table.c.user_id>224).filter_by(name='john').
-    {sql}            filter(users.c.fullname=='John Smith').all()
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.user_id>:users_user_id AND users.user_name = :users_user_name 
-    AND users.fullname = :users_fullname
-    ORDER BY users.oid
-    {'users_user_name': 'john', 'users_fullname': 'John Smith', 'users_user_id': 224}
-
-`filter_by()`'s keyword arguments can also take mapped object instances as comparison arguments.  We'll illustrate this later when we talk about object relationships.
-
-Note that all conjunctions are available explicitly, such as `and_()` and `or_()`, when using `filter()`:
-
-    {python}
-    result = session.query(User).filter(
-        and_(users_table.c.user_id>224, or_(users_table.c.name=='john', users_table.c.name=='ed'))
-        ).all()
 
 Its also straightforward to use an entirely string-based statement, using `from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (here illustrated using an asterisk):
 
@@ -189,7 +235,7 @@ Any set of filtered criterion (or no criterion) can be distilled into a count of
     SELECT count(users.id) FROM users WHERE users.user_id>:users_user_id
     {'users_user_id': 224}
     
-Rows are limited and offset using `limit()` and `offset()`:
+To add limit and offset values explicitly at any time, you can use `limit()` and `offset()`:
 
     {python}
     {sql}result = session.query(User).limit(20).offset(5).all()
@@ -202,59 +248,22 @@ Rows are limited and offset using `limit()` and `offset()`:
 And ordering is applied, using `Column` objects and related SQL constructs, with `order_by()`:
 
     {python}
-    {sql}result = session.query(User).order_by(desc(users_table.c.user_name)).all()
+    query = session.query(User).order_by(desc(users_table.c.user_name))
+    {sql}for user in query:
+        print user
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.fullname AS users_fullname, users.password AS users_password 
     FROM users ORDER BY users.user_name DESC
     {}
     
-The `first()` and `one()` methods will also limit rows, and both will return a single object, instead of a list.  In the case of `first()`, rows are limited to just one, and the result is returned as a scalar.  In the case of `one()`, rows are limited to *two*; however, only one is returned.  If two rows are matched, an exception is raised.
-
-    {python}
-    # load the first result
-    user = session.query(User).first()
-    
-    # load exactly *one* result - if more than one result matches, an exception is raised
-    user = session.query(User).filter_by(name='jack').one()
-
-The `Query`, when evaluated as an iterator, executes results immediately, using whatever state has been built up:
-
-    {python}
-    {sql}result = list(session.query(User))
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
-    FROM users ORDER BY users.oid
-    {}
-    
-Array indexes and slices work too, adding the corresponding LIMIT and OFFSET clauses:
-
-    {python}
-    {sql}result = list(session.query(User)[1:3])
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
-    FROM users ORDER BY users.oid
-    LIMIT 2 OFFSET 1
-    {}
-
-A scalar index returns a scalar result immediately:
-
-    {python}
-    {sql}user = session.query(User)[2]
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
-    FROM users ORDER BY users.oid
-    LIMIT 1 OFFSET 2
-    {}
-
 Theres also a way to combine scalar results with objects, using `add_column()`.  This is often used for functions and aggregates.  When `add_column()` (or its cousin `add_entity()`, described later) is used, tuples are returned:
 
     {python}
-    result = session.query(User).add_column(func.max(users_table.c.name)).group_by([c for c in users_table.c]).all()
-    for r in result:
+    for r in session.query(User).add_column(func.max(users_table.c.name)).group_by([c for c in users_table.c]):
         print "user:", r[0]
         print "max name:", r[1]
 
-Later in this chapter, we'll discuss how to configure relations between mapped classes.  Once that's done, we'll discuss how to use table joins in [datamapping_joins](rel:datamapping_joins).
+Later in this chapter, we'll discuss how to configure relations between mapped classes.  Once that's done, we'll discuss how to return multiple objects at once, as well as how to join, in [datamapping_joins](rel:datamapping_joins).
 
 #### Loading by Primary Key {@name=primarykey}
 
@@ -457,18 +466,13 @@ Note that when creating a relation with the `relation()` function, the target ca
 In the previous example, a single address was removed from the `addresses` attribute of a `User` object, resulting in the corresponding database row being updated to have a user_id of `None`.  But now, theres a mailing address with no user_id floating around in the database of no use to anyone.  How can we avoid this ?  This is acheived by using the `cascade` parameter of `relation`:
 
     {python}
-    session.clear()  # clear session
     clear_mappers()  # clear mappers from the previous example
-    
     mapper(Address, addresses_table)
     mapper(User, users_table, properties = {
             'addresses' : relation(Address, cascade="all, delete-orphan")
         }
       )
 
-    # reload the user
-    u = session.query(User).get(u.user_id)
-    
     del u.addresses[1]
     u.addresses.append(Address('27 New Place', 'Houston', 'TX', '34839'))
 
