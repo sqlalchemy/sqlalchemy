@@ -6,13 +6,13 @@ Data Mapping {@name=datamapping}
 
 ### Basic Data Mapping {@name=datamapping}
 
-Data mapping describes the process of defining `Mapper` objects, which associate table metadata with user-defined classes.
+Data mapping describes the process of defining `Mapper` objects, which associate `Table` objects with user-defined classes.
 
-When a `Mapper` is created to associate a `Table` object with a class, all of the columns defined in the `Table` object are associated with the class via property accessors, which add overriding functionality to the normal process of setting and getting object attributes.  These property accessors keep track of changes to object attributes; these changes will be stored to the database when the application "flushes" the current state of objects.  This pattern is called a *Unit of Work* pattern.
+When a `Mapper` is created to associate a `Table` object with a class, all of the columns defined in the `Table` object are associated with the class via property accessors, which add overriding functionality to the normal process of setting and getting object attributes.  These property accessors keep track of changes to object attributes, so that they may be stored to the database when the application "flushes" the current state of objects.  This pattern is called a *Unit of Work* pattern.
 
 ### Synopsis {@name=synopsis}
 
-Starting with a `Table` definition and a minimal class construct, the two are associated with each other via the `mapper()` function [[api](rel:docstrings_sqlalchemy.orm.mapper_Mapper)], which generates an object called a `Mapper`.  SA associates the class and all instances of that class with this particular `Mapper`, which is then stored in a global registry.
+Starting with a `Table` definition and a minimal class construct, the two are associated with each other via the `mapper()` function [[api](rel:docstrings_sqlalchemy.orm.mapper_Mapper)], which generates an object called a `Mapper`.  SA associates the class and all instances of that class with this particular `Mapper`, which is stored in a registry such that SQLAlchemy knows how to find it automatically.
 
     {python}
     from sqlalchemy import *
@@ -67,7 +67,7 @@ The `session` represents a "workspace" which can load objects and persist change
     [{'user_name': 'fred jones', 'user_id': 1}]        
     COMMIT
     
-Things to note from the above include that the loaded `User` object has an attribute named `user_name` on it, which corresponds to the `user_name` column in  `users_table`; this attribute was configured at the class level by the `Mapper`, as part of it's post-initialization process (this process occurs normally when the mapper is first used).  Our modify operation on this attribute caused the object to be marked as "dirty", which was picked up automatically within the subsequent `flush()` process.  The `flush()` is the point at which all changes to objects within the `Session` are persisted to the database, and the `User` object is no longer marked as "dirty" until it is again modified.
+Things to note from the above include that the loaded `User` object has an attribute named `user_name` on it, which corresponds to the `user_name` column in  `users_table`; this attribute was configured at the class level by the `Mapper`, as part of it's post-initialization process (this process occurs normally when the mapper is first used).  Our modify operation on this attribute caused the object to be marked as "dirty", which was picked up automatically within the subsequent `flush()` process.  The `flush()` is the point at which all changes to objects within the `Session` are persisted to the database; afterwards, the `User` object is no longer marked as "dirty" until it is again modified.
 
 ### The Query Object {@name=query}
 
@@ -104,7 +104,7 @@ Once we have a query, we can start loading objects.  The Query object, when firs
     ORDER BY users.oid
     {}
 
-and the SQL will be issued at the point where the query is evaluated as a list.  To narrow results, the two main methods are `filter()` and `filter_by()`.  `filter_by()` uses keyword arguments, which each represent criterion which are joined together via 'AND':
+...and the SQL will be issued at the point where the query is evaluated as a list.  To narrow results, the two main methods are `filter()` and `filter_by()`.  `filter_by()` uses keyword arguments, which translate into equality clauses joined together via 'AND':
 
     {python}
     {sql}for user in session.query(User).filter_by(name='john', fullname='John Smith'):
@@ -116,7 +116,7 @@ and the SQL will be issued at the point where the query is evaluated as a list. 
     ORDER BY users.oid
     {'users_user_name': 'john', 'users_fullname': 'John Smith'}
 
-Alternatively, `filter()` works with constructed SQL expressions, i.e. those described in [sql](rel:sql):
+`filter()`, on the other hand, works with constructed SQL expressions, like those described in [sql](rel:sql):
 
     {python}
     {sql}for user in session.query(User).filter(users_table.c.name=='john'):
@@ -151,7 +151,7 @@ A single array index adds LIMIT/OFFSET and returns a result immediately:
     LIMIT 1 OFFSET 2
     {'users_user_name': 'john'}
 
-There are also methods to immediately issue the SQL represented by a `Query` without using an iterative context or array index; these methods are `all()`, `one()`, and `first()` which exist to immediately return all, exactly one, or the first result of the total set of results.  `all()` returns a list whereas `one()` and `first()` return a scalar instance.   
+There are also methods which will immediately issue the SQL represented by a `Query` without using an iterative context or array index; these methods are `all()`, `one()`, and `first()`.  `all()` returns a list of all instances, `one()` returns exactly one instance as a scalar, and `first()` returns the first instance also as a scalar:
 
     {python}
     query = session.query(User).filter(users_table.c.name=='john')
@@ -165,7 +165,7 @@ There are also methods to immediately issue the SQL represented by a `Query` wit
     # get exactly one user; raises an exception if not exactly one result is returned
     user = query.one()
 
-Note that most methods on `Query` are *generative*, in that they return a new `Query` instance that is a modified version of the previous one.  It's only when you evaluate the query in an iterative context, use an array index, or call `all()`, `first()`, or `one()` (as well as some other methods we'll cover later), that the SQL is issued.   Such as, you can issue `filter()` or `filter_by()` as many times as needed, and they are all joined together using `AND`:
+Note that most methods on `Query` are *generative*, in that they return a new `Query` instance that is a modified version of the previous one.  It's only when you evaluate the query in an iterative context, use an array index, or call `all()`, `first()`, or `one()` (as well as some other methods we'll cover later), that SQL is issued.   For example, you can issue `filter()` or `filter_by()` as many times as needed; the various criteria are joined together using `AND`:
 
     {python}
     result = session.query(User).filter(users_table.c.user_id>224).filter_by(name='john').
@@ -185,7 +185,7 @@ If you need to use other conjunctions besides `AND`, all SQL conjunctions are av
         and_(users_table.c.user_id>224, or_(users_table.c.name=='john', users_table.c.name=='ed'))
         ).all()
 
-Sometimes, constructing criterion via expressions can be cumbersome.  For quick string-based expression, the `filter()` method can also accomodate straight text:
+Sometimes, constructing criterion via expressions can be cumbersome.  For a quick, string-based expression, the `filter()` method can also accomodate straight text:
 
     {python}
     {sql}result = session.query(User).filter("user_id>224").all()
@@ -203,18 +203,18 @@ When using text, bind parameters can be specified the same way as in a `text()` 
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.user_id>:value
+    WHERE users.user_id>:value and user_name=:name
     ORDER BY users.oid
-    {'value': 224}
+    {'value': 224, 'name': 'jack'}
 
-Its also straightforward to use an entirely string-based statement, using `from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (here illustrated using an asterisk):
+It's also straightforward to use an entirely string-based statement, using `from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (below illustrated using an asterisk):
 
     {python}
     {sql}result = session.query(User).from_statement("SELECT * FROM users").all()
     SELECT * FROM users
     {}
 
-`from_statement()` can also accomodate `select()` constructs:
+`from_statement()` can also accomodate full `select()` constructs:
 
     {python}
     result = session.query(User).from_statement(
@@ -228,7 +228,7 @@ Its also straightforward to use an entirely string-based statement, using `from_
     ORDER BY users.oid
     {'users_user_name': 'e'}
     
-Any set of filtered criterion (or no criterion) can be distilled into a count of rows using `count()`:
+The current criterion represented by a `Query` can be distilled into a count of rows using `count()`.  This is another function which executes SQL immediately, returning an integer result:
 
     {python}
     {sql}num = session.query(Users).filter(users_table.c.user_id>224).count()
@@ -245,7 +245,7 @@ To add limit and offset values explicitly at any time, you can use `limit()` and
     LIMIT 20 OFFSET 5
     {}
 
-And ordering is applied, using `Column` objects and related SQL constructs, with `order_by()`:
+Ordering is applied, using `Column` objects and related SQL constructs, with `order_by()`:
 
     {python}
     query = session.query(User).order_by(desc(users_table.c.user_name))
@@ -256,7 +256,7 @@ And ordering is applied, using `Column` objects and related SQL constructs, with
     FROM users ORDER BY users.user_name DESC
     {}
     
-Theres also a way to combine scalar results with objects, using `add_column()`.  This is often used for functions and aggregates.  When `add_column()` (or its cousin `add_entity()`, described later) is used, tuples are returned:
+There's also a way to combine scalar results with objects, using `add_column()`.  This is often used for functions and aggregates.  When `add_column()` (or its cousin `add_entity()`, described later) is used, tuples are returned:
 
     {python}
     for r in session.query(User).add_column(func.max(users_table.c.name)).group_by([c for c in users_table.c]):
