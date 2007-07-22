@@ -134,7 +134,7 @@ class testcase(testbase.PersistTest):
         objectstore.flush()
         objectstore.clear()
         
-        results = Person.select()
+        results = Person.query.select()
         
         self.assertEquals(len(results), 1)
         
@@ -149,24 +149,24 @@ class testcase(testbase.PersistTest):
         objectstore.flush()
         objectstore.clear()
         
-        person = Person.select()[0]
+        person = Person.query.select()[0]
         person.gender = 'F'
         objectstore.flush()
         objectstore.clear()
         self.assertEquals(person.row_version, 2)
 
-        person = Person.select()[0]
+        person = Person.query.select()[0]
         person.gender = 'M'
         objectstore.flush()
         objectstore.clear()
         self.assertEquals(person.row_version, 3)
 
         #TODO: check that a concurrent modification raises exception
-        p1 = Person.select()[0]
+        p1 = Person.query.select()[0]
         s1 = objectstore.session
         s2 = create_session()
         objectstore.context.current = s2
-        p2 = Person.select()[0]
+        p2 = Person.query.select()[0]
         p1.first_name = "jack"
         p2.first_name = "ed"
         objectstore.flush()
@@ -186,14 +186,14 @@ class testcase(testbase.PersistTest):
         objectstore.flush()
         objectstore.clear()
         
-        results = Person.select()
+        results = Person.query.select()
         self.assertEquals(len(results), 1)
         
         results[0].delete()
         objectstore.flush()
         objectstore.clear()
         
-        results = Person.select()
+        results = Person.query.select()
         self.assertEquals(len(results), 0)
     
     
@@ -205,7 +205,7 @@ class testcase(testbase.PersistTest):
         objectstore.clear()
         
         # select and make sure we get back two results
-        people = Person.select()
+        people = Person.query.select()
         self.assertEquals(len(people), 2)
                 
         # make sure that our backwards relationships work
@@ -213,7 +213,7 @@ class testcase(testbase.PersistTest):
         self.assertEquals(people[1].addresses[0].person.id, p2.id)
         
         # try a more complex select
-        results = Person.select(
+        results = Person.query.select(
             or_(
                 and_(
                     Address.c.person_id == Person.c.id,
@@ -254,12 +254,12 @@ class testcase(testbase.PersistTest):
         objectstore.flush()
         objectstore.clear()
         
-        results = Person.join('addresses').select(
+        results = Person.query.join('addresses').select(
             Address.c.postal_code.like('30075') 
         )
         self.assertEquals(len(results), 1)
 
-        self.assertEquals(Person.count(), 2)
+        self.assertEquals(Person.query.count(), 2)
 
 class testmanytomany(testbase.PersistTest):
      def setUpAll(self):
@@ -299,8 +299,8 @@ class testmanytomany(testbase.PersistTest):
          objectstore.flush()
          objectstore.clear()
 
-         foo1 = foo.get_by(name='foo1')
-         baz1 = baz.get_by(name='baz1')
+         foo1 = foo.query.get_by(name='foo1')
+         baz1 = baz.query.get_by(name='baz1')
          
          # Just checking ...
          assert (foo1.name == 'foo1')
@@ -341,15 +341,15 @@ class testselfreferential(testbase.PersistTest):
         objectstore.flush()
         objectstore.clear()
         
-        t = TreeNode.get_by(name='node1')
+        t = TreeNode.query.get_by(name='node1')
         assert (t.name == 'node1')
         assert (t.children[0].name == 'node2')
         assert (t.children[1].name == 'node3')
         assert (t.children[1].parent is t)
 
         objectstore.clear()
-        t = TreeNode.get_by(name='node3')
-        assert (t.parent is TreeNode.get_by(name='node1'))
+        t = TreeNode.query.get_by(name='node3')
+        assert (t.parent is TreeNode.query.get_by(name='node1'))
         
 if __name__ == '__main__':
     testbase.main()

@@ -3,12 +3,10 @@ instruments SQLAlchemy dialect/engine to track SQL statements for assertion purp
 provides base test classes for common test scenarios."""
 
 import sys
+import coverage
 
 import os, unittest, StringIO, re, ConfigParser, optparse
 sys.path.insert(0, os.path.join(os.getcwd(), 'lib'))
-import sqlalchemy
-from sqlalchemy import sql, schema, engine, pool, MetaData
-from sqlalchemy.orm import clear_mappers
 
 db = None
 metadata = None
@@ -125,7 +123,12 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
     
     global with_coverage
     with_coverage = options.coverage
+    if with_coverage:
+        coverage.erase()
+        coverage.start()
 
+    from sqlalchemy import engine, schema
+    
     if options.serverside:
         opts['server_side_cursors'] = True
     
@@ -163,7 +166,7 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
     if options.log_debug is not None:
         for elem in options.log_debug:
             logging.getLogger(elem).setLevel(logging.DEBUG)
-    metadata = sqlalchemy.MetaData(db)
+    metadata = schema.MetaData(db)
     
 def unsupported(*dbs):
     """a decorator that marks a test as unsupported by one or more database implementations"""
@@ -465,36 +468,27 @@ unittest.TestLoader.suiteClass = TTestSuite
 
 parse_argv()
 
+import sqlalchemy
+from sqlalchemy import schema, MetaData, sql
+from sqlalchemy.orm import clear_mappers
                     
 def runTests(suite):
     sys.stdout = Logger()    
     runner = unittest.TextTestRunner(verbosity = quiet and 1 or 2)
-    if with_coverage:
-        return cover(lambda:runner.run(suite))
-    else:
+    try:
         return runner.run(suite)
+    finally:
+        if with_coverage:
+            global echo
+            echo=True
+            coverage.stop()
+            coverage.report(list(covered_files()), show_missing=False)
 
 def covered_files():
     for rec in os.walk(os.path.dirname(sqlalchemy.__file__)):                          
         for x in rec[2]:
             if x.endswith('.py'):
                 yield os.path.join(rec[0], x)
-
-def cover(callable_):
-    import coverage
-    coverage_client = coverage.the_coverage
-    coverage_client.get_ready()
-    coverage_client.exclude('#pragma[: ]+[nN][oO] [cC][oO][vV][eE][rR]')
-    coverage_client.erase()
-    coverage_client.start()
-    try:
-        return callable_()
-    finally:
-        global echo
-        echo=True
-        coverage_client.stop()
-        coverage_client.save()
-        coverage_client.report(list(covered_files()), show_missing=False, ignore_errors=False)
 
 def main(suite=None):
     
@@ -506,6 +500,5 @@ def main(suite=None):
 
     result = runTests(suite)
     sys.exit(not result.wasSuccessful())
-
 
 
