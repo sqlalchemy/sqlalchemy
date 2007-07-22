@@ -884,7 +884,7 @@ class ClauseVisitor(object):
                     meth = getattr(v, "enter_%s" % obj.__visit_name__, None)
                     if meth:
                         meth(obj)
-            
+
             if clone:
                 obj._copy_internals()
             for c in obj.get_children(**self.__traverse_options__):
@@ -2052,17 +2052,24 @@ class _CalculatedClause(ColumnElement):
         self.type = sqltypes.to_instance(kwargs.get('type_', None))
         self._bind = kwargs.get('bind', None)
         self.group = kwargs.pop('group', True)
-        self.clauses = ClauseList(operator=kwargs.get('operator', None), group_contents=kwargs.get('group_contents', True), *clauses)
+        clauses = ClauseList(operator=kwargs.get('operator', None), group_contents=kwargs.get('group_contents', True), *clauses)
         if self.group:
-            self.clause_expr = self.clauses.self_group()
+            self.clause_expr = clauses.self_group()
         else:
-            self.clause_expr = self.clauses
+            self.clause_expr = clauses
             
     key = property(lambda self:self.name or "_calc_")
 
     def _copy_internals(self):
         self.clause_expr = self.clause_expr._clone()
-
+    
+    def clauses(self):
+        if isinstance(self.clause_expr, _Grouping):
+            return self.clause_expr.elem
+        else:
+            return self.clause_expr
+    clauses = property(clauses)
+        
     def get_children(self, **kwargs):
         return self.clause_expr,
         
@@ -2101,6 +2108,7 @@ class _Function(_CalculatedClause, FromClause):
     key = property(lambda self:self.name)
 
     def _copy_internals(self):
+        _CalculatedClause._copy_internals(self)
         self._clone_from_clause()
 
     def get_children(self, **kwargs):
@@ -2507,8 +2515,10 @@ class _Grouping(ColumnElement):
     columns = c = property(lambda s:s.elem.columns)
     
     def _copy_internals(self):
+        print "GROPING COPY INTERNALS"
         self.elem = self.elem._clone()
-
+        print "NEW ID", id(self.elem)
+        
     def get_children(self, **kwargs):
         return self.elem,
         
@@ -2970,7 +2980,10 @@ class Select(_SelectBaseMixin, FromClause):
             corr = self.__correlate
             if correlation_state is not None:
                 corr = correlation_state[self].get('correlate', util.Set()).union(corr)
-            return froms.difference(corr)
+            f = froms.difference(corr)
+            if len(f) == 0:
+                raise exceptions.InvalidRequestError("Select statement '%s' is overcorrelated; returned no 'from' clauses" % str(self.__dont_correlate()))
+            return f
         else:
             return froms
     
@@ -3128,9 +3141,18 @@ class Select(_SelectBaseMixin, FromClause):
         s.append_from(fromclause)
         return s
     
+    def __dont_correlate(self):
+        s = self._generate()
+        s._should_correlate = False
+        return s
+        
     def correlate(self, fromclause):
         s = self._generate()
-        s.append_correlation(fromclause)
+        s._should_correlate=False
+        if fromclause is None:
+            s.__correlate = util.Set()
+        else:
+            s.append_correlation(fromclause)
         return s
     
     def append_correlation(self, fromclause):

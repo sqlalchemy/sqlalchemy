@@ -83,7 +83,7 @@ class TableFinder(TableCollection, sql.NoColumnVisitor):
 
     def visit_column(self, column):
         if self.check_columns:
-            self.traverse(column.table)
+            self.tables.append(column.table)
 
 class ColumnFinder(sql.ClauseVisitor):
     def __init__(self):
@@ -147,6 +147,7 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
     def visit_clauselist(self, clist):
         for i in range(0, len(clist.clauses)):
             n = self.convert_element(clist.clauses[i])
+            print "CONVERTEING CLAUSELIST W ID", id(clist)
             if n is not None:
                 clist.clauses[i] = n
     
@@ -173,6 +174,7 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
 
         col = []
         for elem in select._raw_columns:
+            print "RAW COLUMN", elem
             n = self.convert_element(elem)
             if n is None:
                 col.append(elem)
@@ -232,40 +234,9 @@ class ClauseAdapter(AbstractClauseProcessor):
                 newcol = self.selectable.corresponding_column(equiv, raiseerr=False, require_embedded=True, keys_ok=False)
                 if newcol:
                     return newcol
+        #if newcol is None:
+        #    self.traverse(col)
+        #    return col
         return newcol
 
 
-def create_row_adapter(alias, table):
-    """given a sql.Alias and a target selectable, return a callable which, 
-    when passed a RowProxy, will return a new dict-like object
-    that translates Column objects to that of the Alias before calling upon the row.
-    
-    This allows a regular Table to be used to target columns in a row that was in reality generated from an alias
-    of that table, in such a way that the row can be passed to logic which knows nothing about the aliased form
-    of the table.
-    """
-    
-    if alias is None:
-        return lambda row:row
-        
-    class AliasedRowAdapter(object):
-        def __init__(self, row):
-            self.row = row
-        def __contains__(self, key):
-            return key in map or key in self.row
-        def has_key(self, key):
-            return key in self
-        def __getitem__(self, key):
-            if key in map:
-                key = map[key]
-            return self.row[key]
-        def keys(self):
-            return map.keys()
-    map = {}        
-    for c in alias.c:
-        parent = table.corresponding_column(c)
-        map[parent] = c
-        map[parent._label] = c
-        map[parent.name] = c
-    AliasedRowAdapter.map = map
-    return AliasedRowAdapter

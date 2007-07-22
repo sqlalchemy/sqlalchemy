@@ -313,50 +313,6 @@ class MapperTest(MapperSuperTest):
         assert l[0].concat == l[0].user_id * 2 == 14
         assert l[1].concat == l[1].user_id * 2 == 16
 
-    def testexternalcolumns(self):
-        """test creating mappings that reference external columns or functions"""
-
-        f = (users.c.user_id *2).label('concat')
-        try:
-            mapper(User, users, properties={
-                'concat': f,
-            })
-            class_mapper(User)
-        except exceptions.ArgumentError, e:
-            assert str(e) == "Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(f)
-        clear_mappers()
-        
-        mapper(User, users, properties={
-            'concat': column_property(f),
-            'count': column_property(select([func.count(addresses.c.address_id)], users.c.user_id==addresses.c.user_id, scalar=True).label('count'))
-        })
-
-        mapper(Address, addresses, properties={
-            'user':relation(User, lazy=False)
-        })    
-        
-        sess = create_session()
-        l = sess.query(User).select()
-        for u in l:
-            print "User", u.user_id, u.user_name, u.concat, u.count
-        assert l[0].concat == l[0].user_id * 2 == 14
-        assert l[1].concat == l[1].user_id * 2 == 16
-        
-        for option in (None, eagerload('user')):
-            for x in range(0, 2):
-                sess.clear()
-                l = sess.query(Address)
-                if option:
-                    l = l.options(option)
-                l = l.all()
-                for a in l:
-                    print "User", a.user.user_id, a.user.user_name, a.user.concat, a.user.count
-                assert l[0].user.concat == l[0].user.user_id * 2 == 14
-                assert l[1].user.concat == l[1].user.user_id * 2 == 16
-                assert l[0].user.count == 1
-                assert l[1].user.count == 3
-            
-        
     @testbase.unsupported('firebird') 
     def testcount(self):
         """test the count function on Query.

@@ -258,13 +258,13 @@ class SelfRefTest(ORMTest):
             sess.query(T).join('children').select_by(id=7)
             assert False
         except exceptions.InvalidRequestError, e:
-            assert str(e) == "Self-referential query on 'T.children (T)' property requries create_aliases=True argument.", str(e)
+            assert str(e) == "Self-referential query on 'T.children (T)' property requires create_aliases=True argument.", str(e)
 
         try:
             sess.query(T).join(['children']).select_by(id=7)
             assert False
         except exceptions.InvalidRequestError, e:
-            assert str(e) == "Self-referential query on 'T.children (T)' property requries create_aliases=True argument.", str(e)
+            assert str(e) == "Self-referential query on 'T.children (T)' property requires create_aliases=True argument.", str(e)
         
             
             

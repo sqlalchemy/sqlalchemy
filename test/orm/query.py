@@ -65,7 +65,7 @@ class QueryTest(testbase.ORMTest):
         })
         mapper(Address, addresses)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items),  #m2m
+            'items':relation(Item, secondary=order_items, order_by=items.c.id),  #m2m
             'address':relation(Address),  # m2o
         })
         mapper(Item, items, properties={
@@ -378,21 +378,23 @@ class ParentTest(QueryTest):
 class JoinTest(QueryTest):
 
     def test_overlapping_paths(self):
-        # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
-        result = create_session().query(User).join(['orders', 'items']).filter_by(id=3).join(['orders','address']).filter_by(id=1).all()
-        assert [User(id=7, name='jack')] == result
+        for aliased in (True,False):
+            # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
+            result = create_session().query(User).join(['orders', 'items'], aliased=aliased).filter_by(id=3).join(['orders','address'], aliased=aliased).filter_by(id=1).all()
+            assert [User(id=7, name='jack')] == result
 
     def test_overlapping_paths_outerjoin(self):
         result = create_session().query(User).outerjoin(['orders', 'items']).filter_by(id=3).outerjoin(['orders','address']).filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
 
     def test_reset_joinpoint(self):
-        # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
-        result = create_session().query(User).join(['orders', 'items']).filter_by(id=3).reset_joinpoint().join(['orders','address']).filter_by(id=1).all()
-        assert [User(id=7, name='jack')] == result
+        for aliased in (True, False):
+            # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
+            result = create_session().query(User).join(['orders', 'items'], aliased=aliased).filter_by(id=3).reset_joinpoint().join(['orders','address'], aliased=aliased).filter_by(id=1).all()
+            assert [User(id=7, name='jack')] == result
 
-        result = create_session().query(User).outerjoin(['orders', 'items']).filter_by(id=3).reset_joinpoint().outerjoin(['orders','address']).filter_by(id=1).all()
-        assert [User(id=7, name='jack')] == result
+            result = create_session().query(User).outerjoin(['orders', 'items'], aliased=aliased).filter_by(id=3).reset_joinpoint().outerjoin(['orders','address'], aliased=aliased).filter_by(id=1).all()
+            assert [User(id=7, name='jack')] == result
     
     def test_overlap_with_aliases(self):
         oalias = orders.alias('oalias')
@@ -428,6 +430,9 @@ class JoinTest(QueryTest):
         q = sess.query(User).join('orders').filter(Order.description=="order 3").join(['orders', 'items']).filter(Order.description=="item 1")
         assert [] == q.all()
         assert q.count() == 0
+        
+        q = sess.query(User).join('orders', aliased=True).filter(Order.items.any(Item.description=='item 4'))
+        assert [User(id=7)] == q.all()
 
     def test_aliased_add_entity(self):
         """test the usage of aliased joins with add_entity()"""
@@ -445,11 +450,17 @@ class JoinTest(QueryTest):
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Query has no alias identified by 'fakeid'"
-            
+
         q = q.add_entity(Order, id='order1').add_entity(Item, id='item1')
         assert q.count() == 1
         assert [(User(id=7), Order(description='order 3'), Item(description='item 1'))] == q.all()
-        
+
+        q = sess.query(User).add_entity(Order).join('orders', aliased=True).filter(Order.description=="order 3").join('orders', aliased=True).filter(Order.description=='order 4')
+        try:
+            q.compile()
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Ambiguous join for entity 'Mapper|Order|orders'; specify id=<someid> to query.join()/query.add_entity()"
 
 class SynonymTest(QueryTest):
     keep_mappers = True
@@ -579,20 +590,21 @@ class InstancesTest(QueryTest):
         l = q.instances(selectquery.execute(), Address)
         assert l == expected
 
-        q = sess.query(User)
-        q = q.add_entity(Address).outerjoin('addresses')
-        l = q.all()
-        assert l == expected
+        for aliased in (False, True):
+            q = sess.query(User)
+            q = q.add_entity(Address).outerjoin('addresses', aliased=aliased)
+            l = q.all()
+            assert l == expected
 
-        q = sess.query(User).add_entity(Address)
-        l = q.join('addresses').filter_by(email_address='ed@bettyboop.com').all()
-        assert l == [(user8, address3)]
+            q = sess.query(User).add_entity(Address)
+            l = q.join('addresses', aliased=aliased).filter_by(email_address='ed@bettyboop.com').all()
+            assert l == [(user8, address3)]
         
-        q = sess.query(User, Address).join('addresses').filter_by(email_address='ed@bettyboop.com')
-        assert q.all() == [(user8, address3)]
+            q = sess.query(User, Address).join('addresses', aliased=aliased).filter_by(email_address='ed@bettyboop.com')
+            assert q.all() == [(user8, address3)]
 
-        q = sess.query(User, Address).join('addresses').options(eagerload('addresses')).filter_by(email_address='ed@bettyboop.com')
-        assert q.all() == [(user8, address3)]
+            q = sess.query(User, Address).join('addresses', aliased=aliased).options(eagerload('addresses')).filter_by(email_address='ed@bettyboop.com')
+            assert q.all() == [(user8, address3)]
 
     def test_aliased_multi_mappers(self):
         sess = create_session()
@@ -619,6 +631,7 @@ class InstancesTest(QueryTest):
         assert l == [(user8, address3)]
         
     def test_multi_columns(self):
+        """test aliased/nonalised joins with the usage of add_column()"""
         sess = create_session()
         (user7, user8, user9, user10) = sess.query(User).all()
         expected = [(user7, 1),
@@ -626,11 +639,12 @@ class InstancesTest(QueryTest):
             (user9, 1),
             (user10, 0)
             ]
-            
-        q = sess.query(User)
-        q = q.group_by([c for c in users.c]).order_by(User.id).outerjoin('addresses').add_column(func.count(addresses.c.id).label('count'))
-        l = q.all()
-        assert l == expected
+        
+        for aliased in (False, True):
+            q = sess.query(User)
+            q = q.group_by([c for c in users.c]).order_by(User.id).outerjoin('addresses', aliased=aliased).add_column(func.count(addresses.c.id).label('count'))
+            l = q.all()
+            assert l == expected
 
         s = select([users, func.count(addresses.c.id).label('count')]).select_from(users.outerjoin(addresses)).group_by(*[c for c in users.c]).order_by(User.id)
         q = sess.query(User)
@@ -646,16 +660,26 @@ class InstancesTest(QueryTest):
             (user9, 1, "Name:fred"),
             (user10, 0, "Name:chuck")]
 
+        # test with a straight statement
         s = select([users, func.count(addresses.c.id).label('count'), ("Name:" + users.c.name).label('concat')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.id])
         q = create_session().query(User)
         l = q.add_column("count").add_column("concat").from_statement(s).all()
         assert l == expected
         
+        # test with select_from()
         q = create_session().query(User).add_column(func.count(addresses.c.id))\
             .add_column(("Name:" + users.c.name)).select_from(users.outerjoin(addresses))\
             .group_by([c for c in users.c]).order_by(users.c.id)
             
         assert q.all() == expected
+
+        # test with outerjoin() both aliased and non
+        for aliased in (False, True):
+            q = create_session().query(User).add_column(func.count(addresses.c.id))\
+                .add_column(("Name:" + users.c.name)).outerjoin('addresses', aliased=aliased)\
+                .group_by([c for c in users.c]).order_by(users.c.id)
+            
+            assert q.all() == expected
 
 class CustomJoinTest(QueryTest):
     keep_mappers = False
@@ -667,13 +691,13 @@ class CustomJoinTest(QueryTest):
         """test aliasing of joins with a custom join condition"""
         mapper(Address, addresses)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, lazy=False, order_by=items.c.id),
+            'items':relation(Item, secondary=order_items, lazy=True, order_by=items.c.id),
         })
         mapper(Item, items)
         mapper(User, users, properties = dict(
-            addresses = relation(Address, lazy=False),
-            open_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 1, users.c.id==orders.c.user_id), lazy=False),
-            closed_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy=False)
+            addresses = relation(Address, lazy=True),
+            open_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 1, users.c.id==orders.c.user_id), lazy=True),
+            closed_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy=True)
         ))
         q = create_session().query(User)
 
@@ -715,6 +739,66 @@ class SelfReferentialJoinTest(testbase.ORMTest):
 
         node = sess.query(Node).join(['children', 'children'], aliased=True).filter_by(data='n122').first()
         assert node.data=='n1'
+
+class ExternalColumnsTest(QueryTest):
+    keep_mappers = False
+
+    def setup_mappers(self):
+        pass
+
+    def test_external_columns(self):
+        """test querying mappings that reference external columns or selectables."""
+
+        f = (users.c.id *2).label('concat')
+        try:
+            mapper(User, users, properties={
+                'concat': f,
+            })
+            class_mapper(User)
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(f)
+        clear_mappers()
+
+        mapper(User, users, properties={
+            'concat': column_property(f),
+            'count': column_property(select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id, scalar=True).correlate(users).label('count'))
+        })
+
+        mapper(Address, addresses, properties={
+            'user':relation(User, lazy=True)
+        })    
+
+        sess = create_session()
+        l = sess.query(User).select()
+        assert [
+            User(id=7, concat=14, count=1),
+            User(id=8, concat=16, count=3),
+            User(id=9, concat=18, count=1),
+            User(id=10, concat=20, count=0),
+        ] == l
+
+        address_result = [
+            Address(id=1, user=User(id=7, concat=14, count=1)),
+            Address(id=2, user=User(id=8, concat=16, count=3)),
+            Address(id=3, user=User(id=8, concat=16, count=3)),
+            Address(id=4, user=User(id=8, concat=16, count=3)),
+            Address(id=5, user=User(id=9, concat=18, count=1))
+        ]
+        
+        assert address_result == sess.query(Address).all()
+        
+        # run the eager version twice to test caching of aliased clauses
+        for x in range(2):
+            sess.clear()
+            def go():
+                assert address_result == sess.query(Address).options(eagerload('user')).all()
+            self.assert_sql_count(testbase.db, go, 1)
+
+        tuple_address_result = [(address, address.user) for address in address_result]
+        
+        tuple_address_result == sess.query(Address).join('user').add_entity(User).all()
+
+        assert tuple_address_result == sess.query(Address).join('user', aliased=True, id='ualias').add_entity(User, id='ualias').all()
 
 if __name__ == '__main__':
     testbase.main()

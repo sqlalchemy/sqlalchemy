@@ -395,7 +395,7 @@ class RelationTest4(testbase.ORMTest):
         assert str(usingProperty) == "Engineer E4, status X"
 
         session.clear()
-        
+        print "-----------------------------------------------------------------"
         # and now for the lightning round, eager !
         car1 = session.query(Car).options(eagerload('employee')).get(car1.car_id)
         assert str(car1.employee) == "Engineer E4, status X"

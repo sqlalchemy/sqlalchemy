@@ -20,12 +20,10 @@ class ColumnLoader(LoaderStrategy):
         self._should_log_debug = logging.is_debug_enabled(self.logger)
         self.is_composite = hasattr(self.parent_property, 'composite_class')
         
-    def setup_query(self, context, eagertable=None, parentclauses=None, **kwargs):
+    def setup_query(self, context, parentclauses=None, **kwargs):
         for c in self.columns:
             if parentclauses is not None:
                 context.statement.append_column(parentclauses.aliased_column(c))
-            elif eagertable is not None:
-                context.statement.append_column(eagertable.corresponding_column(c))
             else:
                 context.statement.append_column(c)
         
@@ -446,101 +444,11 @@ class EagerLoader(AbstractRelationLoader):
 
         self.clauses = {}
         self.join_depth = self.parent_property.join_depth
-        
-    class AliasedClauses(object):
-        """Defines a set of join conditions and table aliases which
-        are aliased on a randomly-generated alias name, corresponding
-        to the connection of an optional parent AliasedClauses object
-        and a target mapper.
-        
-        EagerLoader has a distinct AliasedClauses object per parent
-        AliasedClauses object, so that all paths from one mapper to
-        another across a chain of eagerloaders generates a distinct
-        chain of joins.  The AliasedClauses objects are generated and
-        cached on an as-needed basis.
-        
-        E.g.::
-        
-            mapper A -->
-                (EagerLoader 'items') --> 
-                    mapper B --> 
-                        (EagerLoader 'keywords') --> 
-                            mapper C
-            
-        """
-        
-        def __init__(self, eagerloader, parentclauses=None):
-            self.parent = eagerloader
-            self.target = eagerloader.select_table
-            self.eagertarget = eagerloader.select_table.alias(None)
-            self.extra_cols = {}
-            if parentclauses is not None:
-                self.path = parentclauses.path + (self.parent.parent, self.parent.key)
-            else:
-                self.path = (self.parent.parent, self.parent.key)
 
-            if eagerloader.secondary:
-                self.eagersecondary = eagerloader.secondary.alias(None)
-                if parentclauses is not None:
-                    aliasizer = sql_util.ClauseAdapter(self.eagertarget).\
-                            chain(sql_util.ClauseAdapter(self.eagersecondary)).\
-                            chain(sql_util.ClauseAdapter(parentclauses.eagertarget))
-                else:
-                    aliasizer = sql_util.ClauseAdapter(self.eagertarget).\
-                        chain(sql_util.ClauseAdapter(self.eagersecondary))
-                self.eagersecondaryjoin = eagerloader.polymorphic_secondaryjoin
-                self.eagersecondaryjoin = aliasizer.traverse(self.eagersecondaryjoin, clone=True)
-                self.eagerprimary = eagerloader.polymorphic_primaryjoin
-                self.eagerprimary = aliasizer.traverse(self.eagerprimary, clone=True)
-            else:
-                self.eagerprimary = eagerloader.polymorphic_primaryjoin
-                
-                if parentclauses is not None: 
-                    aliasizer = sql_util.ClauseAdapter(self.eagertarget, exclude=eagerloader.parent_property.local_side)
-                    aliasizer.chain(sql_util.ClauseAdapter(parentclauses.eagertarget, exclude=eagerloader.parent_property.remote_side))
-                else:
-                    aliasizer = sql_util.ClauseAdapter(self.eagertarget, exclude=eagerloader.parent_property.local_side)
-                self.eagerprimary = aliasizer.traverse(self.eagerprimary, clone=True)
-
-            if eagerloader.order_by:
-                self.eager_order_by = sql_util.ClauseAdapter(self.eagertarget).copy_and_process(util.to_list(eagerloader.order_by))
-            else:
-                self.eager_order_by = None
-
-            self._row_decorator = sql_util.create_row_adapter(self.eagertarget, self.target)
-                
-        def __str__(self):
-            return "->".join([str(s) for s in self.path])
-            
-        def aliased_column(self, column):
-            """return the aliased version of the given column, creating a new label for it if not already
-            present in this AliasedClauses eagertable."""
-
-            conv = self.eagertarget.corresponding_column(column, raiseerr=False)
-            if conv:
-                return conv
-
-            if column in self.extra_cols:
-                return self.extra_cols[column]
-            
-            aliased_column = column
-            # for column-level subqueries, swap out its selectable with our
-            # eager version as appropriate, and manually build the 
-            # "correlation" list of the subquery.  
-            class ModifySubquery(sql.ClauseVisitor):
-                def visit_select(s, select):
-                    select._should_correlate = False
-                    select.append_correlation(self.eagertarget)
-            aliased_column = sql_util.ClauseAdapter(self.eagertarget).chain(ModifySubquery()).traverse(aliased_column, clone=True)
-            aliased_column = aliased_column.label(None)
-            self._row_decorator.map[column] = aliased_column
-            self.extra_cols[column] = aliased_column
-            return aliased_column
-            
     def init_class_attribute(self):
         self.parent_property._get_strategy(LazyLoader).init_class_attribute()
         
-    def setup_query(self, context, eagertable=None, parentclauses=None, parentmapper=None, **kwargs):
+    def setup_query(self, context, parentclauses=None, parentmapper=None, **kwargs):
         """Add a left outer join to the statement thats being constructed."""
         
         # build a path as we setup the query.  the format of this path
@@ -592,20 +500,20 @@ class EagerLoader(AbstractRelationLoader):
         try:
             clauses = self.clauses[path]
         except KeyError:
-            clauses = EagerLoader.AliasedClauses(self, parentclauses)
+            clauses = mapperutil.PropertyAliasedClauses(self.parent_property, self.parent_property.polymorphic_primaryjoin, self.parent_property.polymorphic_secondaryjoin, parentclauses)
             self.clauses[path] = clauses
         
         if self.secondaryjoin is not None:
-            statement._outerjoin = sql.outerjoin(towrap, clauses.eagersecondary, clauses.eagerprimary).outerjoin(clauses.eagertarget, clauses.eagersecondaryjoin)
+            statement._outerjoin = sql.outerjoin(towrap, clauses.secondary, clauses.primaryjoin).outerjoin(clauses.alias, clauses.secondaryjoin)
             if self.order_by is False and self.secondary.default_order_by() is not None:
-                statement.append_order_by(*clauses.eagersecondary.default_order_by())
+                statement.append_order_by(*clauses.secondary.default_order_by())
         else:
-            statement._outerjoin = towrap.outerjoin(clauses.eagertarget, clauses.eagerprimary)
-            if self.order_by is False and clauses.eagertarget.default_order_by() is not None:
-                statement.append_order_by(*clauses.eagertarget.default_order_by())
+            statement._outerjoin = towrap.outerjoin(clauses.alias, clauses.primaryjoin)
+            if self.order_by is False and clauses.alias.default_order_by() is not None:
+                statement.append_order_by(*clauses.alias.default_order_by())
 
-        if clauses.eager_order_by:
-            statement.append_order_by(*util.to_list(clauses.eager_order_by))
+        if clauses.order_by:
+            statement.append_order_by(*util.to_list(clauses.order_by))
         
         statement.append_from(statement._outerjoin)
 
@@ -633,7 +541,7 @@ class EagerLoader(AbstractRelationLoader):
             try:
                 # decorate the row according to the stored AliasedClauses for this eager load
                 clauses = self.clauses[path]
-                decorator = clauses._row_decorator
+                decorator = clauses.row_decorator
             except KeyError, k:
                 # no stored AliasedClauses: eager loading was not set up in the query and
                 # AliasedClauses never got initialized
