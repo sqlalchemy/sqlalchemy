@@ -169,6 +169,9 @@
   - better quoting of identifiers when manipulating schemas
   - standardized the behavior for table reflection where types can't be located;
     NullType is substituted instead, warning is raised.
+- engines
+  - Connections gain a .properties collection, with contents scoped to the
+    lifetime of the underlying DBAPI connection
 - extensions
   - proxyengine is temporarily removed, pending an actually working
     replacement.

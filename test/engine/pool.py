@@ -351,6 +351,35 @@ class PoolTest(PersistTest):
                     c2 = None
                     c1 = None
                 self.assert_(p.checkedout() == 0)
+
+    def test_properties(self):
+        dbapi = MockDBAPI()
+        p = pool.QueuePool(creator=lambda: dbapi.connect('foo.db'),
+                           pool_size=1, max_overflow=0)
+
+        c = p.connect()
+        self.assert_(not c.properties)
+        self.assert_(c.properties is c._connection_record.properties)
+
+        c.properties['foo'] = 'bar'
+        c.close()
+        del c
+
+        c = p.connect()
+        self.assert_('foo' in c.properties)
+
+        c.invalidate()
+        c = p.connect()
+        self.assert_('foo' not in c.properties)
+
+        c.properties['foo2'] = 'bar2'
+        c.detach()
+        self.assert_('foo2' in c.properties)
+
+        c2 = p.connect()
+        self.assert_(c.connection is not c2.connection)
+        self.assert_(not c2.properties)
+        self.assert_('foo2' in c.properties)
             
     def tearDown(self):
        pool.clear_managers()

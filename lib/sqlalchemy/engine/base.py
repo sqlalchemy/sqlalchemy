@@ -518,6 +518,8 @@ class Connection(Connectable):
     dialect = property(lambda s:s.__engine.dialect, doc="Dialect used by this Connection.")
     connection = property(_get_connection, doc="The underlying DBAPI connection managed by this Connection.")
     should_close_with_result = property(lambda s:s.__close_with_result, doc="Indicates if this Connection should be closed when a corresponding ResultProxy is closed; this is essentially an auto-release mode.")
+    properties = property(lambda s: s._get_connection().properties,
+                          doc="A set of per-DBAPI connection properties.")
 
     def connect(self):
         """connect() is implemented to return self so that an incoming Engine or Connection object can be treated similarly."""
