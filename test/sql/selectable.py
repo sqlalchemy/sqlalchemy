@@ -3,14 +3,10 @@ useable primary keys and foreign keys.  Full relational algebra depends on
 every selectable unit behaving nicely with others.."""
  
 import testbase
-import unittest, sys, datetime
 from sqlalchemy import *
-from testbase import Table, Column
+from testlib import *
 
-db = testbase.db
-metadata = MetaData(db)
-
-
+metadata = MetaData()
 table = Table('table1', metadata, 
     Column('col1', Integer, primary_key=True),
     Column('col2', String(20)),
@@ -26,7 +22,7 @@ table2 = Table('table2', metadata,
     Column('coly', Integer),
 )
 
-class SelectableTest(testbase.AssertMixin):
+class SelectableTest(AssertMixin):
     def testdistance(self):
         s = select([table.c.col1.label('c2'), table.c.col1, table.c.col1.label('c1')])
 
@@ -172,7 +168,7 @@ class SelectableTest(testbase.AssertMixin):
         self.assert_(criterion.compare(j.onclause))
         
 
-class PrimaryKeyTest(testbase.AssertMixin):
+class PrimaryKeyTest(AssertMixin):
     def test_join_pk_collapse_implicit(self):
         """test that redundant columns in a join get 'collapsed' into a minimal primary key, 
         which is the root column along a chain of foreign key relationships."""

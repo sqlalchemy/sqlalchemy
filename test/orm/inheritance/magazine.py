@@ -1,7 +1,7 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
+from testlib import *
 
 
 class BaseObject(object):
@@ -68,7 +68,7 @@ class ClassifiedPage(MagazinePage):
     pass
 
 
-class MagazineTest(testbase.ORMTest):
+class MagazineTest(ORMTest):
     def define_tables(self, metadata):
         global publication_table, issue_table, location_table, location_name_table, magazine_table, \
         page_table, magazine_page_table, classified_page_table, page_size_table

@@ -1,7 +1,9 @@
 import testbase
 from sqlalchemy import util
+from testlib import *
 
-class OrderedDictTest(testbase.PersistTest):
+
+class OrderedDictTest(PersistTest):
     def test_odict(self):
         o = util.OrderedDict()
         o['a'] = 1

@@ -1,14 +1,14 @@
 """tests general mapper operations with an emphasis on selecting/loading"""
 
-from testbase import PersistTest, AssertMixin, ORMTest
 import testbase
-import unittest, sys, os
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.ext.sessioncontext import SessionContext, SessionContextExt
-from tables import *
-import tables
+from testlib import *
+from testlib.tables import *
+import testlib.tables as tables
+
 
 class MapperSuperTest(AssertMixin):
     def setUpAll(self):
@@ -168,7 +168,7 @@ class MapperTest(MapperSuperTest):
         u = q2.selectfirst(users.c.user_id==8)
         def go():
             s.refresh(u)
-        self.assert_sql_count(db, go, 1)
+        self.assert_sql_count(testbase.db, go, 1)
 
     def testexpire(self):
         """test the expire function"""
@@ -300,7 +300,7 @@ class MapperTest(MapperSuperTest):
 #        l = create_session().query(User).select(order_by=None)
         
         
-    @testbase.unsupported('firebird') 
+    @testing.unsupported('firebird') 
     def testfunction(self):
         """test mapping to a SELECT statement that has functions in it."""
         s = select([users, (users.c.user_id * 2).label('concat'), func.count(addresses.c.address_id).label('count')],
@@ -313,7 +313,7 @@ class MapperTest(MapperSuperTest):
         assert l[0].concat == l[0].user_id * 2 == 14
         assert l[1].concat == l[1].user_id * 2 == 16
 
-    @testbase.unsupported('firebird') 
+    @testing.unsupported('firebird') 
     def testcount(self):
         """test the count function on Query.
         
@@ -390,7 +390,7 @@ class MapperTest(MapperSuperTest):
         def go():
             u = sess.query(User).options(eagerload('adlist')).get_by(user_name='jack')
             self.assert_result(u.adlist, Address, *(user_address_result[0]['addresses'][1]))
-        self.assert_sql_count(db, go, 1)
+        self.assert_sql_count(testbase.db, go, 1)
         
     def testextensionoptions(self):
         sess  = create_session()
@@ -429,7 +429,7 @@ class MapperTest(MapperSuperTest):
 
         def go():
             self.assert_result(l, User, *user_address_result)
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
 
     def testeageroptionswithlimit(self):
         sess = create_session()
@@ -441,7 +441,7 @@ class MapperTest(MapperSuperTest):
         def go():
             assert u.user_id == 8
             assert len(u.addresses) == 3
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
 
         sess.clear()
         
@@ -450,7 +450,7 @@ class MapperTest(MapperSuperTest):
             u = sess.query(User).get_by(user_id=8)
             assert u.user_id == 8
             assert len(u.addresses) == 3
-        assert "tbl_row_count" not in self.capture_sql(db, go)
+        assert "tbl_row_count" not in self.capture_sql(testbase.db, go)
         
     def testlazyoptionswithlimit(self):
         sess = create_session()
@@ -462,7 +462,7 @@ class MapperTest(MapperSuperTest):
         def go():
             assert u.user_id == 8
             assert len(u.addresses) == 3
-        self.assert_sql_count(db, go, 1)
+        self.assert_sql_count(testbase.db, go, 1)
 
     def testeagerdegrade(self):
         """tests that an eager relation automatically degrades to a lazy relation if eager columns are not available"""
@@ -475,7 +475,7 @@ class MapperTest(MapperSuperTest):
         def go():
             l = sess.query(usermapper).select()
             self.assert_result(l, User, *user_address_result)
-        self.assert_sql_count(db, go, 1)
+        self.assert_sql_count(testbase.db, go, 1)
 
         sess.clear()
         
@@ -486,7 +486,7 @@ class MapperTest(MapperSuperTest):
             r = users.select().execute()
             l = usermapper.instances(r, sess)
             self.assert_result(l, User, *user_address_result)
-        self.assert_sql_count(db, go, 4)
+        self.assert_sql_count(testbase.db, go, 4)
         
         clear_mappers()
 
@@ -513,7 +513,7 @@ class MapperTest(MapperSuperTest):
         def go():
             l = sess.query(usermapper).select()
             self.assert_result(l, User, *user_all_result)
-        self.assert_sql_count(db, go, 1)
+        self.assert_sql_count(testbase.db, go, 1)
 
         sess.clear()
         
@@ -523,7 +523,7 @@ class MapperTest(MapperSuperTest):
             r = users.select().execute()
             l = usermapper.instances(r, sess)
             self.assert_result(l, User, *user_all_result)
-        self.assert_sql_count(db, go, 7)
+        self.assert_sql_count(testbase.db, go, 7)
         
         
     def testlazyoptions(self):
@@ -535,7 +535,7 @@ class MapperTest(MapperSuperTest):
         l = sess.query(User).options(lazyload('addresses')).select()
         def go():
             self.assert_result(l, User, *user_address_result)
-        self.assert_sql_count(db, go, 3)
+        self.assert_sql_count(testbase.db, go, 3)
 
     def testlatecompile(self):
         """tests mappers compiling late in the game"""
@@ -549,7 +549,7 @@ class MapperTest(MapperSuperTest):
         u = sess.query(User).select()
         def go():
             print u[0].orders[1].items[0].keywords[1]
-        self.assert_sql_count(db, go, 3)
+        self.assert_sql_count(testbase.db, go, 3)
 
     def testdeepoptions(self):
         mapper(User, users,
@@ -567,7 +567,7 @@ class MapperTest(MapperSuperTest):
         u = sess.query(User).select()
         def go():
             print u[0].orders[1].items[0].keywords[1]
-        self.assert_sql_count(db, go, 3)
+        self.assert_sql_count(testbase.db, go, 3)
         sess.clear()
         
         
@@ -578,7 +578,7 @@ class MapperTest(MapperSuperTest):
         def go():
             print u[0].orders[1].items[0].keywords[1]
         print "-------MARK2----------"
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
 
         sess.clear()
 
@@ -588,7 +588,7 @@ class MapperTest(MapperSuperTest):
         def go():
             print u[0].orders[1].items[0].keywords[1]
         print "-------MARK3----------"
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
         print "-------MARK4----------"
 
         sess.clear()
@@ -598,7 +598,7 @@ class MapperTest(MapperSuperTest):
         print "-------MARK5----------"
         q3 = sess.query(User).options(eagerload('orders.items.keywords'))
         u = q3.select()
-        self.assert_sql_count(db, go, 2)
+        self.assert_sql_count(testbase.db, go, 2)
             
     
 class DeferredTest(MapperSuperTest):
@@ -619,8 +619,8 @@ class DeferredTest(MapperSuperTest):
             o2 = l[2]
             print o2.description
 
-        orderby = str(orders.default_order_by()[0].compile(bind=db))
-        self.assert_sql(db, go, [
+        orderby = str(orders.default_order_by()[0].compile(bind=testbase.db))
+        self.assert_sql(testbase.db, go, [
             ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.isopen AS orders_isopen FROM orders ORDER BY %s" % orderby, {}),
             ("SELECT orders.description AS orders_description FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
         ])
@@ -682,8 +682,8 @@ class DeferredTest(MapperSuperTest):
             assert o2.opened == 1
             assert o2.userident == 7
             assert o2.description == 'order 3'
-        orderby = str(orders.default_order_by()[0].compile(db))
-        self.assert_sql(db, go, [
+        orderby = str(orders.default_order_by()[0].compile(testbase.db))
+        self.assert_sql(testbase.db, go, [
             ("SELECT orders.order_id AS orders_order_id FROM orders ORDER BY %s" % orderby, {}),
             ("SELECT orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
         ])
@@ -695,7 +695,7 @@ class DeferredTest(MapperSuperTest):
         o2.description = 'order 3'
         def go():
             sess.flush()
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
     
     def testcommitsstate(self):
         """test that when deferred elements are loaded via a group, they get the proper CommittedState
@@ -717,7 +717,7 @@ class DeferredTest(MapperSuperTest):
         def go():
             # therefore the flush() shouldnt actually issue any SQL
             sess.flush()
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
             
     def testoptions(self):
         """tests using options on a mapper to create deferred and undeferred columns"""
@@ -729,8 +729,8 @@ class DeferredTest(MapperSuperTest):
             l = q2.select()
             print l[2].user_id
             
-        orderby = str(orders.default_order_by()[0].compile(db))
-        self.assert_sql(db, go, [
+        orderby = str(orders.default_order_by()[0].compile(testbase.db))
+        self.assert_sql(testbase.db, go, [
             ("SELECT orders.order_id AS orders_order_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY %s" % orderby, {}),
             ("SELECT orders.user_id AS orders_user_id FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
         ])
@@ -739,7 +739,7 @@ class DeferredTest(MapperSuperTest):
         def go():
             l = q3.select()
             print l[3].user_id
-        self.assert_sql(db, go, [
+        self.assert_sql(testbase.db, go, [
             ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY %s" % orderby, {}),
         ])
 
@@ -759,8 +759,8 @@ class DeferredTest(MapperSuperTest):
             assert o2.opened == 1
             assert o2.userident == 7
             assert o2.description == 'order 3'
-        orderby = str(orders.default_order_by()[0].compile(db))
-        self.assert_sql(db, go, [
+        orderby = str(orders.default_order_by()[0].compile(testbase.db))
+        self.assert_sql(testbase.db, go, [
             ("SELECT orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen, orders.order_id AS orders_order_id FROM orders ORDER BY %s" % orderby, {}),
         ])
 
@@ -779,7 +779,7 @@ class DeferredTest(MapperSuperTest):
         item = l[0].orders[1].items[1]
         def go():
             print item.item_name
-        self.assert_sql_count(db, go, 1)
+        self.assert_sql_count(testbase.db, go, 1)
         self.assert_(item.item_name == 'item 4')
         sess.clear()
         q2 = q.options(undefer('orders.items.item_name'))
@@ -787,7 +787,7 @@ class DeferredTest(MapperSuperTest):
         item = l[0].orders[1].items[1]
         def go():
             print item.item_name
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
         self.assert_(item.item_name == 'item 4')
 
 class CompositeTypesTest(ORMTest):

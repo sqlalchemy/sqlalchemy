@@ -1,10 +1,10 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
+from testlib import *
 
 
-class PolymorphicCircularTest(testbase.ORMTest):
+class PolymorphicCircularTest(ORMTest):
     keep_mappers = True
     def define_tables(self, metadata):
         global Table1, Table1B, Table2, Table3,  Data

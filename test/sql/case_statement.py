@@ -1,10 +1,10 @@
-import sys
 import testbase
+import sys
 from sqlalchemy import *
-from testbase import Table, Column
+from testlib import *
 
 
-class CaseTest(testbase.PersistTest):
+class CaseTest(PersistTest):
 
     def setUpAll(self):
         metadata = MetaData(testbase.db)

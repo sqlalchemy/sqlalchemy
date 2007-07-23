@@ -1,10 +1,10 @@
 import testbase
+import operator
 from sqlalchemy import *
 from sqlalchemy import ansisql
 from sqlalchemy.orm import *
-from testbase import Table, Column
+from testlib import *
 from fixtures import *
-import operator
 
 class Base(object):
     def __init__(self, **kwargs):
@@ -40,7 +40,7 @@ class Base(object):
         else:
             return True
 
-class QueryTest(testbase.ORMTest):
+class QueryTest(ORMTest):
     keep_mappers = True
     keep_data = True
     
@@ -703,7 +703,7 @@ class CustomJoinTest(QueryTest):
 
         assert [User(id=7)] == q.join(['open_orders', 'items'], aliased=True).filter(Item.id==4).join(['closed_orders', 'items'], aliased=True).filter(Item.id==3).all()
 
-class SelfReferentialJoinTest(testbase.ORMTest):
+class SelfReferentialJoinTest(ORMTest):
     def define_tables(self, metadata):
         global nodes
         nodes = Table('nodes', metadata,

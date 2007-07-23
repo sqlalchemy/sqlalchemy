@@ -1,15 +1,16 @@
 import testbase
+from datetime import datetime
+
 from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, many_to_many, objectstore
 from sqlalchemy             import and_, or_, exceptions
 from sqlalchemy             import ForeignKey, String, Integer, DateTime, Table, Column
 from sqlalchemy.orm         import clear_mappers, backref, create_session, class_mapper
-from datetime               import datetime
-import sqlalchemy
-
 import sqlalchemy.ext.activemapper as activemapper
+import sqlalchemy
+from testlib import *
 
 
-class testcase(testbase.PersistTest):
+class testcase(PersistTest):
     def setUpAll(self):
         clear_mappers()
         objectstore.clear()
@@ -143,7 +144,7 @@ class testcase(testbase.PersistTest):
         self.assertEquals(len(person.addresses), 2)
         self.assertEquals(person.addresses[0].postal_code, '30338')
 
-    @testbase.unsupported('mysql')
+    @testing.unsupported('mysql')
     def test_update(self):
         p1 = self.create_person_one()
         objectstore.flush()
@@ -261,7 +262,7 @@ class testcase(testbase.PersistTest):
 
         self.assertEquals(Person.query.count(), 2)
 
-class testmanytomany(testbase.PersistTest):
+class testmanytomany(PersistTest):
      def setUpAll(self):
          clear_mappers()
          objectstore.clear()
@@ -316,7 +317,7 @@ class testmanytomany(testbase.PersistTest):
          foo1.bazrel.append(baz1)
          assert (foo1.bazrel == [baz1])
         
-class testselfreferential(testbase.PersistTest):
+class testselfreferential(PersistTest):
     def setUpAll(self):
         clear_mappers()
         objectstore.clear()

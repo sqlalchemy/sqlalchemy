@@ -1,9 +1,8 @@
-from testbase import PersistTest
 import testbase
+import re, operator
 from sqlalchemy import *
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird, mssql
-from testbase import Table, Column
-import unittest, re, operator
+from testlib import *
 
 
 # the select test now tests almost completely with TableClause/ColumnClause objects,
@@ -55,7 +54,7 @@ addresses = table('addresses',
 class SQLTest(PersistTest):
     def runtest(self, clause, result, dialect = None, params = None, checkparams = None):
         c = clause.compile(parameters=params, dialect=dialect)
-        self.echo("\nSQL String:\n" + str(c) + repr(c.get_params()))
+        print "\nSQL String:\n" + str(c) + repr(c.get_params())
         cc = re.sub(r'\n', '', str(c))
         self.assert_(cc == result, "\n'" + cc + "'\n does not match \n'" + result + "'")
         if checkparams is not None:

@@ -1,14 +1,11 @@
-from testbase import PersistTest
-import sqlalchemy.util as util
-import unittest
 import testbase
+
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.ext.associationproxy import *
-from testbase import Table, Column
+from testlib import *
 
-db = testbase.db
 
 class DictCollection(dict):
     @collection.appender
@@ -40,7 +37,7 @@ class _CollectionOperations(PersistTest):
     def setUp(self):
         collection_class = self.collection_class
 
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
     
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -476,7 +473,7 @@ class CustomObjectTest(_CollectionOperations):
 
 class ScalarTest(PersistTest):
     def test_scalar_proxy(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
     
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -592,7 +589,7 @@ class ScalarTest(PersistTest):
 
 class LazyLoadTest(PersistTest):
     def setUp(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
     
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),

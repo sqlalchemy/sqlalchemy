@@ -1,5 +1,6 @@
+import testbase
 from sqlalchemy import *
-from testbase import Table, Column
+from testlib import *
 
 _recursion_stack = util.Set()
 class Base(object):

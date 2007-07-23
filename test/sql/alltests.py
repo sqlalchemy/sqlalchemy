@@ -32,7 +32,5 @@ def suite():
         alltests.addTest(unittest.findTestCases(mod, suiteClass=None))
     return alltests
 
-
-
 if __name__ == '__main__':
     testbase.main(suite())

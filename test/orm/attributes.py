@@ -1,11 +1,9 @@
-from testbase import PersistTest
-import sqlalchemy.util as util
+import testbase
+import pickle
 import sqlalchemy.orm.attributes as attributes
 from sqlalchemy.orm.collections import collection
 from sqlalchemy import exceptions
-import unittest, sys, os
-import pickle
-import testbase
+from testlib import *
 
 class MyTest(object):pass
 class MyTest2(object):pass

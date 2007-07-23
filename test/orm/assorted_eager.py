@@ -1,12 +1,11 @@
 """eager loading unittests derived from mailing list-reported problems and trac tickets."""
 
-from testbase import PersistTest, AssertMixin, ORMTest
 import testbase
+import random, datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
-from testbase import Table, Column
-import random, datetime
+from testlib import *
 
 class EagerTest(AssertMixin):
     def setUpAll(self):
@@ -204,7 +203,7 @@ class EagerTest2(AssertMixin):
         obj = session.query(Left).get_by(tag='tag1')
         print obj.middle.right[0]
 
-class EagerTest3(testbase.ORMTest):
+class EagerTest3(ORMTest):
     """test eager loading combined with nested SELECT statements, functions, and aggregates"""
     def define_tables(self, metadata):
         global datas, foo, stats
@@ -272,7 +271,7 @@ class EagerTest3(testbase.ORMTest):
         # algorithms and there are repeated 'somedata' values in the list)
         assert verify_result == arb_result
 
-class EagerTest4(testbase.ORMTest):
+class EagerTest4(ORMTest):
     def define_tables(self, metadata):
         global departments, employees
         departments = Table('departments', metadata,
@@ -324,7 +323,7 @@ class EagerTest4(testbase.ORMTest):
         assert q.count() == 2
         assert q[0] is d2
 
-class EagerTest5(testbase.ORMTest):
+class EagerTest5(ORMTest):
     """test the construction of AliasedClauses for the same eager load property but different 
     parent mappers, due to inheritance"""
     def define_tables(self, metadata):
@@ -572,8 +571,8 @@ class EagerTest7(ORMTest):
 
         i = ctx.current.query(Invoice).get(invoice_id)
 
-        self.echo(repr(c))
-        self.echo(repr(i.company))
+        print repr(c)
+        print repr(i.company)
         self.assert_(repr(c) == repr(i.company))
 
     def testtwo(self):
@@ -638,7 +637,7 @@ class EagerTest7(ORMTest):
         ctx.current.clear()
 
         a = ctx.current.query(Company).get(company_id)
-        self.echo(repr(a))
+        print repr(a)
 
         # set up an invoice
         i1 = Invoice()
@@ -667,7 +666,7 @@ class EagerTest7(ORMTest):
         ctx.current.clear()
 
         c = ctx.current.query(Company).get(company_id)
-        self.echo(repr(c))
+        print repr(c)
 
         ctx.current.clear()
 
@@ -675,7 +674,7 @@ class EagerTest7(ORMTest):
 
         assert repr(i.company) == repr(c), repr(i.company) +  " does not match " + repr(c)
 
-class EagerTest8(testbase.ORMTest):
+class EagerTest8(ORMTest):
     def define_tables(self, metadata):
         global project_t, task_t, task_status_t, task_type_t, message_t, message_type_t
 

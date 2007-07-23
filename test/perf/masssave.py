@@ -1,21 +1,16 @@
-from testbase import PersistTest, AssertMixin
-import unittest, sys, os
-from sqlalchemy import *
-import sqlalchemy.attributes as attributes
-from testbase import Table, Column
-import StringIO
 import testbase
-import gc
-import sqlalchemy.orm.session
 import types
-db = testbase.db
+from sqlalchemy import *
+from sqlalchemy.orm import *
+from testlib import *
+
 
 NUM = 250000
 
 class SaveTest(AssertMixin):
     def setUpAll(self):
         global items, metadata
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         items = Table('items', metadata, 
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))

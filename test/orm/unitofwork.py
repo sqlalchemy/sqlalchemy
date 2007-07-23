@@ -1,15 +1,14 @@
-from testbase import PersistTest, AssertMixin
+import testbase
+import pickleable
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import testbase
-from testbase import Table, Column
-import pickleable
 from sqlalchemy.orm.mapper import global_extensions
 from sqlalchemy.orm import util as ormutil
 from sqlalchemy.ext.sessioncontext import SessionContext
 import sqlalchemy.ext.assignmapper as assignmapper
-from tables import *
-import tables
+from testlib import *
+from testlib.tables import *
+from testlib import tables
 
 """tests unitofwork operations"""
 
@@ -28,6 +27,7 @@ class UnitOfWorkTest(AssertMixin):
 
 class HistoryTest(UnitOfWorkTest):
     def setUpAll(self):
+        tables.metadata.bind = testbase.db
         UnitOfWorkTest.setUpAll(self)
         users.create()
         addresses.create()
@@ -63,7 +63,7 @@ class VersioningTest(UnitOfWorkTest):
         UnitOfWorkTest.setUpAll(self)
         ctx.current.clear()
         global version_table
-        version_table = Table('version_test', MetaData(db),
+        version_table = Table('version_test', MetaData(testbase.db),
         Column('id', Integer, Sequence('version_test_seq'), primary_key=True ),
         Column('version_id', Integer, nullable=False),
         Column('value', String(40), nullable=False)
@@ -255,9 +255,9 @@ class MutableTypesTest(UnitOfWorkTest):
         ctx.current.flush()
         def go():
             ctx.current.flush()
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
         f1.value = unicode('someothervalue')
-        self.assert_sql(db, lambda: ctx.current.flush(), [
+        self.assert_sql(testbase.db, lambda: ctx.current.flush(), [
             (
                 "UPDATE mutabletest SET value=:value WHERE mutabletest.id = :mutabletest_id",
                 {'mutabletest_id': f1.id, 'value': u'someothervalue'}
@@ -265,7 +265,7 @@ class MutableTypesTest(UnitOfWorkTest):
         ])
         f1.value = unicode('hi')
         f1.data.x = 9
-        self.assert_sql(db, lambda: ctx.current.flush(), [
+        self.assert_sql(testbase.db, lambda: ctx.current.flush(), [
             (
                 "UPDATE mutabletest SET data=:data, value=:value WHERE mutabletest.id = :mutabletest_id",
                 {'mutabletest_id': f1.id, 'value': u'hi', 'data':f1.data}
@@ -283,7 +283,7 @@ class MutableTypesTest(UnitOfWorkTest):
         
         def go():
             ctx.current.flush()
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
         
         ctx.current.clear()
 
@@ -291,12 +291,12 @@ class MutableTypesTest(UnitOfWorkTest):
 
         def go():
             ctx.current.flush()
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
 
         f2.data.y = 19
         def go():
             ctx.current.flush()
-        self.assert_sql_count(db, go, 1)
+        self.assert_sql_count(testbase.db, go, 1)
         
         ctx.current.clear()
         f3 = ctx.current.query(Foo).get_by(id=f1.id)
@@ -305,7 +305,7 @@ class MutableTypesTest(UnitOfWorkTest):
 
         def go():
             ctx.current.flush()
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
         
     def testunicode(self):
         """test that two equivalent unicode values dont get flagged as changed.
@@ -322,14 +322,14 @@ class MutableTypesTest(UnitOfWorkTest):
         f1.value = u'hi'
         def go():
             ctx.current.flush()
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
         
         
 class PKTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global table, table2, table3, metadata
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         table = Table(
             'multipk', metadata, 
             Column('multi_id', Integer, Sequence("multi_id_seq", optional=True), primary_key=True),
@@ -357,7 +357,7 @@ class PKTest(UnitOfWorkTest):
         
     # not support on sqlite since sqlite's auto-pk generation only works with
     # single column primary keys    
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def testprimarykey(self):
         class Entry(object):
             pass
@@ -479,7 +479,7 @@ class PassiveDeletesTest(UnitOfWorkTest):
         metadata.drop_all()
         UnitOfWorkTest.tearDownAll(self)
 
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def testbasic(self):
         class MyClass(object):
             pass
@@ -516,6 +516,7 @@ class DefaultTest(UnitOfWorkTest):
     defaults back from the engine."""
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
+        db = testbase.db
         use_string_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle') or db.engine.__module__.endswith('sqlite')
 
         if use_string_defaults:
@@ -610,7 +611,7 @@ class OneToManyTest(UnitOfWorkTest):
         a2 = Address()
         a2.email_address = 'lala@test.org'
         u.addresses.append(a2)
-        self.echo( repr(u.addresses))
+        print repr(u.addresses)
         ctx.current.flush()
 
         usertable = users.select(users.c.user_id.in_(u.user_id)).execute().fetchall()
@@ -660,7 +661,7 @@ class OneToManyTest(UnitOfWorkTest):
         u2.user_name = 'user2modified'
         u1.addresses.append(a3)
         del u1.addresses[0]
-        self.assert_sql(db, lambda: ctx.current.flush(), 
+        self.assert_sql(testbase.db, lambda: ctx.current.flush(), 
                 [
                     (
                         "UPDATE users SET user_name=:user_name WHERE users.user_id = :users_user_id",
@@ -832,7 +833,7 @@ class SaveTest(UnitOfWorkTest):
 
         # assert the first one retreives the same from the identity map
         nu = ctx.current.get(m, u.user_id)
-        self.echo( "U: " + repr(u) + "NU: " + repr(nu))
+        print "U: " + repr(u) + "NU: " + repr(nu)
         self.assert_(u is nu)
         
         # clear out the identity map, so next get forces a SELECT
@@ -913,7 +914,7 @@ class SaveTest(UnitOfWorkTest):
         u.user_name = ""
         def go():
             ctx.current.flush()
-        self.assert_sql_count(db, go, 0)
+        self.assert_sql_count(testbase.db, go, 0)
 
     def testmultitable(self):
         """tests a save of an object where each instance spans two tables. also tests
@@ -1039,7 +1040,7 @@ class ManyToOneTest(UnitOfWorkTest):
         objects[2].email_address = 'imnew@foo.bar'
         objects[3].user = User()
         objects[3].user.user_name = 'imnewlyadded'
-        self.assert_sql(db, lambda: ctx.current.flush(), [
+        self.assert_sql(testbase.db, lambda: ctx.current.flush(), [
                 (
                     "INSERT INTO users (user_name) VALUES (:user_name)",
                     {'user_name': 'imnewlyadded'}
@@ -1209,7 +1210,7 @@ class ManyToManyTest(UnitOfWorkTest):
         k = Keyword()
         k.name = 'yellow'
         objects[5].keywords.append(k)
-        self.assert_sql(db, lambda:ctx.current.flush(), [
+        self.assert_sql(testbase.db, lambda:ctx.current.flush(), [
             {
                 "UPDATE items SET item_name=:item_name WHERE items.item_id = :items_item_id":
                 {'item_name': 'item4updated', 'items_item_id': objects[4].item_id}
@@ -1238,7 +1239,7 @@ class ManyToManyTest(UnitOfWorkTest):
         objects[2].keywords.append(k)
         dkid = objects[5].keywords[1].keyword_id
         del objects[5].keywords[1]
-        self.assert_sql(db, lambda:ctx.current.flush(), [
+        self.assert_sql(testbase.db, lambda:ctx.current.flush(), [
                 (
                     "DELETE FROM itemkeywords WHERE itemkeywords.item_id = :item_id AND itemkeywords.keyword_id = :keyword_id",
                     [{'item_id': objects[5].item_id, 'keyword_id': dkid}]
@@ -1423,7 +1424,7 @@ class SaveTest2(UnitOfWorkTest):
         ctx.current.clear()
         clear_mappers()
         global meta, users, addresses
-        meta = MetaData(db)
+        meta = MetaData(testbase.db)
         users = Table('users', meta,
             Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
             Column('user_name', String(20)),
@@ -1455,7 +1456,7 @@ class SaveTest2(UnitOfWorkTest):
             a.user = User()
             a.user.user_name = elem['user_name']
             objects.append(a)
-        self.assert_sql(db, lambda: ctx.current.flush(), [
+        self.assert_sql(testbase.db, lambda: ctx.current.flush(), [
                 (
                     "INSERT INTO users (user_name) VALUES (:user_name)",
                     {'user_name': 'thesub'}
@@ -1494,30 +1495,32 @@ class SaveTest2(UnitOfWorkTest):
                         ]
         )
 
-class SaveTest3(UnitOfWorkTest):
 
+class SaveTest3(UnitOfWorkTest):
     def setUpAll(self):
+        global st3_metadata, t1, t2, t3
+
         UnitOfWorkTest.setUpAll(self)
-        global metadata, t1, t2, t3
-        metadata = testbase.metadata
-        t1 = Table('items', metadata,
+
+        st3_metadata = MetaData(testbase.db)
+        t1 = Table('items', st3_metadata,
             Column('item_id', INT, Sequence('items_id_seq', optional=True), primary_key = True),
             Column('item_name', VARCHAR(50)),
         )
 
-        t3 = Table('keywords', metadata,
+        t3 = Table('keywords', st3_metadata,
             Column('keyword_id', Integer, Sequence('keyword_id_seq', optional=True), primary_key = True),
             Column('name', VARCHAR(50)),
 
         )
-        t2 = Table('assoc', metadata,
+        t2 = Table('assoc', st3_metadata,
             Column('item_id', INT, ForeignKey("items")),
             Column('keyword_id', INT, ForeignKey("keywords")),
             Column('foo', Boolean, default=True)
         )
-        metadata.create_all()
+        st3_metadata.create_all()
     def tearDownAll(self):
-        metadata.drop_all()
+        st3_metadata.drop_all()
         UnitOfWorkTest.tearDownAll(self)
 
     def setUp(self):

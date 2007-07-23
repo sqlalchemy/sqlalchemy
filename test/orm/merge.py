@@ -1,10 +1,9 @@
-from testbase import PersistTest, AssertMixin
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
-from tables import *
-import tables
+from testlib import *
+from testlib.tables import *
+import testlib.tables as tables
 
 class MergeTest(AssertMixin):
     """tests session.merge() functionality"""
@@ -166,5 +165,3 @@ class MergeTest(AssertMixin):
         
 if __name__ == "__main__":    
     testbase.main()
-
-                

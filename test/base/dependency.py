@@ -1,7 +1,8 @@
-from testbase import PersistTest
+import testbase
 import sqlalchemy.topological as topological
-import unittest, sys, os
 from sqlalchemy import util
+from testlib import *
+
 
 # TODO:  need assertion conditions in this suite
 
@@ -190,4 +191,4 @@ class DependencySortTest(PersistTest):
             
             
 if __name__ == "__main__":
-    unittest.main()
+    testbase.main()

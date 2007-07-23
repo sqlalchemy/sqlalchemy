@@ -1,8 +1,8 @@
 import testbase
 from sqlalchemy import *
-from testbase import Table, Column
+from testlib import *
 
-class MetaDataTest(testbase.PersistTest):
+class MetaDataTest(PersistTest):
     def test_metadata_connect(self):
         metadata = MetaData()
         t1 = Table('table1', metadata, Column('col1', Integer, primary_key=True),

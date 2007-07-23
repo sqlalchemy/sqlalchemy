@@ -1,11 +1,9 @@
-from testbase import PersistTest, AssertMixin, ORMTest
 import testbase
-import tables
-
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy import exceptions
-from testbase import Table, Column
+from testlib import *
+import testlib.tables as tables
 
 # TODO: these are more tests that should be updated to be part of test/orm/query.py
 
@@ -40,7 +38,7 @@ class GenerativeQueryTest(PersistTest):
         assert res.order_by([Foo.c.bar])[0].bar == 5
         assert res.order_by([desc(Foo.c.bar)])[0].bar == 95
         
-    @testbase.unsupported('mssql')
+    @testing.unsupported('mssql')
     def test_slice(self):
         sess = create_session()
         query = sess.query(Foo)
@@ -54,7 +52,7 @@ class GenerativeQueryTest(PersistTest):
         assert list(query[-5:]) == orig[-5:]
         assert query[10:20][5] == orig[10:20][5]
 
-    @testbase.supported('mssql')
+    @testing.supported('mssql')
     def test_slice_mssql(self):
         sess = create_session()
         query = sess.query(Foo)
@@ -71,23 +69,23 @@ class GenerativeQueryTest(PersistTest):
         assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).first() == 29
         assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).one() == 29
 
-    @testbase.unsupported('mysql')
+    @testing.unsupported('mysql')
     def test_aggregate_1(self):
         # this one fails in mysql as the result comes back as a string
         query = create_session().query(Foo)
         assert query.filter(foo.c.bar<30).sum(foo.c.bar) == 435
 
-    @testbase.unsupported('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.unsupported('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_2(self):
         query = create_session().query(Foo)
         assert query.filter(foo.c.bar<30).avg(foo.c.bar) == 14.5
 
-    @testbase.supported('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.supported('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_2_int(self):
         query = create_session().query(Foo)
         assert int(query.filter(foo.c.bar<30).avg(foo.c.bar)) == 14
 
-    @testbase.unsupported('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.unsupported('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_3(self):
         query = create_session().query(Foo)
         assert query.filter(foo.c.bar<30).apply_avg(foo.c.bar).first() == 14.5

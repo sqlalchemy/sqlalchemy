@@ -1,14 +1,9 @@
-from testbase import AssertMixin
 import testbase
-import unittest, sys, datetime
-
-import tables
-from tables import *
-
-db = testbase.db
 from sqlalchemy import *
 from sqlalchemy.orm import *
-
+from testlib import *
+from testlib.tables import *
+import testlib.tables as tables
 
 class SessionTest(AssertMixin):
     def setUpAll(self):
@@ -78,7 +73,7 @@ class SessionTest(AssertMixin):
         # then see if expunge fails
         session.expunge(u)
     
-    @testbase.unsupported('sqlite')    
+    @testing.unsupported('sqlite')    
     def test_transaction(self):
         class User(object):pass
         mapper(User, users)
@@ -95,7 +90,7 @@ class SessionTest(AssertMixin):
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
     
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def test_autoflush(self):
         class User(object):pass
         mapper(User, users)
@@ -114,7 +109,7 @@ class SessionTest(AssertMixin):
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
 
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def test_autoflush_unbound(self):
         class User(object):pass
         mapper(User, users)
@@ -163,7 +158,7 @@ class SessionTest(AssertMixin):
         trans.rollback() # rolls back
         assert len(sess.query(User).select()) == 0
 
-    @testbase.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql')
     def test_external_nested_transaction(self):
         class User(object):pass
         mapper(User, users)
@@ -187,7 +182,7 @@ class SessionTest(AssertMixin):
             conn.close()
             raise
     
-    @testbase.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql')
     def test_twophase(self):
         # TODO: mock up a failure condition here
         # to ensure a rollback succeeds
@@ -226,7 +221,7 @@ class SessionTest(AssertMixin):
         sess.rollback() # rolls back
         assert len(sess.query(User).select()) == 0
 
-    @testbase.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql')
     def test_nested_transaction(self):
         class User(object):pass
         mapper(User, users)
@@ -248,7 +243,7 @@ class SessionTest(AssertMixin):
         sess.commit()
         assert len(sess.query(User).select()) == 1
 
-    @testbase.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql')
     def test_nested_autotrans(self):
         class User(object):pass
         mapper(User, users)

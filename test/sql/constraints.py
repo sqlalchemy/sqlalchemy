@@ -1,9 +1,8 @@
 import testbase
 from sqlalchemy import *
-from testbase import Table, Column
-import sys
+from testlib import *
 
-class ConstraintTest(testbase.AssertMixin):
+class ConstraintTest(AssertMixin):
     
     def setUp(self):
         global metadata
@@ -53,7 +52,7 @@ class ConstraintTest(testbase.AssertMixin):
             )
         metadata.create_all()
         
-    @testbase.unsupported('mysql')
+    @testing.unsupported('mysql')
     def test_check_constraint(self):
         foo = Table('foo', metadata, 
             Column('id', Integer, primary_key=True),

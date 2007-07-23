@@ -1,11 +1,12 @@
 import testbase
 from sqlalchemy import *
-from testbase import Table, Column
+from testlib import *
+
 
 # TODO: either create a mock dialect with named paramstyle and a short identifier length,
 # or find a way to just use sqlite dialect and make those changes
 
-class LabelTypeTest(testbase.PersistTest):
+class LabelTypeTest(PersistTest):
     def test_type(self):
         m = MetaData()
         t = Table('sometable', m, 
@@ -14,7 +15,7 @@ class LabelTypeTest(testbase.PersistTest):
         assert isinstance(t.c.col1.label('hi').type, Integer)
         assert isinstance(select([t.c.col2], scalar=True).label('lala').type, Float)
 
-class LongLabelsTest(testbase.PersistTest):
+class LongLabelsTest(PersistTest):
     def setUpAll(self):
         global metadata, table1, maxlen
         metadata = MetaData(testbase.db)

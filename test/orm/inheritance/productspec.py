@@ -1,11 +1,11 @@
 import testbase
+from datetime import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
+from testlib import *
 
-from datetime import datetime
 
-class InheritTest(testbase.ORMTest):
+class InheritTest(ORMTest):
     """tests some various inheritance round trips involving a particular set of polymorphic inheritance relationships"""
     def define_tables(self, metadata):
         global products_table, specification_table, documents_table

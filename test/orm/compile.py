@@ -1,10 +1,10 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
+from testlib import *
 
 
-class CompileTest(testbase.AssertMixin):
+class CompileTest(AssertMixin):
     """test various mapper compilation scenarios"""
     def tearDownAll(self):
         clear_mappers()

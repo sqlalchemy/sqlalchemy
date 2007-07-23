@@ -4,10 +4,10 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import mapper, relation, create_session, eagerload
-from testbase import Table, Column
+from testlib import *
 
 
-class UnicodeSchemaTest(testbase.PersistTest):
+class UnicodeSchemaTest(PersistTest):
     def setUpAll(self):
         global unicode_bind, metadata, t1, t2
 

@@ -1,13 +1,10 @@
-from testbase import PersistTest
-import sqlalchemy.util as util
-import unittest, sys, os
 import testbase
+
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.orderinglist import *
-from testbase import Table, Column
+from testlib import *
 
-db = testbase.db
 metadata = None
 
 # order in whole steps 
@@ -54,7 +51,7 @@ class OrderingListTest(PersistTest):
 
         global metadata, slides_table, bullets_table, Slide, Bullet
 
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         slides_table = Table('test_Slides', metadata,
                              Column('id', Integer, primary_key=True),
                              Column('name', String))

@@ -1,7 +1,6 @@
-from testbase import PersistTest
 import testbase
 from sqlalchemy import *
-from testbase import Table, Column
+from testlib import *
 
 
 class QuoteTest(PersistTest):
@@ -80,7 +79,7 @@ class QuoteTest(PersistTest):
         assert t1.c.UcCol.case_sensitive is False
         assert t2.c.normalcol.case_sensitive is False
    
-    @testbase.unsupported('oracle') 
+    @testing.unsupported('oracle') 
     def testlabels(self):
         """test the quoting of labels.
         

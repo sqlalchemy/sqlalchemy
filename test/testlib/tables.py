@@ -1,12 +1,8 @@
-
-from sqlalchemy import *
-import os
 import testbase
-from testbase import Table, Column
+from sqlalchemy import *
+from testlib.schema import Table, Column
 
-ECHO = testbase.echo
-db = testbase.db
-metadata = MetaData(db)
+metadata = MetaData()
 
 users = Table('users', metadata,
     Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
@@ -51,13 +47,19 @@ itemkeywords = Table('itemkeywords', metadata,
 )
 
 def create():
+    if not metadata.bind:
+        metadata.bind = testbase.db
     metadata.create_all()
 def drop():
+    if not metadata.bind:
+        metadata.bind = testbase.db
     metadata.drop_all()
 def delete():
     for t in metadata.table_iterator(reverse=True):
         t.delete().execute()
 def user_data():
+    if not metadata.bind:
+        metadata.bind = testbase.db
     users.insert().execute(
         dict(user_id = 7, user_name = 'jack'),
         dict(user_id = 8, user_name = 'ed'),
@@ -209,4 +211,4 @@ order_result = [
 {'order_id' : 4, 'items':(Item, [])},
 {'order_id' : 5, 'items':(Item, [])},
 ]
-#db.echo = True
+

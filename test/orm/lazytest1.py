@@ -1,10 +1,7 @@
-from testbase import PersistTest, AssertMixin
 import testbase
-import unittest, sys, os
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
-import datetime
+from testlib import *
 
 class LazyTest(AssertMixin):
     def setUpAll(self):

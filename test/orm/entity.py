@@ -1,13 +1,9 @@
-from testbase import PersistTest, AssertMixin
-import unittest
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
-from testbase import Table, Column
-
-from tables import *
-import tables
+from testlib import *
+from testlib.tables import *
 
 class EntityTest(AssertMixin):
     """tests mappers that are constructed based on "entity names", which allows the same class

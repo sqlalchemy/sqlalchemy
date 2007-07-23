@@ -1,10 +1,10 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
+from testlib import *
 
 
-class InheritTest(testbase.ORMTest):
+class InheritTest(ORMTest):
     """deals with inheritance and many-to-many relationships"""
     def define_tables(self, metadata):
         global principals
@@ -76,7 +76,7 @@ class InheritTest(testbase.ORMTest):
         sess.flush()
         # TODO: put an assertion
         
-class InheritTest2(testbase.ORMTest):
+class InheritTest2(ORMTest):
     """deals with inheritance and many-to-many relationships"""
     def define_tables(self, metadata):
         global foo, bar, foo_bar
@@ -148,7 +148,7 @@ class InheritTest2(testbase.ORMTest):
             {'id':b.id, 'data':'barfoo', 'foos':(Foo, [{'id':f1.id,'data':'subfoo1'}, {'id':f2.id,'data':'subfoo2'}])},
             )
 
-class InheritTest3(testbase.ORMTest):
+class InheritTest3(ORMTest):
     """deals with inheritance and many-to-many relationships"""
     def define_tables(self, metadata):
         global foo, bar, blub, bar_foo, blub_bar, blub_foo
@@ -203,7 +203,7 @@ class InheritTest3(testbase.ORMTest):
         compare = repr(b) + repr(b.foos)
         sess.clear()
         l = sess.query(Bar).select()
-        self.echo(repr(l[0]) + repr(l[0].foos))
+        print repr(l[0]) + repr(l[0].foos)
         self.assert_(repr(l[0]) + repr(l[0].foos) == compare)
     
     def testadvanced(self):    
@@ -243,11 +243,11 @@ class InheritTest3(testbase.ORMTest):
         sess.clear()
 
         l = sess.query(Blub).select()
-        self.echo(l)
+        print l
         self.assert_(repr(l[0]) == compare)
         sess.clear()
         x = sess.query(Blub).get_by(id=blubid)
-        self.echo(x)
+        print x
         self.assert_(repr(x) == compare)
         
         

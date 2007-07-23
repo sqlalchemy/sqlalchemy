@@ -1,9 +1,9 @@
 import testbase
 from sql import select as selecttests
-
 from sqlalchemy import *
+from testlib import *
 
-class TraversalTest(testbase.AssertMixin):
+class TraversalTest(AssertMixin):
     """test ClauseVisitor's traversal, particularly its ability to copy and modify
     a ClauseElement in place."""
     
@@ -269,10 +269,7 @@ class SelectTest(selecttests.SQLTest):
         s = select([t2], t2.c.col1==t1.c.col1, correlate=False)
         s = s.correlate(t1).order_by(t2.c.col3)
         self.runtest(t1.select().select_from(s).order_by(t1.c.col3), "SELECT table1.col1, table1.col2, table1.col3 FROM table1, (SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 FROM table2 WHERE table2.col1 = table1.col1 ORDER BY table2.col3) ORDER BY table1.col3")
-        
-        
-        
-        
-        
+
+
 if __name__ == '__main__':
     testbase.main()        

@@ -1,21 +1,20 @@
-from testbase import AssertMixin
 import testbase
-import unittest
 
-db = testbase.db
 from sqlalchemy import *
 from sqlalchemy.orm import *
-
+from testlib import *
 from zblog import mappers, tables
 from zblog.user import *
 from zblog.blog import *
 
+
 class ZBlogTest(AssertMixin):
 
     def create_tables(self):
-        tables.metadata.create_all(bind=db)
+        tables.metadata.drop_all(bind=testbase.db)
+        tables.metadata.create_all(bind=testbase.db)
     def drop_tables(self):
-        tables.metadata.drop_all(bind=db)
+        tables.metadata.drop_all(bind=testbase.db)
         
     def setUpAll(self):
         self.create_tables()
@@ -32,7 +31,7 @@ class SavePostTest(ZBlogTest):
         super(SavePostTest, self).setUpAll()
         mappers.zblog_mappers()
         global blog_id, user_id
-        s = create_session(bind=db)
+        s = create_session(bind=testbase.db)
         user = User('zbloguser', "Zblog User", "hello", group=administrator)
         blog = Blog(owner=user)
         blog.name = "this is a blog"
@@ -51,7 +50,7 @@ class SavePostTest(ZBlogTest):
         """test that a transient/pending instance has proper bi-directional behavior.
         
         this requires that lazy loaders do not fire off for a transient/pending instance."""
-        s = create_session(bind=db)
+        s = create_session(bind=testbase.db)
 
         s.begin()
         try:
@@ -67,7 +66,7 @@ class SavePostTest(ZBlogTest):
     def testoptimisticorphans(self):
         """test that instances in the session with un-loaded parents will not 
         get marked as "orphans" and then deleted """
-        s = create_session(bind=db)
+        s = create_session(bind=testbase.db)
         
         s.begin()
         try:

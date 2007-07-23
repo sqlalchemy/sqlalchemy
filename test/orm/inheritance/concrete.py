@@ -1,9 +1,9 @@
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import testbase
-from testbase import Table, Column
+from testlib import *
 
-class ConcreteTest1(testbase.ORMTest):
+class ConcreteTest1(ORMTest):
     def define_tables(self, metadata):
         global managers_table, engineers_table
         managers_table = Table('managers', metadata, 

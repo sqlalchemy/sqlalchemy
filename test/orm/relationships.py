@@ -1,14 +1,12 @@
 import testbase
-import unittest, sys, datetime
+import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import collections
 from sqlalchemy.orm.collections import collection
-from testbase import Table, Column
+from testlib import *
 
-db = testbase.db
-
-class RelationTest(testbase.PersistTest):
+class RelationTest(PersistTest):
     """this is essentially an extension of the "dependency.py" topological sort test.  
     in this test, a table is dependent on two other tables that are otherwise unrelated to each other.
     the dependency sort must insure that this childmost table is below both parent tables in the outcome
@@ -17,10 +15,8 @@ class RelationTest(testbase.PersistTest):
     to subtle differences in program execution, this test case was exposing the bug whereas the simpler tests
     were not."""
     def setUpAll(self):
-        global tbl_a
-        global tbl_b
-        global tbl_c
-        global tbl_d
+        global metadata, tbl_a, tbl_b, tbl_c, tbl_d
+
         metadata = MetaData()
         tbl_a = Table("tbl_a", metadata,
             Column("id", Integer, primary_key=True),
@@ -89,7 +85,7 @@ class RelationTest(testbase.PersistTest):
         conn.drop(tbl_a)
 
     def tearDownAll(self):
-        testbase.metadata.tables.clear()
+        metadata.drop_all(testbase.db)
     
     def testDeleteRootTable(self):
         session.flush()
@@ -101,7 +97,7 @@ class RelationTest(testbase.PersistTest):
         session.delete(c) # fails
         session.flush()
         
-class RelationTest2(testbase.PersistTest):
+class RelationTest2(PersistTest):
     """this test tests a relationship on a column that is included in multiple foreign keys,
     as well as a self-referential relationship on a composite key where one column in the foreign key
     is 'joined to itself'."""
@@ -218,7 +214,7 @@ class RelationTest2(testbase.PersistTest):
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
         
-class RelationTest3(testbase.PersistTest):
+class RelationTest3(PersistTest):
     def setUpAll(self):
         global jobs, pageversions, pages, metadata, Job, Page, PageVersion, PageComment
         import datetime
@@ -352,7 +348,7 @@ class RelationTest3(testbase.PersistTest):
         s.delete(j)
         s.flush()
 
-class RelationTest4(testbase.ORMTest):
+class RelationTest4(ORMTest):
     """test syncrules on foreign keys that are also primary"""
     def define_tables(self, metadata):
         global tableA, tableB
@@ -500,7 +496,7 @@ class RelationTest4(testbase.ORMTest):
         assert a1 not in sess
         assert b1 not in sess
 
-class RelationTest5(testbase.ORMTest):
+class RelationTest5(ORMTest):
     """test a map to a select that relates to a map to the table"""
     def define_tables(self, metadata):
         global items
@@ -556,7 +552,7 @@ class RelationTest5(testbase.ORMTest):
             assert old.id == new.id
         
         
-class TypeMatchTest(testbase.ORMTest):
+class TypeMatchTest(ORMTest):
     """test errors raised when trying to add items whose type is not handled by a relation"""
     def define_tables(self, metadata):
         global a, b, c, d
@@ -674,7 +670,7 @@ class TypeMatchTest(testbase.ORMTest):
         except exceptions.AssertionError, err:
             assert str(err) == "Attribute 'a' on class '%s' doesn't handle objects of type '%s'" % (D, B)
 
-class TypedAssociationTable(testbase.ORMTest):
+class TypedAssociationTable(ORMTest):
     def define_tables(self, metadata):
         global t1, t2, t3
         
@@ -724,7 +720,7 @@ class TypedAssociationTable(testbase.ORMTest):
         assert t3.count().scalar() == 1
         
 # TODO: move these tests to either attributes.py test or its own module
-class CustomCollectionsTest(testbase.ORMTest):
+class CustomCollectionsTest(ORMTest):
     def define_tables(self, metadata):
         global sometable, someothertable
         sometable = Table('sometable', metadata,
@@ -1005,7 +1001,7 @@ class CustomCollectionsTest(testbase.ORMTest):
         o = list(p2.children)
         assert len(o) == 3
 
-class ViewOnlyTest(testbase.ORMTest):
+class ViewOnlyTest(ORMTest):
     """test a view_only mapping where a third table is pulled into the primary join condition,
     using overlapping PK column names (should not produce "conflicting column" error)"""
     def define_tables(self, metadata):
@@ -1056,7 +1052,7 @@ class ViewOnlyTest(testbase.ORMTest):
         assert set([x.id for x in c1.t2s]) == set([c2a.id, c2b.id])
         assert set([x.id for x in c1.t2_view]) == set([c2b.id])
 
-class ViewOnlyTest2(testbase.ORMTest):
+class ViewOnlyTest2(ORMTest):
     """test a view_only mapping where a third table is pulled into the primary join condition,
     using non-overlapping PK column names (should not produce "mapper has no column X" error)"""
     def define_tables(self, metadata):

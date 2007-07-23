@@ -1,10 +1,10 @@
 """tests basic polymorphic mapper loading/saving, minimal relations"""
 
 import testbase
+import sets
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
-import sets
+from testlib import *
 
 
 class Person(object):
@@ -35,7 +35,7 @@ class Company(object):
     def __repr__(self):
         return "Company %s" % self.name
 
-class PolymorphTest(testbase.ORMTest):
+class PolymorphTest(ORMTest):
     def define_tables(self, metadata):
         global companies, people, engineers, managers, boss
         

@@ -1,10 +1,11 @@
 # load test of connection pool
 
+import testbase
 from sqlalchemy import *
 import sqlalchemy.pool as pool
 import thread,time
-db = create_engine('mysql://scott:tiger@127.0.0.1/test', pool_timeout=30, echo_pool=True)
 
+db = create_engine(testbase.db.url, pool_timeout=30, echo_pool=True)
 metadata = MetaData(db)
 
 users_table = Table('users', metadata,
@@ -18,7 +19,7 @@ users_table.insert().execute([{'user_name':'user#%d' % i, 'password':'pw#%d' % i
 
 def runfast():
     while True:
-        c = db.connection_provider._pool.connect()
+        c = db.pool.connect()
         time.sleep(.5)
         c.close()
 #        result = users_table.select(limit=100).execute()

@@ -1,10 +1,10 @@
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
-import testbase
+from testlib import *
 
 
-class SingleInheritanceTest(testbase.AssertMixin):
+class SingleInheritanceTest(AssertMixin):
     def setUpAll(self):
         metadata = MetaData(testbase.db)
         global employees_table

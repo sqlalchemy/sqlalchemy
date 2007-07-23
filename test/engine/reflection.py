@@ -1,13 +1,12 @@
-from testbase import PersistTest
 import testbase
-import pickle
-import sqlalchemy.ansisql as ansisql
+import pickle, StringIO
 
 from sqlalchemy import *
+import sqlalchemy.ansisql as ansisql
 from sqlalchemy.exceptions import NoSuchTableError
 import sqlalchemy.databases.mysql as mysql
-from testbase import Table, Column
-import unittest, re, StringIO
+from testlib import *
+
 
 class ReflectionTest(PersistTest):
     def testbasic(self):
@@ -207,7 +206,7 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
             
-    @testbase.supported('mysql')
+    @testing.supported('mysql')
     def testmysqltypes(self):
         meta1 = MetaData(testbase.db)
         table = Table(
@@ -284,7 +283,7 @@ class ReflectionTest(PersistTest):
         finally:
             testbase.db.execute("drop table book")
             
-    @testbase.supported('sqlite')
+    @testing.supported('sqlite')
     def test_goofy_sqlite(self):
         """test autoload of table where quotes were used with all the colnames.  quirky in sqlite."""
         testbase.db.execute("""CREATE TABLE "django_content_type" (
@@ -458,7 +457,7 @@ class ReflectionTest(PersistTest):
         finally:
             table.drop()
 
-    @testbase.supported('mssql')
+    @testing.supported('mssql')
     def testidentity(self):
         meta = MetaData(testbase.db)
         table = Table(
@@ -576,7 +575,7 @@ class CreateDropTest(PersistTest):
 
 class SchemaTest(PersistTest):
     # this test should really be in the sql tests somewhere, not engine
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def testiteration(self):
         metadata = MetaData()
         table1 = Table('table1', metadata, 
@@ -600,7 +599,7 @@ class SchemaTest(PersistTest):
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
     
-    @testbase.supported('mysql','postgres')
+    @testing.supported('mysql','postgres')
     def testcreate(self):
         engine = testbase.db
         schema = engine.dialect.get_default_schema_name(engine)

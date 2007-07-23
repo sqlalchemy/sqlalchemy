@@ -1,8 +1,10 @@
+"""application table metadata objects are described here."""
+
 from sqlalchemy import *
-from testbase import Table, Column
+from testlib import *
+
 
 metadata = MetaData()
-"""application table metadata objects are described here."""
 
 users = Table('users', metadata, 
     Column('user_id', Integer, primary_key=True),

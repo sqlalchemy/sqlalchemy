@@ -1,13 +1,8 @@
-from testbase import PersistTest, AssertMixin, ORMTest
-import unittest, sys, os
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import StringIO
-import testbase
-from testbase import Table, Column
-
-from tables import *
-import tables
+from testlib import *
+from testlib.tables import *
 
 """test cyclical mapper relationships.  Many of the assertions are provided
 via running with postgres, which is strict about foreign keys.
@@ -538,7 +533,7 @@ class OneToManyManyToOneTest(AssertMixin):
         sess.save(b)
         sess.save(p)
         
-        self.assert_sql(db, lambda: sess.flush(), [
+        self.assert_sql(testbase.db, lambda: sess.flush(), [
             (
                 "INSERT INTO person (favorite_ball_id, data) VALUES (:favorite_ball_id, :data)",
                 {'favorite_ball_id': None, 'data':'some data'}
@@ -592,7 +587,7 @@ class OneToManyManyToOneTest(AssertMixin):
                 )
             ])
         sess.delete(p)
-        self.assert_sql(db, lambda: sess.flush(), [
+        self.assert_sql(testbase.db, lambda: sess.flush(), [
             # heres the post update (which is a pre-update with deletes)
             (
                 "UPDATE person SET favorite_ball_id=:favorite_ball_id WHERE person.id = :person_id",
@@ -642,7 +637,7 @@ class OneToManyManyToOneTest(AssertMixin):
         sess = create_session()
         [sess.save(x) for x in [b,p,b2,b3,b4]]
 
-        self.assert_sql(db, lambda: sess.flush(), [
+        self.assert_sql(testbase.db, lambda: sess.flush(), [
                 (
                     "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
                     {'person_id':None, 'data':'some data'}
@@ -721,7 +716,7 @@ class OneToManyManyToOneTest(AssertMixin):
         ])
 
         sess.delete(p)
-        self.assert_sql(db, lambda: sess.flush(), [
+        self.assert_sql(testbase.db, lambda: sess.flush(), [
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
                 lambda ctx:{'person_id': None, 'ball_id': b.id}
@@ -833,7 +828,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
         remove_child(root, cats)
         # pre-trigger lazy loader on 'cats' to make the test easier
         cats.children
-        self.assert_sql(db, lambda: session.flush(), [
+        self.assert_sql(testbase.db, lambda: session.flush(), [
             (
                 "UPDATE node SET prev_sibling_id=:prev_sibling_id WHERE node.id = :node_id",
                 lambda ctx:{'prev_sibling_id':about.id, 'node_id':stories.id}

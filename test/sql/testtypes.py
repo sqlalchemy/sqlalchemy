@@ -1,15 +1,11 @@
-from testbase import PersistTest, AssertMixin
 import testbase
 import pickleable
+import datetime, os
 from sqlalchemy import *
-import string,datetime, re, sys, os
 import sqlalchemy.engine.url as url
-import sqlalchemy.types
 from sqlalchemy.databases import mssql, oracle, mysql
-from testbase import Table, Column
+from testlib import *
 
-
-db = testbase.db
 
 class MyType(types.TypeEngine):
     def get_col_spec(self):
@@ -108,7 +104,7 @@ class OverrideTest(PersistTest):
 
     def setUpAll(self):
         global users
-        users = Table('type_users', MetaData(db), 
+        users = Table('type_users', MetaData(testbase.db),
             Column('user_id', Integer, primary_key = True),
             # totall custom type
             Column('goofy', MyType, nullable = False),
@@ -139,6 +135,7 @@ class ColumnsTest(AssertMixin):
                             'float_column': 'float_column NUMERIC(25, 2)'
                           }
 
+        db = testbase.db
         if not db.name=='sqlite' and not db.name=='oracle':
             expectedResults['float_column'] = 'float_column FLOAT(25)'
     
@@ -158,7 +155,7 @@ class UnicodeTest(AssertMixin):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
     def setUpAll(self):
         global unicode_table
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         unicode_table = Table('unicode_table', metadata, 
             Column('id', Integer, Sequence('uni_id_seq', optional=True), primary_key=True),
             Column('unicode_varchar', Unicode(250)),
@@ -177,49 +174,49 @@ class UnicodeTest(AssertMixin):
                                        unicode_text=unicodedata,
                                        plain_varchar=rawdata)
         x = unicode_table.select().execute().fetchone()
-        self.echo(repr(x['unicode_varchar']))
-        self.echo(repr(x['unicode_text']))
-        self.echo(repr(x['plain_varchar']))
+        print repr(x['unicode_varchar'])
+        print repr(x['unicode_text'])
+        print repr(x['plain_varchar'])
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
         if isinstance(x['plain_varchar'], unicode):
             # SQLLite and MSSQL return non-unicode data as unicode
-            self.assert_(db.name in ('sqlite', 'mssql'))
+            self.assert_(testbase.db.name in ('sqlite', 'mssql'))
             self.assert_(x['plain_varchar'] == unicodedata)
-            self.echo("it's %s!" % db.name)
+            print "it's %s!" % testbase.db.name
         else:
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
 
     def testengineparam(self):
         """tests engine-wide unicode conversion"""
-        prev_unicode = db.engine.dialect.convert_unicode
+        prev_unicode = testbase.db.engine.dialect.convert_unicode
         try:
-            db.engine.dialect.convert_unicode = True
+            testbase.db.engine.dialect.convert_unicode = True
             rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
             unicodedata = rawdata.decode('utf-8')
             unicode_table.insert().execute(unicode_varchar=unicodedata,
                                            unicode_text=unicodedata,
                                            plain_varchar=rawdata)
             x = unicode_table.select().execute().fetchone()
-            self.echo(repr(x['unicode_varchar']))
-            self.echo(repr(x['unicode_text']))
-            self.echo(repr(x['plain_varchar']))
+            print repr(x['unicode_varchar'])
+            print repr(x['unicode_text'])
+            print repr(x['plain_varchar'])
             self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
             self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
             self.assert_(isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == unicodedata)
         finally:
-            db.engine.dialect.convert_unicode = prev_unicode
+            testbase.db.engine.dialect.convert_unicode = prev_unicode
 
-    @testbase.unsupported('oracle')
+    @testing.unsupported('oracle')
     def testlength(self):
         """checks the database correctly understands the length of a unicode string"""
         teststr = u'aaa\x1234'
-        self.assert_(db.func.length(teststr).scalar() == len(teststr))
+        self.assert_(testbase.db.func.length(teststr).scalar() == len(teststr))
   
 class BinaryTest(AssertMixin):
     def setUpAll(self):
         global binary_table
-        binary_table = Table('binary_table', MetaData(db), 
+        binary_table = Table('binary_table', MetaData(testbase.db), 
         Column('primary_id', Integer, Sequence('binary_id_seq', optional=True), primary_key=True),
         Column('data', Binary),
         Column('data_slice', Binary(100)),
@@ -270,6 +267,7 @@ class DateTest(AssertMixin):
     def setUpAll(self):
         global users_with_date, insert_data
 
+        db = testbase.db
         if db.engine.name == 'oracle':
             import sqlalchemy.databases.oracle as oracle
             insert_data =  [
@@ -309,7 +307,8 @@ class DateTest(AssertMixin):
             collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
                            Column('user_date', Date), Column('user_time', Time)]
  
-        users_with_date = Table('query_users_with_date', MetaData(db), *collist)
+        users_with_date = Table('query_users_with_date',
+                                MetaData(testbase.db), *collist)
         users_with_date.create()
         insert_dicts = [dict(zip(fnames, d)) for d in insert_data]
 
@@ -327,7 +326,7 @@ class DateTest(AssertMixin):
 
 
     def testtextdate(self):     
-        x = db.text("select user_datetime from query_users_with_date", typemap={'user_datetime':DateTime}).execute().fetchall()
+        x = testbase.db.text("select user_datetime from query_users_with_date", typemap={'user_datetime':DateTime}).execute().fetchall()
         
         print repr(x)
         self.assert_(isinstance(x[0][0], datetime.datetime))
@@ -336,7 +335,11 @@ class DateTest(AssertMixin):
         #print repr(x)
 
     def testdate2(self):
-        t = Table('testdate', testbase.metadata, Column('id', Integer, Sequence('datetest_id_seq', optional=True), primary_key=True),
+        meta = MetaData(testbase.db)
+        t = Table('testdate', meta,
+                  Column('id', Integer,
+                         Sequence('datetest_id_seq', optional=True),
+                         primary_key=True),
                 Column('adate', Date), Column('adatetime', DateTime))
         t.create()
         try:

@@ -7,7 +7,7 @@ import sqlalchemy.orm.collections as collections
 from sqlalchemy.orm.collections import collection
 from sqlalchemy import util
 from operator import and_
-
+from testlib import *
 
 class Canary(interfaces.AttributeExtension):
     def __init__(self):
@@ -48,7 +48,7 @@ def dictable_entity(a=None, b=None, c=None):
     return Entity(a or str(_id), b or 'value %s' % _id, c)
 
 
-class CollectionsTest(testbase.PersistTest):
+class CollectionsTest(PersistTest):
     def _test_adapter(self, typecallable, creator=entity_maker,
                       to_set=None):
         class Foo(object):
@@ -980,7 +980,7 @@ class CollectionsTest(testbase.PersistTest):
         obj.attr[0] = e3
         self.assert_(e3 in canary.data)
 
-class DictHelpersTest(testbase.ORMTest):
+class DictHelpersTest(ORMTest):
     def define_tables(self, metadata):
         global parents, children, Parent, Child
         

@@ -1101,4 +1101,3 @@ if __name__ == '__main__':
 # DAMAGE.
 #
 # $Id: coverage.py 67 2007-07-21 19:51:07Z nedbat $
-

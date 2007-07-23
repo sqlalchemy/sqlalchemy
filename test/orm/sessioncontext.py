@@ -1,12 +1,10 @@
-from testbase import PersistTest, AssertMixin
-import unittest, sys, os
-from sqlalchemy.ext.sessioncontext import SessionContext
-from sqlalchemy.orm.session import object_session, Session
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy.ext.sessioncontext import SessionContext
+from sqlalchemy.orm.session import object_session, Session
+from testlib import *
 
-import testbase
-from testbase import Table, Column
 
 metadata = MetaData()
 users = Table('users', metadata,

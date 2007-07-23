@@ -1,9 +1,9 @@
 """basic tests of eager loaded attributes"""
 
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import testbase
-
+from testlib import *
 from fixtures import *
 from query import QueryTest
 
@@ -438,7 +438,7 @@ class EagerTest(QueryTest):
         l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(Address.user_id==User.id)
         assert fixtures.user_address_result[1:2] == l.all()
 
-class SelfReferentialEagerTest(testbase.ORMTest):
+class SelfReferentialEagerTest(ORMTest):
     def define_tables(self, metadata):
         global nodes
         nodes = Table('nodes', metadata,

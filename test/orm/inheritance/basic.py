@@ -1,10 +1,10 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
+from testlib import *
 
 
-class O2MTest(testbase.ORMTest):
+class O2MTest(ORMTest):
     """deals with inheritance and one-to-many relationships"""
     def define_tables(self, metadata):
         global foo, bar, blub
@@ -58,11 +58,11 @@ class O2MTest(testbase.ORMTest):
         sess.clear()
         l = sess.query(Blub).select()
         result = repr(l[0]) + repr(l[1]) + repr(l[0].parent_foo) + repr(l[1].parent_foo)
-        self.echo(result)
+        print result
         self.assert_(compare == result)
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
-class AddPropTest(testbase.ORMTest):
+class AddPropTest(ORMTest):
     """testing that construction of inheriting mappers works regardless of when extra properties
     are added to the superclass mapper"""
     def define_tables(self, metadata):
@@ -107,7 +107,7 @@ class AddPropTest(testbase.ORMTest):
         p.contenttype = ContentType()
         # TODO: assertion ??
         
-class EagerLazyTest(testbase.ORMTest):
+class EagerLazyTest(ORMTest):
     """tests eager load/lazy load of child items off inheritance mappers, tests that
     LazyLoader constructs the right query condition."""
     def define_tables(self, metadata):
@@ -149,7 +149,7 @@ class EagerLazyTest(testbase.ORMTest):
         self.assert_(len(q.selectfirst().eager) == 1)
 
 
-class FlushTest(testbase.ORMTest):
+class FlushTest(ORMTest):
     """test dependency sorting among inheriting mappers"""
     def define_tables(self, metadata):
         global users, roles, user_roles, admins
@@ -238,7 +238,7 @@ class FlushTest(testbase.ORMTest):
         sess.flush()
         assert user_roles.count().scalar() == 1
 
-class DistinctPKTest(testbase.ORMTest):
+class DistinctPKTest(ORMTest):
     """test the construction of mapper.primary_key when an inheriting relationship
     joins on a column other than primary key column."""
     keep_data = True

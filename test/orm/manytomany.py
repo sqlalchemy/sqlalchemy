@@ -1,8 +1,8 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
-import string
+from testlib import *
+
 
 class Place(object):
     '''represents a place'''
@@ -27,7 +27,7 @@ class Transition(object):
     def __repr__(self):
         return object.__repr__(self)+ " " + repr(self.inputs) + " " + repr(self.outputs)
         
-class M2MTest(testbase.ORMTest):
+class M2MTest(ORMTest):
     def define_tables(self, metadata):
         global place
         place = Table('place', metadata,
@@ -112,7 +112,7 @@ class M2MTest(testbase.ORMTest):
 
         for p in l:
             pp = p.places
-            self.echo("Place " + str(p) +" places " + repr(pp))
+            print "Place " + str(p) +" places " + repr(pp)
 
         [sess.delete(p) for p in p1,p2,p3,p4,p5,p6,p7]
         sess.flush()
@@ -178,7 +178,7 @@ class M2MTest(testbase.ORMTest):
         self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
         self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
 
-class M2MTest2(testbase.ORMTest):
+class M2MTest2(ORMTest):
     def define_tables(self, metadata):
         global studentTbl
         studentTbl = Table('student', metadata, Column('name', String(20), primary_key=True))
@@ -245,7 +245,7 @@ class M2MTest2(testbase.ORMTest):
         sess.flush()
         assert enrolTbl.count().scalar() == 0
         
-class M2MTest3(testbase.ORMTest):
+class M2MTest3(ORMTest):
     def define_tables(self, metadata):
         global c, c2a1, c2a2, b, a
         c = Table('c', metadata, 

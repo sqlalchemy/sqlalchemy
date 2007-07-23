@@ -1,14 +1,8 @@
-from testbase import PersistTest
 import testbase
-import unittest, sys, datetime
-
-import sqlalchemy.databases.sqlite as sqllite
-
-import tables
+import datetime
 from sqlalchemy import *
-from sqlalchemy.engine import ResultProxy, RowProxy
 from sqlalchemy import exceptions
-from testbase import Table, Column
+from testlib import *
 
 
 class QueryTest(PersistTest):
@@ -189,7 +183,7 @@ class QueryTest(PersistTest):
         r = users.select(limit=3, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
         
-    @testbase.unsupported('mssql')
+    @testing.unsupported('mssql')
     def testselectlimitoffset(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
@@ -203,7 +197,7 @@ class QueryTest(PersistTest):
         r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
         
-    @testbase.supported('mssql')
+    @testing.supported('mssql')
     def testselectlimitoffset_mssql(self):
         try:
             r = users.select(limit=3, offset=2, order_by=[users.c.user_id]).execute().fetchall()
@@ -211,7 +205,7 @@ class QueryTest(PersistTest):
         except exceptions.InvalidRequestError:
             pass
 
-    @testbase.unsupported('mysql')  
+    @testing.unsupported('mysql')  
     def test_scalar_select(self):
         """test that scalar subqueries with labels get their type propigated to the result set."""
         # mysql and/or mysqldb has a bug here, type isnt propigated for scalar subquery.
@@ -346,7 +340,7 @@ class QueryTest(PersistTest):
         finally:
             meta.drop_all()
             
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_functions_with_cols(self):
         # TODO: shouldnt this work on oracle too ?
         x = testbase.db.func.current_date().execute().scalar()
@@ -379,7 +373,7 @@ class QueryTest(PersistTest):
         self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
     
-    @testbase.unsupported('oracle', 'firebird') 
+    @testing.unsupported('oracle', 'firebird') 
     def test_column_accessor_shadow(self):
         meta = MetaData(testbase.db)
         shadowed = Table('test_shadowed', meta,
@@ -409,7 +403,7 @@ class QueryTest(PersistTest):
         finally:
             shadowed.drop(checkfirst=True)
     
-    @testbase.supported('mssql')
+    @testing.supported('mssql')
     def test_fetchid_trigger(self):
         meta = MetaData(testbase.db)
         t1 = Table('t1', meta,
@@ -435,7 +429,7 @@ class QueryTest(PersistTest):
             con.execute("""drop trigger paj""")
             meta.drop_all()
     
-    @testbase.supported('mssql')
+    @testing.supported('mssql')
     def test_insertid_schema(self):
         meta = MetaData(testbase.db)
         con = testbase.db.connect()
@@ -448,7 +442,7 @@ class QueryTest(PersistTest):
             tbl.drop()
             con.execute('drop schema paj')
 
-    @testbase.supported('mssql')
+    @testing.supported('mssql')
     def test_insertid_reserved(self):
         meta = MetaData(testbase.db)
         table = Table(
@@ -567,7 +561,7 @@ class CompoundTest(PersistTest):
         assert u.execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         assert u.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         
-    @testbase.unsupported('mysql')
+    @testing.unsupported('mysql')
     def test_intersect(self):
         i = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -576,7 +570,7 @@ class CompoundTest(PersistTest):
         assert i.execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         assert i.alias('bar').select().execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
 
-    @testbase.unsupported('mysql', 'oracle')
+    @testing.unsupported('mysql', 'oracle')
     def test_except_style1(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -585,7 +579,7 @@ class CompoundTest(PersistTest):
         ), select([t2.c.col3, t2.c.col4]))
         assert e.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
 
-    @testbase.unsupported('mysql', 'oracle')
+    @testing.unsupported('mysql', 'oracle')
     def test_except_style2(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -595,7 +589,7 @@ class CompoundTest(PersistTest):
         assert e.execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
         assert e.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
 
-    @testbase.unsupported('sqlite', 'mysql', 'oracle')
+    @testing.unsupported('sqlite', 'mysql', 'oracle')
     def test_except_style3(self):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
         e = except_(
@@ -607,7 +601,7 @@ class CompoundTest(PersistTest):
         )
         self.assertEquals(e.execute().fetchall(), [('ccc',)])
 
-    @testbase.unsupported('sqlite', 'mysql', 'oracle')
+    @testing.unsupported('sqlite', 'mysql', 'oracle')
     def test_union_union_all(self):
         e = union_all(
             select([t1.c.col3]),
@@ -618,7 +612,7 @@ class CompoundTest(PersistTest):
         )
         self.assertEquals(e.execute().fetchall(), [('aaa',),('bbb',),('ccc',),('aaa',),('bbb',),('ccc',)])
 
-    @testbase.unsupported('mysql')
+    @testing.unsupported('mysql')
     def test_composite(self):
         u = intersect(
             select([t2.c.col3, t2.c.col4]),

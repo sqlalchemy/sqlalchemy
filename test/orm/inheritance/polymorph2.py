@@ -1,7 +1,7 @@
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
-import testbase
+from testlib import *
 
 
 class AttrSettable(object):
@@ -11,7 +11,7 @@ class AttrSettable(object):
         return self.__class__.__name__ + "(%s)" % (hex(id(self)))
 
 
-class RelationTest1(testbase.ORMTest):
+class RelationTest1(ORMTest):
     """test self-referential relationships on polymorphic mappers"""
     def define_tables(self, metadata):
         global people, managers
@@ -91,7 +91,7 @@ class RelationTest1(testbase.ORMTest):
         print p, m, m.employee
         assert m.employee is p
             
-class RelationTest2(testbase.ORMTest):
+class RelationTest2(ORMTest):
     """test self-referential relationships on polymorphic mappers"""
     def define_tables(self, metadata):
         global people, managers, data
@@ -186,7 +186,7 @@ class RelationTest2(testbase.ORMTest):
         if usedata:
             assert m.data.data == 'ms data'
 
-class RelationTest3(testbase.ORMTest):
+class RelationTest3(ORMTest):
     """test self-referential relationships on polymorphic mappers"""
     def define_tables(self, metadata):
         global people, managers, data
@@ -289,7 +289,7 @@ for jointype in ["join1", "join2", "join3", "join4"]:
         setattr(RelationTest3, func.__name__, func)
             
         
-class RelationTest4(testbase.ORMTest):
+class RelationTest4(ORMTest):
     def define_tables(self, metadata):
         global people, engineers, managers, cars
         people = Table('people', metadata, 
@@ -405,7 +405,7 @@ class RelationTest4(testbase.ORMTest):
         c = s.join("employee").filter(Person.name=="E4")[0]
         assert c.car_id==car1.car_id
 
-class RelationTest5(testbase.ORMTest):
+class RelationTest5(ORMTest):
     def define_tables(self, metadata):
         global people, engineers, managers, cars
         people = Table('people', metadata, 
@@ -465,7 +465,7 @@ class RelationTest5(testbase.ORMTest):
         assert carlist[0].manager is None
         assert carlist[1].manager.person_id == car2.manager.person_id
 
-class RelationTest6(testbase.ORMTest):
+class RelationTest6(ORMTest):
     """test self-referential relationships on a single joined-table inheritance mapper"""
     def define_tables(self, metadata):
         global people, managers, data
@@ -508,7 +508,7 @@ class RelationTest6(testbase.ORMTest):
         m2 = sess.query(Manager).get(m2.person_id)
         assert m.colleague is m2
 
-class RelationTest7(testbase.ORMTest):
+class RelationTest7(ORMTest):
     def define_tables(self, metadata):
         global people, engineers, managers, cars, offroad_cars
         cars = Table('cars', metadata,
@@ -607,7 +607,7 @@ class RelationTest7(testbase.ORMTest):
         for p in r:
             assert p.car_id == p.car.car_id
     
-class GenerativeTest(testbase.AssertMixin):
+class GenerativeTest(AssertMixin):
     def setUpAll(self):
         #  cars---owned by---  people (abstract) --- has a --- status
         #   |                  ^    ^                            |
@@ -733,7 +733,7 @@ class GenerativeTest(testbase.AssertMixin):
             r = session.query(Person).filter(exists([Car.c.owner], Car.c.owner==employee_join.c.person_id))
             assert str(list(r)) == "[Engineer E4, field X, status Status dead]"
         
-class MultiLevelTest(testbase.ORMTest):
+class MultiLevelTest(ORMTest):
     def define_tables(self, metadata):
         global table_Employee, table_Engineer, table_Manager
         table_Employee = Table( 'Employee', metadata,
@@ -810,7 +810,7 @@ class MultiLevelTest(testbase.ORMTest):
         assert set(session.query( Engineer).select()) == set([b,c])
         assert session.query( Manager).select() == [c]
 
-class ManyToManyPolyTest(testbase.ORMTest):
+class ManyToManyPolyTest(ORMTest):
     def define_tables(self, metadata):
         global base_item_table, item_table, base_item_collection_table, collection_table
         base_item_table = Table(
@@ -860,7 +860,7 @@ class ManyToManyPolyTest(testbase.ORMTest):
         
         class_mapper(BaseItem)
 
-class CustomPKTest(testbase.ORMTest):
+class CustomPKTest(ORMTest):
     def define_tables(self, metadata):
         global t1, t2
         t1 = Table('t1', metadata, 

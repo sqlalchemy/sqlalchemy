@@ -1,20 +1,17 @@
-from testbase import PersistTest
-import sqlalchemy.util as util
-import unittest, sys, os
-import sqlalchemy.schema as schema
 import testbase
 from sqlalchemy import *
+import sqlalchemy.util as util
+import sqlalchemy.schema as schema
 from sqlalchemy.orm import mapper, create_session
-from testbase import Table, Column
-import sqlalchemy
-
-db = testbase.db
+from testlib import *
 
 class DefaultTest(PersistTest):
 
     def setUpAll(self):
         global t, f, f2, ts, currenttime, metadata
-        metadata = MetaData(testbase.db)
+
+        db = testbase.db
+        metadata = MetaData(db)
         x = {'x':50}
         def mydefault():
             x['x'] += 1
@@ -80,7 +77,7 @@ class DefaultTest(PersistTest):
         t.delete().execute()
         
     def teststandalone(self):
-        c = db.engine.contextual_connect()
+        c = testbase.db.engine.contextual_connect()
         x = c.execute(t.c.col1.default)
         y = t.c.col2.default.execute()
         z = c.execute(t.c.col3.default)
@@ -97,7 +94,7 @@ class DefaultTest(PersistTest):
         t.insert().execute()
 
         ctexec = currenttime.scalar()
-        self.echo("Currenttime "+ repr(ctexec))
+        print "Currenttime "+ repr(ctexec)
         l = t.select().execute()
         self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False), (52, 'imthedefault', f, ts, ts, ctexec, True, False), (53, 'imthedefault', f, ts, ts, ctexec, True, False)])
 
@@ -112,7 +109,7 @@ class DefaultTest(PersistTest):
         pk = r.last_inserted_ids()[0]
         t.update(t.c.col1==pk).execute(col4=None, col5=None)
         ctexec = currenttime.scalar()
-        self.echo("Currenttime "+ repr(ctexec))
+        print "Currenttime "+ repr(ctexec)
         l = t.select(t.c.col1==pk).execute()
         l = l.fetchone()
         self.assert_(l == (pk, 'im the update', f2, None, None, ctexec, True, False))
@@ -127,7 +124,7 @@ class DefaultTest(PersistTest):
         l = l.fetchone()
         self.assert_(l['col3'] == 55)
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def testpassiveoverride(self):
         """primarily for postgres, tests that when we get a primary key column back 
         from reflecting a table which has a default value on it, we pre-execute
@@ -155,7 +152,7 @@ class DefaultTest(PersistTest):
             testbase.db.execute("drop table speedy_users", None)
 
 class AutoIncrementTest(PersistTest):
-    @testbase.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql')
     def testnonautoincrement(self):
         meta = MetaData(testbase.db)
         nonai_table = Table("aitest", meta, 
@@ -219,7 +216,7 @@ class AutoIncrementTest(PersistTest):
         
 
 class SequenceTest(PersistTest):
-    @testbase.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle')
     def setUpAll(self):
         global cartitems, sometable, metadata
         metadata = MetaData(testbase.db)
@@ -236,7 +233,7 @@ class SequenceTest(PersistTest):
         
         metadata.create_all()
     
-    @testbase.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle')
     def testseqnonpk(self):
         """test sequences fire off as defaults on non-pk columns"""
         sometable.insert().execute(name="somename")
@@ -246,7 +243,7 @@ class SequenceTest(PersistTest):
             (2, "someother", 2),
         ]
         
-    @testbase.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle')
     def testsequence(self):
         cartitems.insert().execute(description='hi')
         cartitems.insert().execute(description='there')
@@ -255,7 +252,7 @@ class SequenceTest(PersistTest):
         cartitems.select().execute().fetchall()
    
    
-    @testbase.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle')
     def test_implicit_sequence_exec(self):
         s = Sequence("my_sequence", metadata=MetaData(testbase.db))
         s.create()
@@ -265,7 +262,7 @@ class SequenceTest(PersistTest):
         finally:
             s.drop()
 
-    @testbase.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle')
     def teststandalone_explicit(self):
         s = Sequence("my_sequence")
         s.create(bind=testbase.db)
@@ -275,7 +272,7 @@ class SequenceTest(PersistTest):
         finally:
             s.drop(testbase.db)
     
-    @testbase.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle')
     def test_checkfirst(self):
         s = Sequence("my_sequence")
         s.create(testbase.db, checkfirst=False)
@@ -283,12 +280,12 @@ class SequenceTest(PersistTest):
         s.drop(testbase.db, checkfirst=False)
         s.drop(testbase.db, checkfirst=True)
         
-    @testbase.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle')
     def teststandalone2(self):
         x = cartitems.c.cart_id.sequence.execute()
         self.assert_(1 <= x <= 4)
         
-    @testbase.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle')
     def tearDownAll(self): 
         metadata.drop_all()
 

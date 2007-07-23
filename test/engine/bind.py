@@ -2,13 +2,10 @@
 including the deprecated versions of these arguments"""
 
 import testbase
-import unittest, sys, datetime
-import tables
-db = testbase.db
 from sqlalchemy import *
-from testbase import Table, Column
+from testlib import *
 
-class BindTest(testbase.PersistTest):
+class BindTest(PersistTest):
     def test_create_drop_explicit(self):
         metadata = MetaData()
         table = Table('test_table', metadata,   
@@ -201,8 +198,6 @@ class BindTest(testbase.PersistTest):
                 assert False
             except exceptions.InvalidRequestError, e:
                 assert str(e).startswith("Could not locate any Engine or Connection bound to mapper")
-
-                
         finally:
             if isinstance(bind, engine.Connection):
                 bind.close()

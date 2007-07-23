@@ -1,13 +1,12 @@
-
 import testbase
-import unittest, sys, datetime, random, time, threading
-import tables
-db = testbase.db
+import sys, time, threading
+
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testbase import Table, Column
+from testlib import *
 
-class TransactionTest(testbase.PersistTest):
+
+class TransactionTest(PersistTest):
     def setUpAll(self):
         global users, metadata
         metadata = MetaData()
@@ -116,7 +115,7 @@ class TransactionTest(testbase.PersistTest):
         assert len(result.fetchall()) == 0
         connection.close()
     
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def testnestedsubtransactionrollback(self):
         connection = testbase.db.connect()
         transaction = connection.begin()
@@ -133,7 +132,7 @@ class TransactionTest(testbase.PersistTest):
         )
         connection.close()
 
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def testnestedsubtransactioncommit(self):
         connection = testbase.db.connect()
         transaction = connection.begin()
@@ -150,7 +149,7 @@ class TransactionTest(testbase.PersistTest):
         )
         connection.close()
 
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def testrollbacktosubtransaction(self):
         connection = testbase.db.connect()
         transaction = connection.begin()
@@ -169,7 +168,7 @@ class TransactionTest(testbase.PersistTest):
         )
         connection.close()
     
-    @testbase.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql')
     def testtwophasetransaction(self):
         connection = testbase.db.connect()
         
@@ -197,7 +196,7 @@ class TransactionTest(testbase.PersistTest):
         )
         connection.close()
 
-    @testbase.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql')
     def testmixedtransaction(self):
         connection = testbase.db.connect()
         
@@ -230,7 +229,7 @@ class TransactionTest(testbase.PersistTest):
         )
         connection.close()
         
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def testtwophaserecover(self):
         # MySQL recovery doesn't currently seem to work correctly
         # Prepared transactions disappear when connections are closed and even
@@ -262,7 +261,7 @@ class TransactionTest(testbase.PersistTest):
         )
         connection2.close()
 
-class AutoRollbackTest(testbase.PersistTest):
+class AutoRollbackTest(PersistTest):
     def setUpAll(self):
         global metadata
         metadata = MetaData()
@@ -270,7 +269,7 @@ class AutoRollbackTest(testbase.PersistTest):
     def tearDownAll(self):
         metadata.drop_all(testbase.db)
         
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def testrollback_deadlock(self):
         """test that returning connections to the pool clears any object locks."""
         conn1 = testbase.db.connect()
@@ -289,10 +288,10 @@ class AutoRollbackTest(testbase.PersistTest):
         users.drop(conn2)
         conn2.close()
 
-class TLTransactionTest(testbase.PersistTest):
+class TLTransactionTest(PersistTest):
     def setUpAll(self):
         global users, metadata, tlengine
-        tlengine = create_engine(testbase.db_uri, strategy='threadlocal')
+        tlengine = create_engine(testbase.db.url, strategy='threadlocal')
         metadata = MetaData()
         users = Table('query_users', metadata,
             Column('user_id', INT, primary_key = True),
@@ -402,7 +401,7 @@ class TLTransactionTest(testbase.PersistTest):
         finally:
             external_connection.close()
         
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def testnesting(self):
         """tests nesting of tranacstions"""
         external_connection = tlengine.connect()
@@ -496,7 +495,7 @@ class TLTransactionTest(testbase.PersistTest):
         c2.close()
         assert c1.connection.connection is not None
 
-class ForUpdateTest(testbase.PersistTest):
+class ForUpdateTest(PersistTest):
     def setUpAll(self):
         global counters, metadata
         metadata = MetaData()
@@ -512,7 +511,7 @@ class ForUpdateTest(testbase.PersistTest):
         counters.drop(testbase.db)
 
     def increment(self, count, errors, update_style=True, delay=0.005):
-        con = db.connect()
+        con = testbase.db.connect()
         sel = counters.select(for_update=update_style,
                               whereclause=counters.c.counter_id==1)
         
@@ -539,7 +538,7 @@ class ForUpdateTest(testbase.PersistTest):
 
         con.close()
 
-    @testbase.supported('mysql', 'oracle', 'postgres')
+    @testing.supported('mysql', 'oracle', 'postgres')
     def testqueued_update(self):
         """Test SELECT FOR UPDATE with concurrent modifications.
 
@@ -574,7 +573,7 @@ class ForUpdateTest(testbase.PersistTest):
     def overlap(self, ids, errors, update_style):
         sel = counters.select(for_update=update_style,
                               whereclause=counters.c.counter_id.in_(*ids))
-        con = db.connect()
+        con = testbase.db.connect()
         trans = con.begin()
         try:
             rows = con.execute(sel).fetchall()
@@ -600,7 +599,7 @@ class ForUpdateTest(testbase.PersistTest):
 
         return errors
         
-    @testbase.supported('mysql', 'oracle', 'postgres')
+    @testing.supported('mysql', 'oracle', 'postgres')
     def testqueued_select(self):
         """Simple SELECT FOR UPDATE conflict test"""
 
@@ -609,7 +608,7 @@ class ForUpdateTest(testbase.PersistTest):
             sys.stderr.write("Failure: %s\n" % e)
         self.assert_(len(errors) == 0)
 
-    @testbase.supported('oracle', 'postgres')
+    @testing.supported('oracle', 'postgres')
     def testnowait_select(self):
         """Simple SELECT FOR UPDATE NOWAIT conflict test"""
 

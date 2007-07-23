@@ -1,6 +1,8 @@
 import testbase
+import sys, weakref
 from sqlalchemy import create_engine, exceptions
-import gc, weakref, sys
+from testlib import *
+
 
 class MockDisconnect(Exception):
     pass
@@ -37,7 +39,7 @@ class MockCursor(object):
     def close(self):
         pass
         
-class ReconnectTest(testbase.PersistTest):
+class ReconnectTest(PersistTest):
     def test_reconnect(self):
         """test that an 'is_disconnect' condition will invalidate the connection, and additionally
         dispose the previous connection pool and recreate."""
