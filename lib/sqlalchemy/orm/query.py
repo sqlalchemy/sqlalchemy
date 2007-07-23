@@ -78,7 +78,7 @@ class Query(object):
         if hasattr(ident, '__colset__'):
             ident = ident.__colset__()
 
-        key = self.mapper.identity_key(ident)
+        key = self.mapper.identity_key_from_primary_key(ident)
         return self._get(key, ident, **kwargs)
 
     def load(self, ident, **kwargs):
@@ -95,7 +95,7 @@ class Query(object):
         ret = self._extension.load(self, ident, **kwargs)
         if ret is not mapper.EXT_PASS:
             return ret
-        key = self.mapper.identity_key(ident)
+        key = self.mapper.identity_key_from_primary_key(ident)
         instance = self._get(key, ident, reload=True, **kwargs)
         if instance is None:
             raise exceptions.InvalidRequestError("No instance found for identity %s" % repr(ident))

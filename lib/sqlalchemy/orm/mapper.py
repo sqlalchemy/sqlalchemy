@@ -1044,21 +1044,6 @@ class Mapper(object):
         else:
             return instance.__class__ is self.class_
         
-    def instance_key(self, instance):
-        """Deprecated. A synonym for `identity_key_from_instance`."""
-
-        return self.identity_key_from_instance(instance)
-
-    def identity_key(self, primary_key):
-        """Deprecated. A synonym for `identity_key_from_primary_key`."""
-
-        return self.identity_key_from_primary_key(primary_key)
-
-    def identity(self, instance):
-        """Deprecated. A synoynm for `primary_key_from_instance`."""
-
-        return self.primary_key_from_instance(instance)
-
     def _getpropbycolumn(self, column, raiseerror=True):
         try:
             prop = self.columntoproperty[column]
@@ -1080,7 +1065,6 @@ class Mapper(object):
         prop = self._getpropbycolumn(column, raiseerror)
         if prop is None:
             return NO_ATTRIBUTE
-        #print "get column attribute '%s' from instance %s" % (column.key, mapperutil.instance_str(obj))
         return prop.getattr(obj, column)
 
     def set_attr_by_column(self, obj, column, value):
@@ -1127,7 +1111,7 @@ class Mapper(object):
             # and another instance with the same identity key already exists as persistent.  convert to an
             # UPDATE if so.
             mapper = object_mapper(obj)
-            instance_key = mapper.instance_key(obj)
+            instance_key = mapper.identity_key_from_instance(obj)
             is_row_switch = not postupdate and not has_identity(obj) and instance_key in uowtransaction.uow.identity_map
             if is_row_switch:
                 existing = uowtransaction.uow.identity_map[instance_key]
@@ -1157,7 +1141,7 @@ class Mapper(object):
                 mapper = object_mapper(obj)
                 if table not in mapper.tables or not mapper._has_pks(table):
                     continue
-                instance_key = mapper.instance_key(obj)
+                instance_key = mapper.identity_key_from_instance(obj)
                 if self.__should_log_debug:
                     self.__log_debug("save_obj() table '%s' instance %s identity %s" % (table.name, mapperutil.instance_str(obj), str(instance_key)))
 
@@ -1654,7 +1638,7 @@ class Mapper(object):
         def post_execute(instance, **flags):
             self.__log_debug("Post query loading instance " + mapperutil.instance_str(instance))
 
-            identitykey = self.instance_key(instance)
+            identitykey = self.identity_key_from_instance(instance)
 
             params = {}
             for c in param_names:

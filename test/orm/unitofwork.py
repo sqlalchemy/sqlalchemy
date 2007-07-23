@@ -932,8 +932,7 @@ class SaveTest(UnitOfWorkTest):
         u.email = 'multi@test.org'
 
         ctx.current.flush()
-        id = m.identity(u)
-        print id
+        id = m.primary_key_from_instance(u)
 
         ctx.current.clear()
         
@@ -1409,7 +1408,6 @@ class ManyToManyTest(UnitOfWorkTest):
         k.user_name = 'keyworduser'
         k.keyword_name = 'a keyword'
         ctx.current.flush()
-        print m.instance_key(k)
         
         id = (k.user_id, k.keyword_id)
         ctx.current.clear()

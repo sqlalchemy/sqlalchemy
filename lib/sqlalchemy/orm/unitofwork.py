@@ -134,7 +134,7 @@ class UnitOfWork(object):
             self.new.remove(obj)
         if not hasattr(obj, '_instance_key'):
             mapper = object_mapper(obj)
-            obj._instance_key = mapper.instance_key(obj)
+            obj._instance_key = mapper.identity_key_from_instance(obj)
         if hasattr(obj, '_sa_insert_order'):
             delattr(obj, '_sa_insert_order')
         self.identity_map[obj._instance_key] = obj
