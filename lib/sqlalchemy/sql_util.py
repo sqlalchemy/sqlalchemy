@@ -147,7 +147,6 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
     def visit_clauselist(self, clist):
         for i in range(0, len(clist.clauses)):
             n = self.convert_element(clist.clauses[i])
-            print "CONVERTEING CLAUSELIST W ID", id(clist)
             if n is not None:
                 clist.clauses[i] = n
     

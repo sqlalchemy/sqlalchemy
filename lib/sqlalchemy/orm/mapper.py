@@ -469,8 +469,17 @@ class Mapper(object):
                 self.mapped_table = self.local_table
             if self.polymorphic_identity is not None:
                 self.inherits._add_polymorphic_mapping(self.polymorphic_identity, self)
-            if self.polymorphic_on is None and self.inherits.polymorphic_on is not None:
-                self.polymorphic_on = self.mapped_table.corresponding_column(self.inherits.polymorphic_on, keys_ok=True, raiseerr=False)
+                if self.polymorphic_on is None:
+                    if self.inherits.polymorphic_on is not None:
+                        self.polymorphic_on = self.mapped_table.corresponding_column(self.inherits.polymorphic_on, keys_ok=True, raiseerr=False)
+                    else:
+                        raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
+
+            if self.polymorphic_identity is not None and not self.concrete:
+                self._identity_class = self.inherits._identity_class
+            else:
+                self._identity_class = self.class_
+                
             if self.order_by is False:
                 self.order_by = self.inherits.order_by
             self.polymorphic_map = self.inherits.polymorphic_map
@@ -480,8 +489,11 @@ class Mapper(object):
             self._synchronizer = None
             self.mapped_table = self.local_table
             if self.polymorphic_identity is not None:
+                if self.polymorphic_on is None:
+                    raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
                 self._add_polymorphic_mapping(self.polymorphic_identity, self)
-
+            self._identity_class = self.class_
+            
         if self.mapped_table is None:
             raise exceptions.ArgumentError("Mapper '%s' does not have a mapped_table specified.  (Are you using the return value of table.create()?  It no longer has a return value.)" % str(self))
 
@@ -540,58 +552,60 @@ class Mapper(object):
         if len(self.pks_by_table[self.mapped_table]) == 0:
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
 
-        # create the "primary_key" for this mapper.  this will flatten "equivalent" primary key columns
-        # into one column, where "equivalent" means that one column references the other via foreign key, or
-        # multiple columns that all reference a common parent column.  it will also resolve the column
-        # against the "mapped_table" of this mapper.
-        equivalent_columns = self._get_equivalent_columns()
+        if self.inherits is not None and not self.concrete and not self.primary_key_argument:
+            self.primary_key = self.inherits.primary_key
+            self._get_clause = self.inherits._get_clause
+        else:
+            # create the "primary_key" for this mapper.  this will flatten "equivalent" primary key columns
+            # into one column, where "equivalent" means that one column references the other via foreign key, or
+            # multiple columns that all reference a common parent column.  it will also resolve the column
+            # against the "mapped_table" of this mapper.
+            equivalent_columns = self._get_equivalent_columns()
         
-        primary_key = sql.ColumnSet()
+            primary_key = sql.ColumnSet()
 
-        for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
-            #primary_key.add(col)
-            #continue
-            c = self.mapped_table.corresponding_column(col, raiseerr=False)
-            if c is None:
-                for cc in equivalent_columns[col]:
-                    c = self.mapped_table.corresponding_column(cc, raiseerr=False)
-                    if c is not None:
-                        break
-                else:
-                    raise exceptions.ArgumentError("Cant resolve column " + str(col))
+            for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
+                c = self.mapped_table.corresponding_column(col, raiseerr=False)
+                if c is None:
+                    for cc in equivalent_columns[col]:
+                        c = self.mapped_table.corresponding_column(cc, raiseerr=False)
+                        if c is not None:
+                            break
+                    else:
+                        raise exceptions.ArgumentError("Cant resolve column " + str(col))
 
-            # this step attempts to resolve the column to an equivalent which is not
-            # a foreign key elsewhere.  this helps with joined table inheritance
-            # so that PKs are expressed in terms of the base table which is always
-            # present in the initial select
-            # TODO: this is a little hacky right now, the "tried" list is to prevent
-            # endless loops between cyclical FKs, try to make this cleaner/work better/etc.,
-            # perhaps via topological sort (pick the leftmost item)
-            tried = util.Set()
-            while True:
-                if not len(c.foreign_keys) or c in tried:
-                    break
-                for cc in c.foreign_keys:
-                    cc = cc.column
-                    c2 = self.mapped_table.corresponding_column(cc, raiseerr=False)
-                    if c2 is not None:
-                        c = c2
-                        tried.add(c)
+                # this step attempts to resolve the column to an equivalent which is not
+                # a foreign key elsewhere.  this helps with joined table inheritance
+                # so that PKs are expressed in terms of the base table which is always
+                # present in the initial select
+                # TODO: this is a little hacky right now, the "tried" list is to prevent
+                # endless loops between cyclical FKs, try to make this cleaner/work better/etc.,
+                # perhaps via topological sort (pick the leftmost item)
+                tried = util.Set()
+                while True:
+                    if not len(c.foreign_keys) or c in tried:
                         break
-                else:
-                    break
-            primary_key.add(c)
+                    for cc in c.foreign_keys:
+                        cc = cc.column
+                        c2 = self.mapped_table.corresponding_column(cc, raiseerr=False)
+                        if c2 is not None:
+                            c = c2
+                            tried.add(c)
+                            break
+                    else:
+                        break
+                primary_key.add(c)
                 
-        if len(primary_key) == 0:
-            raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
+            if len(primary_key) == 0:
+                raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
 
-        self.primary_key = primary_key
-        self.__log("Identified primary key columns: " + str(primary_key))
+            self.primary_key = primary_key
+            self.__log("Identified primary key columns: " + str(primary_key))
         
-        _get_clause = sql.and_()
-        for primary_key in self.primary_key:
-            _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type_=primary_key.type, unique=True))
-        self._get_clause = _get_clause
+            _get_clause = sql.and_()
+            for primary_key in self.primary_key:
+                _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type_=primary_key.type, unique=True))
+            self._get_clause = _get_clause
 
     def _get_equivalent_columns(self):
         """Create a map of all *equivalent* columns, based on
@@ -996,7 +1010,7 @@ class Mapper(object):
           dictionary corresponding result-set ``ColumnElement``
           instances to their values within a row.
         """
-        return (self.class_, tuple([row[column] for column in self.primary_key]), self.entity_name)
+        return (self._identity_class, tuple([row[column] for column in self.primary_key]), self.entity_name)
 
     def identity_key_from_primary_key(self, primary_key):
         """Return an identity-map key for use in storing/retrieving an
@@ -1005,7 +1019,7 @@ class Mapper(object):
         primary_key
           A list of values indicating the identifier.
         """
-        return (self.class_, tuple(util.to_list(primary_key)), self.entity_name)
+        return (self._identity_class, tuple(util.to_list(primary_key)), self.entity_name)
 
     def identity_key_from_instance(self, instance):
         """Return the identity key for the given instance, based on

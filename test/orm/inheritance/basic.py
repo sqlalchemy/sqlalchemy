@@ -62,9 +62,93 @@ class O2MTest(ORMTest):
         self.assert_(compare == result)
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
-class AddPropTest(ORMTest):
-    """testing that construction of inheriting mappers works regardless of when extra properties
-    are added to the superclass mapper"""
+class GetTest(ORMTest):    
+    def define_tables(self, metadata):
+        global foo, bar, blub
+        foo = Table('foo', metadata,
+            Column('id', Integer, Sequence('foo_seq'), primary_key=True),
+            Column('type', String(30)),
+            Column('data', String(20)))
+
+        bar = Table('bar', metadata,
+            Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
+            Column('data', String(20)))
+
+        blub = Table('blub', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('foo_id', Integer, ForeignKey('foo.id')),
+            Column('bar_id', Integer, ForeignKey('bar.id')),
+            Column('data', String(20)))
+    
+    def create_test(polymorphic):
+        def test_get(self):
+            class Foo(object):
+                pass
+
+            class Bar(Foo):
+                pass
+        
+            class Blub(Bar):
+                pass
+
+            if polymorphic:
+                mapper(Foo, foo, polymorphic_on=foo.c.type, polymorphic_identity='foo')
+                mapper(Bar, bar, inherits=Foo, polymorphic_identity='bar')
+                mapper(Blub, blub, inherits=Bar, polymorphic_identity='blub')
+            else:
+                mapper(Foo, foo)
+                mapper(Bar, bar, inherits=Foo)
+                mapper(Blub, blub, inherits=Bar)
+        
+            sess = create_session()
+            f = Foo()
+            b = Bar()
+            bl = Blub()
+            sess.save(f)
+            sess.save(b)
+            sess.save(bl)
+            sess.flush()
+            
+            if polymorphic:
+                def go():
+                    assert sess.query(Foo).get(f.id) == f
+                    assert sess.query(Foo).get(b.id) == b
+                    assert sess.query(Foo).get(bl.id) == bl
+                    assert sess.query(Bar).get(b.id) == b
+                    assert sess.query(Bar).get(bl.id) == bl
+                    assert sess.query(Blub).get(bl.id) == bl
+            
+                self.assert_sql_count(testbase.db, go, 0)
+            else:
+                # this is testing the 'wrong' behavior of using get() 
+                # polymorphically with mappers that are not configured to be
+                # polymorphic.  the important part being that get() always
+                # returns an instance of the query's type.
+                def go():
+                    assert sess.query(Foo).get(f.id) == f
+                    
+                    bb = sess.query(Foo).get(b.id)
+                    assert isinstance(b, Foo) and bb.id==b.id
+                    
+                    bll = sess.query(Foo).get(bl.id)
+                    assert isinstance(bll, Foo) and bll.id==bl.id
+                    
+                    assert sess.query(Bar).get(b.id) == b
+                    
+                    bll = sess.query(Bar).get(bl.id)
+                    assert isinstance(bll, Bar) and bll.id == bl.id
+                    
+                    assert sess.query(Blub).get(bl.id) == bl
+            
+                self.assert_sql_count(testbase.db, go, 3)
+                
+        return test_get
+        
+    test_get_polymorphic = create_test(True)
+    test_get_nonpolymorphic = create_test(False)
+
+
+class ConstructionTest(ORMTest):
     def define_tables(self, metadata):
         global content_type, content, product
         content_type = Table('content_type', metadata, 
@@ -72,7 +156,8 @@ class AddPropTest(ORMTest):
             )
         content = Table('content', metadata,
             Column('id', Integer, primary_key=True),
-            Column('content_type_id', Integer, ForeignKey('content_type.id'))
+            Column('content_type_id', Integer, ForeignKey('content_type.id')),
+            Column('type', String(30))
             )
         product = Table('product', metadata, 
             Column('id', Integer, ForeignKey('content.id'), primary_key=True)
@@ -86,11 +171,15 @@ class AddPropTest(ORMTest):
         content_types = mapper(ContentType, content_type)
         contents = mapper(Content, content, properties={
             'content_type':relation(content_types)
-        })
-        #contents.add_property('content_type', relation(content_types)) #adding this makes the inheritance stop working
-        # shouldnt throw exception
-        products = mapper(Product, product, inherits=contents)
-        # TODO: assertion ??
+        }, polymorphic_identity='contents')
+
+        products = mapper(Product, product, inherits=contents, polymorphic_identity='products')
+        
+        try:
+            compile_mappers()
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Mapper 'Mapper|Content|content' specifies a polymorphic_identity of 'contents', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument"
 
     def testbackref(self):
         """tests adding a property to the superclass mapper"""
@@ -98,8 +187,8 @@ class AddPropTest(ORMTest):
         class Content(object): pass
         class Product(Content): pass
 
-        contents = mapper(Content, content)
-        products = mapper(Product, product, inherits=contents)
+        contents = mapper(Content, content, polymorphic_on=content.c.type, polymorphic_identity='content')
+        products = mapper(Product, product, inherits=contents, polymorphic_identity='product')
         content_types = mapper(ContentType, content_type, properties={
             'content':relation(contents, backref='contenttype')
         })
@@ -278,12 +367,7 @@ class DistinctPKTest(ORMTest):
     def test_implicit(self):
         person_mapper = mapper(Person, person_table)
         mapper(Employee, employee_table, inherits=person_mapper)
-        try:
-            print class_mapper(Employee).primary_key
-            assert list(class_mapper(Employee).primary_key) == [person_table.c.id, employee_table.c.id]
-            assert False
-        except RuntimeWarning, e:
-            assert str(e) == "On mapper Mapper|Employee|employees, primary key column 'employees.id' is being combined with distinct primary key column 'persons.id' in attribute 'id'.  Use explicit properties to give each column its own mapped attribute name."
+        assert list(class_mapper(Employee).primary_key) == [person_table.c.id]
 
     def test_explicit_props(self):
         person_mapper = mapper(Person, person_table)

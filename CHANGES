@@ -104,6 +104,18 @@
       should "collapse" into a single-valued (or fewer-valued) primary key.
       fixes things like [ticket:611].
 
+    - joined-table inheritance will now generate the primary key
+      columns of all inherited classes against the root table of the 
+      join only.  This implies that each row in the root table is distinct
+      to a single instance.  If for some rare reason this is not desireable,
+      explicit primary_key settings on individual mappers will override it.
+      
+    - When "polymorphic" flags are used with joined-table or single-table
+      inheritance, all identity keys are generated against the root class 
+      of the inheritance hierarchy; this allows query.get() to work 
+      polymorphically using the same caching semantics as a non-polymorphic get.
+      note that this currently does not work with concrete inheritance.
+      
     - secondary inheritance loading: polymorphic mappers can be
       constructed *without* a select_table argument. inheriting mappers
       whose tables were not represented in the initial load will issue a

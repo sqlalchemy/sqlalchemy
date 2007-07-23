@@ -54,6 +54,7 @@ class ConcreteTest1(ORMTest):
         session.flush()
         session.clear()
 
+        print set([repr(x) for x in session.query(Employee).select()])
         assert set([repr(x) for x in session.query(Employee).select()]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
         assert set([repr(x) for x in session.query(Manager).select()]) == set(["Manager Tom knows how to manage things"])
         assert set([repr(x) for x in session.query(Engineer).select()]) == set(["Engineer Kurt knows how to hack"])
