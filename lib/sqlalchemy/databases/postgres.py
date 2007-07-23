@@ -599,7 +599,7 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
         if column.primary_key:
             # passive defaults on primary keys have to be overridden
             if isinstance(column.default, schema.PassiveDefault):
-                return self.connection.execute_text("select %s" % column.default.arg).scalar()
+                return self.connection.execute("select %s" % column.default.arg).scalar()
             elif (isinstance(column.type, sqltypes.Integer) and column.autoincrement) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
                 sch = column.table.schema
                 # TODO: this has to build into the Sequence object so we can get the quoting
@@ -608,7 +608,7 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
                     exc = "select nextval('\"%s\".\"%s_%s_seq\"')" % (sch, column.table.name, column.name)
                 else:
                     exc = "select nextval('\"%s_%s_seq\"')" % (column.table.name, column.name)
-                return self.connection.execute_text(exc).scalar()
+                return self.connection.execute(exc).scalar()
 
         return super(ansisql.ANSIDefaultRunner, self).get_column_default(column)
 

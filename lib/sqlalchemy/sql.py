@@ -781,52 +781,42 @@ class ClauseParameters(object):
     def __init__(self, dialect, positional=None):
         super(ClauseParameters, self).__init__()
         self.dialect = dialect
-        self.binds = {}
-        self.binds_to_names = {}
-        self.binds_to_values = {}
+        self.__binds = {}
         self.positional = positional or []
 
     def set_parameter(self, bindparam, value, name):
-        self.binds[bindparam.key] = bindparam
-        self.binds[name] = bindparam
-        self.binds_to_names[bindparam] = name
-        self.binds_to_values[bindparam] = value
+        self.__binds[name] = [bindparam, name, value]
         
     def get_original(self, key):
-        """Return the given parameter as it was originally placed in
-        this ``ClauseParameters`` object, without any ``Type``
-        conversion."""
-        return self.binds_to_values[self.binds[key]]
+        return self.__binds[key][2]
 
     def get_processed(self, key):
-        bind = self.binds[key]
-        value = self.binds_to_values[bind]
+        (bind, name, value) = self.__binds[key]
         return bind.typeprocess(value, self.dialect)
    
     def keys(self):
-        return self.binds_to_names.values()
+        return self.__binds.keys()
  
     def __getitem__(self, key):
         return self.get_processed(key)
         
     def __contains__(self, key):
-        return key in self.binds
+        return key in self.__binds
     
     def set_value(self, key, value):
-        bind = self.binds[key]
-        self.binds_to_values[bind] = value
+        self.__binds[key][2] = value
             
     def get_original_dict(self):
-        return dict([(self.binds_to_names[b], self.binds_to_values[b]) for b in self.binds_to_names.keys()])
+        return dict([(name, value) for (b, name, value) in self.__binds.values()])
 
     def get_raw_list(self):
         return [self.get_processed(key) for key in self.positional]
 
-    def get_raw_dict(self):
-        d = {}
-        for k in self.binds_to_names.values():
-            d[k] = self.get_processed(k)
-        return d
+    def get_raw_dict(self, encode_keys=False):
+        if encode_keys:
+            return dict([(key.encode(self.dialect.encoding), self.get_processed(key)) for key in self.keys()])
+        else:
+            return dict([(key, self.get_processed(key)) for key in self.keys()])
 
     def __repr__(self):
         return self.__class__.__name__ + ":" + repr(self.get_original_dict())

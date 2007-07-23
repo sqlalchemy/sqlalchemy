@@ -600,9 +600,9 @@ class OracleSchemaDropper(ansisql.ANSISchemaDropper):
 class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
     def exec_default_sql(self, default):
         c = sql.select([default.arg], from_obj=["DUAL"]).compile(bind=self.connection)
-        return self.connection.execute_compiled(c).scalar()
+        return self.connection.execute(c).scalar()
 
     def visit_sequence(self, seq):
-        return self.connection.execute_text("SELECT " + seq.name + ".nextval FROM DUAL").scalar()
+        return self.connection.execute("SELECT " + seq.name + ".nextval FROM DUAL").scalar()
 
 dialect = OracleDialect

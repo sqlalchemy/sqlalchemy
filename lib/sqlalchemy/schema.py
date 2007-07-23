@@ -778,7 +778,7 @@ class DefaultGenerator(SchemaItem):
     def execute(self, bind=None, **kwargs):
         if bind is None:
             bind = self._get_engine(raiseerr=True)
-        return bind.execute_default(self, **kwargs)
+        return bind._execute_default(self, **kwargs)
 
     def __repr__(self):
         return "DefaultGenerator()"

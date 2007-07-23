@@ -127,23 +127,6 @@ class DefaultDialect(base.Dialect):
 
     paramstyle = property(lambda s:s._paramstyle, _set_paramstyle)
 
-    def convert_compiled_params(self, parameters):
-        executemany = parameters is not None and isinstance(parameters, list)
-        # the bind params are a CompiledParams object.  but all the DBAPI's hate
-        # that object (or similar).  so convert it to a clean
-        # dictionary/list/tuple of dictionary/tuple of list
-        if parameters is not None:
-           if self.positional:
-                if executemany:
-                    parameters = [p.get_raw_list() for p in parameters]
-                else:
-                    parameters = parameters.get_raw_list()
-           else:
-                if executemany:
-                    parameters = [p.get_raw_dict() for p in parameters]
-                else:
-                    parameters = parameters.get_raw_dict()
-        return parameters
 
     def _figure_paramstyle(self, paramstyle=None, default='named'):
         if paramstyle is not None:
@@ -172,19 +155,26 @@ class DefaultDialect(base.Dialect):
     ischema = property(_get_ischema, doc="""returns an ISchema object for this engine, which allows access to information_schema tables (if supported)""")
 
 class DefaultExecutionContext(base.ExecutionContext):
-    def __init__(self, dialect, connection, compiled=None, compiled_parameters=None, statement=None, parameters=None):
+    def __init__(self, dialect, connection, compiled=None, statement=None, parameters=None):
         self.dialect = dialect
         self.connection = connection
         self.compiled = compiled
-        self.compiled_parameters = compiled_parameters
         
         if compiled is not None:
             self.typemap = compiled.typemap
             self.column_labels = compiled.column_labels
             self.statement = unicode(compiled)
+            if parameters is None:
+                self.compiled_parameters = compiled.construct_params({})
+            elif not isinstance(parameters, (list, tuple)):
+                self.compiled_parameters = compiled.construct_params(parameters)
+            else:
+                self.compiled_parameters = [compiled.construct_params(m or {}) for m in parameters]
+                if len(self.compiled_parameters) == 1:
+                    self.compiled_parameters = self.compiled_parameters[0]
         else:
             self.typemap = self.column_labels = None
-            self.parameters = self._encode_param_keys(parameters)
+            self.parameters = self.__encode_param_keys(parameters)
             self.statement = statement
 
         if not dialect.supports_unicode_statements():
@@ -194,7 +184,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         
     engine = property(lambda s:s.connection.engine)
     
-    def _encode_param_keys(self, params):
+    def __encode_param_keys(self, params):
         """apply string encoding to the keys of dictionary-based bind parameters"""
         if self.dialect.positional or self.dialect.supports_unicode_statements():
             return params
@@ -209,6 +199,25 @@ class DefaultExecutionContext(base.ExecutionContext):
                 return [proc(d) for d in params]
             else:
                 return proc(params)
+
+    def __convert_compiled_params(self, parameters):
+        executemany = parameters is not None and isinstance(parameters, list)
+        encode = not self.dialect.supports_unicode_statements()
+        # the bind params are a CompiledParams object.  but all the DBAPI's hate
+        # that object (or similar).  so convert it to a clean
+        # dictionary/list/tuple of dictionary/tuple of list
+        if parameters is not None:
+           if self.dialect.positional:
+                if executemany:
+                    parameters = [p.get_raw_list() for p in parameters]
+                else:
+                    parameters = parameters.get_raw_list()
+           else:
+                if executemany:
+                    parameters = [p.get_raw_dict(encode_keys=encode) for p in parameters]
+                else:
+                    parameters = parameters.get_raw_dict(encode_keys=encode)
+        return parameters
                 
     def is_select(self):
         """return TRUE if the statement is expected to have result rows."""
@@ -217,10 +226,19 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def create_cursor(self):
         return self.connection.connection.cursor()
-        
+
+    def pre_execution(self):
+        self.pre_exec()
+    
+    def post_execution(self):
+        self.post_exec()
+    
+    def result(self):
+        return self.get_result_proxy()
+            
     def pre_exec(self):
         self._process_defaults()
-        self.parameters = self._encode_param_keys(self.dialect.convert_compiled_params(self.compiled_parameters))
+        self.parameters = self.__convert_compiled_params(self.compiled_parameters)
 
     def post_exec(self):
         pass
@@ -279,26 +297,10 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.cursor.setinputsizes(**inputsizes)
 
     def _process_defaults(self):
-        """``INSERT`` and ``UPDATE`` statements, when compiled, may
-        have additional columns added to their ``VALUES`` and ``SET``
-        lists corresponding to column defaults/onupdates that are
-        present on the ``Table`` object (i.e. ``ColumnDefault``,
-        ``Sequence``, ``PassiveDefault``).  This method pre-execs
-        those ``DefaultGenerator`` objects that require pre-execution
-        and sets their values within the parameter list, and flags this
-        ExecutionContext about ``PassiveDefault`` objects that may
-        require post-fetching the row after it is inserted/updated.
+        """generate default values for compiled insert/update statements,
+        and generate last_inserted_ids() collection."""
 
-        This method relies upon logic within the ``ANSISQLCompiler``
-        in its `visit_insert` and `visit_update` methods that add the
-        appropriate column clauses to the statement when its being
-        compiled, so that these parameters can be bound to the
-        statement.
-        """
-
-        # TODO: this calculation of defaults is one of the places SA slows down inserts.
-        # look into optimizing this for a list of params where theres no defaults defined
-        # (i.e. analyze the first batch of params).
+        # TODO: cleanup
         if self.compiled.isinsert:
             if isinstance(self.compiled_parameters, list):
                 plist = self.compiled_parameters

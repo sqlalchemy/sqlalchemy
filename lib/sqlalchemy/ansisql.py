@@ -240,24 +240,12 @@ class ANSICompiler(engine.Compiled):
         return self.wheres.get(obj, None)
 
     def construct_params(self, params):
-        """Return a structure of bind parameters for this compiled object.
-
-        This includes bind parameters that might be compiled in via
-        the `values` argument of an ``Insert`` or ``Update`` statement
-        object, and also the given `**params`.  The keys inside of
-        `**params` can be any key that matches the
-        ``BindParameterClause`` objects compiled within this object.
-
-        The output is dependent on the paramstyle of the DBAPI being
-        used; if a named style, the return result will be a dictionary
-        with keynames matching the compiled statement.  If a
-        positional style, the output will be a list, with an iterator
-        that will return parameter values in an order corresponding to
-        the bind positions in the compiled statement.
-
-        For an executemany style of call, this method should be called
-        for each element in the list of parameter groups that will
-        ultimately be executed.
+        """Return a sql.ClauseParameters object.
+        
+        Combines the given bind parameter dictionary (string keys to object values)
+        with the _BindParamClause objects stored within this Compiled object
+        to produce a ClauseParameters structure, representing the bind arguments
+        for a single statement execution, or one element of an executemany execution.
         """
         
         if self.parameters is not None:

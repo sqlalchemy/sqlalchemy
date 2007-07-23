@@ -76,7 +76,7 @@ class ExecutionContextWrapper(object):
     def __setattr__(self, key, value):
         setattr(self.ctx, key, value)
         
-    def post_exec(self):
+    def post_execution(self):
         ctx = self.ctx
         statement = unicode(ctx.compiled)
         statement = re.sub(r'\n', '', ctx.statement)
@@ -123,7 +123,7 @@ class ExecutionContextWrapper(object):
                 statement = statement[:-25]
             testdata.unittest.assert_(statement == query and (params is None or params == parameters), "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         testdata.sql_count += 1
-        self.ctx.post_exec()
+        self.ctx.post_execution()
         
     def convert_statement(self, query):
         paramstyle = self.ctx.dialect.paramstyle

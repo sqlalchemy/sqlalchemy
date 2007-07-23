@@ -56,7 +56,7 @@ class DomainReflectionTest(AssertMixin):
 
     @testing.supported('postgres')
     def test_crosschema_domain_is_reflected(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         table = Table('crosschema', metadata, autoload=True)
         self.assertEquals(str(table.columns.answer.default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")

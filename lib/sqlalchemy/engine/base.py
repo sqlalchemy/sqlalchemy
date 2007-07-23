@@ -47,15 +47,6 @@ class Dialect(sql.AbstractDialect):
 
         raise NotImplementedError()
 
-    def convert_compiled_params(self, parameters):
-        """Build DBAPI execute arguments from a [sqlalchemy.sql#ClauseParameters] instance.
-
-        Returns an array or dictionary suitable to pass directly to this ``Dialect`` instance's DBAPI's
-        execute method.
-        """
-
-        raise NotImplementedError()
-
     def dbapi_type_map(self):
         """return a mapping of DBAPI type objects present in this Dialect's DBAPI
         mapped to TypeEngine implementations used by the dialect. 
@@ -295,19 +286,18 @@ class ExecutionContext(object):
         compiled
             if passed to constructor, sql.Compiled object being executed
         
-        compiled_parameters
-            if passed to constructor, sql.ClauseParameters object
-             
         statement
             string version of the statement to be executed.  Is either
             passed to the constructor, or must be created from the 
             sql.Compiled object by the time pre_exec() has completed.
             
         parameters
-            "raw" parameters suitable for direct execution by the
-            dialect.  Either passed to the constructor, or must be
-            created from the sql.ClauseParameters object by the time 
-            pre_exec() has completed.
+            bind parameters passed to the execute() method.  for
+            compiled statements, this is a dictionary or list 
+            of dictionaries.  for textual statements, it should
+            be in a format suitable for the dialect's paramstyle
+            (i.e. dict or list of dicts for non positional,
+            list or list of lists/tuples for positional).
             
     
     The Dialect should provide an ExecutionContext via the
@@ -317,24 +307,28 @@ class ExecutionContext(object):
     """
 
     def create_cursor(self):
-        """Return a new cursor generated this ExecutionContext's connection."""
+        """Return a new cursor generated from this ExecutionContext's connection.
+        
+        Some dialects may wish to change the behavior of connection.cursor(),
+        such as postgres which may return a PG "server side" cursor.
+        """
 
         raise NotImplementedError()
 
-    def pre_exec(self):
+    def pre_execution(self):
         """Called before an execution of a compiled statement.
         
-        If compiled and compiled_parameters were passed to this
+        If a compiled statement was passed to this
         ExecutionContext, the `statement` and `parameters` datamembers
         must be initialized after this statement is complete.
         """
 
         raise NotImplementedError()
 
-    def post_exec(self):
+    def post_execution(self):
         """Called after the execution of a compiled statement.
         
-        If compiled was passed to this ExecutionContext,
+        If a compiled statement was passed to this ExecutionContext,
         the `last_insert_ids`, `last_inserted_params`, etc. 
         datamembers should be available after this method
         completes.
@@ -342,8 +336,11 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
     
-    def get_result_proxy(self):
-        """return a ResultProxy corresponding to this ExecutionContext."""
+    def result(self):
+        """return a result object corresponding to this ExecutionContext.
+        
+        Returns a ResultProxy."""
+        
         raise NotImplementedError()
         
     def get_rowcount(self):
@@ -450,12 +447,9 @@ class Compiled(sql.ClauseVisitor):
     def construct_params(self, params):
         """Return the bind params for this compiled object.
 
-        Will start with the default parameters specified when this
-        ``Compiled`` object was first constructed, and will override
-        those values with those sent via `**params`, which are
-        key/value pairs.  Each key should match one of the
-        ``_BindParamClause`` objects compiled into this object; either
-        the `key` or `shortname` property of the ``_BindParamClause``.
+        params is a dict of string/object pairs whos 
+        values will override bind values compiled in
+        to the statement.
         """
         raise NotImplementedError()
 
@@ -465,7 +459,7 @@ class Compiled(sql.ClauseVisitor):
         e = self.bind
         if e is None:
             raise exceptions.InvalidRequestError("This Compiled object is not bound to any Engine or Connection.")
-        return e.execute_compiled(self, *multiparams, **params)
+        return e._execute_compiled(self, multiparams, params)
 
     def scalar(self, *multiparams, **params):
         """Execute this compiled object and return the result's scalar value."""
@@ -693,75 +687,66 @@ class Connection(Connectable):
     def execute(self, object, *multiparams, **params):
         for c in type(object).__mro__:
             if c in Connection.executors:
-                return Connection.executors[c](self, object, *multiparams, **params)
+                return Connection.executors[c](self, object, multiparams, params)
         else:
             raise exceptions.InvalidRequestError("Unexecuteable object type: " + str(type(object)))
 
-    def execute_default(self, default, **kwargs):
+    def _execute_default(self, default, multiparams=None, params=None):
         return self.__engine.dialect.defaultrunner(self).traverse_single(default)
 
-    def execute_text(self, statement, *multiparams, **params):
-        if len(multiparams) == 0:
+    def _execute_text(self, statement, multiparams, params):
+        parameters = self.__distill_params(multiparams, params)
+        context = self.__create_execution_context(statement=statement, parameters=parameters)
+        self.__execute_raw(context)
+        return context.result()
+
+    def __distill_params(self, multiparams, params):
+        if multiparams is None or len(multiparams) == 0:
             parameters = params or None
         elif len(multiparams) == 1 and isinstance(multiparams[0], (list, tuple, dict)):
             parameters = multiparams[0]
         else:
             parameters = list(multiparams)
-        context = self._create_execution_context(statement=statement, parameters=parameters)
-        self._execute_raw(context)
-        return context.get_result_proxy()
+        return parameters
 
-    def _params_to_listofdicts(self, *multiparams, **params):
-        if len(multiparams) == 0:
-            return [params]
-        elif len(multiparams) == 1:
-            if multiparams[0] == None:
-                return [{}]
-            elif isinstance (multiparams[0], (list, tuple)):
-                return multiparams[0]
-            else:
-                return [multiparams[0]]
-        else:
-            return multiparams
-    
-    def execute_function(self, func, *multiparams, **params):
-        return self.execute_clauseelement(func.select(), *multiparams, **params)
+    def _execute_function(self, func, multiparams, params):
+        return self._execute_clauseelement(func.select(), multiparams, params)
         
-    def execute_clauseelement(self, elem, *multiparams, **params):
-        executemany = len(multiparams) > 0
+    def _execute_clauseelement(self, elem, multiparams=None, params=None):
+        executemany = multiparams is not None and len(multiparams) > 0
         if executemany:
             param = multiparams[0]
         else:
             param = params
-        return self.execute_compiled(elem.compile(dialect=self.dialect, parameters=param), *multiparams, **params)
+        return self._execute_compiled(elem.compile(dialect=self.dialect, parameters=param), multiparams, params)
 
-    def execute_compiled(self, compiled, *multiparams, **params):
+    def _execute_compiled(self, compiled, multiparams=None, params=None):
         """Execute a sql.Compiled object."""
         if not compiled.can_execute:
             raise exceptions.ArgumentError("Not an executeable clause: %s" % (str(compiled)))
-        parameters = [compiled.construct_params(m) for m in self._params_to_listofdicts(*multiparams, **params)]
-        if len(parameters) == 1:
-            parameters = parameters[0]
-        context = self._create_execution_context(compiled=compiled, compiled_parameters=parameters)
-        context.pre_exec()
-        self._execute_raw(context)
-        context.post_exec()
-        return context.get_result_proxy()
-    
-    def _create_execution_context(self, **kwargs):
+
+        params = self.__distill_params(multiparams, params)
+        context = self.__create_execution_context(compiled=compiled, parameters=params)
+        
+        context.pre_execution()
+        self.__execute_raw(context)
+        context.post_execution()
+        return context.result()
+            
+    def __create_execution_context(self, **kwargs):
         return self.__engine.dialect.create_execution_context(connection=self, **kwargs)
         
-    def _execute_raw(self, context):
+    def __execute_raw(self, context):
         if logging.is_info_enabled(self.__engine.logger):
             self.__engine.logger.info(context.statement)
             self.__engine.logger.info(repr(context.parameters))
         if context.parameters is not None and isinstance(context.parameters, list) and len(context.parameters) > 0 and isinstance(context.parameters[0], (list, tuple, dict)):
-            self._executemany(context)
+            self.__executemany(context)
         else:
-            self._execute(context)
+            self.__execute(context)
         self._autocommit(context.statement)
 
-    def _execute(self, context):
+    def __execute(self, context):
         if context.parameters is None:
             if context.dialect.positional:
                 context.parameters = ()
@@ -778,7 +763,7 @@ class Connection(Connectable):
                 self.close()
             raise exceptions.SQLError(context.statement, context.parameters, e)
 
-    def _executemany(self, context):
+    def __executemany(self, context):
         try:
             context.dialect.do_executemany(context.cursor, context.statement, context.parameters, context=context)
         except Exception, e:
@@ -792,11 +777,11 @@ class Connection(Connectable):
 
     # poor man's multimethod/generic function thingy
     executors = {
-        sql._Function : execute_function,
-        sql.ClauseElement : execute_clauseelement,
-        sql.ClauseVisitor : execute_compiled,
-        schema.SchemaItem:execute_default,
-        str.__mro__[-2] : execute_text
+        sql._Function : _execute_function,
+        sql.ClauseElement : _execute_clauseelement,
+        sql.ClauseVisitor : _execute_compiled,
+        schema.SchemaItem:_execute_default,
+        str.__mro__[-2] : _execute_text
     }
 
     def create(self, entity, **kwargs):
@@ -934,10 +919,10 @@ class Engine(Connectable):
 
         self._run_visitor(self.dialect.schemadropper, entity, connection=connection, **kwargs)
 
-    def execute_default(self, default, **kwargs):
+    def _execute_default(self, default):
         connection = self.contextual_connect()
         try:
-            return connection.execute_default(default, **kwargs)
+            return connection._execute_default(default)
         finally:
             connection.close()
 
@@ -1006,9 +991,9 @@ class Engine(Connectable):
     def scalar(self, statement, *multiparams, **params):
         return self.execute(statement, *multiparams, **params).scalar()
 
-    def execute_compiled(self, compiled, *multiparams, **params):
+    def _execute_compiled(self, compiled, multiparams, params):
         connection = self.contextual_connect(close_with_result=True)
-        return connection.execute_compiled(compiled, *multiparams, **params)
+        return connection._execute_compiled(compiled, multiparams, params)
 
     def compiler(self, statement, parameters, **kwargs):
         return self.dialect.compiler(statement, parameters, bind=self, **kwargs)
@@ -1509,7 +1494,7 @@ class DefaultRunner(schema.SchemaVisitor):
 
     def exec_default_sql(self, default):
         c = sql.select([default.arg]).compile(bind=self.connection)
-        return self.connection.execute_compiled(c).scalar()
+        return self.connection._execute_compiled(c).scalar()
 
     def visit_column_onupdate(self, onupdate):
         if isinstance(onupdate.arg, sql.ClauseElement):

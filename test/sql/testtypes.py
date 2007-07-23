@@ -341,7 +341,7 @@ class DateTest(AssertMixin):
                          Sequence('datetest_id_seq', optional=True),
                          primary_key=True),
                 Column('adate', Date), Column('adatetime', DateTime))
-        t.create()
+        t.create(checkfirst=True)
         try:
             d1 = datetime.date(2007, 10, 30)
             t.insert().execute(adate=d1, adatetime=d1)
@@ -353,7 +353,7 @@ class DateTest(AssertMixin):
             self.assert_(x.adatetime.__class__ == datetime.datetime)
 
         finally:
-            t.drop()
+            t.drop(checkfirst=True)
 
 class IntervalTest(AssertMixin):
     def setUpAll(self):

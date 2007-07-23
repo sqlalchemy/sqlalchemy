@@ -172,12 +172,13 @@ class ConstraintTest(AssertMixin):
 
         capt = []
         connection = testbase.db.connect()
-        ex = connection._execute
+        # TODO: hacky, put a real connection proxy in
+        ex = connection._Connection__execute
         def proxy(context):
             capt.append(context.statement)
             capt.append(repr(context.parameters))
             ex(context)
-        connection._execute = proxy
+        connection._Connection__execute = proxy
         schemagen = testbase.db.dialect.schemagenerator(connection)
         schemagen.traverse(events)
         
