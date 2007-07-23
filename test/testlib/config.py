@@ -81,9 +81,9 @@ opt = parser.add_option
 opt("--verbose", action="store_true", dest="verbose",
     help="enable stdout echoing/printing")
 opt("--quiet", action="store_true", dest="quiet", help="suppress output")
-opt("--log-info", action="callback", callback=_log,
+opt("--log-info", action="callback", type="string", callback=_log,
     help="turn on info logging for <LOG> (multiple OK)")
-opt("--log-debug", action="callback", callback=_log,
+opt("--log-debug", action="callback", type="string", callback=_log,
     help="turn on debug logging for <LOG> (multiple OK)")
 opt("--require", action="append", dest="require", default=[],
     help="require a particular driver or module version (multiple OK)")
