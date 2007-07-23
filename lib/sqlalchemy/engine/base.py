@@ -129,11 +129,11 @@ class Dialect(sql.AbstractDialect):
 
         raise NotImplementedError()
 
-    def defaultrunner(self, connection, **kwargs):
+    def defaultrunner(self, execution_context):
         """Return a [sqlalchemy.schema#SchemaVisitor] instance that can execute defaults.
         
-            connection
-                a [sqlalchemy.engine#Connection] to use for statement execution
+            execution_context
+                a [sqlalchemy.engine#ExecutionContext] to use for statement execution
         
         """
 
@@ -514,6 +514,12 @@ class Connection(Connectable):
         except AttributeError:
             raise exceptions.InvalidRequestError("This Connection is closed")
 
+    def _branch(self):
+        """return a new Connection which references this Connection's 
+        engine and connection; but does not have close_with_result enabled."""
+        
+        return Connection(self.__engine, self.__connection)
+        
     engine = property(lambda s:s.__engine, doc="The Engine with which this Connection is associated.")
     dialect = property(lambda s:s.__engine.dialect, doc="Dialect used by this Connection.")
     connection = property(_get_connection, doc="The underlying DBAPI connection managed by this Connection.")
@@ -694,7 +700,7 @@ class Connection(Connectable):
             raise exceptions.InvalidRequestError("Unexecuteable object type: " + str(type(object)))
 
     def _execute_default(self, default, multiparams=None, params=None):
-        return self.__engine.dialect.defaultrunner(self).traverse_single(default)
+        return self.__engine.dialect.defaultrunner(self.__create_execution_context()).traverse_single(default)
 
     def _execute_text(self, statement, multiparams, params):
         parameters = self.__distill_params(multiparams, params)
@@ -1461,10 +1467,13 @@ class DefaultRunner(schema.SchemaVisitor):
     DefaultRunner to allow database-specific behavior.
     """
 
-    def __init__(self, connection):
-        self.connection = connection
-        self.dialect = connection.dialect
+    def __init__(self, context):
+        self.context = context
+        # branch the connection so it doesnt close after result
+        self.connection = context.connection._branch()
         
+    dialect = property(lambda self:self.context.dialect)
+    
     def get_column_default(self, column):
         if column.default is not None:
             return self.traverse_single(column.default)
@@ -1502,7 +1511,7 @@ class DefaultRunner(schema.SchemaVisitor):
         if isinstance(onupdate.arg, sql.ClauseElement):
             return self.exec_default_sql(onupdate)
         elif callable(onupdate.arg):
-            return onupdate.arg()
+            return onupdate.arg(self.context)
         else:
             return onupdate.arg
 
@@ -1510,6 +1519,6 @@ class DefaultRunner(schema.SchemaVisitor):
         if isinstance(default.arg, sql.ClauseElement):
             return self.exec_default_sql(default)
         elif callable(default.arg):
-            return default.arg()
+            return default.arg(self.context)
         else:
             return default.arg

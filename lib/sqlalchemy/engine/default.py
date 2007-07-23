@@ -115,8 +115,8 @@ class DefaultDialect(base.Dialect):
     def do_execute(self, cursor, statement, parameters, **kwargs):
         cursor.execute(statement, parameters)
 
-    def defaultrunner(self, connection):
-        return base.DefaultRunner(connection)
+    def defaultrunner(self, context):
+        return base.DefaultRunner(context)
 
     def is_disconnect(self, e):
         return False
@@ -172,12 +172,14 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.compiled_parameters = [compiled.construct_params(m or {}) for m in parameters]
                 if len(self.compiled_parameters) == 1:
                     self.compiled_parameters = self.compiled_parameters[0]
-        else:
+        elif statement is not None:
             self.typemap = self.column_labels = None
             self.parameters = self.__encode_param_keys(parameters)
             self.statement = statement
-
-        if not dialect.supports_unicode_statements():
+        else:
+            self.statement = None
+            
+        if self.statement is not None and not dialect.supports_unicode_statements():
             self.statement = self.statement.encode(self.dialect.encoding)
             
         self.cursor = self.create_cursor()
@@ -306,7 +308,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 plist = self.compiled_parameters
             else:
                 plist = [self.compiled_parameters]
-            drunner = self.dialect.defaultrunner(base.Connection(self.engine, self.connection.connection))
+            drunner = self.dialect.defaultrunner(self)
             self._lastrow_has_defaults = False
             for param in plist:
                 last_inserted_ids = []
@@ -346,7 +348,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 plist = self.compiled_parameters
             else:
                 plist = [self.compiled_parameters]
-            drunner = self.dialect.defaultrunner(base.Connection(self.engine, self.connection.connection))
+            drunner = self.dialect.defaultrunner(self)
             self._lastrow_has_defaults = False
             for param in plist:
                 # check the "onupdate" status of each column in the table

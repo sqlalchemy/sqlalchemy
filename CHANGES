@@ -163,6 +163,10 @@
     will also autoclose the connection if defined for the operation; this 
     allows more efficient usage of connections for successive CRUD operations
     with less chance of "dangling connections".
+  - Column defaults and onupdate Python functions (i.e. passed to ColumnDefault)
+    may take zero or one arguments; the one argument is the ExecutionContext,
+    from which you can call "context.parameters[someparam]" to access the other
+    bind parameter values affixed to the statement [ticket:559]
   - added "explcit" create/drop/execute support for sequences 
     (i.e. you can pass a "connectable" to each of those methods
     on Sequence)

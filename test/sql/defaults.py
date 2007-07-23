@@ -4,6 +4,7 @@ import sqlalchemy.util as util
 import sqlalchemy.schema as schema
 from sqlalchemy.orm import mapper, create_session
 from testlib import *
+import datetime
 
 class DefaultTest(PersistTest):
 
@@ -17,6 +18,12 @@ class DefaultTest(PersistTest):
             x['x'] += 1
             return x['x']
 
+        def mydefault_with_ctx(ctx):
+            return ctx.compiled_parameters['col1'] + 10
+
+        def myupdate_with_ctx(ctx):
+            return len(ctx.compiled_parameters['col2'])
+            
         use_function_defaults = db.engine.name == 'postgres' or db.engine.name == 'oracle'
         is_oracle = db.engine.name == 'oracle'
  
@@ -66,7 +73,13 @@ class DefaultTest(PersistTest):
             Column('col6', Date, default=currenttime, onupdate=currenttime),
             
             Column('boolcol1', Boolean, default=True),
-            Column('boolcol2', Boolean, default=False)
+            Column('boolcol2', Boolean, default=False),
+            
+            # python function which uses ExecutionContext
+            Column('col7', Integer, default=mydefault_with_ctx, onupdate=myupdate_with_ctx),
+            
+            # python builtin
+            Column('col8', Date, default=datetime.date.today, onupdate=datetime.date.today)
         )
         t.create()
 
@@ -75,7 +88,16 @@ class DefaultTest(PersistTest):
     
     def tearDown(self):
         t.delete().execute()
-        
+    
+    def testargsignature(self):
+        def mydefault(x, y):
+            pass
+        try:
+            c = ColumnDefault(mydefault)
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "ColumnDefault Python function takes zero or one positional arguments", str(e)
+            
     def teststandalone(self):
         c = testbase.db.engine.contextual_connect()
         x = c.execute(t.c.col1.default)
@@ -96,7 +118,8 @@ class DefaultTest(PersistTest):
         ctexec = currenttime.scalar()
         print "Currenttime "+ repr(ctexec)
         l = t.select().execute()
-        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False), (52, 'imthedefault', f, ts, ts, ctexec, True, False), (53, 'imthedefault', f, ts, ts, ctexec, True, False)])
+        today = datetime.date.today()
+        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False, 61, today), (52, 'imthedefault', f, ts, ts, ctexec, True, False, 62, today), (53, 'imthedefault', f, ts, ts, ctexec, True, False, 63, today)])
 
     def testinsertvalues(self):
         t.insert(values={'col3':50}).execute()
@@ -112,7 +135,7 @@ class DefaultTest(PersistTest):
         print "Currenttime "+ repr(ctexec)
         l = t.select(t.c.col1==pk).execute()
         l = l.fetchone()
-        self.assert_(l == (pk, 'im the update', f2, None, None, ctexec, True, False))
+        self.assert_(l == (pk, 'im the update', f2, None, None, ctexec, True, False, 13, datetime.date.today()))
         # mysql/other db's return 0 or 1 for count(1)
         self.assert_(14 <= f2 <= 15)
 

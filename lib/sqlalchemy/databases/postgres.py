@@ -265,8 +265,8 @@ class PGDialect(ansisql.ANSIDialect):
         resultset = connection.execute(sql.text("SELECT gid FROM pg_prepared_xacts"))
         return [row[0] for row in resultset]
 
-    def defaultrunner(self, connection, **kwargs):
-        return PGDefaultRunner(connection, **kwargs)
+    def defaultrunner(self, context, **kwargs):
+        return PGDefaultRunner(context, **kwargs)
 
     def preparer(self):
         return PGIdentifierPreparer(self)

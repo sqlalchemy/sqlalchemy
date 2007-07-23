@@ -19,7 +19,7 @@ objects as well as the visitor interface, so that the schema package
 
 from sqlalchemy import sql, types, exceptions,util, databases
 import sqlalchemy
-import re, string
+import re, string, inspect
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index', 'ForeignKeyConstraint',
             'PrimaryKeyConstraint', 'CheckConstraint', 'UniqueConstraint', 'DefaultGenerator', 'Constraint',
@@ -802,7 +802,19 @@ class ColumnDefault(DefaultGenerator):
 
     def __init__(self, arg, **kwargs):
         super(ColumnDefault, self).__init__(**kwargs)
-        self.arg = arg
+        if callable(arg):
+            if not inspect.isfunction(arg):
+                self.arg = lambda ctx: arg()
+            else:
+                argspec = inspect.getargspec(arg)
+                if len(argspec[0]) == 0:
+                    self.arg = lambda ctx: arg()
+                elif len(argspec[0]) != 1:
+                    raise exceptions.ArgumentError("ColumnDefault Python function takes zero or one positional arguments")
+                else:
+                    self.arg = arg
+        else:
+            self.arg = arg
 
     def _visit_name(self):
         if self.for_update:
