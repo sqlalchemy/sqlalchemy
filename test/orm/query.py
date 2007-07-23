@@ -213,6 +213,18 @@ class OperatorTest(QueryTest):
     def test_in(self):
          self._test(User.id.in_('a', 'b'), "users.id IN (:users_id, :users_id_1)")
     
+    def test_clauses(self):
+        for (expr, compare) in (
+            (func.max(User.id), "max(users.id)"),
+            (desc(User.id), "users.id DESC"),
+            (between(5, User.id, Address.id), ":literal BETWEEN users.id AND addresses.id"),
+            # this one would require adding compile() to InstrumentedScalarAttribute.  do we want this ?
+            #(User.id, "users.id")
+        ):
+            c = expr.compile(dialect=ansisql.ANSIDialect())
+            assert str(c) == compare, "%s != %s" % (str(c), compare)
+            
+            
 class CompileTest(QueryTest):
     def test_deferred(self):
         session = create_session()
@@ -642,7 +654,7 @@ class InstancesTest(QueryTest):
         
         for aliased in (False, True):
             q = sess.query(User)
-            q = q.group_by([c for c in users.c]).order_by(User.id).outerjoin('addresses', aliased=aliased).add_column(func.count(addresses.c.id).label('count'))
+            q = q.group_by([c for c in users.c]).order_by(User.id).outerjoin('addresses', aliased=aliased).add_column(func.count(Address.id).label('count'))
             l = q.all()
             assert l == expected
 

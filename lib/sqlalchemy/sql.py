@@ -371,6 +371,7 @@ def between(ctest, cleft, cright):
     provides similar functionality.
     """
 
+    ctest = _literal_as_binds(ctest)
     return _BinaryExpression(ctest, ClauseList(_literal_as_binds(cleft, type_=ctest.type), _literal_as_binds(cright, type_=ctest.type), operator=operator.and_, group=False), ColumnOperators.between_op)
 
 
@@ -752,7 +753,9 @@ def _literal_as_text(element):
         return element
 
 def _literal_as_binds(element, name='literal', type_=None):
-    if _is_literal(element):
+    if isinstance(element, Operators):
+        return element.clause_element()
+    elif _is_literal(element):
         if element is None:
             return null()
         else:
