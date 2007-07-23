@@ -166,16 +166,39 @@ def run_queries():
             report.append(item.name)
             report.extend([s.name for s in item.subitems])
     
+    # mix a little low-level with orm
     # pull a report of the top 20 items of all time
     _item_id = purchaseitems.c.item_id
     top_20_q = select([func.distinct(_item_id).label('id')],
                       group_by=[purchaseitems.c.purchase_id, _item_id],
                       order_by=[desc(func.count(_item_id)), _item_id],
                       limit=20)
-    q2 = session.query(Item).filter(Item.id.in_(top_20_q))
+    ids = [r.id for r in top_20_q.execute().fetchall()]
+    q2 = session.query(Item).filter(Item.id.in_(*ids))
 
     for num, item in enumerate(q2):
         report.append("number %s: %s" % (num + 1, item.name))
+
+@profiled('creating')
+def create_purchase():
+    # commit a purchase
+    customer_id = 100
+    item_ids = (10,22,34,46,58)
+
+    session = create_session()
+    session.begin()
+
+    customer = session.query(Customer).get(customer_id)
+    items = session.query(Item).filter(Item.id.in_(*item_ids))
+
+    purchase = Purchase()
+    purchase.customer = customer
+    purchase.items.extend(items)
+
+    session.flush()
+    session.commit()
+    session.expire(customer)
+
 
 def setup_db():
     metadata.drop_all()
@@ -191,6 +214,7 @@ def main():
     setup_db()
     insert_data()
     run_queries()
+    create_purchase()
     cleanup_db()
 
 main()
