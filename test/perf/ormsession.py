@@ -199,22 +199,27 @@ def create_purchase():
     session.commit()
     session.expire(customer)
 
-
 def setup_db():
     metadata.drop_all()
     metadata.create_all()
 def cleanup_db():
     metadata.drop_all()
 
+@profiled('default')
+def default():
+    run_queries()
+    create_purchase()
+
 @profiled('all')
 def main():
     metadata.bind = testbase.db
-    define_tables()
-    setup_mappers()
-    setup_db()
-    insert_data()
-    run_queries()
-    create_purchase()
-    cleanup_db()
+    try:
+        define_tables()
+        setup_mappers()
+        setup_db()
+        insert_data()
+        default()
+    finally:
+        cleanup_db()
 
 main()
