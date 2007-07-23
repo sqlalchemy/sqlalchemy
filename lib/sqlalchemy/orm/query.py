@@ -619,23 +619,9 @@ class Query(object):
         """Return a list of mapped instances corresponding to the rows
         in a given *cursor* (i.e. ``ResultProxy``).
         
-        \*mappers_or_columns is an optional list containing one or more of
-        classes, mappers, strings or sql.ColumnElements which will be
-        applied to each row and added horizontally to the result set,
-        which becomes a list of tuples. The first element in each tuple
-        is the usual result based on the mapper represented by this
-        ``Query``. Each additional element in the tuple corresponds to an
-        entry in the \*mappers_or_columns list.
-        
-        For each element in \*mappers_or_columns, if the element is 
-        a mapper or mapped class, an additional class instance will be 
-        present in the tuple.  If the element is a string or sql.ColumnElement, 
-        the corresponding result column from each row will be present in the tuple.
-        
-        Note that when \*mappers_or_columns is present, "uniquing" for the result set
-        is *disabled*, so that the resulting tuples contain entities as they actually
-        correspond.  this indicates that multiple results may be present if this 
-        option is used.
+        The \*mappers_or_columns and \**kwargs arguments are deprecated.
+        To add instances or columns to the results, use add_entity()
+        and add_column().
         """
 
         self.__log_debug("instances()")
