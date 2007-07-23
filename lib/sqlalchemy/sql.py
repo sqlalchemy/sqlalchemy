@@ -793,6 +793,9 @@ class ClauseParameters(object):
     def get_original(self, key):
         return self.__binds[key][2]
 
+    def get_type(self, key):
+        return self.__binds[key][0].type
+
     def get_processed(self, key):
         (bind, name, value) = self.__binds[key]
         return bind.typeprocess(value, self.dialect)

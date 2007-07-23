@@ -283,7 +283,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             inputsizes = []
             for params in plist[0:1]:
                 for key in params.positional:
-                    typeengine = params.binds[key].type
+                    typeengine = params.get_type(key)
                     dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                     if dbtype is not None:
                         inputsizes.append(dbtype)
@@ -292,7 +292,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             inputsizes = {}
             for params in plist[0:1]:
                 for key in params.keys():
-                    typeengine = params.binds[key].type
+                    typeengine = params.get_type(key)
                     dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                     if dbtype is not None:
                         inputsizes[key] = dbtype
