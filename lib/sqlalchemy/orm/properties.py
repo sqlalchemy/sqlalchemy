@@ -523,7 +523,7 @@ class PropertyLoader(StrategizedProperty):
             # load "polymorphic" versions of the columns present in "remote_side" - this is
             # important for lazy-clause generation which goes off the polymorphic target selectable
             for c in list(self.remote_side):
-                if self.secondary and c in self.secondary.columns:
+                if self.secondary and self.secondary.columns.contains_column(c):
                     continue
                 for equiv in [c] + (c in target_equivalents and list(target_equivalents[c]) or []): 
                     corr = self.mapper.select_table.corresponding_column(equiv, raiseerr=False)

@@ -1593,8 +1593,10 @@ class ColumnCollection(util.OrderedProperties):
                     l.append(c==local)
         return and_(*l)
 
-    def __contains__(self, col):
-        return self.contains_column(col)
+    def __contains__(self, other):
+        if not isinstance(other, basestring):
+            raise exceptions.ArgumentError("__contains__ requires a string argument")
+        return self.has_key(other)
         
     def contains_column(self, col):
         # have to use a Set here, because it will compare the identity
@@ -1714,7 +1716,7 @@ class FromClause(Selectable):
           the exported columns of this ``FromClause``.
         """
             
-        if column in self.c:
+        if self.c.contains_column(column):
             return column
 
         if require_embedded and column not in util.Set(self._get_all_embedded_columns()):

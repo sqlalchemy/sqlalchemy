@@ -194,6 +194,8 @@
 - engines
   - Connections gain a .properties collection, with contents scoped to the
     lifetime of the underlying DBAPI connection
+  - ColumnCollection (i.e. the 'c' attribute on tables) follows dictionary
+    semantics for "__contains__" [ticket:606]
 - extensions
   - proxyengine is temporarily removed, pending an actually working
     replacement.

@@ -871,7 +871,7 @@ class Constraint(SchemaItem):
         self.columns = sql.ColumnCollection()
 
     def __contains__(self, x):
-        return x in self.columns
+        return self.columns.contains_column(x)
 
     def keys(self):
         return self.columns.keys()
