@@ -202,7 +202,7 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
           will attempt to provide similar functionality.
         
         scalar=False
-          deprecated.  use select(...).scalar() to create a "scalar column"
+          deprecated.  use select(...).as_scalar() to create a "scalar column"
           proxy for an existing Select object.
 
         correlate=True
@@ -217,7 +217,7 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
     scalar = kwargs.pop('scalar', False)
     s = Select(columns, whereclause=whereclause, from_obj=from_obj, **kwargs)
     if scalar:
-        return s.scalar()
+        return s.as_scalar()
     else:
         return s
 
@@ -2788,11 +2788,11 @@ class _SelectBaseMixin(object):
         self.append_order_by(*util.to_list(order_by, []))
         self.append_group_by(*util.to_list(group_by, []))
     
-    def scalar(self):
+    def as_scalar(self):
         return _ScalarSelect(self)
     
     def label(self, name):
-        return self.scalar().label(name)
+        return self.as_scalar().label(name)
         
     def supports_execution(self):
         return True

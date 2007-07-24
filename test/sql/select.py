@@ -200,15 +200,15 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         s = select([table1.c.myid], scalar=True)
         self.runtest(select([table2, s]), "SELECT myothertable.otherid, myothertable.othername, (SELECT mytable.myid FROM mytable) FROM myothertable")
 
-        s = select([table1.c.myid]).correlate(None).scalar()
+        s = select([table1.c.myid]).correlate(None).as_scalar()
         self.runtest(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) FROM mytable")
 
-        s = select([table1.c.myid]).scalar()
+        s = select([table1.c.myid]).as_scalar()
         self.runtest(select([table2, s]), "SELECT myothertable.otherid, myothertable.othername, (SELECT mytable.myid FROM mytable) FROM myothertable")
 
         # test expressions against scalar selects
         self.runtest(select([s - literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) - :literal")
-        self.runtest(select([select([table1.c.name]).scalar() + literal('x')]), "SELECT (SELECT mytable.name FROM mytable) || :literal")
+        self.runtest(select([select([table1.c.name]).as_scalar() + literal('x')]), "SELECT (SELECT mytable.name FROM mytable) || :literal")
         self.runtest(select([s > literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) > :literal")
 
         self.runtest(select([select([table1.c.name]).label('foo')]), "SELECT (SELECT mytable.name FROM mytable) AS foo")
@@ -224,8 +224,8 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             column('nm')
         )
         zip = '12345'
-        qlat = select([zips.c.latitude], zips.c.zipcode == zip).correlate(None).scalar()
-        qlng = select([zips.c.longitude], zips.c.zipcode == zip).correlate(None).scalar()
+        qlat = select([zips.c.latitude], zips.c.zipcode == zip).correlate(None).as_scalar()
+        qlng = select([zips.c.longitude], zips.c.zipcode == zip).correlate(None).as_scalar()
  
         q = select([places.c.id, places.c.nm, zips.c.zipcode, func.latlondist(qlat, qlng).label('dist')],
                          zips.c.zipcode==zip,

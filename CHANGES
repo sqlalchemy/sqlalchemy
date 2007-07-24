@@ -178,6 +178,9 @@
     regarding "is subquery" and "correlation" pushed to SQL generation phase.
     select() elements are now *never* mutated by their enclosing containers
     or by any dialect's compilation process [ticket:52] [ticket:569]
+  - select(scalar=True) argument is deprecated; use select(..).as_scalar().
+    the resulting object obeys the full "column" interface and plays better
+    within expressions
   - result sets make a better attempt at matching the DBAPI types present
     in cursor.description to the TypeEngine objects defined by the dialect,
     which are then used for result-processing. Note this only takes effect 
