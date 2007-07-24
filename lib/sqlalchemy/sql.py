@@ -1137,10 +1137,10 @@ class Operators(object):
     def clause_element(self):
         raise NotImplementedError()
 
-    def operate(self, op, *other):
+    def operate(self, op, *other, **kwargs):
         raise NotImplementedError()
 
-    def reverse_operate(self, op, *other):
+    def reverse_operate(self, op, *other, **kwargs):
         raise NotImplementedError()
 
 class ColumnOperators(Operators):

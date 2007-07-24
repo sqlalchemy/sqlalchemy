@@ -85,11 +85,11 @@ class InstrumentedAttribute(interfaces.PropComparator):
     def clause_element(self):
         return self.comparator.clause_element()
         
-    def operate(self, op, other):
-        return op(self.comparator, other)
+    def operate(self, op, other, **kwargs):
+        return op(self.comparator, other, **kwargs)
 
-    def reverse_operate(self, op, other):
-        return op(other, self.comparator)
+    def reverse_operate(self, op, other, **kwargs):
+        return op(other, self.comparator, **kwargs)
         
     def hasparent(self, item, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to the given item.

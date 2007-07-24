@@ -168,7 +168,7 @@ class PropertyLoader(StrategizedProperty):
                 return ~sql.exists([1], self.prop.primaryjoin)
             elif self.prop.uselist:
                 if not hasattr(other, '__iter__'):
-                    raise exceptions.InvalidRequestError("Can only compare a collection to an iterable object")
+                    raise exceptions.InvalidRequestError("Can only compare a collection to an iterable object.")
                 else:
                     j = self.prop.primaryjoin
                     if self.prop.secondaryjoin:
@@ -182,17 +182,37 @@ class PropertyLoader(StrategizedProperty):
             else:  
                 return self.prop._optimized_compare(other)
         
-        def any(self, criterion):
+        def any(self, criterion=None, **kwargs):
             if not self.prop.uselist:
-                raise exceptions.InvalidRequestError("'any' not implemented for scalar attributes")
+                raise exceptions.InvalidRequestError("'any()' not implemented for scalar attributes. Use has().")
             j = self.prop.primaryjoin
             if self.prop.secondaryjoin:
                 j = j & self.prop.secondaryjoin
+            for k in kwargs:
+                crit = (getattr(self.prop.mapper.class_, k) == kwargs[k])
+                if criterion is None:
+                    criterion = crit
+                else:
+                    criterion = criterion & crit
+            return sql.exists([1], j & criterion)
+        
+        def has(self, criterion=None, **kwargs):
+            if self.prop.uselist:
+                raise exceptions.InvalidRequestError("'has()' not implemented for collections.  Use any().")
+            j = self.prop.primaryjoin
+            if self.prop.secondaryjoin:
+                j = j & self.prop.secondaryjoin
+            for k in kwargs:
+                crit = (getattr(self.prop.mapper.class_, k) == kwargs[k])
+                if criterion is None:
+                    criterion = crit
+                else:
+                    criterion = criterion & crit
             return sql.exists([1], j & criterion)
                 
         def contains(self, other):
             if not self.prop.uselist:
-                raise exceptions.InvalidRequestError("'contains' not implemented for scalar attributes")
+                raise exceptions.InvalidRequestError("'contains' not implemented for scalar attributes.  Use ==")
             clause = self.prop._optimized_compare(other)
 
             j = self.prop.primaryjoin

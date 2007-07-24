@@ -6,40 +6,6 @@ from sqlalchemy.orm import *
 from testlib import *
 from fixtures import *
 
-class Base(object):
-    def __init__(self, **kwargs):
-        for k in kwargs:
-            setattr(self, k, kwargs[k])
-            
-    def __ne__(self, other):
-        return not self.__eq__(other)
-        
-    def __eq__(self, other):
-        """'passively' compare this object to another.
-        
-        only look at attributes that are present on the source object.
-        
-        """
-        # use __dict__ to avoid instrumented properties
-        for attr in self.__dict__.keys():
-            if attr[0] == '_':
-                continue
-            value = getattr(self, attr)
-            if hasattr(value, '__iter__') and not isinstance(value, basestring):
-                if len(value) == 0:
-                    continue
-                for (us, them) in zip(value, getattr(other, attr)):
-                    if us != them:
-                        return False
-                else:
-                    continue
-            else:
-                if value is not None:
-                    if value != getattr(other, attr):
-                        return False
-        else:
-            return True
-
 class QueryTest(ORMTest):
     keep_mappers = True
     keep_data = True
@@ -294,9 +260,21 @@ class FilterTest(QueryTest):
     
     def test_any(self):
         sess = create_session()
-        address = sess.query(Address).get(3)
+
         assert [User(id=8), User(id=9)] == sess.query(User).filter(User.addresses.any(Address.email_address.like('%ed%'))).all()
+
+        assert [User(id=8)] == sess.query(User).filter(User.addresses.any(Address.email_address.like('%ed%'), id=4)).all()
+
+        assert [User(id=9)] == sess.query(User).filter(User.addresses.any(email_address='fred@fred.com')).all()
+    
+    def test_has(self):
+        sess = create_session()
+        assert [Address(id=5)] == sess.query(Address).filter(Address.user.has(name='fred')).all()
         
+        assert [Address(id=2), Address(id=3), Address(id=4), Address(id=5)] == sess.query(Address).filter(Address.user.has(User.name.like('%ed%'))).all()
+        
+        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(Address).filter(Address.user.has(User.name.like('%ed%'), id=8)).all()
+            
     def test_contains_m2m(self):
         sess = create_session()
         item = sess.query(Item).get(3)
@@ -304,7 +282,7 @@ class FilterTest(QueryTest):
 
         assert [Order(id=4), Order(id=5)] == sess.query(Order).filter(~Order.items.contains(item)).all()
 
-    def test_has(self):
+    def test_comparison(self):
         """test scalar comparison to an object instance"""
         
         sess = create_session()
@@ -729,7 +707,9 @@ class SelfReferentialJoinTest(ORMTest):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children':relation(Node, lazy=True, join_depth=3)
+            'children':relation(Node, lazy=True, join_depth=3, 
+                backref=backref('parent', remote_side=[nodes.c.id])
+            )
         })
         sess = create_session()
         n1 = Node(data='n1')
@@ -751,6 +731,10 @@ class SelfReferentialJoinTest(ORMTest):
 
         node = sess.query(Node).join(['children', 'children'], aliased=True).filter_by(data='n122').first()
         assert node.data=='n1'
+        
+        node = sess.query(Node).filter_by(data='n122').join('parent', aliased=True).filter_by(data='n12').\
+            join('parent', aliased=True, from_joinpoint=True).filter_by(data='n1').first()
+        assert node.data == 'n122'
 
 class ExternalColumnsTest(QueryTest):
     keep_mappers = False

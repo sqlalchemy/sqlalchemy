@@ -1,7 +1,9 @@
 """a basic Adjacency List model tree."""
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy.util import OrderedDict
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 metadata = MetaData('sqlite:///', echo=True)
 
@@ -11,17 +13,10 @@ trees = Table('treenodes', metadata,
     Column('node_name', String(50), nullable=False),
     )
 
-class NodeList(OrderedDict):
-    """subclasses OrderedDict to allow usage as a list-based property."""
-    def append(self, node):
-        self[node.name] = node
-    def __iter__(self):
-        return iter(self.values())
 
 class TreeNode(object):
     """a rich Tree class which includes path-based operations"""
     def __init__(self, name):
-        self.children = NodeList()
         self.name = name
         self.parent = None
         self.id = None
@@ -30,7 +25,7 @@ class TreeNode(object):
         if isinstance(node, str):
             node = TreeNode(node)
         node.parent = self
-        self.children.append(node)
+        self.children[node.name] = node
     def __repr__(self):
         return self._getstring(0, False)
     def __str__(self):
@@ -47,7 +42,7 @@ mapper(TreeNode, trees, properties=dict(
     id=trees.c.node_id,
     name=trees.c.node_name,
     parent_id=trees.c.parent_node_id,
-    children=relation(TreeNode, cascade="all", backref=backref("parent", remote_side=[trees.c.node_id]), collection_class=NodeList),
+    children=relation(TreeNode, cascade="all", backref=backref("parent", remote_side=[trees.c.node_id]), collection_class=attribute_mapped_collection('name')),
 ))
 
 print "\n\n\n----------------------------"

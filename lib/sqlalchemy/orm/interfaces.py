@@ -58,6 +58,8 @@ class MapperExtension(object):
         The return value of this method is used as the result of
         ``query.get_by()`` if the value is anything other than
         EXT_PASS.
+        
+        DEPRECATED.
         """
 
         return EXT_PASS
@@ -68,6 +70,8 @@ class MapperExtension(object):
         The return value of this method is used as the result of
         ``query.select_by()`` if the value is anything other than
         EXT_PASS.
+        
+        DEPRECATED.
         """
 
         return EXT_PASS
@@ -78,6 +82,8 @@ class MapperExtension(object):
         The return value of this method is used as the result of
         ``query.select()`` if the value is anything other than
         EXT_PASS.
+        
+        DEPRECATED.
         """
 
         return EXT_PASS
@@ -344,9 +350,13 @@ class PropComparator(sql.ColumnOperators):
         return a.contains(b)
     contains_op = staticmethod(contains_op)
     
-    def any_op(a, b):
-        return a.any(b)
+    def any_op(a, b, **kwargs):
+        return a.any(b, **kwargs)
     any_op = staticmethod(any_op)
+    
+    def has_op(a, b, **kwargs):
+        return a.has(b, **kwargs)
+    has_op = staticmethod(has_op)
     
     def __init__(self, prop):
         self.prop = prop
@@ -355,9 +365,32 @@ class PropComparator(sql.ColumnOperators):
         """return true if this collection contains other"""
         return self.operate(PropComparator.contains_op, other)
 
-    def any(self, criterion):
-        """return true if this collection contains any member that meets the given criterion"""
-        return self.operate(PropComparator.any_op, criterion)
+    def any(self, criterion=None, **kwargs):
+        """return true if this collection contains any member that meets the given criterion.
+        
+            criterion
+                an optional ClauseElement formulated against the member class' table or attributes.
+                
+            \**kwargs
+                key/value pairs corresponding to member class attribute names which will be compared
+                via equality to the corresponding values.
+        """
+
+        return self.operate(PropComparator.any_op, criterion, **kwargs)
+    
+    def has(self, criterion=None, **kwargs):
+        """return true if this element references a member which meets the given criterion.
+        
+    
+        criterion
+            an optional ClauseElement formulated against the member class' table or attributes.
+            
+        \**kwargs
+            key/value pairs corresponding to member class attribute names which will be compared
+            via equality to the corresponding values.
+        """
+
+        return self.operate(PropComparator.has_op, criterion, **kwargs)
         
 class StrategizedProperty(MapperProperty):
     """A MapperProperty which uses selectable strategies to affect

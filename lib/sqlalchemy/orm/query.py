@@ -309,7 +309,7 @@ class Query(object):
     def _join_to(self, keys, outerjoin=False, start=None, create_aliases=True):
         if start is None:
             start = self._joinpoint
-        
+            
         clause = self._from_obj[-1]
 
         currenttables = [clause]
@@ -321,7 +321,7 @@ class Query(object):
             
         
         mapper = start
-        alias = None
+        alias = self._aliases
         for key in util.to_list(keys):
             prop = mapper.get_property(key, resolve_synonyms=True)
             if prop._is_self_referential() and not create_aliases:
@@ -444,7 +444,7 @@ class Query(object):
             q._group_by = q._group_by + util.to_list(criterion)
         return q
 
-    def join(self, prop, id=None, aliased=False):
+    def join(self, prop, id=None, aliased=False, from_joinpoint=False):
         """create a join of this ``Query`` object's criterion
         to a relationship and return the newly resulting ``Query``.
 
@@ -452,9 +452,9 @@ class Query(object):
         property names.
         """
 
-        return self._join(prop, id=id, outerjoin=False, aliased=aliased)
+        return self._join(prop, id=id, outerjoin=False, aliased=aliased, from_joinpoint=from_joinpoint)
         
-    def outerjoin(self, prop, id=None, aliased=False):
+    def outerjoin(self, prop, id=None, aliased=False, from_joinpoint=False):
         """create a left outer join of this ``Query`` object's criterion
         to a relationship and return the newly resulting ``Query``.
         
@@ -462,10 +462,10 @@ class Query(object):
         property names.
         """
 
-        return self._join(prop, id=id, outerjoin=True, aliased=aliased)
+        return self._join(prop, id=id, outerjoin=True, aliased=aliased, from_joinpoint=from_joinpoint)
 
-    def _join(self, prop, id, outerjoin, aliased):
-        (clause, mapper, aliases) = self._join_to(prop, outerjoin=outerjoin, start=self.mapper, create_aliases=aliased)
+    def _join(self, prop, id, outerjoin, aliased, from_joinpoint):
+        (clause, mapper, aliases) = self._join_to(prop, outerjoin=outerjoin, start=from_joinpoint and self._joinpoint or self.mapper, create_aliases=aliased)
         q = self._clone()
         q._from_obj = [clause]
         q._joinpoint = mapper
