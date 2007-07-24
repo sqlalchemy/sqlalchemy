@@ -81,7 +81,7 @@ class Query(object):
         key = self.mapper.identity_key_from_primary_key(ident)
         return self._get(key, ident, **kwargs)
 
-    def load(self, ident, **kwargs):
+    def load(self, ident, raiseerr=True, **kwargs):
         """Return an instance of the object based on the given
         identifier.
 
@@ -97,7 +97,7 @@ class Query(object):
             return ret
         key = self.mapper.identity_key_from_primary_key(ident)
         instance = self._get(key, ident, reload=True, **kwargs)
-        if instance is None:
+        if instance is None and raiseerr:
             raise exceptions.InvalidRequestError("No instance found for identity %s" % repr(ident))
         return instance
         
@@ -608,12 +608,14 @@ class Query(object):
         statement.use_labels = True
         if self.session.autoflush:
             self.session.flush()
+        return self._execute_and_instances(statement)
+    
+    def _execute_and_instances(self, statement):
         result = self.session.execute(statement, params=self._params, mapper=self.mapper)
         try:
             return iter(self.instances(result))
         finally:
             result.close()
-
 
     def instances(self, cursor, *mappers_or_columns, **kwargs):
         """Return a list of mapped instances corresponding to the rows

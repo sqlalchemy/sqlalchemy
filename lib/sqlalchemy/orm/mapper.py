@@ -1095,10 +1095,15 @@ class Mapper(object):
                 self.save_obj([obj], uowtransaction, postupdate=postupdate, post_update_cols=post_update_cols, single=True)
             return
 
-        connection = uowtransaction.transaction.connection(self)
-
+        if 'connection_callable' in uowtransaction.mapper_flush_opts:
+            connection_callable = uowtransaction.mapper_flush_opts['connection_callable']
+            tups = [(obj, connection_callable(self, obj)) for obj in objects]
+        else:
+            connection = uowtransaction.transaction.connection(self)
+            tups = [(obj, connection) for obj in objects]
+            
         if not postupdate:
-            for obj in objects:
+            for obj, connection in tups:
                 if not has_identity(obj):
                     for mapper in object_mapper(obj).iterate_to_root():
                         mapper.extension.before_insert(mapper, connection, obj)
@@ -1106,7 +1111,7 @@ class Mapper(object):
                     for mapper in object_mapper(obj).iterate_to_root():
                         mapper.extension.before_update(mapper, connection, obj)
 
-        for obj in objects:
+        for obj, connection in tups:
             # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
             # and another instance with the same identity key already exists as persistent.  convert to an
             # UPDATE if so.
@@ -1137,7 +1142,7 @@ class Mapper(object):
             insert = []
             update = []
 
-            for obj in objects:
+            for obj, connection in tups:
                 mapper = object_mapper(obj)
                 if table not in mapper.tables or not mapper._has_pks(table):
                     continue
@@ -1215,9 +1220,9 @@ class Mapper(object):
                     if hasdata:
                         # if none of the attributes changed, dont even
                         # add the row to be updated.
-                        update.append((obj, params, mapper))
+                        update.append((obj, params, mapper, connection))
                 else:
-                    insert.append((obj, params, mapper))
+                    insert.append((obj, params, mapper, connection))
 
             if len(update):
                 mapper = table_to_mapper[table]
@@ -1237,11 +1242,11 @@ class Mapper(object):
                     return 0
                 update.sort(comparator)
                 for rec in update:
-                    (obj, params, mapper) = rec
+                    (obj, params, mapper, connection) = rec
                     c = connection.execute(statement, params)
                     mapper._postfetch(connection, table, obj, c, c.last_updated_params())
 
-                    updated_objects.add(obj)
+                    updated_objects.add((obj, connection))
                     rows += c.rowcount
 
                 if c.supports_sane_rowcount() and rows != len(update):
@@ -1253,7 +1258,7 @@ class Mapper(object):
                     return cmp(a[0]._sa_insert_order, b[0]._sa_insert_order)
                 insert.sort(comparator)
                 for rec in insert:
-                    (obj, params, mapper) = rec
+                    (obj, params, mapper, connection) = rec
                     c = connection.execute(statement, params)
                     primary_key = c.last_inserted_ids()
                     if primary_key is not None:
@@ -1275,12 +1280,12 @@ class Mapper(object):
                             mapper._synchronizer.execute(obj, obj)
                     sync(mapper)
 
-                    inserted_objects.add(obj)
+                    inserted_objects.add((obj, connection))
         if not postupdate:
-            for obj in inserted_objects:
+            for obj, connection in inserted_objects:
                 for mapper in object_mapper(obj).iterate_to_root():
                     mapper.extension.after_insert(mapper, connection, obj)
-            for obj in updated_objects:
+            for obj, connection in updated_objects:
                 for mapper in object_mapper(obj).iterate_to_root():
                     mapper.extension.after_update(mapper, connection, obj)
 
@@ -1320,9 +1325,14 @@ class Mapper(object):
         if self.__should_log_debug:
             self.__log_debug("delete_obj() start")
 
-        connection = uowtransaction.transaction.connection(self)
+        if 'connection_callable' in uowtransaction.mapper_flush_opts:
+            connection_callable = uowtransaction.mapper_flush_opts['connection_callable']
+            tups = [(obj, connection_callable(self, obj)) for obj in objects]
+        else:
+            connection = uowtransaction.transaction.connection(self)
+            tups = [(obj, connection) for obj in objects]
 
-        for obj in objects:
+        for (obj, connection) in tups:
             for mapper in object_mapper(obj).iterate_to_root():
                 mapper.extension.before_delete(mapper, connection, obj)
         
@@ -1333,8 +1343,8 @@ class Mapper(object):
                 table_to_mapper.setdefault(t, mapper)
 
         for table in sqlutil.TableCollection(list(table_to_mapper.keys())).sort(reverse=True):
-            delete = []
-            for obj in objects:
+            delete = {}
+            for (obj, connection) in tups:
                 mapper = object_mapper(obj)
                 if table not in mapper.tables or not mapper._has_pks(table):
                     continue
@@ -1343,13 +1353,13 @@ class Mapper(object):
                 if not hasattr(obj, '_instance_key'):
                     continue
                 else:
-                    delete.append(params)
+                    delete.setdefault(connection, []).append(params)
                 for col in mapper.pks_by_table[table]:
                     params[col.key] = mapper.get_attr_by_column(obj, col)
                 if mapper.version_id_col is not None:
                     params[mapper.version_id_col.key] = mapper.get_attr_by_column(obj, mapper.version_id_col)
-                deleted_objects.add(obj)
-            if len(delete):
+                deleted_objects.add((obj, connection))
+            for connection, del_objects in delete.iteritems():
                 mapper = table_to_mapper[table]
                 def comparator(a, b):
                     for col in mapper.pks_by_table[table]:
@@ -1357,18 +1367,18 @@ class Mapper(object):
                         if x != 0:
                             return x
                     return 0
-                delete.sort(comparator)
+                del_objects.sort(comparator)
                 clause = sql.and_()
                 for col in mapper.pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.key, type_=col.type, unique=True))
                 if mapper.version_id_col is not None:
                     clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col.key, type_=mapper.version_id_col.type, unique=True))
                 statement = table.delete(clause)
-                c = connection.execute(statement, delete)
-                if c.supports_sane_rowcount() and c.rowcount != len(delete):
+                c = connection.execute(statement, del_objects)
+                if c.supports_sane_rowcount() and c.rowcount != len(del_objects):
                     raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (c.rowcount, len(delete)))
 
-        for obj in deleted_objects:
+        for obj, connection in deleted_objects:
             for mapper in object_mapper(obj).iterate_to_root():
                 mapper.extension.after_delete(mapper, connection, obj)
 

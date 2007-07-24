@@ -28,10 +28,10 @@ class SessionTransaction(object):
         self.autoflush = autoflush
         self.nested = nested
 
-    def connection(self, mapper_or_class, entity_name=None):
+    def connection(self, mapper_or_class, entity_name=None, **kwargs):
         if isinstance(mapper_or_class, type):
             mapper_or_class = _class_mapper(mapper_or_class, entity_name=entity_name)
-        engine = self.session.get_bind(mapper_or_class)
+        engine = self.session.get_bind(mapper_or_class, **kwargs)
         return self.get_or_add(engine)
 
     def _begin(self, **kwargs):
@@ -137,7 +137,7 @@ class Session(object):
         self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
 
         self.bind = bind
-        self.binds = {}
+        self.__binds = {}
         self.echo_uow = echo_uow
         self.weak_identity_map = weak_identity_map
         self.transaction = None
@@ -145,6 +145,8 @@ class Session(object):
         self.autoflush = autoflush
         self.transactional = transactional or autoflush
         self.twophase = twophase
+        self._query_cls = query.Query
+        self._mapper_flush_opts = {}
         if self.transactional:
             self.begin()
         _sessions[self.hash_key] = self
@@ -185,7 +187,7 @@ class Session(object):
             self.transaction = self.transaction.commit()
         if self.transaction is None and self.transactional:
             self.begin()
-        
+    
     def connection(self, mapper=None, **kwargs):
         """Return a ``Connection`` corresponding to this session's
         transactional context, if any.
@@ -263,7 +265,7 @@ class Session(object):
         if isinstance(mapper, type):
             mapper = _class_mapper(mapper, entity_name=entity_name)
 
-        self.binds[mapper] = bind
+        self.__binds[mapper] = bind
 
     def bind_table(self, table, bind):
         """Bind the given `table` to the given ``Engine`` or ``Connection``.
@@ -272,7 +274,7 @@ class Session(object):
         given `bind`.
         """
 
-        self.binds[table] = bind
+        self.__binds[table] = bind
 
     def get_bind(self, mapper):
         """Return the ``Engine`` or ``Connection`` which is used to execute
@@ -306,10 +308,10 @@ class Session(object):
                 return self.bind
             else:
                 raise exceptions.InvalidRequestError("This session is unbound to any Engine or Connection; specify a mapper to get_bind()")
-        elif self.binds.has_key(mapper):
-            return self.binds[mapper]
-        elif self.binds.has_key(mapper.mapped_table):
-            return self.binds[mapper.mapped_table]
+        elif self.__binds.has_key(mapper):
+            return self.__binds[mapper]
+        elif self.__binds.has_key(mapper.mapped_table):
+            return self.__binds[mapper.mapped_table]
         elif self.bind is not None:
             return self.bind
         else:
@@ -326,9 +328,9 @@ class Session(object):
         entity_name = kwargs.pop('entity_name', None)
         
         if isinstance(mapper_or_class, type):
-            q = query.Query(_class_mapper(mapper_or_class, entity_name=entity_name), self, **kwargs)
+            q = self._query_cls(_class_mapper(mapper_or_class, entity_name=entity_name), self, **kwargs)
         else:
-            q = query.Query(mapper_or_class, self, **kwargs)
+            q = self._query_cls(mapper_or_class, self, **kwargs)
             
         for ent in addtl_entities:
             q = q.add_entity(ent)

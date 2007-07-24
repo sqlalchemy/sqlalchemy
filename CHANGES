@@ -67,6 +67,13 @@
 
         - added eagerload_all(), allows eagerload_all('x.y.z') to specify eager
           loading of all properties in the given path
+    
+    - a rudimental sharding (horizontal scaling) system is introduced.  This system
+      uses a modified Session which can distribute read and write operations among
+      multiple databases, based on user-defined functions defining the 
+      "sharding strategy".  Instances and their dependents can be distributed 
+      and queried among multiple databases based on attribute values, round-robin
+      approaches or any other user-defined system. [ticket:618]
           
     - Eager loading has been enhanced to allow even more joins in more places.
       It now functions at any arbitrary depth along self-referential 
@@ -76,7 +83,6 @@
       themselves are generated at compile time using a simple counting
       scheme now and are a lot easier on the eyes, as well as of course
       completely deterministic. [ticket:659]
-
       
     - added composite column properties. This allows you to create a 
       type which is represented by more than one column, when using the 

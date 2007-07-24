@@ -224,6 +224,7 @@ class UOWTransaction(object):
     def __init__(self, uow, session):
         self.uow = uow
         self.session = session
+        self.mapper_flush_opts = session._mapper_flush_opts
         
         # stores tuples of mapper/dependent mapper pairs,
         # representing a partial ordering fed into topological sort
