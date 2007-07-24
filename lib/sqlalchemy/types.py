@@ -272,9 +272,9 @@ class Numeric(TypeEngine):
 
 class Float(Numeric):
     def __init__(self, precision = 10, asdecimal=False, **kwargs):
-        super(Float, self).__init__(asdecimal=asdecimal, **kwargs)
         self.precision = precision
-
+        self.asdecimal = asdecimal
+        
     def adapt(self, impltype):
         return impltype(precision=self.precision, asdecimal=self.asdecimal)
 
