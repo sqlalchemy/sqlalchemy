@@ -274,7 +274,7 @@ class QueryTest(PersistTest):
         x = testbase.db.func.current_date().execute().scalar()
         y = testbase.db.func.current_date().select().execute().scalar()
         z = testbase.db.func.current_date().scalar()
-        assert x == y == z
+        assert (x == y == z) is True
         
         x = testbase.db.func.current_date(type_=Date)
         assert isinstance(x.type, Date)
@@ -288,8 +288,8 @@ class QueryTest(PersistTest):
             z = conn.scalar(func.current_date())
         finally:
             conn.close()
-        assert x == y == z
-        
+        assert (x == y == z) is True
+         
     def test_update_functions(self):
         """test sending functions and SQL expressions to the VALUES and SET clauses of INSERT/UPDATE instances,
         and that column-level defaults get overridden"""

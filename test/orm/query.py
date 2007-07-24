@@ -773,7 +773,7 @@ class ExternalColumnsTest(QueryTest):
 
         mapper(User, users, properties={
             'concat': column_property(f),
-            'count': column_property(select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id, scalar=True).correlate(users).label('count'))
+            'count': column_property(select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id).correlate(users).label('count'))
         })
 
         mapper(Address, addresses, properties={

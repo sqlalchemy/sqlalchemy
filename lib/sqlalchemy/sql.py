@@ -202,12 +202,8 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
           will attempt to provide similar functionality.
         
         scalar=False
-          when ``True``, indicates that the resulting ``Select`` object
-          is to be used in the "columns" clause of another select statement,
-          where the evaluated value of the column is the scalar result of 
-          this statement.  Normally, placing any ``Selectable`` within the 
-          columns clause of a ``select()`` call will expand the member 
-          columns of the ``Selectable`` individually.
+          deprecated.  use select(...).scalar() to create a "scalar column"
+          proxy for an existing Select object.
 
         correlate=True
           indicates that this ``Select`` object should have its contained
@@ -218,8 +214,12 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
           rendered in the ``FROM`` clause of this select statement.
       
     """
-
-    return Select(columns, whereclause=whereclause, from_obj=from_obj, **kwargs)
+    scalar = kwargs.pop('scalar', False)
+    s = Select(columns, whereclause=whereclause, from_obj=from_obj, **kwargs)
+    if scalar:
+        return s.scalar()
+    else:
+        return s
 
 def subquery(alias, *args, **kwargs):
     """Return an [sqlalchemy.sql#Alias] object derived from a [sqlalchemy.sql#Select].
@@ -762,6 +762,14 @@ def _literal_as_binds(element, name='literal', type_=None):
             return _BindParamClause(name, element, shortname=name, type_=type_, unique=True)
     else:
         return element
+
+def _selectable(element):
+    if hasattr(element, '__selectable__'):
+        return element.__selectable__()
+    elif isinstance(element, Selectable):
+        return element
+    else:
+        raise exceptions.ArgumentError("Object '%s' is not a Selectable and does not implement `__selectable__()`" % repr(element))
         
 def is_column(col):
     return isinstance(col, ColumnElement)
@@ -1348,7 +1356,7 @@ class _CompareMixin(ColumnOperators):
             if _is_literal(o) or isinstance( o, _CompareMixin):
                 return self.__eq__( o)    #single item -> ==
             else:
-                assert hasattr( o, '_selectable')   #better check?
+                assert isinstance(o, Selectable)
                 return self.__compare( op, o, negate=negate_op)   #single selectable
 
         args = []
@@ -1446,14 +1454,10 @@ class Selectable(ClauseElement):
 
     columns = util.NotImplProperty("""a [sqlalchemy.sql#ColumnCollection] containing ``ColumnElement`` instances.""")
 
-    def _selectable(self):
-        return self
-
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
 
 
-        
 class ColumnElement(Selectable, _CompareMixin):
     """Represent an element that is useable within the 
     "column clause" portion of a ``SELECT`` statement. 
@@ -1806,8 +1810,9 @@ class FromClause(Selectable):
         """return the list of ColumnElements represented within this FromClause's _exportable_columns"""
         export = self._exportable_columns()
         for column in export:
-            if hasattr(column, '_selectable'):
-                s = column._selectable()
+            # TODO: is this conditional needed ?
+            if isinstance(column, Selectable):
+                s = column
             else:
                 continue
             for co in s.columns:
@@ -2081,7 +2086,7 @@ class _CalculatedClause(ColumnElement):
         return select([self])
 
     def scalar(self):
-        return select([self]).scalar()
+        return select([self]).execute().scalar()
 
     def execute(self):
         return select([self]).execute()
@@ -2254,8 +2259,8 @@ class Join(FromClause):
     
     """
     def __init__(self, left, right, onclause=None, isouter = False):
-        self.left = left._selectable()
-        self.right = right._selectable().self_group()
+        self.left = _selectable(left)
+        self.right = _selectable(right).self_group()
         if onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
         else:
@@ -2501,33 +2506,38 @@ class Alias(FromClause):
 
     bind = property(lambda s: s.selectable.bind)
 
-class _Grouping(ColumnElement):
+class _ColumnElementAdapter(ColumnElement):
+    """adapts a ClauseElement which may or may not be a
+    ColumnElement subclass itself into an object which
+    acts like a ColumnElement.
+    """
+    
     def __init__(self, elem):
         self.elem = elem
         self.type = getattr(elem, 'type', None)
+        self.orig_set = getattr(elem, 'orig_set', util.Set())
         
-            
     key = property(lambda s: s.elem.key)
     _label = property(lambda s: s.elem._label)
-    orig_set = property(lambda s:s.elem.orig_set)
     columns = c = property(lambda s:s.elem.columns)
-    
+
     def _copy_internals(self):
-        print "GROPING COPY INTERNALS"
         self.elem = self.elem._clone()
-        print "NEW ID", id(self.elem)
-        
+
     def get_children(self, **kwargs):
         return self.elem,
-        
+
     def _hide_froms(self, **modifiers):
         return self.elem._hide_froms(**modifiers)
-        
+
     def _get_from_objects(self, **modifiers):
         return self.elem._get_from_objects(**modifiers)
 
     def __getattr__(self, attr):
         return getattr(self.elem, attr)
+
+class _Grouping(_ColumnElementAdapter):
+    pass
 
 class _Label(ColumnElement):
     """represent a label, as typically applied to any column-level element
@@ -2764,22 +2774,25 @@ class TableClause(FromClause):
     def _get_from_objects(self, **modifiers):
         return [self]
 
+    
 class _SelectBaseMixin(object):
     """Base class for ``Select`` and ``CompoundSelects``."""
 
-    def __init__(self, use_labels=False, for_update=False, limit=None, offset=None, order_by=None, group_by=None, bind=None, scalar=False):
+    def __init__(self, use_labels=False, for_update=False, limit=None, offset=None, order_by=None, group_by=None, bind=None):
         self.use_labels = use_labels
         self.for_update = for_update
         self._limit = limit
         self._offset = offset
         self._bind = bind
-        self.is_scalar = scalar
-        if self.is_scalar:
-            # allow corresponding_column to return None
-            self.orig_set = util.Set()
         
         self.append_order_by(*util.to_list(order_by, []))
         self.append_group_by(*util.to_list(group_by, []))
+    
+    def scalar(self):
+        return _ScalarSelect(self)
+    
+    def label(self, name):
+        return self.scalar().label(name)
         
     def supports_execution(self):
         return True
@@ -2829,10 +2842,28 @@ class _SelectBaseMixin(object):
         return select([self], whereclauses, **params)
 
     def _get_from_objects(self, is_where=False, **modifiers):
-        if is_where or self.is_scalar:
+        if is_where:
             return []
         else:
             return [self]
+
+class _ScalarSelect(_Grouping):
+    __visit_name__ = 'grouping'
+
+    def __init__(self, elem):
+        super(_ScalarSelect, self).__init__(elem)
+        self.type = list(elem.inner_columns)[0].type
+
+    columns = property(lambda self:[self])
+    
+    def self_group(self, **kwargs):
+        return self
+
+    def _make_proxy(self, selectable, name):
+        return list(self.inner_columns)[0]._make_proxy(selectable, name)
+
+    def _get_from_objects(self, **modifiers):
+        return []
 
 class CompoundSelect(_SelectBaseMixin, FromClause):
     def __init__(self, keyword, *selects, **kwargs):
@@ -3077,10 +3108,8 @@ class Select(_SelectBaseMixin, FromClause):
 
     def _get_inner_columns(self):
         for c in self._raw_columns:
-            # TODO: need to have Select, as well as a Select inside a _Grouping,
-            # give us a clearer idea of if we want its column list or not
-            if hasattr(c, '_selectable') and not getattr(c, 'is_scalar', False):
-                for co in c._selectable().columns:
+            if isinstance(c, Selectable):
+                for co in c.columns:
                     yield co
             else:
                 yield c
@@ -3160,7 +3189,7 @@ class Select(_SelectBaseMixin, FromClause):
         if _is_literal(column):
             column = literal_column(str(column))
 
-        if isinstance(column, Select) and column.is_scalar:
+        if isinstance(column, _ScalarSelect):
             column = column.self_group(against=ColumnOperators.comma_op)
 
         self._raw_columns.append(column)
@@ -3181,25 +3210,6 @@ class Select(_SelectBaseMixin, FromClause):
         if _is_literal(fromclause):
             fromclause = FromClause(fromclause)
         self._froms.add(fromclause)
-
-    def _make_proxy(self, selectable, name):
-        if self.is_scalar:
-            return list(self.inner_columns)[0]._make_proxy(selectable, name)
-        else:
-            raise exceptions.InvalidRequestError("Not a scalar select statement")
-
-    def label(self, name):
-        if not self.is_scalar:
-            raise exceptions.InvalidRequestError("Not a scalar select statement")
-        else:
-            return label(name, self)
-
-    def _get_type(self):
-        if self.is_scalar:
-            return list(self.inner_columns)[0].type
-        else:
-            return None
-    type = property(_get_type)
 
     def _exportable_columns(self):
         return [c for c in self._raw_columns if isinstance(c, Selectable)]

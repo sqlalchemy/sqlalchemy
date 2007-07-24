@@ -400,9 +400,9 @@ class Query(object):
 
         if self._order_by is not False:
             s1 = sql.select([col], self._criterion, **ops).alias('u')
-            return sql.select([func(s1.corresponding_column(col))]).scalar()
+            return self.session.execute(sql.select([func(s1.corresponding_column(col))]), mapper=self.mapper).scalar()
         else:
-            return sql.select([func(col)], self._criterion, **ops).scalar()
+            return self.session.execute(sql.select([func(col)], self._criterion, **ops), mapper=self.mapper).scalar()
 
     def min(self, col):
         """Execute the SQL ``min()`` function against the given column."""
