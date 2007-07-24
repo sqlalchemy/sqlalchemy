@@ -154,6 +154,11 @@
   - MetaData:
     - DynamicMetaData has been renamed to ThreadLocalMetaData
     - BoundMetaData has been removed- regular MetaData is equivalent
+  - Numeric and Float types now have an "asdecimal" flag; defaults to 
+    True for Numeric, False for Float.  when True, values are returned as
+    decimal.Decimal objects; when False, values are returned as float().
+    the defaults of True/False are already the behavior for PG and MySQL's
+    DBAPI modules. [ticket:646]
   - new SQL operator implementation which removes all hardcoded operators
     from expression structures and moves them into compilation; 
     allows greater flexibility of operator compilation; for example, "+" 
@@ -191,11 +196,12 @@
   - better quoting of identifiers when manipulating schemas
   - standardized the behavior for table reflection where types can't be located;
     NullType is substituted instead, warning is raised.
+  - ColumnCollection (i.e. the 'c' attribute on tables) follows dictionary
+    semantics for "__contains__" [ticket:606]
+    
 - engines
   - Connections gain a .properties collection, with contents scoped to the
     lifetime of the underlying DBAPI connection
-  - ColumnCollection (i.e. the 'c' attribute on tables) follows dictionary
-    semantics for "__contains__" [ticket:606]
 - extensions
   - proxyengine is temporarily removed, pending an actually working
     replacement.

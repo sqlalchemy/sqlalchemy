@@ -10,6 +10,7 @@ from sqlalchemy import sql, schema, ansisql, exceptions
 from sqlalchemy.engine import base, default
 import sqlalchemy.types as sqltypes
 from sqlalchemy.databases import information_schema as ischema
+from decimal import Decimal
 
 try:
     import mx.DateTime.DateTime as mxDateTime
@@ -28,12 +29,22 @@ class PGNumeric(sqltypes.Numeric):
         else:
             return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
 
+    def convert_bind_param(self, value, dialect):
+        return value
+
+    def convert_result_value(self, value, dialect):
+        if not self.asdecimal and isinstance(value, Decimal):
+            return float(value)
+        else:
+            return value
+        
 class PGFloat(sqltypes.Float):
     def get_col_spec(self):
         if not self.precision:
             return "FLOAT"
         else:
             return "FLOAT(%(precision)s)" % {'precision': self.precision}
+
 
 class PGInteger(sqltypes.Integer):
     def get_col_spec(self):

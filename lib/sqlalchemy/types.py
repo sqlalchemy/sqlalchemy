@@ -13,6 +13,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
 
 import inspect
 import datetime as dt
+from decimal import Decimal
 try:
     import cPickle as pickle
 except:
@@ -246,22 +247,36 @@ class SmallInteger(Integer):
 Smallinteger = SmallInteger
 
 class Numeric(TypeEngine):
-    def __init__(self, precision = 10, length = 2):
+    def __init__(self, precision = 10, length = 2, asdecimal=True):
         self.precision = precision
         self.length = length
+        self.asdecimal = asdecimal
 
     def adapt(self, impltype):
-        return impltype(precision=self.precision, length=self.length)
+        return impltype(precision=self.precision, length=self.length, asdecimal=self.asdecimal)
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
+    def convert_bind_param(self, value, dialect):
+        if value is not None:
+            return float(value)
+        else:
+            return value
+            
+    def convert_result_value(self, value, dialect):
+        if value is not None and self.asdecimal:
+            return Decimal(str(value))
+        else:
+            return value
+
 class Float(Numeric):
-    def __init__(self, precision = 10):
+    def __init__(self, precision = 10, asdecimal=False, **kwargs):
+        super(Float, self).__init__(asdecimal=asdecimal, **kwargs)
         self.precision = precision
 
     def adapt(self, impltype):
-        return impltype(precision=self.precision)
+        return impltype(precision=self.precision, asdecimal=self.asdecimal)
 
 class DateTime(TypeEngine):
     """Implement a type for ``datetime.datetime()`` objects."""

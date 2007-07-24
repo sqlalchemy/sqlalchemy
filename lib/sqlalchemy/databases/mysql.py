@@ -12,6 +12,7 @@ import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 import sqlalchemy.util as util
 from array import array as _array
+from decimal import Decimal
 
 try:
     from threading import Lock
@@ -135,7 +136,7 @@ class _StringType(object):
 class MSNumeric(sqltypes.Numeric, _NumericType):
     """MySQL NUMERIC type"""
     
-    def __init__(self, precision = 10, length = 2, **kw):
+    def __init__(self, precision = 10, length = 2, asdecimal=True, **kw):
         """Construct a NUMERIC.
 
         precision
@@ -155,18 +156,27 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
         """
 
         _NumericType.__init__(self, **kw)
-        sqltypes.Numeric.__init__(self, precision, length)
-
+        sqltypes.Numeric.__init__(self, precision, length, asdecimal=asdecimal)
+        
     def get_col_spec(self):
         if self.precision is None:
             return self._extend("NUMERIC")
         else:
             return self._extend("NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
 
+    def convert_bind_param(self, value, dialect):
+        return value
+
+    def convert_result_value(self, value, dialect):
+        if not self.asdecimal and isinstance(value, Decimal):
+            return float(value)
+        else:
+            return value
+
 class MSDecimal(MSNumeric):
     """MySQL DECIMAL type"""
 
-    def __init__(self, precision=10, length=2, **kw):
+    def __init__(self, precision=10, length=2, asdecimal=True, **kw):
         """Construct a DECIMAL.
 
         precision
@@ -185,7 +195,7 @@ class MSDecimal(MSNumeric):
           underlying database API, which continue to be numeric.
         """
 
-        super(MSDecimal, self).__init__(precision, length, **kw)
+        super(MSDecimal, self).__init__(precision, length, asdecimal=asdecimal, **kw)
     
     def get_col_spec(self):
         if self.precision is None:
@@ -198,7 +208,7 @@ class MSDecimal(MSNumeric):
 class MSDouble(MSNumeric):
     """MySQL DOUBLE type"""
 
-    def __init__(self, precision=10, length=2, **kw):
+    def __init__(self, precision=10, length=2, asdecimal=True, **kw):
         """Construct a DOUBLE.
 
         precision
@@ -220,7 +230,7 @@ class MSDouble(MSNumeric):
         if ((precision is None and length is not None) or
             (precision is not None and length is None)):
             raise exceptions.ArgumentError("You must specify both precision and length or omit both altogether.")
-        super(MSDouble, self).__init__(precision, length, **kw)
+        super(MSDouble, self).__init__(precision, length, asdecimal=asdecimal, **kw)
 
     def get_col_spec(self):
         if self.precision is not None and self.length is not None:
@@ -233,7 +243,7 @@ class MSDouble(MSNumeric):
 class MSFloat(sqltypes.Float, _NumericType):
     """MySQL FLOAT type"""
 
-    def __init__(self, precision=10, length=None, **kw):
+    def __init__(self, precision=10, length=None, asdecimal=False, **kw):
         """Construct a FLOAT.
           
         precision
@@ -255,7 +265,7 @@ class MSFloat(sqltypes.Float, _NumericType):
         if length is not None:
             self.length=length
         _NumericType.__init__(self, **kw)
-        sqltypes.Float.__init__(self, precision)
+        sqltypes.Float.__init__(self, precision, asdecimal=asdecimal)
 
     def get_col_spec(self):
         if hasattr(self, 'length') and self.length is not None:
@@ -264,6 +274,10 @@ class MSFloat(sqltypes.Float, _NumericType):
             return self._extend("FLOAT(%(precision)s)" % {'precision': self.precision})
         else:
             return self._extend("FLOAT")
+
+    def convert_bind_param(self, value, dialect):
+        return value
+
 
 class MSInteger(sqltypes.Integer, _NumericType):
     """MySQL INTEGER type"""

@@ -355,6 +355,36 @@ class DateTest(AssertMixin):
         finally:
             t.drop(checkfirst=True)
 
+class NumericTest(AssertMixin):
+    def setUpAll(self):
+        global numeric_table, metadata
+        metadata = MetaData(testbase.db)
+        numeric_table = Table('numeric_table', metadata,
+            Column('id', Integer, Sequence('numeric_id_seq', optional=True), primary_key=True),
+            Column('numericcol', Numeric(asdecimal=False)),
+            Column('floatcol', Float),
+            Column('ncasdec', Numeric),
+            Column('fcasdec', Float(asdecimal=True))
+        )
+        metadata.create_all()
+        
+    def tearDownAll(self):
+        metadata.drop_all()
+        
+    def tearDown(self):
+        numeric_table.delete().execute()
+        
+    def test_decimal(self):
+        from decimal import Decimal
+        numeric_table.insert().execute(numericcol=3.5, floatcol=5.6, ncasdec=12.4, fcasdec=15.78)
+        numeric_table.insert().execute(numericcol=Decimal("3.5"), floatcol=Decimal("5.6"), ncasdec=Decimal("12.4"), fcasdec=Decimal("15.78"))
+        print numeric_table.select().execute().fetchall()
+        assert numeric_table.select().execute().fetchall() == [
+            (1, 3.5, 5.6, Decimal("12.4"), Decimal("15.78")),
+            (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.78")),
+        ]
+        
+            
 class IntervalTest(AssertMixin):
     def setUpAll(self):
         global interval_table, metadata
