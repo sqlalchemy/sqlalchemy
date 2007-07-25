@@ -28,7 +28,7 @@ from sqlalchemy import util, exceptions
 from sqlalchemy import types as sqltypes
 import re, operator
 
-__all__ = ['AbstractDialect', 'Alias', 'ClauseElement', 'ClauseParameters',
+__all__ = ['Alias', 'ClauseElement', 'ClauseParameters',
            'ClauseVisitor', 'ColumnCollection', 'ColumnElement',
            'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 
            'Select', 'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc',
@@ -564,7 +564,7 @@ def literal(value, type_=None):
         the underlying DBAPI, or is translatable via the given type
         argument.
     
-      type
+      type\_
         an optional [sqlalchemy.types#TypeEngine] which will provide
         bind-parameter translation for this literal.
 
@@ -605,7 +605,7 @@ def column(text, type_=None):
         constructs that are not to be quoted, use the [sqlalchemy.sql#literal_column()]
         function.
         
-      type
+      type\_
         an optional [sqlalchemy.types#TypeEngine] object which will provide
         result-set translation for this column.
         
@@ -773,12 +773,6 @@ def _selectable(element):
         
 def is_column(col):
     return isinstance(col, ColumnElement)
-
-class AbstractDialect(object):
-    """Represent the behavior of a particular database.
-
-    Used by ``Compiled`` objects."""
-    pass
 
 class ClauseParameters(object):
     """Represent a dictionary/iterator of bind parameter key names/values.
@@ -1855,7 +1849,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
           execution may match either the key or the shortname of the
           corresponding ``_BindParamClause`` objects.
 
-        type_
+        type\_
           A ``TypeEngine`` object that will be used to pre-process the
           value corresponding to this ``_BindParamClause`` at
           execution time.

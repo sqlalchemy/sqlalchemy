@@ -405,7 +405,7 @@ class Column(SchemaItem, sql._ColumnClause):
           The name of this column.  This should be the identical name
           as it appears, or will appear, in the database.
 
-        type_
+        type\_
           The ``TypeEngine`` for this column.  This can be any
           subclass of ``types.AbstractType``, including the
           database-agnostic types defined in the types module,

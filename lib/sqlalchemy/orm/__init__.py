@@ -41,10 +41,10 @@ def relation(argument, secondary=None, **kwargs):
 
       secondary
         for a many-to-many relationship, specifies the intermediary table. The
-        `secondary` keyword argument should generally only be used for a table
+        ``secondary`` keyword argument should generally only be used for a table
         that is not otherwise expressed in any class mapping. In particular,
         using the Association Object Pattern is
-        generally mutually exclusive against using the `secondary` keyword
+        generally mutually exclusive against using the ``secondary`` keyword
         argument.
 
       \**kwargs follow:
@@ -55,14 +55,13 @@ def relation(argument, secondary=None, **kwargs):
           relationship. SA can now automatically reconcile a "delete" and
           "insert" operation of two objects with the same "identity" in a flush()
           operation into a single "update" statement, which is the pattern that
-          "association" used to indicate. See the updated example of association
-          mappings in [datamapping_association](rel:datamapping_association).
+          "association" used to indicate. 
       
         backref
           indicates the name of a property to be placed on the related mapper's
           class that will handle this relationship in the other direction,
           including synchronizing the object attributes on both sides of the
-          relation. Can also point to a `backref()` construct for more
+          relation. Can also point to a ``backref()`` construct for more
           configurability. 
       
         cascade
@@ -76,17 +75,17 @@ def relation(argument, secondary=None, **kwargs):
         foreign_keys
           a list of columns which are to be used as "foreign key" columns.
           this parameter should be used in conjunction with explicit
-          `primaryjoin` and `secondaryjoin` (if needed) arguments, and the
-          columns within the `foreign_keys` list should be present within
-          those join conditions. Normally, `relation()` will inspect the
+          ``primaryjoin`` and ``secondaryjoin`` (if needed) arguments, and the
+          columns within the ``foreign_keys`` list should be present within
+          those join conditions. Normally, ``relation()`` will inspect the
           columns within the join conditions to determine which columns are
-          the "foreign key" columns, based on information in the `Table`
+          the "foreign key" columns, based on information in the ``Table``
           metadata. Use this argument when no ForeignKey's are present in the
           join condition, or to override the table-defined foreign keys.
 
         foreignkey
-          deprecated. use the `foreign_keys` argument for foreign key
-          specification, or `remote_side` for "directional" logic.
+          deprecated. use the ``foreign_keys`` argument for foreign key
+          specification, or ``remote_side`` for "directional" logic.
 
         lazy=True
           specifies how the related items should be loaded. a value of True
@@ -104,10 +103,10 @@ def relation(argument, secondary=None, **kwargs):
           indicates the ordering that should be applied when loading these items.
 
         passive_deletes=False
-          Indicates if lazy-loaders should not be executed during the `flush()`
+          Indicates if lazy-loaders should not be executed during the ``flush()``
           process, which normally occurs in order to locate all existing child
           items when a parent item is to be deleted. Setting this flag to True is
-          appropriate when `ON DELETE CASCADE` rules have been set up on the
+          appropriate when ``ON DELETE CASCADE`` rules have been set up on the
           actual tables so that the database may handle cascading deletes
           automatically. This strategy is useful particularly for handling the
           deletion of objects that have very large (and/or deep) child-object
@@ -125,9 +124,9 @@ def relation(argument, secondary=None, **kwargs):
           that are dependent on each other, such as a table that has a
           one-to-many relationship to a set of child rows, and also has a column
           that references a single child row within that list (i.e. both tables
-          contain a foreign key to each other). If a `flush()` operation returns
+          contain a foreign key to each other). If a ``flush()`` operation returns
           an error that a "cyclical dependency" was detected, this is a cue that
-          you might want to use `post_update` to "break" the cycle.
+          you might want to use ``post_update`` to "break" the cycle.
 
         primaryjoin
           a ClauseElement that will be used as the primary join of this child
@@ -137,8 +136,8 @@ def relation(argument, secondary=None, **kwargs):
           and child tables (or association table).
 
         private=False
-          deprecated. setting `private=True` is the equivalent of setting
-          `cascade="all, delete-orphan"`, and indicates the lifecycle of child
+          deprecated. setting ``private=True`` is the equivalent of setting
+          ``cascade="all, delete-orphan"``, and indicates the lifecycle of child
           objects should be contained within that of the parent. 
 
         remote_side
@@ -153,7 +152,7 @@ def relation(argument, secondary=None, **kwargs):
         uselist=(True|False)
           a boolean that indicates if this property should be loaded as a list or
           a scalar. In most cases, this value is determined automatically by
-          `relation()`, based on the type and direction of the relationship - one
+          ``relation()``, based on the type and direction of the relationship - one
           to many forms a list, many to one forms a scalar, many to many is a
           list. If a scalar is desired where normally a list would be present,
           such as a bi-directional one-to-one relationship, set uselist to False.
@@ -212,7 +211,7 @@ def composite(class_, *cols, **kwargs):
     columns given, as well as a __colset__() method which returns its attributes 
     in column order.
     
-      class_
+      class\_
         the "composite type" class.
           
       \*cols

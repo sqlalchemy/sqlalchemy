@@ -12,7 +12,7 @@ from sqlalchemy import exceptions, sql, schema, util, types, logging
 import StringIO, sys, re, random
 
 
-class Dialect(sql.AbstractDialect):
+class Dialect(object):
     """Define the behavior of a specific database/DBAPI.
 
     Any aspect of metadata definition, SQL query generation, execution,
