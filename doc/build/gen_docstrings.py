@@ -4,7 +4,6 @@ import re
 
 from sqlalchemy import schema, types, ansisql, engine, sql, pool, orm, exceptions, databases
 import sqlalchemy.ext.sessioncontext as sessioncontext
-import sqlalchemy.mods.threadlocal as threadlocal
 import sqlalchemy.ext.selectresults as selectresults
 import sqlalchemy.ext.orderinglist as orderinglist
 import sqlalchemy.ext.associationproxy as associationproxy
@@ -38,7 +37,6 @@ def make_all_docs():
         make_doc(obj=exceptions),
         make_doc(obj=pool),
         make_doc(obj=sessioncontext),
-        make_doc(obj=threadlocal),
         make_doc(obj=selectresults),
         make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),
         make_doc(obj=associationproxy, classes=[associationproxy.AssociationProxy]),

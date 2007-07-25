@@ -81,7 +81,7 @@ class CompositeProperty(ColumnProperty):
     def __init__(self, class_, *columns, **kwargs):
         super(CompositeProperty, self).__init__(*columns, **kwargs)
         self.composite_class = class_
-        self.comparator = CompositeProperty.Comparator(self)
+        self.comparator = kwargs.pop('comparator', CompositeProperty.Comparator(self))
         
     def copy(self):
         return CompositeProperty(deferred=self.deferred, group=self.group, composite_class=self.composite_class, *self.columns)
@@ -118,7 +118,7 @@ class PropertyLoader(StrategizedProperty):
     of items that correspond to a related database table.
     """
 
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, entity_name=None, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None, enable_typechecks=True, join_depth=None):
+    def __init__(self, argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None, enable_typechecks=True, join_depth=None):
         self.uselist = uselist
         self.argument = argument
         self.entity_name = entity_name

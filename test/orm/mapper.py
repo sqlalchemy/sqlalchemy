@@ -820,7 +820,7 @@ class CompositeTypesTest(ORMTest):
                 return other.x == self.x and other.y == self.y
             def __ne__(self, other):
                 return not self.__eq__(other)
-                    
+
         class Graph(object):
             pass
         class Edge(object):

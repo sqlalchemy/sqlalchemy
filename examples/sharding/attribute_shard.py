@@ -77,7 +77,7 @@ weather_locations = Table("weather_locations", meta,
 weather_reports = Table("weather_reports", meta,
     Column('id', Integer, primary_key=True),
     Column('location_id', Integer, ForeignKey('weather_locations.id')),
-    Column('temperature', Numeric),
+    Column('temperature', Float),
     Column('report_time', DateTime, default=datetime.datetime.now),
 )
 

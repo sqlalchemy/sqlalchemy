@@ -2,6 +2,10 @@ import testbase
 from sqlalchemy import *
 from testlib.schema import Table, Column
 
+
+# these are older test fixtures, used primarily by test/orm/mapper.py and test/orm/unitofwork.py.
+# newer unit tests make usage of test/orm/fixtures.py.
+
 metadata = MetaData()
 
 users = Table('users', metadata,

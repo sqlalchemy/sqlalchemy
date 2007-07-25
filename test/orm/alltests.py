@@ -2,6 +2,7 @@ import testbase
 import unittest
 
 import inheritance.alltests as inheritance
+import sharding.alltests as sharding
 
 def suite():
     modules_to_test = (
@@ -38,6 +39,7 @@ def suite():
             mod = getattr(mod, token)
         alltests.addTest(unittest.findTestCases(mod, suiteClass=None))
     alltests.addTest(inheritance.suite())
+    alltests.addTest(sharding.suite())
     return alltests
 
 
