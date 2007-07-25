@@ -17,6 +17,7 @@ from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 import operator
 from sqlalchemy.orm.interfaces import StrategizedProperty, PropComparator
+from sqlalchemy.exceptions import ArgumentError
 
 __all__ = ['ColumnProperty', 'CompositeProperty', 'PropertyLoader', 'BackRef']
 
@@ -34,6 +35,12 @@ class ColumnProperty(StrategizedProperty):
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
         self.comparator = ColumnProperty.ColumnComparator(self)
+        # sanity check
+        for col in columns:
+            if not hasattr(col, 'name'):
+                if hasattr(col, 'label'):
+                    raise ArgumentError('ColumnProperties must be named for the mapper to work with them.  Try .label() to fix this')
+                raise ArgumentError('%r is not a valid candidate for ColumnProperty' % col)
         
     def create_strategy(self):
         if self.deferred:

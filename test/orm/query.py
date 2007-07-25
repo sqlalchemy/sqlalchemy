@@ -742,10 +742,9 @@ class ExternalColumnsTest(QueryTest):
     def setup_mappers(self):
         pass
 
-    def test_external_columns(self):
-        """test querying mappings that reference external columns or selectables."""
-
-        f = (users.c.id *2).label('concat')
+    def test_external_columns_bad(self):
+        """test that SA catches some common mis-configurations of external columns."""
+        f = (users.c.id * 2)
         try:
             mapper(User, users, properties={
                 'concat': f,
@@ -753,10 +752,22 @@ class ExternalColumnsTest(QueryTest):
             class_mapper(User)
         except exceptions.ArgumentError, e:
             assert str(e) == "Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(f)
+        else:
+            raise 'expected ArgumentError'
         clear_mappers()
+        try:
+            mapper(User, users, properties={
+                'concat': column_property(users.c.id * 2),
+            })
+        except exceptions.ArgumentError, e:
+            assert str(e) == 'ColumnProperties must be named for the mapper to work with them.  Try .label() to fix this'
+        else:
+            raise 'expected ArgumentError'
 
+    def test_external_columns_good(self):
+        """test querying mappings that reference external columns or selectables."""
         mapper(User, users, properties={
-            'concat': column_property(f),
+            'concat': column_property((users.c.id * 2).label('concat')),
             'count': column_property(select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id).correlate(users).label('count'))
         })
 
