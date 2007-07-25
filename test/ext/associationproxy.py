@@ -149,9 +149,43 @@ class _CollectionOperations(PersistTest):
         self.assert_(p1.children[1] == 'changed-in-place')
         assert p1._children[1].id == inplace_id
 
+        p1.children.append('changed-in-place')
+        self.assert_(p1.children.count('changed-in-place') == 2)
+        
+        p1.children.remove('changed-in-place')
+        self.assert_(p1.children.count('changed-in-place') == 1)
+
+        p1 = self.roundtrip(p1)
+        self.assert_(p1.children.count('changed-in-place') == 1)
+
         p1._children = []
         self.assert_(len(p1.children) == 0)
 
+        after = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+        p1.children = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+        self.assert_(len(p1.children) == 10)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children[2:6] = ['x'] * 4
+        after = ['a', 'b', 'x', 'x', 'x', 'x', 'g', 'h', 'i', 'j']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children[2:6] = ['y']
+        after = ['a', 'b', 'y', 'g', 'h', 'i', 'j']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children[2:3] = ['z'] * 4
+        after = ['a', 'b', 'z', 'z', 'z', 'z', 'g', 'h', 'i', 'j']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children[2::2] = ['O'] * 4
+        after = ['a', 'b', 'O', 'z', 'O', 'z', 'O', 'h', 'O', 'j']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+        
 class DefaultTest(_CollectionOperations):
     def __init__(self, *args, **kw):
         super(DefaultTest, self).__init__(*args, **kw)
@@ -289,7 +323,8 @@ class SetTest(_CollectionOperations):
         self.assert_(len(p1.children) == 2)
         self.assert_(len(p1._children) == 2)
 
-        self.assert_(set([o.name for o in p1._children]) == set(['regular', 'proxied']))
+        self.assert_(set([o.name for o in p1._children]) ==
+                     set(['regular', 'proxied']))
 
         ch2 = None
         for o in p1._children:

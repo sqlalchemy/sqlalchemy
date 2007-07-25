@@ -834,7 +834,10 @@ def _list_decorators():
                         i += 1
                 else:
                     if len(value) != len(rng):
-                        raise ValueError
+                        raise ValueError(
+                            "attempt to assign sequence of size %s to "
+                            "extended slice of size %s" % (len(value),
+                                                           len(rng)))
                     for i, item in zip(rng, value):
                         self.__setitem__(i, item)
         _tidy(__setitem__)
