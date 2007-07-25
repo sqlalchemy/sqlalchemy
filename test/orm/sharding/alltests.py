@@ -1,7 +1,7 @@
 import testbase
 import unittest
 
-import inheritance.alltests as inheritance
+import orm.inheritance.alltests as inheritance
 
 def suite():
     modules_to_test = (
