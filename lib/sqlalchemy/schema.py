@@ -1091,6 +1091,9 @@ class MetaData(SchemaItem):
         self.tables = {}
         self._set_casing_strategy(kwargs)
         self.bind = bind
+        
+    def __repr__(self):
+        return 'MetaData(%r)' % self.bind
 
     def __getstate__(self):
         return {'tables':self.tables, 'casesensitive':self._case_sensitive_setting}

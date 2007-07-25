@@ -913,6 +913,9 @@ class Engine(Connectable):
     dialect = property(lambda s:s._dialect, doc="the [sqlalchemy.engine#Dialect] in use by this engine.")
     echo = logging.echo_property()
     
+    def __repr__(self):
+        return 'Engine(%s)' % str(self.url)
+    
     def dispose(self):
         self.pool.dispose()
         self.pool = self.pool.recreate()

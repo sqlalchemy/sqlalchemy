@@ -537,6 +537,9 @@ class SqlSoup:
                 t = None
             self._cache[attr] = t
         return t
+    
+    def __repr__(self):
+        return 'SqlSoup(%r)' % self._metadata
 
 if __name__ == '__main__':
     import doctest
