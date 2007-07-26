@@ -206,7 +206,44 @@ class JoinTest(QueryTest):
         result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_("order 1", "order 2", "order 3")).join(['orders', 'items']).filter_by(id=4).all()
         assert [User(id=7, name='jack')] == result
 
+class MultiplePathTest(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global t1, t2, t1t2_1, t1t2_2
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30))
+            )
+        t2 = Table('t2', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30))
+            )
+            
+        t1t2_1 = Table('t1t2_1', metadata,
+            Column('t1id', Integer, ForeignKey('t1.id')),
+            Column('t2id', Integer, ForeignKey('t2.id'))
+            )
 
+        t1t2_2 = Table('t1t2_2', metadata,
+            Column('t1id', Integer, ForeignKey('t1.id')),
+            Column('t2id', Integer, ForeignKey('t2.id'))
+            )
+            
+    def test_basic(self):
+        class T1(object):pass
+        class T2(object):pass
+        
+        mapper(T1, t1, properties={
+            't2s_1':relation(T2, secondary=t1t2_1),
+            't2s_2':relation(T2, secondary=t1t2_2),
+        })
+        mapper(T2, t2)
+        
+        try:
+            create_session().query(T1).join('t2s_1').filter_by(t2.c.id==5).reset_joinpoint().join('t2s_2')
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Can't join to property 't2s_2'; a path to this table along a different secondary table already exists.  Use explicit `Alias` objects."
+        
 class SynonymTest(QueryTest):
     keep_mappers = True
     keep_data = True

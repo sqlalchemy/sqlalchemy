@@ -614,7 +614,13 @@ class Query(object):
                         clause = clause.join(prop.select_table, prop.get_join(mapper, primary=False))
                     else:
                         clause = clause.join(prop.select_table, prop.get_join(mapper))
+            elif prop.secondary is not None and prop.secondary not in currenttables:
+                # TODO: this check is not strong enough for different paths to the same endpoint which
+                # does not use secondary tables
+                raise exceptions.InvalidRequestError("Can't join to property '%s'; a path to this table along a different secondary table already exists.  Use explicit `Alias` objects." % prop.key)
+                
             mapper = prop.mapper
+            
         return (clause, mapper)
 
     def _join_by(self, args, params, start=None):
