@@ -183,6 +183,7 @@
     within expressions
   - added select().with_prefix('foo') allowing any set of keywords to be
     placed before the columns clause of the SELECT [ticket:504]
+  - added array slice support to row[<index>] [ticket:686]
   - result sets make a better attempt at matching the DBAPI types present
     in cursor.description to the TypeEngine objects defined by the dialect,
     which are then used for result-processing. Note this only takes effect 

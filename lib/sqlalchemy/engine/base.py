@@ -1409,7 +1409,11 @@ class RowProxy(object):
         return self.__parent._has_key(self.__row, key)
 
     def __getitem__(self, key):
-        return self.__parent._get_col(self.__row, key)
+        if isinstance(key, slice):
+            indices = key.indices(len(self))
+            return tuple([self.__parent._get_col(self.__row, i) for i in range(*indices)])
+        else:
+            return self.__parent._get_col(self.__row, key)
 
     def __getattr__(self, name):
         try:

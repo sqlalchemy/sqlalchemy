@@ -225,6 +225,8 @@ class QueryTest(PersistTest):
     def test_column_accessor(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
+        addresses.insert().execute(address_id=1, user_id=2, address='foo@bar.com')
+        
         r = users.select(users.c.user_id==2).execute().fetchone()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
@@ -233,6 +235,12 @@ class QueryTest(PersistTest):
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
     
+        # test slices
+        r = text("select * from query_addresses", bind=testbase.db).execute().fetchone()
+        self.assert_(r[0:1] == (1,))
+        self.assert_(r[1:] == (2, 'foo@bar.com'))
+        self.assert_(r[:-1] == (1, 2))
+        
     def test_ambiguous_column(self):
         users.insert().execute(user_id=1, user_name='john')
         r = users.outerjoin(addresses).select().execute().fetchone()
