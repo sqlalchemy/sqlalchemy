@@ -235,7 +235,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
 
         return (row is not None)
 
-    def reflecttable(self, connection, table, desired_columns):
+    def reflecttable(self, connection, table, include_columns):
         c = connection.execute("PRAGMA table_info(%s)" % self.preparer().format_table(table), {})
         found_table = False
         while True:
@@ -246,7 +246,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
             found_table = True
             (name, type, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4] is not None, row[5])
             name = re.sub(r'^\"|\"$', '', name)
-            if desired_columns and name not in desired_columns:
+            if include_columns and name not in include_columns:
                 continue
             match = re.match(r'(\w+)(\(.*?\))?', type)
             if match:

@@ -1124,7 +1124,7 @@ class MySQLDialect(ansisql.ANSIDialect):
                 version.append(n)
         return tuple(version)
 
-    def reflecttable(self, connection, table, desired_columns):
+    def reflecttable(self, connection, table, include_columns):
         """Load column definitions from the server."""
 
         decode_from = self._detect_charset(connection)
@@ -1148,7 +1148,7 @@ class MySQLDialect(ansisql.ANSIDialect):
             # leave column names as unicode
             name = name.decode(decode_from)
             
-            if desired_columns and name not in desired_columns:
+            if include_columns and name not in include_columns:
                 continue
 
             match = re.match(r'(\w+)(\(.*?\))?\s*(\w+)?\s*(\w+)?', type)

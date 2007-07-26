@@ -471,7 +471,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         row  = c.fetchone()
         return row is not None
         
-    def reflecttable(self, connection, table, desired_columns):
+    def reflecttable(self, connection, table, include_columns):
         import sqlalchemy.databases.information_schema as ischema
         
         # Get base columns
@@ -503,7 +503,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
                 row[columns.c.numeric_scale],
                 row[columns.c.column_default]
             )
-            if desired_columns and name not in desired_columns:
+            if include_columns and name not in include_columns:
                 continue
 
             args = []

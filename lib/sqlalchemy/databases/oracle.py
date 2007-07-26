@@ -336,7 +336,7 @@ class OracleDialect(ansisql.ANSIDialect):
                 return name, owner, dblink
             raise
 
-    def reflecttable(self, connection, table, desired_columns):
+    def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer
         if not preparer.should_quote(table):
             name = table.name.upper()
@@ -362,7 +362,7 @@ class OracleDialect(ansisql.ANSIDialect):
             if (colname.upper() == colname):
                 colname = colname.lower()
 
-            if desired_columns and colname not in desired_columns:
+            if include_columns and colname not in include_columns:
                 continue
 
             # INTEGER if the scale is 0 and precision is null

@@ -109,6 +109,29 @@ class ReflectionTest(PersistTest):
             addresses.drop()
             users.drop()
     
+    def test_autoload_partial(self):
+        meta = MetaData(testbase.db)
+        foo = Table('foo', meta,
+            Column('a', String(30)),
+            Column('b', String(30)),
+            Column('c', String(30)),
+            Column('d', String(30)),
+            Column('e', String(30)),
+            Column('f', String(30)),
+            )
+        meta.create_all()
+        try:
+            meta2 = MetaData(testbase.db)
+            foo2 = Table('foo', meta2, autoload=True, include_columns=['b', 'f', 'e'])
+            # test that cols come back in original order
+            assert [c.name for c in foo2.c] == ['b', 'e', 'f']
+            for c in ('b', 'f', 'e'):
+                assert c in foo2.c
+            for c in ('a', 'c', 'd'):
+                assert c not in foo2.c
+        finally:
+            meta.drop_all()
+            
     def testoverridecolumns(self):
         """test that you can override columns which contain foreign keys to other reflected tables"""
         meta = MetaData(testbase.db)

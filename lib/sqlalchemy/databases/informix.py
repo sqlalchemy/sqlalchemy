@@ -253,7 +253,7 @@ class InfoDialect(ansisql.ANSIDialect):
         cursor = connection.execute("""select tabname from systables where tabname=?""", table_name.lower() )
         return bool( cursor.fetchone() is not None )
         
-    def reflecttable(self, connection, table, desired_columns):
+    def reflecttable(self, connection, table, include_columns):
         c = connection.execute ("select distinct OWNER from systables where tabname=?", table.name.lower() )
         rows = c.fetchall()
         if not rows :
@@ -281,7 +281,7 @@ class InfoDialect(ansisql.ANSIDialect):
 
         for name , colattr , collength , default , colno in rows:
             name = name.lower()
-            if desired_columns and name not in desired_columns:
+            if include_columns and name not in include_columns:
                 continue
 
             # in 7.31, coltype = 0x000

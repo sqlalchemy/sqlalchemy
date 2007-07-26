@@ -137,6 +137,7 @@ class _TableSingleton(sql._FigureVisitName):
         autoload_with = kwargs.pop('autoload_with', False)
         mustexist = kwargs.pop('mustexist', False)
         useexisting = kwargs.pop('useexisting', False)
+        include_columns = kwargs.pop('include_columns', None)
         key = _get_table_key(name, schema)
         try:
             table = metadata.tables[key]
@@ -154,16 +155,10 @@ class _TableSingleton(sql._FigureVisitName):
             # circular foreign keys
             if autoload:
                 try:
-                    iter(autoload)
-                except:
-                    columns = None
-                else:
-                    columns = autoload
-                try:
                     if autoload_with:
-                        autoload_with.reflecttable(table, desired_columns=columns)
+                        autoload_with.reflecttable(table, include_columns=include_columns)
                     else:
-                        metadata._get_engine(raiseerr=True).reflecttable(table, desired_columns=columns)
+                        metadata._get_engine(raiseerr=True).reflecttable(table, include_columns=include_columns)
                 except exceptions.NoSuchTableError:
                     del metadata.tables[key]
                     raise
@@ -223,16 +218,28 @@ class Table(SchemaItem, sql.TableClause):
           options include:
 
           schema
-            Defaults to None: the *schema name* for this table, which is
+            The *schema name* for this table, which is
             required if the table resides in a schema other than the
             default selected schema for the engine's database
-            connection.
+            connection.  Defaults to ``None``.
 
           autoload
             Defaults to False: the Columns for this table should be
             reflected from the database.  Usually there will be no
             Column objects in the constructor if this property is set.
 
+          autoload_with
+            if autoload==True, this is an optional Engine or Connection
+            instance to be used for the table reflection.  If ``None``,
+            the underlying MetaData's bound connectable will be used.
+            
+          include_columns
+            A list of strings indicating a subset of columns to be 
+            loaded via the ``autoload`` operation; table columns who
+            aren't present in this list will not be represented on the resulting
+            ``Table`` object.  Defaults to ``None`` which indicates all 
+            columns should be reflected.
+            
           mustexist
             Defaults to False: indicates that this Table must already
             have been defined elsewhere in the application, else an

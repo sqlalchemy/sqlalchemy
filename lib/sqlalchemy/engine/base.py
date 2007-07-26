@@ -148,11 +148,11 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def reflecttable(self, connection, table, desired_columns=None):
+    def reflecttable(self, connection, table, include_columns=None):
         """Load table description from the database.
 
         Given a [sqlalchemy.engine#Connection] and a [sqlalchemy.schema#Table] object, reflect its
-        columns and properties from the database.  If desired_columns (a list or set) is specified, limit the autoload
+        columns and properties from the database.  If include_columns (a list or set) is specified, limit the autoload
         to the given column names.
         """
 
@@ -799,10 +799,10 @@ class Connection(Connectable):
 
         return self.__engine.drop(entity, connection=self, **kwargs)
 
-    def reflecttable(self, table, desired_columns=None):
+    def reflecttable(self, table, include_columns=None):
         """Reflect the columns in the given string table name from the database."""
 
-        return self.__engine.reflecttable(table, self, desired_columns)
+        return self.__engine.reflecttable(table, self, include_columns)
 
     def default_schema_name(self):
         return self.__engine.dialect.get_default_schema_name(self)
@@ -1019,7 +1019,7 @@ class Engine(Connectable):
 
         return Connection(self, close_with_result=close_with_result, **kwargs)
 
-    def reflecttable(self, table, connection=None, desired_columns=None):
+    def reflecttable(self, table, connection=None, include_columns=None):
         """Given a Table object, reflects its columns and properties from the database."""
 
         if connection is None:
@@ -1027,7 +1027,7 @@ class Engine(Connectable):
         else:
             conn = connection
         try:
-            self.dialect.reflecttable(conn, table, desired_columns)
+            self.dialect.reflecttable(conn, table, include_columns)
         finally:
             if connection is None:
                 conn.close()

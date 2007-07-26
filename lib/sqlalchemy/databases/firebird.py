@@ -172,7 +172,7 @@ class FBDialect(ansisql.ANSIDialect):
         else:
             return False
 
-    def reflecttable(self, connection, table, desired_columns):
+    def reflecttable(self, connection, table, include_columns):
         #TODO: map these better
         column_func = {
             14 : lambda r: sqltypes.String(r['FLEN']), # TEXT
@@ -251,7 +251,7 @@ class FBDialect(ansisql.ANSIDialect):
         while row:
             name = row['FNAME']
             python_name = lower_if_possible(name)
-            if desired_columns and python_name not in desired_columns:
+            if include_columns and python_name not in include_columns:
                 continue
             args = [python_name]
 
