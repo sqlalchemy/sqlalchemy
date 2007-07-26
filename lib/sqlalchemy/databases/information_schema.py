@@ -98,8 +98,7 @@ class ISchema(object):
         return self.cache[name]
 
 
-def reflecttable(connection, table, ischema_names):
-    
+def reflecttable(connection, table, desired_columns, ischema_names):
     key_constraints = pg_key_constraints
         
     if table.schema is not None:
@@ -130,7 +129,9 @@ def reflecttable(connection, table, ischema_names):
             row[columns.c.numeric_scale],
             row[columns.c.column_default]
             )
-
+        if desired_columns and name not in desired_columns:
+            continue
+        
         args = []
         for a in (charlen, numericprec, numericscale):
             if a is not None:

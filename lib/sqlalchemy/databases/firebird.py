@@ -172,7 +172,7 @@ class FBDialect(ansisql.ANSIDialect):
         else:
             return False
 
-    def reflecttable(self, connection, table):
+    def reflecttable(self, connection, table, desired_columns):
         #TODO: map these better
         column_func = {
             14 : lambda r: sqltypes.String(r['FLEN']), # TEXT
@@ -250,7 +250,10 @@ class FBDialect(ansisql.ANSIDialect):
 
         while row:
             name = row['FNAME']
-            args = [lower_if_possible(name)]
+            python_name = lower_if_possible(name)
+            if desired_columns and python_name not in desired_columns:
+                continue
+            args = [python_name]
 
             kw = {}
             # get the data types and lengths

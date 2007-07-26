@@ -154,10 +154,16 @@ class _TableSingleton(sql._FigureVisitName):
             # circular foreign keys
             if autoload:
                 try:
+                    iter(autoload)
+                except:
+                    columns = None
+                else:
+                    columns = autoload
+                try:
                     if autoload_with:
-                        autoload_with.reflecttable(table)
+                        autoload_with.reflecttable(table, desired_columns=columns)
                     else:
-                        metadata._get_engine(raiseerr=True).reflecttable(table)
+                        metadata._get_engine(raiseerr=True).reflecttable(table, desired_columns=columns)
                 except exceptions.NoSuchTableError:
                     del metadata.tables[key]
                     raise

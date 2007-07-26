@@ -335,9 +335,9 @@ class PGDialect(ansisql.ANSIDialect):
         else:
             return False
 
-    def reflecttable(self, connection, table):
+    def reflecttable(self, connection, table, desired_columns):
         if self.use_information_schema:
-            ischema.reflecttable(connection, table, ischema_names)
+            ischema.reflecttable(connection, table, desired_columns, ischema_names)
         else:
             preparer = self.identifier_preparer
             if table.schema is not None:
@@ -377,6 +377,9 @@ class PGDialect(ansisql.ANSIDialect):
             domains = self._load_domains(connection)
             
             for name, format_type, default, notnull, attnum, table_oid in rows:
+                if desired_columns and name not in desired_columns:
+                    continue
+                
                 ## strip (30) from character varying(30)
                 attype = re.search('([^\([]+)', format_type).group(1)
                 nullable = not notnull

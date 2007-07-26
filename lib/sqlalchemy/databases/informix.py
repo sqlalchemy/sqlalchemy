@@ -253,7 +253,7 @@ class InfoDialect(ansisql.ANSIDialect):
         cursor = connection.execute("""select tabname from systables where tabname=?""", table_name.lower() )
         return bool( cursor.fetchone() is not None )
         
-    def reflecttable(self, connection, table):
+    def reflecttable(self, connection, table, desired_columns):
         c = connection.execute ("select distinct OWNER from systables where tabname=?", table.name.lower() )
         rows = c.fetchall()
         if not rows :
@@ -280,6 +280,10 @@ class InfoDialect(ansisql.ANSIDialect):
             raise exceptions.NoSuchTableError(table.name)
 
         for name , colattr , collength , default , colno in rows:
+            name = name.lower()
+            if desired_columns and name not in desired_columns:
+                continue
+
             # in 7.31, coltype = 0x000
             #                       ^^-- column type
             #                      ^-- 1 not null , 0 null 
@@ -306,8 +310,6 @@ class InfoDialect(ansisql.ANSIDialect):
             colargs = []
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
-            
-            name = name.lower()
             
             table.append_column(schema.Column(name, coltype, nullable = (nullable == 0), *colargs))
 

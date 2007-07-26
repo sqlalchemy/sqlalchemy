@@ -336,7 +336,7 @@ class OracleDialect(ansisql.ANSIDialect):
                 return name, owner, dblink
             raise
 
-    def reflecttable(self, connection, table):
+    def reflecttable(self, connection, table, desired_columns):
         preparer = self.identifier_preparer
         if not preparer.should_quote(table):
             name = table.name.upper()
@@ -357,6 +357,13 @@ class OracleDialect(ansisql.ANSIDialect):
 
             #print "ROW:" , row
             (colname, coltype, length, precision, scale, nullable, default) = (row[0], row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
+
+            # if name comes back as all upper, assume its case folded
+            if (colname.upper() == colname):
+                colname = colname.lower()
+
+            if desired_columns and colname not in desired_columns:
+                continue
 
             # INTEGER if the scale is 0 and precision is null
             # NUMBER if the scale and precision are both null
@@ -383,10 +390,6 @@ class OracleDialect(ansisql.ANSIDialect):
             colargs = []
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
-
-            # if name comes back as all upper, assume its case folded
-            if (colname.upper() == colname):
-                colname = colname.lower()
 
             table.append_column(schema.Column(colname, coltype, nullable=nullable, *colargs))
 
