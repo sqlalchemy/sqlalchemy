@@ -29,13 +29,19 @@ class DefaultDialect(base.Dialect):
         
         TODO: dialects should export this mapping explicitly, instead of relying upon
         module searching.
+
+        TODO: so far, this only seems to work with oracle
         """
         dialect_module = sys.modules[self.__class__.__module__]
         map = {}
-        for obj in dialect_module.__dict__.values():
-            if isinstance(obj, type) and issubclass(obj, types.TypeEngine):
-                obj = obj()
-                map[obj.get_dbapi_type(self.dbapi)] = obj
+        if False:
+            for obj in dialect_module.__dict__.values():
+                if self.dbapi is not None and isinstance(obj, type) and issubclass(obj, types.TypeEngine):
+                    obj = obj()
+                    try:
+                        map[obj.get_dbapi_type(self.dbapi)] = obj
+                    except AttributeError:
+                        pass
         self._dbapi_type_map = map
     
     def decode_result_columnname(self, name):

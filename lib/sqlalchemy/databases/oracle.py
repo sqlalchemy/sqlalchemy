@@ -220,6 +220,7 @@ class OracleDialect(ansisql.ANSIDialect):
         else:
             self.ORACLE_BINARY_TYPES = []
 
+
     def dbapi(cls):
         import cx_Oracle
         return cx_Oracle
