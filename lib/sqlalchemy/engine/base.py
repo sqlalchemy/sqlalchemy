@@ -388,7 +388,7 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-class Compiled(sql.ClauseVisitor):
+class Compiled(object):
     """Represent a compiled SQL expression.
 
     The ``__str__`` method of the ``Compiled`` object should produce
@@ -429,7 +429,12 @@ class Compiled(sql.ClauseVisitor):
         self.parameters = parameters
         self.bind = bind
         self.can_execute = statement.supports_execution()
-
+    
+    def compile(self):
+        """Produce the internal string representation of this element."""
+        
+        raise NotImplementedError()
+        
     def __str__(self):
         """Return the string text of the generated SQL statement."""
 

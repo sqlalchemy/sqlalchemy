@@ -102,7 +102,7 @@ class ANSIDialect(default.DefaultDialect):
         """
         return ANSIIdentifierPreparer(self)
 
-class ANSICompiler(engine.Compiled):
+class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
     """Default implementation of Compiled.
 
     Compiles ClauseElements into ANSI-compliant SQL strings.
