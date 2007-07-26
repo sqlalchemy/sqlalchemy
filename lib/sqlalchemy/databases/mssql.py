@@ -98,6 +98,29 @@ class MSDate(sqltypes.Date):
     def get_col_spec(self):
         return "SMALLDATETIME"
 
+class MSTime(sqltypes.Time):
+    __zero_date = datetime.date(1900, 1, 1)
+
+    def __init__(self, *a, **kw):
+        super(MSTime, self).__init__(False)
+    
+    def get_col_spec(self):
+        return "DATETIME"
+
+    def convert_bind_param(self, value, dialect):
+        if isinstance(value, datetime.datetime):
+            value = datetime.datetime.combine(self.__zero_date, value.time())
+        elif isinstance(value, datetime.time):
+            value = datetime.datetime.combine(self.__zero_date, value)
+        return value
+
+    def convert_result_value(self, value, dialect):
+        if isinstance(value, datetime.datetime):
+            return value.time()
+        elif isinstance(value, datetime.date):
+            return datetime.time(0, 0, 0)
+        return value
+
 class MSDateTime_adodbapi(MSDateTime):
     def convert_result_value(self, value, dialect):
         # adodbapi will return datetimes with empty time values as datetime.date() objects.
@@ -305,6 +328,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         sqltypes.Float : MSFloat,
         sqltypes.DateTime : MSDateTime,
         sqltypes.Date : MSDate,
+        sqltypes.Time : MSTime,
         sqltypes.String : MSString,
         sqltypes.Binary : MSBinary,
         sqltypes.Boolean : MSBoolean,
@@ -893,8 +917,12 @@ class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
 
 class MSSQLSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_index(self, index):
-        self.append("\nDROP INDEX " + index.table.name + "." + index.name)
+        self.append("\nDROP INDEX %s.%s" % (
+            self.preparer.quote_identifier(index.table.name),
+            self.preparer.quote_identifier(index.name)
+            ))
         self.execute()
+
 
 class MSSQLDefaultRunner(ansisql.ANSIDefaultRunner):
     # TODO: does ms-sql have standalone sequences ?
