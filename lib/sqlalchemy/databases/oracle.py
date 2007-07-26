@@ -220,6 +220,19 @@ class OracleDialect(ansisql.ANSIDialect):
         else:
             self.ORACLE_BINARY_TYPES = []
 
+    def dbapi_type_map(self):
+        if self.dbapi is None:
+            return {}
+        else:
+            return {
+                dbapi.NUMBER: OracleInteger(), 
+                dbapi.CLOB: OracleText(), 
+                dbapi.BLOB: OracleBinary(), 
+                dbapi.STRING: OracleString(), 
+                dbapi.TIMESTAMP: OracleTimestamp(), 
+                dbapi.BINARY: OracleRaw(), 
+                datetime.datetime: OracleDate()
+            }
 
     def dbapi(cls):
         import cx_Oracle

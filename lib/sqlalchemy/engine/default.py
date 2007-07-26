@@ -21,28 +21,6 @@ class DefaultDialect(base.Dialect):
         self._ischema = None
         self.dbapi = dbapi
         self._figure_paramstyle(paramstyle=paramstyle, default=default_paramstyle)
-        self._generate_dbapi_type_map()
-        
-    def _generate_dbapi_type_map(self):
-        """locate all TypeEngine objects in the dialect's module and map them against the DBAPI
-        type they represent.
-        
-        TODO: dialects should export this mapping explicitly, instead of relying upon
-        module searching.
-
-        TODO: so far, this only seems to work with oracle
-        """
-        dialect_module = sys.modules[self.__class__.__module__]
-        map = {}
-        if False:
-            for obj in dialect_module.__dict__.values():
-                if self.dbapi is not None and isinstance(obj, type) and issubclass(obj, types.TypeEngine):
-                    obj = obj()
-                    try:
-                        map[obj.get_dbapi_type(self.dbapi)] = obj
-                    except AttributeError:
-                        pass
-        self._dbapi_type_map = map
     
     def decode_result_columnname(self, name):
         """decode a name found in cursor.description to a unicode object."""
@@ -50,7 +28,10 @@ class DefaultDialect(base.Dialect):
         return name.decode(self.encoding)
         
     def dbapi_type_map(self):
-        return self._dbapi_type_map
+        # most DBAPIs have problems with this (such as, psycocpg2 types 
+        # are unhashable).  So far Oracle can return it.
+        
+        return {}
             
     def create_execution_context(self, **kwargs):
         return DefaultExecutionContext(self, **kwargs)
