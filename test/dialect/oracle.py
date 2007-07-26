@@ -1,6 +1,7 @@
-import testbase, testing
+import testbase
 from sqlalchemy import *
 from sqlalchemy.databases import mysql
+
 from testlib import *
 
 
