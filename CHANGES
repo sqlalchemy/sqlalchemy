@@ -21,6 +21,7 @@
 
 - mssql
     - added support for TIME columns (simulated using DATETIME) [ticket:679]
+    - index names are now quoted when dropping from reflected tables [ticket:684]
 
 0.3.9
 - general

@@ -915,7 +915,9 @@ class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
 
 class MSSQLSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_index(self, index):
-        self.append("\nDROP INDEX " + index.table.name + "." + index.name)
+        self.append("\nDROP INDEX %s.%s" % (
+                    self.preparer.quote_identifier(index.table.name),
+                    self.preparer.quote_identifier(index.name)))
         self.execute()
 
 class MSSQLDefaultRunner(ansisql.ANSIDefaultRunner):
