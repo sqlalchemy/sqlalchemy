@@ -1315,13 +1315,13 @@ class MySQLCompiler(ansisql.ANSICompiler):
         }
     )
 
-    def visit_cast(self, cast):
+    def visit_cast(self, cast, **kwargs):
         if isinstance(cast.type, (sqltypes.Date, sqltypes.Time, sqltypes.DateTime)):
-            return super(MySQLCompiler, self).visit_cast(cast)
+            return super(MySQLCompiler, self).visit_cast(cast, **kwargs)
         else:
             # so just skip the CAST altogether for now.
             # TODO: put whatever MySQL does for CAST here.
-            self.strings[cast] = self.strings[cast.clause]
+            return self.process(cast.clause)
 
     def for_update_clause(self, select):
         if select.for_update == 'read':

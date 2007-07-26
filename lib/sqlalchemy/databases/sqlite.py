@@ -327,12 +327,12 @@ class SQLiteDialect(ansisql.ANSIDialect):
 class SQLiteCompiler(ansisql.ANSICompiler):
     def visit_cast(self, cast):
         if self.dialect.supports_cast:
-            super(SQLiteCompiler, self).visit_cast(cast)
+            return super(SQLiteCompiler, self).visit_cast(cast)
         else:
             if len(self.select_stack):
                 # not sure if we want to set the typemap here...
                 self.typemap.setdefault("CAST", cast.type)
-            self.strings[cast] = self.strings[cast.clause]
+            return self.process(cast.clause)
 
     def limit_clause(self, select):
         text = ""

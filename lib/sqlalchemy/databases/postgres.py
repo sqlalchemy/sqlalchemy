@@ -559,7 +559,7 @@ class PGCompiler(ansisql.ANSICompiler):
             text += " OFFSET " + str(select._offset)
         return text
 
-    def visit_select_precolumns(self, select):
+    def get_select_precolumns(self, select):
         if select._distinct:
             if type(select._distinct) == bool:
                 return "DISTINCT "

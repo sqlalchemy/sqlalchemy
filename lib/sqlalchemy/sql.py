@@ -856,17 +856,14 @@ class ClauseVisitor(object):
     """
     __traverse_options__ = {}
     
-    def traverse_single(self, obj):
+    def traverse_single(self, obj, **kwargs):
         meth = getattr(self, "visit_%s" % obj.__visit_name__, None)
         if meth:
-            return meth(obj)
+            return meth(obj, **kwargs)
             
     def traverse(self, obj, stop_on=None, clone=False):
         if clone:
             obj = obj._clone()
-
-        # entry flag indicates to also call a before-descent "enter_XXXX" method
-        entry = self.__traverse_options__.get('entry', False)
 
         v = self
         visitors = []
@@ -877,12 +874,6 @@ class ClauseVisitor(object):
         def _trav(obj):
             if stop_on is not None and obj in stop_on:
                 return
-            if entry:
-                for v in visitors:
-                    meth = getattr(v, "enter_%s" % obj.__visit_name__, None)
-                    if meth:
-                        meth(obj)
-
             if clone:
                 obj._copy_internals()
             for c in obj.get_children(**self.__traverse_options__):

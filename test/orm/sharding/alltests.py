@@ -1,8 +1,6 @@
 import testbase
 import unittest
 
-import orm.inheritance.alltests as inheritance
-
 def suite():
     modules_to_test = (
         'orm.sharding.shard',
@@ -13,7 +11,6 @@ def suite():
         for token in name.split('.')[1:]:
             mod = getattr(mod, token)
         alltests.addTest(unittest.findTestCases(mod, suiteClass=None))
-    alltests.addTest(inheritance.suite())
     return alltests
 
 

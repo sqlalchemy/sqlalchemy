@@ -430,10 +430,6 @@ class Compiled(sql.ClauseVisitor):
         self.bind = bind
         self.can_execute = statement.supports_execution()
 
-    def compile(self):
-        self.traverse(self.statement)
-        self.after_compile()
-
     def __str__(self):
         """Return the string text of the generated SQL statement."""
 

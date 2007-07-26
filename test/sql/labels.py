@@ -94,7 +94,7 @@ class LongLabelsTest(PersistTest):
         x = select([tt], use_labels=True, order_by=tt.oid_column).compile(dialect=dialect)
         #print x
         # assert it doesnt end with "ORDER BY foo.some_large_named_table_this_is_the_primarykey_column"
-        assert str(x).endswith("""ORDER BY foo.some_large_named_table_t_1""")
+        assert str(x).endswith("""ORDER BY foo.some_large_named_table_t_2""")
 
 if __name__ == '__main__':
     testbase.main()

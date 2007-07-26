@@ -457,6 +457,11 @@ class OracleDialect(ansisql.ANSIDialect):
 
 OracleDialect.logger = logging.class_logger(OracleDialect)
 
+class _OuterJoinColumn(sql.ClauseElement):
+    __visit_name__ = 'outer_join_column'
+    def __init__(self, column):
+        self.column = column
+        
 class OracleCompiler(ansisql.ANSICompiler):
     """Oracle compiler modifies the lexical structure of Select
     statements to work under non-ANSI configured Oracle databases, if
@@ -470,6 +475,10 @@ class OracleCompiler(ansisql.ANSICompiler):
         }
     )
 
+    def __init__(self, *args, **kwargs):
+        super(OracleCompiler, self).__init__(*args, **kwargs)
+        self.__wheres = {}
+        
     def default_from(self):
         """Called when a ``SELECT`` statement has no froms, and no ``FROM`` clause is to be appended.
 
@@ -481,44 +490,45 @@ class OracleCompiler(ansisql.ANSICompiler):
     def apply_function_parens(self, func):
         return len(func.clauses) > 0
 
-    def visit_join(self, join):
+    def visit_join(self, join, **kwargs):
         if self.dialect.use_ansi:
-            return ansisql.ANSICompiler.visit_join(self, join)
+            return ansisql.ANSICompiler.visit_join(self, join, **kwargs)
 
-        self.froms[join] = self.froms[join.left] + ", " + self.froms[join.right]
-        where = self.wheres.get(join.left, None)
+        (where, parentjoin) = self.__wheres.get(join, (None, None))
+
+        class VisitOn(sql.ClauseVisitor):
+            def visit_binary(s, binary):
+                if binary.operator == operator.eq:
+                    if binary.left.table is join.right:
+                        binary.left = _OuterJoinColumn(binary.left)
+                    elif binary.right.table is join.right:
+                        binary.right = _OuterJoinColumn(binary.right)
+                        
         if where is not None:
-            self.wheres[join] = sql.and_(where, join.onclause)
+            self.__wheres[join.left] = self.__wheres[parentjoin] = (sql.and_(VisitOn().traverse(join.onclause, clone=True), where), parentjoin)
         else:
-            self.wheres[join] = join.onclause
-#        self.wheres[join] = sql.and_(self.wheres.get(join.left, None), join.onclause)
-        self.strings[join] = self.froms[join]
+            self.__wheres[join.left] = self.__wheres[join] = (VisitOn().traverse(join.onclause, clone=True), join)
 
-        if join.isouter:
-            # if outer join, push on the right side table as the current "outertable"
-            self._outertable = join.right
-
-            # now re-visit the onclause, which will be used as a where clause
-            # (the first visit occured via the Join object itself right before it called visit_join())
-            self.traverse(join.onclause)
-
-            self._outertable = None
-
-        self.traverse_single(self.wheres[join])
-
+        return self.process(join.left, asfrom=True) + ", " + self.process(join.right, asfrom=True)
+    
+    def get_whereclause(self, f):
+        if f in self.__wheres:
+            return self.__wheres[f][0]
+        else:
+            return None
+            
+    def visit_outer_join_column(self, vc):
+        return self.process(vc.column) + "(+)"
     def uses_sequences_for_inserts(self):
         return True
 
-    def visit_alias(self, alias):
+    def visit_alias(self, alias, asfrom=False, **kwargs):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
-
-        self.froms[alias] = self.froms[alias.original] + " " + alias.name
-        self.strings[alias] = self.strings[alias.original]
-
-    def visit_column(self, column):
-        ansisql.ANSICompiler.visit_column(self, column)
-        if not self.dialect.use_ansi and getattr(self, '_outertable', None) is not None and column.table is self._outertable:
-            self.strings[column] = self.strings[column] + "(+)"
+        
+        if asfrom:
+            return self.process(alias.original) + " " + alias.name
+        else:
+            return self.process(alias.original)
 
     def visit_insert(self, insert):
         """``INSERT`` s are required to have the primary keys be explicitly present.
@@ -537,18 +547,18 @@ class OracleCompiler(ansisql.ANSICompiler):
         """Need to determine how to get ``LIMIT``/``OFFSET`` into a ``UNION`` for Oracle."""
         pass
 
-    def visit_select(self, select):
+    def visit_select(self, select, **kwargs):
         """Look for ``LIMIT`` and OFFSET in a select statement, and if
         so tries to wrap it in a subquery with ``row_number()`` criterion.
         """
 
         if not getattr(select, '_oracle_visit', None) and (select._limit is not None or select._offset is not None):
             # to use ROW_NUMBER(), an ORDER BY is required.
-            orderby = self.strings[select._order_by_clause]
+            orderby = self.process(select._order_by_clause)
             if not orderby:
                 orderby = select.oid_column
                 self.traverse(orderby)
-                orderby = self.strings[orderby]
+                orderby = self.process(orderby)
                 
             oldselect = select
             select = select.column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn")).order_by(None)
@@ -561,11 +571,9 @@ class OracleCompiler(ansisql.ANSICompiler):
                     limitselect.append_whereclause("ora_rn<=%d" % (select._limit + select._offset))
             else:
                 limitselect.append_whereclause("ora_rn<=%d" % select._limit)
-            self.traverse(limitselect)
-            self.strings[oldselect] = self.strings[limitselect]
-            self.froms[oldselect] = self.froms[limitselect]
+            return self.process(limitselect)
         else:
-            ansisql.ANSICompiler.visit_select(self, select)
+            return ansisql.ANSICompiler.visit_select(self, select, **kwargs)
 
     def limit_clause(self, select):
         return ""

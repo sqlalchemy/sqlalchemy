@@ -306,23 +306,23 @@ class FBDialect(ansisql.ANSIDialect):
 class FBCompiler(ansisql.ANSICompiler):
     """Firebird specific idiosincrasies"""
 
-    def visit_alias(self, alias):
+    def visit_alias(self, alias, asfrom=False, **kwargs):
         # Override to not use the AS keyword which FB 1.5 does not like
-        self.froms[alias] = self.froms[alias.original] + " " + self.preparer.format_alias(alias)
-        self.strings[alias] = self.strings[alias.original]
+        if asfrom:
+            return self.process(alias.original, asfrom=True) + " " + self.preparer.format_alias(alias)
+        else:
+            return self.process(alias.original, asfrom=True)
 
     def visit_function(self, func):
         if len(func.clauses):
-            super(FBCompiler, self).visit_function(func)
+            return super(FBCompiler, self).visit_function(func)
         else:
-            self.strings[func] = func.name
+            return func.name
 
-    def visit_insert_column(self, column, parameters):
-        # all column primary key inserts must be explicitly present
-        if column.primary_key:
-            parameters[column.key] = None
+    def uses_sequences_for_inserts(self):
+        return True
 
-    def visit_select_precolumns(self, select):
+    def get_select_precolumns(self, select):
         """Called when building a ``SELECT`` statement, position is just
         before column list Firebird puts the limit and offset right
         after the ``SELECT``...
@@ -338,7 +338,7 @@ class FBCompiler(ansisql.ANSICompiler):
         return result
 
     def limit_clause(self, select):
-        """Already taken care of in the `visit_select_precolumns` method."""
+        """Already taken care of in the `get_select_precolumns` method."""
         return ""
 
 

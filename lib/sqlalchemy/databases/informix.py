@@ -369,7 +369,7 @@ class InfoCompiler(ansisql.ANSICompiler):
     def default_from(self):
         return " from systables where tabname = 'systables' "
     
-    def visit_select_precolumns( self , select ):
+    def get_select_precolumns( self , select ):
         s = select._distinct and "DISTINCT " or ""
         # only has limit
         if select._limit:
@@ -390,13 +390,14 @@ class InfoCompiler(ansisql.ANSICompiler):
                 return c._label.lower()
             except:
                 return ''
-                
+        
+        # TODO: dont modify the original select, generate a new one        
         a = [ __label(c) for c in select._raw_columns ]
         for c in select.order_by_clause.clauses:
             if ( __label(c) not in a ) and getattr( c , 'name' , '' ) != 'oid':
                 select.append_column( c )
         
-        ansisql.ANSICompiler.visit_select(self, select)
+        return ansisql.ANSICompiler.visit_select(self, select)
         
     def limit_clause(self, select):
         return ""
@@ -411,23 +412,20 @@ class InfoCompiler(ansisql.ANSICompiler):
 
     def visit_function( self , func ):
         if func.name.lower() == 'current_date':
-            self.strings[func] = "today"
+            return "today"
         elif func.name.lower() == 'current_time':
-            self.strings[func] = "CURRENT HOUR TO SECOND"
+            return "CURRENT HOUR TO SECOND"
         elif func.name.lower() in ( 'current_timestamp' , 'now' ):
-            self.strings[func] = "CURRENT YEAR TO SECOND"
+            return "CURRENT YEAR TO SECOND"
         else:
-            ansisql.ANSICompiler.visit_function( self , func )
+            return ansisql.ANSICompiler.visit_function( self , func )
             
     def visit_clauselist(self, list):
         try:
             li = [ c for c in list.clauses if c.name != 'oid' ]
         except:
             li = [ c for c in list.clauses ]
-        if list.parens:
-            self.strings[list] = "(" + ', '.join([s for s in [self.strings[c] for c in li] if s is not None ]) + ")"
-        else:
-            self.strings[list] = ', '.join([s for s in [self.strings[c] for c in li] if s is not None])
+        return ', '.join([s for s in [self.process(c) for c in li] if s is not None])
 
 class InfoSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, first_pk=False):

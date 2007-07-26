@@ -789,7 +789,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         super(MSSQLCompiler, self).__init__(dialect, statement, parameters, **kwargs)
         self.tablealiases = {}
 
-    def visit_select_precolumns(self, select):
+    def get_select_precolumns(self, select):
         """ MS-SQL puts TOP, it's version of LIMIT here """
         s = select._distinct and "DISTINCT " or ""
         if select._limit:
@@ -802,41 +802,44 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         # Limit in mssql is after the select keyword
         return ""
             
-    def visit_table(self, table):
+    def _schema_aliased_table(self, table):
+        if getattr(table, 'schema', None) is not None:
+            if not self.tablealiases.has_key(table):
+                self.tablealiases[table] = table.alias()
+            return self.tablealiases[table]
+        else:
+            return None
+            
+    def visit_table(self, table, mssql_aliased=False, **kwargs):
+        if mssql_aliased:
+            return super(MSSQLCompiler, self).visit_table(table, **kwargs)
+
         # alias schema-qualified tables
-        if getattr(table, 'schema', None) is not None and not self.tablealiases.has_key(table):
-            alias = table.alias()
-            self.tablealiases[table] = alias
-            self.traverse(alias)
-            self.froms[('alias', table)] = self.froms[table]
-            for c in alias.c:
-                self.traverse(c)
-            self.traverse(alias.oid_column)
-            self.tablealiases[alias] = self.froms[table]
-            self.froms[table] = self.froms[alias]
+        alias = self._schema_aliased_table(table)
+        if alias is not None:
+            return self.process(alias, mssql_aliased=True, **kwargs)
         else:
-           super(MSSQLCompiler, self).visit_table(table)
+            return super(MSSQLCompiler, self).visit_table(table, **kwargs)
  
-    def visit_alias(self, alias):
+    def visit_alias(self, alias, **kwargs):
         # translate for schema-qualified table aliases
-        if self.froms.has_key(('alias', alias.original)):
-            self.froms[alias] = self.froms[('alias', alias.original)] + " AS " + alias.name
-            self.strings[alias] = ""
-        else:
-            super(MSSQLCompiler, self).visit_alias(alias)
+        self.tablealiases[alias.original] = alias
+        return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
 
     def visit_column(self, column):
-        # translate for schema-qualified table aliases
-        super(MSSQLCompiler, self).visit_column(column)
-        if column.table is not None and self.tablealiases.has_key(column.table):
-            self.strings[column] = \
-                self.strings[self.tablealiases[column.table].corresponding_column(column)]
+        if column.table is not None:
+            # translate for schema-qualified table aliases
+            t = self._schema_aliased_table(column.table)
+            if t is not None:
+                return self.process(t.corresponding_column(column))
+        return super(MSSQLCompiler, self).visit_column(column)
 
     def visit_binary(self, binary):
         """Move bind parameters to the right-hand side of an operator, where possible."""
-        if isinstance(binary.left, sql._BindParamClause) and binary.operator == '=':
-            binary.left, binary.right = binary.right, binary.left
-        super(MSSQLCompiler, self).visit_binary(binary)
+        if isinstance(binary.left, sql._BindParamClause) and binary.operator == operator.eq:
+            return self.process(sql._BinaryExpression(binary.right, binary.left, binary.operator))
+        else:
+            return super(MSSQLCompiler, self).visit_binary(binary)
 
     def label_select_column(self, select, column):
         if isinstance(column, sql._Function):
@@ -856,7 +859,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         return ''
 
     def order_by_clause(self, select):
-        order_by = self.strings[select._order_by_clause]
+        order_by = self.process(select._order_by_clause)
 
         # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
         if order_by and (not self.is_subquery(select) or select._limit):
