@@ -1079,8 +1079,8 @@ class MetaData(SchemaItem):
             
             bind
                 an Engine, or a string or URL instance which will be passed
-                to create_engine(), along with \**kwargs - this MetaData will
-                be bound to the resulting engine.
+                to create_engine(), this MetaData will be bound to the resulting
+                engine.
 
             case_sensitive
                 popped from \**kwargs, indicates default case sensitive setting for

@@ -119,7 +119,7 @@ class InfoBoolean(sqltypes.Boolean):
         elif value is None:
             return None
         else:
-            return value and True or False 	
+            return value and True or False
 
         
 colspecs = {

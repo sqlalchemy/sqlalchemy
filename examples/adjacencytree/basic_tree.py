@@ -5,7 +5,8 @@ from sqlalchemy.orm import *
 from sqlalchemy.util import OrderedDict
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
-metadata = MetaData('sqlite:///', echo=True)
+metadata = MetaData('sqlite:///')
+metadata.bind.echo = True
 
 trees = Table('treenodes', metadata,
     Column('node_id', Integer, Sequence('treenode_id_seq',optional=False), primary_key=True),

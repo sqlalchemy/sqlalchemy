@@ -7,7 +7,8 @@ from sqlalchemy.orm import *
 from sqlalchemy.orm.collections import mapped_collection
 import datetime
 
-e = MetaData('sqlite://', echo=True)
+e = MetaData('sqlite://')
+e.bind.echo = True
 
 # this table represents Entity objects.  each Entity gets a row in this table,
 # with a primary key and a title.
