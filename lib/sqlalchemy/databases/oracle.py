@@ -85,11 +85,11 @@ class OracleText(sqltypes.TEXT):
     def get_col_spec(self):
         return "CLOB"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        else:
-            return super(OracleText, self).convert_result_value(value.read(), dialect)
+   # def convert_result_value(self, value, dialect):
+   #     if value is None:
+   #         return None
+   #     else:
+   #         return super(OracleText, self).convert_result_value(value.read(), dialect)
 
 
 class OracleRaw(sqltypes.Binary):
@@ -178,8 +178,26 @@ class OracleExecutionContext(default.DefaultExecutionContext):
         super(OracleExecutionContext, self).pre_exec()
         if self.dialect.auto_setinputsizes:
             self.set_input_sizes()
+        if self.compiled_parameters is not None and not isinstance(self.compiled_parameters, list):
+            for key in self.compiled_parameters:
+                (bindparam, name, value) = self.compiled_parameters.get_parameter(key)
+                if bindparam.isoutparam:
+                    dbtype = bindparam.type.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
+                    if not hasattr(self, 'out_parameters'):
+                        self.out_parameters = {}
+                    self.out_parameters[name] = self.cursor.var(dbtype)
+                    self.parameters[name] = self.out_parameters[name]
 
     def get_result_proxy(self):
+        if hasattr(self, 'out_parameters'):
+            if self.compiled_parameters is not None:
+                 for k in self.out_parameters:
+                     type = self.compiled_parameters.get_type(k)
+                     self.out_parameters[k] = type.dialect_impl(self.dialect).convert_result_value(self.out_parameters[k].getvalue(), self.dialect)
+            else:
+                 for k in self.out_parameters:
+                     self.out_parameters[k] = self.out_parameters[k].getvalue()
+
         if self.cursor.description is not None:
             for column in self.cursor.description:
                 type_code = column[1]

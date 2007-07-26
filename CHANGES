@@ -217,6 +217,10 @@
     from SelectResults isn't present anymore, need to use join(). 
 - postgres
   - Added PGArray datatype for using postgres array datatypes
+- oracle
+  - very rudimental support for OUT parameters added; use sql.outparam(name, type)
+    to set up an OUT parameter, just like bindparam(); after execution, values are
+    avaiable via result.out_parameters dictionary. [ticket:507]
 
 0.3.11
 - orm

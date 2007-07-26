@@ -382,8 +382,13 @@ class NumericTest(AssertMixin):
         from decimal import Decimal
         numeric_table.insert().execute(numericcol=3.5, floatcol=5.6, ncasdec=12.4, fcasdec=15.78)
         numeric_table.insert().execute(numericcol=Decimal("3.5"), floatcol=Decimal("5.6"), ncasdec=Decimal("12.4"), fcasdec=Decimal("15.78"))
-        print numeric_table.select().execute().fetchall()
-        assert numeric_table.select().execute().fetchall() == [
+        l = numeric_table.select().execute().fetchall()
+        print l
+        rounded = [
+            (l[0][0], l[0][1], round(l[0][2], 5), l[0][3], l[0][4]),
+            (l[1][0], l[1][1], round(l[1][2], 5), l[1][3], l[1][4]),
+        ]
+        assert rounded == [
             (1, 3.5, 5.6, Decimal("12.4"), Decimal("15.78")),
             (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.78")),
         ]

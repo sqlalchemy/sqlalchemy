@@ -58,14 +58,15 @@ class QueryTest(PersistTest):
             if result.lastrow_has_defaults():
                 criterion = and_(*[col==id for col, id in zip(table.primary_key, result.last_inserted_ids())])
                 row = table.select(criterion).execute().fetchone()
-                ret.update(row)
+                for c in table.c:
+                    ret[c.key] = row[c]
             return ret
 
         for supported, table, values, assertvalues in [
             (
                 {'unsupported':['sqlite']},
                 Table("t1", metadata, 
-                    Column('id', Integer, primary_key=True),
+                    Column('id', Integer, Sequence('t1_id_seq', optional=True), primary_key=True),
                     Column('foo', String(30), primary_key=True)),
                 {'foo':'hi'},
                 {'id':1, 'foo':'hi'}
@@ -73,7 +74,7 @@ class QueryTest(PersistTest):
             (
                 {'unsupported':['sqlite']},
                 Table("t2", metadata, 
-                    Column('id', Integer, primary_key=True),
+                    Column('id', Integer, Sequence('t2_id_seq', optional=True), primary_key=True),
                     Column('foo', String(30), primary_key=True),
                     Column('bar', String(30), PassiveDefault('hi'))
                 ),
@@ -93,7 +94,7 @@ class QueryTest(PersistTest):
             (
                 {'unsupported':[]},
                 Table("t4", metadata, 
-                    Column('id', Integer, primary_key=True),
+                    Column('id', Integer, Sequence('t4_id_seq', optional=True), primary_key=True),
                     Column('foo', String(30), primary_key=True),
                     Column('bar', String(30), PassiveDefault('hi'))
                 ),

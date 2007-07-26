@@ -35,7 +35,7 @@ __all__ = ['Alias', 'ClauseElement', 'ClauseParameters',
            'between', 'bindparam', 'case', 'cast', 'column', 'delete',
            'desc', 'distinct', 'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
            'insert', 'intersect', 'intersect_all', 'join', 'literal',
-           'literal_column', 'not_', 'null', 'or_', 'outerjoin', 'select',
+           'literal_column', 'not_', 'null', 'or_', 'outparam', 'outerjoin', 'select',
            'subquery', 'table', 'text', 'union', 'union_all', 'update',]
 
 BIND_PARAMS = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
@@ -681,7 +681,7 @@ def outparam(key, type_=None):
     attribute, which returns a dictionary containing the values.
     """
     
-    return _BindParamClause(key, type_=type_, unique=False, isoutparam=True)
+    return _BindParamClause(key, None, type_=type_, unique=False, isoutparam=True)
     
 def text(text, bind=None, *args, **kwargs):
     """Create literal text to be inserted into a query.
@@ -808,6 +808,9 @@ class ClauseParameters(object):
         self.__binds = {}
         self.positional = positional or []
 
+    def get_parameter(self, key):
+        return self.__binds[key]
+
     def set_parameter(self, bindparam, value, name):
         self.__binds[name] = [bindparam, name, value]
         
@@ -823,6 +826,9 @@ class ClauseParameters(object):
    
     def keys(self):
         return self.__binds.keys()
+
+    def __iter__(self):
+        return iter(self.keys())
  
     def __getitem__(self, key):
         return self.get_processed(key)

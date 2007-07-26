@@ -33,8 +33,9 @@ class DefaultDialect(base.Dialect):
         dialect_module = sys.modules[self.__class__.__module__]
         map = {}
         for obj in dialect_module.__dict__.values():
-            if isinstance(obj, types.TypeEngine):
-                map[obj().get_dbapi_type(self.dialect)] = obj
+            if isinstance(obj, type) and issubclass(obj, types.TypeEngine):
+                obj = obj()
+                map[obj.get_dbapi_type(self.dbapi)] = obj
         self._dbapi_type_map = map
     
     def decode_result_columnname(self, name):

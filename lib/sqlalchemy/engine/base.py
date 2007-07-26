@@ -1102,6 +1102,7 @@ class ResultProxy(object):
             return self.context.get_rowcount()
     rowcount = property(_get_rowcount)
     lastrowid = property(lambda s:s.cursor.lastrowid)
+    out_parameters = property(lambda s:s.context.out_parameters)
     
     def _init_metadata(self):
         if hasattr(self, '_ResultProxy__props'):
