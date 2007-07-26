@@ -21,6 +21,7 @@ class QueryTest(PersistTest):
         metadata.create_all()
     
     def tearDown(self):
+        addresses.delete().execute()
         users.delete().execute()
     
     def tearDownAll(self):
