@@ -318,7 +318,6 @@ class Query(object):
                 currenttables.append(join.left)
                 currenttables.append(join.right)
         FindJoinedTables().traverse(clause)
-            
         
         mapper = start
         alias = self._aliases
@@ -349,6 +348,11 @@ class Query(object):
                         clause = clause.join(alias.alias, alias.primaryjoin, isouter=outerjoin)
                     else:
                         clause = clause.join(prop.select_table, prop.get_join(mapper), isouter=outerjoin)
+            elif not create_aliases and prop.secondary is not None and prop.secondary not in currenttables:
+                # TODO: this check is not strong enough for different paths to the same endpoint which
+                # does not use secondary tables
+                raise exceptions.InvalidRequestError("Can't join to property '%s'; a path to this table along a different secondary table already exists.  Use the `alias=True` argument to `join()`." % prop.key)
+                
             mapper = prop.mapper
             
         if create_aliases:

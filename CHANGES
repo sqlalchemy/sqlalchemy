@@ -217,7 +217,16 @@
     from SelectResults isn't present anymore, need to use join(). 
 - postgres
   - Added PGArray datatype for using postgres array datatypes
-  
+
+0.3.11
+- orm
+    - added a check for joining from A->B using join(), along two
+      different m2m tables.  this raises an error in 0.3 but is 
+      possible in 0.4 when aliases are used. [ticket:687]
+- mssql
+    - added support for TIME columns (simulated using DATETIME) [ticket:679]
+    - index names are now quoted when dropping from reflected tables [ticket:684]
+      
 0.3.10
 - general
     - a new mutex that was added in 0.3.9 causes the pool_timeout
@@ -236,9 +245,6 @@
 - postgres
   - fixed max identifier length (63) [ticket:571]
 
-- mssql
-    - added support for TIME columns (simulated using DATETIME) [ticket:679]
-    - index names are now quoted when dropping from reflected tables [ticket:684]
   
 0.3.9
 - general

@@ -672,6 +672,17 @@ def bindparam(key, value=None, type_=None, shortname=None, unique=False):
     else:
         return _BindParamClause(key, value, type_=type_, shortname=shortname, unique=unique)
 
+def outparam(key, type_=None):
+    """create an 'OUT' parameter for usage in functions (stored procedures), for databases 
+    whith support them.
+    
+    The ``outparam`` can be used like a regular function parameter.  The "output" value will
+    be available from the [sqlalchemy.engine#ResultProxy] object via its ``out_parameters``
+    attribute, which returns a dictionary containing the values.
+    """
+    
+    return _BindParamClause(key, type_=type_, unique=False, isoutparam=True)
+    
 def text(text, bind=None, *args, **kwargs):
     """Create literal text to be inserted into a query.
 
@@ -746,7 +757,7 @@ def _is_literal(element):
 
 def _literal_as_text(element):
     if isinstance(element, Operators):
-        return element.clause_element()
+        return element.expression_element()
     elif _is_literal(element):
         return _TextClause(unicode(element))
     else:
@@ -762,7 +773,7 @@ def _literal_as_column(element):
     
 def _literal_as_binds(element, name='literal', type_=None):
     if isinstance(element, Operators):
-        return element.clause_element()
+        return element.expression_element()
     elif _is_literal(element):
         if element is None:
             return null()
@@ -1414,7 +1425,7 @@ class _CompareMixin(ColumnOperators):
 
     def _check_literal(self, other):
         if isinstance(other, Operators):
-            return other.clause_element()
+            return other.expression_element()
         elif _is_literal(other):
             return self._bind_param(other)
         else:
@@ -1422,7 +1433,6 @@ class _CompareMixin(ColumnOperators):
     
     def clause_element(self):
         """Allow ``_CompareMixins`` to return the underlying ``ClauseElement``, for non-``ClauseElement`` ``_CompareMixins``."""
-
         return self
 
     def expression_element(self):
@@ -1830,7 +1840,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
 
     __visit_name__ = 'bindparam'
     
-    def __init__(self, key, value, shortname=None, type_=None, unique=False):
+    def __init__(self, key, value, shortname=None, type_=None, unique=False, isoutparam=False):
         """Construct a _BindParamClause.
 
         key
@@ -1863,12 +1873,17 @@ class _BindParamClause(ClauseElement, _CompareMixin):
           modified if another ``_BindParamClause`` of the same
           name already has been located within the containing 
           ``ClauseElement``.
+          
+        isoutparam
+          if True, the parameter should be treated like a stored procedure "OUT"
+          parameter.
         """
 
         self.key = key or "{ANON %d param}" % id(self)
         self.value = value
         self.shortname = shortname or key
         self.unique = unique
+        self.isoutparam = isoutparam
         type_ = sqltypes.to_instance(type_)
         if isinstance(type_, sqltypes.NullType) and type(value) in _BindParamClause.type_map:
             self.type = sqltypes.to_instance(_BindParamClause.type_map[type(value)])

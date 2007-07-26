@@ -519,6 +519,7 @@ class OracleCompiler(ansisql.ANSICompiler):
             
     def visit_outer_join_column(self, vc):
         return self.process(vc.column) + "(+)"
+        
     def uses_sequences_for_inserts(self):
         return True
 
