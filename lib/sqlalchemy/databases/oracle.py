@@ -85,11 +85,14 @@ class OracleText(sqltypes.TEXT):
     def get_col_spec(self):
         return "CLOB"
 
-   # def convert_result_value(self, value, dialect):
-   #     if value is None:
-   #         return None
-   #     else:
-   #         return super(OracleText, self).convert_result_value(value.read(), dialect)
+    def convert_result_value(self, value, dialect):
+        if value is None:
+            return None
+        elif hasattr(value, 'read'):
+            # cx_oracle doesnt seem to be consistent with CLOB returning LOB or str
+            return super(OracleText, self).convert_result_value(value.read(), dialect)
+        else:
+            return super(OracleText, self).convert_result_value(value, dialect)
 
 
 class OracleRaw(sqltypes.Binary):
@@ -221,16 +224,16 @@ class OracleDialect(ansisql.ANSIDialect):
             self.ORACLE_BINARY_TYPES = []
 
     def dbapi_type_map(self):
-        if self.dbapi is None:
+        if self.dbapi is None or not self.auto_convert_lobs:
             return {}
         else:
             return {
-                dbapi.NUMBER: OracleInteger(), 
-                dbapi.CLOB: OracleText(), 
-                dbapi.BLOB: OracleBinary(), 
-                dbapi.STRING: OracleString(), 
-                dbapi.TIMESTAMP: OracleTimestamp(), 
-                dbapi.BINARY: OracleRaw(), 
+                self.dbapi.NUMBER: OracleInteger(), 
+                self.dbapi.CLOB: OracleText(), 
+                self.dbapi.BLOB: OracleBinary(), 
+                self.dbapi.STRING: OracleString(), 
+                self.dbapi.TIMESTAMP: OracleTimestamp(), 
+                self.dbapi.BINARY: OracleRaw(), 
                 datetime.datetime: OracleDate()
             }
 
@@ -260,12 +263,6 @@ class OracleDialect(ansisql.ANSIDialect):
         opts.update(url.query)
         util.coerce_kw_type(opts, 'use_ansi', bool)
         return ([], opts)
-
-    def dbapi_type_map(self):
-        if self.auto_convert_lobs:
-            return super(OracleDialect, self).dbapi_type_map()
-        else:
-            return {}
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
