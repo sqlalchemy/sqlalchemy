@@ -290,7 +290,7 @@ class DateTest(AssertMixin):
 
             collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
                Column('user_date', Date), Column('user_time', TIMESTAMP)]
-        elif db.engine.name == 'mysql' or db.engine.name == 'mssql':
+        elif db.engine.name == 'mysql':
             # these dont really support the TIME type at all
             insert_data =  [
                  [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.datetime(2005, 11, 10, 0, 0, 0)],
@@ -310,6 +310,10 @@ class DateTest(AssertMixin):
                     [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.time(23,59,59,999)],
                     [10, 'colber', None, None, None]
             ]
+
+            if db.engine.name == 'mssql':
+                # MSSQL Datetime values have only a 3.33 milliseconds precision
+                insert_data[2] = [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 547000), datetime.date(1970,4,1), datetime.time(23,59,59,997000)]
 
             fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
 

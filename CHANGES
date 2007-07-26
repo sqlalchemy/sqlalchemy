@@ -19,6 +19,9 @@
 - postgres
     - fixed max identifier length (63) [ticket:571]
 
+- mssql
+    - added support for TIME columns (simulated using DATETIME) [ticket:679]
+
 0.3.9
 - general
     - better error message for NoSuchColumnError [ticket:607]
