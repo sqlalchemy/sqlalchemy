@@ -414,13 +414,18 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
     def testalias(self):
         # test the alias for a table1.  column names stay the same, table name "changes" to "foo".
         self.runtest(
-            select([alias(table1, 'foo')])
+            select([table1.alias('foo')])
             ,"SELECT foo.myid, foo.name, foo.description FROM mytable AS foo")
-    
+
+        for dialect in (firebird.dialect(), oracle.dialect()):
+            self.runtest(
+                select([table1.alias('foo')])
+                ,"SELECT foo.myid, foo.name, foo.description FROM mytable foo"
+                ,dialect=dialect)
+
         self.runtest(
-            select([alias(table1, 'foo')])
-            ,"SELECT foo.myid, foo.name, foo.description FROM mytable foo"
-            ,dialect=firebird.dialect())
+            select([table1.alias()])
+            ,"SELECT mytable_1.myid, mytable_1.name, mytable_1.description FROM mytable AS mytable_1")
 
         # create a select for a join of two tables.  use_labels means the column names will have
         # labels tablename_columnname, which become the column keys accessible off the Selectable object.
@@ -439,6 +444,12 @@ t2view.mytable_description AS t2view_mytable_description, t2view.myothertable_ot
 (SELECT mytable.myid AS mytable_myid, mytable.name AS mytable_name, mytable.description AS mytable_description, \
 myothertable.otherid AS myothertable_otherid FROM mytable, myothertable \
 WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid = :t2view_mytable_myid"
+        )
+        
+        
+    def test_prefixes(self):
+        self.runtest(table1.select().prefix_with("SQL_CALC_FOUND_ROWS").prefix_with("SQL_SOME_WEIRD_MYSQL_THING"),
+            "SELECT SQL_CALC_FOUND_ROWS SQL_SOME_WEIRD_MYSQL_THING mytable.myid, mytable.name, mytable.description FROM mytable"
         )
         
     def testtext(self):

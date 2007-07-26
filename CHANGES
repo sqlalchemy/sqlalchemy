@@ -181,6 +181,8 @@
   - select(scalar=True) argument is deprecated; use select(..).as_scalar().
     the resulting object obeys the full "column" interface and plays better
     within expressions
+  - added select().with_prefix('foo') allowing any set of keywords to be
+    placed before the columns clause of the SELECT [ticket:504]
   - result sets make a better attempt at matching the DBAPI types present
     in cursor.description to the TypeEngine objects defined by the dialect,
     which are then used for result-processing. Note this only takes effect 

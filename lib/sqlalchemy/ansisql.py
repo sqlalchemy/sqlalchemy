@@ -527,7 +527,7 @@ class ANSICompiler(engine.Compiled):
 
         collist = string.join(inner_columns.difference(util.Set([None])), ', ')
 
-        text = "SELECT "
+        text = " ".join(["SELECT"] + [self.process(x) for x in select._prefixes]) + " "
         text += self.get_select_precolumns(select)
         text += collist
 

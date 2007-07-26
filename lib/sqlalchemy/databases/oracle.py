@@ -526,9 +526,9 @@ class OracleCompiler(ansisql.ANSICompiler):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
         
         if asfrom:
-            return self.process(alias.original) + " " + alias.name
+            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + alias.name
         else:
-            return self.process(alias.original)
+            return self.process(alias.original, **kwargs)
 
     def visit_insert(self, insert):
         """``INSERT`` s are required to have the primary keys be explicitly present.
