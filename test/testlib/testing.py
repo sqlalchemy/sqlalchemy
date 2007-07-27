@@ -6,7 +6,7 @@ import testbase
 import unittest, re, sys, os
 from cStringIO import StringIO
 import testlib.config as config
-sql, Metadata, clear_mappers = None, None, None
+sql, MetaData, clear_mappers = None, None, None
 
 
 __all__ = 'PersistTest', 'AssertMixin', 'ORMTest'
@@ -253,10 +253,15 @@ class ORMTest(AssertMixin):
         return _otest_metadata
 
     def tearDownAll(self):
+        global clear_mappers
+        if clear_mappers is None:
+            from sqlalchemy.orm import clear_mappers
+
         clear_mappers()
         _otest_metadata.drop_all()
 
     def tearDown(self):
+        global clear_mappers
         if clear_mappers is None:
             from sqlalchemy.orm import clear_mappers
 
