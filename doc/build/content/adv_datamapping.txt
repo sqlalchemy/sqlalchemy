@@ -623,30 +623,31 @@ Like concrete table inheritance, this can be done non-polymorphically, or with a
     employees = Table('employees', metadata, 
        Column('person_id', Integer, primary_key=True),
        Column('name', String(50)),
-       Column('type', String(30)))
+       Column('type', String(30))
+    )
 
     engineers = Table('engineers', metadata, 
        Column('person_id', Integer, ForeignKey('employees.person_id'), primary_key=True),
        Column('engineer_info', String(50)),
-      )
+    )
 
     managers = Table('managers', metadata, 
        Column('person_id', Integer, ForeignKey('employees.person_id'), primary_key=True),
        Column('manager_data', String(50)),
-       )
+    )
 
-    person_mapper = mapper(Employee, employees)
-    mapper(Engineer, engineers, inherits=person_mapper)
-    mapper(Manager, managers, inherits=person_mapper)
+    employee_mapper = mapper(Employee, employees)
+    mapper(Engineer, engineers, inherits=employee_mapper)
+    mapper(Manager, managers, inherits=employee_mapper)
 
 Polymorphically, joined-table inheritance is easier than concrete, as a simple outer join can usually work:
 
     {python title="Joined Table Inheritance, Polymorphic"}
-    person_join = people.outerjoin(engineers).outerjoin(managers)
+    employee_join = employees.outerjoin(engineers).outerjoin(managers)
 
-    person_mapper = mapper(Person, people, select_table=person_join,polymorphic_on=people.c.type, polymorphic_identity='person')
-    mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
-    mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
+    employee_mapper = mapper(Employee, employees, select_table=employee_join, polymorphic_on=employees.c.type, polymorphic_identity='employee')
+    mapper(Engineer, engineers, inherits=employee_mapper, polymorphic_identity='engineer')
+    mapper(Manager, managers, inherits=employee_mapper, polymorphic_identity='manager')
 
 In SQLAlchemy 0.4, the above mapper setup can load polymorphically *without* the join as well, by issuing distinct queries for each subclasses' table.
 
