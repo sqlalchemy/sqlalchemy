@@ -625,26 +625,17 @@ class Connection(Connectable):
             self.__savepoint_seq += 1
             name = '__sa_savepoint_%s' % self.__savepoint_seq
         if self.__connection.is_valid:
-            try:
-                self.__engine.dialect.do_savepoint(self, name)
-                return name
-            except Exception, e:
-                raise exceptions.SQLError(None, None, e)
+            self.__engine.dialect.do_savepoint(self, name)
+            return name
     
     def _rollback_to_savepoint_impl(self, name, context):
         if self.__connection.is_valid:
-            try:
-                self.__engine.dialect.do_rollback_to_savepoint(self, name)
-            except Exception, e:
-                raise exceptions.SQLError(None, None, e)
+            self.__engine.dialect.do_rollback_to_savepoint(self, name)
         self.__transaction = context
     
     def _release_savepoint_impl(self, name, context):
         if self.__connection.is_valid:
-            try:
-                self.__engine.dialect.do_release_savepoint(self, name)
-            except Exception, e:
-                raise exceptions.SQLError(None, None, e)
+            self.__engine.dialect.do_release_savepoint(self, name)
         self.__transaction = context
     
     def _begin_twophase_impl(self, xid):
