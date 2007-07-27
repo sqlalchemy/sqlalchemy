@@ -1,3 +1,4 @@
+import testbase
 import optparse, os, sys, ConfigParser, StringIO
 logging, require = None, None
 

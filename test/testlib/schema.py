@@ -1,5 +1,5 @@
 import testbase
-from sqlalchemy import schema
+schema = None
 
 __all__ = 'Table', 'Column',
 
@@ -8,6 +8,10 @@ table_options = {}
 def Table(*args, **kw):
     """A schema.Table wrapper/hook for dialect-specific tweaks."""
 
+    global schema
+    if schema is None:
+        from sqlalchemy import schema
+        
     test_opts = dict([(k,kw.pop(k)) for k in kw.keys()
                       if k.startswith('test_')])
 
@@ -22,6 +26,10 @@ def Table(*args, **kw):
 
 def Column(*args, **kw):
     """A schema.Column wrapper/hook for dialect-specific tweaks."""
+
+    global schema
+    if schema is None:
+        from sqlalchemy import schema
 
     # TODO: a Column that creates a Sequence automatically for PK columns,
     # which would help Oracle tests
