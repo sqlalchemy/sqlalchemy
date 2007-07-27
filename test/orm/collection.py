@@ -187,7 +187,22 @@ class CollectionsTest(PersistTest):
             direct[0:] = values
             control[0:] = values
             assert_eq()
-        
+
+            values = [creator()]
+            direct[:1] = values
+            control[:1] = values
+            assert_eq()
+
+            values = [creator()]
+            direct[-1::2] = values
+            control[-1::2] = values
+            assert_eq()
+
+            values = [creator()] * len(direct[1::2])
+            direct[1::2] = values
+            control[1::2] = values
+            assert_eq()
+            
         if hasattr(direct, '__delslice__'):
             for i in range(1, 4):
                 e = creator()
