@@ -124,7 +124,7 @@ class EagerTest(QueryTest):
     def test_eager_option(self):
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
-                keywords = relation(Keyword, secondary=item_keywords, lazy=True),
+                keywords = relation(Keyword, secondary=item_keywords, lazy=True, order_by=keywords.c.id),
         ))
 
         q = create_session().query(Item)
