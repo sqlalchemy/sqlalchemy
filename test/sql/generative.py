@@ -166,10 +166,9 @@ class ClauseTest(selecttests.SQLTest):
         assert str(clause2) == str(t1.join(t2, t1.c.col2==t2.c.col3))
     
     def test_select(self):
-        s = t1.select()
-        s2 = select([s])
+        s2 = select([t1])
         s2_assert = str(s2)
-        s3_assert = str(select([t1.select()], t1.c.col2==7))
+        s3_assert = str(select([t1], t1.c.col2==7))
         class Vis(ClauseVisitor):
             def visit_select(self, select):
                 select.append_whereclause(t1.c.col2==7)
@@ -183,7 +182,7 @@ class ClauseTest(selecttests.SQLTest):
 
         print "------------------"
         
-        s4_assert = str(select([t1.select()], and_(t1.c.col2==7, t1.c.col3==9)))
+        s4_assert = str(select([t1], and_(t1.c.col2==7, t1.c.col3==9)))
         class Vis(ClauseVisitor):
             def visit_select(self, select):
                 select.append_whereclause(t1.c.col3==9)
@@ -194,7 +193,7 @@ class ClauseTest(selecttests.SQLTest):
         assert str(s3) == s3_assert
         
         print "------------------"
-        s5_assert = str(select([t1.select()], and_(t1.c.col2==7, t1.c.col1==9)))
+        s5_assert = str(select([t1], and_(t1.c.col2==7, t1.c.col1==9)))
         class Vis(ClauseVisitor):
             def visit_binary(self, binary):
                 if binary.left is t1.c.col3:

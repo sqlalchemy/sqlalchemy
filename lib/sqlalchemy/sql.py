@@ -3146,7 +3146,7 @@ class Select(_SelectBaseMixin, FromClause):
 
     def get_children(self, column_collections=True, **kwargs):
         return (column_collections and list(self.columns) or []) + \
-            list(self._froms) + \
+            list(self.locate_all_froms()) + \
             [x for x in (self._whereclause, self._having, self._order_by_clause, self._group_by_clause) if x is not None]
 
     def _recorrelate_froms(self, froms):
