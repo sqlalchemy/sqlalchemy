@@ -101,5 +101,6 @@ class UnicodeSchemaTest(PersistTest):
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].a == b1.a
         
+        
 if __name__ == '__main__':
     testbase.main()

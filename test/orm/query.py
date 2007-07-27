@@ -39,6 +39,24 @@ class QueryTest(ORMTest):
         })
         mapper(Keyword, keywords)
 
+class UnicodeSchemaTest(QueryTest):
+    keep_mappers = False
+    
+    def setup_mappers(self):
+        pass
+        
+    def define_tables(self, metadata):
+        super(UnicodeSchemaTest, self).define_tables(metadata)
+        global uni_meta, uni_users
+        uni_meta = MetaData()
+        uni_users = Table(u'users', uni_meta,
+            Column(u'id', Integer, primary_key=True),
+            Column(u'name', String(30), nullable=False))
+            
+    def test_get(self):
+        mapper(User, uni_users)
+        assert User(id=7) == create_session(bind=testbase.db).query(User).get(7)
+        
 class GetTest(QueryTest):
     def test_get(self):
         s = create_session()

@@ -249,10 +249,21 @@ class Query(object):
         q._lockmode = mode
         return q
 
-    def params(self, **kwargs):
-        """add values for bind parameters which may have been specified in filter()."""
+    def params(self, *args, **kwargs):
+        """add values for bind parameters which may have been specified in filter().
+        
+        parameters may be specified using \**kwargs, or optionally a single dictionary
+        as the first positional argument.  The reason for both is that \**kwargs is 
+        convenient, however some parameter dictionaries contain unicode keys in which case
+        \**kwargs cannot be used.
+        """
         
         q = self._clone()
+        if len(args) == 1:
+            d = args[0]
+            kwargs.update(d)
+        elif len(args) > 0:
+            raise exceptions.ArgumentError("params() takes zero or one positional argument, which is a dictionary.")
         q._params = q._params.copy()
         q._params.update(kwargs)
         return q
@@ -714,7 +725,7 @@ class Query(object):
             if lockmode is not None:
                 q = q.with_lockmode(lockmode)
             q = q.filter(self.select_mapper._get_clause)
-            q = q.params(**params)._select_context_options(populate_existing=reload, version_check=(lockmode is not None))
+            q = q.params(params)._select_context_options(populate_existing=reload, version_check=(lockmode is not None))
             return q.first()
         except IndexError:
             return None
@@ -747,7 +758,7 @@ class Query(object):
         if whereclause is not None:
             q = q.filter(whereclause)
         if params is not None:
-            q = q.params(**params)
+            q = q.params(params)
         q = q._legacy_select_kwargs(**kwargs)
         return q._count()
 
@@ -950,7 +961,7 @@ class Query(object):
 
         q = self.filter(whereclause)._legacy_select_kwargs(**kwargs)
         if params is not None:
-            q = q.params(**params)
+            q = q.params(params)
         return list(q)
         
     def _legacy_select_kwargs(self, **kwargs): #pragma: no cover
@@ -1037,7 +1048,7 @@ class Query(object):
     def _select_statement(self, statement, params=None, **kwargs): #pragma: no cover
         q = self.from_statement(statement)
         if params is not None:
-            q = q.params(**params)
+            q = q.params(params)
         q._select_context_options(**kwargs)
         return list(q)
 
