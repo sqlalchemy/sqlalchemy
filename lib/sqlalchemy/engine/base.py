@@ -395,7 +395,7 @@ class ExecutionContext(object):
 
     def postfetch_cols(self):
         """return a list of Column objects for which a 'passive' server-side default
-        value was fired off"""
+        value was fired off.  applies to inserts and updates."""
 
         raise NotImplementedError()
 

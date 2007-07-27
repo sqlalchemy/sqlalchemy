@@ -1485,8 +1485,16 @@ class Mapper(object):
         """populate an instance from a result row."""
 
         selectcontext.stack.push_mapper(self)
+        # retrieve a set of "row population" functions derived from the MapperProperties attached
+        # to this Mapper.  These are keyed in the select context based primarily off the 
+        # "snapshot" of the stack, which represents a path from the lead mapper in the query to this one,
+        # including relation() names.  the key also includes "self", and allows us to distinguish between
+        # other mappers within our inheritance hierarchy
         populators = selectcontext.attributes.get(('instance_populators', self, selectcontext.stack.snapshot(), ispostselect), None)
         if populators is None:
+            # no populators; therefore this is the first time we are receiving a row for
+            # this result set.  issue create_row_processor() on all MapperProperty objects
+            # and cache in the select context.
             populators = []
             post_processors = []
             for prop in self.__props.values():

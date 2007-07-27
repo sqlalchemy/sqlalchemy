@@ -450,7 +450,9 @@ class LoaderStack(object):
     def snapshot(self):
         """return an 'snapshot' of this stack.
         
-        this is a tuple form of the stack which can be used as a hash key."""
+        this is a tuple form of the stack which can be used as a hash key.
+        """
+        
         return tuple(self.__stack)
         
     def __str__(self):
@@ -621,11 +623,11 @@ class LoaderStrategy(object):
       list of selected columns, *eager loading* properties may add
       ``LEFT OUTER JOIN`` clauses to the statement.
 
-    * it processes the SelectionContext at row-processing time.  This
-      may involve setting instance-level lazyloader functions on newly
-      constructed instances, or may involve recursively appending
-      child items to a list in response to additionally eager-loaded
-      objects in the query.
+    * it processes the ``SelectionContext`` at row-processing time.  This 
+      includes straight population of attributes corresponding to rows,
+      setting instance-level lazyloader callables on newly
+      constructed instances, and appending child items to scalar/collection 
+      attributes in response to eagerly-loaded relations.
     """
 
     def __init__(self, parent):

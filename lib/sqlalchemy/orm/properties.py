@@ -600,6 +600,25 @@ class PropertyLoader(StrategizedProperty):
         return self.parent.mapped_table is self.target or self.parent.select_table is self.target
 
     def get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
+        """return a join condition from the given parent mapper to this PropertyLoader's mapper.
+        
+           The resulting ClauseElement object is cached and should not be modified directly.
+        
+            parent
+              a mapper which has a relation() to this PropertyLoader.  A PropertyLoader can 
+              have multiple "parents" when its actual parent mapper has inheriting mappers.
+              
+            primary
+              include the primary join condition in the resulting join.
+              
+            secondary
+              include the secondary join condition in the resulting join.  If both primary
+              and secondary are returned, they are joined via AND.
+              
+            polymorphic_parent
+              if True, use the parent's 'select_table' instead of its 'mapped_table' to produce the join.
+        """
+        
         try:
             return self._parent_join_cache[(parent, primary, secondary, polymorphic_parent)]
         except KeyError:

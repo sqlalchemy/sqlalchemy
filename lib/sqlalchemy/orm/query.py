@@ -926,26 +926,26 @@ class Query(object):
 
     # DEPRECATED LAND !
 
-    def list(self):
+    def list(self): #pragma: no cover
         """DEPRECATED.  use all()"""
 
         return list(self)
 
-    def scalar(self):
+    def scalar(self): #pragma: no cover
         """DEPRECATED.  use first()"""
 
         return self.first()
 
-    def _legacy_filter_by(self, *args, **kwargs):
+    def _legacy_filter_by(self, *args, **kwargs): #pragma: no cover
         return self.filter(self._legacy_join_by(args, kwargs, start=self._joinpoint))
 
-    def count_by(self, *args, **params):
+    def count_by(self, *args, **params): #pragma: no cover
         """DEPRECATED.  use query.filter_by(\**params).count()"""
 
         return self.count(self.join_by(*args, **params))
 
 
-    def select_whereclause(self, whereclause=None, params=None, **kwargs):
+    def select_whereclause(self, whereclause=None, params=None, **kwargs): #pragma: no cover
         """DEPRECATED.  use query.filter(whereclause).all()"""
 
         q = self.filter(whereclause)._legacy_select_kwargs(**kwargs)
@@ -953,7 +953,7 @@ class Query(object):
             q = q.params(**params)
         return list(q)
         
-    def _legacy_select_kwargs(self, **kwargs):
+    def _legacy_select_kwargs(self, **kwargs): #pragma: no cover
         q = self
         if "order_by" in kwargs and kwargs['order_by']:
             q = q.order_by(kwargs['order_by'])
@@ -972,7 +972,7 @@ class Query(object):
         return q
 
 
-    def get_by(self, *args, **params):
+    def get_by(self, *args, **params): #pragma: no cover
         """DEPRECATED.  use query.filter_by(\**params).first()"""
 
         ret = self._extension.get_by(self, *args, **params)
@@ -981,7 +981,7 @@ class Query(object):
 
         return self._legacy_filter_by(*args, **params).first()
 
-    def select_by(self, *args, **params):
+    def select_by(self, *args, **params): #pragma: no cover
         """DEPRECATED. use use query.filter_by(\**params).all()."""
 
         ret = self._extension.select_by(self, *args, **params)
@@ -990,28 +990,28 @@ class Query(object):
 
         return self._legacy_filter_by(*args, **params).list()
 
-    def join_by(self, *args, **params):
+    def join_by(self, *args, **params): #pragma: no cover
         """DEPRECATED. use join() to construct joins based on attribute names."""
 
         return self._legacy_join_by(args, params, start=self._joinpoint)
 
-    def _build_select(self, arg=None, params=None, **kwargs):
+    def _build_select(self, arg=None, params=None, **kwargs): #pragma: no cover
         if isinstance(arg, sql.FromClause) and arg.supports_execution():
             return self.from_statement(arg)
         else:
             return self.filter(arg)._legacy_select_kwargs(**kwargs)
 
-    def selectfirst(self, arg=None, **kwargs):
+    def selectfirst(self, arg=None, **kwargs): #pragma: no cover
         """DEPRECATED.  use query.filter(whereclause).first()"""
 
         return self._build_select(arg, **kwargs).first()
 
-    def selectone(self, arg=None, **kwargs):
+    def selectone(self, arg=None, **kwargs): #pragma: no cover
         """DEPRECATED.  use query.filter(whereclause).one()"""
 
         return self._build_select(arg, **kwargs).one()
 
-    def select(self, arg=None, **kwargs):
+    def select(self, arg=None, **kwargs): #pragma: no cover
         """DEPRECATED.  use query.filter(whereclause).all(), or query.from_statement(statement).all()"""
 
         ret = self._extension.select(self, arg=arg, **kwargs)
@@ -1019,42 +1019,42 @@ class Query(object):
             return ret
         return self._build_select(arg, **kwargs).all()
 
-    def execute(self, clauseelement, params=None, *args, **kwargs):
+    def execute(self, clauseelement, params=None, *args, **kwargs): #pragma: no cover
         """DEPRECATED.  use query.from_statement().all()"""
 
         return self._select_statement(clauseelement, params, **kwargs)
 
-    def select_statement(self, statement, **params):
+    def select_statement(self, statement, **params): #pragma: no cover
         """DEPRECATED.  Use query.from_statement(statement)"""
         
         return self._select_statement(statement, params)
 
-    def select_text(self, text, **params):
+    def select_text(self, text, **params): #pragma: no cover
         """DEPRECATED.  Use query.from_statement(statement)"""
 
         return self._select_statement(text, params)
 
-    def _select_statement(self, statement, params=None, **kwargs):
+    def _select_statement(self, statement, params=None, **kwargs): #pragma: no cover
         q = self.from_statement(statement)
         if params is not None:
             q = q.params(**params)
         q._select_context_options(**kwargs)
         return list(q)
 
-    def _select_context_options(self, populate_existing=None, version_check=None):
+    def _select_context_options(self, populate_existing=None, version_check=None): #pragma: no cover
         if populate_existing is not None:
             self._populate_existing = populate_existing
         if version_check is not None:
             self._version_check = version_check
         return self
         
-    def join_to(self, key):
+    def join_to(self, key): #pragma: no cover
         """DEPRECATED. use join() to create joins based on property names."""
 
         [keys, p] = self._locate_prop(key)
         return self.join_via(keys)
 
-    def join_via(self, keys):
+    def join_via(self, keys): #pragma: no cover
         """DEPRECATED. use join() to create joins based on property names."""
 
         mapper = self._joinpoint
@@ -1069,7 +1069,7 @@ class Query(object):
 
         return clause
 
-    def _legacy_join_by(self, args, params, start=None):
+    def _legacy_join_by(self, args, params, start=None): #pragma: no cover
         import properties
 
         clause = None
@@ -1091,7 +1091,7 @@ class Query(object):
                 clause &= c
         return clause
 
-    def _locate_prop(self, key, start=None):
+    def _locate_prop(self, key, start=None): #pragma: no cover
         import properties
         keys = []
         seen = util.Set()
@@ -1120,12 +1120,12 @@ class Query(object):
             raise exceptions.InvalidRequestError("Can't locate property named '%s'" % key)
         return [keys, p]
 
-    def selectfirst_by(self, *args, **params):
+    def selectfirst_by(self, *args, **params): #pragma: no cover
         """DEPRECATED. Use query.filter_by(\**kwargs).first()"""
 
         return self._legacy_filter_by(*args, **params).first()
 
-    def selectone_by(self, *args, **params):
+    def selectone_by(self, *args, **params): #pragma: no cover
         """DEPRECATED. Use query.filter_by(\**kwargs).one()"""
 
         return self._legacy_filter_by(*args, **params).one()
