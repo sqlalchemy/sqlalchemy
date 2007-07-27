@@ -219,7 +219,7 @@ class OracleDialect(ansisql.ANSIDialect):
         self.auto_convert_lobs = auto_convert_lobs
         
         if self.dbapi is not None:
-            self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB", "LONG_BINARY", "LONG_STRING"] if hasattr(self.dbapi, k)]
+            self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB"] if hasattr(self.dbapi, k)]
         else:
             self.ORACLE_BINARY_TYPES = []
 
