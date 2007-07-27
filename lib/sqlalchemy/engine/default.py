@@ -6,7 +6,7 @@
 
 """Provide default implementations of per-dialect sqlalchemy.engine classes"""
 
-from sqlalchemy import schema, exceptions, sql, types
+from sqlalchemy import schema, exceptions, sql, types, util
 import sys, re
 from sqlalchemy.engine import base
 
@@ -147,6 +147,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.dialect = dialect
         self.connection = connection
         self.compiled = compiled
+        self._postfetch_cols = util.Set()
         
         if compiled is not None:
             self.typemap = compiled.typemap
@@ -173,6 +174,8 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.cursor = self.create_cursor()
         
     engine = property(lambda s:s.connection.engine)
+    isinsert = property(lambda s:s.compiled and s.compiled.isinsert)
+    isupdate = property(lambda s:s.compiled and s.compiled.isupdate)
     
     def __encode_param_keys(self, params):
         """apply string encoding to the keys of dictionary-based bind parameters"""
@@ -255,8 +258,11 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self._last_updated_params
 
     def lastrow_has_defaults(self):
-        return self._lastrow_has_defaults
+        return len(self._postfetch_cols)
 
+    def postfetch_cols(self):
+        return self._postfetch_cols
+        
     def set_input_sizes(self):
         """Given a cursor and ClauseParameters, call the appropriate
         style of ``setinputsizes()`` on the cursor, using DBAPI types
@@ -291,13 +297,12 @@ class DefaultExecutionContext(base.ExecutionContext):
         and generate last_inserted_ids() collection."""
 
         # TODO: cleanup
-        if self.compiled.isinsert:
+        if self.isinsert:
             if isinstance(self.compiled_parameters, list):
                 plist = self.compiled_parameters
             else:
                 plist = [self.compiled_parameters]
             drunner = self.dialect.defaultrunner(self)
-            self._lastrow_has_defaults = False
             for param in plist:
                 last_inserted_ids = []
                 # check the "default" status of each column in the table
@@ -305,7 +310,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                     # check if it will be populated by a SQL clause - we'll need that
                     # after execution.
                     if c in self.compiled.inline_params:
-                        self._lastrow_has_defaults = True
+                        self._postfetch_cols.add(c)
                         if c.primary_key:
                             last_inserted_ids.append(None)
                     # check if its not present at all.  see if theres a default
@@ -315,7 +320,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                     # the SQL-generated value after execution.
                     elif not c.key in param or param.get_original(c.key) is None:
                         if isinstance(c.default, schema.PassiveDefault):
-                            self._lastrow_has_defaults = True
+                            self._postfetch_cols.add(c)
                         newid = drunner.get_column_default(c)
                         if newid is not None:
                             param.set_value(c.key, newid)
@@ -331,20 +336,19 @@ class DefaultExecutionContext(base.ExecutionContext):
                 # here (hard to do since lastrowid doesnt support it either)
                 self._last_inserted_ids = last_inserted_ids
                 self._last_inserted_params = param
-        elif self.compiled.isupdate:
+        elif self.isupdate:
             if isinstance(self.compiled_parameters, list):
                 plist = self.compiled_parameters
             else:
                 plist = [self.compiled_parameters]
             drunner = self.dialect.defaultrunner(self)
-            self._lastrow_has_defaults = False
             for param in plist:
                 # check the "onupdate" status of each column in the table
                 for c in self.compiled.statement.table.c:
                     # it will be populated by a SQL clause - we'll need that
                     # after execution.
                     if c in self.compiled.inline_params:
-                        pass
+                        self._postfetch_cols.add(c)
                     # its not in the bind parameters, and theres an "onupdate" defined for the column;
                     # execute it and add to bind params
                     elif c.onupdate is not None and (not c.key in param or param.get_original(c.key) is None):

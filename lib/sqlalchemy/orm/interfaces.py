@@ -413,7 +413,6 @@ class StrategizedProperty(MapperProperty):
         except KeyError:
             # cache the located strategy per class for faster re-lookup
             strategy = cls(self)
-            strategy.is_default = False
             strategy.init()
             self._all_strategies[cls] = strategy
             return strategy
@@ -631,7 +630,7 @@ class LoaderStrategy(object):
 
     def __init__(self, parent):
         self.parent_property = parent
-        self.is_default = True
+        self.is_class_level = False
 
     def init(self):
         self.parent = self.parent_property.parent

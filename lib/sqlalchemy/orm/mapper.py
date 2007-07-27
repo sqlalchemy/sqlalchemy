@@ -1168,30 +1168,31 @@ class Mapper(object):
                     mapper.extension.after_update(mapper, connection, obj)
 
     def _postfetch(self, connection, table, obj, resultproxy, params):
-        """After an ``INSERT`` or ``UPDATE``, ask the returned result
-        if ``PassiveDefaults`` fired off on the database side which
-        need to be post-fetched, **or** if pre-exec defaults like
-        ``ColumnDefaults`` were fired off and should be populated into
-        the instance. this is only for non-primary key columns.
+        """After an ``INSERT`` or ``UPDATE``, assemble newly generated
+        values on an instance.  For columns which are marked as being generated
+        on the database side, set up a group-based "deferred" loader 
+        which will populate those attributes in one query when next accessed.
         """
 
-        if resultproxy.lastrow_has_defaults():
-            clause = sql.and_()
-            for p in self.pks_by_table[table]:
-                clause.clauses.append(p == self.get_attr_by_column(obj, p))
-            row = connection.execute(table.select(clause), None).fetchone()
-            for c in table.c:
-                if self.get_attr_by_column(obj, c, False) is None:
-                    self.set_attr_by_column(obj, c, row[c])
-        else:
-            for c in table.c:
-                if c.primary_key or not c.key in params:
+        postfetch_cols = resultproxy.context.postfetch_cols()
+        deferred_props = []
+
+        for c in table.c:
+            if c in postfetch_cols and not c.key in params:
+                prop = self._getpropbycolumn(c, raiseerror=False)
+                if prop is None:
                     continue
-                v = self.get_attr_by_column(obj, c, False)
-                if v is NO_ATTRIBUTE:
-                    continue
-                elif v != params.get_original(c.key):
-                    self.set_attr_by_column(obj, c, params.get_original(c.key))
+                deferred_props.append(prop)
+            if c.primary_key or not c.key in params:
+                continue
+            v = self.get_attr_by_column(obj, c, False)
+            if v is NO_ATTRIBUTE:
+                continue
+            elif v != params.get_original(c.key):
+                self.set_attr_by_column(obj, c, params.get_original(c.key))
+        
+        if len(deferred_props):
+            deferred_load(obj, props=deferred_props)
 
     def delete_obj(self, objects, uowtransaction):
         """Issue ``DELETE`` statements for a list of objects.

@@ -134,7 +134,7 @@ class InstrumentedAttribute(interfaces.PropComparator):
             return None
         return AttributeHistory(self, obj, current, passive=passive)
 
-    def set_callable(self, obj, callable_):
+    def set_callable(self, obj, callable_, clear=False):
         """Set a callable function for this attribute on the given object.
 
         This callable will be executed when the attribute is next
@@ -149,6 +149,9 @@ class InstrumentedAttribute(interfaces.PropComparator):
         ``InstrumentedAttribute` constructor.
         """
 
+        if clear:
+            self.clear(obj)
+            
         if callable_ is None:
             self.initialize(obj)
         else:
@@ -815,14 +818,14 @@ class AttributeManager(object):
         """
         return hasattr(class_, key) and isinstance(getattr(class_, key), InstrumentedAttribute)
 
-    def init_instance_attribute(self, obj, key, callable_=None):
+    def init_instance_attribute(self, obj, key, callable_=None, clear=False):
         """Initialize an attribute on an instance to either a blank
         value, cancelling out any class- or instance-level callables
         that were present, or if a `callable` is supplied set the
         callable to be invoked when the attribute is next accessed.
         """
 
-        getattr(obj.__class__, key).set_callable(obj, callable_)
+        getattr(obj.__class__, key).set_callable(obj, callable_, clear=clear)
 
     def create_prop(self, class_, key, uselist, callable_, typecallable, **kwargs):
         """Create a scalar property object, defaulting to

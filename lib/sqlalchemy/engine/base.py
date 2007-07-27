@@ -300,6 +300,11 @@ class ExecutionContext(object):
             (i.e. dict or list of dicts for non positional,
             list or list of lists/tuples for positional).
             
+        isinsert
+          True if the statement is an INSERT
+            
+        isupdate
+          True if the statement is an UPDATE
     
     The Dialect should provide an ExecutionContext via the
     create_execution_context() method.  The `pre_exec` and `post_exec`
@@ -385,6 +390,12 @@ class ExecutionContext(object):
         inserted data beyond that which we passed to the query
         programmatically.
         """
+
+        raise NotImplementedError()
+
+    def postfetch_cols(self):
+        """return a list of Column objects for which a 'passive' server-side default
+        value was fired off"""
 
         raise NotImplementedError()
 
@@ -1215,6 +1226,7 @@ class ResultProxy(object):
 
         return self.context.lastrow_has_defaults()
 
+        
     def supports_sane_rowcount(self):
         """Return ``supports_sane_rowcount()`` from the underlying ExecutionContext.
 
