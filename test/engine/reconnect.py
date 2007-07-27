@@ -1,6 +1,8 @@
 import testbase
+import sys, weakref
 from sqlalchemy import create_engine, exceptions
-import gc, weakref, sys
+from testlib import *
+
 
 class MockDisconnect(Exception):
     pass
@@ -37,7 +39,7 @@ class MockCursor(object):
     def close(self):
         pass
         
-class ReconnectTest(testbase.PersistTest):
+class ReconnectTest(PersistTest):
     def test_reconnect(self):
         """test that an 'is_disconnect' condition will invalidate the connection, and additionally
         dispose the previous connection pool and recreate."""
@@ -50,7 +52,7 @@ class ReconnectTest(testbase.PersistTest):
         # monkeypatch disconnect checker
         db.dialect.is_disconnect = lambda e: isinstance(e, MockDisconnect)
         
-        pid = id(db.connection_provider._pool)
+        pid = id(db.pool)
         
         # make a connection
         conn = db.connect()
@@ -81,7 +83,7 @@ class ReconnectTest(testbase.PersistTest):
         # close shouldnt break
         conn.close()
 
-        assert id(db.connection_provider._pool) != pid
+        assert id(db.pool) != pid
         
         # ensure all connections closed (pool was recycled)
         assert len(dbapi.connections) == 0

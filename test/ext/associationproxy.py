@@ -1,17 +1,19 @@
-from testbase import PersistTest
-import sqlalchemy.util as util
-import unittest
 import testbase
-from sqlalchemy import *
-from sqlalchemy.ext.associationproxy import *
 
-db = testbase.db
+from sqlalchemy import *
+from sqlalchemy.orm import *
+from sqlalchemy.orm.collections import collection
+from sqlalchemy.ext.associationproxy import *
+from testlib import *
+
 
 class DictCollection(dict):
+    @collection.appender
     def append(self, obj):
         self[obj.foo] = obj
-    def __iter__(self):
-        return self.itervalues()
+    @collection.remover
+    def remove(self, obj):
+        del self[obj.foo]
 
 class SetCollection(set):
     pass
@@ -22,18 +24,20 @@ class ListCollection(list):
 class ObjectCollection(object):
     def __init__(self):
         self.values = list()
+    @collection.appender
     def append(self, obj):
         self.values.append(obj)
+    @collection.remover
+    def remove(self, obj):
+        self.values.remove(obj)
     def __iter__(self):
         return iter(self.values)
-    def clear(self):
-        self.values.clear()
 
 class _CollectionOperations(PersistTest):
     def setUp(self):
         collection_class = self.collection_class
 
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
     
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -131,9 +135,57 @@ class _CollectionOperations(PersistTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
+        popped = p1.children.pop()
+        self.assert_(len(p1.children) == 2)
+        self.assert_(popped not in p1.children)
+        p1 = self.roundtrip(p1)
+        self.assert_(len(p1.children) == 2)
+        self.assert_(popped not in p1.children)
+
+        p1.children[1] = 'changed-in-place'
+        self.assert_(p1.children[1] == 'changed-in-place')
+        inplace_id = p1._children[1].id
+        p1 = self.roundtrip(p1)
+        self.assert_(p1.children[1] == 'changed-in-place')
+        assert p1._children[1].id == inplace_id
+
+        p1.children.append('changed-in-place')
+        self.assert_(p1.children.count('changed-in-place') == 2)
+        
+        p1.children.remove('changed-in-place')
+        self.assert_(p1.children.count('changed-in-place') == 1)
+
+        p1 = self.roundtrip(p1)
+        self.assert_(p1.children.count('changed-in-place') == 1)
+
         p1._children = []
         self.assert_(len(p1.children) == 0)
 
+        after = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+        p1.children = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+        self.assert_(len(p1.children) == 10)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children[2:6] = ['x'] * 4
+        after = ['a', 'b', 'x', 'x', 'x', 'x', 'g', 'h', 'i', 'j']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children[2:6] = ['y']
+        after = ['a', 'b', 'y', 'g', 'h', 'i', 'j']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children[2:3] = ['z'] * 4
+        after = ['a', 'b', 'z', 'z', 'z', 'z', 'g', 'h', 'i', 'j']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children[2::2] = ['O'] * 4
+        after = ['a', 'b', 'O', 'z', 'O', 'z', 'O', 'h', 'O', 'j']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+        
 class DefaultTest(_CollectionOperations):
     def __init__(self, *args, **kw):
         super(DefaultTest, self).__init__(*args, **kw)
@@ -218,12 +270,27 @@ class CustomDictTest(DictTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
-        p1.children['d'] = 'new d'
-        assert p1.children['d'] == 'new d'
+        p1.children['e'] = 'changed-in-place' 
+        self.assert_(p1.children['e'] == 'changed-in-place')
+        inplace_id = p1._children['e'].id
+        p1 = self.roundtrip(p1)
+        self.assert_(p1.children['e'] == 'changed-in-place')
+        self.assert_(p1._children['e'].id == inplace_id)
 
         p1._children = {}
         self.assert_(len(p1.children) == 0)
     
+        try:
+            p1._children = []
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(True)
+
+        try:
+            p1._children = None
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(True)
 
 class SetTest(_CollectionOperations):
     def __init__(self, *args, **kw):
@@ -239,7 +306,7 @@ class SetTest(_CollectionOperations):
         self.assert_(not p1.children)
 
         ch1 = Child('regular')
-        p1._children.append(ch1)
+        p1._children.add(ch1)
 
         self.assert_(ch1 in p1._children)
         self.assert_(len(p1._children) == 1)
@@ -256,7 +323,8 @@ class SetTest(_CollectionOperations):
         self.assert_(len(p1.children) == 2)
         self.assert_(len(p1._children) == 2)
 
-        self.assert_(set([o.name for o in p1._children]) == set(['regular', 'proxied']))
+        self.assert_(set([o.name for o in p1._children]) ==
+                     set(['regular', 'proxied']))
 
         ch2 = None
         for o in p1._children:
@@ -322,8 +390,21 @@ class SetTest(_CollectionOperations):
         p1 = self.roundtrip(p1)
         self.assert_(p1.children == set(['c']))
 
-        p1._children = []
+        p1._children = set()
         self.assert_(len(p1.children) == 0)
+
+        try:
+            p1._children = []
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(True)
+
+        try:
+            p1._children = None
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(True)
+
 
     def test_set_comparisons(self):
         Parent, Child = self.Parent, self.Child
@@ -393,14 +474,7 @@ class SetTest(_CollectionOperations):
                         print 'want', repr(control)
                         print 'got', repr(p.children)
                         raise
-    
-    # workaround for bug #548
-    def test_set_pop(self):
-        Parent, Child = self.Parent, self.Child
-        p = Parent('p1')
-        p.children.add('a')
-        p.children.pop()
-        self.assert_(True)
+
 
 class CustomSetTest(SetTest):
     def __init__(self, *args, **kw):
@@ -434,7 +508,7 @@ class CustomObjectTest(_CollectionOperations):
 
 class ScalarTest(PersistTest):
     def test_scalar_proxy(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
     
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -550,7 +624,7 @@ class ScalarTest(PersistTest):
 
 class LazyLoadTest(PersistTest):
     def setUp(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
     
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -606,7 +680,7 @@ class LazyLoadTest(PersistTest):
         # Is there a better way to ensure that the association_proxy
         # didn't convert a lazy load to an eager load?  This does work though.
         self.assert_('_children' not in p.__dict__)
-        self.assert_(len(p._children.data) == 3)
+        self.assert_(len(p._children) == 3)
         self.assert_('_children' in p.__dict__)
 
     def test_eager_list(self):
@@ -622,7 +696,7 @@ class LazyLoadTest(PersistTest):
         p = self.roundtrip(p)
 
         self.assert_('_children' in p.__dict__)
-        self.assert_(len(p._children.data) == 3)
+        self.assert_(len(p._children) == 3)
 
     def test_lazy_scalar(self):
         Parent, Child = self.Parent, self.Child

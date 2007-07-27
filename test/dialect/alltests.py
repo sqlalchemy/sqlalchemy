@@ -5,6 +5,7 @@ def suite():
     modules_to_test = (
         'dialect.mysql',
         'dialect.postgres',
+        'dialect.oracle',
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:

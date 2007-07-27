@@ -1,8 +1,7 @@
 # times how long it takes to create 26000 objects
-import sys
-sys.path.insert(0, './lib/')
+import testbase
 
-from sqlalchemy.attributes import *
+from sqlalchemy.orm.attributes import *
 import time
 import gc
 

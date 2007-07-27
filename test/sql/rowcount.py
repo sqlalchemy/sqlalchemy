@@ -1,7 +1,9 @@
-from sqlalchemy import *
 import testbase
+from sqlalchemy import *
+from testlib import *
 
-class FoundRowsTest(testbase.AssertMixin):
+
+class FoundRowsTest(AssertMixin):
     """tests rowcount functionality"""
     def setUpAll(self):
         metadata = MetaData(testbase.db)

@@ -1,8 +1,7 @@
-from sqlalchemy import schema, exceptions, util, sql, types
-import StringIO, sys, re
-from sqlalchemy.engine import base, default
+from sqlalchemy import util
+from sqlalchemy.engine import base
 
-"""Provide a thread-local transactional wrapper around the basic ComposedSQLEngine.
+"""Provide a thread-local transactional wrapper around the root Engine class.
 
 Multiple calls to engine.connect() will return the same connection for
 the same thread. also provides begin/commit methods on the engine
@@ -70,11 +69,8 @@ class TLConnection(base.Connection):
         self.__opencount += 1
         return self
 
-    def _create_transaction(self, parent):
-        return TLTransaction(self, parent)
-
     def _begin(self):
-        return base.Connection.begin(self)
+        return TLTransaction(self)
 
     def in_transaction(self):
         return self.session.in_transaction()
@@ -91,7 +87,7 @@ class TLConnection(base.Connection):
         self.__opencount = 0
         base.Connection.close(self)
 
-class TLTransaction(base.Transaction):
+class TLTransaction(base.RootTransaction):
     def _commit_impl(self):
         base.Transaction.commit(self)
 
@@ -112,7 +108,7 @@ class TLEngine(base.Engine):
     """
 
     def __init__(self, *args, **kwargs):
-        """The TLEngine relies upon the ConnectionProvider having
+        """The TLEngine relies upon the Pool having
         "threadlocal" behavior, so that once a connection is checked out
         for the current thread, you get that same connection
         repeatedly.
@@ -124,7 +120,7 @@ class TLEngine(base.Engine):
     def raw_connection(self):
         """Return a DBAPI connection."""
 
-        return self.connection_provider.get_connection()
+        return self.pool.connect()
 
     def connect(self, **kwargs):
         """Return a Connection that is not thread-locally scoped.
@@ -133,7 +129,7 @@ class TLEngine(base.Engine):
         ComposedSQLEngine.
         """
 
-        return base.Connection(self, self.connection_provider.unique_connection())
+        return base.Connection(self, self.pool.unique_connection())
 
     def _session(self):
         if not hasattr(self.context, 'session'):
@@ -156,6 +152,3 @@ class TLEngine(base.Engine):
     def rollback(self):
         self.session.rollback()
 
-class TLocalConnectionProvider(default.PoolConnectionProvider):
-    def unique_connection(self):
-        return self._pool.unique_connection()

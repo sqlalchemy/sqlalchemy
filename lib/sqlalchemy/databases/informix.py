@@ -5,20 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import datetime, warnings
 
-import sys, StringIO, string , random
-import datetime
-from decimal import Decimal
-
-import sqlalchemy.util as util
-import sqlalchemy.sql as sql
-import sqlalchemy.engine as engine
+from sqlalchemy import sql, schema, ansisql, exceptions, pool
 import sqlalchemy.engine.default as default
-import sqlalchemy.schema as schema
-import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
-import sqlalchemy.exceptions as exceptions
-import sqlalchemy.pool as pool
 
 
 # for offset
@@ -128,7 +119,7 @@ class InfoBoolean(sqltypes.Boolean):
         elif value is None:
             return None
         else:
-            return value and True or False 	
+            return value and True or False
 
         
 colspecs = {
@@ -262,7 +253,7 @@ class InfoDialect(ansisql.ANSIDialect):
         cursor = connection.execute("""select tabname from systables where tabname=?""", table_name.lower() )
         return bool( cursor.fetchone() is not None )
         
-    def reflecttable(self, connection, table):
+    def reflecttable(self, connection, table, include_columns):
         c = connection.execute ("select distinct OWNER from systables where tabname=?", table.name.lower() )
         rows = c.fetchall()
         if not rows :
@@ -289,6 +280,10 @@ class InfoDialect(ansisql.ANSIDialect):
             raise exceptions.NoSuchTableError(table.name)
 
         for name , colattr , collength , default , colno in rows:
+            name = name.lower()
+            if include_columns and name not in include_columns:
+                continue
+
             # in 7.31, coltype = 0x000
             #                       ^^-- column type
             #                      ^-- 1 not null , 0 null 
@@ -306,13 +301,15 @@ class InfoDialect(ansisql.ANSIDialect):
                     scale = 0
                 coltype = InfoNumeric(precision, scale)
             else:
-                coltype = ischema_names.get(coltype)
+                try:
+                    coltype = ischema_names[coltype]
+                except KeyError:
+                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
+                    coltype = sqltypes.NULLTYPE
             
             colargs = []
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
-            
-            name = name.lower()
             
             table.append_column(schema.Column(name, coltype, nullable = (nullable == 0), *colargs))
 
@@ -372,20 +369,20 @@ class InfoCompiler(ansisql.ANSICompiler):
     def default_from(self):
         return " from systables where tabname = 'systables' "
     
-    def visit_select_precolumns( self , select ):
-        s = select.distinct and "DISTINCT " or ""
+    def get_select_precolumns( self , select ):
+        s = select._distinct and "DISTINCT " or ""
         # only has limit
-        if select.limit:
-            off = select.offset or 0
-            s += " FIRST %s " % ( select.limit + off )
+        if select._limit:
+            off = select._offset or 0
+            s += " FIRST %s " % ( select._limit + off )
         else:
             s += ""
         return s
     
     def visit_select(self, select):
-        if select.offset:
-            self.offset = select.offset
-            self.limit  = select.limit or 0
+        if select._offset:
+            self.offset = select._offset
+            self.limit  = select._limit or 0
         # the column in order by clause must in select too
         
         def __label( c ):
@@ -393,13 +390,14 @@ class InfoCompiler(ansisql.ANSICompiler):
                 return c._label.lower()
             except:
                 return ''
-                
+        
+        # TODO: dont modify the original select, generate a new one        
         a = [ __label(c) for c in select._raw_columns ]
         for c in select.order_by_clause.clauses:
             if ( __label(c) not in a ) and getattr( c , 'name' , '' ) != 'oid':
                 select.append_column( c )
         
-        ansisql.ANSICompiler.visit_select(self, select)
+        return ansisql.ANSICompiler.visit_select(self, select)
         
     def limit_clause(self, select):
         return ""
@@ -414,23 +412,20 @@ class InfoCompiler(ansisql.ANSICompiler):
 
     def visit_function( self , func ):
         if func.name.lower() == 'current_date':
-            self.strings[func] = "today"
+            return "today"
         elif func.name.lower() == 'current_time':
-            self.strings[func] = "CURRENT HOUR TO SECOND"
+            return "CURRENT HOUR TO SECOND"
         elif func.name.lower() in ( 'current_timestamp' , 'now' ):
-            self.strings[func] = "CURRENT YEAR TO SECOND"
+            return "CURRENT YEAR TO SECOND"
         else:
-            ansisql.ANSICompiler.visit_function( self , func )
+            return ansisql.ANSICompiler.visit_function( self , func )
             
     def visit_clauselist(self, list):
         try:
             li = [ c for c in list.clauses if c.name != 'oid' ]
         except:
             li = [ c for c in list.clauses ]
-        if list.parens:
-            self.strings[list] = "(" + string.join([s for s in [self.get_str(c) for c in li] if s is not None ], ', ') + ")"
-        else:
-            self.strings[list] = string.join([s for s in [self.get_str(c) for c in li] if s is not None], ', ')
+        return ', '.join([s for s in [self.process(c) for c in li] if s is not None])
 
 class InfoSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, first_pk=False):

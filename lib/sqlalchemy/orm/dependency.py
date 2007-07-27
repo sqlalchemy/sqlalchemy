@@ -6,8 +6,8 @@
 
 
 """Bridge the ``PropertyLoader`` (i.e. a ``relation()``) and the
-``UOWTransaction`` together to allow processing of scalar- and
-list-based dependencies at flush time.
+``UOWTransaction`` together to allow processing of relation()-based
+ dependencies at flush time.
 """
 
 from sqlalchemy.orm import sync
@@ -366,7 +366,7 @@ class ManyToManyDP(DependencyProcessor):
         if len(secondary_delete):
             secondary_delete.sort()
             # TODO: precompile the delete/insert queries?
-            statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key, type=c.type) for c in self.secondary.c if c.key in associationrow]))
+            statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key, type_=c.type) for c in self.secondary.c if c.key in associationrow]))
             result = connection.execute(statement, secondary_delete)
             if result.supports_sane_rowcount() and result.rowcount != len(secondary_delete):
                 raise exceptions.ConcurrentModificationError("Deleted rowcount %d does not match number of objects deleted %d" % (result.rowcount, len(secondary_delete)))

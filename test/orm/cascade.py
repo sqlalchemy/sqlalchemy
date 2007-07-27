@@ -1,10 +1,12 @@
-import testbase, tables
-import unittest, sys, datetime
+import testbase
 
-from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy import *
+from sqlalchemy.orm import *
+from sqlalchemy.ext.sessioncontext import SessionContext
+from testlib import *
+import testlib.tables as tables
 
-class O2MCascadeTest(testbase.AssertMixin):
+class O2MCascadeTest(AssertMixin):
     def tearDown(self):
         tables.delete()
 
@@ -112,7 +114,7 @@ class O2MCascadeTest(testbase.AssertMixin):
         sess = create_session()
         l = sess.query(tables.User).select()
         for u in l:
-            self.echo( repr(u.orders))
+            print repr(u.orders)
         self.assert_result(l, data[0], *data[1:])
 
         ids = (l[0].user_id, l[2].user_id)
@@ -172,7 +174,7 @@ class O2MCascadeTest(testbase.AssertMixin):
         self.assert_(tables.orderitems.count(tables.orders.c.user_id.in_(*ids)  &(tables.orderitems.c.order_id==tables.orders.c.order_id)).scalar() == 0)
 
 
-class M2OCascadeTest(testbase.AssertMixin):
+class M2OCascadeTest(AssertMixin):
     def tearDown(self):
         ctx.current.clear()
         for t in metadata.table_iterator(reverse=True):
@@ -260,7 +262,7 @@ class M2OCascadeTest(testbase.AssertMixin):
     
         
 
-class M2MCascadeTest(testbase.AssertMixin):
+class M2MCascadeTest(AssertMixin):
     def setUpAll(self):
         global metadata, a, b, atob
         metadata = MetaData(testbase.db)
@@ -335,7 +337,7 @@ class M2MCascadeTest(testbase.AssertMixin):
         assert b.count().scalar() == 0
         assert a.count().scalar() == 0
 
-class UnsavedOrphansTest(testbase.ORMTest):
+class UnsavedOrphansTest(ORMTest):
     """tests regarding pending entities that are orphans"""
     
     def define_tables(self, metadata):
@@ -395,7 +397,7 @@ class UnsavedOrphansTest(testbase.ORMTest):
         assert a.address_id is None, "Error: address should not be persistent"
 
 
-class UnsavedOrphansTest2(testbase.ORMTest):
+class UnsavedOrphansTest2(ORMTest):
     """same test as UnsavedOrphans only three levels deep"""
 
     def define_tables(self, meta):
@@ -455,7 +457,7 @@ class UnsavedOrphansTest2(testbase.ORMTest):
         assert item.id is None
         assert attr.id is None
 
-class DoubleParentOrphanTest(testbase.AssertMixin):
+class DoubleParentOrphanTest(AssertMixin):
     """test orphan detection for an entity with two parent relations"""
     
     def setUpAll(self):
@@ -521,7 +523,7 @@ class DoubleParentOrphanTest(testbase.AssertMixin):
             assert False
         except exceptions.FlushError, e:
             assert True
-    
-            
+
+
 if __name__ == "__main__":
     testbase.main()        

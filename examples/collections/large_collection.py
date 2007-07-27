@@ -1,7 +1,8 @@
 """illlustrates techniques for dealing with very large collections"""
 
 from sqlalchemy import *
-meta = MetaData('sqlite://', echo=True)
+meta = MetaData('sqlite://')
+meta.bind.echo = True
 
 org_table = Table('organizations', meta, 
     Column('org_id', Integer, primary_key=True),

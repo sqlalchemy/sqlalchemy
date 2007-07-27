@@ -42,7 +42,6 @@ nature - very tricky to reproduce and track down, particularly before
 I realized this characteristic of the algorithm.
 """
 
-import string, StringIO
 from sqlalchemy import util
 from sqlalchemy.exceptions import CircularDependencyError
 
@@ -68,7 +67,7 @@ class _Node(object):
             str(self.item) + \
             (self.cycles is not None and (" (cycles: " + repr([x for x in self.cycles]) + ")") or "") + \
             "\n" + \
-            string.join([n.safestr(indent + 1) for n in self.children], '')
+            ''.join([n.safestr(indent + 1) for n in self.children])
 
     def __repr__(self):
         return "%s" % (str(self.item))

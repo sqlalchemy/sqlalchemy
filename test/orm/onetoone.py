@@ -1,6 +1,8 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
+from testlib import *
 
 class Jack(object):
     def __repr__(self):
@@ -22,7 +24,7 @@ class Port(object):
         self.name=name
         self.description = description
 
-class O2OTest(testbase.AssertMixin):
+class O2OTest(AssertMixin):
     def setUpAll(self):
         global jack, port, metadata, ctx
         metadata = MetaData(testbase.db)

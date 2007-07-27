@@ -1,11 +1,8 @@
-from testbase import PersistTest, AssertMixin, ORMTest
-import unittest, sys, os
-from sqlalchemy import *
-import StringIO
 import testbase
-
-from tables import *
-import tables
+from sqlalchemy import *
+from sqlalchemy.orm import *
+from testlib import *
+from testlib.tables import *
 
 """test cyclical mapper relationships.  Many of the assertions are provided
 via running with postgres, which is strict about foreign keys.
@@ -107,22 +104,6 @@ class SelfReferentialTest(AssertMixin):
         
         sess.delete(a)
         sess.flush()
-    def testeagerassertion(self):
-        """test that an eager self-referential relationship raises an error."""
-        class C1(Tester):
-            pass
-        class C2(Tester):
-            pass
-        
-        m1 = mapper(C1, t1, properties = {
-            'c1s' : relation(C1, lazy=False),
-        })
-        
-        try:
-            m1.compile()
-            assert False
-        except exceptions.ArgumentError:
-            assert True
 
 class SelfReferentialNoPKTest(AssertMixin):
     """test self-referential relationship that joins on a column other than the primary key column"""
@@ -541,8 +522,6 @@ class OneToManyManyToOneTest(AssertMixin):
          )
         )
 
-        print str(Person.mapper.props['balls'].primaryjoin)
-
         b = Ball('some data')
         p = Person('some data')
         p.balls.append(b)
@@ -554,7 +533,7 @@ class OneToManyManyToOneTest(AssertMixin):
         sess.save(b)
         sess.save(p)
         
-        self.assert_sql(db, lambda: sess.flush(), [
+        self.assert_sql(testbase.db, lambda: sess.flush(), [
             (
                 "INSERT INTO person (favorite_ball_id, data) VALUES (:favorite_ball_id, :data)",
                 {'favorite_ball_id': None, 'data':'some data'}
@@ -608,7 +587,7 @@ class OneToManyManyToOneTest(AssertMixin):
                 )
             ])
         sess.delete(p)
-        self.assert_sql(db, lambda: sess.flush(), [
+        self.assert_sql(testbase.db, lambda: sess.flush(), [
             # heres the post update (which is a pre-update with deletes)
             (
                 "UPDATE person SET favorite_ball_id=:favorite_ball_id WHERE person.id = :person_id",
@@ -645,8 +624,6 @@ class OneToManyManyToOneTest(AssertMixin):
          )
         )
 
-        print str(Person.mapper.props['balls'].primaryjoin)
-
         b = Ball('some data')
         p = Person('some data')
         p.balls.append(b)
@@ -660,7 +637,7 @@ class OneToManyManyToOneTest(AssertMixin):
         sess = create_session()
         [sess.save(x) for x in [b,p,b2,b3,b4]]
 
-        self.assert_sql(db, lambda: sess.flush(), [
+        self.assert_sql(testbase.db, lambda: sess.flush(), [
                 (
                     "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
                     {'person_id':None, 'data':'some data'}
@@ -739,7 +716,7 @@ class OneToManyManyToOneTest(AssertMixin):
         ])
 
         sess.delete(p)
-        self.assert_sql(db, lambda: sess.flush(), [
+        self.assert_sql(testbase.db, lambda: sess.flush(), [
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
                 lambda ctx:{'person_id': None, 'ball_id': b.id}
@@ -851,7 +828,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
         remove_child(root, cats)
         # pre-trigger lazy loader on 'cats' to make the test easier
         cats.children
-        self.assert_sql(db, lambda: session.flush(), [
+        self.assert_sql(testbase.db, lambda: session.flush(), [
             (
                 "UPDATE node SET prev_sibling_id=:prev_sibling_id WHERE node.id = :node_id",
                 lambda ctx:{'prev_sibling_id':about.id, 'node_id':stories.id}

@@ -14,7 +14,6 @@ from sqlalchemy import exceptions
 import md5
 import sys
 import warnings
-
 import __builtin__
 
 try:
@@ -33,10 +32,35 @@ except:
             i -= 1
         raise StopIteration()
 
-def to_list(x):
+if sys.version_info >= (2, 5):
+    class PopulateDict(dict):
+        """a dict which populates missing values via a creation function.
+        
+        note the creation function takes a key, unlike collections.defaultdict.
+        """
+        
+        def __init__(self, creator):
+            self.creator = creator
+        def __missing__(self, key):
+            self[key] = val = self.creator(key)
+            return val
+else:
+    class PopulateDict(dict):
+        """a dict which populates missing values via a creation function."""
+
+        def __init__(self, creator):
+            self.creator = creator
+        def __getitem__(self, key):
+            try:
+                return dict.__getitem__(self, key)
+            except KeyError:
+                self[key] = value = self.creator(key)
+                return value
+
+def to_list(x, default=None):
     if x is None:
-        return None
-    if not isinstance(x, list) and not isinstance(x, tuple):
+        return default
+    if not isinstance(x, (list, tuple)):
         return [x]
     else:
         return x
@@ -113,19 +137,25 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
         else:
             kw[key] = type_(kw[key])
 
-def duck_type_collection(col, default=None):
+def duck_type_collection(specimen, default=None):
     """Given an instance or class, guess if it is or is acting as one of
     the basic collection types: list, set and dict.  If the __emulates__
     property is present, return that preferentially.
     """
     
-    if hasattr(col, '__emulates__'):
-        return getattr(col, '__emulates__')
-    elif hasattr(col, 'append'):
+    if hasattr(specimen, '__emulates__'):
+        return specimen.__emulates__
+
+    isa = isinstance(specimen, type) and issubclass or isinstance
+    if isa(specimen, list): return list
+    if isa(specimen, Set): return Set
+    if isa(specimen, dict): return dict
+
+    if hasattr(specimen, 'append'):
         return list
-    elif hasattr(col, 'add'):
+    elif hasattr(specimen, 'add'):
         return Set
-    elif hasattr(col, 'set'):
+    elif hasattr(specimen, 'set'):
         return dict
     else:
         return default
@@ -138,11 +168,11 @@ def assert_arg_type(arg, argtype, name):
             raise exceptions.ArgumentError("Argument '%s' is expected to be one of type %s, got '%s'" % (name, ' or '.join(["'%s'" % str(a) for a in argtype]), str(type(arg))))
         else:
             raise exceptions.ArgumentError("Argument '%s' is expected to be of type '%s', got '%s'" % (name, str(argtype), str(type(arg))))
-        
-def warn_exception(func):
+
+def warn_exception(func, *args, **kwargs):
     """executes the given function, catches all exceptions and converts to a warning."""
     try:
-        return func()
+        return func(*args, **kwargs)
     except:
         warnings.warn(RuntimeWarning("%s('%s') ignored" % sys.exc_info()[0:2]))
     
@@ -246,12 +276,12 @@ class OrderedProperties(object):
 class OrderedDict(dict):
     """A Dictionary that returns keys/values/items in the order they were added."""
 
-    def __init__(self, d=None, **kwargs):
+    def __init__(self, ____sequence=None, **kwargs):
         self._list = []
-        if d is None:
+        if ____sequence is None:
             self.update(**kwargs)
         else:
-            self.update(d, **kwargs)
+            self.update(____sequence, **kwargs)
 
     def clear(self):
         self._list = []
@@ -347,7 +377,13 @@ class DictDecorator(dict):
             return dict.__getitem__(self, key)
         except KeyError:
             return self.decorate[key]
-
+            
+    def __contains__(self, key):
+        return dict.__contains__(self, key) or key in self.decorate
+    
+    def has_key(self, key):
+        return key in self
+            
     def __repr__(self):
         return dict.__repr__(self) + repr(self.decorate)
 
@@ -442,19 +478,28 @@ class OrderedSet(Set):
     __isub__ = difference_update
 
 class UniqueAppender(object):
-    def __init__(self, data):
+    """appends items to a collection such that only unique items
+    are added."""
+    
+    def __init__(self, data, via=None):
         self.data = data
-        if hasattr(data, 'append'):
+        self._unique = Set()
+        if via:
+            self._data_appender = getattr(data, via)
+        elif hasattr(data, 'append'):
             self._data_appender = data.append
         elif hasattr(data, 'add'):
+            # TODO: we think its a set here.  bypass unneeded uniquing logic ?
             self._data_appender = data.add
-        self.set = Set()
-
+        
     def append(self, item):
-        if item not in self.set:
-            self.set.add(item)
+        if item not in self._unique:
             self._data_appender(item)
-
+            self._unique.add(item)
+    
+    def __iter__(self):
+        return iter(self.data)
+        
 class ScopedRegistry(object):
     """A Registry that can store one or multiple instances of a single
     class on a per-thread scoped basis, or on a customized scope.

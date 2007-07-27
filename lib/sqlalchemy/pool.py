@@ -13,7 +13,7 @@ automatically, based on module type and connect arguments, simply by
 calling regular DBAPI connect() methods.
 """
 
-import weakref, string, time, sys, traceback
+import weakref, time
 try:
     import cPickle as pickle
 except:
@@ -190,6 +190,7 @@ class _ConnectionRecord(object):
     def __init__(self, pool):
         self.__pool = pool
         self.connection = self.__connect()
+        self.properties = {}
 
     def close(self):
         if self.connection is not None:
@@ -207,10 +208,12 @@ class _ConnectionRecord(object):
     def get_connection(self):
         if self.connection is None:
             self.connection = self.__connect()
+            self.properties.clear()
         elif (self.__pool._recycle > -1 and time.time() - self.starttime > self.__pool._recycle):
             self.__pool.log("Connection %s exceeded timeout; recycling" % repr(self.connection))
             self.__close()
             self.connection = self.__connect()
+            self.properties.clear()
         return self.connection
 
     def __close(self):
@@ -257,6 +260,21 @@ class _ConnectionFairy(object):
     _logger = property(lambda self: self._pool.logger)
     
     is_valid = property(lambda self:self.connection is not None)
+
+    def _get_properties(self):
+        """A property collection unique to this DBAPI connection."""
+        
+        try:
+            return self._connection_record.properties
+        except AttributeError:
+            if self.connection is None:
+                raise exceptions.InvalidRequestError("This connection is closed")
+            try:
+                return self._detatched_properties
+            except AttributeError:
+                self._detatched_properties = value = {}
+                return value
+    properties = property(_get_properties)
     
     def invalidate(self, e=None):
         """Mark this connection as invalidated.
@@ -301,6 +319,8 @@ class _ConnectionFairy(object):
         if self._connection_record is not None:
             self._connection_record.connection = None        
             self._pool.do_return_conn(self._connection_record)
+            self._detatched_properties = \
+              self._connection_record.properties.copy()
             self._connection_record = None
 
     def close_open_cursors(self):

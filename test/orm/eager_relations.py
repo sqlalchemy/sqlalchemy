@@ -1,9 +1,9 @@
 """basic tests of eager loaded attributes"""
 
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import testbase
-
+from testlib import *
 from fixtures import *
 from query import QueryTest
 
@@ -20,7 +20,7 @@ class EagerTest(QueryTest):
         sess = create_session()
         q = sess.query(User)
 
-        assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(users.c.id == 7).all()
+        assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
         assert fixtures.user_address_result == q.all()
 
     def test_no_orphan(self):
@@ -66,7 +66,7 @@ class EagerTest(QueryTest):
         ))
         
         q = create_session().query(User)
-        l = q.filter(users.c.id==addresses.c.user_id).order_by(addresses.c.email_address).all()
+        l = q.filter(User.id==Address.user_id).order_by(Address.email_address).all()
         
         assert [
             User(id=8, addresses=[
@@ -148,7 +148,7 @@ class EagerTest(QueryTest):
         assert fixtures.user_address_result == sess.query(User).all()
         
     def test_double(self):
-        """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
+        """tests eager loading with two relations simulatneously, from the same table, using aliases.  """
         openorders = alias(orders, 'openorders')
         closedorders = alias(orders, 'closedorders')
 
@@ -180,6 +180,46 @@ class EagerTest(QueryTest):
                     addresses=[Address(id=5)],
                     open_orders = [Order(id=4)],
                     closed_orders = [Order(id=2)]
+                ),
+                User(id=10)
+
+            ] == q.all()
+        self.assert_sql_count(testbase.db, go, 1)
+
+    def test_double_same_mappers(self):
+        """tests eager loading with two relations simulatneously, from the same table, using aliases.  """
+
+        mapper(Address, addresses)
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items, lazy=False, order_by=items.c.id),
+        })
+        mapper(Item, items)
+        mapper(User, users, properties = dict(
+            addresses = relation(Address, lazy=False),
+            open_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 1, users.c.id==orders.c.user_id), lazy=False),
+            closed_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy=False)
+        ))
+        q = create_session().query(User)
+
+        def go():
+            assert [
+                User(
+                    id=7,
+                    addresses=[Address(id=1)],
+                    open_orders = [Order(id=3, items=[Item(id=3), Item(id=4), Item(id=5)])],
+                    closed_orders = [Order(id=1, items=[Item(id=1), Item(id=2), Item(id=3)]), Order(id=5, items=[Item(id=5)])]
+                ),
+                User(
+                    id=8,
+                    addresses=[Address(id=2), Address(id=3), Address(id=4)],
+                    open_orders = [],
+                    closed_orders = []
+                ),
+                User(
+                    id=9,
+                    addresses=[Address(id=5)],
+                    open_orders = [Order(id=4, items=[Item(id=1), Item(id=5)])],
+                    closed_orders = [Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)])]
                 ),
                 User(id=10)
 
@@ -236,7 +276,7 @@ class EagerTest(QueryTest):
         sess = create_session()
         q = sess.query(Item)
         l = q.filter((Item.c.description=='item 2') | (Item.c.description=='item 5') | (Item.c.description=='item 3')).\
-            order_by(Item.c.id).limit(2).all()
+            order_by(Item.id).limit(2).all()
 
         assert fixtures.item_keyword_result[1:3] == l
         
@@ -259,7 +299,7 @@ class EagerTest(QueryTest):
         q = sess.query(User)
 
         if testbase.db.engine.name != 'mssql':
-            l = q.join('orders').order_by(desc(orders.c.user_id)).limit(2).offset(1)
+            l = q.join('orders').order_by(desc(Order.user_id)).limit(2).offset(1)
             assert [
                 User(id=9, 
                     orders=[Order(id=2), Order(id=4)],
@@ -271,7 +311,7 @@ class EagerTest(QueryTest):
                 )
             ] == l.all()
 
-        l = q.join('addresses').order_by(desc(addresses.c.email_address)).limit(1).offset(0)
+        l = q.join('addresses').order_by(desc(Address.email_address)).limit(1).offset(0)
         assert [
             User(id=7, 
                 orders=[Order(id=1), Order(id=3), Order(id=5)],
@@ -375,6 +415,7 @@ class EagerTest(QueryTest):
             'user':relation(User, lazy=False)
         })
         mapper(User, users)
+        mapper(Item, items)
 
         q = create_session().query(Order)
         assert [
@@ -382,7 +423,7 @@ class EagerTest(QueryTest):
             Order(id=4, user=User(id=9))
         ] == q.all()
         
-        q = q.select_from(s.join(order_items).join(items)).filter(~items.c.id.in_(1, 2, 5))
+        q = q.select_from(s.join(order_items).join(items)).filter(~Item.id.in_(1, 2, 5))
         assert [
             Order(id=3, user=User(id=7)),
         ] == q.all()
@@ -394,8 +435,80 @@ class EagerTest(QueryTest):
             addresses = relation(mapper(Address, addresses), lazy=False)
         ))
         q = create_session().query(User)
-        l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(addresses.c.user_id==users.c.id)
+        l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(Address.user_id==User.id)
         assert fixtures.user_address_result[1:2] == l.all()
+
+class SelfReferentialEagerTest(ORMTest):
+    def define_tables(self, metadata):
+        global nodes
+        nodes = Table('nodes', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')),
+            Column('data', String(30)))
+    
+    def test_basic(self):
+        class Node(Base):
+            def append(self, node):
+                self.children.append(node)
+                
+        mapper(Node, nodes, properties={
+            'children':relation(Node, lazy=False, join_depth=3)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
+        sess.save(n1)
+        sess.flush()
+        sess.clear()
+        def go():
+            d = sess.query(Node).filter_by(data='n1').first()
+            assert Node(data='n1', children=[
+                Node(data='n11'),
+                Node(data='n12', children=[
+                    Node(data='n121'),
+                    Node(data='n122'),
+                    Node(data='n123')
+                ]),
+                Node(data='n13')
+            ]) == d
+        self.assert_sql_count(testbase.db, go, 1)
+
+    def test_no_depth(self):
+        class Node(Base):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relation(Node, lazy=False)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
+        sess.save(n1)
+        sess.flush()
+        sess.clear()
+        def go():
+            d = sess.query(Node).filter_by(data='n1').first()
+            assert Node(data='n1', children=[
+                Node(data='n11'),
+                Node(data='n12', children=[
+                    Node(data='n121'),
+                    Node(data='n122'),
+                    Node(data='n123')
+                ]),
+                Node(data='n13')
+            ]) == d
+        self.assert_sql_count(testbase.db, go, 3)
 
 if __name__ == '__main__':
     testbase.main()

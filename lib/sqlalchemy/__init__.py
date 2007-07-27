@@ -7,10 +7,8 @@
 from sqlalchemy.types import *
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
-from sqlalchemy.orm import *
 
 from sqlalchemy.engine import create_engine
-from sqlalchemy.schema import default_metadata
 
 def __figure_version():
     try:
@@ -25,8 +23,6 @@ def __figure_version():
             return '(not installed)'
     except:
         return '(not installed)'
-
+        
 __version__ = __figure_version()
-
-def global_connect(*args, **kwargs):
-    default_metadata.connect(*args, **kwargs)
+    

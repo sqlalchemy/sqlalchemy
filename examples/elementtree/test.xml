@@ -1,0 +1,9 @@
+<somefile>
+    This is somefile.
+    <header name="foo" value="bar" hoho="lala">
+        <field1>hi</field1>
+        <field2>there</field2>
+        Some additional text within the header.
+    </header>
+    Some more text within somefile.
+</somefile>

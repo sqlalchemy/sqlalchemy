@@ -1,19 +1,22 @@
-from testbase import PersistTest
 import testbase
-import pickle
-import sqlalchemy.ansisql as ansisql
+import pickle, StringIO
 
 from sqlalchemy import *
+import sqlalchemy.ansisql as ansisql
 from sqlalchemy.exceptions import NoSuchTableError
 import sqlalchemy.databases.mysql as mysql
+from testlib import *
 
-import unittest, re, StringIO
 
 class ReflectionTest(PersistTest):
     def testbasic(self):
         use_function_defaults = testbase.db.engine.name == 'postgres' or testbase.db.engine.name == 'oracle'
         
         use_string_defaults = use_function_defaults or testbase.db.engine.__module__.endswith('sqlite')
+
+        if (testbase.db.engine.name == 'mysql' and
+            testbase.db.dialect.get_version_info(testbase.db) < (4, 1, 1)):
+            return
 
         if use_function_defaults:
             defval = func.current_date()
@@ -54,14 +57,14 @@ class ReflectionTest(PersistTest):
             Column('test_passivedefault4', deftype3, PassiveDefault(defval3)),
             Column('test9', Binary(100)),
             Column('test_numeric', Numeric(None, None)),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
         )
-
+        
         addresses = Table('engine_email_addresses', meta,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
         )
         meta.drop_all()
 
@@ -106,6 +109,29 @@ class ReflectionTest(PersistTest):
             addresses.drop()
             users.drop()
     
+    def test_autoload_partial(self):
+        meta = MetaData(testbase.db)
+        foo = Table('foo', meta,
+            Column('a', String(30)),
+            Column('b', String(30)),
+            Column('c', String(30)),
+            Column('d', String(30)),
+            Column('e', String(30)),
+            Column('f', String(30)),
+            )
+        meta.create_all()
+        try:
+            meta2 = MetaData(testbase.db)
+            foo2 = Table('foo', meta2, autoload=True, include_columns=['b', 'f', 'e'])
+            # test that cols come back in original order
+            assert [c.name for c in foo2.c] == ['b', 'e', 'f']
+            for c in ('b', 'f', 'e'):
+                assert c in foo2.c
+            for c in ('a', 'c', 'd'):
+                assert c not in foo2.c
+        finally:
+            meta.drop_all()
+            
     def testoverridecolumns(self):
         """test that you can override columns which contain foreign keys to other reflected tables"""
         meta = MetaData(testbase.db)
@@ -203,7 +229,7 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
             
-    @testbase.supported('mysql')
+    @testing.supported('mysql')
     def testmysqltypes(self):
         meta1 = MetaData(testbase.db)
         table = Table(
@@ -250,7 +276,7 @@ class ReflectionTest(PersistTest):
             PRIMARY KEY(id)
         )""")
         try:
-            metadata = MetaData(engine=testbase.db)
+            metadata = MetaData(bind=testbase.db)
             book = Table('book', metadata, autoload=True)
             assert book.c.id  in book.primary_key
             assert book.c.series not in book.primary_key
@@ -271,7 +297,7 @@ class ReflectionTest(PersistTest):
             PRIMARY KEY(id, isbn)
         )""")
         try:
-            metadata = MetaData(engine=testbase.db)
+            metadata = MetaData(bind=testbase.db)
             book = Table('book', metadata, autoload=True)
             assert book.c.id  in book.primary_key
             assert book.c.isbn  in book.primary_key
@@ -280,7 +306,7 @@ class ReflectionTest(PersistTest):
         finally:
             testbase.db.execute("drop table book")
             
-    @testbase.supported('sqlite')
+    @testing.supported('sqlite')
     def test_goofy_sqlite(self):
         """test autoload of table where quotes were used with all the colnames.  quirky in sqlite."""
         testbase.db.execute("""CREATE TABLE "django_content_type" (
@@ -309,7 +335,12 @@ class ReflectionTest(PersistTest):
 
     def test_composite_fk(self):
         """test reflection of composite foreign keys"""
+
+        if (testbase.db.engine.name == 'mysql' and
+            testbase.db.dialect.get_version_info(testbase.db) < (4, 1, 1)):
+            return
         meta = MetaData(testbase.db)
+
         table = Table(
             'multi', meta, 
             Column('multi_id', Integer, primary_key=True),
@@ -317,7 +348,7 @@ class ReflectionTest(PersistTest):
             Column('multi_hoho', Integer, primary_key=True),
             Column('name', String(50), nullable=False),
             Column('val', String(100)),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
         )
         table2 = Table('multi2', meta, 
             Column('id', Integer, primary_key=True),
@@ -326,7 +357,7 @@ class ReflectionTest(PersistTest):
             Column('lala', Integer),
             Column('data', String(50)),
             ForeignKeyConstraint(['foo', 'bar', 'lala'], ['multi.multi_id', 'multi.multi_rev', 'multi.multi_hoho']),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
         )
         assert table.c.multi_hoho
         meta.create_all()
@@ -345,7 +376,6 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
 
-            
     def test_to_metadata(self):
         meta = MetaData()
         
@@ -372,17 +402,17 @@ class ReflectionTest(PersistTest):
         def test_pickle():
             meta.connect(testbase.db)
             meta2 = pickle.loads(pickle.dumps(meta))
-            assert meta2.engine is None
+            assert meta2.bind is None
             return (meta2.tables['mytable'], meta2.tables['othertable'])
 
         def test_pickle_via_reflect():
             # this is the most common use case, pickling the results of a
             # database reflection
-            meta2 = MetaData(engine=testbase.db)
+            meta2 = MetaData(bind=testbase.db)
             t1 = Table('mytable', meta2, autoload=True)
             t2 = Table('othertable', meta2, autoload=True)
             meta3 = pickle.loads(pickle.dumps(meta2))
-            assert meta3.engine is None
+            assert meta3.bind is None
             assert meta3.tables['mytable'] is not t1
             return (meta3.tables['mytable'], meta3.tables['othertable'])
             
@@ -392,6 +422,8 @@ class ReflectionTest(PersistTest):
                 table_c, table2_c = test()
                 assert table is not table_c
                 assert table_c.c.myid.primary_key
+                assert isinstance(table_c.c.myid.type, Integer)
+                assert isinstance(table_c.c.name.type, String)
                 assert not table_c.c.name.nullable 
                 assert table_c.c.description.nullable 
                 assert table.primary_key is not table_c.primary_key
@@ -418,14 +450,10 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all(testbase.db)
             
-    # mysql throws its own exception for no such table, resulting in 
-    # a sqlalchemy.SQLError instead of sqlalchemy.NoSuchTableError.
-    # this could probably be fixed at some point.
-    @testbase.unsupported('mysql')    
     def test_nonexistent(self):
         self.assertRaises(NoSuchTableError, Table,
                           'fake_table',
-                          testbase.db, autoload=True)
+                          MetaData(testbase.db), autoload=True)
         
     def testoverride(self):
         meta = MetaData(testbase.db)
@@ -452,7 +480,7 @@ class ReflectionTest(PersistTest):
         finally:
             table.drop()
 
-    @testbase.supported('mssql')
+    @testing.supported('mssql')
     def testidentity(self):
         meta = MetaData(testbase.db)
         table = Table(
@@ -505,20 +533,6 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
 
-
-        meta = MetaData(testbase.db)
-        table = Table(
-            'select', meta, 
-            Column('col1', Integer, primary_key=True)
-        )
-        table.create()
-        
-        meta2 = MetaData(testbase.db)
-        try:
-            table2 = Table('select', meta2, autoload=True)
-        finally:
-            table.drop()
-
 class CreateDropTest(PersistTest):
     def setUpAll(self):
         global metadata, users
@@ -558,33 +572,33 @@ class CreateDropTest(PersistTest):
     def testcheckfirst(self):
         try:
             assert not users.exists(testbase.db)
-            users.create(connectable=testbase.db)
+            users.create(bind=testbase.db)
             assert users.exists(testbase.db)
-            users.create(connectable=testbase.db, checkfirst=True)
-            users.drop(connectable=testbase.db)
-            users.drop(connectable=testbase.db, checkfirst=True)
-            assert not users.exists(connectable=testbase.db)
-            users.create(connectable=testbase.db, checkfirst=True)
-            users.drop(connectable=testbase.db)
+            users.create(bind=testbase.db, checkfirst=True)
+            users.drop(bind=testbase.db)
+            users.drop(bind=testbase.db, checkfirst=True)
+            assert not users.exists(bind=testbase.db)
+            users.create(bind=testbase.db, checkfirst=True)
+            users.drop(bind=testbase.db)
         finally:
-            metadata.drop_all(connectable=testbase.db)
+            metadata.drop_all(bind=testbase.db)
 
     def test_createdrop(self):
-        metadata.create_all(connectable=testbase.db)
+        metadata.create_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), True )
         self.assertEqual( testbase.db.has_table('email_addresses'), True )        
-        metadata.create_all(connectable=testbase.db)
+        metadata.create_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), True )        
 
-        metadata.drop_all(connectable=testbase.db)
+        metadata.drop_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), False )
         self.assertEqual( testbase.db.has_table('email_addresses'), False )                
-        metadata.drop_all(connectable=testbase.db)
+        metadata.drop_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), False )                
 
 class SchemaTest(PersistTest):
     # this test should really be in the sql tests somewhere, not engine
-    @testbase.unsupported('sqlite')
+    @testing.unsupported('sqlite')
     def testiteration(self):
         metadata = MetaData()
         table1 = Table('table1', metadata, 
@@ -607,14 +621,17 @@ class SchemaTest(PersistTest):
         print buf
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
-
-    @testbase.unsupported('sqlite', 'postgres')
-    def test_create_with_defaultschema(self):
+    
+    @testing.supported('mysql','postgres')
+    def testcreate(self):
         engine = testbase.db
         schema = engine.dialect.get_default_schema_name(engine)
+        #engine.echo = True
 
-        # test reflection of tables with an explcit schemaname
-        # matching the default
+        if testbase.db.name == 'mysql':
+            schema = testbase.db.url.database
+        else:
+            schema = 'public'
         metadata = MetaData(testbase.db)
         table1 = Table('table1', metadata, 
             Column('col1', Integer, primary_key=True),
@@ -628,10 +645,7 @@ class SchemaTest(PersistTest):
         metadata.clear()
         table1 = Table('table1', metadata, autoload=True, schema=schema)
         table2 = Table('table2', metadata, autoload=True, schema=schema)
-        assert table1.schema == table2.schema == schema
-        assert len(metadata.tables) == 2
         metadata.drop_all()
-    
         
 if __name__ == "__main__":
     testbase.main()        

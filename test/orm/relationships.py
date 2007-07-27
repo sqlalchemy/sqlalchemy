@@ -1,12 +1,12 @@
 import testbase
-import unittest, sys, datetime
-
-db = testbase.db
-
+import datetime
 from sqlalchemy import *
+from sqlalchemy.orm import *
+from sqlalchemy.orm import collections
+from sqlalchemy.orm.collections import collection
+from testlib import *
 
-
-class RelationTest(testbase.PersistTest):
+class RelationTest(PersistTest):
     """this is essentially an extension of the "dependency.py" topological sort test.  
     in this test, a table is dependent on two other tables that are otherwise unrelated to each other.
     the dependency sort must insure that this childmost table is below both parent tables in the outcome
@@ -15,10 +15,8 @@ class RelationTest(testbase.PersistTest):
     to subtle differences in program execution, this test case was exposing the bug whereas the simpler tests
     were not."""
     def setUpAll(self):
-        global tbl_a
-        global tbl_b
-        global tbl_c
-        global tbl_d
+        global metadata, tbl_a, tbl_b, tbl_c, tbl_d
+
         metadata = MetaData()
         tbl_a = Table("tbl_a", metadata,
             Column("id", Integer, primary_key=True),
@@ -41,8 +39,8 @@ class RelationTest(testbase.PersistTest):
         )
     def setUp(self):
         global session
-        session = create_session(bind_to=testbase.db)
-        conn = session.connect()
+        session = create_session(bind=testbase.db)
+        conn = testbase.db.connect()
         conn.create(tbl_a)
         conn.create(tbl_b)
         conn.create(tbl_c)
@@ -80,14 +78,14 @@ class RelationTest(testbase.PersistTest):
         session.save_or_update(b)
         
     def tearDown(self):
-        conn = session.connect()
+        conn = testbase.db.connect()
         conn.drop(tbl_d)
         conn.drop(tbl_c)
         conn.drop(tbl_b)
         conn.drop(tbl_a)
 
     def tearDownAll(self):
-        testbase.metadata.tables.clear()
+        metadata.drop_all(testbase.db)
     
     def testDeleteRootTable(self):
         session.flush()
@@ -99,7 +97,7 @@ class RelationTest(testbase.PersistTest):
         session.delete(c) # fails
         session.flush()
         
-class RelationTest2(testbase.PersistTest):
+class RelationTest2(PersistTest):
     """this test tests a relationship on a column that is included in multiple foreign keys,
     as well as a self-referential relationship on a composite key where one column in the foreign key
     is 'joined to itself'."""
@@ -216,7 +214,7 @@ class RelationTest2(testbase.PersistTest):
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
         
-class RelationTest3(testbase.PersistTest):
+class RelationTest3(PersistTest):
     def setUpAll(self):
         global jobs, pageversions, pages, metadata, Job, Page, PageVersion, PageComment
         import datetime
@@ -350,7 +348,7 @@ class RelationTest3(testbase.PersistTest):
         s.delete(j)
         s.flush()
 
-class RelationTest4(testbase.ORMTest):
+class RelationTest4(ORMTest):
     """test syncrules on foreign keys that are also primary"""
     def define_tables(self, metadata):
         global tableA, tableB
@@ -498,7 +496,7 @@ class RelationTest4(testbase.ORMTest):
         assert a1 not in sess
         assert b1 not in sess
 
-class RelationTest5(testbase.ORMTest):
+class RelationTest5(ORMTest):
     """test a map to a select that relates to a map to the table"""
     def define_tables(self, metadata):
         global items
@@ -554,7 +552,7 @@ class RelationTest5(testbase.ORMTest):
             assert old.id == new.id
         
         
-class TypeMatchTest(testbase.ORMTest):
+class TypeMatchTest(ORMTest):
     """test errors raised when trying to add items whose type is not handled by a relation"""
     def define_tables(self, metadata):
         global a, b, c, d
@@ -672,7 +670,7 @@ class TypeMatchTest(testbase.ORMTest):
         except exceptions.AssertionError, err:
             assert str(err) == "Attribute 'a' on class '%s' doesn't handle objects of type '%s'" % (D, B)
 
-class TypedAssociationTable(testbase.ORMTest):
+class TypedAssociationTable(ORMTest):
     def define_tables(self, metadata):
         global t1, t2, t3
         
@@ -722,7 +720,7 @@ class TypedAssociationTable(testbase.ORMTest):
         assert t3.count().scalar() == 1
         
 # TODO: move these tests to either attributes.py test or its own module
-class CustomCollectionsTest(testbase.ORMTest):
+class CustomCollectionsTest(ORMTest):
     def define_tables(self, metadata):
         global sometable, someothertable
         sometable = Table('sometable', metadata,
@@ -745,7 +743,7 @@ class CustomCollectionsTest(testbase.ORMTest):
         })
         mapper(Bar, someothertable)
         f = Foo()
-        assert isinstance(f.bars.data, MyList)
+        assert isinstance(f.bars, MyList)
     def testlazyload(self):
         """test that a 'set' can be used as a collection and can lazyload."""
         class Foo(object):
@@ -769,23 +767,27 @@ class CustomCollectionsTest(testbase.ORMTest):
         
     def testdict(self):
         """test that a 'dict' can be used as a collection and can lazyload."""
+
         class Foo(object):
             pass
         class Bar(object):
             pass
         class AppenderDict(dict):
-            def append(self, item):
+            @collection.appender
+            def set(self, item):
                 self[id(item)] = item
-            def __iter__(self):
-                return iter(self.values())
+            @collection.remover
+            def remove(self, item):
+                if id(item) in self:
+                    del self[id(item)]
                 
         mapper(Foo, sometable, properties={
             'bars':relation(Bar, collection_class=AppenderDict)
         })
         mapper(Bar, someothertable)
         f = Foo()
-        f.bars.append(Bar())
-        f.bars.append(Bar())
+        f.bars.set(Bar())
+        f.bars.set(Bar())
         sess = create_session()
         sess.save(f)
         sess.flush()
@@ -793,6 +795,44 @@ class CustomCollectionsTest(testbase.ORMTest):
         f = sess.query(Foo).get(f.col1)
         assert len(list(f.bars)) == 2
         f.bars.clear()
+
+    def testdictwrapper(self):
+        """test that the supplied 'dict' wrapper can be used as a collection and can lazyload."""
+
+        class Foo(object):
+            pass
+        class Bar(object):
+            def __init__(self, data): self.data = data
+                
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar,
+                collection_class=collections.column_mapped_collection(someothertable.c.data))
+        })
+        mapper(Bar, someothertable)
+
+        f = Foo()
+        col = collections.collection_adapter(f.bars)
+        col.append_with_event(Bar('a'))
+        col.append_with_event(Bar('b'))
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+
+        existing = set([id(b) for b in f.bars.values()])
+
+        col = collections.collection_adapter(f.bars)
+        col.append_with_event(Bar('b'))
+        f.bars['a'] = Bar('a')
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+
+        replaced = set([id(b) for b in f.bars.values()])
+        self.assert_(existing != replaced)
 
     def testlist(self):
         class Parent(object):
@@ -811,13 +851,13 @@ class CustomCollectionsTest(testbase.ORMTest):
         o = Child()
         control.append(o)
         p.children.append(o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child(), Child(), Child(), Child()]
         control.extend(o)
         p.children.extend(o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         assert control[0] == p.children[0]
@@ -826,92 +866,92 @@ class CustomCollectionsTest(testbase.ORMTest):
 
         del control[1]
         del p.children[1]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child()]
         control[1:3] = o
         p.children[1:3] = o
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child(), Child(), Child(), Child()]
         control[1:3] = o
         p.children[1:3] = o
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child(), Child(), Child(), Child()]
         control[-1:-2] = o
         p.children[-1:-2] = o
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child(), Child(), Child(), Child()]
         control[4:] = o
         p.children[4:] = o
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
         
         o = Child()
         control.insert(0, o)
         p.children.insert(0, o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = Child()
         control.insert(3, o)
         p.children.insert(3, o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = Child()
         control.insert(999, o)
         p.children.insert(999, o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         del control[0:1]
         del p.children[0:1]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         del control[1:1]
         del p.children[1:1]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         del control[1:3]
         del p.children[1:3]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         del control[7:]
         del p.children[7:]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         assert control.pop() == p.children.pop()
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         assert control.pop(0) == p.children.pop(0)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         assert control.pop(2) == p.children.pop(2)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = Child()
         control.insert(2, o)
         p.children.insert(2, o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         control.remove(o)
         p.children.remove(o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
     def testobj(self):
@@ -922,9 +962,12 @@ class CustomCollectionsTest(testbase.ORMTest):
 
         class MyCollection(object):
             def __init__(self): self.data = []
+            @collection.appender
             def append(self, value): self.data.append(value)
+            @collection.remover
+            def remove(self, value): self.data.remove(value)
+            @collection.iterator
             def __iter__(self): return iter(self.data)
-            def clear(self): self.data.clear()
 
         mapper(Parent, sometable, properties={
             'children':relation(Child, collection_class=MyCollection)
@@ -958,7 +1001,7 @@ class CustomCollectionsTest(testbase.ORMTest):
         o = list(p2.children)
         assert len(o) == 3
 
-class ViewOnlyTest(testbase.ORMTest):
+class ViewOnlyTest(ORMTest):
     """test a view_only mapping where a third table is pulled into the primary join condition,
     using overlapping PK column names (should not produce "conflicting column" error)"""
     def define_tables(self, metadata):
@@ -1009,7 +1052,7 @@ class ViewOnlyTest(testbase.ORMTest):
         assert set([x.id for x in c1.t2s]) == set([c2a.id, c2b.id])
         assert set([x.id for x in c1.t2_view]) == set([c2b.id])
 
-class ViewOnlyTest2(testbase.ORMTest):
+class ViewOnlyTest2(ORMTest):
     """test a view_only mapping where a third table is pulled into the primary join condition,
     using non-overlapping PK column names (should not produce "mapper has no column X" error)"""
     def define_tables(self, metadata):

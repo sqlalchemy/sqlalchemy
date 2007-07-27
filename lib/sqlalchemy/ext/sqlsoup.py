@@ -310,8 +310,8 @@ Boring tests here.  Nothing of real expository value.
 """
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
-from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy.exceptions import *
 
 
@@ -392,7 +392,7 @@ class SelectableClassType(type):
     def update(cls, whereclause=None, values=None, **kwargs):
         _ddl_error(cls)
 
-    def _selectable(cls):
+    def __selectable__(cls):
         return cls._table
 
     def __getattr__(cls, attr):
@@ -434,9 +434,7 @@ def _selectable_name(selectable):
         return x
 
 def class_for_table(selectable, **mapper_kwargs):
-    if not hasattr(selectable, '_selectable') \
-    or selectable._selectable() != selectable:
-        raise ArgumentError('class_for_table requires a selectable as its argument')
+    selectable = sql._selectable(selectable)
     mapname = 'Mapped' + _selectable_name(selectable)
     if isinstance(selectable, Table):
         klass = TableClassType(mapname, (object,), {})
@@ -520,7 +518,7 @@ class SqlSoup:
 
     def with_labels(self, item):
         # TODO give meaningful aliases
-        return self.map(item._selectable().select(use_labels=True).alias('foo'))
+        return self.map(sql._selectable(item).select(use_labels=True).alias('foo'))
 
     def join(self, *args, **kwargs):
         j = join(*args, **kwargs)
@@ -539,6 +537,9 @@ class SqlSoup:
                 t = None
             self._cache[attr] = t
         return t
+    
+    def __repr__(self):
+        return 'SqlSoup(%r)' % self._metadata
 
 if __name__ == '__main__':
     import doctest

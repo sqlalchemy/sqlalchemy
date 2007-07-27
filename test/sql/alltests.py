@@ -7,6 +7,8 @@ def suite():
         'sql.testtypes',
         'sql.constraints',
 
+        'sql.generative',
+        
         # SQL syntax
         'sql.select',
         'sql.selectable',
@@ -29,8 +31,6 @@ def suite():
             mod = getattr(mod, token)
         alltests.addTest(unittest.findTestCases(mod, suiteClass=None))
     return alltests
-
-
 
 if __name__ == '__main__':
     testbase.main(suite())

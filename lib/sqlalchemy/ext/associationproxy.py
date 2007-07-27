@@ -6,11 +6,10 @@ transparent proxied access to the endpoint of an association object.
 See the example ``examples/association/proxied_association.py``.
 """
 
-from sqlalchemy.orm.attributes import InstrumentedList
+import weakref, itertools
 import sqlalchemy.exceptions as exceptions
 import sqlalchemy.orm as orm
 import sqlalchemy.util as util
-import weakref
 
 def association_proxy(targetcollection, attr, **kw):
     """Convenience function for use in mapped classes.  Implements a Python
@@ -109,7 +108,7 @@ class AssociationProxy(object):
         self.collection_class = None
 
     def _get_property(self):
-        return orm.class_mapper(self.owning_class).props[self.target_collection]
+        return orm.class_mapper(self.owning_class).get_property(self.target_collection)
 
     def _target_class(self):
         return self._get_property().mapper.class_
@@ -168,15 +167,7 @@ class AssociationProxy(object):
 
     def _new(self, lazy_collection):
         creator = self.creator and self.creator or self.target_class
-
-        # Prefer class typing here to spot dicts with the required append()
-        # method.
-        collection = lazy_collection()
-        if isinstance(collection.data, dict):
-            self.collection_class = dict
-        else:
-            self.collection_class = util.duck_type_collection(collection.data)
-        del collection
+        self.collection_class = util.duck_type_collection(lazy_collection())
 
         if self.proxy_factory:
             return self.proxy_factory(lazy_collection, creator, self.value_attr)
@@ -269,7 +260,33 @@ class _AssociationList(object):
         return self._get(self.col[index])
     
     def __setitem__(self, index, value):
-        self._set(self.col[index], value)
+        if not isinstance(index, slice):
+            self._set(self.col[index], value)
+        else:
+            if index.stop is None:
+                stop = len(self)
+            elif index.stop < 0:
+                stop = len(self) + index.stop
+            else:
+                stop = index.stop
+            step = index.step or 1
+
+            rng = range(index.start or 0, stop, step)
+            if step == 1:
+                for i in rng:
+                    del self[index.start]
+                i = index.start
+                for item in value:
+                    self.insert(i, item)
+                    i += 1
+            else:
+                if len(value) != len(rng):
+                    raise ValueError(
+                        "attempt to assign sequence of size %s to "
+                        "extended slice of size %s" % (len(value),
+                                                       len(rng)))
+                for i, item in zip(rng, value):
+                    self._set(self.col[i], item)
 
     def __delitem__(self, index):
         del self.col[index]
@@ -291,9 +308,13 @@ class _AssociationList(object):
         del self.col[start:end]
 
     def __iter__(self):
-        """Iterate over proxied values.  For the actual domain objects,
-        iterate over .col instead or just use the underlying collection
-        directly from its property on the parent."""
+        """Iterate over proxied values.
+
+        For the actual domain objects, iterate over .col instead or
+        just use the underlying collection directly from its property
+        on the parent.
+        """
+
         for member in self.col:
             yield self._get(member)
         raise StopIteration
@@ -304,12 +325,36 @@ class _AssociationList(object):
         item = self._create(value, **kw)
         self.col.append(item)
 
+    def count(self, value):
+        return sum([1 for _ in
+                    itertools.ifilter(lambda v: v == value, iter(self))])
+
     def extend(self, values):
         for v in values:
             self.append(v)
 
     def insert(self, index, value):
         self.col[index:index] = [self._create(value)]
+
+    def pop(self, index=-1):
+        return self.getter(self.col.pop(index))
+
+    def remove(self, value):
+        for i, val in enumerate(self):
+            if val == value:
+                del self.col[i]
+                return
+        raise ValueError("value not in list")
+
+    def reverse(self):
+        """Not supported, use reversed(mylist)"""
+
+        raise NotImplementedError
+
+    def sort(self):
+        """Not supported, use sorted(mylist)"""
+
+        raise NotImplementedError
 
     def clear(self):
         del self.col[0:len(self.col)]
@@ -545,9 +590,7 @@ class _AssociationSet(object):
 
     def add(self, value):
         if value not in self:
-            # must shove this through InstrumentedList.append() which will
-            # eventually call the collection_class .add()
-            self.col.append(self._create(value))
+            self.col.add(self._create(value))
 
     # for discard and remove, choosing a more expensive check strategy rather
     # than call self.creator()
@@ -567,12 +610,7 @@ class _AssociationSet(object):
     def pop(self):
         if not self.col:
             raise KeyError('pop from an empty set')
-        # grumble, pop() is borked on InstrumentedList (#548)
-        if isinstance(self.col, InstrumentedList):
-            member = list(self.col)[0]
-            self.col.remove(member)
-        else:
-            member = self.col.pop()
+        member = self.col.pop()
         return self._get(member)
 
     def update(self, other):

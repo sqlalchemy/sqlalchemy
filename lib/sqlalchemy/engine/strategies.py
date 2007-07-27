@@ -4,13 +4,11 @@ By default there are two, one which is the "thread-local" strategy,
 one which is the "plain" strategy.
 
 New strategies can be added via constructing a new EngineStrategy
-object which will add itself to the list of available strategies here,
-or replace one of the existing name.  this can be accomplished via a
-mod; see the sqlalchemy/mods package for details.
+object which will add itself to the list of available strategies.
 """
 
 
-from sqlalchemy.engine import base, default, threadlocal, url
+from sqlalchemy.engine import base, threadlocal, url
 from sqlalchemy import util, exceptions
 from sqlalchemy import pool as poollib
 
@@ -92,8 +90,6 @@ class DefaultEngineStrategy(EngineStrategy):
             else:
                 pool = pool
 
-        provider = self.get_pool_provider(u, pool)
-
         # create engine.
         engineclass = self.get_engine_cls()
         engine_args = {}
@@ -105,12 +101,9 @@ class DefaultEngineStrategy(EngineStrategy):
         if len(kwargs):
             raise TypeError("Invalid argument(s) %s sent to create_engine(), using configuration %s/%s/%s.  Please check that the keyword arguments are appropriate for this combination of components." % (','.join(["'%s'" % k for k in kwargs]), dialect.__class__.__name__, pool.__class__.__name__, engineclass.__name__))
 
-        return engineclass(provider, dialect, **engine_args)
+        return engineclass(pool, dialect, u, **engine_args)
 
     def pool_threadlocal(self):
-        raise NotImplementedError()
-
-    def get_pool_provider(self, url, pool):
         raise NotImplementedError()
 
     def get_engine_cls(self):
@@ -123,9 +116,6 @@ class PlainEngineStrategy(DefaultEngineStrategy):
     def pool_threadlocal(self):
         return False
 
-    def get_pool_provider(self, url, pool):
-        return default.PoolConnectionProvider(url, pool)
-
     def get_engine_cls(self):
         return base.Engine
 
@@ -137,9 +127,6 @@ class ThreadLocalEngineStrategy(DefaultEngineStrategy):
 
     def pool_threadlocal(self):
         return True
-
-    def get_pool_provider(self, url, pool):
-        return threadlocal.TLocalConnectionProvider(url, pool)
 
     def get_engine_cls(self):
         return threadlocal.TLEngine

@@ -4,16 +4,15 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-
-
-from sqlalchemy import sql, schema, exceptions
-from sqlalchemy import logging
-from sqlalchemy.orm import util as mapperutil
-
 """Contains the ClauseSynchronizer class, which is used to map
 attributes between two objects in a manner corresponding to a SQL
 clause that compares column values.
 """
+
+from sqlalchemy import sql, schema, exceptions
+from sqlalchemy import logging
+from sqlalchemy.orm import util as mapperutil
+import operator
 
 ONETOMANY = 0
 MANYTOONE = 1
@@ -44,7 +43,7 @@ class ClauseSynchronizer(object):
         def compile_binary(binary):
             """Assemble a SyncRule given a single binary condition."""
 
-            if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
+            if binary.operator != operator.eq or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                 return
 
             source_column = None

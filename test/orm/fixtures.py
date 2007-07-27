@@ -1,4 +1,6 @@
+import testbase
 from sqlalchemy import *
+from testlib import *
 
 _recursion_stack = util.Set()
 class Base(object):
@@ -35,7 +37,7 @@ class Base(object):
                         continue
                 else:
                     if value is not None:
-                        if value != getattr(other, attr):
+                        if value != getattr(other, attr, None):
                             return False
             else:
                 return True

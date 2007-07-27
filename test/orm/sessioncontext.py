@@ -1,15 +1,15 @@
-from testbase import PersistTest, AssertMixin
-import unittest, sys, os
+import testbase
+from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy.orm.session import object_session, Session
-from sqlalchemy import *
-import testbase
+from testlib import *
+
 
 metadata = MetaData()
 users = Table('users', metadata,
     Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
     Column('user_name', String(40)),
-    mysql_engine='innodb'
 )
 
 class SessionContextTest(AssertMixin):

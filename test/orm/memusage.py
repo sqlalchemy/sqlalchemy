@@ -1,21 +1,18 @@
-from sqlalchemy import *
-from sqlalchemy.orm import mapperlib, session, unitofwork, attributes
-Mapper = mapperlib.Mapper
-import gc
 import testbase
-import tables
+import gc
+from sqlalchemy import MetaData, Integer, String, ForeignKey
+from sqlalchemy.orm import mapper, relation, clear_mappers, create_session
+from sqlalchemy.orm.mapper import Mapper
+from testlib import *
 
 class A(object):pass
 class B(object):pass
 
-class MapperCleanoutTest(testbase.AssertMixin):
+class MapperCleanoutTest(AssertMixin):
     """test that clear_mappers() removes everything related to the class.
     
     does not include classes that use the assignmapper extension."""
-    def setUp(self):
-        global engine
-        engine = testbase.db
-    
+
     def test_mapper_cleanup(self):
         for x in range(0, 5):
             self.do_test()
@@ -33,7 +30,7 @@ class MapperCleanoutTest(testbase.AssertMixin):
         assert True
         
     def do_test(self):
-        metadata = MetaData(engine)
+        metadata = MetaData(testbase.db)
 
         table1 = Table("mytable", metadata, 
             Column('col1', Integer, primary_key=True),

@@ -1,9 +1,9 @@
 """basic tests of lazy loaded attributes"""
 
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import testbase
-
+from testlib import *
 from fixtures import *
 from query import QueryTest
 

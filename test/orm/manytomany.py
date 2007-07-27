@@ -1,6 +1,8 @@
 import testbase
 from sqlalchemy import *
-import string
+from sqlalchemy.orm import *
+from testlib import *
+
 
 class Place(object):
     '''represents a place'''
@@ -25,7 +27,7 @@ class Transition(object):
     def __repr__(self):
         return object.__repr__(self)+ " " + repr(self.inputs) + " " + repr(self.outputs)
         
-class M2MTest(testbase.ORMTest):
+class M2MTest(ORMTest):
     def define_tables(self, metadata):
         global place
         place = Table('place', metadata,
@@ -110,7 +112,7 @@ class M2MTest(testbase.ORMTest):
 
         for p in l:
             pp = p.places
-            self.echo("Place " + str(p) +" places " + repr(pp))
+            print "Place " + str(p) +" places " + repr(pp)
 
         [sess.delete(p) for p in p1,p2,p3,p4,p5,p6,p7]
         sess.flush()
@@ -176,7 +178,7 @@ class M2MTest(testbase.ORMTest):
         self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
         self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
 
-class M2MTest2(testbase.ORMTest):
+class M2MTest2(ORMTest):
     def define_tables(self, metadata):
         global studentTbl
         studentTbl = Table('student', metadata, Column('name', String(20), primary_key=True))
@@ -243,7 +245,7 @@ class M2MTest2(testbase.ORMTest):
         sess.flush()
         assert enrolTbl.count().scalar() == 0
         
-class M2MTest3(testbase.ORMTest):
+class M2MTest3(ORMTest):
     def define_tables(self, metadata):
         global c, c2a1, c2a2, b, a
         c = Table('c', metadata, 
@@ -277,15 +279,15 @@ class M2MTest3(testbase.ORMTest):
         class A(object):pass
         class B(object):pass
 
-        assign_mapper(B, b)
+        mapper(B, b)
 
-        assign_mapper(A, a, 
+        mapper(A, a, 
             properties = {
                 'tbs' : relation(B, primaryjoin=and_(b.c.a1==a.c.a1, b.c.b2 == True), lazy=False),
             }
         )
 
-        assign_mapper(C, c, 
+        mapper(C, c, 
             properties = {
                 'a1s' : relation(A, secondary=c2a1, lazy=False),
                 'a2s' : relation(A, secondary=c2a2, lazy=False)

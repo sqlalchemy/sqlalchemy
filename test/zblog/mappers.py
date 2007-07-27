@@ -4,6 +4,7 @@ import zblog.tables as tables
 import zblog.user as user
 from zblog.blog import *
 from sqlalchemy import *
+from sqlalchemy.orm import *
 import sqlalchemy.util as util
 
 def zblog_mappers():

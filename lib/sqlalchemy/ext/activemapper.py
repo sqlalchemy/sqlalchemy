@@ -1,11 +1,10 @@
-from sqlalchemy             import create_session, relation, mapper, \
-                                   join, ThreadLocalMetaData, class_mapper, \
-                                   util, Integer
-from sqlalchemy             import and_, or_
+from sqlalchemy             import ThreadLocalMetaData, util, Integer
 from sqlalchemy             import Table, Column, ForeignKey
+from sqlalchemy.orm         import class_mapper, relation, create_session
+                                   
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy.ext.assignmapper import assign_mapper
-from sqlalchemy import backref as create_backref
+from sqlalchemy.orm import backref as create_backref
 import sqlalchemy
 
 import inspect
@@ -14,7 +13,7 @@ import sys
 #
 # the "proxy" to the database engine... this can be swapped out at runtime
 #
-metadata = ThreadLocalMetaData("activemapper")
+metadata = ThreadLocalMetaData()
 
 try:
     objectstore = sqlalchemy.objectstore

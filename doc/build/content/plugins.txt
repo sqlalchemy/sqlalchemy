@@ -281,84 +281,249 @@ To continue the `MyClass` example:
 **Author:** Mike Bayer and Jason Kirtland<br/>
 **Version:** 0.3.1 or greater
 
-`associationproxy` is used to create a transparent proxy to the associated object in an association relationship, thereby decreasing the verbosity of the pattern in cases where explicit access to the association object is not required.  The association relationship pattern is a richer form of a many-to-many relationship, which is described in [datamapping_association](rel:datamapping_association).  It is strongly recommended to fully understand the association object pattern in its explicit form before using this extension; see the examples in the SQLAlchemy distribution under the directory `examples/association/`.
+`associationproxy` is used to create a simplified, read/write view of a relationship.  It can be used to cherry-pick fields from a collection of related objects or to greatly simplify access to associated objects in an association relationship.
 
-When dealing with association relationships, the **association object** refers to the object that maps to a row in the association table (i.e. the many-to-many table), while the **associated object** refers to the "endpoint" of the association, i.e. the ultimate object referenced by the parent.  The proxy can return collections of objects attached to association objects, and can also create new association objects given only the associated object.  An example using the Keyword mapping described in the data mapping documentation is as follows:
+#### Simplifying Relations
+
+    {python}
+    users_table = Table('users', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('name', String(64)),
+    )
+    
+    keywords_table = Table('keywords', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('keyword', String(64))
+    )
+
+    userkeywords_table = Table('userkeywords', metadata,
+        Column('user_id', Integer, ForeignKey("users.id"),
+               primary_key=True),
+        Column('keyword_id', Integer, ForeignKey("keywords.id"),
+               primary_key=True)
+    )
+
+    class User(object):
+        def __init__(self, name):
+            self.name = name
+
+    class Keyword(object):
+        def __init__(self, keyword):
+            self.keyword = keyword
+
+    mapper(User, users, properties={
+        'kw': relation(Keyword, secondary=userkeywords)
+        })
+    mapper(Keyword, keywords)
+
+Above are three simple tables, modeling users, keywords and a many-to-many relationship between the two.  These ``Keyword`` objects are little more than a container for a name, and accessing them via the relation is awkward:
+
+    {python}
+    user = User('jek')
+    user.kw.append(Keyword('cheese inspector'))
+    print user.kw
+    # [<__main__.Keyword object at 0xb791ea0c>]
+    print user.kw[0].keyword
+    # 'cheese inspector'
+    print [keyword.keyword for keyword in u._keywords]
+    # ['cheese inspector']
+
+With ``association_proxy`` you have a "view" of the relation that contains just the `.keyword` of the related objects.  The proxy is a Python property, and unlike the mapper relation, is defined in your class:
 
     {python}
     from sqlalchemy.ext.associationproxy import association_proxy
-    
+
     class User(object):
-        pass
-
-    class Keyword(object):
         def __init__(self, name):
-            self.keyword_name = name
+            self.name = name
 
-    class Article(object):
-        # create "keywords" proxied association.
-        # the collection is called 'keyword_associations', the endpoint
-        # attribute of each association object is called 'keyword'.  the 
-        # class itself of the association object will be figured out automatically  .
-        keywords = association_proxy('keyword_associations', 'keyword')
+        # proxy the 'keyword' attribute from the 'kw' relation
+        keywords = association_proxy('kw', 'keyword')
 
-    class KeywordAssociation(object):
-        pass
+    # ...
+    >>> user.kw
+    [<__main__.Keyword object at 0xb791ea0c>]
+    >>> user.keywords
+    ['cheese inspector']
+    >>> user.keywords.append('snack ninja')
+    >>> user.keywords
+    ['cheese inspector', 'snack ninja']
+    >>> user.kw
+    [<__main__.Keyword object at 0x9272a4c>, <__main__.Keyword object at 0xb7b396ec>]
 
-    # create mappers normally
-    # note that we set up 'keyword_associations' on Article,
-    # and 'keyword' on KeywordAssociation.
-    mapper(Article, articles_table, properties={
-        'keyword_associations':relation(KeywordAssociation, lazy=False, cascade="all, delete-orphan")
-        }
-    )
-    mapper(KeywordAssociation, itemkeywords_table,
-        primary_key=[itemkeywords_table.c.article_id, itemkeywords_table.c.keyword_id],
-        properties={
-            'keyword' : relation(Keyword, lazy=False), 
-            'user' : relation(User, lazy=False) 
-        }
-    )
-    mapper(User, users_table)
-    mapper(Keyword, keywords_table)
+The proxy is read/write.  New associated objects are created on demand when values are added to the proxy, and modifying or removing an entry through the proxy also affects the underlying collection.
 
-    # now, Keywords can be attached to an Article directly;
-    # KeywordAssociation will be created by the association_proxy, and have the 
-    # 'keyword' attribute set to the new Keyword.
-    # note that these KeywordAssociation objects will not have a User attached to them.
-    article = Article()
-    article.keywords.append(Keyword('blue'))
-    article.keywords.append(Keyword('red'))
-    session.save(article)
-    session.flush()
-    
-    # the "keywords" collection also returns the underlying Keyword objects
-    article = session.query(Article).get_by(id=12)
-    for k in article.keywords:
-        print "Keyword:", k.keyword_name
+- The association proxy property is backed by a mapper-defined relation, either a collection or scalar.
+- You can access and modify both the proxy and the backing relation. Changes in one are immediate in the other.
+- The proxy acts like the type of the underlying collection.  A list gets a list-like proxy, a dict a dict-like proxy, and so on.
+- Multiple proxies for the same relation are fine.
+- Proxies are lazy, and won't triger a load of the backing relation until they are accessed.
+- The relation is inspected to determine the type of the related objects.
+- To construct new instances, the type is called with the value being assigned, or key and value for dicts.
+- A ``creator`` function can be used to create instances instead.
 
-    # the original 'keyword_associations' relation exists normally with no awareness of the proxy
-    article.keyword_associations.append(KeywordAssociation())
-    print [ka for ka in article.keyword_associations]
-    
-Note that the above operations on the `keywords` collection are proxying operations to and from the `keyword_associations` collection, which exists normally and can be accessed directly.  `association_proxy` will also detect if the collection is list or scalar based and will configure the proxied property to act the same way.
+Above, the ``Keyword.__init__`` takes a single argument ``keyword``, which maps conveniently to the value being set through the proxy.  A ``creator`` function could have been used instead if more flexiblity was required.
 
-For the common case where the association object's creation needs to be specified by the application, `association_proxy` takes an optional callable `creator()` which takes a single associated object as an argument, and returns a new association object.
+Because the proxies are backed a regular relation collection, all of the usual hooks and patterns for using collections are still in effect.  The most convenient behavior is the automatic setting of "parent"-type relationships on assignment.  In the example above, nothing special had to be done to associate the Keyword to the User.  Simply adding it to the collection is sufficient.
+
+#### Simplifying Association Object Relations
+
+Association proxies are also useful for keeping [association objects](rel:datamapping_association) out the way during regular use.  For example, the  ``userkeywords`` table might have a bunch of auditing columns that need to get updated when changes are made- columns that are updated but seldom, if ever, accessed in your application.  A proxy can provide a very natural access pattern for the relation.
 
     {python}
-    def create_keyword_association(keyword):
-        ka = KeywordAssociation()
-        ka.keyword = keyword
-        return ka
-        
-    class Article(object):
-        # create "keywords" proxied association
-        keywords = association_proxy('keyword_associations', 'keyword', creator=create_keyword_association)
+    from sqlalchemy.ext.associationproxy import association_proxy
 
-Proxy properties are implemented by the `AssociationProxy` class, which is
-also available in the module.  The `association_proxy` function is not present
-in SQLAlchemy versions 0.3.1 through 0.3.7, instead instantiate the class
-directly:
+    # users_table and keywords_table tables as above, then:
+
+    userkeywords_table = Table('userkeywords', metadata,
+        Column('user_id', Integer, ForeignKey("users.id"), primary_key=True),
+        Column('keyword_id', Integer, ForeignKey("keywords.id"), primary_key=True),
+        # add some auditing columns
+        Column('updated_at', DateTime, default=datetime.now),
+        Column('updated_by', Integer, default=get_current_uid, onupdate=get_current_uid),
+    )
+
+    def _create_uk_by_keyword(keyword):
+        """A creator function."""
+        return UserKeyword(keyword=keyword)
+
+    class User(object):
+        def __init__(self, name):
+            self.name = name
+        keywords = association_proxy('user_keywords', 'keyword', creator=_create_uk_by_keyword)
+
+    class Keyword(object):
+        def __init__(self, keyword):
+            self.keyword = keyword
+        def __repr__(self):
+            return 'Keyword(%s)' % repr(self.keyword)
+
+    class UserKeyword(object):
+        def __init__(self, user=None, keyword=None):
+            self.user = user
+            self.keyword = keyword
+
+    mapper(User, users_table, properties={
+        'user_keywords': relation(UserKeyword)
+    })
+    mapper(Keyword, keywords_table)
+    mapper(UserKeyword, userkeywords_table, properties={
+        'user': relation(User),
+        'keyword': relation(Keyword),
+    })
+
+
+    user = User('log')
+    kw1  = Keyword('new_from_blammo')
+
+    # Adding a Keyword requires creating a UserKeyword association object
+    user.user_keywords.append(UserKeyword(user, kw1))
+
+    # And accessing Keywords requires traverrsing UserKeywords
+    print user.user_keywords[0]
+    # <__main__.UserKeyword object at 0xb79bbbec>
+
+    print user.user_keywords[0].keyword
+    # Keyword('new_from_blammo')
+
+    # Lots of work.
+
+    # It's much easier to go through the association proxy!
+    for kw in (Keyword('its_big'), Keyword('its_heavy'), Keyword('its_wood')):
+        user.keywords.append(kw)
+
+    print user.keywords
+    # [Keyword('new_from_blammo'), Keyword('its_big'), Keyword('its_heavy'), Keyword('its_wood')]
+
+
+#### Building Complex Views
+
+    {python}
+    stocks = Table("stocks", meta,
+       Column('symbol', String(10), primary_key=True),
+       Column('description', String(100), nullable=False),
+       Column('last_price', Numeric)
+    )
+
+    brokers = Table("brokers", meta,
+       Column('id', Integer,primary_key=True),
+       Column('name', String(100), nullable=False)
+    )
+
+    holdings = Table("holdings", meta,
+      Column('broker_id', Integer, ForeignKey('brokers.id'), primary_key=True),
+      Column('symbol', String(10), ForeignKey('stocks.symbol'), primary_key=True),
+      Column('shares', Integer)
+    )
+
+Above are three tables, modeling stocks, their brokers and the number of shares of a stock held by each broker.  This situation is quite different from the association example above.  `shares` is a _property of the relation_, an important one that we need to use all the time.
+
+For this example, it would be very convenient if `Broker` objects had a dictionary collection that mapped `Stock` instances to the shares held for each.  That's easy.
+
+    {python}
+    from sqlalchemy.ext.associationproxy import association_proxy
+    from sqlalchemy.orm.collections import attribute_mapped_collection
+
+    def _create_holding(stock, shares):
+        """A creator function, constructs Holdings from Stock and share quantity."""
+        return Holding(stock=stock, shares=shares)
+
+    class Broker(object):
+        def __init__(self, name):
+            self.name = name
+
+        holdings = association_proxy('by_stock', 'shares', creator=_create_holding)
+
+    class Stock(object):
+        def __init__(self, symbol, description=None):
+            self.symbol = symbol
+            self.description = description
+            self.last_price = 0
+
+    class Holding(object):
+        def __init__(self, broker=None, stock=None, shares=0):
+            self.broker = broker
+            self.stock = stock
+            self.shares = shares
+
+    mapper(Stock, stocks_table)
+    mapper(Broker, brokers_table, properties={
+        'by_stock': relation(Holding,
+            collection_class=attribute_mapped_collection('stock'))
+    })
+    mapper(Holding, holdings_table, properties={
+        'stock': relation(Stock),
+        'broker': relation(Broker)
+    })
+
+Above, we've set up the 'by_stock' relation collection to act as a dictionary, using the `.stock` property of each Holding as a key.
+
+Populating and accessing that dictionary manually is slightly inconvenient because of the complexity of the Holdings association object:
+
+    {python}
+    stock = Stock('ZZK')
+    broker = Broker('paj')
+
+    broker.holdings[stock] = Holding(broker, stock, 10)
+    print broker.holdings[stock].shares
+    # 10
+
+The `by_stock` proxy we've added to the `Broker` class hides the details of the `Holding` while also giving access to `.shares`:
+
+    {python}
+    for stock in (Stock('JEK'), Stock('STPZ')):
+        broker.holdings[stock] = 123
+
+    for stock, shares in broker.holdings.items():
+        print stock, shares
+
+    # lets take a peek at that holdings_table after committing changes to the db
+    print list(holdings_table.select().execute())
+    # [(1, 'ZZK', 10), (1, 'JEK', 123), (1, 'STEPZ', 123)]
+
+Further examples can be found in the `examples/` directory in the SQLAlchemy distribution.
+
+The `association_proxy` convenience function is not present in SQLAlchemy versions 0.3.1 through 0.3.7, instead instantiate the class directly:
 
     {python}
     from sqlalchemy.ext.associationproxy import AssociationProxy
@@ -374,7 +539,7 @@ directly:
 `orderinglist` is a helper for mutable ordered relations.  It will intercept
 list operations performed on a relation collection and automatically
 synchronize changes in list position with an attribute on the related objects.
-(See [advdatamapping_properties_customlist](rel:advdatamapping_properties_customlist) for more information on the general pattern.)
+(See [advdatamapping_properties_entitycollections](rel:advdatamapping_properties_customcollections) for more information on the general pattern.)
 
 Example: Two tables that store slides in a presentation.  Each slide
 has a number of bullet points, displayed in order by the 'position'
@@ -447,81 +612,6 @@ documentation](rel:docstrings_sqlalchemy.ext.orderinglist) for more
 information, and also check out the unit tests for examples of stepped
 numbering, alphabetical and Fibonacci numbering.
     
-### threadlocal
-
-**Author:**  Mike Bayer and Daniel Miller
-
-`threadlocal` is an extension that was created primarily to provide backwards compatibility with the older SQLAlchemy 0.1 series.  It uses three features which SQLAlchemy 0.2 and above provide as distinct features:  `SessionContext`, `assign_mapper`, and the `TLEngine`, which is the `Engine` used with the threadlocal `create_engine()` strategy.  It is **strongly** recommended that these three features are understood individually before using threadlocal.
-
-In SQLAlchemy 0.1, users never dealt with explcit connections and didn't have a very explicit `Session` interface, instead relying upon a more magical global object called `objectstore`.  The `objectstore` idea was wildly popular with about half of SA's users, and completely unpopular with the other half.  The threadlocal mod basically brings back `objectstore`, which is in fact just a `SessionContext` where you can call `Session` methods directly off of it, instead of saying `context.current`.  For `threadlocal` to faithfully produce 0.1 behavior, it is invoked as a *mod* which globally installs the objectstore's mapper extension, such that all `Mapper`s will automatically assign all new instances of mapped classes to the objectstore's contextual `Session`.  Additionally, it also changes the default engine strategy used by `create_engine` to be the "threadlocal" strategy, which in normal practice does not affect much. 
-
-When you import threadlocal, what you get is:
-
-* the "objectstore" session context object is now added to the `sqlalchemy` namespace.
-* a global `MapperExtension` is set up for all mappers which assigns "objectstore"'s session as the default session context, used by new instances as well as `Query` objects (see the section [plugins_sessioncontext_sessioncontextext](rel:plugins_sessioncontext_sessioncontextext)).
-* a new function "assign_mapper" is added to the `sqlalchemy` namespace, which calls the `assignmapper` mapper function using the new "objectstore" context.
-* the `create_engine` function is modified so that "threadlocal", and not "plain", is the default engine strategy.
-
-So an important point to understand is, **don't use the threadlocal mod unless you explcitly are looking for that behavior**.  Unfortunately, the easy import of the "threadlocal" mod has found its way into several tutorials on external websites, which produces application-wide behavior that is in conflict with the SQLAlchemy tutorial and data mapping documentation.
-
-While "threadlocal" is only about 10 lines of code, it is strongly advised that users instead make usage of `SessionContext` and `assign_mapper` explictly to eliminate confusion.  Additionally, the "threadlocal" strategy on `create_engine()` also exists primarily to provide patterns used in 0.1 and is probably not worth using either, unless you specifically need those patterns.
-
-Basic usage of threadlocal involves importing the mod, *before* any usage of the `sqlalchemy` namespace, since threadlocal is going to add the "objectstore" and "assign_mapper" keywords to "sqlalchemy".
-
-To use `objectstore`:
-
-    {python}
-    import sqlalchemy.mods.threadlocal
-    from sqlalchemy import *
-
-    metadata = MetaData('sqlite:///')
-    user_table = Table('users', metadata,
-        Column('user_id', Integer, primary_key=True),
-        Column('user_name', String(50), nullable=False)
-    )
-
-    class User(object):
-        pass
-    mapper(User, user_table)
-
-    # "user" object is added to the session automatically
-    user = User()
-
-    # flush the contextual session
-    objectstore.flush()
-
-The actual `Session` is available as:
-
-    {python}
-    objectstore.get_session()
-    
-To use `assign_mapper`:
-
-    {python}
-    import sqlalchemy.mods.threadlocal
-    from sqlalchemy import *
-
-    metadata = MetaData('sqlite:///')
-    user_table = Table('users', metadata,
-        Column('user_id', Integer, primary_key=True),
-        Column('user_name', String(50), nullable=False)
-    )
-
-    class User(object):
-        pass
-        
-    # note that no "context" object is needed
-    assign_mapper(User, user_table)
-
-    # call up a user
-    user = User.selectfirst(user_table.c.user_id==7)
-
-    # call 'delete' on the user
-    user.delete()
-    
-    # flush
-    objectstore.flush()
-
 
 ### ActiveMapper
 
@@ -597,16 +687,4 @@ SqlSoup creates mapped classes on the fly from tables, which are automatically r
      MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
 
 Full SqlSoup documentation is on the [SQLAlchemy Wiki](http://www.sqlalchemy.org/trac/wiki/SqlSoup).
-
-### ProxyEngine
-
-**Author:** Jason Pellerin
-
-The `ProxyEngine` is used to "wrap" an `Engine`, and via subclassing `ProxyEngine` one can instrument the functionality of an arbitrary `Engine` instance through the decorator pattern.  It also provides a `connect()` method which will send all `Engine` requests to different underlying engines.  Its functionality in that regard is largely superceded now by `MetaData` which is a better solution.
-
-    {python}
-    from sqlalchemy.ext.proxy import ProxyEngine
-    proxy = ProxyEngine()
-    
-    proxy.connect('postgres://user:pw@host/db')
 

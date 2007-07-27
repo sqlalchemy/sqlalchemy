@@ -1,4 +1,5 @@
 from sqlalchemy import *
+from sqlalchemy.orm import *
 
 metadata = MetaData()
 
@@ -49,7 +50,7 @@ manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, concr
 engineer_mapper = mapper(Engineer, engineers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='engineer')
 
 
-session = create_session(bind_to=engine)
+session = create_session(bind=engine)
 
 m1 = Manager("pointy haired boss", "manager1")
 e1 = Engineer("wally", "engineer1")

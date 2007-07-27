@@ -1,13 +1,10 @@
-from testbase import PersistTest, AssertMixin
-import unittest, sys, os
-from sqlalchemy import *
-import sqlalchemy.orm.attributes as attributes
-import StringIO
 import testbase
-import gc
 import time
-
-db = testbase.db
+#import gc
+#import sqlalchemy.orm.attributes as attributes
+from sqlalchemy import *
+from sqlalchemy.orm import *
+from testlib import *
 
 NUM = 2500
 
@@ -20,7 +17,7 @@ for best results, dont run with sqlite :memory: database, and keep an eye on top
 class LoadTest(AssertMixin):
     def setUpAll(self):
         global items, meta
-        meta = MetaData(db)
+        meta = MetaData(testbase.db)
         items = Table('items', meta, 
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))
@@ -28,8 +25,6 @@ class LoadTest(AssertMixin):
     def tearDownAll(self):
         items.drop()
     def setUp(self):
-        objectstore.clear()
-        clear_mappers()
         for x in range(1,NUM/500+1):
             l = []
             for y in range(x*500-500 + 1, x*500 + 1):

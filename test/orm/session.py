@@ -1,13 +1,9 @@
-from testbase import AssertMixin
 import testbase
-import unittest, sys, datetime
-
-import tables
-from tables import *
-
-db = testbase.db
 from sqlalchemy import *
-
+from sqlalchemy.orm import *
+from testlib import *
+from testlib.tables import *
+import testlib.tables as tables
 
 class SessionTest(AssertMixin):
     def setUpAll(self):
@@ -25,7 +21,7 @@ class SessionTest(AssertMixin):
         c = testbase.db.connect()
         class User(object):pass
         mapper(User, users)
-        s = create_session(bind_to=c)
+        s = create_session(bind=c)
         s.save(User())
         s.flush()
         c.execute("select * from users")
@@ -37,6 +33,30 @@ class SessionTest(AssertMixin):
         s.save(u)
         s.user_name = 'some other user'
         s.flush()
+
+    def test_close_two(self):
+        c = testbase.db.connect()
+        try:
+            class User(object):pass
+            mapper(User, users)
+            s = create_session(bind=c)
+            s.begin()
+            tran = s.transaction
+            s.save(User())
+            s.flush()
+            c.execute("select * from users")
+            u = User()
+            s.save(u)
+            s.user_name = 'some user'
+            s.flush()
+            u = User()
+            s.save(u)
+            s.user_name = 'some other user'
+            s.flush()
+            assert s.transaction is tran
+            tran.close()
+        finally:
+            c.close()
 
     def test_expunge_cascade(self):
         tables.data()
@@ -52,49 +72,209 @@ class SessionTest(AssertMixin):
 
         # then see if expunge fails
         session.expunge(u)
-        
+    
+    @testing.unsupported('sqlite')    
     def test_transaction(self):
         class User(object):pass
         mapper(User, users)
-        sess = create_session()
-        transaction = sess.create_transaction()
-        try:
-            u = User()
-            sess.save(u)
-            sess.flush()
-            sess.delete(u)
-            sess.save(User())
-            sess.flush()
-            # TODO: assertion ?
-            transaction.commit()
-        except:
-            transaction.rollback()
+        conn1 = testbase.db.connect()
+        conn2 = testbase.db.connect()
+        
+        sess = create_session(transactional=True, bind=conn1)
+        u = User()
+        sess.save(u)
+        sess.flush()
+        assert conn1.execute("select count(1) from users").scalar() == 1
+        assert conn2.execute("select count(1) from users").scalar() == 0
+        sess.commit()
+        assert conn1.execute("select count(1) from users").scalar() == 1
+        assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+    
+    @testing.unsupported('sqlite')
+    def test_autoflush(self):
+        class User(object):pass
+        mapper(User, users)
+        conn1 = testbase.db.connect()
+        conn2 = testbase.db.connect()
+        
+        sess = create_session(autoflush=True, bind=conn1)
+        u = User()
+        u.user_name='ed'
+        sess.save(u)
+        u2 = sess.query(User).filter_by(user_name='ed').one()
+        assert u2 is u
+        assert conn1.execute("select count(1) from users").scalar() == 1
+        assert conn2.execute("select count(1) from users").scalar() == 0
+        sess.commit()
+        assert conn1.execute("select count(1) from users").scalar() == 1
+        assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
 
+    @testing.unsupported('sqlite')
+    def test_autoflush_unbound(self):
+        class User(object):pass
+        mapper(User, users)
+
+        try:
+            sess = create_session(autoflush=True)
+            u = User()
+            u.user_name='ed'
+            sess.save(u)
+            u2 = sess.query(User).filter_by(user_name='ed').one()
+            assert u2 is u
+            assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
+            assert testbase.db.connect().execute("select count(1) from users").scalar() == 0
+            sess.commit()
+            assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
+            assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+        except:
+            sess.rollback()
+            raise
+            
+    def test_autoflush_2(self):
+        class User(object):pass
+        mapper(User, users)
+        conn1 = testbase.db.connect()
+        conn2 = testbase.db.connect()
+        
+        sess = create_session(autoflush=True, bind=conn1)
+        u = User()
+        u.user_name='ed'
+        sess.save(u)
+        sess.commit()
+        assert conn1.execute("select count(1) from users").scalar() == 1
+        assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+        
+    def test_external_joined_transaction(self):
+        class User(object):pass
+        mapper(User, users)
+        conn = testbase.db.connect()
+        trans = conn.begin()
+        sess = create_session(bind=conn)
+        sess.begin() 
+        u = User()
+        sess.save(u)
+        sess.flush()
+        sess.commit() # commit does nothing
+        trans.rollback() # rolls back
+        assert len(sess.query(User).select()) == 0
+
+    @testing.supported('postgres', 'mysql')
+    def test_external_nested_transaction(self):
+        class User(object):pass
+        mapper(User, users)
+        try:
+            conn = testbase.db.connect()
+            trans = conn.begin()
+            sess = create_session(bind=conn)
+            u1 = User()
+            sess.save(u1)
+            sess.flush()
+        
+            sess.begin_nested()  
+            u2 = User()
+            sess.save(u2)
+            sess.flush()
+            sess.rollback()
+        
+            trans.commit() 
+            assert len(sess.query(User).select()) == 1
+        except:
+            conn.close()
+            raise
+    
+    @testing.supported('postgres', 'mysql')
+    def test_twophase(self):
+        # TODO: mock up a failure condition here
+        # to ensure a rollback succeeds
+        class User(object):pass
+        class Address(object):pass
+        mapper(User, users)
+        mapper(Address, addresses)
+        
+        engine2 = create_engine(testbase.db.url)
+        sess = create_session(twophase=True)
+        sess.bind_mapper(User, testbase.db)
+        sess.bind_mapper(Address, engine2)
+        sess.begin()
+        u1 = User()
+        a1 = Address()
+        sess.save(u1)
+        sess.save(a1)
+        sess.commit()
+        sess.close()
+        engine2.dispose()
+        assert users.count().scalar() == 1
+        assert addresses.count().scalar() == 1
+        
+        
+        
+    def test_joined_transaction(self):
+        class User(object):pass
+        mapper(User, users)
+        sess = create_session()
+        sess.begin()
+        sess.begin()  
+        u = User()
+        sess.save(u)
+        sess.flush()
+        sess.commit() # commit does nothing
+        sess.rollback() # rolls back
+        assert len(sess.query(User).select()) == 0
+
+    @testing.supported('postgres', 'mysql')
     def test_nested_transaction(self):
         class User(object):pass
         mapper(User, users)
         sess = create_session()
-        transaction = sess.create_transaction()
-        trans2 = sess.create_transaction()
+        sess.begin()
+
         u = User()
         sess.save(u)
         sess.flush()
-        trans2.commit()
-        transaction.rollback()
-        assert len(sess.query(User).select()) == 0
+
+        sess.begin_nested()  # nested transaction
+
+        u2 = User()
+        sess.save(u2)
+        sess.flush()
+
+        sess.rollback() 
+    
+        sess.commit()
+        assert len(sess.query(User).select()) == 1
+
+    @testing.supported('postgres', 'mysql')
+    def test_nested_autotrans(self):
+        class User(object):pass
+        mapper(User, users)
+        sess = create_session(transactional=True)
+        u = User()
+        sess.save(u)
+        sess.flush()
+
+        sess.begin_nested()  # nested transaction
+
+        u2 = User()
+        sess.save(u2)
+        sess.flush()
+
+        sess.rollback() 
+
+        sess.commit()
+        assert len(sess.query(User).select()) == 1
 
     def test_bound_connection(self):
         class User(object):pass
         mapper(User, users)
         c = testbase.db.connect()
         sess = create_session(bind=c)
-        transaction = sess.create_transaction()
-        trans2 = sess.create_transaction()
+        sess.create_transaction()
+        transaction = sess.transaction
         u = User()
         sess.save(u)
         sess.flush()
-        assert transaction.get_or_add(testbase.db) is trans2.get_or_add(testbase.db) is transaction.get_or_add(c) is trans2.get_or_add(c) is c
-
+        assert transaction.get_or_add(testbase.db) is transaction.get_or_add(c) is c
+        
         try:
             transaction.add(testbase.db.connect())
             assert False
@@ -112,34 +292,10 @@ class SessionTest(AssertMixin):
             assert False
         except exceptions.InvalidRequestError, e: 
             assert str(e) == "Session already has a Connection associated for the given Engine"
-
-        trans2.commit()
+            
         transaction.rollback()
         assert len(sess.query(User).select()) == 0
-        
-    def test_close_two(self):
-        c = testbase.db.connect()
-        try:
-            class User(object):pass
-            mapper(User, users)
-            s = create_session(bind_to=c)
-            tran = s.create_transaction()
-            s.save(User())
-            s.flush()
-            c.execute("select * from users")
-            u = User()
-            s.save(u)
-            s.user_name = 'some user'
-            s.flush()
-            u = User()
-            s.save(u)
-            s.user_name = 'some other user'
-            s.flush()
-            assert s.transaction is tran
-            tran.close()
-        finally:
-            c.close()
-            
+             
     def test_update(self):
         """test that the update() method functions and doesnet blow away changes"""
         tables.delete()
@@ -164,7 +320,7 @@ class SessionTest(AssertMixin):
         user = s.query(User).selectone()
         assert user.user_name == 'fred'
         
-        # insure its not dirty if no changes occur
+        # ensure its not dirty if no changes occur
         s.clear()
         assert user not in s
         s.update(user)

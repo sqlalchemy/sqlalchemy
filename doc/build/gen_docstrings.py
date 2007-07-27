@@ -3,12 +3,13 @@ import docstring
 import re
 
 from sqlalchemy import schema, types, ansisql, engine, sql, pool, orm, exceptions, databases
-import sqlalchemy.ext.proxy as proxy
+import sqlalchemy.orm.shard
 import sqlalchemy.ext.sessioncontext as sessioncontext
-import sqlalchemy.mods.threadlocal as threadlocal
 import sqlalchemy.ext.selectresults as selectresults
 import sqlalchemy.ext.orderinglist as orderinglist
 import sqlalchemy.ext.associationproxy as associationproxy
+import sqlalchemy.ext.assignmapper as assignmapper
+import sqlalchemy.ext.sqlsoup as sqlsoup
 
 def make_doc(obj, classes=None, functions=None, **kwargs):
     """generate a docstring.ObjectDoc structure for an individual module, list of classes, and list of functions."""
@@ -21,6 +22,7 @@ def make_all_docs():
     objects = [
         make_doc(obj=sql,include_all_classes=True),
         make_doc(obj=schema),
+        make_doc(obj=pool),
         make_doc(obj=types),
         make_doc(obj=engine),
         make_doc(obj=engine.url),
@@ -29,18 +31,21 @@ def make_all_docs():
         make_doc(obj=engine.threadlocal),
         make_doc(obj=ansisql),
         make_doc(obj=orm),
-        make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.MapperExtension, orm.mapperlib.Mapper]),
+        make_doc(obj=orm.collections, classes=[orm.collections.collection,
+                                               orm.collections.MappedCollection,
+                                               orm.collections.CollectionAdapter]),
         make_doc(obj=orm.interfaces),
+        make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.MapperExtension, orm.mapperlib.Mapper]),
+        make_doc(obj=orm.properties),
         make_doc(obj=orm.query, classes=[orm.query.Query, orm.query.QueryContext, orm.query.SelectionContext]),
         make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionTransaction]),
+        make_doc(obj=orm.shard),
         make_doc(obj=exceptions),
-        make_doc(obj=pool),
-        make_doc(obj=sessioncontext),
-        make_doc(obj=threadlocal),
-        make_doc(obj=selectresults),
-        make_doc(obj=proxy),
-        make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),
+        make_doc(obj=assignmapper),
         make_doc(obj=associationproxy, classes=[associationproxy.AssociationProxy]),
+        make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),
+        make_doc(obj=sessioncontext),
+        make_doc(obj=sqlsoup),
     ] + [make_doc(getattr(__import__('sqlalchemy.databases.%s' % m).databases, m)) for m in databases.__all__]
     return objects
     

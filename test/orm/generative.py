@@ -1,16 +1,19 @@
-from testbase import PersistTest, AssertMixin, ORMTest
 import testbase
-import tables
-
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy import exceptions
+from testlib import *
+import testlib.tables as tables
+
+# TODO: these are more tests that should be updated to be part of test/orm/query.py
 
 class Foo(object):
-    pass
+    def __init__(self, **kwargs):
+        for k in kwargs:
+            setattr(self, k, kwargs[k])
 
 class GenerativeQueryTest(PersistTest):
     def setUpAll(self):
-        self.install_threadlocal()
         global foo, metadata
         metadata = MetaData(testbase.db)
         foo = Table('foo', metadata,
@@ -18,89 +21,103 @@ class GenerativeQueryTest(PersistTest):
                     Column('bar', Integer),
                     Column('range', Integer))
         
-        assign_mapper(Foo, foo)
+        mapper(Foo, foo)
         metadata.create_all()
-        for i in range(100):
-            Foo(bar=i, range=i%10)
-        objectstore.flush()
-    
-    def setUp(self):
-        self.query = Foo.query()
-        self.orig = self.query.select_whereclause()
-        self.res = self.query
         
+        sess = create_session(bind=testbase.db)
+        for i in range(100):
+            sess.save(Foo(bar=i, range=i%10))
+        sess.flush()
+    
     def tearDownAll(self):
         metadata.drop_all()
-        self.uninstall_threadlocal()
         clear_mappers()
     
     def test_selectby(self):
-        res = self.query.filter_by(range=5)
+        res = create_session(bind=testbase.db).query(Foo).filter_by(range=5)
         assert res.order_by([Foo.c.bar])[0].bar == 5
         assert res.order_by([desc(Foo.c.bar)])[0].bar == 95
         
-    @testbase.unsupported('mssql')
+    @testing.unsupported('mssql')
     def test_slice(self):
-        assert self.query[1] == self.orig[1]
-        assert list(self.query[10:20]) == self.orig[10:20]
-        assert list(self.query[10:]) == self.orig[10:]
-        assert list(self.query[:10]) == self.orig[:10]
-        assert list(self.query[:10]) == self.orig[:10]
-        assert list(self.query[10:40:3]) == self.orig[10:40:3]
-        assert list(self.query[-5:]) == self.orig[-5:]
-        assert self.query[10:20][5] == self.orig[10:20][5]
+        sess = create_session(bind=testbase.db)
+        query = sess.query(Foo)
+        orig = query.all()
+        assert query[1] == orig[1]
+        assert list(query[10:20]) == orig[10:20]
+        assert list(query[10:]) == orig[10:]
+        assert list(query[:10]) == orig[:10]
+        assert list(query[:10]) == orig[:10]
+        assert list(query[10:40:3]) == orig[10:40:3]
+        assert list(query[-5:]) == orig[-5:]
+        assert query[10:20][5] == orig[10:20][5]
 
-    @testbase.supported('mssql')
+    @testing.supported('mssql')
     def test_slice_mssql(self):
-        assert list(self.query[:10]) == self.orig[:10]
-        assert list(self.query[:10]) == self.orig[:10]
+        sess = create_session(bind=testbase.db)
+        query = sess.query(Foo)
+        orig = query.all()
+        assert list(query[:10]) == orig[:10]
+        assert list(query[:10]) == orig[:10]
 
     def test_aggregate(self):
-        assert self.query.count() == 100
-        assert self.query.filter(foo.c.bar<30).min(foo.c.bar) == 0
-        assert self.query.filter(foo.c.bar<30).max(foo.c.bar) == 29
-        assert self.query.filter(foo.c.bar<30).apply_max(foo.c.bar).scalar() == 29
+        sess = create_session(bind=testbase.db)
+        query = sess.query(Foo)
+        assert query.count() == 100
+        assert query.filter(foo.c.bar<30).min(foo.c.bar) == 0
+        assert query.filter(foo.c.bar<30).max(foo.c.bar) == 29
+        assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).first() == 29
+        assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).one() == 29
 
-    @testbase.unsupported('mysql')
+    @testing.unsupported('mysql')
     def test_aggregate_1(self):
         # this one fails in mysql as the result comes back as a string
-        assert self.query.filter(foo.c.bar<30).sum(foo.c.bar) == 435
+        query = create_session(bind=testbase.db).query(Foo)
+        assert query.filter(foo.c.bar<30).sum(foo.c.bar) == 435
 
-    @testbase.unsupported('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.unsupported('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_2(self):
-        assert self.res.filter(foo.c.bar<30).avg(foo.c.bar) == 14.5
+        query = create_session(bind=testbase.db).query(Foo)
+        assert query.filter(foo.c.bar<30).avg(foo.c.bar) == 14.5
 
-    @testbase.supported('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.supported('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_2_int(self):
-        assert int(self.res.filter(foo.c.bar<30).avg(foo.c.bar)) == 14
+        query = create_session(bind=testbase.db).query(Foo)
+        assert int(query.filter(foo.c.bar<30).avg(foo.c.bar)) == 14
 
-    @testbase.unsupported('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.unsupported('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_3(self):
-        assert self.res.filter(foo.c.bar<30).apply_avg(foo.c.bar).scalar() == 14.5
+        query = create_session(bind=testbase.db).query(Foo)
+        assert query.filter(foo.c.bar<30).apply_avg(foo.c.bar).first() == 14.5
+        assert query.filter(foo.c.bar<30).apply_avg(foo.c.bar).one() == 14.5
         
     def test_filter(self):
-        assert self.query.count() == 100
-        assert self.query.filter(Foo.c.bar < 30).count() == 30
-        res2 = self.query.filter(Foo.c.bar < 30).filter(Foo.c.bar > 10)
+        query = create_session(bind=testbase.db).query(Foo)
+        assert query.count() == 100
+        assert query.filter(Foo.c.bar < 30).count() == 30
+        res2 = query.filter(Foo.c.bar < 30).filter(Foo.c.bar > 10)
         assert res2.count() == 19
     
     def test_options(self):
+        query = create_session(bind=testbase.db).query(Foo)
         class ext1(MapperExtension):
-            def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
+            def populate_instance(self, mapper, selectcontext, row, instance, **flags):
                 instance.TEST = "hello world"
                 return EXT_PASS
-        objectstore.clear()
-        assert self.res.options(extension(ext1()))[0].TEST == "hello world"
+        assert query.options(extension(ext1()))[0].TEST == "hello world"
         
     def test_order_by(self):
-        assert self.res.order_by([Foo.c.bar])[0].bar == 0
-        assert self.res.order_by([desc(Foo.c.bar)])[0].bar == 99
+        query = create_session(bind=testbase.db).query(Foo)
+        assert query.order_by([Foo.c.bar])[0].bar == 0
+        assert query.order_by([desc(Foo.c.bar)])[0].bar == 99
 
     def test_offset(self):
-        assert list(self.res.order_by([Foo.c.bar]).offset(10))[0].bar == 10
+        query = create_session(bind=testbase.db).query(Foo)
+        assert list(query.order_by([Foo.c.bar]).offset(10))[0].bar == 10
         
     def test_offset(self):
-        assert len(list(self.res.limit(10))) == 10
+        query = create_session(bind=testbase.db).query(Foo)
+        assert len(list(query.limit(10))) == 10
 
 class Obj1(object):
     pass
@@ -109,9 +126,8 @@ class Obj2(object):
 
 class GenerativeTest2(PersistTest):
     def setUpAll(self):
-        self.install_threadlocal()
         global metadata, table1, table2
-        metadata = MetaData(testbase.db)
+        metadata = MetaData()
         table1 = Table('Table1', metadata,
             Column('id', Integer, primary_key=True),
             )
@@ -119,29 +135,23 @@ class GenerativeTest2(PersistTest):
             Column('t1id', Integer, ForeignKey("Table1.id"), primary_key=True),
             Column('num', Integer, primary_key=True),
             )
-        assign_mapper(Obj1, table1)
-        assign_mapper(Obj2, table2)
-        metadata.create_all()
-        table1.insert().execute({'id':1},{'id':2},{'id':3},{'id':4})
-        table2.insert().execute({'num':1,'t1id':1},{'num':2,'t1id':1},{'num':3,'t1id':1},\
+        mapper(Obj1, table1)
+        mapper(Obj2, table2)
+        metadata.create_all(bind=testbase.db)
+        testbase.db.execute(table1.insert(), {'id':1},{'id':2},{'id':3},{'id':4})
+        testbase.db.execute(table2.insert(), {'num':1,'t1id':1},{'num':2,'t1id':1},{'num':3,'t1id':1},\
 {'num':4,'t1id':2},{'num':5,'t1id':2},{'num':6,'t1id':3})
 
-    def setUp(self):
-        self.query = Query(Obj1)
-        #self.orig = self.query.select_whereclause()
-        #self.res = self.query.select()
-
     def tearDownAll(self):
-        metadata.drop_all()
-        self.uninstall_threadlocal()
+        metadata.drop_all(bind=testbase.db)
         clear_mappers()
 
     def test_distinctcount(self):
-        res = self.query
-        assert res.count() == 4
-        res = self.query.filter(and_(table1.c.id==table2.c.t1id,table2.c.t1id==1))
+        query = create_session(bind=testbase.db).query(Obj1)
+        assert query.count() == 4
+        res = query.filter(and_(table1.c.id==table2.c.t1id,table2.c.t1id==1))
         assert res.count() == 3
-        res = self.query.filter(and_(table1.c.id==table2.c.t1id,table2.c.t1id==1)).distinct()
+        res = query.filter(and_(table1.c.id==table2.c.t1id,table2.c.t1id==1)).distinct()
         self.assertEqual(res.count(), 1)
 
 class RelationsTest(AssertMixin):
@@ -159,9 +169,9 @@ class RelationsTest(AssertMixin):
                 'items':relation(mapper(tables.Item, tables.orderitems))
             }))
         })
-        session = create_session()
+        session = create_session(bind=testbase.db)
         query = session.query(tables.User)
-        x = query.join('orders').join('items').filter(tables.Item.c.item_id==2)
+        x = query.join(['orders', 'items']).filter(tables.Item.c.item_id==2)
         print x.compile()
         self.assert_result(list(x), tables.User, tables.user_result[2])
     def test_outerjointo(self):
@@ -171,9 +181,9 @@ class RelationsTest(AssertMixin):
                 'items':relation(mapper(tables.Item, tables.orderitems))
             }))
         })
-        session = create_session()
+        session = create_session(bind=testbase.db)
         query = session.query(tables.User)
-        x = query.outerjoin('orders').outerjoin('items').filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
+        x = query.outerjoin(['orders', 'items']).filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
         print x.compile()
         self.assert_result(list(x), tables.User, *tables.user_result[1:3])
     def test_outerjointo_count(self):
@@ -183,9 +193,9 @@ class RelationsTest(AssertMixin):
                 'items':relation(mapper(tables.Item, tables.orderitems))
             }))
         })
-        session = create_session()
+        session = create_session(bind=testbase.db)
         query = session.query(tables.User)
-        x = query.outerjoin('orders').outerjoin('items').filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2)).count()
+        x = query.outerjoin(['orders', 'items']).filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2)).count()
         assert x==2
     def test_from(self):
         mapper(tables.User, tables.users, properties={
@@ -193,7 +203,7 @@ class RelationsTest(AssertMixin):
                 'items':relation(mapper(tables.Item, tables.orderitems))
             }))
         })
-        session = create_session()
+        session = create_session(bind=testbase.db)
         query = session.query(tables.User)
         x = query.select_from([tables.users.outerjoin(tables.orders).outerjoin(tables.orderitems)]).\
             filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
@@ -203,7 +213,6 @@ class RelationsTest(AssertMixin):
 
 class CaseSensitiveTest(PersistTest):
     def setUpAll(self):
-        self.install_threadlocal()
         global metadata, table1, table2
         metadata = MetaData(testbase.db)
         table1 = Table('Table1', metadata,
@@ -213,29 +222,23 @@ class CaseSensitiveTest(PersistTest):
             Column('T1ID', Integer, ForeignKey("Table1.ID"), primary_key=True),
             Column('NUM', Integer, primary_key=True),
             )
-        assign_mapper(Obj1, table1)
-        assign_mapper(Obj2, table2)
+        mapper(Obj1, table1)
+        mapper(Obj2, table2)
         metadata.create_all()
         table1.insert().execute({'ID':1},{'ID':2},{'ID':3},{'ID':4})
         table2.insert().execute({'NUM':1,'T1ID':1},{'NUM':2,'T1ID':1},{'NUM':3,'T1ID':1},\
 {'NUM':4,'T1ID':2},{'NUM':5,'T1ID':2},{'NUM':6,'T1ID':3})
 
-    def setUp(self):
-        self.query = Query(Obj1)
-        #self.orig = self.query.select_whereclause()
-        #self.res = self.query.select()
-
     def tearDownAll(self):
         metadata.drop_all()
-        self.uninstall_threadlocal()
         clear_mappers()
         
     def test_distinctcount(self):
-        res = self.query
-        assert res.count() == 4
-        res = self.query.filter(and_(table1.c.ID==table2.c.T1ID,table2.c.T1ID==1))
+        q = create_session(bind=testbase.db).query(Obj1)
+        assert q.count() == 4
+        res = q.filter(and_(table1.c.ID==table2.c.T1ID,table2.c.T1ID==1))
         assert res.count() == 3
-        res = self.query.filter(and_(table1.c.ID==table2.c.T1ID,table2.c.T1ID==1)).distinct()
+        res = q.filter(and_(table1.c.ID==table2.c.T1ID,table2.c.T1ID==1)).distinct()
         self.assertEqual(res.count(), 1)
 
 class SelfRefTest(ORMTest):
@@ -248,18 +251,18 @@ class SelfRefTest(ORMTest):
     def test_noautojoin(self):
         class T(object):pass
         mapper(T, t1, properties={'children':relation(T)})
-        sess = create_session()
+        sess = create_session(bind=testbase.db)
         try:
             sess.query(T).join('children').select_by(id=7)
             assert False
         except exceptions.InvalidRequestError, e:
-            assert str(e) == "Self-referential query on 'T.children (T)' property must be constructed manually using an Alias object for the related table.", str(e)
+            assert str(e) == "Self-referential query on 'T.children (T)' property requires create_aliases=True argument.", str(e)
 
         try:
             sess.query(T).join(['children']).select_by(id=7)
             assert False
         except exceptions.InvalidRequestError, e:
-            assert str(e) == "Self-referential query on 'T.children (T)' property must be constructed manually using an Alias object for the related table.", str(e)
+            assert str(e) == "Self-referential query on 'T.children (T)' property requires create_aliases=True argument.", str(e)
         
             
             

@@ -1,10 +1,12 @@
 """loads Markdown files, converts each one to HTML and parses the HTML into an ElementTree structure.
 The collection of ElementTrees are further parsed to generate a table of contents structure, and are  
- manipulated to replace various markdown-generated HTML with specific Myghty tags before being written
- to Myghty templates, which then re-access the table of contents structure at runtime.
+ manipulated to replace various markdown-generated HTML with specific Mako tags before being written
+ to Mako templates, which then re-access the table of contents structure at runtime.
 
 Much thanks to Alexey Shamrin, who came up with the original idea and did all the heavy Markdown/Elementtree 
-lifting for this module."""
+lifting for this module.
+"""
+
 import sys, re, os
 from toc import TOCElement
 

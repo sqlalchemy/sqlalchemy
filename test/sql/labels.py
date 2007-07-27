@@ -1,11 +1,12 @@
 import testbase
-
 from sqlalchemy import *
+from testlib import *
+
 
 # TODO: either create a mock dialect with named paramstyle and a short identifier length,
 # or find a way to just use sqlite dialect and make those changes
 
-class LabelTypeTest(testbase.PersistTest):
+class LabelTypeTest(PersistTest):
     def test_type(self):
         m = MetaData()
         t = Table('sometable', m, 
@@ -14,21 +15,26 @@ class LabelTypeTest(testbase.PersistTest):
         assert isinstance(t.c.col1.label('hi').type, Integer)
         assert isinstance(select([t.c.col2], scalar=True).label('lala').type, Float)
 
-class LongLabelsTest(testbase.PersistTest):
+class LongLabelsTest(PersistTest):
     def setUpAll(self):
-        global metadata, table1
-        metadata = MetaData(engine=testbase.db)
+        global metadata, table1, maxlen
+        metadata = MetaData(testbase.db)
         table1 = Table("some_large_named_table", metadata,
             Column("this_is_the_primarykey_column", Integer, Sequence("this_is_some_large_seq"), primary_key=True),
             Column("this_is_the_data_column", String(30))
             )
             
         metadata.create_all()
+        
+        maxlen = testbase.db.dialect.max_identifier_length
+        testbase.db.dialect.max_identifier_length = lambda: 29
+        
     def tearDown(self):
         table1.delete().execute()
         
     def tearDownAll(self):
         metadata.drop_all()
+        testbase.db.dialect.max_identifier_length = maxlen
         
     def test_result(self):
         table1.insert().execute(**{"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"})
@@ -88,7 +94,7 @@ class LongLabelsTest(testbase.PersistTest):
         x = select([tt], use_labels=True, order_by=tt.oid_column).compile(dialect=dialect)
         #print x
         # assert it doesnt end with "ORDER BY foo.some_large_named_table_this_is_the_primarykey_column"
-        assert str(x).endswith("""ORDER BY foo.some_large_named_table_t_1""")
+        assert str(x).endswith("""ORDER BY foo.some_large_named_table_t_2""")
 
 if __name__ == '__main__':
     testbase.main()

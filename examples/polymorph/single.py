@@ -1,6 +1,8 @@
 from sqlalchemy import *
+from sqlalchemy.orm import *
 
-metadata = MetaData('sqlite://', echo='debug')
+metadata = MetaData('sqlite://')
+metadata.bind.echo = 'debug'
 
 # a table to store companies
 companies = Table('companies', metadata, 

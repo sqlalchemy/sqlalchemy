@@ -3,7 +3,6 @@ import unittest, doctest
 
 def suite():
     unittest_modules = ['ext.activemapper',
-                        'ext.selectresults',
                         'ext.assignmapper',
                         'ext.orderinglist',
                         'ext.associationproxy']

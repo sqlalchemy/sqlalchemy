@@ -1,11 +1,9 @@
-import sys
-sys.path.insert(0, './lib/')
-
+import testbase
 import gc
 
 import random, string
 
-from sqlalchemy.attributes import *
+from sqlalchemy.orm.attributes import *
 
 # with this test, run top.  make sure the Python process doenst grow in size arbitrarily.
 

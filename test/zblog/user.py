@@ -1,13 +1,7 @@
 """user.py - handles user login and validation"""
 
 import random, string
-try:
-    from crypt import crypt
-except:
-    try:
-        from fcrypt import crypt
-    except:
-        raise "Need fcrypt module on non-Unix platform:  http://home.clear.net.nz/pages/c.evans/sw/"
+from sha import sha
 
 administrator = 'admin'
 user = 'user'
@@ -16,7 +10,7 @@ groups = [user, administrator]
 def cryptpw(password, salt=None):
     if salt is None:
         salt = string.join([chr(random.randint(ord('a'), ord('z'))), chr(random.randint(ord('a'), ord('z')))],'')
-    return crypt(password, salt)
+    return sha(password + salt).hexdigest()
     
 def checkpw(password, dbpw):
     return cryptpw(password, dbpw[:2]) == dbpw

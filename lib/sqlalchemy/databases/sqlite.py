@@ -5,9 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string, types, re
+import re
 
-from sqlalchemy import sql, engine, schema, ansisql, exceptions, pool, PassiveDefault
+from sqlalchemy import schema, ansisql, exceptions, pool, PassiveDefault
 import sqlalchemy.engine.default as default
 import sqlalchemy.types as sqltypes
 import datetime,time, warnings
@@ -126,6 +126,7 @@ colspecs = {
 
 pragma_names = {
     'INTEGER' : SLInteger,
+    'INT' : SLInteger,
     'SMALLINT' : SLSmallInteger,
     'VARCHAR' : SLString,
     'CHAR' : SLChar,
@@ -150,8 +151,9 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         if self.compiled.isinsert:
             if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
                 self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
-                
-        super(SQLiteExecutionContext, self).post_exec()
+
+    def is_select(self):
+        return re.match(r'SELECT|PRAGMA', self.statement.lstrip(), re.I) is not None
         
 class SQLiteDialect(ansisql.ANSIDialect):
     
@@ -233,7 +235,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
 
         return (row is not None)
 
-    def reflecttable(self, connection, table):
+    def reflecttable(self, connection, table, include_columns):
         c = connection.execute("PRAGMA table_info(%s)" % self.preparer().format_table(table), {})
         found_table = False
         while True:
@@ -244,6 +246,8 @@ class SQLiteDialect(ansisql.ANSIDialect):
             found_table = True
             (name, type, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4] is not None, row[5])
             name = re.sub(r'^\"|\"$', '', name)
+            if include_columns and name not in include_columns:
+                continue
             match = re.match(r'(\w+)(\(.*?\))?', type)
             if match:
                 coltype = match.group(1)
@@ -253,7 +257,12 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 args = ''
 
             #print "coltype: " + repr(coltype) + " args: " + repr(args)
-            coltype = pragma_names.get(coltype, SLString)
+            try:
+                coltype = pragma_names[coltype]
+            except KeyError:
+                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
+                coltype = sqltypes.NULLTYPE
+                
             if args is not None:
                 args = re.findall(r'(\d+)', args)
                 #print "args! " +repr(args)
@@ -318,21 +327,21 @@ class SQLiteDialect(ansisql.ANSIDialect):
 class SQLiteCompiler(ansisql.ANSICompiler):
     def visit_cast(self, cast):
         if self.dialect.supports_cast:
-            super(SQLiteCompiler, self).visit_cast(cast)
+            return super(SQLiteCompiler, self).visit_cast(cast)
         else:
             if len(self.select_stack):
                 # not sure if we want to set the typemap here...
                 self.typemap.setdefault("CAST", cast.type)
-            self.strings[cast] = self.strings[cast.clause]
+            return self.process(cast.clause)
 
     def limit_clause(self, select):
         text = ""
-        if select.limit is not None:
-            text +=  " \n LIMIT " + str(select.limit)
-        if select.offset is not None:
-            if select.limit is None:
+        if select._limit is not None:
+            text +=  " \n LIMIT " + str(select._limit)
+        if select._offset is not None:
+            if select._limit is None:
                 text += " \n LIMIT -1"
-            text += " OFFSET " + str(select.offset)
+            text += " OFFSET " + str(select._offset)
         else:
             text += " OFFSET 0"
         return text
@@ -340,12 +349,6 @@ class SQLiteCompiler(ansisql.ANSICompiler):
     def for_update_clause(self, select):
         # sqlite has no "FOR UPDATE" AFAICT
         return ''
-
-    def binary_operator_string(self, binary):
-        if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
-            return '||'
-        else:
-            return ansisql.ANSICompiler.binary_operator_string(self, binary)
 
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
 

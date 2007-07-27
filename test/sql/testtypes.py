@@ -1,14 +1,11 @@
-from testbase import PersistTest, AssertMixin
 import testbase
 import pickleable
+import datetime, os
 from sqlalchemy import *
-import string,datetime, re, sys, os
 import sqlalchemy.engine.url as url
-
-import sqlalchemy.types
 from sqlalchemy.databases import mssql, oracle, mysql
+from testlib import *
 
-db = testbase.db
 
 class MyType(types.TypeEngine):
     def get_col_spec(self):
@@ -107,7 +104,7 @@ class OverrideTest(PersistTest):
 
     def setUpAll(self):
         global users
-        users = Table('type_users', db, 
+        users = Table('type_users', MetaData(testbase.db),
             Column('user_id', Integer, primary_key = True),
             # totall custom type
             Column('goofy', MyType, nullable = False),
@@ -138,11 +135,12 @@ class ColumnsTest(AssertMixin):
                             'float_column': 'float_column NUMERIC(25, 2)'
                           }
 
+        db = testbase.db
         if not db.name=='sqlite' and not db.name=='oracle':
             expectedResults['float_column'] = 'float_column FLOAT(25)'
     
         print db.engine.__module__
-        testTable = Table('testColumns', db,
+        testTable = Table('testColumns', MetaData(db),
             Column('int_column', Integer),
             Column('smallint_column', Smallinteger),
             Column('varchar_column', String(20)),
@@ -157,7 +155,8 @@ class UnicodeTest(AssertMixin):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
     def setUpAll(self):
         global unicode_table
-        unicode_table = Table('unicode_table', db, 
+        metadata = MetaData(testbase.db)
+        unicode_table = Table('unicode_table', metadata, 
             Column('id', Integer, Sequence('uni_id_seq', optional=True), primary_key=True),
             Column('unicode_varchar', Unicode(250)),
             Column('unicode_text', Unicode),
@@ -175,49 +174,49 @@ class UnicodeTest(AssertMixin):
                                        unicode_text=unicodedata,
                                        plain_varchar=rawdata)
         x = unicode_table.select().execute().fetchone()
-        self.echo(repr(x['unicode_varchar']))
-        self.echo(repr(x['unicode_text']))
-        self.echo(repr(x['plain_varchar']))
+        print repr(x['unicode_varchar'])
+        print repr(x['unicode_text'])
+        print repr(x['plain_varchar'])
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
         if isinstance(x['plain_varchar'], unicode):
             # SQLLite and MSSQL return non-unicode data as unicode
-            self.assert_(db.name in ('sqlite', 'mssql'))
+            self.assert_(testbase.db.name in ('sqlite', 'mssql'))
             self.assert_(x['plain_varchar'] == unicodedata)
-            self.echo("it's %s!" % db.name)
+            print "it's %s!" % testbase.db.name
         else:
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
 
     def testengineparam(self):
         """tests engine-wide unicode conversion"""
-        prev_unicode = db.engine.dialect.convert_unicode
+        prev_unicode = testbase.db.engine.dialect.convert_unicode
         try:
-            db.engine.dialect.convert_unicode = True
+            testbase.db.engine.dialect.convert_unicode = True
             rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
             unicodedata = rawdata.decode('utf-8')
             unicode_table.insert().execute(unicode_varchar=unicodedata,
                                            unicode_text=unicodedata,
                                            plain_varchar=rawdata)
             x = unicode_table.select().execute().fetchone()
-            self.echo(repr(x['unicode_varchar']))
-            self.echo(repr(x['unicode_text']))
-            self.echo(repr(x['plain_varchar']))
+            print repr(x['unicode_varchar'])
+            print repr(x['unicode_text'])
+            print repr(x['plain_varchar'])
             self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
             self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
             self.assert_(isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == unicodedata)
         finally:
-            db.engine.dialect.convert_unicode = prev_unicode
+            testbase.db.engine.dialect.convert_unicode = prev_unicode
 
-    @testbase.unsupported('oracle')
+    @testing.unsupported('oracle')
     def testlength(self):
         """checks the database correctly understands the length of a unicode string"""
         teststr = u'aaa\x1234'
-        self.assert_(db.func.length(teststr).scalar() == len(teststr))
+        self.assert_(testbase.db.func.length(teststr).scalar() == len(teststr))
   
 class BinaryTest(AssertMixin):
     def setUpAll(self):
         global binary_table
-        binary_table = Table('binary_table', db, 
+        binary_table = Table('binary_table', MetaData(testbase.db), 
         Column('primary_id', Integer, Sequence('binary_id_seq', optional=True), primary_key=True),
         Column('data', Binary),
         Column('data_slice', Binary(100)),
@@ -244,39 +243,31 @@ class BinaryTest(AssertMixin):
         binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat',    data=stream1, data_slice=stream1[0:100], pickled=testobj1)
         binary_table.insert().execute(primary_id=2, misc='binary_data_two.dat', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
         binary_table.insert().execute(primary_id=3, misc='binary_data_two.dat', data=None, data_slice=stream2[0:99], pickled=None)
-        l = binary_table.select(order_by=binary_table.c.primary_id).execute().fetchall()
-        print type(stream1), type(l[0]['data']), type(l[0]['data_slice'])
-        print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
-        self.assert_(list(stream1) == list(l[0]['data']))
-        self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
-        self.assert_(list(stream2) == list(l[1]['data']))
-        self.assert_(testobj1 == l[0]['pickled'])
-        self.assert_(testobj2 == l[1]['pickled'])
+        
+        for stmt in (
+            binary_table.select(order_by=binary_table.c.primary_id),
+            text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType}, bind=testbase.db)
+        ):
+            l = stmt.execute().fetchall()
+            print type(stream1), type(l[0]['data']), type(l[0]['data_slice'])
+            print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
+            self.assert_(list(stream1) == list(l[0]['data']))
+            self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
+            self.assert_(list(stream2) == list(l[1]['data']))
+            self.assert_(testobj1 == l[0]['pickled'])
+            self.assert_(testobj2 == l[1]['pickled'])
 
     def load_stream(self, name, len=12579):
         f = os.path.join(os.path.dirname(testbase.__file__), name)
         # put a number less than the typical MySQL default BLOB size
         return file(f).read(len)
     
-    @testbase.supported('oracle')
-    def test_oracle_autobinary(self):
-        stream1 =self.load_stream('binary_data_one.dat')
-        stream2 =self.load_stream('binary_data_two.dat')
-        binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat',    data=stream1, data_slice=stream1[0:100])
-        binary_table.insert().execute(primary_id=2, misc='binary_data_two.dat', data=stream2, data_slice=stream2[0:99])
-        binary_table.insert().execute(primary_id=3, misc='binary_data_two.dat', data=None, data_slice=stream2[0:99], pickled=None)
-        result = testbase.db.connect().execute("select primary_id, misc, data, data_slice from binary_table")
-        l = result.fetchall()
-        l[0]['data']
-        self.assert_(list(stream1) == list(l[0]['data']))
-        self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
-        self.assert_(list(stream2) == list(l[1]['data']))
-
     
 class DateTest(AssertMixin):
     def setUpAll(self):
         global users_with_date, insert_data
 
+        db = testbase.db
         if db.engine.name == 'oracle':
             import sqlalchemy.databases.oracle as oracle
             insert_data =  [
@@ -314,13 +305,14 @@ class DateTest(AssertMixin):
             if db.engine.name == 'mssql':
                 # MSSQL Datetime values have only a 3.33 milliseconds precision
                 insert_data[2] = [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 547000), datetime.date(1970,4,1), datetime.time(23,59,59,997000)]
-
+            
             fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
 
             collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
                            Column('user_date', Date), Column('user_time', Time)]
  
-        users_with_date = Table('query_users_with_date', db, *collist)
+        users_with_date = Table('query_users_with_date',
+                                MetaData(testbase.db), *collist)
         users_with_date.create()
         insert_dicts = [dict(zip(fnames, d)) for d in insert_data]
 
@@ -338,7 +330,7 @@ class DateTest(AssertMixin):
 
 
     def testtextdate(self):     
-        x = db.text("select user_datetime from query_users_with_date", typemap={'user_datetime':DateTime}).execute().fetchall()
+        x = testbase.db.text("select user_datetime from query_users_with_date", typemap={'user_datetime':DateTime}).execute().fetchall()
         
         print repr(x)
         self.assert_(isinstance(x[0][0], datetime.datetime))
@@ -347,9 +339,13 @@ class DateTest(AssertMixin):
         #print repr(x)
 
     def testdate2(self):
-        t = Table('testdate', testbase.metadata, Column('id', Integer, Sequence('datetest_id_seq', optional=True), primary_key=True),
+        meta = MetaData(testbase.db)
+        t = Table('testdate', meta,
+                  Column('id', Integer,
+                         Sequence('datetest_id_seq', optional=True),
+                         primary_key=True),
                 Column('adate', Date), Column('adatetime', DateTime))
-        t.create()
+        t.create(checkfirst=True)
         try:
             d1 = datetime.date(2007, 10, 30)
             t.insert().execute(adate=d1, adatetime=d1)
@@ -361,8 +357,43 @@ class DateTest(AssertMixin):
             self.assert_(x.adatetime.__class__ == datetime.datetime)
 
         finally:
-            t.drop()
+            t.drop(checkfirst=True)
 
+class NumericTest(AssertMixin):
+    def setUpAll(self):
+        global numeric_table, metadata
+        metadata = MetaData(testbase.db)
+        numeric_table = Table('numeric_table', metadata,
+            Column('id', Integer, Sequence('numeric_id_seq', optional=True), primary_key=True),
+            Column('numericcol', Numeric(asdecimal=False)),
+            Column('floatcol', Float),
+            Column('ncasdec', Numeric),
+            Column('fcasdec', Float(asdecimal=True))
+        )
+        metadata.create_all()
+        
+    def tearDownAll(self):
+        metadata.drop_all()
+        
+    def tearDown(self):
+        numeric_table.delete().execute()
+        
+    def test_decimal(self):
+        from decimal import Decimal
+        numeric_table.insert().execute(numericcol=3.5, floatcol=5.6, ncasdec=12.4, fcasdec=15.78)
+        numeric_table.insert().execute(numericcol=Decimal("3.5"), floatcol=Decimal("5.6"), ncasdec=Decimal("12.4"), fcasdec=Decimal("15.78"))
+        l = numeric_table.select().execute().fetchall()
+        print l
+        rounded = [
+            (l[0][0], l[0][1], round(l[0][2], 5), l[0][3], l[0][4]),
+            (l[1][0], l[1][1], round(l[1][2], 5), l[1][3], l[1][4]),
+        ]
+        assert rounded == [
+            (1, 3.5, 5.6, Decimal("12.4"), Decimal("15.78")),
+            (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.78")),
+        ]
+        
+            
 class IntervalTest(AssertMixin):
     def setUpAll(self):
         global interval_table, metadata

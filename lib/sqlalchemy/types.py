@@ -7,34 +7,29 @@
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'FLOAT', 'DECIMAL',
             'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'SmallInteger','Smallinteger',
-            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean', 'Unicode', 'PickleType', 'NULLTYPE',
+            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean', 'Unicode', 'PickleType', 'NULLTYPE', 'NullType',
         'SMALLINT', 'DATE', 'TIME','Interval'
             ]
 
-from sqlalchemy import util, exceptions
-import inspect, weakref
+import inspect
 import datetime as dt
+from decimal import Decimal
 try:
     import cPickle as pickle
 except:
     import pickle
 
-_impl_cache = weakref.WeakKeyDictionary()
+from sqlalchemy import exceptions
 
 class AbstractType(object):
-    def _get_impl_dict(self):
-        try:
-            return _impl_cache[self]
-        except KeyError:
-            return _impl_cache.setdefault(self, {})
-
-    impl_dict = property(_get_impl_dict)
-
+    def __init__(self, *args, **kwargs):
+        pass
+        
     def copy_value(self, value):
         return value
 
     def compare_values(self, x, y):
-        return x is y
+        return x == y
 
     def is_mutable(self):
         return False
@@ -51,15 +46,20 @@ class AbstractType(object):
         return "%s(%s)" % (self.__class__.__name__, ",".join(["%s=%s" % (k, getattr(self, k)) for k in inspect.getargspec(self.__init__)[0][1:]]))
 
 class TypeEngine(AbstractType):
-    def __init__(self, *args, **params):
-        pass
-
     def dialect_impl(self, dialect):
         try:
-            return self.impl_dict[dialect]
+            return self._impl_dict[dialect]
+        except AttributeError:
+            self._impl_dict = {}
+            return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
         except KeyError:
-            return self.impl_dict.setdefault(dialect, dialect.type_descriptor(self))
-
+            return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
+    
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d['_impl_dict'] = {}
+        return d
+        
     def get_col_spec(self):
         raise NotImplementedError()
 
@@ -88,15 +88,19 @@ class TypeDecorator(AbstractType):
 
     def dialect_impl(self, dialect):
         try:
-            return self.impl_dict[dialect]
-        except:
-            typedesc = self.load_dialect_impl(dialect)
-            tt = self.copy()
-            if not isinstance(tt, self.__class__):
-                raise exceptions.AssertionError("Type object %s does not properly implement the copy() method, it must return an object of type %s" % (self, self.__class__))
-            tt.impl = typedesc
-            self.impl_dict[dialect] = tt
-            return tt
+            return self._impl_dict[dialect]
+        except AttributeError:
+            self._impl_dict = {}
+        except KeyError:
+            pass
+
+        typedesc = self.load_dialect_impl(dialect)
+        tt = self.copy()
+        if not isinstance(tt, self.__class__):
+            raise exceptions.AssertionError("Type object %s does not properly implement the copy() method, it must return an object of type %s" % (self, self.__class__))
+        tt.impl = typedesc
+        self._impl_dict[dialect] = tt
+        return tt
 
     def load_dialect_impl(self, dialect):
         """loads the dialect-specific implementation of this type.
@@ -179,7 +183,7 @@ def adapt_type(typeobj, colspecs):
         return typeobj
     return typeobj.adapt(impltype)
 
-class NullTypeEngine(TypeEngine):
+class NullType(TypeEngine):
     def get_col_spec(self):
         raise NotImplementedError()
 
@@ -188,8 +192,13 @@ class NullTypeEngine(TypeEngine):
 
     def convert_result_value(self, value, dialect):
         return value
+NullTypeEngine = NullType
 
-class String(TypeEngine):
+class Concatenable(object):
+    """marks a type as supporting 'concatenation'"""
+    pass
+    
+class String(TypeEngine, Concatenable):
     def __init__(self, length=None, convert_unicode=False):
         self.length = length
         self.convert_unicode = convert_unicode
@@ -219,9 +228,6 @@ class String(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
 
-    def compare_values(self, x, y):
-        return x == y
-
 class Unicode(String):
     def __init__(self, length=None, **kwargs):
         kwargs['convert_unicode'] = True
@@ -241,22 +247,36 @@ class SmallInteger(Integer):
 Smallinteger = SmallInteger
 
 class Numeric(TypeEngine):
-    def __init__(self, precision = 10, length = 2):
+    def __init__(self, precision = 10, length = 2, asdecimal=True):
         self.precision = precision
         self.length = length
+        self.asdecimal = asdecimal
 
     def adapt(self, impltype):
-        return impltype(precision=self.precision, length=self.length)
+        return impltype(precision=self.precision, length=self.length, asdecimal=self.asdecimal)
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
-class Float(Numeric):
-    def __init__(self, precision = 10):
-        self.precision = precision
+    def convert_bind_param(self, value, dialect):
+        if value is not None:
+            return float(value)
+        else:
+            return value
+            
+    def convert_result_value(self, value, dialect):
+        if value is not None and self.asdecimal:
+            return Decimal(str(value))
+        else:
+            return value
 
+class Float(Numeric):
+    def __init__(self, precision = 10, asdecimal=False, **kwargs):
+        self.precision = precision
+        self.asdecimal = asdecimal
+        
     def adapt(self, impltype):
-        return impltype(precision=self.precision)
+        return impltype(precision=self.precision, asdecimal=self.asdecimal)
 
 class DateTime(TypeEngine):
     """Implement a type for ``datetime.datetime()`` objects."""
@@ -416,4 +436,4 @@ class NCHAR(Unicode):pass
 class BLOB(Binary): pass
 class BOOLEAN(Boolean): pass
 
-NULLTYPE = NullTypeEngine()
+NULLTYPE = NullType()

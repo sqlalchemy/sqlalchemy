@@ -1,10 +1,9 @@
 import testbase
-from testbase import PersistTest
-import unittest, sys, os, time
-import threading, thread
-
+import threading, thread, time
 import sqlalchemy.pool as pool
 import sqlalchemy.exceptions as exceptions
+from testlib import *
+
 
 mcid = 1
 class MockDBAPI(object):
@@ -45,7 +44,7 @@ class PoolTest(PersistTest):
         connection2 = manager.connect('foo.db')
         connection3 = manager.connect('bar.db')
         
-        self.echo( "connection " + repr(connection))
+        print "connection " + repr(connection)
         self.assert_(connection.cursor() is not None)
         self.assert_(connection is connection2)
         self.assert_(connection2 is not connection3)
@@ -64,7 +63,7 @@ class PoolTest(PersistTest):
         connection = manager.connect('foo.db')
         connection2 = manager.connect('foo.db')
 
-        self.echo( "connection " + repr(connection))
+        print "connection " + repr(connection)
 
         self.assert_(connection.cursor() is not None)
         self.assert_(connection is not connection2)
@@ -80,7 +79,7 @@ class PoolTest(PersistTest):
     
         def status(pool):
             tup = (pool.size(), pool.checkedin(), pool.overflow(), pool.checkedout())
-            self.echo( "Pool size: %d  Connections in pool: %d Current Overflow: %d Current Checked out connections: %d" % tup)
+            print "Pool size: %d  Connections in pool: %d Current Overflow: %d Current Checked out connections: %d" % tup
             return tup
                 
         c1 = p.connect()
@@ -160,7 +159,7 @@ class PoolTest(PersistTest):
         print timeouts
         assert len(timeouts) > 0
         for t in timeouts:
-            assert abs(t - 3) < 1
+            assert abs(t - 3) < 1, "Not all timeouts were 3 seconds: " + repr(timeouts)
         
     def _test_overflow(self, thread_count, max_overflow):
         def creator():
@@ -352,6 +351,35 @@ class PoolTest(PersistTest):
                     c2 = None
                     c1 = None
                 self.assert_(p.checkedout() == 0)
+
+    def test_properties(self):
+        dbapi = MockDBAPI()
+        p = pool.QueuePool(creator=lambda: dbapi.connect('foo.db'),
+                           pool_size=1, max_overflow=0)
+
+        c = p.connect()
+        self.assert_(not c.properties)
+        self.assert_(c.properties is c._connection_record.properties)
+
+        c.properties['foo'] = 'bar'
+        c.close()
+        del c
+
+        c = p.connect()
+        self.assert_('foo' in c.properties)
+
+        c.invalidate()
+        c = p.connect()
+        self.assert_('foo' not in c.properties)
+
+        c.properties['foo2'] = 'bar2'
+        c.detach()
+        self.assert_('foo2' in c.properties)
+
+        c2 = p.connect()
+        self.assert_(c.connection is not c2.connection)
+        self.assert_(not c2.properties)
+        self.assert_('foo2' in c.properties)
             
     def tearDown(self):
        pool.clear_managers()

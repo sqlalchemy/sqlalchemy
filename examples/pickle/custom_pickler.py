@@ -6,7 +6,8 @@ from cStringIO import StringIO
 from pickle import Pickler, Unpickler
 import threading
 
-meta = MetaData('sqlite://', echo=True)
+meta = MetaData('sqlite://')
+meta.bind.echo = True
 
 class MyExt(MapperExtension):
     def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
@@ -25,7 +26,7 @@ class MyPickler(object):
     def persistent_id(self, obj):
         if getattr(obj, "id", None) is None:
             sess = MyPickler.sessions.current
-            newsess = create_session(bind_to=sess.connection(class_mapper(Bar)))
+            newsess = create_session(bind=sess.connection(class_mapper(Bar)))
             newsess.save(obj)
             newsess.flush()
         key = "%s:%s" % (type(obj).__name__, obj.id)

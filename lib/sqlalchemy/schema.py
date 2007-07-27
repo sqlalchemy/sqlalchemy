@@ -17,16 +17,18 @@ objects as well as the visitor interface, so that the schema package
 *plugs in* to the SQL package.
 """
 
-from sqlalchemy import sql, types, exceptions, util, databases
+from sqlalchemy import sql, types, exceptions,util, databases
 import sqlalchemy
-import copy, re, string
+import re, string, inspect
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index', 'ForeignKeyConstraint',
             'PrimaryKeyConstraint', 'CheckConstraint', 'UniqueConstraint', 'DefaultGenerator', 'Constraint',
-           'MetaData', 'ThreadLocalMetaData', 'BoundMetaData', 'DynamicMetaData', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
+           'MetaData', 'ThreadLocalMetaData', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
 
 class SchemaItem(object):
     """Base class for items that define a database schema."""
+
+    __metaclass__ = sql._FigureVisitName
 
     def _init_items(self, *args):
         """Initialize the list of child items for this SchemaItem."""
@@ -69,15 +71,7 @@ class SchemaItem(object):
             m = self._derived_metadata()
             return m and m.bind or None
 
-    def get_engine(self):
-        """Return the engine or raise an error if no engine.
-        
-        Deprecated.  use the "bind" attribute.
-        """
-        
-        return self._get_engine(raiseerr=True)
-
-    def _set_casing_strategy(self, name, kwargs, keyname='case_sensitive'):
+    def _set_casing_strategy(self, kwargs, keyname='case_sensitive'):
         """Set the "case_sensitive" argument sent via keywords to the item's constructor.
 
         For the purposes of Table's 'schema' property, the name of the
@@ -85,7 +79,7 @@ class SchemaItem(object):
         """
         setattr(self, '_%s_setting' % keyname, kwargs.pop(keyname, None))
 
-    def _determine_case_sensitive(self, name, keyname='case_sensitive'):
+    def _determine_case_sensitive(self, keyname='case_sensitive'):
         """Determine the `case_sensitive` value for this item.
 
         For the purposes of Table's `schema` property, the name of the
@@ -111,16 +105,22 @@ class SchemaItem(object):
         return True
 
     def _get_case_sensitive(self):
+        """late-compile the 'case-sensitive' setting when first accessed.
+        
+        typically the SchemaItem will be assembled into its final structure
+        of other SchemaItems at this point, whereby it can attain this setting 
+        from its containing SchemaItem if not defined locally.
+        """
+        
         try:
             return self.__case_sensitive
         except AttributeError:
-            self.__case_sensitive = self._determine_case_sensitive(self.name)
+            self.__case_sensitive = self._determine_case_sensitive()
             return self.__case_sensitive
     case_sensitive = property(_get_case_sensitive)
 
-    engine = property(lambda s:s._get_engine())
     metadata = property(lambda s:s._derived_metadata())
-    bind = property(lambda s:s.engine)
+    bind = property(lambda s:s._get_engine())
     
 def _get_table_key(name, schema):
     if schema is None:
@@ -128,30 +128,16 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
 
-class _TableSingleton(type):
+class _TableSingleton(sql._FigureVisitName):
     """A metaclass used by the ``Table`` object to provide singleton behavior."""
 
     def __call__(self, name, metadata, *args, **kwargs):
-        if isinstance(metadata, sql.Executor):
-            # backwards compatibility - get a BoundSchema associated with the engine
-            engine = metadata
-            if not hasattr(engine, '_legacy_metadata'):
-                engine._legacy_metadata = MetaData(engine)
-            metadata = engine._legacy_metadata
-        elif metadata is not None and not isinstance(metadata, MetaData):
-            # they left MetaData out, so assume its another SchemaItem, add it to *args
-            args = list(args)
-            args.insert(0, metadata)
-            metadata = None
-
-        if metadata is None:
-            metadata = default_metadata
-
         schema = kwargs.get('schema', None)
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', False)
         mustexist = kwargs.pop('mustexist', False)
         useexisting = kwargs.pop('useexisting', False)
+        include_columns = kwargs.pop('include_columns', None)
         key = _get_table_key(name, schema)
         try:
             table = metadata.tables[key]
@@ -170,9 +156,9 @@ class _TableSingleton(type):
             if autoload:
                 try:
                     if autoload_with:
-                        autoload_with.reflecttable(table)
+                        autoload_with.reflecttable(table, include_columns=include_columns)
                     else:
-                        metadata._get_engine(raiseerr=True).reflecttable(table)
+                        metadata._get_engine(raiseerr=True).reflecttable(table, include_columns=include_columns)
                 except exceptions.NoSuchTableError:
                     del metadata.tables[key]
                     raise
@@ -187,7 +173,7 @@ class Table(SchemaItem, sql.TableClause):
 
     This subclasses ``sql.TableClause`` to provide a table that is
     associated with an instance of ``MetaData``, which in turn
-    may be associated with an instance of ``SQLEngine``.  
+    may be associated with an instance of ``Engine``.  
 
     Whereas ``TableClause`` represents a table as its used in an SQL
     expression, ``Table`` represents a table as it exists in a
@@ -232,16 +218,28 @@ class Table(SchemaItem, sql.TableClause):
           options include:
 
           schema
-            Defaults to None: the *schema name* for this table, which is
+            The *schema name* for this table, which is
             required if the table resides in a schema other than the
             default selected schema for the engine's database
-            connection.
+            connection.  Defaults to ``None``.
 
           autoload
             Defaults to False: the Columns for this table should be
             reflected from the database.  Usually there will be no
             Column objects in the constructor if this property is set.
 
+          autoload_with
+            if autoload==True, this is an optional Engine or Connection
+            instance to be used for the table reflection.  If ``None``,
+            the underlying MetaData's bound connectable will be used.
+            
+          include_columns
+            A list of strings indicating a subset of columns to be 
+            loaded via the ``autoload`` operation; table columns who
+            aren't present in this list will not be represented on the resulting
+            ``Table`` object.  Defaults to ``None`` which indicates all 
+            columns should be reflected.
+            
           mustexist
             Defaults to False: indicates that this Table must already
             have been defined elsewhere in the application, else an
@@ -293,8 +291,8 @@ class Table(SchemaItem, sql.TableClause):
             self.fullname = self.name
         self.owner = kwargs.pop('owner', None)
 
-        self._set_casing_strategy(name, kwargs)
-        self._set_casing_strategy(self.schema or '', kwargs, keyname='case_sensitive_schema')
+        self._set_casing_strategy(kwargs)
+        self._set_casing_strategy(kwargs, keyname='case_sensitive_schema')
 
         if len([k for k in kwargs if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
             raise TypeError("Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
@@ -302,6 +300,8 @@ class Table(SchemaItem, sql.TableClause):
         # store extra kwargs, which should only contain db-specific options
         self.kwargs = kwargs
 
+    key = property(lambda self:_get_table_key(self.name, self.schema))
+    
     def _export_columns(self, columns=None):
         # override FromClause's collection initialization logic; TableClause and Table
         # implement it differently
@@ -311,7 +311,7 @@ class Table(SchemaItem, sql.TableClause):
         try:
             return getattr(self, '_case_sensitive_schema')
         except AttributeError:
-            setattr(self, '_case_sensitive_schema', self._determine_case_sensitive(self.schema or '', keyname='case_sensitive_schema'))
+            setattr(self, '_case_sensitive_schema', self._determine_case_sensitive(keyname='case_sensitive_schema'))
             return getattr(self, '_case_sensitive_schema')
     case_sensitive_schema = property(_get_case_sensitive_schema)
 
@@ -361,36 +361,28 @@ class Table(SchemaItem, sql.TableClause):
             else:
                 return []
 
-    def exists(self, bind=None, connectable=None):
+    def exists(self, bind=None):
         """Return True if this table exists."""
 
-        if connectable is not None:
-            bind = connectable
-            
         if bind is None:
             bind = self._get_engine(raiseerr=True)
 
         def do(conn):
-            e = conn.engine
-            return e.dialect.has_table(conn, self.name, schema=self.schema)
+            return conn.dialect.has_table(conn, self.name, schema=self.schema)
         return bind.run_callable(do)
 
-    def create(self, bind=None, checkfirst=False, connectable=None):
+    def create(self, bind=None, checkfirst=False):
         """Issue a ``CREATE`` statement for this table.
 
         See also ``metadata.create_all()``."""
 
-        if connectable is not None:
-            bind = connectable
         self.metadata.create_all(bind=bind, checkfirst=checkfirst, tables=[self])
 
-    def drop(self, bind=None, checkfirst=False, connectable=None):
+    def drop(self, bind=None, checkfirst=False):
         """Issue a ``DROP`` statement for this table.
 
         See also ``metadata.drop_all()``."""
 
-        if connectable is not None:
-            bind = connectable
         self.metadata.drop_all(bind=bind, checkfirst=checkfirst, tables=[self])
 
     def tometadata(self, metadata, schema=None):
@@ -417,7 +409,7 @@ class Column(SchemaItem, sql._ColumnClause):
     ``TableClause``/``Table``.
     """
 
-    def __init__(self, name, type, *args, **kwargs):
+    def __init__(self, name, type_, *args, **kwargs):
         """Construct a new ``Column`` object.
 
         Arguments are:
@@ -426,7 +418,7 @@ class Column(SchemaItem, sql._ColumnClause):
           The name of this column.  This should be the identical name
           as it appears, or will appear, in the database.
 
-        type
+        type\_
           The ``TypeEngine`` for this column.  This can be any
           subclass of ``types.AbstractType``, including the
           database-agnostic types defined in the types module,
@@ -516,7 +508,7 @@ class Column(SchemaItem, sql._ColumnClause):
             identifier contains mixed case.
         """
 
-        super(Column, self).__init__(name, None, type)
+        super(Column, self).__init__(name, None, type_)
         self.args = args
         self.key = kwargs.pop('key', name)
         self._primary_key = kwargs.pop('primary_key', False)
@@ -526,7 +518,7 @@ class Column(SchemaItem, sql._ColumnClause):
         self.index = kwargs.pop('index', None)
         self.unique = kwargs.pop('unique', None)
         self.quote = kwargs.pop('quote', False)
-        self._set_casing_strategy(name, kwargs)
+        self._set_casing_strategy(kwargs)
         self.onupdate = kwargs.pop('onupdate', None)
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = util.Set()
@@ -631,12 +623,13 @@ class Column(SchemaItem, sql._ColumnClause):
         This is a copy of this ``Column`` referenced by a different parent
         (such as an alias or select statement).
         """
+
         fk = [ForeignKey(f._colspec) for f in self.foreign_keys]
         c = Column(name or self.name, self.type, self.default, key = name or self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, quote=self.quote, *fk)
         c.table = selectable
         c.orig_set = self.orig_set
-        c._distance = self._distance + 1
         c.__originating_column = self.__originating_column
+        c._distance = self._distance + 1
         if not c._is_oid:
             selectable.columns.add(c)
             if self.primary_key:
@@ -749,17 +742,13 @@ class ForeignKey(SchemaItem):
                     raise exceptions.ArgumentError("Could not create ForeignKey '%s' on table '%s': table '%s' has no column named '%s'" % (self._colspec, parenttable.name, table.name, str(e)))
             else:
                 self._column = self._colspec
+                
         # propigate TypeEngine to parent if it didnt have one
-        if self.parent.type is types.NULLTYPE:
+        if isinstance(self.parent.type, types.NullType):
             self.parent.type = self._column.type
         return self._column
 
     column = property(lambda s: s._init_column())
-
-    def accept_visitor(self, visitor):
-        """Call the `visit_foreign_key` method on the given visitor."""
-
-        visitor.visit_foreign_key(self)
 
     def _get_parent(self):
         return self.parent
@@ -802,7 +791,7 @@ class DefaultGenerator(SchemaItem):
     def execute(self, bind=None, **kwargs):
         if bind is None:
             bind = self._get_engine(raiseerr=True)
-        return bind.execute_default(self, **kwargs)
+        return bind._execute_default(self, **kwargs)
 
     def __repr__(self):
         return "DefaultGenerator()"
@@ -813,9 +802,6 @@ class PassiveDefault(DefaultGenerator):
     def __init__(self, arg, **kwargs):
         super(PassiveDefault, self).__init__(**kwargs)
         self.arg = arg
-
-    def accept_visitor(self, visitor):
-        return visitor.visit_passive_default(self)
 
     def __repr__(self):
         return "PassiveDefault(%s)" % repr(self.arg)
@@ -829,15 +815,26 @@ class ColumnDefault(DefaultGenerator):
 
     def __init__(self, arg, **kwargs):
         super(ColumnDefault, self).__init__(**kwargs)
-        self.arg = arg
-
-    def accept_visitor(self, visitor):
-        """Call the visit_column_default method on the given visitor."""
-
-        if self.for_update:
-            return visitor.visit_column_onupdate(self)
+        if callable(arg):
+            if not inspect.isfunction(arg):
+                self.arg = lambda ctx: arg()
+            else:
+                argspec = inspect.getargspec(arg)
+                if len(argspec[0]) == 0:
+                    self.arg = lambda ctx: arg()
+                elif len(argspec[0]) != 1:
+                    raise exceptions.ArgumentError("ColumnDefault Python function takes zero or one positional arguments")
+                else:
+                    self.arg = arg
         else:
-            return visitor.visit_column_default(self)
+            self.arg = arg
+
+    def _visit_name(self):
+        if self.for_update:
+            return "column_onupdate"
+        else:
+            return "column_default"
+    __visit_name__ = property(_visit_name)
 
     def __repr__(self):
         return "ColumnDefault(%s)" % repr(self.arg)
@@ -852,7 +849,7 @@ class Sequence(DefaultGenerator):
         self.increment = increment
         self.optional=optional
         self.quote = quote
-        self._set_casing_strategy(name, kwargs)
+        self._set_casing_strategy(kwargs)
 
     def __repr__(self):
         return "Sequence(%s)" % string.join(
@@ -864,20 +861,16 @@ class Sequence(DefaultGenerator):
         super(Sequence, self)._set_parent(column)
         column.sequence = self
 
-    def create(self, bind=None):
+    def create(self, bind=None, checkfirst=True):
         if bind is None:
             bind = self._get_engine(raiseerr=True)
-        bind.create(self)
+        bind.create(self, checkfirst=checkfirst)
 
-    def drop(self, bind=None):
+    def drop(self, bind=None, checkfirst=True):
         if bind is None:
             bind = self._get_engine(raiseerr=True)
-        bind.drop(self)
+        bind.drop(self, checkfirst=checkfirst)
 
-    def accept_visitor(self, visitor):
-        """Call the visit_seauence method on the given visitor."""
-
-        return visitor.visit_sequence(self)
 
 class Constraint(SchemaItem):
     """Represent a table-level ``Constraint`` such as a composite primary key, foreign key, or unique constraint.
@@ -891,7 +884,7 @@ class Constraint(SchemaItem):
         self.columns = sql.ColumnCollection()
 
     def __contains__(self, x):
-        return x in self.columns
+        return self.columns.contains_column(x)
 
     def keys(self):
         return self.columns.keys()
@@ -916,11 +909,12 @@ class CheckConstraint(Constraint):
         super(CheckConstraint, self).__init__(name)
         self.sqltext = sqltext
 
-    def accept_visitor(self, visitor):
+    def _visit_name(self):
         if isinstance(self.parent, Table):
-            visitor.visit_check_constraint(self)
+            return "check_constraint"
         else:
-            visitor.visit_column_check_constraint(self)
+            return "column_check_constraint"
+    __visit_name__ = property(_visit_name)
 
     def _set_parent(self, parent):
         self.parent = parent
@@ -949,9 +943,6 @@ class ForeignKeyConstraint(Constraint):
         for (c, r) in zip(self.__colnames, self.__refcolnames):
             self.append_element(c,r)
 
-    def accept_visitor(self, visitor):
-        visitor.visit_foreign_key_constraint(self)
-
     def append_element(self, col, refcol):
         fk = ForeignKey(refcol, constraint=self, name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, use_alter=self.use_alter)
         fk._set_parent(self.table.c[col])
@@ -974,9 +965,6 @@ class PrimaryKeyConstraint(Constraint):
         table.primary_key = self
         for c in self.__colnames:
             self.append_column(table.c[c])
-
-    def accept_visitor(self, visitor):
-        visitor.visit_primary_key_constraint(self)
 
     def add(self, col):
         self.append_column(col)
@@ -1008,9 +996,6 @@ class UniqueConstraint(Constraint):
 
     def append_column(self, col):
         self.columns.add(col)
-
-    def accept_visitor(self, visitor):
-        visitor.visit_unique_constraint(self)
 
     def copy(self):
         return UniqueConstraint(name=self.name, *self.__colnames)
@@ -1075,21 +1060,18 @@ class Index(SchemaItem):
                                 % (self.name, column))
         self.columns.append(column)
 
-    def create(self, connectable=None):
-        if connectable is not None:
-            connectable.create(self)
+    def create(self, bind=None):
+        if bind is not None:
+            bind.create(self)
         else:
             self._get_engine(raiseerr=True).create(self)
         return self
 
-    def drop(self, connectable=None):
-        if connectable is not None:
-            connectable.drop(self)
+    def drop(self, bind=None):
+        if bind is not None:
+            bind.drop(self)
         else:
             self._get_engine(raiseerr=True).drop(self)
-
-    def accept_visitor(self, visitor):
-        visitor.visit_index(self)
 
     def __str__(self):
         return repr(self)
@@ -1103,69 +1085,34 @@ class Index(SchemaItem):
 class MetaData(SchemaItem):
     """Represent a collection of Tables and their associated schema constructs."""
 
-    def __init__(self, engine_or_url=None, url=None, bind=None, engine=None, **kwargs):
+    __visit_name__ = 'metadata'
+    
+    def __init__(self, bind=None, **kwargs):
         """create a new MetaData object.
             
             bind
                 an Engine, or a string or URL instance which will be passed
-                to create_engine(), along with \**kwargs - this MetaData will
-                be bound to the resulting engine.
+                to create_engine(), this MetaData will be bound to the resulting
+                engine.
 
-            engine_or_url
-                deprecated; a synonym for 'bind'
-                
-            url
-                deprecated.  a string or URL instance which will be passed to
-                create_engine(), along with \**kwargs - this MetaData will be
-                bound to the resulting engine.
-            
-            engine
-                deprecated. an Engine instance to which this MetaData will
-                be bound.
-                
             case_sensitive
-                popped from \**kwargs, indicates default case sensitive
-                setting for all contained objects.  defaults to True.
+                popped from \**kwargs, indicates default case sensitive setting for
+                all contained objects.  defaults to True.
             
-            name
-                deprecated, optional name for this MetaData instance.
-            
-        """
-
-        # transition from <= 0.3.8 signature:
-        #   MetaData(name=None, url=None, engine=None)
-        # to 0.4 signature:
-        #   MetaData(engine_or_url=None)
-        name = kwargs.get('name', None)
-        if engine_or_url is None:
-            engine_or_url = url or bind or engine
-        elif 'name' in kwargs:
-            engine_or_url = engine_or_url or bind or engine or url
-        else:
-            import sqlalchemy.engine as engine
-            import sqlalchemy.engine.url as url
-            if (not isinstance(engine_or_url, url.URL) and
-                not isinstance(engine_or_url, engine.Connectable)):
-                try:
-                    url.make_url(engine_or_url)
-                except exceptions.ArgumentError:
-                    # nope, must have been a name as 1st positional
-                    name, engine_or_url = engine_or_url, (url or engine or bind)
-        kwargs.pop('name', None)
+        """        
 
         self.tables = {}
-        self.name = name
-        self._bind = None
-        self._set_casing_strategy(name, kwargs)
-        if engine_or_url:
-            self.connect(engine_or_url, **kwargs)
+        self._set_casing_strategy(kwargs)
+        self.bind = bind
+        
+    def __repr__(self):
+        return 'MetaData(%r)' % self.bind
 
     def __getstate__(self):
-        return {'tables':self.tables, 'name':self.name, 'casesensitive':self._case_sensitive_setting}
-    
+        return {'tables':self.tables, 'casesensitive':self._case_sensitive_setting}
+
     def __setstate__(self, state):
         self.tables = state['tables']
-        self.name = state['name']
         self._case_sensitive_setting = state['casesensitive']
         self._bind = None
         
@@ -1173,7 +1120,7 @@ class MetaData(SchemaItem):
         """return True if this MetaData is bound to an Engine."""
         return self._bind is not None
 
-    def connect(self, bind=None, **kwargs):
+    def connect(self, bind, **kwargs):
         """bind this MetaData to an Engine.
             
             DEPRECATED.  use metadata.bind = <engine> or metadata.bind = <url>.
@@ -1184,13 +1131,8 @@ class MetaData(SchemaItem):
                 produce the engine which to connect to.  otherwise connects
                 directly to the given Engine.
 
-            engine_or_url
-                deprecated.  synonymous with "bind"
-                
         """
         
-        if bind is None:
-            bind = kwargs.pop('engine_or_url', None)
         from sqlalchemy.engine.url import URL
         if isinstance(bind, (basestring, URL)):
             self._bind = sqlalchemy.create_engine(bind, **kwargs)
@@ -1202,6 +1144,10 @@ class MetaData(SchemaItem):
     def clear(self):
         self.tables.clear()
 
+    def remove(self, table):
+        # TODO: scan all other tables and remove FK _column 
+        del self.tables[table.key]
+        
     def table_iterator(self, reverse=True, tables=None):
         import sqlalchemy.sql_util
         if tables is None:
@@ -1214,7 +1160,7 @@ class MetaData(SchemaItem):
     def _get_parent(self):
         return None
 
-    def create_all(self, bind=None, tables=None, checkfirst=True, connectable=None):
+    def create_all(self, bind=None, tables=None, checkfirst=True):
         """Create all tables stored in this metadata.
 
         This will conditionally create tables depending on if they do
@@ -1224,21 +1170,16 @@ class MetaData(SchemaItem):
           A ``Connectable`` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
 
-        connectable
-          deprecated.  synonymous with "bind"
-
         tables
           Optional list of tables, which is a subset of the total
           tables in the ``MetaData`` (others are ignored).
         """
 
-        if connectable is not None:
-            bind = connectable
         if bind is None:
             bind = self._get_engine(raiseerr=True)
         bind.create(self, checkfirst=checkfirst, tables=tables)
 
-    def drop_all(self, bind=None, tables=None, checkfirst=True, connectable=None):
+    def drop_all(self, bind=None, tables=None, checkfirst=True):
         """Drop all tables stored in this metadata.
 
         This will conditionally drop tables depending on if they
@@ -1248,22 +1189,14 @@ class MetaData(SchemaItem):
           A ``Connectable`` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
           
-        connectable
-          deprecated.  synonymous with "bind"
-
         tables
           Optional list of tables, which is a subset of the total
           tables in the ``MetaData`` (others are ignored).
         """
 
-        if connectable is not None:
-            bind = connectable
         if bind is None:
             bind = self._get_engine(raiseerr=True)
         bind.drop(self, checkfirst=checkfirst, tables=tables)
-
-    def accept_visitor(self, visitor):
-        visitor.visit_metadata(self)
 
     def _derived_metadata(self):
         return self
@@ -1276,27 +1209,22 @@ class MetaData(SchemaItem):
                 return None
         return self._bind
 
-
-class BoundMetaData(MetaData):
-    """Deprecated.  Use ``MetaData``."""
-
-    def __init__(self, engine_or_url, name=None, **kwargs):
-        super(BoundMetaData, self).__init__(engine_or_url=engine_or_url,
-                                            name=name, **kwargs)
-
-
 class ThreadLocalMetaData(MetaData):
-    """A ``MetaData`` that binds to multiple ``Engine`` implementations on a thread-local basis."""
+    """Build upon ``MetaData`` to provide the capability to bind to 
+multiple ``Engine`` implementations on a dynamically alterable,
+thread-local basis.
+    """
 
-    def __init__(self, name=None, **kwargs):
+    __visit_name__ = 'metadata'
+
+    def __init__(self, **kwargs):
         self.context = util.ThreadLocal()
         self.__engines = {}
-        super(ThreadLocalMetaData, self).__init__(engine_or_url=None,
-                                                  name=name, **kwargs)
+        super(ThreadLocalMetaData, self).__init__(**kwargs)
 
     def connect(self, engine_or_url, **kwargs):
         from sqlalchemy.engine.url import URL
-        if isinstance(engine_or_url, basestring) or isinstance(engine_or_url, URL):
+        if isinstance(engine_or_url, (basestring, URL)):
             try:
                 self.context._engine = self.__engines[engine_or_url]
             except KeyError:
@@ -1304,6 +1232,8 @@ class ThreadLocalMetaData(MetaData):
                 self.__engines[engine_or_url] = e
                 self.context._engine = e
         else:
+            # TODO: this is squirrely.  we shouldnt have to hold onto engines
+            # in a case like this
             if not self.__engines.has_key(engine_or_url):
                 self.__engines[engine_or_url] = engine_or_url
             self.context._engine = engine_or_url
@@ -1325,77 +1255,10 @@ class ThreadLocalMetaData(MetaData):
                 raise exceptions.InvalidRequestError("This SchemaItem is not connected to any Engine or Connection.")
             else: 
                 return None
-    engine=property(_get_engine)
     bind = property(_get_engine, connect)
-
-def DynamicMetaData(name=None, threadlocal=True, **kw): 
-    """Deprecated.  Use ``MetaData`` or ``ThreadLocalMetaData``.""" 
-
-    if threadlocal: 
-        return ThreadLocalMetaData(name=name, **kw) 
-    else: 
-        return MetaData(name=name, **kw) 
 
 
 class SchemaVisitor(sql.ClauseVisitor):
     """Define the visiting for ``SchemaItem`` objects."""
 
     __traverse_options__ = {'schema_visitor':True}
-
-    def visit_schema(self, schema):
-        """Visit a generic ``SchemaItem``."""
-        pass
-
-    def visit_table(self, table):
-        """Visit a ``Table``."""
-        pass
-
-    def visit_column(self, column):
-        """Visit a ``Column``."""
-        pass
-
-    def visit_foreign_key(self, join):
-        """Visit a ``ForeignKey``."""
-        pass
-
-    def visit_index(self, index):
-        """Visit an ``Index``."""
-        pass
-
-    def visit_passive_default(self, default):
-        """Visit a passive default."""
-        pass
-
-    def visit_column_default(self, default):
-        """Visit a ``ColumnDefault``."""
-        pass
-
-    def visit_column_onupdate(self, onupdate):
-        """Visit a ``ColumnDefault`` with the `for_update` flag set."""
-        pass
-
-    def visit_sequence(self, sequence):
-        """Visit a ``Sequence``."""
-        pass
-
-    def visit_primary_key_constraint(self, constraint):
-        """Visit a ``PrimaryKeyConstraint``."""
-        pass
-
-    def visit_foreign_key_constraint(self, constraint):
-        """Visit a ``ForeignKeyConstraint``."""
-        pass
-
-    def visit_unique_constraint(self, constraint):
-        """Visit a ``UniqueConstraint``."""
-        pass
-
-    def visit_check_constraint(self, constraint):
-        """Visit a ``CheckConstraint``."""
-        pass
-
-    def visit_column_check_constraint(self, constraint):
-        """Visit a ``CheckConstraint`` on a ``Column``."""
-        pass
-
-default_metadata = ThreadLocalMetaData(name='default')

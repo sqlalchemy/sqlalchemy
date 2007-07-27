@@ -19,15 +19,17 @@ new, dirty, or deleted and provides the capability to flush all those
 changes at once.
 """
 
-from sqlalchemy import util, logging, topological
-from sqlalchemy.orm import attributes
+from sqlalchemy import util, logging, topological, exceptions
+from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
-from sqlalchemy.orm.mapper import object_mapper, class_mapper
-from sqlalchemy.exceptions import *
+from sqlalchemy.orm.mapper import object_mapper
 import StringIO
 import weakref
 
-class UOWEventHandler(attributes.AttributeExtension):
+# Load lazily
+object_session = None
+
+class UOWEventHandler(interfaces.AttributeExtension):
     """An event handler added to all class attributes which handles
     session operations.
     """
@@ -37,52 +39,46 @@ class UOWEventHandler(attributes.AttributeExtension):
         self.class_ = class_
         self.cascade = cascade
 
-    def append(self, event, obj, item):
+    def append(self, obj, item, initiator):
         # process "save_update" cascade rules for when an instance is appended to the list of another instance
         sess = object_session(obj)
         if sess is not None:
             if self.cascade is not None and self.cascade.save_update and item not in sess:
                 mapper = object_mapper(obj)
-                prop = mapper.props[self.key]
+                prop = mapper.get_property(self.key)
                 ename = prop.mapper.entity_name
                 sess.save_or_update(item, entity_name=ename)
 
-    def delete(self, event, obj, item):
+    def remove(self, obj, item, initiator):
         # currently no cascade rules for removing an item from a list
         # (i.e. it stays in the Session)
         pass
 
-    def set(self, event, obj, newvalue, oldvalue):
+    def set(self, obj, newvalue, oldvalue, initiator):
         # process "save_update" cascade rules for when an instance is attached to another instance
         sess = object_session(obj)
         if sess is not None:
             if newvalue is not None and self.cascade is not None and self.cascade.save_update and newvalue not in sess:
                 mapper = object_mapper(obj)
-                prop = mapper.props[self.key]
+                prop = mapper.get_property(self.key)
                 ename = prop.mapper.entity_name
                 sess.save_or_update(newvalue, entity_name=ename)
 
-class UOWProperty(attributes.InstrumentedAttribute):
-    """Override ``InstrumentedAttribute`` to provide an extra
-    ``AttributeExtension`` to all managed attributes as well as the
-    `property` property.
-    """
-
-    def __init__(self, manager, class_, key, uselist, callable_, typecallable, cascade=None, extension=None, **kwargs):
-        extension = util.to_list(extension or [])
-        extension.insert(0, UOWEventHandler(key, class_, cascade=cascade))
-        super(UOWProperty, self).__init__(manager, key, uselist, callable_, typecallable, extension=extension,**kwargs)
-        self.class_ = class_
-
-    property = property(lambda s:class_mapper(s.class_).props[s.key], doc="returns the MapperProperty object associated with this property")
 
 class UOWAttributeManager(attributes.AttributeManager):
     """Override ``AttributeManager`` to provide the ``UOWProperty``
     instance for all ``InstrumentedAttributes``.
     """
 
-    def create_prop(self, class_, key, uselist, callable_, typecallable, **kwargs):
-        return UOWProperty(self, class_, key, uselist, callable_, typecallable, **kwargs)
+    def create_prop(self, class_, key, uselist, callable_, typecallable,
+                    cascade=None, extension=None, **kwargs):
+        extension = util.to_list(extension or [])
+        extension.insert(0, UOWEventHandler(key, class_, cascade=cascade))
+
+        return super(UOWAttributeManager, self).create_prop(
+            class_, key, uselist, callable_, typecallable,
+            extension=extension, **kwargs)
+
 
 class UnitOfWork(object):
     """Main UOW object which stores lists of dirty/new/deleted objects.
@@ -122,7 +118,7 @@ class UnitOfWork(object):
     def _validate_obj(self, obj):
         if (hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key)) or \
             (not hasattr(obj, '_instance_key') and obj not in self.new):
-            raise InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj))
+            raise exceptions.InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj))
 
     def _is_valid(self, obj):
         if (hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key)) or \
@@ -138,7 +134,7 @@ class UnitOfWork(object):
             self.new.remove(obj)
         if not hasattr(obj, '_instance_key'):
             mapper = object_mapper(obj)
-            obj._instance_key = mapper.instance_key(obj)
+            obj._instance_key = mapper.identity_key_from_instance(obj)
         if hasattr(obj, '_sa_insert_order'):
             delattr(obj, '_sa_insert_order')
         self.identity_map[obj._instance_key] = obj
@@ -148,7 +144,7 @@ class UnitOfWork(object):
         """register the given object as 'new' (i.e. unsaved) within this unit of work."""
 
         if hasattr(obj, '_instance_key'):
-            raise InvalidRequestError("Object '%s' already has an identity - it can't be registered as new" % repr(obj))
+            raise exceptions.InvalidRequestError("Object '%s' already has an identity - it can't be registered as new" % repr(obj))
         if obj not in self.new:
             self.new.add(obj)
             obj._sa_insert_order = len(self.new)
@@ -204,14 +200,14 @@ class UnitOfWork(object):
         for obj in self.deleted.intersection(objset).difference(processed):
             flush_context.register_object(obj, isdelete=True)
 
-        trans = session.create_transaction(autoflush=False)
-        flush_context.transaction = trans
+        session.create_transaction(autoflush=False)
+        flush_context.transaction = session.transaction
         try:
             flush_context.execute()
         except:
-            trans.rollback()
+            session.rollback()
             raise
-        trans.commit()
+        session.commit()
 
         flush_context.post_exec()
 
@@ -228,6 +224,7 @@ class UOWTransaction(object):
     def __init__(self, uow, session):
         self.uow = uow
         self.session = session
+        self.mapper_flush_opts = session._mapper_flush_opts
         
         # stores tuples of mapper/dependent mapper pairs,
         # representing a partial ordering fed into topological sort

@@ -1,5 +1,7 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
+from testlib import *
 from timeit import Timer
 import sys
 

@@ -1,68 +1,68 @@
-from testbase import AssertMixin
 import testbase
+import datetime
 from sqlalchemy import *
 from sqlalchemy.databases import postgres
-import datetime
+from testlib import *
 
-db = testbase.db
 
 class DomainReflectionTest(AssertMixin):
     "Test PostgreSQL domains"
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def setUpAll(self):
-        self.con = db.connect()
-        self.con.execute('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42')
-        self.con.execute('CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0')
-        self.con.execute('CREATE TABLE testtable (question integer, answer testdomain)')
-        self.con.execute('CREATE TABLE alt_schema.testtable(question integer, answer alt_schema.testdomain, anything integer)')
-        self.con.execute('CREATE TABLE crosschema (question integer, answer alt_schema.testdomain)')
+        con = testbase.db.connect()
+        con.execute('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42')
+        con.execute('CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0')
+        con.execute('CREATE TABLE testtable (question integer, answer testdomain)')
+        con.execute('CREATE TABLE alt_schema.testtable(question integer, answer alt_schema.testdomain, anything integer)')
+        con.execute('CREATE TABLE crosschema (question integer, answer alt_schema.testdomain)')
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def tearDownAll(self):
-        self.con.execute('DROP TABLE testtable')
-        self.con.execute('DROP TABLE alt_schema.testtable')
-        self.con.execute('DROP TABLE crosschema')
-        self.con.execute('DROP DOMAIN testdomain')
-        self.con.execute('DROP DOMAIN alt_schema.testdomain')
+        con = testbase.db.connect()
+        con.execute('DROP TABLE testtable')
+        con.execute('DROP TABLE alt_schema.testtable')
+        con.execute('DROP TABLE crosschema')
+        con.execute('DROP DOMAIN testdomain')
+        con.execute('DROP DOMAIN alt_schema.testdomain')
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_table_is_reflected(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         table = Table('testtable', metadata, autoload=True)
         self.assertEquals(set(table.columns.keys()), set(['question', 'answer']), "Columns of reflected table didn't equal expected columns")
         self.assertEquals(table.c.answer.type.__class__, postgres.PGInteger)
         
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_domain_is_reflected(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         table = Table('testtable', metadata, autoload=True)
         self.assertEquals(str(table.columns.answer.default.arg), '42', "Reflected default value didn't equal expected value")
         self.assertFalse(table.columns.answer.nullable, "Expected reflected column to not be nullable.")
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_table_is_reflected_alt_schema(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         table = Table('testtable', metadata, autoload=True, schema='alt_schema')
         self.assertEquals(set(table.columns.keys()), set(['question', 'answer', 'anything']), "Columns of reflected table didn't equal expected columns")
         self.assertEquals(table.c.anything.type.__class__, postgres.PGInteger)
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_schema_domain_is_reflected(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         table = Table('testtable', metadata, autoload=True, schema='alt_schema')
         self.assertEquals(str(table.columns.answer.default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_crosschema_domain_is_reflected(self):
-        metadata = MetaData(db)
+        metadata = MetaData(testbase.db)
         table = Table('crosschema', metadata, autoload=True)
         self.assertEquals(str(table.columns.answer.default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
 
 class MiscTest(AssertMixin):
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_date_reflection(self):
         m1 = MetaData(testbase.db)
         t1 = Table('pgdate', m1, 
@@ -78,7 +78,7 @@ class MiscTest(AssertMixin):
         finally:
             m1.drop_all()
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_pg_weirdchar_reflection(self):
         meta1 = MetaData(testbase.db)
         subject = Table("subject", meta1,
@@ -99,18 +99,18 @@ class MiscTest(AssertMixin):
         finally:
             meta1.drop_all()
         
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_checksfor_sequence(self):
         meta1 = MetaData(testbase.db)
         t = Table('mytable', meta1, 
             Column('col1', Integer, Sequence('fooseq')))
         try:
             testbase.db.execute("CREATE SEQUENCE fooseq")
-            t.create()
+            t.create(checkfirst=True)
         finally:
-            t.drop()
+            t.drop(checkfirst=True)
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_schema_reflection(self):
         """note: this test requires that the 'alt_schema' schema be separate and accessible by the test user"""
 
@@ -141,7 +141,7 @@ class MiscTest(AssertMixin):
         finally:
             meta1.drop_all()
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_schema_reflection_2(self):
         meta1 = MetaData(testbase.db)
         subject = Table("subject", meta1,
@@ -162,7 +162,7 @@ class MiscTest(AssertMixin):
         finally:
             meta1.drop_all()
             
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_schema_reflection_3(self):
         meta1 = MetaData(testbase.db)
         subject = Table("subject", meta1,
@@ -185,7 +185,7 @@ class MiscTest(AssertMixin):
         finally:
             meta1.drop_all()
         
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_preexecute_passivedefault(self):
         """test that when we get a primary key column back 
         from reflecting a table which has a default value on it, we pre-execute
@@ -216,7 +216,7 @@ class TimezoneTest(AssertMixin):
     if postgres returns it.  python then will not let you compare a datetime with a tzinfo to a datetime
     that doesnt have one.  this test illustrates two ways to have datetime types with and without timezone
     info. """
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def setUpAll(self):
         global tztable, notztable, metadata
         metadata = MetaData(testbase.db)
@@ -233,11 +233,11 @@ class TimezoneTest(AssertMixin):
             Column("name", String(20)),
         )
         metadata.create_all()
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_with_timezone(self):
         # get a date with a tzinfo
         somedate = testbase.db.connect().scalar(func.current_timestamp().select())
@@ -246,7 +246,7 @@ class TimezoneTest(AssertMixin):
         x = c.last_updated_params()
         print x['date'] == somedate
 
-    @testbase.supported('postgres')
+    @testing.supported('postgres')
     def test_without_timezone(self):
         # get a date without a tzinfo
         somedate = datetime.datetime(2005, 10,20, 11, 52, 00)
@@ -255,6 +255,56 @@ class TimezoneTest(AssertMixin):
         x = c.last_updated_params()
         print x['date'] == somedate
 
+class ArrayTest(AssertMixin):
+    @testing.supported('postgres')
+    def setUpAll(self):
+        global metadata, arrtable
+        metadata = MetaData(testbase.db)
+        
+        arrtable = Table('arrtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('intarr', postgres.PGArray(Integer)),
+            Column('strarr', postgres.PGArray(String), nullable=False)
+        )
+        metadata.create_all()
+    @testing.supported('postgres')
+    def tearDownAll(self):
+        metadata.drop_all()
     
+    @testing.supported('postgres')
+    def test_reflect_array_column(self):
+        metadata2 = MetaData(testbase.db)
+        tbl = Table('arrtable', metadata2, autoload=True)
+        self.assertTrue(isinstance(tbl.c.intarr.type, postgres.PGArray))
+        self.assertTrue(isinstance(tbl.c.strarr.type, postgres.PGArray))
+        self.assertTrue(isinstance(tbl.c.intarr.type.item_type, Integer))
+        self.assertTrue(isinstance(tbl.c.strarr.type.item_type, String))
+        
+    @testing.supported('postgres')
+    def test_insert_array(self):
+        arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
+        results = arrtable.select().execute().fetchall()
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0]['intarr'], [1,2,3])
+        self.assertEquals(results[0]['strarr'], ['abc','def'])
+        arrtable.delete().execute()
+
+    @testing.supported('postgres')
+    def test_array_where(self):
+        arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
+        arrtable.insert().execute(intarr=[4,5,6], strarr='ABC')
+        results = arrtable.select().where(arrtable.c.intarr == [1,2,3]).execute().fetchall()
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0]['intarr'], [1,2,3])
+        arrtable.delete().execute()
+    
+    @testing.supported('postgres')
+    def test_array_concat(self):
+        arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
+        results = select([arrtable.c.intarr + [4,5,6]]).execute().fetchall()
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0][0], [1,2,3,4,5,6])
+        arrtable.delete().execute()
+
 if __name__ == "__main__":
     testbase.main()

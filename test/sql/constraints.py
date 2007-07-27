@@ -1,8 +1,8 @@
 import testbase
 from sqlalchemy import *
-import sys
+from testlib import *
 
-class ConstraintTest(testbase.AssertMixin):
+class ConstraintTest(AssertMixin):
     
     def setUp(self):
         global metadata
@@ -52,7 +52,7 @@ class ConstraintTest(testbase.AssertMixin):
             )
         metadata.create_all()
         
-    @testbase.unsupported('mysql')
+    @testing.unsupported('mysql')
     def test_check_constraint(self):
         foo = Table('foo', metadata, 
             Column('id', Integer, primary_key=True),
@@ -172,12 +172,13 @@ class ConstraintTest(testbase.AssertMixin):
 
         capt = []
         connection = testbase.db.connect()
-        ex = connection._execute
+        # TODO: hacky, put a real connection proxy in
+        ex = connection._Connection__execute
         def proxy(context):
             capt.append(context.statement)
             capt.append(repr(context.parameters))
             ex(context)
-        connection._execute = proxy
+        connection._Connection__execute = proxy
         schemagen = testbase.db.dialect.schemagenerator(connection)
         schemagen.traverse(events)
         

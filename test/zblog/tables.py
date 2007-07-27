@@ -1,13 +1,16 @@
+"""application table metadata objects are described here."""
+
 from sqlalchemy import *
+from testlib import *
+
 
 metadata = MetaData()
-"""application table metadata objects are described here."""
 
 users = Table('users', metadata, 
     Column('user_id', Integer, primary_key=True),
     Column('user_name', String(30), nullable=False),
     Column('fullname', String(100), nullable=False),
-    Column('password', String(30), nullable=False),
+    Column('password', String(40), nullable=False),
     Column('groupname', String(20), nullable=False),
     )
 

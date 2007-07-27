@@ -7,6 +7,7 @@ try:
 except:
     pass
 from sqlalchemy import *
+from testbase import Table, Column
 import time
 
 metadata = create_engine('sqlite://', echo=True)

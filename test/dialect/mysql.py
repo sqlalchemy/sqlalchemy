@@ -1,15 +1,13 @@
-from testbase import PersistTest, AssertMixin
 import testbase
 from sqlalchemy import *
 from sqlalchemy.databases import mysql
-import sys, StringIO
+from testlib import *
 
-db = testbase.db
 
 class TypesTest(AssertMixin):
     "Test MySQL column types"
 
-    @testbase.supported('mysql')
+    @testing.supported('mysql')
     def test_numeric(self):
         "Exercise type specification and options for numeric types."
         
@@ -104,13 +102,13 @@ class TypesTest(AssertMixin):
              'SMALLINT(4) UNSIGNED ZEROFILL'),
            ]
 
-        table_args = ['test_mysql_numeric', db]
+        table_args = ['test_mysql_numeric', MetaData(testbase.db)]
         for index, spec in enumerate(columns):
             type_, args, kw, res = spec
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         numeric_table = Table(*table_args)
-        gen = db.dialect.schemagenerator(db, None, None)
+        gen = testbase.db.dialect.schemagenerator(testbase.db, None, None)
         
         for col in numeric_table.c:
             index = int(col.name[1:])
@@ -124,7 +122,7 @@ class TypesTest(AssertMixin):
             raise
         numeric_table.drop()
     
-    @testbase.supported('mysql')
+    @testing.supported('mysql')
     def test_charset(self):
         """Exercise CHARACTER SET and COLLATE-related options on string-type
         columns."""
@@ -188,13 +186,13 @@ class TypesTest(AssertMixin):
              '''ENUM('foo','bar') UNICODE''')
            ]
 
-        table_args = ['test_mysql_charset', db]
+        table_args = ['test_mysql_charset', MetaData(testbase.db)]
         for index, spec in enumerate(columns):
             type_, args, kw, res = spec
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         charset_table = Table(*table_args)
-        gen = db.dialect.schemagenerator(db, None, None)
+        gen = testbase.db.dialect.schemagenerator(testbase.db, None, None)
         
         for col in charset_table.c:
             index = int(col.name[1:])
@@ -208,11 +206,12 @@ class TypesTest(AssertMixin):
             raise
         charset_table.drop()
 
-    @testbase.supported('mysql')
+    @testing.supported('mysql')
     def test_enum(self):
         "Exercise the ENUM type"
-
-        enum_table = Table('mysql_enum', db,
+        
+        db = testbase.db
+        enum_table = Table('mysql_enum', MetaData(testbase.db),
             Column('e1', mysql.MSEnum('"a"', "'b'")),
             Column('e2', mysql.MSEnum('"a"', "'b'"), nullable=False),
             Column('e3', mysql.MSEnum('"a"', "'b'", strict=True)),
@@ -242,38 +241,17 @@ class TypesTest(AssertMixin):
         enum_table.insert().execute(e1='a', e2='a', e3='a', e4='a')
         enum_table.insert().execute(e1='b', e2='b', e3='b', e4='b')
 
-        # Insert out of range enums, push stderr aside to avoid expected
-        # warnings cluttering test output
-        con = db.connect()
-        if not hasattr(con.connection, 'show_warnings'):
-            con.execute(insert(enum_table, {'e1':'c', 'e2':'c',
-                                            'e3':'a', 'e4':'a'}))
-        else:
-            try:
-                aside = sys.stderr
-                sys.stderr = StringIO.StringIO()
-
-                self.assert_(not con.connection.show_warnings())
-
-                con.execute(insert(enum_table, {'e1':'c', 'e2':'c',
-                                                'e3':'a', 'e4':'a'}))
-
-                self.assert_(con.connection.show_warnings())
-            finally:
-                sys.stderr = aside
-
         res = enum_table.select().execute().fetchall()
 
         expected = [(None, 'a', None, 'a'),
                     ('a', 'a', 'a', 'a'),
-                    ('b', 'b', 'b', 'b'),
-                    ('', '', 'a', 'a')]
+                    ('b', 'b', 'b', 'b')]
 
         # This is known to fail with MySQLDB 1.2.2 beta versions
         # which return these as sets.Set(['a']), sets.Set(['b'])
         # (even on Pythons with __builtin__.set)
-        if db.dialect.dbapi.version_info < (1, 2, 2, 'beta', 3) and \
-           db.dialect.dbapi.version_info >= (1, 2, 2):
+        if testbase.db.dialect.dbapi.version_info < (1, 2, 2, 'beta', 3) and \
+           testbase.db.dialect.dbapi.version_info >= (1, 2, 2):
             # these mysqldb seem to always uses 'sets', even on later pythons
             import sets 
             def convert(value):
@@ -292,10 +270,10 @@ class TypesTest(AssertMixin):
         self.assertEqual(res, expected)
         enum_table.drop()
 
-    @testbase.supported('mysql')
+    @testing.supported('mysql')
     def test_type_reflection(self):
         # FIXME: older versions need their own test
-        if db.dialect.get_version_info(db) < (5, 0):
+        if testbase.db.dialect.get_version_info(testbase.db) < (5, 0):
             return
 
         # (ask_for, roundtripped_as_if_different)
@@ -325,12 +303,12 @@ class TypesTest(AssertMixin):
 
         columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
 
-        m = MetaData(db)
+        m = MetaData(testbase.db)
         t_table = Table('mysql_types', m, *columns)
         m.drop_all()
         m.create_all()
         
-        m2 = MetaData(db)
+        m2 = MetaData(testbase.db)
         rt = Table('mysql_types', m2, autoload=True)
 
         #print

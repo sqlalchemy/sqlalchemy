@@ -1,10 +1,9 @@
-from testbase import PersistTest
-import sqlalchemy.util as util
-import sqlalchemy.orm.attributes as attributes
-from sqlalchemy import exceptions
-import unittest, sys, os
-import pickle
 import testbase
+import pickle
+import sqlalchemy.orm.attributes as attributes
+from sqlalchemy.orm.collections import collection
+from sqlalchemy import exceptions
+from testlib import *
 
 class MyTest(object):pass
 class MyTest2(object):pass
@@ -50,14 +49,53 @@ class AttributesTest(PersistTest):
         # shouldnt be pickling callables at the class level
         def somecallable(*args):
             return None
-        manager.register_attribute(MyTest, 'mt2', uselist = True, trackparent=True, callable_=somecallable)
-        x = MyTest()
-        x.mt2.append(MyTest2())
-        
-        x.user_id=7
-        s = pickle.dumps(x)
-        x2 = pickle.loads(s)
-        assert s == pickle.dumps(x2)
+        attr_name = 'mt2'
+        manager.register_attribute(MyTest, attr_name, uselist = True, trackparent=True, callable_=somecallable)
+
+        o = MyTest()
+        o.mt2.append(MyTest2())
+        o.user_id=7
+        o.mt2[0].a = 'abcde'
+        pk_o = pickle.dumps(o)
+
+        o2 = pickle.loads(pk_o)
+
+        # so... pickle is creating a new 'mt2' string after a roundtrip here,
+        # so we'll brute-force set it to be id-equal to the original string 
+        o_mt2_str = [ k for k in o.__dict__ if k == 'mt2'][0]
+        o2_mt2_str = [ k for k in o2.__dict__ if k == 'mt2'][0]
+        self.assert_(o_mt2_str == o2_mt2_str)
+        self.assert_(o_mt2_str is not o2_mt2_str)
+        # change the id of o2.__dict__['mt2']
+        former = o2.__dict__['mt2']
+        del o2.__dict__['mt2']
+        o2.__dict__[o_mt2_str] = former
+
+        pk_o2 = pickle.dumps(o2)
+
+        self.assert_(pk_o == pk_o2)
+
+        # the above is kind of distrurbing, so let's do it again a little
+        # differently.  the string-id in serialization thing is just an
+        # artifact of pickling that comes up in the first round-trip.
+        # a -> b differs in pickle memoization of 'mt2', but b -> c will
+        # serialize identically.
+
+        o3 = pickle.loads(pk_o2)
+        pk_o3 = pickle.dumps(o3)
+        o4 = pickle.loads(pk_o3)
+        pk_o4 = pickle.dumps(o4)
+
+        self.assert_(pk_o3 == pk_o4)
+
+        # and lastly make sure we still have our data after all that.
+        # identical serialzation is great, *if* it's complete :)
+        self.assert_(o4.user_id == 7)
+        self.assert_(o4.user_name is None)
+        self.assert_(o4.email_address is None)
+        self.assert_(len(o4.mt2) == 1)
+        self.assert_(o4.mt2[0].a == 'abcde')
+        self.assert_(o4.mt2[0].b is None)
 
     def testlist(self):
         class User(object):pass
@@ -110,13 +148,12 @@ class AttributesTest(PersistTest):
         s = Student()
         c = Course()
         s.courses.append(c)
-        print c.students
-        print [s]
         self.assert_(c.students == [s])
         s.courses.remove(c)
         self.assert_(c.students == [])
         
         (s1, s2, s3) = (Student(), Student(), Student())
+             
         c.students = [s1, s2, s3]
         self.assert_(s2.courses == [c])
         self.assert_(s1.courses == [c])
@@ -126,9 +163,7 @@ class AttributesTest(PersistTest):
         print c
         print c.students
         s1.courses.remove(c)
-        self.assert_(c.students == [s2,s3])
-        
-        
+        self.assert_(c.students == [s2,s3])        
         class Post(object):pass
         class Blog(object):pass
         
@@ -334,44 +369,47 @@ class AttributesTest(PersistTest):
         manager = attributes.AttributeManager()
         class Foo(object):pass
         manager.register_attribute(Foo, "collection", uselist=True, typecallable=set)
-        assert isinstance(Foo().collection.data, set)
+        assert isinstance(Foo().collection, set)
         
-        manager.register_attribute(Foo, "collection", uselist=True, typecallable=dict)
         try:
-            Foo().collection
+            manager.register_attribute(Foo, "collection", uselist=True, typecallable=dict)
             assert False
         except exceptions.ArgumentError, e:
-            assert str(e) == "Dictionary collection class 'dict' must implement an append() method"
-
+            assert str(e) == "Type InstrumentedDict must elect an appender method to be a collection class"
+        
         class MyDict(dict):
+            @collection.appender
             def append(self, item):
                 self[item.foo] = item
+            @collection.remover
+            def remove(self, item):
+                del self[item.foo]
         manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyDict)
-        assert isinstance(Foo().collection.data, MyDict)
+        assert isinstance(Foo().collection, MyDict)
         
         class MyColl(object):pass
-        manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl)
         try:
-            Foo().collection
+            manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl)
             assert False
         except exceptions.ArgumentError, e:
-            assert str(e) == "Collection class 'MyColl' is not of type 'list', 'set', or 'dict' and has no append() or add() method"
+            assert str(e) == "Type MyColl must elect an appender method to be a collection class"
         
         class MyColl(object):
+            @collection.iterator
             def __iter__(self):
                 return iter([])
+            @collection.appender
             def append(self, item):
+                pass
+            @collection.remover
+            def remove(self, item):
                 pass
         manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl)
         try:
             Foo().collection
-            assert False
+            assert True
         except exceptions.ArgumentError, e:
-            assert str(e) == "Collection class 'MyColl' is not of type 'list', 'set', or 'dict' and has no clear() method"
-
-        def foo(self):pass
-        MyColl.clear = foo
-        assert isinstance(Foo().collection.data, MyColl)
+            assert False
             
 if __name__ == "__main__":
     testbase.main()
