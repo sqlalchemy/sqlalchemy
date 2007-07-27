@@ -261,7 +261,9 @@ class PropertyLoader(StrategizedProperty):
     private = property(lambda s:s.cascade.delete_orphan)
 
     def create_strategy(self):
-        if self.lazy:
+        if self.lazy == 'dynamic':
+            return strategies.DynaLoader(self)
+        elif self.lazy:
             return strategies.LazyLoader(self)
         elif self.lazy is False:
             return strategies.EagerLoader(self)

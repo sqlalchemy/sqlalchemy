@@ -14,6 +14,7 @@ from sqlalchemy import logging, exceptions
 
 PASSIVE_NORESULT = object()
 ATTR_WAS_SET = object()
+NO_VALUE = object()
 
 class InstrumentedAttribute(interfaces.PropComparator):
     """attribute access for instrumented classes."""
@@ -81,6 +82,15 @@ class InstrumentedAttribute(interfaces.PropComparator):
         if obj is None:
             return self
         return self.get(obj)
+
+    def commit_to_state(self, state, obj, value=NO_VALUE):
+        """commit the a copy of thte value of 'obj' to the given CommittedState"""
+
+        if value is NO_VALUE:
+            if self.key in obj.__dict__:
+                value = obj.__dict__[self.key]
+        if value is not NO_VALUE:
+            state.data[self.key] = self.copy(value)
 
     def clause_element(self):
         return self.comparator.clause_element()
@@ -257,7 +267,7 @@ class InstrumentedAttribute(interfaces.PropComparator):
         state = obj._state
         orig = state.get('original', None)
         if orig is not None:
-            orig.commit_attribute(self, obj, value)
+            self.commit_to_state(orig, obj, value)
         # remove per-instance callable, if any
         state.pop(('callable', self), None)
         obj.__dict__[self.key] = value
@@ -475,7 +485,7 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
         value = user_data
 
         if orig is not None:
-            orig.commit_attribute(self, obj, value)
+            self.commit_to_state(orig, obj, value)
         # remove per-instance callable, if any
         state.pop(('callable', self), None)
         obj.__dict__[self.key] = value
@@ -538,34 +548,11 @@ class CommittedState(object):
     method on the attribute manager is called.
     """
 
-    NO_VALUE = object()
 
     def __init__(self, manager, obj):
         self.data = {}
         for attr in manager.managed_attributes(obj.__class__):
-            self.commit_attribute(attr, obj)
-
-    def commit_attribute(self, attr, obj, value=NO_VALUE):
-        """Establish the value of attribute `attr` on instance `obj`
-        as *committed*.
-
-        This corresponds to a previously saved state being restored.
-        """
-
-        if value is CommittedState.NO_VALUE:
-            if attr.key in obj.__dict__:
-                value = obj.__dict__[attr.key]
-        if value is not CommittedState.NO_VALUE:
-            self.data[attr.key] = attr.copy(value)
-
-            # not tracking parent on lazy-loaded instances at the moment.
-            # its not needed since they will be "optimistically" tested
-            #if attr.uselist:
-                #if attr.trackparent:
-                #    [attr.sethasparent(x, True) for x in self.data[attr.key] if x is not None]
-            #else:
-                #if attr.trackparent and value is not None:
-                #    attr.sethasparent(value, True)
+            attr.commit_to_state(self, obj)
 
     def rollback(self, manager, obj):
         for attr in manager.managed_attributes(obj.__class__):
@@ -761,6 +748,8 @@ class AttributeManager(object):
             return []
         elif isinstance(attr, InstrumentedCollectionAttribute):
             return list(attr._get_collection(obj, x))
+        elif isinstance(x, list):
+            return x
         else:
             return [x]
 
@@ -832,8 +821,11 @@ class AttributeManager(object):
         ``InstrumentedAttribute``, which will communicate change
         events back to this ``AttributeManager``.
         """
-
-        if uselist:
+        
+        if kwargs.pop('dynamic', False):
+            from sqlalchemy.orm import dynamic
+            return dynamic.DynamicCollectionAttribute(class_, self, key, typecallable, **kwargs)
+        elif uselist:
             return InstrumentedCollectionAttribute(class_, self, key,
                                                    callable_,
                                                    typecallable,

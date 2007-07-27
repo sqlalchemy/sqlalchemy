@@ -161,6 +161,12 @@ def install_fixture_data():
         dict(keyword_id=6, item_id=3)
     )
 
+class FixtureTest(ORMTest):
+    def define_tables(self, meta):
+        # a slight dirty trick here. 
+        meta.tables = metadata.tables
+        metadata.connect(meta.bind)
+    
 class Fixtures(object):
     @property
     def user_address_result(self):
