@@ -111,6 +111,11 @@ class Pool(object):
       surpassed the connection will be closed and replaced with a
       newly opened connection. Defaults to -1.
 
+    listeners
+      A list of ``PoolListener``-like objects that receive events when
+      DBAPI connections are created, checked out and checked in to the
+      pool.
+
     auto_close_cursors
       Cursors, returned by ``connection.cursor()``, are tracked and
       are automatically closed when the connection is returned to the
@@ -126,8 +131,9 @@ class Pool(object):
     False, then no cursor processing occurs upon checkin.
     """
 
-    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False, auto_close_cursors=True,
-                 disallow_open_cursors=False):
+    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False,
+                 auto_close_cursors=True, disallow_open_cursors=False,
+                 listeners=None):
         self.logger = logging.instance_logger(self)
         self._threadconns = weakref.WeakValueDictionary()
         self._creator = creator
@@ -136,6 +142,13 @@ class Pool(object):
         self.auto_close_cursors = auto_close_cursors
         self.disallow_open_cursors = disallow_open_cursors
         self.echo = echo
+        self.listeners = []
+        self._on_connect = []
+        self._on_checkout = []
+        self._on_checkin = []
+        if listeners:
+            for l in listeners:
+                self.add_listener(l)
     echo = logging.echo_property()
 
     def unique_connection(self):
@@ -183,6 +196,17 @@ class Pool(object):
     def status(self):
         raise NotImplementedError()
 
+    def add_listener(self, listener):
+        """Add a ``PoolListener``-like object to this pool."""
+
+        self.listeners.append(listener)
+        if hasattr(listener, 'connect'):
+            self._on_connect.append(listener)
+        if hasattr(listener, 'checkout'):
+            self._on_checkout.append(listener)
+        if hasattr(listener, 'checkin'):
+            self._on_checkin.append(listener)
+
     def log(self, msg):
         self.logger.info(msg)
 
@@ -191,6 +215,9 @@ class _ConnectionRecord(object):
         self.__pool = pool
         self.connection = self.__connect()
         self.properties = {}
+        if pool._on_connect:
+            for l in pool._on_connect:
+                l.connect(self.connection, self)
 
     def close(self):
         if self.connection is not None:
@@ -209,11 +236,17 @@ class _ConnectionRecord(object):
         if self.connection is None:
             self.connection = self.__connect()
             self.properties.clear()
+            if self.__pool._on_connect:
+                for l in self.__pool._on_connect:
+                    l.connect(self.connection, self)
         elif (self.__pool._recycle > -1 and time.time() - self.starttime > self.__pool._recycle):
             self.__pool.log("Connection %s exceeded timeout; recycling" % repr(self.connection))
             self.__close()
             self.connection = self.__connect()
             self.properties.clear()
+            if self.__pool._on_connect:
+                for l in self.__pool._on_connect:
+                    l.connect(self.connection, self)
         return self.connection
 
     def __close(self):
@@ -305,7 +338,27 @@ class _ConnectionFairy(object):
         if self.connection is None:
             raise exceptions.InvalidRequestError("This connection is closed")
         self.__counter +=1
-        return self
+
+        if not self._pool._on_checkout or self.__counter != 1:
+            return self
+
+        # Pool listeners can trigger a reconnection on checkout
+        attempts = 2
+        while attempts > 0:
+            try:
+                for l in self._pool._on_checkout:
+                    l.checkout(self.connection, self._connection_record)
+                return self
+            except exceptions.DisconnectionError, e:
+                self._pool.log(
+                    "Disconnection detected on checkout: %s" % (str(e)))
+                self._connection_record.invalidate(e)
+                self.connection = self._connection_record.get_connection()
+                attempts -= 1
+
+        self._pool.log("Reconnection attempts exhausted on checkout")
+        self.invalidate()
+        raise exceptions.InvalidRequestError("This connection is closed")
 
     def detach(self):
         """Separate this Connection from its Pool.
@@ -357,6 +410,9 @@ class _ConnectionFairy(object):
         if self._connection_record is not None:
             if self._pool.echo:
                 self._pool.log("Connection %s being returned to pool" % repr(self.connection))
+            if self._pool._on_checkin:
+                for l in self._pool._on_checkin:
+                    l.checkin(self.connection, self._connection_record)
             self._pool.return_conn(self)
         self.connection = None
         self._connection_record = None

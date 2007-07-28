@@ -1,6 +1,7 @@
 import testbase
 import threading, thread, time
 import sqlalchemy.pool as pool
+import sqlalchemy.interfaces as interfaces
 import sqlalchemy.exceptions as exceptions
 from testlib import *
 
@@ -380,7 +381,152 @@ class PoolTest(PersistTest):
         self.assert_(c.connection is not c2.connection)
         self.assert_(not c2.properties)
         self.assert_('foo2' in c.properties)
+
+    def test_listeners(self):
+        dbapi = MockDBAPI()
+
+        class InstrumentingListener(object):
+            def __init__(self):
+                if hasattr(self, 'connect'):
+                    self.connect = self.inst_connect
+                if hasattr(self, 'checkout'):
+                    self.checkout = self.inst_checkout
+                if hasattr(self, 'checkin'):
+                    self.checkin = self.inst_checkin
+                self.clear()
+            def clear(self):
+                self.connected = []
+                self.checked_out = []
+                self.checked_in = []
+            def assert_total(innerself, conn, cout, cin):
+                self.assert_(len(innerself.connected) == conn)
+                self.assert_(len(innerself.checked_out) == cout)
+                self.assert_(len(innerself.checked_in) == cin)
+            def assert_in(innerself, item, in_conn, in_cout, in_cin):
+                self.assert_((item in innerself.connected) == in_conn)
+                self.assert_((item in innerself.checked_out) == in_cout)
+                self.assert_((item in innerself.checked_in) == in_cin)
+            def inst_connect(self, con, record):
+                print "connect(%s, %s)" % (con, record)
+                assert con is not None
+                assert record is not None
+                self.connected.append(con)
+            def inst_checkout(self, con, record):
+                print "checkout(%s, %s)" % (con, record)
+                assert con is not None
+                assert record is not None
+                self.checked_out.append(con)
+            def inst_checkin(self, con, record):
+                print "checkin(%s, %s)" % (con, record)
+                # con can be None if invalidated
+                assert record is not None
+                self.checked_in.append(con)
+        class ListenAll(interfaces.PoolListener, InstrumentingListener):
+            pass
+        class ListenConnect(InstrumentingListener):
+            def connect(self, con, record):
+                pass
+        class ListenCheckOut(InstrumentingListener):
+            def checkout(self, con, record, num):
+                pass
+        class ListenCheckIn(InstrumentingListener):
+            def checkin(self, con, record):
+                pass
+
+        def _pool(**kw):
+            return pool.QueuePool(creator=lambda: dbapi.connect('foo.db'), **kw)
+            #, pool_size=1, max_overflow=0, **kw)
+
+        def assert_listeners(p, total, conn, cout, cin):
+            self.assert_(len(p.listeners) == total)
+            self.assert_(len(p._on_connect) == conn)
+            self.assert_(len(p._on_checkout) == cout)
+            self.assert_(len(p._on_checkin) == cin)
             
+        p = _pool()
+        assert_listeners(p, 0, 0, 0, 0)
+
+        p.add_listener(ListenAll())
+        assert_listeners(p, 1, 1, 1, 1)
+
+        p.add_listener(ListenConnect())
+        assert_listeners(p, 2, 2, 1, 1)
+
+        p.add_listener(ListenCheckOut())
+        assert_listeners(p, 3, 2, 2, 1)
+
+        p.add_listener(ListenCheckIn())
+        assert_listeners(p, 4, 2, 2, 2)
+        del p
+
+        print "----"
+        snoop = ListenAll()
+        p = _pool(listeners=[snoop])
+        assert_listeners(p, 1, 1, 1, 1)
+
+        c = p.connect()
+        snoop.assert_total(1, 1, 0)
+        cc = c.connection
+        snoop.assert_in(cc, True, True, False)
+        c.close()
+        snoop.assert_in(cc, True, True, True)
+        del c, cc
+
+        snoop.clear()
+
+        # this one depends on immediate gc 
+        c = p.connect()
+        cc = c.connection
+        snoop.assert_in(cc, False, True, False)
+        snoop.assert_total(0, 1, 0)
+        del c, cc
+        snoop.assert_total(0, 1, 1)
+
+        p.dispose()
+        snoop.clear()
+
+        c = p.connect()
+        c.close()
+        c = p.connect()
+        snoop.assert_total(1, 2, 1)
+        c.close()
+        snoop.assert_total(1, 2, 2)
+
+        # invalidation
+        p.dispose()
+        snoop.clear()
+
+        c = p.connect()
+        snoop.assert_total(1, 1, 0)
+        c.invalidate()
+        snoop.assert_total(1, 1, 1)
+        c.close()
+        snoop.assert_total(1, 1, 1)
+        del c
+        snoop.assert_total(1, 1, 1)
+        c = p.connect()
+        snoop.assert_total(2, 2, 1)
+        c.close()
+        del c
+        snoop.assert_total(2, 2, 2)
+
+        # detached
+        p.dispose()
+        snoop.clear()
+
+        c = p.connect()
+        snoop.assert_total(1, 1, 0)
+        c.detach()
+        snoop.assert_total(1, 1, 0)
+        c.close()
+        del c
+        snoop.assert_total(1, 1, 0)
+        c = p.connect()
+        snoop.assert_total(2, 2, 0)
+        c.close()
+        del c
+        snoop.assert_total(2, 2, 1)
+
     def tearDown(self):
        pool.clear_managers()
         

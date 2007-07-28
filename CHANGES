@@ -206,6 +206,8 @@
     semantics for "__contains__" [ticket:606]
     
 - engines
+  - You can now hook into the pool lifecycle and run SQL statements or
+    other logic at new each DBAPI connection, pool check-out and check-in.
   - Connections gain a .properties collection, with contents scoped to the
     lifetime of the underlying DBAPI connection
 - extensions

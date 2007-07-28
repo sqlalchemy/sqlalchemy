@@ -89,3 +89,7 @@ class DBAPIError(SQLAlchemyError):
     def __init__(self, message, orig):
         SQLAlchemyError.__init__(self, "(%s) (%s) %s"% (message, orig.__class__.__name__, str(orig)))
         self.orig = orig
+
+class DisconnectionError(SQLAlchemyError):
+    """Raised within ``Pool`` when a disconnect is detected on a raw DBAPI connection."""
+    pass
