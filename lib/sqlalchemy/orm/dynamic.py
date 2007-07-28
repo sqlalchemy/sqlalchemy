@@ -9,7 +9,7 @@ class DynamicCollectionAttribute(attributes.InstrumentedAttribute):
     def __init__(self, class_, attribute_manager, key, typecallable, target_mapper, **kwargs):
         super(DynamicCollectionAttribute, self).__init__(class_, attribute_manager, key, typecallable, **kwargs)
         self.target_mapper = target_mapper
-        
+
     def get(self, obj, passive=False):
         if passive:
             return self.get_history(obj, passive=True).added_items()
@@ -30,7 +30,7 @@ class DynamicCollectionAttribute(attributes.InstrumentedAttribute):
 
         # TODO: emit events ???
         state['modified'] = True
-    
+
     def delete(self, *args, **kwargs):
         raise NotImplementedError()
         
@@ -40,6 +40,17 @@ class DynamicCollectionAttribute(attributes.InstrumentedAttribute):
         except KeyError:
             obj.__dict__[self.key] = c = CollectionHistory(self, obj)
             return c
+
+    def append(self, obj, value, initiator):
+        if initiator is not self:
+            self.get_history(obj)._added_items.append(value)
+            self.fire_append_event(obj, value, self)
+    
+    def remove(self, obj, value, initiator):
+        if initiator is not self:
+            self.get_history(obj)._deleted_items.append(value)
+            self.fire_remove_event(obj, value, self)
+
             
 class AppenderQuery(Query):
     def __init__(self, attr, instance):
@@ -61,15 +72,16 @@ class AppenderQuery(Query):
             return iter(self.attr.get_history(self.instance)._added_items)
         else:
             return iter(self._clone())
-    
+
     def __getitem__(self, index):
         if not has_identity(self.instance):
-            return iter(self.attr.get_history(self.instance)._added_items.__getitem__(index))
+            # TODO: hmm
+            return self.attr.get_history(self.instance)._added_items.__getitem__(index)
         else:
             return self._clone().__getitem__(index)
         
     def _clone(self):
-        # note we're returning an entirely new query class here
+        # note we're returning an entirely new Query class instance here
         # without any assignment capabilities;
         # the class of this query is determined by the session.
         sess = object_session(self.instance)
@@ -90,15 +102,15 @@ class AppenderQuery(Query):
         return oldlist
         
     def append(self, item):
-        self.attr.get_history(self.instance)._added_items.append(item)
-        self.attr.fire_append_event(self.instance, item, self.attr)
-    
+        self.attr.append(self.instance, item, self.attr)
+
+    # TODO:jek: I think this should probably be axed, time will tell.
     def remove(self, item):
-        self.attr.get_history(self.instance)._deleted_items.append(item)
-        self.attr.fire_remove_event(self.instance, item, self.attr)
+        self.attr.remove(self.instance, item, self.attr)
             
 class CollectionHistory(attributes.AttributeHistory): 
-    """override AttributeHistory to receive append/remove events directly"""
+    """Overrides AttributeHistory to receive append/remove events directly."""
+
     def __init__(self, attr, obj):
         self._deleted_items = []
         self._added_items = []
