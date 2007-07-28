@@ -633,12 +633,6 @@ class AttributeHistory(object):
     def deleted_items(self):
         return self._deleted_items
 
-    def hasparent(self, obj):
-        """Deprecated.  This should be called directly from the appropriate ``InstrumentedAttribute`` object.
-        """
-
-        return self.attr.hasparent(obj)
-
 class AttributeManager(object):
     """Allow the instrumentation of object attributes."""
 

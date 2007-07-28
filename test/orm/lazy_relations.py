@@ -214,6 +214,11 @@ class LazyTest(QueryTest):
             User(id=10)
         
         ] == q.all()
+        
+        sess = create_session()
+        user = sess.query(User).get(7)
+        assert [Order(id=1), Order(id=5)] == create_session().query(Order, entity_name='closed').with_parent(user, property='closed_orders').all()
+        assert [Order(id=3)] == create_session().query(Order, entity_name='open').with_parent(user, property='open_orders').all()
 
     def test_many_to_many(self):
 

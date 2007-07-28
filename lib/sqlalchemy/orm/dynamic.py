@@ -18,7 +18,8 @@ class DynamicCollectionAttribute(attributes.InstrumentedAttribute):
 
     def commit_to_state(self, state, obj, value=attributes.NO_VALUE):
         # we have our own AttributeHistory therefore dont need CommittedState
-        pass
+        # instead, we reset the history stored on the attribute
+        obj.__dict__[self.key] = CollectionHistory(self, obj)
     
     def set(self, obj, value, initiator):
         if initiator is self:
@@ -58,38 +59,47 @@ class AppenderQuery(Query):
         self.instance = instance
         self.attr = attr
     
-    def __len__(self):
+    def __session(self):
+        sess = object_session(self.instance)
+        if sess is not None and self.instance in sess and sess.autoflush:
+            sess.flush()
         if not has_identity(self.instance):
-            # TODO: all these various calls to _added_items should be more
-            # intelligently calculated from the CollectionHistory object 
-            # (i.e. account for deletes too)
+            return None
+        else:
+            return sess
+            
+    def __len__(self):
+        sess = self.__session()
+        if sess is None:
             return len(self.attr.get_history(self.instance)._added_items)
         else:
-            return self._clone().count()
+            return self._clone(sess).count()
         
     def __iter__(self):
-        if not has_identity(self.instance):
+        sess = self.__session()
+        if sess is None:
             return iter(self.attr.get_history(self.instance)._added_items)
         else:
-            return iter(self._clone())
+            return iter(self._clone(sess))
 
     def __getitem__(self, index):
-        if not has_identity(self.instance):
-            # TODO: hmm
+        sess = self.__session()
+        if sess is None:
             return self.attr.get_history(self.instance)._added_items.__getitem__(index)
         else:
-            return self._clone().__getitem__(index)
-        
-    def _clone(self):
+            return self._clone(sess).__getitem__(index)
+
+    def _clone(self, sess=None):
         # note we're returning an entirely new Query class instance here
         # without any assignment capabilities;
         # the class of this query is determined by the session.
-        sess = object_session(self.instance)
         if sess is None:
-            try:
-                sess = mapper.object_mapper(instance).get_session()
-            except exceptions.InvalidRequestError:
-                raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
+            sess = object_session(self.instance)
+            if sess is None:
+                try:
+                    sess = mapper.object_mapper(instance).get_session()
+                except exceptions.InvalidRequestError:
+                    raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
 
         return sess.query(self.attr.target_mapper).with_parent(self.instance)
 
@@ -102,11 +112,11 @@ class AppenderQuery(Query):
         return oldlist
         
     def append(self, item):
-        self.attr.append(self.instance, item, self.attr)
+        self.attr.append(self.instance, item, None)
 
-    # TODO:jek: I think this should probably be axed, time will tell.
     def remove(self, item):
-        self.attr.remove(self.instance, item, self.attr)
+        self.attr.remove(self.instance, item, None)
+
             
 class CollectionHistory(attributes.AttributeHistory): 
     """Overrides AttributeHistory to receive append/remove events directly."""

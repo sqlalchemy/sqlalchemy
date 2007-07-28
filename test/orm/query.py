@@ -6,7 +6,7 @@ from sqlalchemy.orm import *
 from testlib import *
 from fixtures import *
 
-class QueryTest(ORMTest):
+class QueryTest(FixtureTest):
     keep_mappers = True
     keep_data = True
     
@@ -19,11 +19,6 @@ class QueryTest(ORMTest):
         clear_mappers()
         super(QueryTest, self).tearDownAll()
           
-    def define_tables(self, meta):
-        # a slight dirty trick here. 
-        meta.tables = metadata.tables
-        metadata.connect(meta.bind)
-        
     def setup_mappers(self):
         mapper(User, users, properties={
             'addresses':relation(Address, backref='user'),

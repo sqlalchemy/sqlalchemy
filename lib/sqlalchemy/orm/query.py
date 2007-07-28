@@ -621,6 +621,7 @@ class Query(object):
     def __iter__(self):
         statement = self.compile()
         statement.use_labels = True
+        print "ITER !", self.session.autoflush
         if self.session.autoflush:
             self.session.flush()
         return self._execute_and_instances(statement)

@@ -282,6 +282,20 @@ class LazyLoader(AbstractRelationLoader):
         self.is_class_level = True
         self._register_attribute(self.parent.class_, callable_=lambda i: self.setup_loader(i))
 
+    def lazy_clause(self, instance, reverse_direction=False):
+        if not reverse_direction:
+            (criterion, lazybinds, rev) = (self.lazywhere, self.lazybinds, self.lazyreverse)
+        else:
+            (criterion, lazybinds, rev) = LazyLoader._create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
+        bind_to_col = dict([(lazybinds[col].key, col) for col in lazybinds])
+
+        class Visitor(sql.ClauseVisitor):
+            def visit_bindparam(s, bindparam):
+                mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
+                if bindparam.key in bind_to_col:
+                    bindparam.value = mapper.get_attr_by_column(instance, bind_to_col[bindparam.key])
+        return Visitor().traverse(criterion, clone=True)
+    
     def setup_loader(self, instance, options=None):
         if not mapper.has_mapper(instance):
             return None
@@ -296,23 +310,8 @@ class LazyLoader(AbstractRelationLoader):
 
         def lazyload():
             self.logger.debug("lazy load attribute %s on instance %s" % (self.key, mapperutil.instance_str(instance)))
-            params = {}
-            allparams = True
-            # if the instance wasnt loaded from the database, then it cannot lazy load
-            # child items.  one reason for this is that a bi-directional relationship
-            # will not update properly, since bi-directional uses lazy loading functions
-            # in both directions, and this instance will not be present in the lazily-loaded
-            # results of the other objects since its not in the database
-            if not mapper.has_identity(instance):
-                return None
-            #print "setting up loader, lazywhere", str(self.lazywhere), "binds", self.lazybinds
-            for col, bind in self.lazybinds.iteritems():
-                params[bind.key] = self.parent.get_attr_by_column(instance, col)
-                if params[bind.key] is None:
-                    allparams = False
-                    break
 
-            if not allparams:
+            if not mapper.has_identity(instance):
                 return None
 
             session = sessionlib.object_session(instance)
@@ -326,14 +325,15 @@ class LazyLoader(AbstractRelationLoader):
             # to possibly save a DB round trip
             q = session.query(self.mapper)
             if self.use_get:
+                params = {}
+                for col, bind in self.lazybinds.iteritems():
+                    params[bind.key] = self.parent.get_attr_by_column(instance, col)
                 ident = []
-                # TODO: when options are added to allow switching between union-based and non-union
-                # based polymorphic loads on a per-query basis, this code needs to switch between "mapper" and "select_mapper",
-                # probably via the query's own "mapper" property, and also use one of two "lazy" clauses,
-                # one against the "union" the other not
                 for primary_key in self.select_mapper.primary_key: 
                     bind = self.lazyreverse[primary_key]
                     ident.append(params[bind.key])
+                if options:
+                    q = q.options(*options)
                 return q.get(ident)
             elif self.order_by is not False:
                 q = q.order_by(self.order_by)
@@ -342,7 +342,7 @@ class LazyLoader(AbstractRelationLoader):
 
             if options:
                 q = q.options(*options)
-            q = q.filter(self.lazywhere).params(**params)
+            q = q.filter(self.lazy_clause(instance))
 
             result = q.all()
             if self.uselist:
@@ -352,11 +352,6 @@ class LazyLoader(AbstractRelationLoader):
                     return result[0]
                 else:
                     return None
-            
-            if self.uselist:
-                return q.all()
-            else:
-                return q.first()
 
         return lazyload
 
@@ -382,7 +377,7 @@ class LazyLoader(AbstractRelationLoader):
                     sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
             return (execute, None)
 
-    def _create_lazy_clause(cls, prop, reverse_direction=False, op='=='):
+    def _create_lazy_clause(cls, prop, reverse_direction=False):
         (primaryjoin, secondaryjoin, remote_side) = (prop.polymorphic_primaryjoin, prop.polymorphic_secondaryjoin, prop.remote_side)
         
         binds = {}

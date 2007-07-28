@@ -124,7 +124,7 @@ class PropertyLoader(StrategizedProperty):
     of items that correspond to a related database table.
     """
 
-    def __init__(self, argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None, enable_typechecks=True, join_depth=None):
+    def __init__(self, argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None, enable_typechecks=True, join_depth=None, strategy_class=None):
         self.uselist = uselist
         self.argument = argument
         self.entity_name = entity_name
@@ -144,6 +144,7 @@ class PropertyLoader(StrategizedProperty):
         self._parent_join_cache = {}
         self.comparator = PropertyLoader.Comparator(self)
         self.join_depth = join_depth
+        self.strategy_class = strategy_class
         
         if cascade is not None:
             self.cascade = mapperutil.CascadeOptions(cascade)
@@ -247,22 +248,13 @@ class PropertyLoader(StrategizedProperty):
             return op(self.comparator, value)
     
     def _optimized_compare(self, value, value_is_parent=False):
-        # optimized operation for ==, uses a lazy clause.
-        (criterion, lazybinds, rev) = strategies.LazyLoader._create_lazy_clause(self, reverse_direction=not value_is_parent)
-        bind_to_col = dict([(lazybinds[col].key, col) for col in lazybinds])
-
-        class Visitor(sql.ClauseVisitor):
-            def visit_bindparam(s, bindparam):
-                mapper = value_is_parent and self.parent or self.mapper
-                bindparam.value = mapper.get_attr_by_column(value, bind_to_col[bindparam.key])
-        Visitor().traverse(criterion)
-        return criterion
+        return self._get_strategy(strategies.LazyLoader).lazy_clause(value, reverse_direction=not value_is_parent)
         
     private = property(lambda s:s.cascade.delete_orphan)
 
     def create_strategy(self):
-        if self.lazy == 'dynamic':
-            return strategies.DynaLoader(self)
+        if self.strategy_class:
+            return self.strategy_class(self)
         elif self.lazy:
             return strategies.LazyLoader(self)
         elif self.lazy is False:

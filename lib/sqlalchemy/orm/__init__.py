@@ -24,7 +24,7 @@ from sqlalchemy.orm.session import object_session, attribute_manager
 __all__ = ['relation', 'column_property', 'composite', 'backref', 'eagerload',
            'eagerload_all', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
            'undefer_group', 'extension', 'mapper', 'clear_mappers',
-           'compile_mappers', 'class_mapper', 'object_mapper',
+           'compile_mappers', 'class_mapper', 'object_mapper', 'dynamic_loader',
            'MapperExtension', 'Query', 'polymorphic_union', 'create_session',
            'synonym', 'contains_alias', 'contains_eager', 'EXT_PASS',
            'object_session', 'PropComparator'
@@ -170,7 +170,26 @@ def relation(argument, secondary=None, **kwargs):
 
     return PropertyLoader(argument, secondary=secondary, **kwargs)
 
-#    return _relation_loader(argument, secondary=secondary, **kwargs)
+def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None, 
+    foreign_keys=None, backref=None, post_update=False, cascade=None, remote_side=None, enable_typechecks=True):
+    """construct a dynamically-loading mapper property.
+    
+    This property is similar to relation(), except read operations
+    return an active Query object, which reads from the database in all 
+    cases.  Items may be appended to the attribute via append(), or
+    removed via remove(); changes will be persisted
+    to the database during a flush().  However, no other list mutation
+    operations are available.
+    
+    A subset of arguments available to relation() are available here.
+    """
+
+    from sqlalchemy.orm.strategies import DynaLoader
+    
+    return PropertyLoader(argument, secondary=secondary, primaryjoin=primaryjoin, 
+            secondaryjoin=secondaryjoin, entity_name=entity_name, foreign_keys=foreign_keys, backref=backref, 
+            post_update=post_update, cascade=cascade, remote_side=remote_side, enable_typechecks=enable_typechecks, 
+            strategy_class=DynaLoader)
 
 #def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):
 

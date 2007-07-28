@@ -28,8 +28,8 @@ class Base(object):
                     continue
                 value = getattr(self, attr)
                 if hasattr(value, '__iter__') and not isinstance(value, basestring):
-                    if len(value) == 0:
-                        continue
+                    if len(value) != len(getattr(other, attr)):
+                       return False
                     for (us, them) in zip(value, getattr(other, attr)):
                         if us != them:
                             return False
