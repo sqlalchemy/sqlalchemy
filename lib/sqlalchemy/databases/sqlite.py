@@ -165,8 +165,6 @@ class SQLiteDialect(ansisql.ANSIDialect):
             sqlite_ver = self.dbapi.version_info
             if sqlite_ver < (2,1,'3'):
                 warnings.warn(RuntimeWarning("The installed version of pysqlite2 (%s) is out-dated, and will cause errors in some cases.  Version 2.1.3 or greater is recommended." % '.'.join([str(subver) for subver in sqlite_ver])))
-            if vers(self.dbapi.sqlite_version) < vers("3.3.13"):
-                warnings.warn(RuntimeWarning("The installed version of sqlite (%s) is out-dated, and will cause errors in some cases.  Version 3.3.13 or greater is recommended." % self.dbapi.sqlite_version))
         self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
         
     def dbapi(cls):
@@ -176,10 +174,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
             try:
                 from sqlite3 import dbapi2 as sqlite #try the 2.5+ stdlib name.
             except ImportError:
-                try:
-                    sqlite = __import__('sqlite') # skip ourselves
-                except ImportError:
-                    raise e
+                raise e
         return sqlite
     dbapi = classmethod(dbapi)
 
