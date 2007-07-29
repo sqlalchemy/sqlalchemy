@@ -90,6 +90,17 @@ class TypesTest(AssertMixin):
             (mysql.MSBigInteger, [4], {'zerofill':True, 'unsigned':True},
              'BIGINT(4) UNSIGNED ZEROFILL'),
 
+            (mysql.MSTinyInteger, [], {},
+             'TINYINT'),
+            (mysql.MSTinyInteger, [1], {},
+             'TINYINT(1)'),
+            (mysql.MSTinyInteger, [1], {'unsigned':True},
+             'TINYINT(1) UNSIGNED'),
+            (mysql.MSTinyInteger, [1], {'zerofill':True},
+             'TINYINT(1) ZEROFILL'),
+            (mysql.MSTinyInteger, [1], {'zerofill':True, 'unsigned':True},
+             'TINYINT(1) UNSIGNED ZEROFILL'),
+
             (mysql.MSSmallInteger, [], {},
              'SMALLINT'),
             (mysql.MSSmallInteger, [4], {},
@@ -319,6 +330,39 @@ class TypesTest(AssertMixin):
             assert isinstance(reflected.type, type(expected[i]))
 
         m.drop_all()
+
+class CharsetHelperTest(PersistTest):
+    @testing.supported('mysql')
+    def test_basic(self):
+        if testbase.db.dialect.get_version_info(testbase.db) < (4, 1):
+            return
+
+        helper = mysql.MySQLCharsetOnConnect('utf8')
+
+        e = create_engine(testbase.db.url, listeners=[helper])
+
+        rs = e.execute("SHOW VARIABLES LIKE 'character_set%%'")
+        vars = dict([(row[0], row[1]) for row in mysql._compat_fetchall(rs)])
+        self.assert_(vars['character_set_client'] == 'utf8')
+        self.assert_(vars['character_set_connection'] == 'utf8')
+
+        helper.charset = 'latin1'
+        e.pool.dispose()
+        rs = e.execute("SHOW VARIABLES LIKE 'character_set%%'")
+        vars = dict([(row[0], row[1]) for row in mysql._compat_fetchall(rs)])
+        self.assert_(vars['character_set_client'] == 'latin1')
+        self.assert_(vars['character_set_connection'] == 'latin1')
+
+        helper.charset = 'utf8'
+        helper.collation = 'utf8_bin'
+        e.pool.dispose()
+        rs = e.execute("SHOW VARIABLES LIKE 'character_set%%'")
+        vars = dict([(row[0], row[1]) for row in mysql._compat_fetchall(rs)])
+        self.assert_(vars['character_set_client'] == 'utf8')
+        self.assert_(vars['character_set_connection'] == 'utf8')
+        rs = e.execute("SHOW VARIABLES LIKE 'collation%%'")
+        vars = dict([(row[0], row[1]) for row in mysql._compat_fetchall(rs)])
+        self.assert_(vars['collation_connection'] == 'utf8_bin')
 
 if __name__ == "__main__":
     testbase.main()
