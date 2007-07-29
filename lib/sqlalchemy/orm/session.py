@@ -310,7 +310,7 @@ class Session(object):
                 raise exceptions.InvalidRequestError("This session is unbound to any Engine or Connection; specify a mapper to get_bind()")
         elif self.__binds.has_key(mapper):
             return self.__binds[mapper]
-        elif self.__binds.has_key(mapper.mapped_table):
+        elif self.__binds.has_key(mapper.compile().mapped_table):
             return self.__binds[mapper.mapped_table]
         elif self.bind is not None:
             return self.bind

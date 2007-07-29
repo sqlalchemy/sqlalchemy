@@ -87,7 +87,11 @@ class MapperTest(MapperSuperTest):
         self.assert_(u.user_name == 'jack')
         self.assert_(a not in u.addresses)
 
-    
+    def testcompileonsession(self):
+        m = mapper(User, users)
+        session = create_session()
+        session.connection(m)        
+
     def testexpirecascade(self):
         mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), cascade="all, refresh-expire")})
         s = create_session()

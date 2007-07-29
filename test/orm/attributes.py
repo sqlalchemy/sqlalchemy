@@ -322,13 +322,13 @@ class AttributesTest(PersistTest):
         f1.element = b1
         b2.element = f2
         
-        assert manager.get_history(f1, 'element').hasparent(b1)
-        assert not manager.get_history(f1, 'element').hasparent(b2)
-        assert not manager.get_history(f1, 'element').hasparent(f2)
-        assert manager.get_history(b2, 'element').hasparent(f2)
+        assert getattr(Foo, 'element').hasparent(b1)
+        assert not getattr(Foo, 'element').hasparent(b2)
+        assert not getattr(Foo, 'element').hasparent(f2)
+        assert getattr(Bar, 'element').hasparent(f2)
         
         b2.element = None
-        assert not manager.get_history(b2, 'element').hasparent(f2)
+        assert not getattr(Bar, 'element').hasparent(f2)
 
     def testmutablescalars(self):
         """test detection of changes on mutable scalar items"""
