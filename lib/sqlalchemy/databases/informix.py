@@ -249,6 +249,10 @@ class InfoDialect(ansisql.ANSIDialect):
     def schemadropper(self, *args, **params):
         return InfoSchemaDroper( self , *args , **params)
     
+    def table_names(self, connection, schema):
+        s = "select tabname from systables"
+        return [row[0] for row in connection.execute(s)]
+
     def has_table(self, connection, table_name,schema=None):
         cursor = connection.execute("""select tabname from systables where tabname=?""", table_name.lower() )
         return bool( cursor.fetchone() is not None )

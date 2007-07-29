@@ -364,6 +364,11 @@ class OracleDialect(ansisql.ANSIDialect):
                     dblink = ''
                 return name, owner, dblink
             raise
+        
+    def table_names(self, connection, schema):
+        # sorry, I have no idea what that dblink stuff is about :)
+        s = "select table_name from all_tables"
+        return [row[0] for row in connection.execute(s)]
 
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer

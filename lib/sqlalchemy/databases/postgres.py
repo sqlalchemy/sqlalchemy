@@ -334,6 +334,9 @@ class PGDialect(ansisql.ANSIDialect):
             return "losed the connection unexpectedly" in str(e)
         else:
             return False
+        
+    def table_names(self, connection, schema):
+        return ischema.table_names(connection, schema)
 
     def reflecttable(self, connection, table, include_columns):
         if self.use_information_schema:

@@ -462,6 +462,10 @@ class MSSQLDialect(ansisql.ANSIDialect):
         except Exception, e:
             raise exceptions.SQLError(statement, parameters, e)
 
+    def table_names(self, connection, schema):
+        from sqlalchemy.databases import information_schema as ischema
+        return ischema.table_names(connection, schema)
+
     def raw_connection(self, connection):
         """Pull the raw pymmsql connection out--sensative to "pool.ConnectionFairy" and pymssql.pymssqlCnx Classes"""
         try:
@@ -495,6 +499,10 @@ class MSSQLDialect(ansisql.ANSIDialect):
         row  = c.fetchone()
         return row is not None
         
+    def table_names(self, connection):
+        sql = "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+        return [row[0] for row in connection.execute(s)]
+
     def reflecttable(self, connection, table, include_columns):
         import sqlalchemy.databases.information_schema as ischema
         

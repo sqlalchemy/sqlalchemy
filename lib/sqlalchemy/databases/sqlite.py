@@ -224,6 +224,10 @@ class SQLiteDialect(ansisql.ANSIDialect):
 
     def oid_column_name(self, column):
         return "oid"
+    
+    def table_names(self, connection, schema):
+        s = "SELECT name FROM sqlite_master WHERE type='table'"
+        return [row[0] for row in connection.execute(s)]
 
     def has_table(self, connection, table_name, schema=None):
         cursor = connection.execute("PRAGMA table_info(%s)" %

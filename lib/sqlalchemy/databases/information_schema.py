@@ -98,6 +98,11 @@ class ISchema(object):
         return self.cache[name]
 
 
+def table_names(connection, schema):
+    s = select([tables.c.table_name], tables.c.table_schema==schema)
+    return [row[0] for row in connection.execute(s)]
+
+
 def reflecttable(connection, table, include_columns, ischema_names):
     key_constraints = pg_key_constraints
         

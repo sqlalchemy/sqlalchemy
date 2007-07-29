@@ -152,6 +152,10 @@ class FBDialect(ansisql.ANSIDialect):
 
     def max_identifier_length(self):
         return 31
+    
+    def table_names(self, connection, schema):
+        s = "SELECT R.RDB$RELATION_NAME FROM RDB$RELATIONS R"
+        return [row[0] for row in connection.execute(s)]
 
     def has_table(self, connection, table_name, schema=None):
         tblqry = """

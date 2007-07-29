@@ -1026,6 +1026,18 @@ class Engine(Connectable):
         """
 
         return Connection(self, close_with_result=close_with_result, **kwargs)
+    
+    def table_names(self, schema=None):
+        conn = self.contextual_connect()
+        if not schema:
+            try:
+                schema =  self.dialect.get_default_schema_name(conn)
+            except NotImplementedError:
+                pass
+        try:
+            return self.dialect.table_names(conn, schema)
+        finally:
+            conn.close()
 
     def reflecttable(self, table, connection=None, include_columns=None):
         """Given a Table object, reflects its columns and properties from the database."""
