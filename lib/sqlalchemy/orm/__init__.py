@@ -18,18 +18,46 @@ from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm import collections, strategies
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
-from sqlalchemy.orm.session import Session as create_session
+from sqlalchemy.orm.session import Session as _Session
 from sqlalchemy.orm.session import object_session, attribute_manager
 
 __all__ = ['relation', 'column_property', 'composite', 'backref', 'eagerload',
            'eagerload_all', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
            'undefer_group', 'extension', 'mapper', 'clear_mappers',
            'compile_mappers', 'class_mapper', 'object_mapper', 'dynamic_loader',
-           'MapperExtension', 'Query', 'polymorphic_union', 'create_session',
+           'MapperExtension', 'Query', 'polymorphic_union', 'create_session','Session',
            'synonym', 'contains_alias', 'contains_eager', 'EXT_PASS',
            'object_session', 'PropComparator'
            ]
 
+def create_session(bind=None, **kwargs):
+    """create a new version 0.3-style [sqlalchemy.orm.session#Session].
+    
+    The session by default does not begin a transaction, and requires that
+    flush() be called explicitly in order to persist results to the database.
+    """
+    
+    kwargs.setdefault('autoflush', False)
+    kwargs.setdefault('transactional', False)
+    return _Session(bind=bind, **kwargs)
+    
+class Session(_Session):
+    """front-end for a [sqlalchemy.orm.session#Session].  By default, 
+    produces an autoflushing, transactional session."""
+    
+    def __init__(self, bind=None, **kwargs):
+        """create a new transactional [sqlalchemy.orm.session#Session].
+    
+        The session starts a new transaction for each database accessed.  To
+        commit the transaction, use the commit() method.  SQL is issued for
+        write operations (i.e. flushes) automatically in most cases, before each query
+        and during commit.
+        """    
+    
+        kwargs.setdefault('autoflush', True)
+        kwargs.setdefault('transactional', True)
+        super(Session, self).__init__(bind=bind, **kwargs)
+    
 def relation(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
 

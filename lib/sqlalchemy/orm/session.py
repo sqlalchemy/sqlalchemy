@@ -111,6 +111,7 @@ class SessionTransaction(object):
             return
         for t in util.Set(self.__connections.values()):
             if t[2]:
+                # closing the connection will also issue a rollback()
                 t[0].close()
         self.session.transaction = None
 
@@ -133,7 +134,7 @@ class Session(object):
     of Sessions, see the ``sqlalchemy.ext.sessioncontext`` module.
     """
 
-    def __init__(self, bind=None, autoflush=False, transactional=False, twophase=False, echo_uow=False, weak_identity_map=False):
+    def __init__(self, bind=None, autoflush=True, transactional=False, twophase=False, echo_uow=False, weak_identity_map=False):
         self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
 
         self.bind = bind
@@ -143,7 +144,7 @@ class Session(object):
         self.transaction = None
         self.hash_key = id(self)
         self.autoflush = autoflush
-        self.transactional = transactional or autoflush
+        self.transactional = transactional
         self.twophase = twophase
         self._query_cls = query.Query
         self._mapper_flush_opts = {}
@@ -174,15 +175,20 @@ class Session(object):
     
     def rollback(self):
         if self.transaction is None:
-            raise exceptions.InvalidRequestError("No transaction is begun.")
+            pass
         else:
             self.transaction = self.transaction.rollback()
+        attribute_manager.rollback(*self.identity_map.values())
         if self.transaction is None and self.transactional:
             self.begin()
             
     def commit(self):
         if self.transaction is None:
-            raise exceptions.InvalidRequestError("No transaction is begun.")
+            if self.transactional:
+                self.begin()
+                self.transaction = self.transaction.commit()
+            else:
+                raise exceptions.InvalidRequestError("No transaction is begun.")
         else:
             self.transaction = self.transaction.commit()
         if self.transaction is None and self.transactional:
@@ -230,12 +236,25 @@ class Session(object):
         return self.connection(mapper, close_with_result=True).scalar(clause, params or {}, **kwargs)
 
     def close(self):
-        """Close this Session."""
+        """Close this Session.  
+        
+        This clears all items and ends any transaction in progress.
+        """
 
         self.clear()
         if self.transaction is not None:
             self.transaction.close()
-
+        if self.transactional:
+            # note this doesnt use any connection resources
+            self.begin()
+    
+    def close_all(cls):
+        """Close *all* sessions in memory."""
+        
+        for sess in _sessions.values():
+            sess.close()
+    close_all = classmethod(close_all)
+    
     def clear(self):
         """Remove all object instances from this ``Session``.
 
@@ -344,6 +363,10 @@ class Session(object):
                     return getattr(sql, key)(*args, **kwargs)
 
     sql = property(_sql)
+
+    def _autoflush(self):
+        if self.autoflush and (self.transaction is None or self.transaction.autoflush):
+            self.flush()
 
     def flush(self, objects=None):
         """Flush all the object modifications present in this session

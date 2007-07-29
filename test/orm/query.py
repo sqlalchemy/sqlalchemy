@@ -80,7 +80,7 @@ class GetTest(QueryTest):
         assert u is not u2
         
         u2.name = 'some name'
-        a = Address(name='some other name')
+        a = Address(email_address='some other name')
         u2.addresses.append(a)
         assert u2 in s.dirty
         assert a in u2.addresses

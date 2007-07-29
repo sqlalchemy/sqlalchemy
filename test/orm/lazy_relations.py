@@ -46,6 +46,7 @@ class LazyTest(QueryTest):
             u = q.filter(users.c.id == 7).first()
             sess.expunge(u)
             assert User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')]) == u
+            assert False
         except exceptions.InvalidRequestError, err:
             assert "not bound to a Session, and no contextual session" in str(err)
 

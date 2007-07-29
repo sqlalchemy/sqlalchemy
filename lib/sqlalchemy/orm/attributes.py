@@ -565,7 +565,8 @@ class CommittedState(object):
                     for item in self.data[attr.key]:
                         collection.append_without_event(item)
             else:
-                del obj.__dict__[attr.key]
+                if attr.key in obj.__dict__:
+                    del obj.__dict__[attr.key]
 
     def __repr__(self):
         return "CommittedState: %s" % repr(self.data)

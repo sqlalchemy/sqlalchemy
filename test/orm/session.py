@@ -97,7 +97,7 @@ class SessionTest(AssertMixin):
         conn1 = testbase.db.connect()
         conn2 = testbase.db.connect()
         
-        sess = create_session(autoflush=True, bind=conn1)
+        sess = Session(bind=conn1)
         u = User()
         u.user_name='ed'
         sess.save(u)
@@ -115,7 +115,7 @@ class SessionTest(AssertMixin):
         mapper(User, users)
 
         try:
-            sess = create_session(autoflush=True)
+            sess = Session()
             u = User()
             u.user_name='ed'
             sess.save(u)
@@ -136,20 +136,42 @@ class SessionTest(AssertMixin):
         conn1 = testbase.db.connect()
         conn2 = testbase.db.connect()
         
-        sess = create_session(autoflush=True, bind=conn1)
+        sess = Session(bind=conn1)
         u = User()
         u.user_name='ed'
         sess.save(u)
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+
+    def test_autoflush_rollback(self):
+        tables.data()
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+            'addresses':relation(Address)
+        })
+        
+        sess = Session()
+        u = sess.query(User).get(8)
+        newad = Address()
+        newad.email_address == 'something new'
+        u.addresses.append(newad)
+        u.user_name = 'some new name'
+        assert u.user_name == 'some new name'
+        assert len(u.addresses) == 4
+        assert newad in u.addresses
+        sess.rollback()
+        assert u.user_name == 'ed'
+        assert len(u.addresses) == 3
+        assert newad not in u.addresses
+        
         
     def test_external_joined_transaction(self):
         class User(object):pass
         mapper(User, users)
         conn = testbase.db.connect()
         trans = conn.begin()
-        sess = create_session(bind=conn)
+        sess = Session(conn)
         sess.begin() 
         u = User()
         sess.save(u)
@@ -165,7 +187,7 @@ class SessionTest(AssertMixin):
         try:
             conn = testbase.db.connect()
             trans = conn.begin()
-            sess = create_session(bind=conn)
+            sess = Session(conn)
             u1 = User()
             sess.save(u1)
             sess.flush()
@@ -192,7 +214,7 @@ class SessionTest(AssertMixin):
         mapper(Address, addresses)
         
         engine2 = create_engine(testbase.db.url)
-        sess = create_session(twophase=True)
+        sess = Session(transactional=False, autoflush=False, twophase=True)
         sess.bind_mapper(User, testbase.db)
         sess.bind_mapper(Address, engine2)
         sess.begin()
@@ -211,8 +233,7 @@ class SessionTest(AssertMixin):
     def test_joined_transaction(self):
         class User(object):pass
         mapper(User, users)
-        sess = create_session()
-        sess.begin()
+        sess = Session()
         sess.begin()  
         u = User()
         sess.save(u)

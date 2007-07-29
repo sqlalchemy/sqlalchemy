@@ -34,7 +34,7 @@ class ObjectDoc(AbstractDoc):
                     for x in objects 
                     if getattr(obj,x,None) is not None and 
                         (isinstance(getattr(obj,x), types.FunctionType))
-                        and not getattr(obj,x).__name__[0] == '_'
+                        and not self._is_private_name(getattr(obj,x).__name__)
                     ]
                 if sort:
                     functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
@@ -43,7 +43,7 @@ class ObjectDoc(AbstractDoc):
                     if getattr(obj,x,None) is not None and 
                         (isinstance(getattr(obj,x), types.TypeType) 
                         or isinstance(getattr(obj,x), types.ClassType))
-                        and (self.include_all_classes or not getattr(obj,x).__name__[0] == '_')
+                        and (self.include_all_classes or not self._is_private_name(getattr(obj,x).__name__))
                     ]
                 classes = list(set(classes))
                 if sort:
@@ -53,11 +53,11 @@ class ObjectDoc(AbstractDoc):
                 functions = (
                     [getattr(obj, x).im_func for x in obj.__dict__.keys() if isinstance(getattr(obj,x), types.MethodType) 
                     and 
-                    (getattr(obj, x).__name__ == '__init__' or not getattr(obj,x).__name__[0] == '_')
+                    (getattr(obj, x).__name__ == '__init__' or not self._is_private_name(getattr(obj,x).__name__))
                     ] + 
                     [(x, getattr(obj, x)) for x in obj.__dict__.keys() if _is_property(getattr(obj,x)) 
                     and 
-                    not x[0] == '_'
+                    not self._is_private_name(x)
                     ]
                  )
                 functions.sort(lambda a, b: cmp(getattr(a, '__name__', None) or a[0], getattr(b, '__name__', None) or b[0] ))
@@ -100,7 +100,15 @@ class ObjectDoc(AbstractDoc):
         self.classes = []
         for class_ in classes:
             self.classes.append(ObjectDoc(class_))
-            
+    
+    def _is_private_name(self, name):
+        if re.match(r'^__.*__$', name):
+            return False
+        elif name.startswith('_'):
+            return True
+        else:
+            return False
+
     def _get_inherits(self):
         for item in self._inherits:
             if item[0] in self.allobjects:

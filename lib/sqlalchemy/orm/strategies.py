@@ -323,7 +323,7 @@ class LazyLoader(AbstractRelationLoader):
 
             # if we have a simple straight-primary key load, use mapper.get()
             # to possibly save a DB round trip
-            q = session.query(self.mapper)
+            q = session.query(self.mapper).autoflush(False)
             if self.use_get:
                 params = {}
                 for col, bind in self.lazybinds.iteritems():

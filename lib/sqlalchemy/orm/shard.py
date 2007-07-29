@@ -1,6 +1,8 @@
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import Query
 
+__all__ = ['ShardedSession', 'ShardedQuery']
+
 class ShardedSession(Session):
     def __init__(self, shard_chooser, id_chooser, query_chooser, **kwargs):
         """construct a ShardedSession.

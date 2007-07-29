@@ -43,6 +43,7 @@ class Query(object):
         self._from_obj = [self.table]
         self._populate_existing = False
         self._version_check = False
+        self._autoflush = True
         
     def _clone(self):
         q = Query.__new__(Query)
@@ -126,6 +127,11 @@ class Query(object):
         return Query(target, **kwargs).filter(criterion)
     query_from_parent = classmethod(query_from_parent)
     
+    def autoflush(self, setting):
+        q = self._clone()
+        q._autoflush = setting
+        return q
+        
     def populate_existing(self):
         """return a Query that will refresh all instances loaded.
         
@@ -621,8 +627,8 @@ class Query(object):
     def __iter__(self):
         statement = self.compile()
         statement.use_labels = True
-        if self.session.autoflush:
-            self.session.flush()
+        if self._autoflush and not self._populate_existing:
+            self.session._autoflush()
         return self._execute_and_instances(statement)
     
     def _execute_and_instances(self, statement):

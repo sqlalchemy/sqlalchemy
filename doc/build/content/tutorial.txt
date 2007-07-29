@@ -43,6 +43,14 @@ Note that the SQLite library download is not required with Windows, as the Windo
 
 Getting Started {@name=gettingstarted}
 --------------------------
+### Checking the Version
+ 
+**Note:  This tutorial is oriented towards version 0.4 of SQLAlchemy. ** Check the version of SQLAlchemy you have installed via:
+
+     {python}
+     >>> import sqlalchemy
+     >>> sqlalchemy.__version__ # doctest: +SKIP
+     0.4.0
 
 ### Imports
 

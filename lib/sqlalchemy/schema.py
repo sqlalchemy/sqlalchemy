@@ -728,7 +728,7 @@ class ForeignKey(SchemaItem):
                     schema = None
                 else:
                     (schema,tname,colname) = m.group(1,2,3)
-                if tname not in parenttable.metadata:
+                if _get_table_key(tname, schema) not in parenttable.metadata:
                     raise exceptions.InvalidRequestError("Could not find table '%s' with which to generate a foreign key" % tname)
                 table = Table(tname, parenttable.metadata, mustexist=True, schema=schema)
                 try:

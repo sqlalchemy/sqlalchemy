@@ -28,6 +28,11 @@ class Base(object):
                     continue
                 value = getattr(self, attr)
                 if hasattr(value, '__iter__') and not isinstance(value, basestring):
+                    try:
+                        # catch AttributeError so that lazy loaders trigger
+                        otherattr = getattr(other, attr)
+                    except AttributeError:
+                        return False
                     if len(value) != len(getattr(other, attr)):
                        return False
                     for (us, them) in zip(value, getattr(other, attr)):
