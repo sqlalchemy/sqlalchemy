@@ -625,6 +625,14 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         # test None becomes NULL
         self.runtest(func.my_func(1,2,None,3), "my_func(:my_func, :my_func_1, NULL, :my_func_2)")
         
+        # assert func raises AttributeError for __bases__ attribute, since its not a class
+        # fixes pydoc
+        try:
+            func.__bases__
+            assert False
+        except AttributeError:
+            assert True
+        
     def testextract(self):
         """test the EXTRACT function"""
         self.runtest(select([extract("month", table3.c.otherstuff)]), "SELECT extract(month FROM thirdtable.otherstuff) FROM thirdtable")

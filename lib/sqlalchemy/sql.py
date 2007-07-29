@@ -732,7 +732,14 @@ class _FunctionGenerator(object):
         self.opts = opts
 
     def __getattr__(self, name):
-        if name[-1] == '_':
+        # passthru __ attributes; fixes pydoc
+        if name.startswith('__'):
+            try:
+                return self.__dict__[name]
+            except KeyError:
+                raise AttributeError(name)
+                
+        elif name.startswith('_'):
             name = name[0:-1]
         f = _FunctionGenerator(**self.opts)
         f.__names = list(self.__names) + [name]
