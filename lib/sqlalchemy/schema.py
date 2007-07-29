@@ -147,7 +147,7 @@ class _TableSingleton(sql._FigureVisitName):
             return table
         except KeyError:
             if mustexist:
-                raise exceptions.ArgumentError("Table '%s.%s' not defined" % (schema, name))
+                raise exceptions.ArgumentError("Table '%s' not defined" % (key))
             table = type.__call__(self, name, metadata, **kwargs)
             table._set_parent(metadata)
             # load column definitions from the database if 'autoload' is defined
@@ -728,6 +728,8 @@ class ForeignKey(SchemaItem):
                     schema = None
                 else:
                     (schema,tname,colname) = m.group(1,2,3)
+                if tname not in parenttable.metadata:
+                    raise exceptions.InvalidRequestError("Could not find table '%s' with which to generate a foreign key" % tname)
                 table = Table(tname, parenttable.metadata, mustexist=True, schema=schema)
                 try:
                     if colname is None:
@@ -1108,6 +1110,9 @@ class MetaData(SchemaItem):
     def __repr__(self):
         return 'MetaData(%r)' % self.bind
 
+    def __contains__(self, key):
+        return key in self.tables
+        
     def __getstate__(self):
         return {'tables':self.tables, 'casesensitive':self._case_sensitive_setting}
 

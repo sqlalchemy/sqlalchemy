@@ -284,6 +284,19 @@ class ReflectionTest(PersistTest):
         finally:
             testbase.db.execute("drop table book")
 
+    def test_fk_error(self):
+        metadata = MetaData(testbase.db)
+        slots_table = Table('slots', metadata,
+            Column('slot_id', Integer, primary_key=True),
+            Column('pkg_id', Integer, ForeignKey('pkgs.pkg_id')),
+            Column('slot', String),
+            )
+        try:
+            metadata.create_all()
+            assert False
+        except exceptions.InvalidRequestError, err:
+            assert str(err) == "Could not find table 'pkgs' with which to generate a foreign key"
+            
     def test_composite_pks(self):
         """test reflection of a composite primary key"""
         testbase.db.execute("""
