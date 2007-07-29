@@ -1091,6 +1091,10 @@ class MySQLDialect(ansisql.ANSIDialect):
               connection.execute('SELECT DATABASE()').scalar()
             return name
 
+    def table_names(self, connection, schema):
+        s = "SHOW TABLES"
+        return [row[0] for row in connection.execute(s)]
+
     def has_table(self, connection, table_name, schema=None):
         # SHOW TABLE STATUS LIKE and SHOW TABLES LIKE do not function properly
         # on macosx (and maybe win?) with multibyte table names.
