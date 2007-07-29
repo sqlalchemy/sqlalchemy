@@ -44,6 +44,15 @@ Note that the SQLite library download is not required with Windows, as the Windo
 Getting Started {@name=gettingstarted}
 --------------------------
 
+### Checking the Version
+
+**Note:  This tutorial is oriented towards version 0.3.10 of SQLAlchemy.  It will *not* work with versions earlier than 0.3.9.**  Check the version of SQLAlchemy you have installed via:
+
+    {python}
+    >>> import sqlalchemy
+    >>> sqlalchemy.__version__ # doctest: +SKIP
+    0.3.10 
+
 ### Imports
 
 To start connecting to databases and begin issuing queries, we want to import the base of SQLAlchemy's functionality, which is provided under the module name of `sqlalchemy`.  For the purposes of this tutorial, we will import its full list of symbols into our own local namespace.  
