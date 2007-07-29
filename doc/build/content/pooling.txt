@@ -48,11 +48,6 @@ Common options include:
  * recycle=-1 : if set to non -1, a number of seconds between connection recycling, which
    means upon checkout, if this timeout is surpassed the connection will be closed and replaced
    with a newly opened connection.
- * auto_close_cursors = True : cursors, returned by connection.cursor(), are tracked and are 
-   automatically closed when the connection is returned to the pool.  some DBAPIs like MySQLDB
-   become unstable if cursors remain open.
- *  disallow_open_cursors = False : if auto_close_cursors is False, and disallow_open_cursors is True,
-   will raise an exception if an open cursor is detected upon connection checkin.  If auto_close_cursors and disallow_open_cursors are both False, then no cursor processing occurs upon checkin.
 
 QueuePool options include:
 

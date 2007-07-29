@@ -210,6 +210,8 @@
     other logic at new each DBAPI connection, pool check-out and check-in.
   - Connections gain a .properties collection, with contents scoped to the
     lifetime of the underlying DBAPI connection
+  - removed auto_close_cursors and disallow_open_cursors arguments from Pool;
+    reduces overhead as cursors are normally closed by ResultProxy and Connection.
 - extensions
   - proxyengine is temporarily removed, pending an actually working
     replacement.

@@ -136,10 +136,9 @@ class CreateEngineTest(PersistTest):
         
     def testpoolargs(self):
         """test that connection pool args make it thru"""
-        e = create_engine('postgres://', creator=None, pool_recycle=-1, echo_pool=None, auto_close_cursors=False, disallow_open_cursors=True, module=MockDBAPI())
-        assert e.pool.auto_close_cursors is False
-        assert e.pool.disallow_open_cursors is True
-
+        e = create_engine('postgres://', creator=None, pool_recycle=50, echo_pool=None, module=MockDBAPI())
+        assert e.pool._recycle == 50
+        
         # these args work for QueuePool
         e = create_engine('postgres://', max_overflow=8, pool_timeout=60, poolclass=pool.QueuePool, module=MockDBAPI())
 

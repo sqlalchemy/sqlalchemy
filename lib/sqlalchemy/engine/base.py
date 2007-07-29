@@ -619,7 +619,6 @@ class Connection(Connectable):
                 self.__engine.dialect.do_rollback(self.connection)
             except Exception, e:
                 raise exceptions.SQLError(None, None, e)
-            self.__connection.close_open_cursors()
         self.__transaction = None
 
     def _commit_impl(self):
@@ -770,6 +769,7 @@ class Connection(Connectable):
             if self.dialect.is_disconnect(e):
                 self.__connection.invalidate(e=e)
                 self.engine.dispose()
+            context.cursor.close()
             self._autorollback()
             if self.__close_with_result:
                 self.close()
@@ -782,6 +782,7 @@ class Connection(Connectable):
             if self.dialect.is_disconnect(e):
                 self.__connection.invalidate(e=e)
                 self.engine.dispose()
+            context.cursor.close()
             self._autorollback()
             if self.__close_with_result:
                 self.close()
