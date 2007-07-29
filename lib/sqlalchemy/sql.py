@@ -2615,7 +2615,7 @@ class _ColumnClause(ColumnElement):
     statements, but also any arbitrary text.  May or may not be bound 
     to an underlying ``Selectable``.  ``_ColumnClause`` is usually
     created publically via the ``column()`` function or the 
-    ``column_literal()`` function.
+    ``literal_column()`` function.
     
       text
         the text of the element.
@@ -2635,7 +2635,7 @@ class _ColumnClause(ColumnElement):
       is_literal
         if True, the ``_ColumnClause`` is assumed to be an exact expression
         that will be delivered to the output with no quoting rules applied
-        regardless of case sensitive settings.  the ``column_literal()`` function is
+        regardless of case sensitive settings.  the ``literal_column()`` function is
         usually used to create such a ``_ColumnClause``.
     
     """
