@@ -120,7 +120,7 @@ With `metadata` as our established home for tables, lets make a Table for it:
 As you might have guessed, we have just defined a table named `users` which has three columns: `user_id` (which is a primary key column), `user_name` and `password`. Currently it is just an object that doesn't necessarily correspond to an existing table in our database.  To actually create the table, we use the `create()` method.  To make it interesting, we will have SQLAlchemy echo the SQL statements it sends to the database, by setting the `echo` flag on the `Engine` associated with our `MetaData`:
 
     {python}
-    >>> metadata.engine.echo = True
+    >>> metadata.bind.echo = True
     >>> users_table.create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     CREATE TABLE users (
         user_id INTEGER NOT NULL,
@@ -353,7 +353,7 @@ All querying for objects is performed via an instance of `Query`.  The various `
 Lets turn off the database echoing for a moment, and try out a few methods on `Query`.  The two methods used to narrow results are `filter()` and `filter_by()`, and the two most common methods used to load results are `all()` and `first()`.   The `get()` method is used for a quick lookup by primary key.  `filter_by()` works with keyword arguments, and `filter()` works with `ClauseElement` objects, which are constructed by using `Column` objects inside of Python expressions, in the same way as we did with our SQL select example in the previous section of this tutorial.  Using `ClauseElement` structures to query objects is more verbose but more flexible:
 
     {python}
-    >>> metadata.engine.echo = False
+    >>> metadata.bind.echo = False
     >>> print query.filter(User.c.user_id==3).all()
     [User(u'Fred',None)]
     >>> print query.get(2)
@@ -409,7 +409,7 @@ With a new user "ed" and some changes made on "Mary" and "Harry", lets also mark
 Then to send all of our changes to the database, we `flush()` the Session.  Lets turn echo back on to see this happen!:
 
     {python}
-    >>> metadata.engine.echo = True
+    >>> metadata.bind.echo = True
     >>> session.flush()
     BEGIN
     UPDATE users SET password=? WHERE users.user_id = ?
