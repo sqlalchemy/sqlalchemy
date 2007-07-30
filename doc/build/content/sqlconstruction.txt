@@ -1,13 +1,7 @@
-Constructing SQL Queries via Python Expressions {@name=sql}
+SQL Expression Language Tutorial {@name=sql}
 ===============================================
 
-*Note:* This section describes how to use SQLAlchemy to construct SQL queries and receive result sets.  It does *not* cover the object relational mapping capabilities of SQLAlchemy; that is covered later on in [datamapping](rel:datamapping).  However, both areas of functionality work similarly in how selection criterion is constructed, so if you are interested just in ORM, you should probably skim through basic [sql_whereclause](rel:sql_whereclause) construction before moving on.
-
-Once you have used the `sqlalchemy.schema` module to construct your tables and/or reflect them from the database, performing SQL queries using those table meta data objects is done via the `sqlalchemy.sql` package.  This package defines a large set of classes, each of which represents a particular kind of lexical construct within a SQL query; all are descendants of the common base class `sqlalchemy.sql.ClauseElement`.  A full query is represented via a structure of `ClauseElement`s.  A set of reasonably intuitive creation functions is provided by the `sqlalchemy.sql` package to create these structures; these functions are described in the rest of this section. 
-
-Executing a `ClauseElement` structure can be performed in two general ways.  You can use an `Engine` or a `Connection` object's `execute()` method to which you pass the query structure; this is known as **explicit style**.  Or, if the `ClauseElement` structure is built upon Table metadata which is bound to an `Engine` directly, you can simply call `execute()` on the structure itself, known as **implicit style**.  In both cases, the execution returns a cursor-like object (more on that later).  The same clause structure can be executed repeatedly.  The `ClauseElement` is compiled into a string representation by an underlying `Compiler` object which is associated with the `Engine` via its `Dialect`.
-
-The examples below all include a dump of the generated SQL corresponding to the query object, as well as a dump of the statement's bind parameters.  In all cases, bind parameters are shown as named parameters using the colon format (i.e. ':name').  When the statement is compiled into a database-specific version, the named-parameter statement and its bind values are converted to the proper paramstyle for that database automatically.
+**TUTORIAL FORMAT IS TODO**
 
 For this section, we will mostly use the implcit style of execution, meaning the `Table` objects are associated with a bound instance of `MetaData`, and constructed `ClauseElement` objects support self-execution.  Assume the following configuration:
 

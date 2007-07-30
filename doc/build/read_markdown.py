@@ -154,7 +154,7 @@ def replace_pre_with_mako(tree):
         sqlre2 = re.compile(r'{opensql}(.*?\n)((?:BEGIN|SELECT|INSERT|DELETE|UPDATE|CREATE|DROP).*?)\n\s*(\n|$)', re.S)
         text = sqlre2.sub(r"<%call expr='formatting.poppedcode()' >\1\n\2</%call>\n\n", text)
 
-        tag = et.Element("MAKO:formatting.code")
+        tag = et.Element("MAKO:formatting.code", extension='extension', paged='paged', toc='toc')
         if code:
             tag.attrib["syntaxtype"] = repr(code)
         if title:
@@ -170,13 +170,13 @@ def replace_pre_with_mako(tree):
     parents = get_parent_map(tree)
 
     for precode in tree.findall('.//pre/code'):
-        reg = re.compile(r'\{(python|code)(?: title="(.*?)"){0,1}\}(.*)', re.S)
+        reg = re.compile(r'\{(python|code|diagram)(?: title="(.*?)"){0,1}\}(.*)', re.S)
         m = reg.match(precode[0].text.lstrip())
         if m:
             code = m.group(1)
             title = m.group(2)
             text = m.group(3)
-            text = re.sub(r'{(python|code).*?}(\n\s*)?', '', text)
+            text = re.sub(r'{(python|code|diagram).*?}(\n\s*)?', '', text)
             splice_code_tag(parents[precode], text, code=code, title=title)
         elif precode.text.lstrip().startswith('>>> '):
             splice_code_tag(parents[precode], precode.text)

@@ -5,6 +5,7 @@ The **Engine** is the starting point for any SQLAlchemy application.  It's "home
 
 The general structure is this:
 
+    {diagram}
                                          +-----------+                        __________
                                      /---|   Pool    |---\                   (__________)
                  +-------------+    /    +-----------+    \     +--------+   |          |

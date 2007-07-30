@@ -22,6 +22,9 @@
     % if item:
         <a href="${ item.get_link(extension=extension, anchor=anchor, usefilename=paged) }">${ description }</a>
     % else:
+        <%
+        #raise Exception("Can't find TOC link for '%s'" % path)
+        %>
         <b>${ description }</b>
     % endif
 </%def>

@@ -1,8 +1,10 @@
 [alpha_api]: javascript:alphaApi()
 [alpha_implementation]: javascript:alphaImplementation()
 
-Data Mapping {@name=datamapping}
+Object Relational Tutorial {@name=datamapping}
 ============
+
+**TUTORIAL FORMAT IS TODO**
 
 ### Basic Data Mapping {@name=datamapping}
 
