@@ -535,8 +535,11 @@ Then apply an **option** to the query, indicating that we'd like `addresses` to 
     WHERE users.id = tbl_row_count.users_id ORDER BY tbl_row_count.oid, addresses_1.oid
     ['jack']
     
-    >>> jack, jack.addresses
-    (<User(u'jack',u'Jack Bean', u'gjffdd')>, [<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>])
+    >>> jack
+    <User(u'jack',u'Jack Bean', u'gjffdd')>
+    
+    >>> jack.addresses
+    [<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
     
 If you think that query is elaborate, it is !  But SQLAlchemy is just getting started.  Note that when using eager loading, *nothing* changes as far as the ultimate results returned.  The "loading strategy", as its called, is designed to be completely transparent in all cases, and is for optimization purposes only.  Any query criterion you use to load objects, including ordering, limiting, other joins, etc., should return identical results regardless of the combiantion of lazily- and eagerly- loaded relationships present.
 
@@ -568,4 +571,50 @@ Or we can make a real JOIN construct; below we use the `join()` function availab
 
 Note that the `join()` construct has no problem figuring out the correct join condition between `users_table` and `addresses_table`..the `ForeignKey` we constructed says it all.
 
+The easiest way to join is automatically, using the `join()` method on `Query`.  Just give this method the path from A to B, using the name of a mapped relationship directly:
 
+    {python}
+    >>> query = session.query(User).join('addresses')
+    {sql}>>> query.filter(Address.email_address=='jack@google.com').all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users JOIN addresses ON users.id = addresses.user_id 
+    WHERE addresses.email_address = ? ORDER BY users.oid
+    ['jack@google.com']
+    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+
+Each time the `join()` is called on `Query`, the **joinpoint** of the query is moved to be that of the endpoint of the join.  As above, when we joined from `users_table` to `addresses_table`, all subsequent criterion used by `filter_by()` are against the `addresses` table.  When you `join()` again, the joinpoint starts back from the root.  We can also backtrack to the beginning explicitly using `reset_joinpoint()`.  This instruction will place the joinpoint back at the root `users` table, where subsequent `filter_by()` criterion are again against `users`:
+
+    {python}
+    >>> query = session.query(User).join('addresses').filter_by(email_address='jack@google.com')
+    {sql}>>> query.reset_joinpoint().filter_by(name='jack').all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users JOIN addresses ON users.id = addresses.user_id 
+    WHERE addresses.email_address = ? AND users.name = ? ORDER BY users.oid
+    ['jack@google.com', 'jack']
+    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+
+In all cases, we can get the `User` and the matching `Address` objects back at the same time, by telling the session we want both.  This returns the results as a list of tuples:
+
+    {python}
+    >>> query = session.query(User).add_entity(Address).join('addresses')
+    {sql}>>> query.filter(Address.email_address=='jack@google.com').all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password, addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM users JOIN addresses ON users.id = addresses.user_id 
+    WHERE addresses.email_address = ? ORDER BY users.oid
+    ['jack@google.com']
+    {stop}[(<User(u'jack',u'Jack Bean', u'gjffdd')>, <Address(u'jack@google.com')>)]
+
+Another common scenario is the need to join on the same table more than once.  For example, if we want to find a `User` who has two distinct email addresses, both `jack@google.com` as well as `j25@yahoo.com`, we need to join to the `Addresses` table twice.  SQLAlchemy does provide `Alias` objects which can accomplish this; but far easier is just to tell `join()` to alias for you:
+
+    {python}
+    >>> query = session.query(User).join('addresses', aliased=True)
+    >>> query = query.filter(Address.email_address=='jack@google.com')
+    >>> query = query.join('addresses', aliased=True).filter(Address.email_address=='j25@yahoo.com')
+    {sql}>>> query.all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id JOIN addresses AS addresses_2 ON users.id = addresses_2.user_id 
+    WHERE addresses_1.email_address = ? AND addresses_2.email_address = ? ORDER BY users.oid
+    ['jack@google.com', 'j25@yahoo.com']
+    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+
+The key thing which occured above is that our SQL criterion were **alisaed** as appropriate corresponding to the alias generated in the most recent `join()` call.  This is an example of where SQLAlchemy's relational construct engine makes a complicated task simple.
