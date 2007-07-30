@@ -26,13 +26,17 @@ is equivalent to::
     logging.getLogger('sqlalchemy.engine.Engine.%s' % hex(id(engine))).setLevel(logging.DEBUG)
 """
 
-import sys
+import sys, warnings
 
 # py2.5 absolute imports will fix....
 logging = __import__('logging')
 
 
-logging.getLogger('sqlalchemy').setLevel(logging.WARN)
+rootlogger = logging.getLogger('sqlalchemy')
+rootlogger.setLevel(logging.WARN)
+def _logwarning(message, category, filename, lineno, file='ignored'):
+    rootlogger.warn(warnings.formatwarning(message, category, filename, lineno))
+warnings.showwarning = _logwarning
 
 default_enabled = False
 def default_logging(name):
@@ -41,7 +45,6 @@ def default_logging(name):
         default_enabled=True
     if not default_enabled:
         default_enabled = True
-        rootlogger = logging.getLogger('sqlalchemy')
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s'))
         rootlogger.addHandler(handler)

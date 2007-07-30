@@ -541,19 +541,11 @@ class ScopedRegistry(object):
         return self.scopefunc()
 
 
-_warned = Set()
-
 def warn_deprecated(msg):
-    if msg in _warned:
-        return
-    _warned.add(msg)
     warnings.warn(msg, category=DeprecationWarning, stacklevel=3)
 
 def deprecated(func, add_deprecation_to_docstring=True):
     def func_with_warning(*args, **kwargs):
-        if func in _warned:
-            return func(*args, **kwargs)
-        _warned.add(func)
         warnings.warn("Call to deprecated function %s" % func.__name__,
                       category=DeprecationWarning,
                       stacklevel=2)
