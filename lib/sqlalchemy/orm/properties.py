@@ -137,6 +137,8 @@ class PropertyLoader(StrategizedProperty):
         self.lazy = lazy
         self.foreign_keys = util.to_set(foreign_keys)
         self._legacy_foreignkey = util.to_set(foreignkey)
+        if foreignkey:
+            util.warn_deprecated('foreignkey option is deprecated; see docs for details')
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
         self.remote_side = util.to_set(remote_side)
@@ -150,11 +152,14 @@ class PropertyLoader(StrategizedProperty):
             self.cascade = mapperutil.CascadeOptions(cascade)
         else:
             if private:
+                util.warn_deprecated('private option is deprecated; see docs for details')
                 self.cascade = mapperutil.CascadeOptions("all, delete-orphan")
             else:
                 self.cascade = mapperutil.CascadeOptions("save-update, merge")
 
         self.association = association
+        if association:
+            util.warn_deprecated('association option is deprecated; see docs for details')
         self.order_by = order_by
         self.attributeext=attributeext
         if isinstance(backref, str):
@@ -399,7 +404,7 @@ class PropertyLoader(StrategizedProperty):
                 raise exceptions.ArgumentError("In relationship '%s', primary and secondary join conditions must not include columns from the polymorphic 'select_table' argument as of SA release 0.3.4.  Construct join conditions using the base tables of the related mappers." % (str(self)))
 
     def _determine_fks(self):
-        if len(self._legacy_foreignkey) and not self._is_self_referential():
+        if self._legacy_foreignkey and not self._is_self_referential():
             self.foreign_keys = self._legacy_foreignkey
 
         def col_is_part_of_mappings(col):
@@ -467,7 +472,7 @@ class PropertyLoader(StrategizedProperty):
             # for a self referential mapper, if the "foreignkey" is a single or composite primary key,
             # then we are "many to one", since the remote site of the relationship identifies a singular entity.
             # otherwise we are "one to many".
-            if len(self._legacy_foreignkey):
+            if self._legacy_foreignkey:
                 for f in self._legacy_foreignkey:
                     if not f.primary_key:
                         self.direction = sync.ONETOMANY

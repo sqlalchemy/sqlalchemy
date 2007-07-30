@@ -733,9 +733,10 @@ class Session(object):
                             "within this ``Session`` keyed to their `_instance_key` value.")
 
     def import_instance(self, *args, **kwargs):
-        """Deprecated. A synynom for ``merge()``."""
+        """A synynom for ``merge()``."""
 
         return self.merge(*args, **kwargs)
+    import_instance = util.deprecated(import_instance)
 
 # this is the AttributeManager instance used to provide attribute behavior on objects.
 # to all the "global variable police" out there:  its a stateless object.

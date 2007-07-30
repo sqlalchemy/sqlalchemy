@@ -1125,6 +1125,13 @@ class MetaData(SchemaItem):
         """return True if this MetaData is bound to an Engine."""
         return self._bind is not None
 
+    def _connect(self, bind, **kwargs):
+        from sqlalchemy.engine.url import URL
+        if isinstance(bind, (basestring, URL)):
+            self._bind = sqlalchemy.create_engine(bind, **kwargs)
+        else:
+            self._bind = bind
+        
     def connect(self, bind, **kwargs):
         """bind this MetaData to an Engine.
             
@@ -1137,14 +1144,10 @@ class MetaData(SchemaItem):
                 directly to the given Engine.
 
         """
-        
-        from sqlalchemy.engine.url import URL
-        if isinstance(bind, (basestring, URL)):
-            self._bind = sqlalchemy.create_engine(bind, **kwargs)
-        else:
-            self._bind = bind
+        self._connect(bind, **kwargs)
+    connect = util.deprecated(connect, False)
 
-    bind = property(lambda self:self._bind, connect, doc="""an Engine or Connection to which this MetaData is bound.  this is a settable property as well.""")
+    bind = property(lambda self:self._bind, _connect, doc="""an Engine or Connection to which this MetaData is bound.  this is a settable property as well.""")
     
     def clear(self):
         self.tables.clear()

@@ -539,3 +539,26 @@ class ScopedRegistry(object):
 
     def _get_key(self):
         return self.scopefunc()
+
+
+_warned = Set()
+
+def warn_deprecated(msg):
+    if msg in _warned:
+        return
+    _warned.add(msg)
+    warnings.warn(msg, category=DeprecationWarning, stacklevel=3)
+
+def deprecated(func, add_deprecation_to_docstring=True):
+    def func_with_warning(*args, **kwargs):
+        if func in _warned:
+            return func(*args, **kwargs)
+        _warned.add(func)
+        warnings.warn("Call to deprecated function %s" % func.__name__,
+                      category=DeprecationWarning,
+                      stacklevel=2)
+        return func(*args, **kwargs)
+    func_with_warning.__name__ = func.__name__
+    func_with_warning.__doc__ = (add_deprecation_to_docstring and 'Deprecated.\n' or '') + func.__doc__
+    func_with_warning.__dict__.update(func.__dict__)
+    return func_with_warning

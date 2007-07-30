@@ -215,6 +215,8 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       
     """
     scalar = kwargs.pop('scalar', False)
+    if scalar:
+        util.warn_deprecated('scalar option is deprecated; see docs for details')
     s = Select(columns, whereclause=whereclause, from_obj=from_obj, **kwargs)
     if scalar:
         return s.as_scalar()
