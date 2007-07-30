@@ -605,9 +605,19 @@ class CreateDropTest(PersistTest):
 
         metadata.drop_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), False )
-        self.assertEqual( testbase.db.has_table('email_addresses'), False )                
+        self.assertEqual( testbase.db.has_table('email_addresses'), False )
         metadata.drop_all(bind=testbase.db)
-        self.assertEqual( testbase.db.has_table('items'), False )                
+        self.assertEqual( testbase.db.has_table('items'), False )
+
+    def test_tablenames(self):
+        from sqlalchemy.util import Set
+        metadata.create_all(bind=testbase.db)
+        # we only check to see if all the explicitly created tables are there, rather than
+        # assertEqual -- the test db could have "extra" tables if there is a misconfigured
+        # template.  (*cough* tsearch2 w/ the pg windows installer.)
+        self.assert_(not Set(metadata.tables) - Set(testbase.db.table_names()))
+        metadata.drop_all(bind=testbase.db)
+    
 
 class SchemaTest(PersistTest):
     # this test should really be in the sql tests somewhere, not engine
