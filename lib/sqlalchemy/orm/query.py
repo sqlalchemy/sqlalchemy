@@ -592,7 +592,7 @@ class Query(object):
         return q
         
     def first(self):
-        """Return the first result of this ``Query``.
+        """Return the first result of this ``Query`` or None if the result doesn't contain any row.
 
         This results in an execution of the underlying query.
         """
