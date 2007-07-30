@@ -169,6 +169,18 @@ Lets take a look at Ed's `id` attribute again, just to make sure its set up:
 
 After each `INSERT` operation, the `Session` assigns all newly generated ids and defaults to the mapped object instance.
 
+One crucial thing to note about the `Session` is that each object instance is cached within the Session, based on its primary key identitifer.  The reason for this cache is not as much for performance as it is for maintaining an **identity map** of instances.  This map guarantees that whenever you work with a particular `User` object in a session, **you always get the same instance back**.  As below, reloading Ed gives us the same instance back:
+
+    {python}
+    {sql}>>> ed_user is session.query(User).filter_by(name='ed').one() # doctest: +NORMALIZE_WHITESPACE
+    BEGIN
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name = ? ORDER BY users.oid 
+    LIMIT 2 OFFSET 0
+    ['ed']
+    {stop}True
+
 ## Querying
 
 A whirlwind tour through querying.
@@ -183,7 +195,6 @@ Once we have a query, we can start loading objects.  The Query object, when firs
     {python}
     {sql}>>> for user in session.query(User):
     ...     print user.name
-    BEGIN
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users ORDER BY users.oid
     []
@@ -435,10 +446,126 @@ Now comes the fun part.  We define a mapper for each class, and associate them u
     >>> mapper(Address, addresses_table) # doctest: +ELLIPSIS
     <sqlalchemy.orm.mapper.Mapper object at 0x...>
 
-Above, the new thing we see is that `User` has defined a relation named `addresses`, which will reference a list of `Address` objects.  How does it know it's a list ?  SQLAlchemy figures it out for you, based on the foreign key relationship between `users_table` and `addresses_table`.  Now when we create a `User`, it automatically has this collection present:
+Above, the new thing we see is that `User` has defined a relation named `addresses`, which will reference a list of `Address` objects.  How does it know it's a list ?  SQLAlchemy figures it out for you, based on the foreign key relationship between `users_table` and `addresses_table`.  
+
+## Working with Related Objects and Backreferences {@name=relation_backref}
+
+Now when we create a `User`, it automatically has this collection present:
 
     {python}
     >>> jack = User('jack', 'Jack Bean', 'gjffdd')
     >>> jack.addresses
     []
     
+We are free to add `Address` objects, and the `session` will take care of everything for us.
+
+    {python}
+    >>> jack.addresses.append(Address(email_address='jack@google.com'))
+    >>> jack.addresses.append(Address(email_address='j25@yahoo.com'))
+    
+Before we save into the `Session`, lets examine one other thing that's happened here.  The `addresses` collection is present on our `User` because we added a `relation()` with that name.  But also within the `relation()` function is the keyword `backref`.  This keyword indicates that we wish to make a **bi-directional relationship**.  What this basically means is that not only did we generate a one-to-many relationship called `addresses` on the `User` class, we also generated a **many-to-one** relationship on the `Address` class.  This relationship is self-updating, without any data being flushed to the database, as we can see on one of Jack's addresses:
+
+    {python}
+    >>> jack.addresses[1]
+    <Address('j25@yahoo.com')>
+    
+    >>> jack.addresses[1].user
+    <User('jack','Jack Bean', 'gjffdd')>
+    
+Let's save into the session, then close out the session and create a new one...so that we can see how `Jack` and his email addresses come back to us:
+
+    {python}
+    >>> session.save(jack)
+    {sql}>>> session.commit()
+    BEGIN
+    INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
+    ['jack', 'Jack Bean', 'gjffdd']
+    INSERT INTO addresses (email_address, user_id) VALUES (?, ?)
+    ['jack@google.com', 5]
+    INSERT INTO addresses (email_address, user_id) VALUES (?, ?)
+    ['j25@yahoo.com', 5]
+    COMMIT
+    
+    >>> session = Session(engine)
+    
+Querying for Jack, we get just Jack back.  No SQL is yet issued for for Jack's addresses:
+
+    {python}
+    {sql}>>> jack = session.query(User).filter_by(name='jack').one()
+    BEGIN
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name = ? ORDER BY users.oid 
+     LIMIT 2 OFFSET 0
+    ['jack']
+    
+    >>> jack
+    <User(u'jack',u'Jack Bean', u'gjffdd')>
+    
+Let's look at the `addresses` collection.  Watch the SQL:
+
+    {python}
+    {sql}>>> jack.addresses
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM addresses 
+    WHERE ? = addresses.user_id ORDER BY addresses.oid
+    [5]
+    {stop}[<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
+    
+When we accessed the `addresses` collection, SQL was suddenly issued.  This is an example of a **lazy loading relation**.
+
+If you want to reduce the number of queries (dramatically, in many cases), we can apply an **eager load** to the query operation.  We clear out the session to ensure that a full reload occurs:
+
+    {python}
+    >>> session.clear()
+    
+Then apply an **option** to the query, indicating that we'd like `addresses` to load "eagerly".  SQLAlchemy then constructs a join between the `users` and `addresses` tables:
+
+    {python}
+    >>> from sqlalchemy.orm import eagerload
+    
+    {sql}>>> jack = session.query(User).options(eagerload('addresses')).filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
+    SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address, 
+    addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM (SELECT users.id AS users_id, users.oid AS users_oid 
+        FROM users 
+    WHERE users.name = ? ORDER BY users.oid LIMIT 2 OFFSET 0) AS tbl_row_count, 
+     users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id 
+    WHERE users.id = tbl_row_count.users_id ORDER BY tbl_row_count.oid, addresses_1.oid
+    ['jack']
+    
+    >>> jack, jack.addresses
+    (<User(u'jack',u'Jack Bean', u'gjffdd')>, [<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>])
+    
+If you think that query is elaborate, it is !  But SQLAlchemy is just getting started.  Note that when using eager loading, *nothing* changes as far as the ultimate results returned.  The "loading strategy", as its called, is designed to be completely transparent in all cases, and is for optimization purposes only.  Any query criterion you use to load objects, including ordering, limiting, other joins, etc., should return identical results regardless of the combiantion of lazily- and eagerly- loaded relationships present.
+
+## Querying with Joins {@name=joins}
+
+Which brings us to the next big topic.  What if we want to create joins that *do* change the results ?  For that, another `Query` tornado is coming....
+
+One way to join two tables together is just to compose a SQL expression.   Below we make one up using the `id` and `user_id` attributes on our mapped classes:
+
+    {python}
+    >>> query = session.query(User).filter(User.id==Address.user_id)
+    {sql}>>> query.filter(Address.email_address=='jack@google.com').all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users, addresses 
+    WHERE users.id = addresses.user_id AND addresses.email_address = ? ORDER BY users.oid
+    ['jack@google.com']
+    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+
+Or we can make a real JOIN construct; below we use the `join()` function available on `Table` to create a `Join` object, then tell the `Query` to use it as our FROM clause:
+
+    {python}
+    >>> query = session.query(User).select_from(users_table.join(addresses_table))
+    {sql}>>> query.filter(Address.email_address=='jack@google.com').all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users JOIN addresses ON users.id = addresses.user_id 
+    WHERE addresses.email_address = ? ORDER BY users.oid
+    ['jack@google.com']
+    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+
+Note that the `join()` construct has no problem figuring out the correct join condition between `users_table` and `addresses_table`..the `ForeignKey` we constructed says it all.
+
+
