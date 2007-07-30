@@ -18,7 +18,7 @@
     <%
         content = capture(caller.body)
         re2 = re.compile(r"'''PYESC(.+?)PYESC'''", re.S)
-        content = re2.sub(lambda m: m.group(1), content)
+        content = re2.sub(lambda m: filters.url_unescape(m.group(1)), content)
 
         item = toc.get_by_path(path)
         subsection = item.depth > 1
@@ -55,7 +55,7 @@
     <span class="codeline">${ caller.body() }</span>
 </%def>
 
-<%def name="code(toc, paged, extension, title=None, syntaxtype='mako', html_escape=False, use_sliders=False)">
+<%def name="code(toc, paged, extension, title=None, syntaxtype='mako', html_escape=True, use_sliders=False)">
     <%
         def fix_indent(f):
             f =string.expandtabs(f, 4)
@@ -123,7 +123,7 @@ javascript:togglePopbox('${name}', '${show}', '${hide}')
     <%
         href = capture(popboxlink)
     %>
-    '''PYESC${nav.link(href=href, text=link, class_="codepoplink")}PYESC'''
+    '''PYESC${capture(nav.link, href=href, text=link, class_="codepoplink") | u}PYESC'''
 </%def>
 
 <%def name="codepopper()" filter="trim">

@@ -31,7 +31,7 @@ For this tutorial we will use an in-memory-only SQLite database.   This is an ea
     
 The `echo` flag is a shortcut to setting up SQLAlchemy logging, which is accomplished via Python's standard `logging` module.  With it enabled, we'll see all the generated SQL produced.  If you are working through this tutorial and want less output generated, set it to `False`.   This tutorial will format the SQL behind a popup window so it doesn't get in our way; just click the "SQL" links to see whats being generated.
     
-## Define and Create a Table
+## Define and Create a Table {@name=tables}
 
 Next we want to tell SQLAlchemy about our tables.  We will start with just a single table called `users`, which will store records for the end-users using our application (lets assume its a website).  We define our tables all within a catalog called `MetaData`, using the `Table` construct, which resembles regular SQL CREATE TABLE syntax:
 
@@ -64,7 +64,7 @@ Next, to tell the `MetaData` we'd actually like to create our `users_table` for 
 
 So now our database is created, our initial schema is present, and our SQLAlchemy application knows all about the tables and columns in the database; this information is to be re-used by the Object Relational Mapper, as we'll see now.
  
-## Define a Python Class to be Mapped
+## Define a Python Class to be Mapped {@name=mapping}
 
 So lets create a rudimental `User` object to be mapped in the database.  This object will for starters have three attributes, `name`, `fullname` and `password`.  It only need subclass Python's built-in `object` class (i.e. its a new style class).  We will give it a constructor so that it may conveniently be instantiated with its attributes at once, as well as a `__repr__` method so that we can get a nice string representation of it:
 
@@ -78,7 +78,7 @@ So lets create a rudimental `User` object to be mapped in the database.  This ob
     ...     def __repr__(self):
     ...        return "<User(%r,%r, %r)>" % (self.name, self.fullname, self.password)
 
-## Setting up Mapping
+## Setting up the Mapping
 
 With our `users_table` as well as our `User` class, we want to map the two together.  That's where the SQLAlchemy ORM package comes in.  We'll use the `mapper` function to create a **mapping** between `users_table` and `User`:
 
@@ -192,40 +192,7 @@ Once we have a query, we can start loading objects.  The Query object, when firs
     mary
     fred
 
-...and the SQL will be issued at the point where the query is evaluated as a list.  To narrow results, the two main methods are `filter()` and `filter_by()`.  `filter_by()` uses keyword arguments, which translate into equality clauses joined together via 'AND':
-
-    {python}
-    {sql}>>> for user in session.query(User).filter_by(name='ed', fullname='Ed Jones'):
-    ...    print user
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.fullname = ? AND users.name = ? ORDER BY users.oid
-    ['Ed Jones', 'ed']
-    {stop}<User('ed','Ed Jones', 'f8s7ccs')>
-    
-`filter()`, on the other hand, works with constructed SQL expressions, like those described in [sql](rel:sql).  These expressions are normally constructed from the class-level attributes of the mapped class.  The basic idea is to reference the attribute, for example `User.name`, and then combine it with a regular Python operator and other arguments to issue a "generated SQL expression" to the `Query` object:
-
-    {python}
-    {sql}>>> for user in session.query(User).filter(User.name=='ed'):
-    ...    print user
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.name = ? ORDER BY users.oid
-    ['ed']
-    {stop}<User('ed','Ed Jones', 'f8s7ccs')>
-
-Instead of the `User` class you can also just as easily use the `Column` constructs attached to the `users_table` object directly:
-
-    {python}
-    {sql}>>> for user in session.query(User).filter(users_table.c.name=='ed'):
-    ...    print user
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.name = ? ORDER BY users.oid
-    ['ed']
-    {stop}<User('ed','Ed Jones', 'f8s7ccs')>
-
-Evaluating the query using an array slice returns a new Query which will apply LIMIT and OFFSET clauses when iterated:
+...and the SQL will be issued at the point where the query is evaluated as a list.  If you apply array slices before iterating, LIMIT and OFFSET are applied to the query:
 
     {python}
     {sql}>>> for u in session.query(User)[1:3]: #doctest: +NORMALIZE_WHITESPACE
@@ -237,7 +204,40 @@ Evaluating the query using an array slice returns a new Query which will apply L
     {stop}<User('wendy','Wendy Williams', 'foobar')>
     <User('mary','Mary Contrary', 'xxg527')>
 
-A single array index adds LIMIT/OFFSET and returns a result immediately.  Below, we'll substitute our `==` operator with a special SQL operator, `like()`:
+Narrowing the results down is accomplished either with `filter_by()`, which uses keyword arguments:
+
+    {python}
+    {sql}>>> for user in session.query(User).filter_by(name='ed', fullname='Ed Jones'):
+    ...    print user
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.fullname = ? AND users.name = ? ORDER BY users.oid
+    ['Ed Jones', 'ed']
+    {stop}<User('ed','Ed Jones', 'f8s7ccs')>
+
+...or `filter()`, which uses SQL expression language constructs.  These allow you to use regular Python operators with the properties on your mapped class:
+
+    {python}
+    {sql}>>> for user in session.query(User).filter(User.name=='ed'):
+    ...    print user
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name = ? ORDER BY users.oid
+    ['ed']
+    {stop}<User('ed','Ed Jones', 'f8s7ccs')>
+
+You can also use the `Column` constructs attached to the `users_table` object to construct SQL expressions:
+
+    {python}
+    {sql}>>> for user in session.query(User).filter(users_table.c.name=='ed'):
+    ...    print user
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name = ? ORDER BY users.oid
+    ['ed']
+    {stop}<User('ed','Ed Jones', 'f8s7ccs')>
+
+Most common SQL operators are available, such as `LIKE`:
 
     {python}
     {sql}>>> session.query(User).filter(User.name.like('%ed'))[1] # doctest: +NORMALIZE_WHITESPACE
@@ -248,114 +248,197 @@ A single array index adds LIMIT/OFFSET and returns a result immediately.  Below,
     ['%ed']
     {stop}<User('fred','Fred Flinstone', 'blah')>
 
-There are also methods which will immediately issue the SQL represented by a `Query` without using an iterative context or array index; these methods are `all()`, `one()`, and `first()`.  `all()` returns a list of all instances, `one()` returns exactly one instance as a scalar, and `first()` returns the first instance also as a scalar:
+Note above our array index of `1` placed the appropriate LIMIT/OFFSET and returned a scalar result immediately.
+
+The `all()`, `one()`, and `first()` methods immediately issue SQL without using an iterative context or array index.  `all()` returns a list:
 
     {python}
-    query = session.query(User).filter(users_table.c.name=='john')
+    >>> query = session.query(User).filter(User.name.like('%ed'))
 
-    # get all results into a list
-    allusers = query.all()
-
-    # get the first user
-    user = query.first()
-
-    # get exactly one user; raises an exception if not exactly one result is returned
-    user = query.one()
-
-Note that most methods on `Query` are *generative*, in that they return a new `Query` instance that is a modified version of the previous one.  It's only when you evaluate the query in an iterative context, use an array index, or call `all()`, `first()`, or `one()` (as well as some other methods we'll cover later), that SQL is issued.   For example, you can issue `filter()` or `filter_by()` as many times as needed; the various criteria are joined together using `AND`:
-
-    {python}
-    result = session.query(User).filter(users_table.c.user_id>224).filter_by(name='john').
-    {sql}            filter(users.c.fullname=='John Smith').all()
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
+    {sql}>>> query.all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.user_id>:users_user_id AND users.user_name = :users_user_name 
-    AND users.fullname = :users_fullname
-    ORDER BY users.oid
-    {'users_user_name': 'john', 'users_fullname': 'John Smith', 'users_user_id': 224}
+    WHERE users.name LIKE ? ORDER BY users.oid
+    ['%ed']
+    {stop}[<User('ed','Ed Jones', 'f8s7ccs')>, <User('fred','Fred Flinstone', 'blah')>]
+
+`first()` applies a limit of one and returns the first result as a scalar:
+
+    {python}
+    {sql}>>> query.first()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name LIKE ? ORDER BY users.oid 
+     LIMIT 1 OFFSET 0
+    ['%ed']
+    {stop}<User('ed','Ed Jones', 'f8s7ccs')>
+
+and `one()`, applies a limit of *two*, and if not exactly one row returned (no more, no less), raises an error:
+
+    {python}
+    {sql}>>> try:  
+    ...     user = query.one() 
+    ... except Exception, e: 
+    ...     print e
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name LIKE ? ORDER BY users.oid 
+     LIMIT 2 OFFSET 0
+    ['%ed']
+    {stop}Multiple rows returned for one()
+
+All `Query` methods that don't return a result instead return a new `Query` object, with modifications applied.  Therefore you can call many query methods successively to build up the criterion you want:
+
+    {python}
+    >>> query = session.query(User).filter(User.id<2).filter_by(name='ed')
+    {sql}>>> query.filter(User.fullname=='Ed Jones').all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.id < ? AND users.name = ? AND users.fullname = ? ORDER BY users.oid
+    [2, 'ed', 'Ed Jones']
+    {stop}[<User('ed','Ed Jones', 'f8s7ccs')>]
 
 If you need to use other conjunctions besides `AND`, all SQL conjunctions are available explicitly within expressions, such as `and_()` and `or_()`, when using `filter()`:
 
     {python}
-    result = session.query(User).filter(
-        and_(users_table.c.user_id>224, or_(users_table.c.name=='john', users_table.c.name=='ed'))
-        ).all()
-
-Sometimes, constructing criterion via expressions can be cumbersome.  For a quick, string-based expression, the `filter()` method can also accomodate straight text:
-
-    {python}
-    {sql}result = session.query(User).filter("user_id>224").all()
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
+    >>> from sqlalchemy import and_, or_
+    
+    {sql}>>> session.query(User).filter(
+    ...    and_(User.id<224, or_(User.name=='ed', User.name=='wendy'))
+    ...    ).all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.user_id>224
-    ORDER BY users.oid
-    {}
-
-When using text, bind parameters can be specified the same way as in a `text()` clause, using a colon.  To specify the bind parameter values, use the `params()` method:
+    WHERE users.id < ? AND (users.name = ? OR users.name = ?) ORDER BY users.oid
+    [224, 'ed', 'wendy']
+    {stop}[<User('ed','Ed Jones', 'f8s7ccs')>, <User('wendy','Wendy Williams', 'foobar')>]
+    
+You also have full ability to use literal strings to construct SQL.  For a single criterion, use a string with `filter()`:
 
     {python}
-    {sql}result = session.query(User).filter("user_id>:value and user_name=:name").params(value=224, name='jack').all()
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
+    {sql}>>> for user in session.query(User).filter("id<224").all():
+    ...     print user.name
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.user_id>:value and user_name=:name
-    ORDER BY users.oid
-    {'value': 224, 'name': 'jack'}
-
-It's also straightforward to use an entirely string-based statement, using `from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (below illustrated using an asterisk):
+    WHERE id<224 ORDER BY users.oid
+    []
+    {stop}ed
+    wendy
+    mary
+    fred
+    
+Bind parameters can be specified with string-based SQL, using a colon.  To specify the values, use the `params()` method:
 
     {python}
-    {sql}result = session.query(User).from_statement("SELECT * FROM users").all()
+    {sql}>>> session.query(User).filter("id<:value and name=:name").params(value=224, name='fred').one() # doctest: +NORMALIZE_WHITESPACE
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE id<? and name=? ORDER BY users.oid 
+    LIMIT 2 OFFSET 0
+    [224, 'fred']
+    {stop}<User('fred','Fred Flinstone', 'blah')>
+
+Note that when we use constructed SQL expressions, bind paramters are generated for us automatically; we don't need to worry about them.
+       
+To use an entirely string-based statement, using `from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (below illustrated using an asterisk):
+
+    {python}
+    {sql}>>> result = session.query(User).from_statement("SELECT * FROM users").all()
     SELECT * FROM users
-    {}
+    []
 
-`from_statement()` can also accomodate full `select()` constructs:
+`from_statement()` can also accomodate full `select()` constructs.  These are described in the [sql](rel:sql):
 
     {python}
-    result = session.query(User).from_statement(
-        select([Users], users.c.name<'e', having=users.c.name==func.max(users.c.name), group_by=[c for c in users.c])
-    {sql}    ).all()
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
+    >>> from sqlalchemy import select, func
+    
+    {sql}>>> session.query(User).from_statement(
+    ...     select([users_table], select([func.max(users_table.c.name)]).label('maxuser')==users_table.c.name) 
+    ...    ).all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.user_name>:users_user_name HAVING users.user_name == max(users.user_name)
-    GROUP BY users.user_id, users.user_name, users.fullname, users.password
-    ORDER BY users.oid
-    {'users_user_name': 'e'}
-    
-The current criterion represented by a `Query` can be distilled into a count of rows using `count()`.  This is another function which executes SQL immediately, returning an integer result:
-
-    {python}
-    {sql}num = session.query(Users).filter(users_table.c.user_id>224).count()
-    SELECT count(users.id) FROM users WHERE users.user_id>:users_user_id
-    {'users_user_id': 224}
-    
-To add limit and offset values explicitly at any time, you can use `limit()` and `offset()`:
-
-    {python}
-    {sql}result = session.query(User).limit(20).offset(5).all()
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
-    FROM users ORDER BY users.oid
-    LIMIT 20 OFFSET 5
-    {}
-
-Ordering is applied, using `Column` objects and related SQL constructs, with `order_by()`:
-
-    {python}
-    query = session.query(User).order_by(desc(users_table.c.user_name))
-    {sql}for user in query:
-        print user
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
-    FROM users ORDER BY users.user_name DESC
-    {}
+    WHERE (SELECT max(users.name) 
+    FROM users) = users.name
+    []
+    {stop}[<User('wendy','Wendy Williams', 'foobar')>]
     
 There's also a way to combine scalar results with objects, using `add_column()`.  This is often used for functions and aggregates.  When `add_column()` (or its cousin `add_entity()`, described later) is used, tuples are returned:
 
     {python}
-    for r in session.query(User).add_column(func.max(users_table.c.name)).group_by([c for c in users_table.c]):
-        print "user:", r[0]
-        print "max name:", r[1]
+    {sql}>>> for r in session.query(User).add_column(select([func.max(users_table.c.name)]).label('maxuser')):
+    ...     print r
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password, (SELECT max(users.name) 
+    FROM users) AS maxuser 
+    FROM users ORDER BY users.oid
+    []
+    {stop}(<User('ed','Ed Jones', 'f8s7ccs')>, u'wendy')
+    (<User('wendy','Wendy Williams', 'foobar')>, u'wendy')
+    (<User('mary','Mary Contrary', 'xxg527')>, u'wendy')
+    (<User('fred','Fred Flinstone', 'blah')>, u'wendy')
+
+## Building a One-to-Many Relation
+
+We've spent a lot of time dealing with just one class, and one table.  Let's now look at how SQLAlchemy deals with two tables, which have a relationship to each other.   Let's say that the users in our system also can store any number of email addresses associated with their username.  This implies a basic one to many association from the `users_table` to a new table which stores email addresess, which we will call `addresses`.  We will also create a relationship between this new table to the users table, using a `ForeignKey`:
+
+    {python}
+    >>> from sqlalchemy import ForeignKey
+    
+    >>> addresses_table = Table('addresses', metadata, 
+    ...     Column('id', Integer, primary_key=True),
+    ...     Column('email_address', String(100), nullable=False),
+    ...     Column('user_id', Integer, ForeignKey('users.id')))
+    
+Another call to `create_all()` will skip over our `users` table and build just the new `addresses` table:
+
+    {python}
+    {sql}>>> metadata.create_all(engine) # doctest: +NORMALIZE_WHITESPACE
+    PRAGMA table_info("users")
+    {}
+    PRAGMA table_info("addresses")
+    {}
+    CREATE TABLE addresses (
+        id INTEGER NOT NULL, 
+        email_address VARCHAR(100) NOT NULL, 
+        user_id INTEGER, 
+        PRIMARY KEY (id), 
+         FOREIGN KEY(user_id) REFERENCES users (id)
+    )
+    None
+    COMMIT
+
+For our ORM setup, we're going to start all over again.  We will first close out our `Session` and clear all `Mapper` objects:
+
+    {python}
+    >>> from sqlalchemy.orm import clear_mappers
+    >>> session.close()
+    >>> clear_mappers()
+    
+Our `User` class, still around, reverts to being just a plain old class.  Lets create an `Address` class to represent a user's email address:
+
+    {python}
+    >>> class Address(object):
+    ...     def __init__(self, email_address):
+    ...         self.email_address = email_address
+    ...
+    ...     def __repr__(self):
+    ...         return "<Address(%r)>" % self.email_address
+
+Now comes the fun part.  We define a mapper for each class, and associate them using a function called `relation()`.  We can define each mapper in any order we want:
+
+    {python}
+    >>> from sqlalchemy.orm import relation
+    
+    >>> mapper(User, users_table, properties={    # doctest: +ELLIPSIS
+    ...     'addresses':relation(Address, backref='user')
+    ... })
+    <sqlalchemy.orm.mapper.Mapper object at 0x...>
+    
+    >>> mapper(Address, addresses_table) # doctest: +ELLIPSIS
+    <sqlalchemy.orm.mapper.Mapper object at 0x...>
+
+Above, the new thing we see is that `User` has defined a relation named `addresses`, which will reference a list of `Address` objects.  How does it know it's a list ?  SQLAlchemy figures it out for you, based on the foreign key relationship between `users_table` and `addresses_table`.  Now when we create a `User`, it automatically has this collection present:
+
+    {python}
+    >>> jack = User('jack', 'Jack Bean', 'gjffdd')
+    >>> jack.addresses
+    []
+    
