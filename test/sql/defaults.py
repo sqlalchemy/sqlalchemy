@@ -18,11 +18,20 @@ class DefaultTest(PersistTest):
             x['x'] += 1
             return x['x']
 
-        def mydefault_with_ctx(ctx):
-            return ctx.compiled_parameters['col1'] + 10
-
         def myupdate_with_ctx(ctx):
             return len(ctx.compiled_parameters['col2'])
+        
+        def mydefault_using_connection(ctx):
+            conn = ctx.connection
+            try:
+                if db.engine.name == 'oracle':
+                    return conn.execute("select 12 from dual").scalar()
+                else:
+                    return conn.execute("select 12").scalar()
+            finally:
+                # ensure a "close()" on this connection does nothing,
+                # since its a "branched" connection
+                conn.close()
             
         use_function_defaults = db.engine.name == 'postgres' or db.engine.name == 'oracle'
         is_oracle = db.engine.name == 'oracle'
@@ -76,7 +85,7 @@ class DefaultTest(PersistTest):
             Column('boolcol2', Boolean, default=False),
             
             # python function which uses ExecutionContext
-            Column('col7', Integer, default=mydefault_with_ctx, onupdate=myupdate_with_ctx),
+            Column('col7', Integer, default=mydefault_using_connection, onupdate=myupdate_with_ctx),
             
             # python builtin
             Column('col8', Date, default=datetime.date.today, onupdate=datetime.date.today)
@@ -119,7 +128,7 @@ class DefaultTest(PersistTest):
         print "Currenttime "+ repr(ctexec)
         l = t.select().execute()
         today = datetime.date.today()
-        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False, 61, today), (52, 'imthedefault', f, ts, ts, ctexec, True, False, 62, today), (53, 'imthedefault', f, ts, ts, ctexec, True, False, 63, today)])
+        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (52, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (53, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today)])
 
     def testinsertvalues(self):
         t.insert(values={'col3':50}).execute()
@@ -181,7 +190,7 @@ class AutoIncrementTest(PersistTest):
         nonai_table = Table("aitest", meta, 
             Column('id', Integer, autoincrement=False, primary_key=True),
             Column('data', String(20)))
-        nonai_table.create()
+        nonai_table.create(checkfirst=True)
         try:
             try:
                 # postgres will fail on first row, mysql fails on second row
@@ -201,7 +210,7 @@ class AutoIncrementTest(PersistTest):
         table = Table("aitest", meta, 
             Column('id', Integer, primary_key=True),
             Column('data', String(20)))
-        table.create()
+        table.create(checkfirst=True)
         try:
             table.insert().execute(data='row 1')
             table.insert().execute(data='row 2')
@@ -216,7 +225,7 @@ class AutoIncrementTest(PersistTest):
         table = Table("aitest", meta, 
             Column('id', Integer, primary_key=True),
             Column('data', String(20)))
-        table.create()
+        table.create(checkfirst=True)
 
         try:
             # simulate working on a table that doesn't already exist

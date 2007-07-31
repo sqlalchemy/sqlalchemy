@@ -185,9 +185,9 @@ class PGExecutionContext(default.DefaultExecutionContext):
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
             ident = "c" + hex(random.randint(0, 65535))[2:]
-            return self.connection.connection.cursor(ident)
+            return self._connection.connection.cursor(ident)
         else:
-            return self.connection.connection.cursor()
+            return self._connection.connection.cursor()
 
     def get_result_proxy(self):
         if self._is_server_side():

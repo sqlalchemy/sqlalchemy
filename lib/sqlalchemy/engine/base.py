@@ -275,8 +275,14 @@ class ExecutionContext(object):
     ExecutionContext should have these datamembers:
     
         connection
-            Connection object which initiated the call to the
-            dialect to create this ExecutionContext.
+            Connection object which can be freely used by default value generators
+            to execute SQL.  This Connection should reference the same underlying
+            connection/transactional resources of root_connection.
+            
+        root_connection
+            Connection object which is the source of this ExecutionContext.  This
+            Connection may have close_with_result=True set, in which case it can
+            only be used once.
 
         dialect
             dialect which created this ExecutionContext.
@@ -515,12 +521,13 @@ class Connection(Connectable):
     The Connection object is **not** threadsafe.
     """
 
-    def __init__(self, engine, connection=None, close_with_result=False):
+    def __init__(self, engine, connection=None, close_with_result=False, _branch=False):
         self.__engine = engine
         self.__connection = connection or engine.raw_connection()
         self.__transaction = None
         self.__close_with_result = close_with_result
         self.__savepoint_seq = 0
+        self.__branch = _branch
 
     def _get_connection(self):
         try:
@@ -530,9 +537,14 @@ class Connection(Connectable):
 
     def _branch(self):
         """return a new Connection which references this Connection's 
-        engine and connection; but does not have close_with_result enabled."""
+        engine and connection; but does not have close_with_result enabled,
+        and also whose close() method does nothing.
         
-        return Connection(self.__engine, self.__connection)
+        This is used to execute "sub" statements within a single execution,
+        usually an INSERT statement.
+        """
+        
+        return Connection(self.__engine, self.__connection, _branch=True)
         
     engine = property(lambda s:s.__engine, doc="The Engine with which this Connection is associated.")
     dialect = property(lambda s:s.__engine.dialect, doc="Dialect used by this Connection.")
@@ -686,7 +698,8 @@ class Connection(Connectable):
             c = self.__connection
         except AttributeError:
             return
-        self.__connection.close()
+        if not self.__branch:
+            self.__connection.close()
         self.__connection = None
         del self.__connection
 
@@ -757,7 +770,7 @@ class Connection(Connectable):
         else:
             self.__execute(context)
         self._autocommit(context.statement)
-
+        
     def __execute(self, context):
         if context.parameters is None:
             if context.dialect.positional:
@@ -1124,7 +1137,8 @@ class ResultProxy(object):
             self._rowcount = context.get_rowcount()
             self.close()
             
-    connection = property(lambda self:self.context.connection)
+    connection = property(lambda self:self.context.root_connection)
+    
     def _get_rowcount(self):
         if self._rowcount is not None:
             return self._rowcount
@@ -1510,9 +1524,7 @@ class DefaultRunner(schema.SchemaVisitor):
 
     def __init__(self, context):
         self.context = context
-        # branch the connection so it doesnt close after result
-        self.connection = context.connection._branch()
-        
+        self.connection = self.context._connection._branch()
     dialect = property(lambda self:self.context.dialect)
     
     def get_column_default(self, column):
