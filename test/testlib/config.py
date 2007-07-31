@@ -178,7 +178,7 @@ def _require(options, file_config):
 post_configure['require'] = _require
 
 def _create_testing_engine(options, file_config):
-    from sqlalchemy import engine
+    from sqlalchemy import engine, schema
     global db, db_type
     engine_opts = {}
     if options.serverside:
@@ -194,6 +194,10 @@ def _create_testing_engine(options, file_config):
         db = engine.create_engine(db_uri, **engine_opts)
     db_type = db.name
 
+    print "Dropping existing tables in database: " + db_uri
+    md = schema.MetaData(db, reflect=True)
+    md.drop_all()
+    
     # decorate the dialect's create_execution_context() method
     # to produce a wrapper
     from testlib.testing import ExecutionContextWrapper

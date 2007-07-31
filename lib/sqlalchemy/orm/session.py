@@ -178,7 +178,11 @@ class Session(object):
             pass
         else:
             self.transaction = self.transaction.rollback()
-        attribute_manager.rollback(*self.identity_map.values())
+        # TODO: we can rollback attribute values.  however
+        # we would want to expand attributes.py to be able to save *two* rollback points, one to the 
+        # last flush() and the other to when the object first entered the transaction.
+        # [ticket:705]
+        #attribute_manager.rollback(*self.identity_map.values())
         if self.transaction is None and self.transactional:
             self.begin()
             
