@@ -152,7 +152,12 @@
     - added a subtransaction implementation that uses savepoints.
     - added support for savepoints.
   - MetaData:
+    - Tables can be reflected from the database en-masse without
+      declaring them in advance.  MetaData(engine, reflect=True) will load
+      all tables present in the database, or use metadata.reflect() for
+      finer control.
     - DynamicMetaData has been renamed to ThreadLocalMetaData
+    - The ThreadLocalMetaData constructor now takes no arguments.
     - BoundMetaData has been removed- regular MetaData is equivalent
   - Numeric and Float types now have an "asdecimal" flag; defaults to 
     True for Numeric, False for Float.  when True, values are returned as

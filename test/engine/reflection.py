@@ -546,6 +546,72 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
 
+    def test_reflect_all(self):
+        existing = testbase.db.table_names()
+
+        names = ['rt_%s' % name for name in ('a','b','c','d','e')]
+        nameset = set(names)
+        for name in names:
+            # be sure our starting environment is sane
+            self.assert_(name not in existing)
+        self.assert_('rt_f' not in existing)
+
+        baseline = MetaData(testbase.db)
+        for name in names:
+            Table(name, baseline, Column('id', Integer, primary_key=True))
+        baseline.create_all()
+
+        try:
+            m1 = MetaData(testbase.db)
+            self.assert_(not m1.tables)
+            m1.reflect()
+            self.assert_(nameset.issubset(set(m1.tables.keys())))
+
+            m2 = MetaData()
+            m2.reflect(testbase.db, only=['rt_a', 'rt_b'])
+            self.assert_(set(m2.tables.keys()) == set(['rt_a', 'rt_b']))
+
+            m3 = MetaData()
+            c = testbase.db.connect()
+            m3.reflect(bind=c, only=lambda name, meta: name == 'rt_c')
+            self.assert_(set(m3.tables.keys()) == set(['rt_c']))
+
+            m4 = MetaData(testbase.db)
+            try:
+                m4.reflect(only=['rt_a', 'rt_f'])
+                self.assert_(False)
+            except exceptions.InvalidRequestError, e:
+                self.assert_(e.args[0].endswith('(rt_f)'))
+        
+            m5 = MetaData(testbase.db)
+            m5.reflect(only=[])
+            self.assert_(not m5.tables)
+
+            m6 = MetaData(testbase.db)
+            m6.reflect(only=lambda n, m: False)
+            self.assert_(not m6.tables)
+
+            m7 = MetaData(testbase.db, reflect=True)
+            self.assert_(nameset.issubset(set(m7.tables.keys())))
+
+            try:
+                m8 = MetaData(reflect=True)
+                self.assert_(False)
+            except exceptions.ArgumentError, e:
+                self.assert_(
+                    e.args[0] ==
+                    "A bind must be supplied in conjunction with reflect=True")
+        finally:
+            baseline.drop_all()
+
+        if existing:
+            print "Other tables present in database, skipping some checks."
+        else:
+            m9 = MetaData(testbase.db)
+            m9.reflect()
+            self.assert_(not m9.tables)
+        
+
 class CreateDropTest(PersistTest):
     def setUpAll(self):
         global metadata, users

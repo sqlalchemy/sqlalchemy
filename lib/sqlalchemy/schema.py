@@ -17,13 +17,16 @@ objects as well as the visitor interface, so that the schema package
 *plugs in* to the SQL package.
 """
 
-from sqlalchemy import sql, types, exceptions,util, databases
+import re, inspect
+from sqlalchemy import sql, types, exceptions, util, databases
 import sqlalchemy
-import re, string, inspect
+URL = None
 
-__all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index', 'ForeignKeyConstraint',
-            'PrimaryKeyConstraint', 'CheckConstraint', 'UniqueConstraint', 'DefaultGenerator', 'Constraint',
-           'MetaData', 'ThreadLocalMetaData', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
+__all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
+           'ForeignKeyConstraint', 'PrimaryKeyConstraint', 'CheckConstraint',
+           'UniqueConstraint', 'DefaultGenerator', 'Constraint', 'MetaData',
+           'ThreadLocalMetaData', 'SchemaVisitor', 'PassiveDefault',
+           'ColumnDefault']
 
 class SchemaItem(object):
     """Base class for items that define a database schema."""
@@ -57,7 +60,7 @@ class SchemaItem(object):
 
         return None
 
-    def _get_engine(self, raiseerr=False):
+    def _get_bind(self, raiseerr=False):
         """Return the engine or None if no engine."""
 
         if raiseerr:
@@ -120,7 +123,7 @@ class SchemaItem(object):
     case_sensitive = property(_get_case_sensitive)
 
     metadata = property(lambda s:s._derived_metadata())
-    bind = property(lambda s:s._get_engine())
+    bind = property(lambda s:s._get_bind())
     
 def _get_table_key(name, schema):
     if schema is None:
@@ -158,7 +161,7 @@ class _TableSingleton(sql._FigureVisitName):
                     if autoload_with:
                         autoload_with.reflecttable(table, include_columns=include_columns)
                     else:
-                        metadata._get_engine(raiseerr=True).reflecttable(table, include_columns=include_columns)
+                        metadata._get_bind(raiseerr=True).reflecttable(table, include_columns=include_columns)
                 except exceptions.NoSuchTableError:
                     del metadata.tables[key]
                     raise
@@ -201,7 +204,7 @@ class Table(SchemaItem, sql.TableClause):
         actually called via the TableSingleton metaclass.  Arguments
         are:
 
-        name
+        name:
           The name of this table, exactly as it appears, or will
           appear, in the database.
 
@@ -211,11 +214,11 @@ class Table(SchemaItem, sql.TableClause):
           Further tables constructed with the same name/schema
           combination will return the same Table instance.
 
-        \*args
+        \*args:
           Should contain a listing of the Column objects for this table.
 
-        \**kwargs
-          options include:
+        \**kwargs:
+          Options include:
 
           schema
             The *schema name* for this table, which is
@@ -326,11 +329,10 @@ class Table(SchemaItem, sql.TableClause):
         return self._metadata
 
     def __repr__(self):
-        return "Table(%s)" % string.join(
+        return "Table(%s)" % ', '.join(
             [repr(self.name)] + [repr(self.metadata)] +
             [repr(x) for x in self.columns] +
-            ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']]
-            , ',')
+            ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']])
 
     def __str__(self):
         return _get_table_key(self.encodedname, self.schema)
@@ -365,7 +367,7 @@ class Table(SchemaItem, sql.TableClause):
         """Return True if this table exists."""
 
         if bind is None:
-            bind = self._get_engine(raiseerr=True)
+            bind = self._get_bind(raiseerr=True)
 
         def do(conn):
             return conn.dialect.has_table(conn, self.name, schema=self.schema)
@@ -543,7 +545,7 @@ class Column(SchemaItem, sql._ColumnClause):
     def _derived_metadata(self):
         return self.table.metadata
 
-    def _get_engine(self):
+    def _get_bind(self):
         return self.table.bind
 
     def references(self, column):
@@ -569,12 +571,11 @@ class Column(SchemaItem, sql._ColumnClause):
             kwarg.append('onupdate')
         if self.default:
             kwarg.append('default')
-        return "Column(%s)" % string.join(
+        return "Column(%s)" % ', '.join(
             [repr(self.name)] + [repr(self.type)] +
             [repr(x) for x in self.foreign_keys if x is not None] +
             [repr(x) for x in self.constraints] +
-            ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg]
-            , ',')
+            ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg])
 
     def _get_parent(self):
         return self.table
@@ -792,7 +793,7 @@ class DefaultGenerator(SchemaItem):
 
     def execute(self, bind=None, **kwargs):
         if bind is None:
-            bind = self._get_engine(raiseerr=True)
+            bind = self._get_bind(raiseerr=True)
         return bind._execute_default(self, **kwargs)
 
     def __repr__(self):
@@ -854,10 +855,9 @@ class Sequence(DefaultGenerator):
         self._set_casing_strategy(kwargs)
 
     def __repr__(self):
-        return "Sequence(%s)" % string.join(
+        return "Sequence(%s)" % ', '.join(
             [repr(self.name)] +
-            ["%s=%s" % (k, repr(getattr(self, k))) for k in ['start', 'increment', 'optional']]
-            , ',')
+            ["%s=%s" % (k, repr(getattr(self, k))) for k in ['start', 'increment', 'optional']])
 
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
@@ -865,12 +865,12 @@ class Sequence(DefaultGenerator):
 
     def create(self, bind=None, checkfirst=True):
         if bind is None:
-            bind = self._get_engine(raiseerr=True)
+            bind = self._get_bind(raiseerr=True)
         bind.create(self, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=True):
         if bind is None:
-            bind = self._get_engine(raiseerr=True)
+            bind = self._get_bind(raiseerr=True)
         bind.drop(self, checkfirst=checkfirst)
 
 
@@ -1010,14 +1010,14 @@ class Index(SchemaItem):
 
         Arguments are:
 
-        name
+        name:
           The name of the index
 
-        \*columns
+        \*columns:
           Columns to include in the index. All columns must belong to
           the same table, and no column may appear more than once.
 
-        \**kwargs
+        \**kwargs:
           Keyword arguments include:
 
           unique
@@ -1066,14 +1066,14 @@ class Index(SchemaItem):
         if bind is not None:
             bind.create(self)
         else:
-            self._get_engine(raiseerr=True).create(self)
+            self._get_bind(raiseerr=True).create(self)
         return self
 
     def drop(self, bind=None):
         if bind is not None:
             bind.drop(self)
         else:
-            self._get_engine(raiseerr=True).drop(self)
+            self._get_bind(raiseerr=True).drop(self)
 
     def __str__(self):
         return repr(self)
@@ -1085,27 +1085,56 @@ class Index(SchemaItem):
                                       (self.unique and ', unique=True') or '')
 
 class MetaData(SchemaItem):
-    """Represent a collection of Tables and their associated schema constructs."""
+    """A collection of Tables and their associated schema constructs.
+    
+    Holds a collection of Tables and an optional binding to an ``Engine``
+    or ``Connection``.  If bound, the tables in the collection may participate
+    in implicit SQL expressions and execution.
+
+    The ``.bind`` may be assigned to dynamically.  A common pattern is to
+    begin bound to None and then later bind when an engine is available::
+
+      metadata = MetaData()
+      # define tables
+      Table('mytable', metadata, ...)
+      # connect to an engine later, perhaps after loading a URL from a
+      # configuration file
+      metadata.bind = an_engine
+
+    MetaData is a thread-safe object after tables have been explicitly
+    defined or loaded via reflection.
+    """
 
     __visit_name__ = 'metadata'
     
-    def __init__(self, bind=None, **kwargs):
-        """create a new MetaData object.
+    def __init__(self, bind=None, reflect=False, case_sensitive=None):
+        """Create a new MetaData object.
             
-            bind
-                an Engine, or a string or URL instance which will be passed
-                to create_engine(), this MetaData will be bound to the resulting
-                engine.
+        bind:
+          An Engine, or a string or URL instance which will be passed
+          to create_engine(), this MetaData will be bound to the resulting
+          engine.
 
-            case_sensitive
-                popped from \**kwargs, indicates default case sensitive setting for
-                all contained objects.  defaults to True.
+        reflect:
+          Optional, automatically load all tables from the bound database.
+          Defaults to false. ``bind`` is required when this option is
+          set.  For finer control over loaded tables, use the `reflect`
+          method of ``MetaData``.
+
+        case_sensitive:
+          A default case sensitive setting for all contained objects.
+          Defaults to sensitive.
             
         """        
 
         self.tables = {}
-        self._set_casing_strategy(kwargs)
+        self._set_casing_strategy({'case_sensitive': case_sensitive})
         self.bind = bind
+        if reflect:
+            if not bind:
+                raise exceptions.ArgumentError(
+                    "A bind must be supplied in conjunction with reflect=True")
+            self.reflect()
         
     def __repr__(self):
         return 'MetaData(%r)' % self.bind
@@ -1114,7 +1143,8 @@ class MetaData(SchemaItem):
         return key in self.tables
         
     def __getstate__(self):
-        return {'tables':self.tables, 'casesensitive':self._case_sensitive_setting}
+        return {'tables': self.tables,
+                'casesensitive': self._case_sensitive_setting}
 
     def __setstate__(self, state):
         self.tables = state['tables']
@@ -1122,32 +1152,47 @@ class MetaData(SchemaItem):
         self._bind = None
         
     def is_bound(self):
-        """return True if this MetaData is bound to an Engine."""
-        return self._bind is not None
+        """True if this MetaData is bound to an Engine or Connection."""
 
-    def _connect(self, bind, **kwargs):
-        from sqlalchemy.engine.url import URL
+        return self._bind is not None
+        
+    # @deprecated
+    def connect(self, bind, **kwargs):
+        """Bind this MetaData to an Engine.
+            
+        Use metadata.bind = <engine> or metadata.bind = <url>.
+        
+        bind:
+          A string, URL or Engine instance.  If a string or URL,
+          will be passed to create_engine() along with \**kwargs to
+          produce the engine which to connect to.  Otherwise connects
+          directly to the given Engine.
+        """
+        
+        global URL
+        if URL is None:
+            from sqlalchemy.engine.url import URL
         if isinstance(bind, (basestring, URL)):
             self._bind = sqlalchemy.create_engine(bind, **kwargs)
         else:
             self._bind = bind
-        
-    def connect(self, bind, **kwargs):
-        """bind this MetaData to an Engine.
-            
-            DEPRECATED.  use metadata.bind = <engine> or metadata.bind = <url>.
-        
-            bind
-                a string, URL or Engine instance.  If a string or URL,
-                will be passed to create_engine() along with \**kwargs to
-                produce the engine which to connect to.  otherwise connects
-                directly to the given Engine.
+    connect = util.deprecated(connect)
 
-        """
-        self._connect(bind, **kwargs)
-    connect = util.deprecated(connect, False)
+    def _bind_to(self, bind):
+        """Bind this MetaData to an Engine, Connection or URL."""
 
-    bind = property(lambda self:self._bind, _connect, doc="""an Engine or Connection to which this MetaData is bound.  this is a settable property as well.""")
+        global URL
+        if URL is None:
+            from sqlalchemy.engine.url import URL
+
+        if isinstance(bind, (basestring, URL)):
+            self._bind = sqlalchemy.create_engine(bind)
+        else:
+            self._bind = bind
+
+    bind = property(lambda self: self._bind, _bind_to, doc=
+                    "An Engine or Connection to which this MetaData is bound. "
+                    "This is a settable property as well.")
     
     def clear(self):
         self.tables.clear()
@@ -1168,23 +1213,86 @@ class MetaData(SchemaItem):
     def _get_parent(self):
         return None
 
+    def reflect(self, bind=None, schema=None, only=None):
+        """Load all available table definitions from the database.
+
+        Automatically creates ``Table`` entries in this ``MetaData`` for any
+        table available in the database but not yet present in the MetaData.
+        May be called multiple times to pick up tables recently added to the
+        database, however no special action is taken if a table in this
+        MetaData no longer exists in the database.
+
+        bind:
+          A ``Connectable`` used to access the database; if None, uses
+          the existing bind on this ``MetaData``, if any.
+
+        schema:
+          Optional, query and reflect tables from an alterate schema.
+
+        only:
+          Optional.  Load only a sub-set of available named tables.  May
+          be specified as a sequence of names or a callable.
+        
+          If a sequence of names is provided, only those tables will be
+          reflected.  An error is raised if a table is requested but not
+          available.  Named tables already present in this ``MetaData`` are
+          ignored.
+
+          If a callable is provided, it will be used as a boolean predicate
+          to filter the list of potential table names.  The callable is
+          called with a table name and this ``MetaData`` instance as positional
+          arguments and should return a true value for any table to reflect.
+        """
+
+        reflect_opts = {'autoload': True}
+        if bind is None:
+            bind = self._get_bind(raiseerr=True)
+            conn = None
+        else:
+            reflect_opts['autoload_with'] = bind
+            conn = bind.contextual_connect()
+
+        if schema is not None:
+            reflect_opts['schema'] = schema
+
+        available = util.OrderedSet(bind.engine.table_names(schema,
+                                                            connection=conn))
+        current = util.Set(self.tables.keys())
+
+        if only is None:
+            load = [name for name in available if name not in current]
+        elif callable(only):
+            load = [name for name in available
+                    if name not in current and only(name, self)]
+        else:
+            missing = [name for name in only if name not in available]
+            if missing:
+                s = schema and (" schema '%s'" % schema) or ''
+                raise exceptions.InvalidRequestError(
+                    'Could not reflect: requested table(s) not available '
+                    'in %s%s: (%s)' % (bind.engine.url, s, ', '.join(missing)))
+            load = [name for name in only if name not in current]
+
+        for name in load:
+            Table(name, self, **reflect_opts)
+
     def create_all(self, bind=None, tables=None, checkfirst=True):
         """Create all tables stored in this metadata.
 
         This will conditionally create tables depending on if they do
         not yet exist in the database.
 
-        bind
+        bind:
           A ``Connectable`` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
 
-        tables
-          Optional list of tables, which is a subset of the total
-          tables in the ``MetaData`` (others are ignored).
+        tables:
+          Optional list of ``Table`` objects, which is a subset of the
+          total tables in the ``MetaData`` (others are ignored).
         """
 
         if bind is None:
-            bind = self._get_engine(raiseerr=True)
+            bind = self._get_bind(raiseerr=True)
         bind.create(self, checkfirst=checkfirst, tables=tables)
 
     def drop_all(self, bind=None, tables=None, checkfirst=True):
@@ -1193,23 +1301,23 @@ class MetaData(SchemaItem):
         This will conditionally drop tables depending on if they
         currently exist in the database.
 
-        bind
+        bind:
           A ``Connectable`` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
           
-        tables
-          Optional list of tables, which is a subset of the total
-          tables in the ``MetaData`` (others are ignored).
+        tables:
+          Optional list of ``Table`` objects, which is a subset of the
+          total tables in the ``MetaData`` (others are ignored).
         """
 
         if bind is None:
-            bind = self._get_engine(raiseerr=True)
+            bind = self._get_bind(raiseerr=True)
         bind.drop(self, checkfirst=checkfirst, tables=tables)
 
     def _derived_metadata(self):
         return self
 
-    def _get_engine(self, raiseerr=False):
+    def _get_bind(self, raiseerr=False):
         if not self.is_bound():
             if raiseerr:
                 raise exceptions.InvalidRequestError("This SchemaItem is not connected to any Engine or Connection.")
@@ -1218,33 +1326,96 @@ class MetaData(SchemaItem):
         return self._bind
 
 class ThreadLocalMetaData(MetaData):
-    """Build upon ``MetaData`` to provide the capability to bind to 
-multiple ``Engine`` implementations on a dynamically alterable,
-thread-local basis.
+    """A MetaData variant that presents a different ``bind`` in every thread.
+
+    Makes the ``bind`` property of the MetaData a thread-local value,
+    allowing this collection of tables to be bound to different ``Engine``
+    implementations or connections in each thread.
+
+    The ThreadLocalMetaData starts off bound to None in each thread.
+    Binds must be made explicitly by assigning to the ``.bind`` property or
+    using ``connect()``.  You can also re-bind dynamically multiple times per
+    thread, just like a regular ``MetaData``.
+
+    Use this type of MetaData when your tables are present in more than
+    one database and you need to address them simultanesouly.
     """
 
     __visit_name__ = 'metadata'
 
-    def __init__(self, **kwargs):
+    def __init__(self):
+        """Construct a ThreadLocalMetaData.
+
+        Takes no arguments.
+        """
+        
         self.context = util.ThreadLocal()
         self.__engines = {}
-        super(ThreadLocalMetaData, self).__init__(**kwargs)
+        
+        super(ThreadLocalMetaData, self).__init__()
 
-    def connect(self, engine_or_url, **kwargs):
-        from sqlalchemy.engine.url import URL
-        if isinstance(engine_or_url, (basestring, URL)):
+    # @deprecated
+    def connect(self, bind, **kwargs): 
+        """Bind this MetaData to an Engine.
+            
+        Use ``metadata.bind=<engine>`` or ``metadata.bind=<url>``.
+        
+        bind:
+          A string, URL or Engine instance.  If a string or URL,
+          will be passed to create_engine() along with \**kwargs to
+          produce the engine which to connect to.  Otherwise connects
+          directly to the given Engine.
+        """
+       
+        global URL
+        if URL is None:
+            from sqlalchemy.engine.url import URL
+
+        if isinstance(bind, (basestring, URL)):
             try:
-                self.context._engine = self.__engines[engine_or_url]
+                engine = self.__engines[bind]
             except KeyError:
-                e = sqlalchemy.create_engine(engine_or_url, **kwargs)
-                self.__engines[engine_or_url] = e
+                engine = sqlalchemy.create_engine(bind, **kwargs)
+            bind = engine
+        self._bind_to(bind)
+    connect = util.deprecated(connect)
+
+    def _get_bind(self, raiseerr=False):
+        """The bound ``Engine`` or ``Connectable`` for this thread."""
+        
+        if hasattr(self.context, '_engine'):
+            return self.context._engine
+        else:
+            if raiseerr:
+                raise exceptions.InvalidRequestError(
+                    "This ThreadLocalMetaData is not bound to any Engine or "
+                    "Connection.")
+            else: 
+                return None
+
+    def _bind_to(self, bind):
+        """Bind this MetaData to an ``Engine`` or ``Connection``."""
+
+        global URL
+        if URL is None:
+            from sqlalchemy.engine.url import URL
+
+        if isinstance(bind, (basestring, URL)):
+            try:
+                self.context._engine = self.__engines[bind]
+            except KeyError:
+                e = sqlalchemy.create_engine(bind)
+                self.__engines[bind] = e
                 self.context._engine = e
         else:
             # TODO: this is squirrely.  we shouldnt have to hold onto engines
             # in a case like this
-            if not self.__engines.has_key(engine_or_url):
-                self.__engines[engine_or_url] = engine_or_url
-            self.context._engine = engine_or_url
+            if not self.__engines.has_key(bind):
+                self.__engines[bind] = bind
+            self.context._engine = bind
+
+    bind = property(_get_bind, _bind_to)
+
 
     def is_bound(self):
         return hasattr(self.context, '_engine') and self.context._engine is not None
@@ -1254,16 +1425,6 @@ thread-local basis.
 
         for e in self.__engines.values():
             e.dispose()
-
-    def _get_engine(self, raiseerr=False):
-        if hasattr(self.context, '_engine'):
-            return self.context._engine
-        else:
-            if raiseerr:
-                raise exceptions.InvalidRequestError("This SchemaItem is not connected to any Engine or Connection.")
-            else: 
-                return None
-    bind = property(_get_engine, connect)
 
 
 class SchemaVisitor(sql.ClauseVisitor):

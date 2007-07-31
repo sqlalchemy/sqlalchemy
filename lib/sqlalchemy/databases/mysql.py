@@ -1156,10 +1156,13 @@ class MySQLDialect(ansisql.ANSIDialect):
             return name
 
     def table_names(self, connection, schema):
+        """Return a Unicode SHOW TABLES from a given schema."""
+
         charset = self._detect_charset(connection)
         rp = connection.execute("SHOW TABLES FROM %s" %
                                  self.preparer().quote_identifier(schema))
-        return [row[0] for row in _compat_fetchall(rp, charset=charset)]
+        return [row[0].decode(charset)
+                for row in _compat_fetchall(rp, charset=charset)]
 
     def has_table(self, connection, table_name, schema=None):
         # SHOW TABLE STATUS LIKE and SHOW TABLES LIKE do not function properly
