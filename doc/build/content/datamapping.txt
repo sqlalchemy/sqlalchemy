@@ -217,16 +217,14 @@ It's also straightforward to use an entirely string-based statement, using `from
 `from_statement()` can also accomodate full `select()` constructs:
 
     {python}
-    result = session.query(User).from_statement(
-        select([users], users.c.name<'e', having=users.c.name==func.max(users.c.name), group_by=[c for c in users.c])
-    {sql}    ).all()
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
+    {sql}result = session.query(User).from_statement(
+         select([users_table], select([func.max(users_table.c.name)], scalar=True).label('maxuser')==users_table.c.name) 
+        ).all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.user_name>:users_user_name HAVING users.user_name == max(users.user_name)
-    GROUP BY users.user_id, users.user_name, users.fullname, users.password
-    ORDER BY users.oid
-    {'users_user_name': 'e'}
+    WHERE (SELECT max(users.name) 
+    FROM users) = users.name
+    {}
     
 The current criterion represented by a `Query` can be distilled into a count of rows using `count()`.  This is another function which executes SQL immediately, returning an integer result:
 
@@ -259,7 +257,7 @@ Ordering is applied, using `Column` objects and related SQL constructs, with `or
 There's also a way to combine scalar results with objects, using `add_column()`.  This is often used for functions and aggregates.  When `add_column()` (or its cousin `add_entity()`, described later) is used, tuples are returned:
 
     {python}
-    for r in session.query(User).add_column(func.max(users_table.c.name)).group_by([c for c in users_table.c]):
+    for r in session.query(User).add_column(select([func.max(users_table.c.name)], scalar=True).label('maxuser')):
         print "user:", r[0]
         print "max name:", r[1]
 
