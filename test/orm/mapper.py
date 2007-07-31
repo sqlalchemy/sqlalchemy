@@ -818,7 +818,7 @@ class CompositeTypesTest(ORMTest):
             def __init__(self, x, y):
                 self.x = x
                 self.y = y
-            def __colset__(self):
+            def __composite_values__(self):
                 return [self.x, self.y]            
             def __eq__(self, other):
                 return other.x == self.x and other.y == self.y
@@ -893,8 +893,9 @@ class CompositeTypesTest(ORMTest):
             def __init__(self, id, version):
                 self.id = id
                 self.version = version
-            def __colset__(self):
-                return [self.id, self.version]
+            def __composite_values__(self):
+                # a tuple this time
+                return (self.id, self.version)
             def __eq__(self, other):
                 return other.id == self.id and other.version == self.version
             def __ne__(self, other):

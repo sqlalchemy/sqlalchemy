@@ -37,9 +37,12 @@ class ColumnLoader(LoaderStrategy):
     def _init_composite_attribute(self):
         self.logger.info("register managed composite attribute %s on class %s" % (self.key, self.parent.class_.__name__))
         def copy(obj):
-            return self.parent_property.composite_class(*obj.__colset__())
+            return self.parent_property.composite_class(
+                *obj.__composite_values__())
         def compare(a, b):
-            for col, aprop, bprop in zip(self.columns, a.__colset__(), b.__colset__()):
+            for col, aprop, bprop in zip(self.columns,
+                                         a.__composite_values__(),
+                                         b.__composite_values__()):
                 if not col.type.compare_values(aprop, bprop):
                     return False
             else:

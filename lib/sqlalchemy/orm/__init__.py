@@ -253,30 +253,46 @@ def composite(class_, *cols, **kwargs):
     """Return a composite column-based property for use with a Mapper.
     
     This is very much like a column-based property except the given class
-    is used to construct values composed of one or more columns.  The class must 
-    implement a constructor with positional arguments matching the order of 
-    columns given, as well as a __colset__() method which returns its attributes 
-    in column order.
+    is used to represent "composite" values composed of one or more columns.
+
+    The class must implement a constructor with positional arguments matching
+    the order of columns supplied here, as well as a __composite_values__()
+    method which returns values in the same order.
+
+    A simple example is representing separate two columns in a table as a
+    single, first-class "Point" object::
+
+      class Point(object):
+          def __init__(self, x, y):
+              self.x = x
+              self.y = y
+          def __composite_values__(self):
+              return (self.x, self.y)
+
+      # and then in the mapping:
+      ... composite(Point, mytable.c.x, mytable.c.y) ...
+
+    Arguments are:
     
-      class\_
-        the "composite type" class.
+    class\_
+      The "composite type" class.
           
-      \*cols
-        list of Column objects to be mapped.
+    \*cols
+      List of Column objects to be mapped.
       
-      group
-        a group name for this property when marked as deferred.
+    group
+      A group name for this property when marked as deferred.
           
-      deferred
-        when True, the column property is "deferred", meaning that
-        it does not load immediately, and is instead loaded when the
-        attribute is first accessed on an instance.  See also 
-        [sqlalchemy.orm#deferred()].
+    deferred
+      When True, the column property is "deferred", meaning that
+      it does not load immediately, and is instead loaded when the
+      attribute is first accessed on an instance.  See also 
+      [sqlalchemy.orm#deferred()].
           
-      comparator
-        an optional instance of [sqlalchemy.orm#PropComparator] which
-        provides SQL expression generation functions for this composite
-        type.
+    comparator
+      An optional instance of [sqlalchemy.orm#PropComparator] which
+      provides SQL expression generation functions for this composite
+      type.
     """
     
     return CompositeProperty(class_, *cols, **kwargs)
@@ -483,8 +499,7 @@ def extension(ext):
     return ExtensionOption(ext)
 
 def eagerload(name):
-    """Return a ``MapperOption`` that will convert the property of the
-    given name into an eager load.
+    """Return a ``MapperOption`` that will convert the property of the given name into an eager load.
 
     Used with ``query.options()``.
     """
@@ -492,11 +507,10 @@ def eagerload(name):
     return strategies.EagerLazyOption(name, lazy=False)
 
 def eagerload_all(name):
-    """Return a ``MapperOption`` that will convert all
-    properties along the given dot-separated path into an 
-    eager load.
+    """Return a ``MapperOption`` that will convert all properties along the given dot-separated path into an eager load.
     
-    e.g::
+    For example, this::
+
         query.options(eagerload_all('orders.items.keywords'))...
         
     will set all of 'orders', 'orders.items', and 'orders.items.keywords'

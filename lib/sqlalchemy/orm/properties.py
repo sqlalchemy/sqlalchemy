@@ -100,12 +100,12 @@ class CompositeProperty(ColumnProperty):
         obj = getattr(object, self.key, None)
         if obj is None:
             obj = self.composite_class(*[None for c in self.columns])
-        for a, b in zip(self.columns, value.__colset__()):
+        for a, b in zip(self.columns, value.__composite_values__()):
             if a is column:
                 setattr(obj, b, value)
 
     def get_col_value(self, column, value):
-        for a, b in zip(self.columns, value.__colset__()):
+        for a, b in zip(self.columns, value.__composite_values__()):
             if a is column:
                 return b
 
@@ -114,10 +114,14 @@ class CompositeProperty(ColumnProperty):
             if other is None:
                 return sql.and_(*[a==None for a in self.prop.columns])
             else:
-                return sql.and_(*[a==b for a, b in zip(self.prop.columns, other.__colset__())])
+                return sql.and_(*[a==b for a, b in
+                                  zip(self.prop.columns,
+                                      other.__composite_values__())])
 
         def __ne__(self, other):
-            return sql.or_(*[a!=b for a, b in zip(self.prop.columns, other.__colset__())])
+            return sql.or_(*[a!=b for a, b in
+                             zip(self.prop.columns,
+                                 other.__composite_values__())])
 
 class PropertyLoader(StrategizedProperty):
     """Describes an object property that holds a single item or list

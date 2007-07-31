@@ -76,8 +76,8 @@ class Query(object):
         # convert composite types to individual args
         # TODO: account for the order of columns in the 
         # ColumnProperty it corresponds to
-        if hasattr(ident, '__colset__'):
-            ident = ident.__colset__()
+        if hasattr(ident, '__composite_values__'):
+            ident = ident.__composite_values__()
 
         key = self.mapper.identity_key_from_primary_key(ident)
         return self._get(key, ident, **kwargs)
