@@ -10,7 +10,7 @@ except ImportError:
     import dummy_thread as thread
     import dummy_threading as threading
 
-from sqlalchemy import exceptions
+from sqlalchemy import exceptions, logging
 import md5
 import sys
 import warnings
@@ -542,12 +542,11 @@ class ScopedRegistry(object):
 
 
 def warn_deprecated(msg):
-    warnings.warn(msg, category=DeprecationWarning, stacklevel=3)
+    warnings.warn(logging.SADeprecationWarning(msg), stacklevel=3)
 
 def deprecated(func, add_deprecation_to_docstring=True):
     def func_with_warning(*args, **kwargs):
-        warnings.warn("Call to deprecated function %s" % func.__name__,
-                      category=DeprecationWarning,
+        warnings.warn(logging.SADeprecationWarning("Call to deprecated function %s" % func.__name__),
                       stacklevel=2)
         return func(*args, **kwargs)
     func_with_warning.__name__ = func.__name__

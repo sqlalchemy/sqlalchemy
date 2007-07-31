@@ -32,11 +32,15 @@ import sys, warnings
 logging = __import__('logging')
 
 
+class SADeprecationWarning(DeprecationWarning):
+    pass
+    
 rootlogger = logging.getLogger('sqlalchemy')
 rootlogger.setLevel(logging.WARN)
 def _logwarning(message, category, filename, lineno, file='ignored'):
     rootlogger.warn(warnings.formatwarning(message, category, filename, lineno))
 warnings.showwarning = _logwarning
+warnings.filterwarnings("once", category=SADeprecationWarning)
 
 default_enabled = False
 def default_logging(name):
