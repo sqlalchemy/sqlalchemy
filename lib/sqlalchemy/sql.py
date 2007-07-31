@@ -214,9 +214,9 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
           rendered in the ``FROM`` clause of this select statement.
       
     """
-    scalar = kwargs.pop('scalar', False)
-    if scalar:
+    if 'scalar' in kwargs:
         util.warn_deprecated('scalar option is deprecated; see docs for details')
+    scalar = kwargs.pop('scalar', False)
     s = Select(columns, whereclause=whereclause, from_obj=from_obj, **kwargs)
     if scalar:
         return s.as_scalar()
