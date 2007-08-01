@@ -204,7 +204,7 @@ class Table(SchemaItem, sql.TableClause):
         actually called via the TableSingleton metaclass.  Arguments
         are:
 
-        name:
+        name
           The name of this table, exactly as it appears, or will
           appear, in the database.
 
@@ -214,10 +214,10 @@ class Table(SchemaItem, sql.TableClause):
           Further tables constructed with the same name/schema
           combination will return the same Table instance.
 
-        \*args:
+        \*args
           Should contain a listing of the Column objects for this table.
 
-        \**kwargs:
+        \**kwargs
           Options include:
 
           schema
@@ -1010,14 +1010,14 @@ class Index(SchemaItem):
 
         Arguments are:
 
-        name:
+        name
           The name of the index
 
-        \*columns:
+        \*columns
           Columns to include in the index. All columns must belong to
           the same table, and no column may appear more than once.
 
-        \**kwargs:
+        \**kwargs
           Keyword arguments include:
 
           unique
@@ -1087,12 +1087,14 @@ class Index(SchemaItem):
 class MetaData(SchemaItem):
     """A collection of Tables and their associated schema constructs.
     
-    Holds a collection of Tables and an optional binding to an ``Engine``
-    or ``Connection``.  If bound, the tables in the collection may participate
-    in implicit SQL expressions and execution.
+    Holds a collection of Tables and an optional binding to an
+    ``Engine`` or ``Connection``.  If bound, the
+    [sqlalchemy.schema#Table] objects in the collection and their
+    columns may participate in implicit SQL execution.
 
-    The ``.bind`` may be assigned to dynamically.  A common pattern is to
-    begin bound to None and then later bind when an engine is available::
+    The ``bind`` property may be assigned to dynamically.  A common
+    pattern is to start unbound and then bind later when an engine is
+    available::
 
       metadata = MetaData()
       # define tables
@@ -1110,21 +1112,20 @@ class MetaData(SchemaItem):
     def __init__(self, bind=None, reflect=False, case_sensitive=None):
         """Create a new MetaData object.
             
-        bind:
-          An Engine, or a string or URL instance which will be passed
-          to create_engine(), this MetaData will be bound to the resulting
-          engine.
+        bind
+          An Engine or Connection to bind to.  May also be a string or
+          URL instance, these are passed to create_engine() and this
+          MetaData will be bound to the resulting engine.
 
-        reflect:
+        reflect
           Optional, automatically load all tables from the bound database.
-          Defaults to false. ``bind`` is required when this option is
-          set.  For finer control over loaded tables, use the `reflect`
+          Defaults to False. ``bind`` is required when this option is
+          set.  For finer control over loaded tables, use the ``reflect``
           method of ``MetaData``.
 
-        case_sensitive:
+        case_sensitive
           A default case sensitive setting for all contained objects.
           Defaults to sensitive.
-            
         """        
 
         self.tables = {}
@@ -1160,13 +1161,13 @@ class MetaData(SchemaItem):
     def connect(self, bind, **kwargs):
         """Bind this MetaData to an Engine.
             
-        Use metadata.bind = <engine> or metadata.bind = <url>.
-        
-        bind:
-          A string, URL or Engine instance.  If a string or URL,
-          will be passed to create_engine() along with \**kwargs to
-          produce the engine which to connect to.  Otherwise connects
-          directly to the given Engine.
+        Use ``metadata.bind = <engine>`` or ``metadata.bind = <url>``.
+
+        bind
+          A string, ``URL``, ``Engine`` or ``Connection`` instance.  If
+          a string or ``URL``, will be passed to ``create_engine()`` along
+          with ``\**kwargs`` to produce the engine which to connect to.
+          Otherwise connects directly to the given ``Engine``.
         """
         
         global URL
@@ -1179,7 +1180,7 @@ class MetaData(SchemaItem):
     connect = util.deprecated(connect)
 
     def _bind_to(self, bind):
-        """Bind this MetaData to an Engine, Connection or URL."""
+        """Bind this MetaData to an Engine, Connection, string or URL."""
 
         global URL
         if URL is None:
@@ -1191,8 +1192,12 @@ class MetaData(SchemaItem):
             self._bind = bind
 
     bind = property(lambda self: self._bind, _bind_to, doc=
-                    "An Engine or Connection to which this MetaData is bound. "
-                    "This is a settable property as well.")
+                    """An Engine or Connection to which this MetaData is bound.
+
+                    This property may be assigned an ``Engine`` or
+                    ``Connection``, or assigned a string or URL to
+                    automatically create a basic ``Engine`` for this bind
+                    with ``create_engine()``.""")
     
     def clear(self):
         self.tables.clear()
@@ -1217,19 +1222,19 @@ class MetaData(SchemaItem):
         """Load all available table definitions from the database.
 
         Automatically creates ``Table`` entries in this ``MetaData`` for any
-        table available in the database but not yet present in the MetaData.
+        table available in the database but not yet present in the ``MetaData``.
         May be called multiple times to pick up tables recently added to the
         database, however no special action is taken if a table in this
-        MetaData no longer exists in the database.
+        ``MetaData`` no longer exists in the database.
 
-        bind:
+        bind
           A ``Connectable`` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
 
-        schema:
+        schema
           Optional, query and reflect tables from an alterate schema.
 
-        only:
+        only
           Optional.  Load only a sub-set of available named tables.  May
           be specified as a sequence of names or a callable.
         
@@ -1282,11 +1287,11 @@ class MetaData(SchemaItem):
         This will conditionally create tables depending on if they do
         not yet exist in the database.
 
-        bind:
+        bind
           A ``Connectable`` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
 
-        tables:
+        tables
           Optional list of ``Table`` objects, which is a subset of the
           total tables in the ``MetaData`` (others are ignored).
         """
@@ -1301,11 +1306,11 @@ class MetaData(SchemaItem):
         This will conditionally drop tables depending on if they
         currently exist in the database.
 
-        bind:
+        bind
           A ``Connectable`` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
           
-        tables:
+        tables
           Optional list of ``Table`` objects, which is a subset of the
           total tables in the ``MetaData`` (others are ignored).
         """
@@ -1333,7 +1338,7 @@ class ThreadLocalMetaData(MetaData):
     implementations or connections in each thread.
 
     The ThreadLocalMetaData starts off bound to None in each thread.
-    Binds must be made explicitly by assigning to the ``.bind`` property or
+    Binds must be made explicitly by assigning to the ``bind`` property or
     using ``connect()``.  You can also re-bind dynamically multiple times per
     thread, just like a regular ``MetaData``.
 
@@ -1356,15 +1361,15 @@ class ThreadLocalMetaData(MetaData):
 
     # @deprecated
     def connect(self, bind, **kwargs): 
-        """Bind this MetaData to an Engine.
+        """Bind to an Engine in the caller's thread.
             
         Use ``metadata.bind=<engine>`` or ``metadata.bind=<url>``.
         
-        bind:
-          A string, URL or Engine instance.  If a string or URL,
-          will be passed to create_engine() along with \**kwargs to
-          produce the engine which to connect to.  Otherwise connects
-          directly to the given Engine.
+        bind
+          A string, ``URL``, ``Engine`` or ``Connection`` instance.  If
+          a string or ``URL``, will be passed to ``create_engine()`` along
+          with ``\**kwargs`` to produce the engine which to connect to.
+          Otherwise connects directly to the given ``Engine``.
         """
        
         global URL
@@ -1394,7 +1399,7 @@ class ThreadLocalMetaData(MetaData):
                 return None
 
     def _bind_to(self, bind):
-        """Bind this MetaData to an ``Engine`` or ``Connection``."""
+        """Bind to a Connectable in the caller's thread."""
 
         global URL
         if URL is None:
@@ -1414,17 +1419,24 @@ class ThreadLocalMetaData(MetaData):
                 self.__engines[bind] = bind
             self.context._engine = bind
 
-    bind = property(_get_bind, _bind_to)
+    bind = property(_get_bind, _bind_to, doc=
+                    """The bound Engine or Connection for this thread.
 
+                    This property may be assigned an Engine or Connection,
+                    or assigned a string or URL to automatically create a
+                    basic Engine for this bind with ``create_engine()``.""")
 
     def is_bound(self):
-        return hasattr(self.context, '_engine') and self.context._engine is not None
+        """True if there is a bind for this thread."""
+        return (hasattr(self.context, '_engine') and
+                self.context._engine is not None)
 
     def dispose(self):
-        """Dispose all ``Engines`` to which this ``ThreadLocalMetaData`` has been connected."""
+        """Dispose any and all ``Engines`` to which this ``ThreadLocalMetaData`` has been connected."""
 
         for e in self.__engines.values():
-            e.dispose()
+            if e.hasattr('dispose'):
+                e.dispose()
 
 
 class SchemaVisitor(sql.ClauseVisitor):
