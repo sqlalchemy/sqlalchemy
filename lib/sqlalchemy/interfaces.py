@@ -12,11 +12,11 @@ class PoolListener(object):
 
     All of the standard connection [sqlalchemy.pool#Pool] types can
     accept event listeners for key connection lifecycle events:
-    creation, pool check-out and check-in.  There are no events raised
+    creation, pool check-out and check-in.  There are no events fired
     when a connection closes.
 
     For any given DB-API connection, there will be one ``connect``
-    event, `n` number of ``checkout`` events, and `n` or `n -1`
+    event, `n` number of ``checkout`` events, and either `n` or `n - 1`
     ``checkin`` events.  (If a ``Connection`` is detached from its
     pool via the ``detach()`` method, it won't be checked back in.)
 
@@ -31,13 +31,14 @@ class PoolListener(object):
     connection pool.  ``_ConnectionRecord`` objects have one public
     attribute of note: ``properties``, a dictionary whose contents are
     scoped to the lifetime of the DB-API connection managed by the
-    record.
+    record.  You can use this shared storage area however you like.
 
     There is no need to subclass ``PoolListener`` to handle events.
     Any class that implements one or more of these methods can be used
-    as a pool listener.  The ``Pool`` will inspect a listener and add
-    it to each internal event queue that it can handle.  In terms of
-    efficiency and function call overhead, you're better off only
+    as a pool listener.  The ``Pool`` will inspect the methods
+    provided by a listener object and add the listener to one or more
+    internal event queues based on its capabilities.  In terms of
+    efficiency and function call overhead, you're much better off only
     providing implementations for the hooks you'll be using.
     """
 
