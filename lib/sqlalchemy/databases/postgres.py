@@ -6,10 +6,9 @@
 
 import re, random, warnings, operator
 
-from sqlalchemy import sql, schema, ansisql, exceptions
+from sqlalchemy import sql, schema, ansisql, exceptions, util
 from sqlalchemy.engine import base, default
 import sqlalchemy.types as sqltypes
-from decimal import Decimal
 
 try:
     import mx.DateTime.DateTime as mxDateTime
@@ -32,7 +31,7 @@ class PGNumeric(sqltypes.Numeric):
         return value
 
     def convert_result_value(self, value, dialect):
-        if not self.asdecimal and isinstance(value, Decimal):
+        if not self.asdecimal and isinstance(value, util.decimal_type):
             return float(value)
         else:
             return value

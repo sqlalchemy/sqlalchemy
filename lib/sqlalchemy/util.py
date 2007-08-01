@@ -32,6 +32,22 @@ except:
             i -= 1
         raise StopIteration()
 
+try:
+    # Try the standard decimal for > 2.3 or the compatibility module
+    # for 2.3, if installed.
+    from decimal import Decimal
+    decimal_type = Decimal
+except ImportError:
+    def Decimal(arg):
+        if Decimal.warn:
+            warnings.warn(RuntimeWarning(
+                "True Decimal types not available on this Python, "
+                "falling back to floats."))
+            Decimal.warn = False
+        return float(arg)
+    Decimal.warn = True
+    decimal_type = float
+
 if sys.version_info >= (2, 5):
     class PopulateDict(dict):
         """a dict which populates missing values via a creation function.

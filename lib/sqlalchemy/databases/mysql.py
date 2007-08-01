@@ -6,7 +6,6 @@
 
 import re, datetime, inspect, warnings, weakref, operator
 from array import array as _array
-from decimal import Decimal
 
 from sqlalchemy import sql, schema, ansisql
 from sqlalchemy.engine import default
@@ -166,7 +165,7 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
         return value
 
     def convert_result_value(self, value, dialect):
-        if not self.asdecimal and isinstance(value, Decimal):
+        if not self.asdecimal and isinstance(value, util.decimal_type):
             return float(value)
         else:
             return value
