@@ -2,7 +2,7 @@
 import sys,re,os,shutil
 import cPickle as pickle
 
-sys.path = ['../../lib', './lib/'] + sys.path
+sys.path = ['../../lib', './lib'] + sys.path
 
 import sqlalchemy
 import gen_docstrings, read_markdown, toc
