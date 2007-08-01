@@ -74,7 +74,8 @@ class DefaultEngineStrategy(EngineStrategy):
                     raise exceptions.DBAPIError("Connection failed", e)
             creator = kwargs.pop('creator', connect)
 
-            poolclass = kwargs.pop('poolclass', getattr(dialect_cls, 'poolclass', poollib.QueuePool))
+            poolclass = (kwargs.pop('poolclass', None) or
+                         getattr(dialect_cls, 'poolclass', poollib.QueuePool))
             pool_args = {}
 
             # consume pool arguments from kwargs, translating a few of the arguments
