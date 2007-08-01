@@ -34,11 +34,14 @@ class MapperExtension(object):
     EXT_PASS is a synonym for EXT_CONTINUE and is provided for
     backward compatibility.
     """
-
-    def init_instance(self, mapper, class_, instance, args, kwargs):
+    
+    def instrument_class(self, mapper, class_):
+        return EXT_CONTINUE
+        
+    def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
         return EXT_CONTINUE
 
-    def init_failed(self, mapper, class_, instance, args, kwargs):
+    def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):
         return EXT_CONTINUE
 
     def get_session(self):

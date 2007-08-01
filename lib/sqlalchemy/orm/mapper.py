@@ -304,6 +304,8 @@ class Mapper(object):
         for ext in extlist:
             self.extension.append(ext)
 
+        self.extension.instrument_class(self, self.class_)
+        
     def _compile_inheritance(self):
         """Determine if this Mapper inherits from another mapper, and
         if so calculates the mapped_table for this Mapper taking the
@@ -679,7 +681,7 @@ class Mapper(object):
         oldinit = self.class_.__init__
         def init(instance, *args, **kwargs):
             self.compile()
-            self.extension.init_instance(self, self.class_, instance, args, kwargs)
+            self.extension.init_instance(self, self.class_, oldinit, instance, args, kwargs)
 
             if oldinit is not None:
                 try:
@@ -687,7 +689,7 @@ class Mapper(object):
                 except:
                     # call init_failed but suppress exceptions into warnings so that original __init__ 
                     # exception is raised
-                    util.warn_exception(self.extension.init_failed, self, self.class_, instance, args, kwargs)
+                    util.warn_exception(self.extension.init_failed, self, self.class_, oldinit, instance, args, kwargs)
                     raise
 
         # override oldinit, ensuring that its not already a Mapper-decorated init method

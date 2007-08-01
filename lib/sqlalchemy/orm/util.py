@@ -140,6 +140,7 @@ class ExtensionCarrier(MapperExtension):
                 return EXT_CONTINUE
         return _do
 
+    instrument_class = _create_do('instrument_class')
     init_instance = _create_do('init_instance')
     init_failed = _create_do('init_failed')
     dispose_class = _create_do('dispose_class')

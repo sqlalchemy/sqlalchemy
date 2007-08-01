@@ -102,11 +102,16 @@ What was that last `id` attribute?  That was placed there by the `Mapper`, to tr
 
 ## Creating a Session
 
-We're now ready to start talking to the database.  The ORM's "handle" to the database is the `Session`.  Whenever you need to have a conversation with the database, you instantiate one of these objects.  
+We're now ready to start talking to the database.  The ORM's "handle" to the database is the `Session`.  When we first set up the application, at the same level as our `create_engine()` statement, we define a second object called `Session` (or whatever you want to call it, `create_session`, etc.) which is configured by the `sessionmaker()` function.  This function is configurational and need only be called once.  
     
     {python}
-    >>> from sqlalchemy.orm import Session
-    >>> session = Session(engine)
+    >>> from sqlalchemy.orm import sessionmaker
+    >>> Session = sessionmaker(bind=engine, autoflush=True, transactional=True)
+
+This `Session` class will create new `Session` objects which are bound to our database and have some various transactional characteristics.  Whenever you need to have a conversation with the database, you instantiate a `Session`:
+
+    {python}
+    >>> session = Session()
     
 The above `Session` is associated with our SQLite `engine`, but it hasn't opened any connections yet.  When it's first used, it retrieves a connection from a pool of connections stored in the `engine`, and holds onto it until we commit all changes and/or close the session object.  With most database configurations, theres also a transaction in progress (one notable exception to this is MySQL, when you use its default table style of MyISAM).  There's many options available to modify this behavior but we'll go with this straightforward version to start.    
 
@@ -486,7 +491,7 @@ Let's save into the session, then close out the session and create a new one...s
     ['j25@yahoo.com', 5]
     COMMIT
     
-    >>> session = Session(engine)
+    >>> session = Session()
     
 Querying for Jack, we get just Jack back.  No SQL is yet issued for for Jack's addresses:
 

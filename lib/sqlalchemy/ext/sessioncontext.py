@@ -1,4 +1,4 @@
-from sqlalchemy.util import ScopedRegistry
+from sqlalchemy.util import ScopedRegistry, warn_deprecated
 from sqlalchemy.orm import create_session, object_session, MapperExtension, EXT_CONTINUE
 
 __all__ = ['SessionContext', 'SessionContextExt']
@@ -25,6 +25,7 @@ class SessionContext(object):
     """
 
     def __init__(self, session_factory=None, scopefunc=None):
+        warn_deprecated("SessionContext is deprecated.  Use Session=sessionmaker(scope='thread').")        
         if session_factory is None:
             session_factory = create_session
         self.registry = ScopedRegistry(session_factory, scopefunc)
@@ -63,7 +64,7 @@ class SessionContextExt(MapperExtension):
     def get_session(self):
         return self.context.current
 
-    def init_instance(self, mapper, class_, instance, args, kwargs):
+    def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
         session = kwargs.pop('_sa_session', self.context.current)
         session._save_impl(instance, entity_name=kwargs.pop('_sa_entity_name', None))
         return EXT_CONTINUE

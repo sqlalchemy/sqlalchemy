@@ -543,7 +543,10 @@ class ScopedRegistry(object):
             return self.registry[key]
         except KeyError:
             return self.registry.setdefault(key, self.createfunc())
-
+    
+    def has(self):
+        return self._get_key() in self.registry
+        
     def set(self, obj):
         self.registry[self._get_key()] = obj
 

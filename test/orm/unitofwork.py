@@ -4,8 +4,6 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.mapper import global_extensions
 from sqlalchemy.orm import util as ormutil
-from sqlalchemy.ext.sessioncontext import SessionContext
-import sqlalchemy.ext.assignmapper as assignmapper
 from testlib import *
 from testlib.tables import *
 from testlib import tables
@@ -14,16 +12,12 @@ from testlib import tables
 
 class UnitOfWorkTest(AssertMixin):
     def setUpAll(self):
-        global ctx, assign_mapper
-        ctx = SessionContext(Session)
-        def assign_mapper(*args, **kwargs):
-            return assignmapper.assign_mapper(ctx, *args, **kwargs)
-        global_extensions.append(ctx.mapper_extension)
+        global Session
+        Session = sessionmaker(autoflush=True, transactional=True, enhance_classes=True, scope="thread")
     def tearDownAll(self):
-        global_extensions.remove(ctx.mapper_extension)
+        global_extensions[:] = []
     def tearDown(self):
         Session.close_all()
-        ctx.current.close()
         clear_mappers()
 
 class HistoryTest(UnitOfWorkTest):
@@ -61,7 +55,7 @@ class HistoryTest(UnitOfWorkTest):
 class VersioningTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
-        ctx.current.close()
+        Session.close()
         global version_table
         version_table = Table('version_test', MetaData(testbase.db),
         Column('id', Integer, Sequence('version_test_seq'), primary_key=True ),
@@ -77,9 +71,9 @@ class VersioningTest(UnitOfWorkTest):
         version_table.delete().execute()
     
     def testbasic(self):
-        s = Session()
+        s = Session(scope=None)
         class Foo(object):pass
-        assign_mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
         f1 =Foo(value='f1', _sa_session=s)
         f2 = Foo(value='f2', _sa_session=s)
         s.commit()
@@ -126,9 +120,9 @@ class VersioningTest(UnitOfWorkTest):
 
     def testversioncheck(self):
         """test that query.with_lockmode performs a 'version check' on an already loaded instance"""
-        s1 = Session()
+        s1 = Session(scope=None)
         class Foo(object):pass
-        assign_mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
         f1s1 =Foo(value='f1', _sa_session=s1)
         s1.commit()
         s2 = Session()
@@ -154,7 +148,7 @@ class VersioningTest(UnitOfWorkTest):
         """test that query.with_lockmode works OK when the mapper has no version id col"""
         s1 = Session()
         class Foo(object):pass
-        assign_mapper(Foo, version_table)
+        mapper(Foo, version_table)
         f1s1 =Foo(value='f1', _sa_session=s1)
         f1s1.version_id=0
         s1.commit()
@@ -196,7 +190,7 @@ class UnicodeTest(UnitOfWorkTest):
         txt = u"\u0160\u0110\u0106\u010c\u017d"
         t1 = Test(id=1, txt = txt)
         self.assert_(t1.txt == txt)
-        ctx.current.commit()
+        Session.commit()
         self.assert_(t1.txt == txt)
     def testrelation(self):
         class Test(object):
@@ -213,9 +207,9 @@ class UnicodeTest(UnitOfWorkTest):
         t1 = Test(txt=txt)
         t1.t2s.append(Test2())
         t1.t2s.append(Test2())
-        ctx.current.commit()
-        ctx.current.close()
-        t1 = ctx.current.query(Test).get_by(id=t1.id)
+        Session.commit()
+        Session.close()
+        t1 = Session.query(Test).get_by(id=t1.id)
         assert len(t1.t2s) == 2
 
 class MutableTypesTest(UnitOfWorkTest):
@@ -238,14 +232,14 @@ class MutableTypesTest(UnitOfWorkTest):
         mapper(Foo, table)
         f1 = Foo()
         f1.data = pickleable.Bar(4,5)
-        ctx.current.commit()
-        ctx.current.close()
-        f2 = ctx.current.query(Foo).get_by(id=f1.id)
+        Session.commit()
+        Session.close()
+        f2 = Session.query(Foo).get_by(id=f1.id)
         assert f2.data == f1.data
         f2.data.y = 19
-        ctx.current.commit()
-        ctx.current.close()
-        f3 = ctx.current.query(Foo).get_by(id=f1.id)
+        Session.commit()
+        Session.close()
+        f3 = Session.query(Foo).get_by(id=f1.id)
         print f2.data, f3.data
         assert f3.data != f1.data
         assert f3.data == pickleable.Bar(4, 19)
@@ -257,12 +251,12 @@ class MutableTypesTest(UnitOfWorkTest):
         f1 = Foo()
         f1.data = pickleable.Bar(4,5)
         f1.value = unicode('hi')
-        ctx.current.commit()
+        Session.commit()
         def go():
-            ctx.current.commit()
+            Session.commit()
         self.assert_sql_count(testbase.db, go, 0)
         f1.value = unicode('someothervalue')
-        self.assert_sql(testbase.db, lambda: ctx.current.commit(), [
+        self.assert_sql(testbase.db, lambda: Session.commit(), [
             (
                 "UPDATE mutabletest SET value=:value WHERE mutabletest.id = :mutabletest_id",
                 {'mutabletest_id': f1.id, 'value': u'someothervalue'}
@@ -270,7 +264,7 @@ class MutableTypesTest(UnitOfWorkTest):
         ])
         f1.value = unicode('hi')
         f1.data.x = 9
-        self.assert_sql(testbase.db, lambda: ctx.current.commit(), [
+        self.assert_sql(testbase.db, lambda: Session.commit(), [
             (
                 "UPDATE mutabletest SET data=:data, value=:value WHERE mutabletest.id = :mutabletest_id",
                 {'mutabletest_id': f1.id, 'value': u'hi', 'data':f1.data}
@@ -284,32 +278,32 @@ class MutableTypesTest(UnitOfWorkTest):
         mapper(Foo, table)
         f1 = Foo()
         f1.data = pickleable.BarWithoutCompare(4,5)
-        ctx.current.commit()
+        Session.commit()
         
         def go():
-            ctx.current.commit()
+            Session.commit()
         self.assert_sql_count(testbase.db, go, 0)
         
-        ctx.current.close()
+        Session.close()
 
-        f2 = ctx.current.query(Foo).get_by(id=f1.id)
+        f2 = Session.query(Foo).get_by(id=f1.id)
 
         def go():
-            ctx.current.commit()
+            Session.commit()
         self.assert_sql_count(testbase.db, go, 0)
 
         f2.data.y = 19
         def go():
-            ctx.current.commit()
+            Session.commit()
         self.assert_sql_count(testbase.db, go, 1)
         
-        ctx.current.close()
-        f3 = ctx.current.query(Foo).get_by(id=f1.id)
+        Session.close()
+        f3 = Session.query(Foo).get_by(id=f1.id)
         print f2.data, f3.data
         assert (f3.data.x, f3.data.y) == (4,19)
 
         def go():
-            ctx.current.commit()
+            Session.commit()
         self.assert_sql_count(testbase.db, go, 0)
         
     def testunicode(self):
@@ -321,12 +315,12 @@ class MutableTypesTest(UnitOfWorkTest):
         mapper(Foo, table)
         f1 = Foo()
         f1.value = u'hi'
-        ctx.current.commit()
-        ctx.current.close()
-        f1 = ctx.current.get(Foo, f1.id)
+        Session.commit()
+        Session.close()
+        f1 = Session.get(Foo, f1.id)
         f1.value = u'hi'
         def go():
-            ctx.current.commit()
+            Session.commit()
         self.assert_sql_count(testbase.db, go, 0)
         
         
@@ -371,8 +365,8 @@ class PKTest(UnitOfWorkTest):
         e.name = 'entry1'
         e.value = 'this is entry 1'
         e.multi_rev = 2
-        ctx.current.commit()
-        ctx.current.close()
+        Session.commit()
+        Session.close()
         e2 = Query(Entry).get((e.multi_id, 2))
         self.assert_(e is not e2 and e._instance_key == e2._instance_key)
         
@@ -385,7 +379,7 @@ class PKTest(UnitOfWorkTest):
         e.pk_col_1 = 'pk1'
         e.pk_col_2 = 'pk1_related'
         e.data = 'im the data'
-        ctx.current.commit()
+        Session.commit()
         
     def testkeypks(self):
         import datetime
@@ -397,7 +391,7 @@ class PKTest(UnitOfWorkTest):
         e.secondary = 'pk2'
         e.assigned = datetime.date.today()
         e.data = 'some more data'
-        ctx.current.commit()
+        Session.commit()
 
     def testpksimmutable(self):
         class Entry(object):
@@ -407,11 +401,11 @@ class PKTest(UnitOfWorkTest):
         e.multi_id=5
         e.multi_rev=5
         e.name='somename'
-        ctx.current.commit()
+        Session.commit()
         e.multi_rev=6
         e.name = 'someothername'
         try:
-            ctx.current.commit()
+            Session.commit()
             assert False
         except exceptions.FlushError, fe:
             assert str(fe) == "Can't change the identity of instance Entry@%s in session (existing identity: (%s, (5, 5), None); new identity: (%s, (5, 6), None))" % (hex(id(e)), repr(e.__class__), repr(e.__class__))
@@ -457,7 +451,7 @@ class ForeignPKTest(UnitOfWorkTest):
         ps = PersonSite()
         ps.site = 'asdf'
         p.sites.append(ps)
-        ctx.current.commit()
+        Session.commit()
         assert people.count(people.c.person=='im the key').scalar() == peoplesites.count(peoplesites.c.person=='im the key').scalar() == 1
 
 class PassiveDeletesTest(UnitOfWorkTest):
@@ -497,7 +491,7 @@ class PassiveDeletesTest(UnitOfWorkTest):
             'children':relation(MyOtherClass, passive_deletes=True, cascade="all")
         })
 
-        sess = ctx.current
+        sess = Session
         mc = MyClass()
         mc.children.append(MyOtherClass())
         mc.children.append(MyOtherClass())
@@ -548,14 +542,14 @@ class DefaultTest(UnitOfWorkTest):
         
     def testinsert(self):
         class Hoho(object):pass
-        assign_mapper(Hoho, default_table)
+        mapper(Hoho, default_table)
         
         h1 = Hoho(hoho=self.althohoval)
         h2 = Hoho(counter=12)
         h3 = Hoho(hoho=self.althohoval, counter=12)
         h4 = Hoho()
         h5 = Hoho(foober='im the new foober')
-        ctx.current.commit()
+        Session.commit()
         
         self.assert_(h1.hoho==self.althohoval)
         self.assert_(h3.hoho==self.althohoval)
@@ -575,7 +569,7 @@ class DefaultTest(UnitOfWorkTest):
             self.assert_(h5.foober=='im the new foober')
         self.assert_sql_count(testbase.db, go, 0)
         
-        ctx.current.close()
+        Session.close()
         
         l = Query(Hoho).select()
         
@@ -592,11 +586,11 @@ class DefaultTest(UnitOfWorkTest):
     def testinsertnopostfetch(self):
         # populates the PassiveDefaults explicitly so there is no "post-update"
         class Hoho(object):pass
-        assign_mapper(Hoho, default_table)
+        mapper(Hoho, default_table)
         
         h1 = Hoho(hoho="15", counter="15")
         
-        ctx.current.commit()
+        Session.commit()
         def go():
             self.assert_(h1.hoho=="15")
             self.assert_(h1.counter=="15")
@@ -605,12 +599,12 @@ class DefaultTest(UnitOfWorkTest):
         
     def testupdate(self):
         class Hoho(object):pass
-        assign_mapper(Hoho, default_table)
+        mapper(Hoho, default_table)
         h1 = Hoho()
-        ctx.current.commit()
+        Session.commit()
         self.assert_(h1.foober == 'im foober')
         h1.counter = 19
-        ctx.current.commit()
+        Session.commit()
         self.assert_(h1.foober == 'im the update')
 
 class OneToManyTest(UnitOfWorkTest):
@@ -639,7 +633,7 @@ class OneToManyTest(UnitOfWorkTest):
         a2.email_address = 'lala@test.org'
         u.addresses.append(a2)
         print repr(u.addresses)
-        ctx.current.commit()
+        Session.commit()
 
         usertable = users.select(users.c.user_id.in_(u.user_id)).execute().fetchall()
         self.assertEqual(usertable[0].values(), [u.user_id, 'one2manytester'])
@@ -652,7 +646,7 @@ class OneToManyTest(UnitOfWorkTest):
 
         a2.email_address = 'somethingnew@foo.com'
 
-        ctx.current.commit()
+        Session.commit()
 
         addresstable = addresses.select(addresses.c.address_id == addressid).execute().fetchall()
         self.assertEqual(addresstable[0].values(), [addressid, userid, 'somethingnew@foo.com'])
@@ -680,7 +674,7 @@ class OneToManyTest(UnitOfWorkTest):
         a3 = Address()
         a3.email_address = 'emailaddress3'
 
-        ctx.current.commit()
+        Session.commit()
 
         # modify user2 directly, append an address to user1.
         # upon commit, user2 should be updated, user1 should not
@@ -688,7 +682,7 @@ class OneToManyTest(UnitOfWorkTest):
         u2.user_name = 'user2modified'
         u1.addresses.append(a3)
         del u1.addresses[0]
-        self.assert_sql(testbase.db, lambda: ctx.current.commit(), 
+        self.assert_sql(testbase.db, lambda: Session.commit(), 
                 [
                     (
                         "UPDATE users SET user_name=:user_name WHERE users.user_id = :users_user_id",
@@ -716,13 +710,13 @@ class OneToManyTest(UnitOfWorkTest):
         a = Address()
         a.email_address = 'address1'
         u1.addresses.append(a)
-        ctx.current.commit()
+        Session.commit()
         del u1.addresses[0]
         u2.addresses.append(a)
-        ctx.current.delete(u1)
-        ctx.current.commit()
-        ctx.current.close()
-        u2 = ctx.current.get(User, u2.user_id)
+        Session.delete(u1)
+        Session.commit()
+        Session.close()
+        u2 = Session.get(User, u2.user_id)
         assert len(u2.addresses) == 1
 
     def testchildmove_2(self):
@@ -736,12 +730,12 @@ class OneToManyTest(UnitOfWorkTest):
         a = Address()
         a.email_address = 'address1'
         u1.addresses.append(a)
-        ctx.current.commit()
+        Session.commit()
         del u1.addresses[0]
         u2.addresses.append(a)
-        ctx.current.commit()
-        ctx.current.close()
-        u2 = ctx.current.get(User, u2.user_id)
+        Session.commit()
+        Session.close()
+        u2 = Session.get(User, u2.user_id)
         assert len(u2.addresses) == 1
 
     def testo2mdeleteparent(self):
@@ -753,10 +747,10 @@ class OneToManyTest(UnitOfWorkTest):
         u.user_name = 'one2onetester'
         u.address = a
         u.address.email_address = 'myonlyaddress@foo.com'
-        ctx.current.commit()
-        ctx.current.delete(u)
-        ctx.current.commit()
-        self.assert_(a.address_id is not None and a.user_id is None and not ctx.current.identity_map.has_key(u._instance_key) and ctx.current.identity_map.has_key(a._instance_key))
+        Session.commit()
+        Session.delete(u)
+        Session.commit()
+        self.assert_(a.address_id is not None and a.user_id is None and not Session().identity_map.has_key(u._instance_key) and Session().identity_map.has_key(a._instance_key))
 
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
@@ -766,11 +760,11 @@ class OneToManyTest(UnitOfWorkTest):
         u.user_name = 'one2onetester'
         u.address = Address()
         u.address.email_address = 'myonlyaddress@foo.com'
-        ctx.current.commit()
+        Session.commit()
         u.user_name = 'imnew'
-        ctx.current.commit()
+        Session.commit()
         u.address.email_address = 'imnew@foo.com'
-        ctx.current.commit()
+        Session.commit()
 
     def testbidirectional(self):
         m1 = mapper(User, users)
@@ -786,7 +780,7 @@ class OneToManyTest(UnitOfWorkTest):
         a = Address()
         a.email_address = 'testaddress'
         a.user = u
-        ctx.current.commit()
+        Session.commit()
         print repr(u.addresses)
         x = False
         try:
@@ -798,8 +792,8 @@ class OneToManyTest(UnitOfWorkTest):
         if x:
             self.assert_(False, "User addresses element should be scalar based")
 
-        ctx.current.delete(u)
-        ctx.current.commit()
+        Session.delete(u)
+        Session.commit()
 
     def testdoublerelation(self):
         m2 = mapper(Address, addresses)
@@ -819,7 +813,7 @@ class OneToManyTest(UnitOfWorkTest):
 
         u.boston_addresses.append(a)
         u.newyork_addresses.append(b)
-        ctx.current.commit()
+        Session.commit()
 
 class SaveTest(UnitOfWorkTest):
 
@@ -853,31 +847,31 @@ class SaveTest(UnitOfWorkTest):
         u2 = User()
         u2.user_name = 'savetester2'
 
-        ctx.current.save(u)
+        Session.save(u)
         
-        ctx.current.flush([u])
-        ctx.current.commit()
+        Session.flush([u])
+        Session.commit()
 
         # assert the first one retreives the same from the identity map
-        nu = ctx.current.get(m, u.user_id)
+        nu = Session.get(m, u.user_id)
         print "U: " + repr(u) + "NU: " + repr(nu)
         self.assert_(u is nu)
         
         # clear out the identity map, so next get forces a SELECT
-        ctx.current.close()
+        Session.close()
 
         # check it again, identity should be different but ids the same
-        nu = ctx.current.get(m, u.user_id)
+        nu = Session.get(m, u.user_id)
         self.assert_(u is not nu and u.user_id == nu.user_id and nu.user_name == 'savetester')
 
         # change first users name and save
-        ctx.current.update(u)
+        Session.update(u)
         u.user_name = 'modifiedname'
-        assert u in ctx.current.dirty
-        ctx.current.commit()
+        assert u in Session().dirty
+        Session.commit()
 
         # select both
-        #ctx.current.close()
+        #Session.close()
         userlist = Query(m).select(users.c.user_id.in_(u.user_id, u2.user_id), order_by=[users.c.user_name])
         print repr(u.user_id), repr(userlist[0].user_id), repr(userlist[0].user_name)
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
@@ -895,12 +889,12 @@ class SaveTest(UnitOfWorkTest):
         u.addresses.append(Address())
         u.addresses.append(Address())
         u.addresses.append(Address())
-        ctx.current.commit()
-        ctx.current.close()
-        ulist = ctx.current.query(m1).select()
+        Session.commit()
+        Session.close()
+        ulist = Session.query(m1).select()
         u1 = ulist[0]
         u1.user_name = 'newname'
-        ctx.current.commit()
+        Session.commit()
         self.assert_(len(u1.addresses) == 4)
         
     def testinherits(self):
@@ -917,9 +911,9 @@ class SaveTest(UnitOfWorkTest):
                 )
         
         au = AddressUser()
-        ctx.current.commit()
-        ctx.current.close()
-        l = ctx.current.query(AddressUser).selectone()
+        Session.commit()
+        Session.close()
+        l = Session.query(AddressUser).selectone()
         self.assert_(l.user_id == au.user_id and l.address_id == au.address_id)
     
     def testdeferred(self):
@@ -929,18 +923,18 @@ class SaveTest(UnitOfWorkTest):
         })
         u = User()
         u.user_id=42
-        ctx.current.commit()
+        Session.commit()
     
     def test_dont_update_blanks(self):
         mapper(User, users)
         u = User()
         u.user_name = ""
-        ctx.current.commit()
-        ctx.current.close()
-        u = ctx.current.query(User).get(u.user_id)
+        Session.commit()
+        Session.close()
+        u = Session.query(User).get(u.user_id)
         u.user_name = ""
         def go():
-            ctx.current.commit()
+            Session.commit()
         self.assert_sql_count(testbase.db, go, 0)
 
     def testmultitable(self):
@@ -958,12 +952,12 @@ class SaveTest(UnitOfWorkTest):
         u.user_name = 'multitester'
         u.email = 'multi@test.org'
 
-        ctx.current.commit()
+        Session.commit()
         id = m.primary_key_from_instance(u)
 
-        ctx.current.close()
+        Session.close()
         
-        u = ctx.current.get(User, id)
+        u = Session.get(User, id)
         assert u.user_name == 'multitester'
         
         usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
@@ -973,15 +967,15 @@ class SaveTest(UnitOfWorkTest):
 
         u.email = 'lala@hey.com'
         u.user_name = 'imnew'
-        ctx.current.commit()
+        Session.commit()
 
         usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
         self.assertEqual(usertable[0].values(), [u.foo_id, 'imnew'])
         addresstable = addresses.select(addresses.c.address_id.in_(u.address_id)).execute().fetchall()
         self.assertEqual(addresstable[0].values(), [u.address_id, u.foo_id, 'lala@hey.com'])
 
-        ctx.current.close()
-        u = ctx.current.get(User, id)
+        Session.close()
+        u = Session.get(User, id)
         assert u.user_name == 'imnew'
     
     def testhistoryget(self):
@@ -994,11 +988,11 @@ class SaveTest(UnitOfWorkTest):
         u = User()
         u.addresses.append(Address())
         u.addresses.append(Address())
-        ctx.current.commit()
-        ctx.current.close()
-        u = ctx.current.query(User).get(u.user_id)
-        ctx.current.delete(u)
-        ctx.current.commit()
+        Session.commit()
+        Session.close()
+        u = Session.query(User).get(u.user_id)
+        Session.delete(u)
+        Session.commit()
         assert users.count().scalar() == 0
         assert addresses.count().scalar() == 0
         
@@ -1015,7 +1009,7 @@ class SaveTest(UnitOfWorkTest):
         u1.username = 'user1'
         u2 = User()
         u2.username = 'user2'
-        ctx.current.commit()
+        Session.commit()
         
         clear_mappers()
         
@@ -1025,7 +1019,7 @@ class SaveTest(UnitOfWorkTest):
         u2 = User()
         u2.username = 'user2'
         try:
-            ctx.current.commit()
+            Session.commit()
             assert False
         except AssertionError:
             assert True
@@ -1062,11 +1056,11 @@ class ManyToOneTest(UnitOfWorkTest):
             a.user.user_name = elem['user_name']
             objects.append(a)
             
-        ctx.current.commit()
+        Session.commit()
         objects[2].email_address = 'imnew@foo.bar'
         objects[3].user = User()
         objects[3].user.user_name = 'imnewlyadded'
-        self.assert_sql(testbase.db, lambda: ctx.current.commit(), [
+        self.assert_sql(testbase.db, lambda: Session.commit(), [
                 (
                     "INSERT INTO users (user_name) VALUES (:user_name)",
                     {'user_name': 'imnewlyadded'}
@@ -1110,17 +1104,17 @@ class ManyToOneTest(UnitOfWorkTest):
         u1.user_name='user1'
         
         a1.user = u1
-        ctx.current.commit()
-        ctx.current.close()
-        a1 = ctx.current.query(Address).get(a1.address_id)
-        u1 = ctx.current.query(User).get(u1.user_id)
+        Session.commit()
+        Session.close()
+        a1 = Session.query(Address).get(a1.address_id)
+        u1 = Session.query(User).get(u1.user_id)
         assert a1.user is u1
 
         a1.user = None
-        ctx.current.commit()
-        ctx.current.close()
-        a1 = ctx.current.query(Address).get(a1.address_id)
-        u1 = ctx.current.query(User).get(u1.user_id)
+        Session.commit()
+        Session.close()
+        a1 = Session.query(Address).get(a1.address_id)
+        u1 = Session.query(User).get(u1.user_id)
         assert a1.user is None
 
     def testmanytoone_2(self):
@@ -1135,19 +1129,19 @@ class ManyToOneTest(UnitOfWorkTest):
         u1.user_name='user1'
 
         a1.user = u1
-        ctx.current.commit()
-        ctx.current.close()
-        a1 = ctx.current.query(Address).get(a1.address_id)
-        a2 = ctx.current.query(Address).get(a2.address_id)
-        u1 = ctx.current.query(User).get(u1.user_id)
+        Session.commit()
+        Session.close()
+        a1 = Session.query(Address).get(a1.address_id)
+        a2 = Session.query(Address).get(a2.address_id)
+        u1 = Session.query(User).get(u1.user_id)
         assert a1.user is u1
         a1.user = None
         a2.user = u1
-        ctx.current.commit()
-        ctx.current.close()
-        a1 = ctx.current.query(Address).get(a1.address_id)
-        a2 = ctx.current.query(Address).get(a2.address_id)
-        u1 = ctx.current.query(User).get(u1.user_id)
+        Session.commit()
+        Session.close()
+        a1 = Session.query(Address).get(a1.address_id)
+        a2 = Session.query(Address).get(a2.address_id)
+        u1 = Session.query(User).get(u1.user_id)
         assert a1.user is None
         assert a2.user is u1
 
@@ -1163,19 +1157,19 @@ class ManyToOneTest(UnitOfWorkTest):
         u2.user_name='user2'
 
         a1.user = u1
-        ctx.current.commit()
-        ctx.current.close()
-        a1 = ctx.current.query(Address).get(a1.address_id)
-        u1 = ctx.current.query(User).get(u1.user_id)
-        u2 = ctx.current.query(User).get(u2.user_id)
+        Session.commit()
+        Session.close()
+        a1 = Session.query(Address).get(a1.address_id)
+        u1 = Session.query(User).get(u1.user_id)
+        u2 = Session.query(User).get(u2.user_id)
         assert a1.user is u1
         
         a1.user = u2
-        ctx.current.commit()
-        ctx.current.close()
-        a1 = ctx.current.query(Address).get(a1.address_id)
-        u1 = ctx.current.query(User).get(u1.user_id)
-        u2 = ctx.current.query(User).get(u2.user_id)
+        Session.commit()
+        Session.close()
+        a1 = Session.query(Address).get(a1.address_id)
+        u1 = Session.query(User).get(u1.user_id)
+        u2 = Session.query(User).get(u2.user_id)
         assert a1.user is u2
         
 class ManyToManyTest(UnitOfWorkTest):
@@ -1213,7 +1207,7 @@ class ManyToManyTest(UnitOfWorkTest):
             item.item_name = elem['item_name']
             item.keywords = []
             if len(elem['keywords'][1]):
-                klist = ctx.current.query(keywordmapper).select(keywords.c.name.in_(*[e['name'] for e in elem['keywords'][1]]))
+                klist = Session.query(keywordmapper).select(keywords.c.name.in_(*[e['name'] for e in elem['keywords'][1]]))
             else:
                 klist = []
             khash = {}
@@ -1227,16 +1221,16 @@ class ManyToManyTest(UnitOfWorkTest):
                     k.name = kname
                 item.keywords.append(k)
 
-        ctx.current.commit()
+        Session.commit()
         
-        l = ctx.current.query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
+        l = Session.query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
         self.assert_result(l, *data)
 
         objects[4].item_name = 'item4updated'
         k = Keyword()
         k.name = 'yellow'
         objects[5].keywords.append(k)
-        self.assert_sql(testbase.db, lambda:ctx.current.commit(), [
+        self.assert_sql(testbase.db, lambda:Session.commit(), [
             {
                 "UPDATE items SET item_name=:item_name WHERE items.item_id = :items_item_id":
                 {'item_name': 'item4updated', 'items_item_id': objects[4].item_id}
@@ -1265,7 +1259,7 @@ class ManyToManyTest(UnitOfWorkTest):
         objects[2].keywords.append(k)
         dkid = objects[5].keywords[1].keyword_id
         del objects[5].keywords[1]
-        self.assert_sql(testbase.db, lambda:ctx.current.commit(), [
+        self.assert_sql(testbase.db, lambda:Session.commit(), [
                 (
                     "DELETE FROM itemkeywords WHERE itemkeywords.item_id = :item_id AND itemkeywords.keyword_id = :keyword_id",
                     [{'item_id': objects[5].item_id, 'keyword_id': dkid}]
@@ -1276,8 +1270,8 @@ class ManyToManyTest(UnitOfWorkTest):
                 )
         ])
         
-        ctx.current.delete(objects[3])
-        ctx.current.commit()
+        Session.delete(objects[3])
+        Session.commit()
 
     def testmanytomanyremove(self):
         """tests that setting a list-based attribute to '[]' properly affects the history and allows
@@ -1293,11 +1287,11 @@ class ManyToManyTest(UnitOfWorkTest):
         k2 = Keyword()
         i.keywords.append(k1)
         i.keywords.append(k2)
-        ctx.current.commit()
+        Session.commit()
         
         assert itemkeywords.count().scalar() == 2
         i.keywords = []
-        ctx.current.commit()
+        Session.commit()
         assert itemkeywords.count().scalar() == 0
 
     def testscalar(self):
@@ -1310,9 +1304,9 @@ class ManyToManyTest(UnitOfWorkTest):
             ))
         
         i = Item()
-        ctx.current.commit()
-        ctx.current.delete(i)
-        ctx.current.commit()
+        Session.commit()
+        Session.delete(i)
+        Session.commit()
         
         
 
@@ -1337,15 +1331,15 @@ class ManyToManyTest(UnitOfWorkTest):
         item.keywords.append(k1)
         item.keywords.append(k2)
         item.keywords.append(k3)
-        ctx.current.commit()
+        Session.commit()
         
         item.keywords = []
         item.keywords.append(k1)
         item.keywords.append(k2)
-        ctx.current.commit()
+        Session.commit()
         
-        ctx.current.close()
-        item = ctx.current.query(Item).get(item.item_id)
+        Session.close()
+        item = Session.query(Item).get(item.item_id)
         print [k1, k2]
         print item.keywords
         assert item.keywords == [k1, k2]
@@ -1409,8 +1403,8 @@ class ManyToManyTest(UnitOfWorkTest):
                 ik.keyword = k
                 item.keywords.append(ik)
 
-        ctx.current.commit()
-        ctx.current.close()
+        Session.commit()
+        Session.close()
         l = Query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
         self.assert_result(l, *data)
 
@@ -1435,11 +1429,11 @@ class ManyToManyTest(UnitOfWorkTest):
         k = KeywordUser()
         k.user_name = 'keyworduser'
         k.keyword_name = 'a keyword'
-        ctx.current.commit()
+        Session.commit()
         
         id = (k.user_id, k.keyword_id)
-        ctx.current.close()
-        k = ctx.current.query(KeywordUser).get(id)
+        Session.close()
+        k = Session.query(KeywordUser).get(id)
         assert k.user_name == 'keyworduser'
         assert k.keyword_name == 'a keyword'
 
@@ -1447,7 +1441,7 @@ class ManyToManyTest(UnitOfWorkTest):
 class SaveTest2(UnitOfWorkTest):
 
     def setUp(self):
-        ctx.current.close()
+        Session.close()
         clear_mappers()
         global meta, users, addresses
         meta = MetaData(testbase.db)
@@ -1482,7 +1476,7 @@ class SaveTest2(UnitOfWorkTest):
             a.user = User()
             a.user.user_name = elem['user_name']
             objects.append(a)
-        self.assert_sql(testbase.db, lambda: ctx.current.commit(), [
+        self.assert_sql(testbase.db, lambda: Session.commit(), [
                 (
                     "INSERT INTO users (user_name) VALUES (:user_name)",
                     {'user_name': 'thesub'}
@@ -1568,12 +1562,12 @@ class SaveTest3(UnitOfWorkTest):
         k2 = Keyword()
         i.keywords.append(k1)
         i.keywords.append(k2)
-        ctx.current.commit()
+        Session.commit()
 
         assert t2.count().scalar() == 2
         i.keywords = []
         print i.keywords
-        ctx.current.commit()
+        Session.commit()
         assert t2.count().scalar() == 0
 
 
