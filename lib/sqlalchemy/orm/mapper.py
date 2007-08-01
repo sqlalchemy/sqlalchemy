@@ -41,28 +41,30 @@ class Mapper(object):
     """
 
     def __init__(self,
-                class_,
-                local_table,
-                properties = None,
-                primary_key = None,
-                non_primary = False,
-                inherits = None,
-                inherit_condition = None,
-                extension = None,
-                order_by = False,
-                allow_column_override = False,
-                entity_name = None,
-                always_refresh = False,
-                version_id_col = None,
-                polymorphic_on=None,
-                _polymorphic_map=None,
-                polymorphic_identity=None,
-                polymorphic_fetch=None,
-                concrete=False,
-                select_table=None,
-                allow_null_pks=False,
-                batch=True,
-                column_prefix=None):
+                 class_,
+                 local_table,
+                 properties = None,
+                 primary_key = None,
+                 non_primary = False,
+                 inherits = None,
+                 inherit_condition = None,
+                 extension = None,
+                 order_by = False,
+                 allow_column_override = False,
+                 entity_name = None,
+                 always_refresh = False,
+                 version_id_col = None,
+                 polymorphic_on=None,
+                 _polymorphic_map=None,
+                 polymorphic_identity=None,
+                 polymorphic_fetch=None,
+                 concrete=False,
+                 select_table=None,
+                 allow_null_pks=False,
+                 batch=True,
+                 column_prefix=None,
+                 include_properties=None,
+                 exclude_properties=None):
         """Construct a new mapper.
 
         Mappers are normally constructed via the [sqlalchemy.orm#mapper()] 
@@ -136,6 +138,9 @@ class Mapper(object):
 
         self.columns = LOrderedProp()
         self.c = self.columns
+
+        self.include_properties = include_properties
+        self.exclude_properties = exclude_properties
 
         # each time the options() method is called, the resulting Mapper is
         # stored in this dictionary based on the given options for fast re-access
@@ -577,7 +582,18 @@ class Mapper(object):
 
             column_key = (self.column_prefix or '') + column.key
             prop = self.__props.get(column.key, None)
+
             if prop is None:
+                if (self.include_properties is not None and
+                    column_key not in self.include_properties):
+                    self.__log("not including property %s" % (column_key))
+                    continue
+                
+                if (self.exclude_properties is not None and
+                    column_key in self.exclude_properties):
+                    self.__log("excluding property %s" % (column_key))
+                    continue
+                
                 prop = ColumnProperty(column)
                 self.__props[column_key] = prop
                 prop.set_parent(self)

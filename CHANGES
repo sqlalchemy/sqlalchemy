@@ -132,6 +132,9 @@
           a column- level "deferred" load, via the "polymorphic_fetch"
           argument, which can be set to 'select' or 'deferred'
 
+    - it's now possible to map only a subset of available selectable columns
+      onto mapper properties [ticket:696].
+
     - added undefer_group() MapperOption, sets a set of "deferred"
       columns joined by a "group" to load as "undeferred".
       

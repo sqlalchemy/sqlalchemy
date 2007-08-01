@@ -429,6 +429,20 @@ def mapper(class_, local_table=None, *args, **params):
         each ``Column`` (although they can be overridden using this
         dictionary).
 
+      include_properties
+        An inclusive list of properties to map.  Columns present in the
+        mapped table but not present in this list will not be automatically
+        converted into properties.
+
+      exclude_properties
+        A list of properties not to map.  Columns present in the
+        mapped table and present in this list will not be automatically
+        converted into properties.  Note that neither this option nor
+        include_properties will allow an end-run around Python inheritance.
+        If mapped class ``B`` inherits from mapped class ``A``, no combination
+        of includes or excludes will allow ``B`` to have fewer properties
+        than its superclass, ``A``.
+
       primary_key
         A list of ``Column`` objects which define the *primary key*
         to be used against this mapper's selectable unit.  This is

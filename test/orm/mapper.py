@@ -241,7 +241,56 @@ class MapperTest(MapperSuperTest):
             'addresses' : relation(mapper(Address, addresses))
         }).compile()
         self.assert_(User.addresses.property is m.get_property('addresses'))
+
+    def testpropfilters(self):
+        t = Table('person', MetaData(),
+                  Column('id', Integer, primary_key=True),
+                  Column('type', String),
+                  Column('name', String),
+                  Column('employee_number', Integer),
+                  Column('boss_id', Integer, ForeignKey('person.id')),
+                  Column('vendor_id', Integer))
+
+        class Person(object): pass
+        class Vendor(Person): pass
+        class Employee(Person): pass
+        class Manager(Employee): pass
+        class Hoho(object): pass
+        class Lala(object): pass
+
+        p_m = mapper(Person, t, polymorphic_on=t.c.type,
+                     include_properties=('id', 'type', 'name'))
+        e_m = mapper(Employee, inherits=p_m, polymorphic_identity='employee',
+          properties={
+            'boss': relation(Manager, backref='peon')
+          },
+          exclude_properties=('vendor_id',))
+
+        m_m = mapper(Manager, inherits=e_m, polymorphic_identity='manager',
+                     include_properties=())
+
+        v_m = mapper(Vendor, inherits=p_m, polymorphic_identity='vendor',
+                     exclude_properties=('boss_id', 'employee_number'))
+        h_m = mapper(Hoho, t, include_properties=('id', 'type', 'name'))
+        l_m = mapper(Lala, t, exclude_properties=('vendor_id', 'boss_id'))
+
+        for m in p_m, e_m, m_m, v_m, h_m, l_m:
+            m.compile()
         
+        def assert_props(cls, want):
+            have = set([n for n in dir(cls) if not n.startswith('_')])
+            want = set(want)
+            want.add('c')
+            self.assert_(have == want)
+
+        assert_props(Person, ['id', 'name', 'type'])
+        assert_props(Employee, ['boss', 'boss_id', 'employee_number',
+                                'id', 'name', 'type'])
+        assert_props(Manager, ['boss', 'boss_id', 'employee_number', 'peon',
+                               'id', 'name', 'type'])
+        assert_props(Vendor, ['vendor_id', 'id', 'name', 'type'])
+        assert_props(Hoho, ['id', 'name', 'type'])
+        assert_props(Lala, ['employee_number', 'id', 'name', 'type'])
 
     def testrecursiveselectby(self):
         """test that no endless loop occurs when traversing for select_by"""
