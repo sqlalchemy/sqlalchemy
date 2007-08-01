@@ -10,12 +10,7 @@ from sqlalchemy import sql, schema, ansisql, exceptions, util
 from sqlalchemy.engine import base, default
 import sqlalchemy.types as sqltypes
 
-try:
-    import mx.DateTime.DateTime as mxDateTime
-except:
-    mxDateTime = None
 
-    
 class PGInet(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "INET"
