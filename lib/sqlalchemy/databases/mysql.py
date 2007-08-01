@@ -1535,16 +1535,6 @@ class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         # just leave everything as-is.
         return value
 
-    def format_table_seq(self, table, use_schema=True):
-        """Format table name and schema as a tuple."""
-
-        if use_schema and getattr(table, 'schema', None):
-            return (self.quote_identifier(table.schema),
-                    self.format_table(table, use_schema=False))
-        else:
-            return (self.format_table(table, use_schema=False), )
-
-
 class MySQLCharsetOnConnect(object):
     """Use an alternate connection character set automatically."""
 

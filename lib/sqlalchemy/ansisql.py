@@ -1072,4 +1072,18 @@ class ANSIIdentifierPreparer(object):
         
         return self.format_column(column, use_table=True, name=column_name, table_name=table_name)
 
+
+    def format_table_seq(self, table, use_schema=True):
+        """Format table name and schema as a tuple."""
+
+        # Dialects with more levels in their fully qualified references
+        # ('database', 'owner', etc.) could override this and return
+        # a longer sequence.
+
+        if use_schema and getattr(table, 'schema', None):
+            return (self.quote_identifier(table.schema),
+                    self.format_table(table, use_schema=False))
+        else:
+            return (self.format_table(table, use_schema=False), )
+
 dialect = ANSIDialect
