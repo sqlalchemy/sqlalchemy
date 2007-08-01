@@ -585,13 +585,13 @@ class Mapper(object):
 
             if prop is None:
                 if (self.include_properties is not None and
-                    column_key not in self.include_properties):
-                    self.__log("not including property %s" % (column_key))
+                    column.key not in self.include_properties):
+                    self.__log("not including property %s" % (column.key))
                     continue
                 
                 if (self.exclude_properties is not None and
-                    column_key in self.exclude_properties):
-                    self.__log("excluding property %s" % (column_key))
+                    column.key in self.exclude_properties):
+                    self.__log("excluding property %s" % (column.key))
                     continue
                 
                 prop = ColumnProperty(column)

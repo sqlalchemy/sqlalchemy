@@ -272,10 +272,10 @@ class MapperTest(MapperSuperTest):
         v_m = mapper(Vendor, inherits=p_m, polymorphic_identity='vendor',
                      exclude_properties=('boss_id', 'employee_number'))
         h_m = mapper(Hoho, t, include_properties=('id', 'type', 'name'))
-        l_m = mapper(Lala, t, exclude_properties=('vendor_id', 'boss_id'))
+        l_m = mapper(Lala, t, exclude_properties=('vendor_id', 'boss_id'),
+                     column_prefix="p_")
 
-        for m in p_m, e_m, m_m, v_m, h_m, l_m:
-            m.compile()
+        p_m.compile()
         
         def assert_props(cls, want):
             have = set([n for n in dir(cls) if not n.startswith('_')])
@@ -290,7 +290,7 @@ class MapperTest(MapperSuperTest):
                                'id', 'name', 'type'])
         assert_props(Vendor, ['vendor_id', 'id', 'name', 'type'])
         assert_props(Hoho, ['id', 'name', 'type'])
-        assert_props(Lala, ['employee_number', 'id', 'name', 'type'])
+        assert_props(Lala, ['p_employee_number', 'p_id', 'p_name', 'p_type'])
 
     def testrecursiveselectby(self):
         """test that no endless loop occurs when traversing for select_by"""
