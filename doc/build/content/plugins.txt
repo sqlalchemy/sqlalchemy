@@ -161,7 +161,7 @@ The decoration of mapped instances' `__init__()` method is similar to this examp
         entity_name = kwargs.pop('_sa_entity_name', None)
         if session is None:
             session = ext.get_session() # get Session from this Mapper's MapperExtension
-            if session is EXT_PASS:
+            if session is EXT_CONTINUE:
                 session = None
         if session is not None:
             session.save(self, entity_name=entity_name)  # attach to the current session

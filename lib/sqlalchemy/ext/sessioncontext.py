@@ -1,5 +1,5 @@
 from sqlalchemy.util import ScopedRegistry
-from sqlalchemy.orm import create_session, object_session, MapperExtension, EXT_PASS
+from sqlalchemy.orm import create_session, object_session, MapperExtension, EXT_CONTINUE
 
 __all__ = ['SessionContext', 'SessionContextExt']
 
@@ -66,11 +66,11 @@ class SessionContextExt(MapperExtension):
     def init_instance(self, mapper, class_, instance, args, kwargs):
         session = kwargs.pop('_sa_session', self.context.current)
         session._save_impl(instance, entity_name=kwargs.pop('_sa_entity_name', None))
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def init_failed(self, mapper, class_, instance, args, kwargs):
         object_session(instance).expunge(instance)
-        return EXT_PASS
+        return EXT_CONTINUE
         
     def dispose_class(self, mapper, class_):
         if hasattr(class_, '__init__') and hasattr(class_.__init__, '_oldinit'):

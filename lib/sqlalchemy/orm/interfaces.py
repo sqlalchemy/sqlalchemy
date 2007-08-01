@@ -7,22 +7,39 @@
 
 from sqlalchemy import util, logging, sql
 
-# returned by a MapperExtension method to indicate a "do nothing" response
-EXT_PASS = object()
+__all__ = ['EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS', 'MapperExtension',
+           'MapperProperty', 'PropComparator', 'StrategizedProperty', 
+           'LoaderStack', 'OperationContext', 'MapperOption', 
+           'ExtensionOption', 'SynonymProperty', 'PropertyOption', 
+           'AttributeExtension', 'StrategizedOption', 'LoaderStrategy' ]
+
+EXT_CONTINUE = EXT_PASS = object()
+EXT_STOP = object()
 
 class MapperExtension(object):
-    """Base implementation for an object that provides overriding
-    behavior to various Mapper functions.  For each method in
-    MapperExtension, a result of EXT_PASS indicates the functionality
-    is not overridden.
+    """Base implementation for customizing Mapper behavior.
+
+    For each method in MapperExtension, returning a result of
+    EXT_CONTINUE will allow processing to continue to the next
+    MapperExtension in line or use the default functionality if there
+    are no other extensions.
+
+    Returning EXT_STOP will halt processing of further extensions
+    handling that method.  Some methods such as ``load`` have other
+    return requirements, see the individual documentation for details.
+    Other than these exception cases, any return value other than
+    EXT_CONTINUE or EXT_STOP will be interpreted as equivalent to
+    EXT_STOP.
+    
+    EXT_PASS is a synonym for EXT_CONTINUE and is provided for
+    backward compatibility.
     """
 
-
     def init_instance(self, mapper, class_, instance, args, kwargs):
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def init_failed(self, mapper, class_, instance, args, kwargs):
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def get_session(self):
         """Retrieve a contextual Session instance with which to
@@ -32,61 +49,61 @@ class MapperExtension(object):
         `__init__` params (i.e. `_sa_session`).
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def load(self, query, *args, **kwargs):
         """Override the `load` method of the Query object.
 
         The return value of this method is used as the result of
-        ``query.load()`` if the value is anything other than EXT_PASS.
+        ``query.load()`` if the value is anything other than EXT_CONTINUE.
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def get(self, query, *args, **kwargs):
         """Override the `get` method of the Query object.
 
         The return value of this method is used as the result of
-        ``query.get()`` if the value is anything other than EXT_PASS.
+        ``query.get()`` if the value is anything other than EXT_CONTINUE.
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def get_by(self, query, *args, **kwargs):
         """Override the `get_by` method of the Query object.
 
         The return value of this method is used as the result of
         ``query.get_by()`` if the value is anything other than
-        EXT_PASS.
+        EXT_CONTINUE.
         
         DEPRECATED.
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def select_by(self, query, *args, **kwargs):
         """Override the `select_by` method of the Query object.
 
         The return value of this method is used as the result of
         ``query.select_by()`` if the value is anything other than
-        EXT_PASS.
+        EXT_CONTINUE.
         
         DEPRECATED.
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def select(self, query, *args, **kwargs):
         """Override the `select` method of the Query object.
 
         The return value of this method is used as the result of
         ``query.select()`` if the value is anything other than
-        EXT_PASS.
+        EXT_CONTINUE.
         
         DEPRECATED.
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
 
     def translate_row(self, mapper, context, row):
@@ -97,7 +114,7 @@ class MapperExtension(object):
         method.
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def create_instance(self, mapper, selectcontext, row, class_):
         """Receive a row when a new object instance is about to be
@@ -120,13 +137,13 @@ class MapperExtension(object):
           The class we are mapping.
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def append_result(self, mapper, selectcontext, row, instance, result, **flags):
         """Receive an object instance before that instance is appended
         to a result list.
 
-        If this method returns EXT_PASS, result appending will proceed
+        If this method returns EXT_CONTINUE, result appending will proceed
         normally.  if this method returns any other value or None,
         result appending will not proceed for this instance, giving
         this extension an opportunity to do the appending itself, if
@@ -152,7 +169,7 @@ class MapperExtension(object):
           `create_row_processor()` method of [sqlalchemy.orm.interfaces#MapperProperty]
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def populate_instance(self, mapper, selectcontext, row, instance, **flags):
         """Receive a newly-created instance before that instance has
@@ -161,14 +178,14 @@ class MapperExtension(object):
         The normal population of attributes is according to each
         attribute's corresponding MapperProperty (which includes
         column-based attributes as well as relationships to other
-        classes).  If this method returns EXT_PASS, instance
+        classes).  If this method returns EXT_CONTINUE, instance
         population will proceed normally.  If any other value or None
         is returned, instance population will not proceed, giving this
         extension an opportunity to populate the instance itself, if
         desired.
         """
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def before_insert(self, mapper, connection, instance):
         """Receive an object instance before that instance is INSERTed
@@ -178,32 +195,32 @@ class MapperExtension(object):
         that aren't handled otherwise.
         """
 
-        return EXT_PASS
-
-    def before_update(self, mapper, connection, instance):
-        """Receive an object instance before that instance is UPDATEed."""
-
-        return EXT_PASS
-
-    def after_update(self, mapper, connection, instance):
-        """Receive an object instance after that instance is UPDATEed."""
-
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def after_insert(self, mapper, connection, instance):
         """Receive an object instance after that instance is INSERTed."""
 
-        return EXT_PASS
+        return EXT_CONTINUE
+
+    def before_update(self, mapper, connection, instance):
+        """Receive an object instance before that instance is UPDATEed."""
+
+        return EXT_CONTINUE
+
+    def after_update(self, mapper, connection, instance):
+        """Receive an object instance after that instance is UPDATEed."""
+
+        return EXT_CONTINUE
 
     def before_delete(self, mapper, connection, instance):
         """Receive an object instance before that instance is DELETEed."""
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
     def after_delete(self, mapper, connection, instance):
         """Receive an object instance after that instance is DELETEed."""
 
-        return EXT_PASS
+        return EXT_CONTINUE
 
 class MapperProperty(object):
     """Manage the relationship of a ``Mapper`` to a single class

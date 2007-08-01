@@ -451,7 +451,7 @@ class MapperTest(MapperSuperTest):
             def populate_instance(self, mapper, selectcontext, row, instance, **flags):
                 """test options at the Mapper._instance level"""
                 instance.TEST = "hello world"
-                return EXT_PASS
+                return EXT_CONTINUE
         mapper(User, users, extension=ext1(), properties={
             'addresses':relation(mapper(Address, addresses), lazy=False)
         })
@@ -462,7 +462,7 @@ class MapperTest(MapperSuperTest):
             def populate_instance(self, mapper, selectcontext, row, instance, **flags):
                 """test options at the Mapper._instance level"""
                 instance.TEST_2 = "also hello world"
-                return EXT_PASS
+                return EXT_CONTINUE
         l = sess.query(User).options(extension(testext())).select_by(x=5)
         assert l == "HI"
         l = sess.query(User).options(extension(testext())).get(7)

@@ -9,7 +9,7 @@ from sqlalchemy import sql_util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier
 from sqlalchemy.orm import sync
-from sqlalchemy.orm.interfaces import MapperProperty, EXT_PASS, MapperExtension, SynonymProperty
+from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, MapperExtension, SynonymProperty
 import weakref, warnings, operator
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
@@ -876,7 +876,7 @@ class Mapper(object):
 
         self.compile()
         s = self.extension.get_session()
-        if s is EXT_PASS:
+        if s is EXT_CONTINUE:
             raise exceptions.InvalidRequestError("No contextual Session is established.  Use a MapperExtension that implements get_session or use 'import sqlalchemy.mods.threadlocal' to establish a default thread-local contextual session.")
         return s
 
@@ -1373,7 +1373,7 @@ class Mapper(object):
             extension = self.extension
 
         ret = extension.translate_row(self, context, row)
-        if ret is not EXT_PASS:
+        if ret is not EXT_CONTINUE:
             row = ret
 
         if not skip_polymorphic and self.polymorphic_on is not None:
@@ -1404,9 +1404,9 @@ class Mapper(object):
                 if not context.identity_map.has_key(identitykey):
                     context.identity_map[identitykey] = instance
                     isnew = True
-                if extension.populate_instance(self, context, row, instance, **{'instancekey':identitykey, 'isnew':isnew}) is EXT_PASS:
+                if extension.populate_instance(self, context, row, instance, **{'instancekey':identitykey, 'isnew':isnew}) is EXT_CONTINUE:
                     self.populate_instance(context, instance, row, **{'instancekey':identitykey, 'isnew':isnew})
-            if extension.append_result(self, context, row, instance, result, **{'instancekey':identitykey, 'isnew':isnew}) is EXT_PASS:
+            if extension.append_result(self, context, row, instance, result, **{'instancekey':identitykey, 'isnew':isnew}) is EXT_CONTINUE:
                 if result is not None:
                     result.append(instance)
             return instance
@@ -1432,7 +1432,7 @@ class Mapper(object):
 
             # plugin point
             instance = extension.create_instance(self, context, row, self.class_)
-            if instance is EXT_PASS:
+            if instance is EXT_CONTINUE:
                 instance = self._create_instance(context.session)
             else:
                 instance._entity_name = self.entity_name
@@ -1447,9 +1447,9 @@ class Mapper(object):
         # call further mapper properties on the row, to pull further
         # instances from the row and possibly populate this item.
         flags = {'instancekey':identitykey, 'isnew':isnew}
-        if extension.populate_instance(self, context, row, instance, **flags) is EXT_PASS:
+        if extension.populate_instance(self, context, row, instance, **flags) is EXT_CONTINUE:
             self.populate_instance(context, instance, row, **flags)
-        if extension.append_result(self, context, row, instance, result, **flags) is EXT_PASS:
+        if extension.append_result(self, context, row, instance, result, **flags) is EXT_CONTINUE:
             if result is not None:
                 result.append(instance)
         return instance

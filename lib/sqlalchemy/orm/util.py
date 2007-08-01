@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy import sql, util, exceptions, sql_util
-from sqlalchemy.orm.interfaces import MapperExtension, EXT_PASS
+from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE
 
 all_cascades = util.Set(["delete", "delete-orphan", "all", "merge",
                          "expunge", "save-update", "refresh-expire", "none"])
@@ -134,10 +134,10 @@ class ExtensionCarrier(MapperExtension):
         def _do(self, *args, **kwargs):
             for elem in self.__elements:
                 ret = getattr(elem, funcname)(*args, **kwargs)
-                if ret is not EXT_PASS:
+                if ret is not EXT_CONTINUE:
                     return ret
             else:
-                return EXT_PASS
+                return EXT_CONTINUE
         return _do
 
     init_instance = _create_do('init_instance')

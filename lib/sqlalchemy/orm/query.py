@@ -70,7 +70,7 @@ class Query(object):
         """
 
         ret = self._extension.get(self, ident, **kwargs)
-        if ret is not mapper.EXT_PASS:
+        if ret is not mapper.EXT_CONTINUE:
             return ret
 
         # convert composite types to individual args
@@ -94,7 +94,7 @@ class Query(object):
         """
 
         ret = self._extension.load(self, ident, **kwargs)
-        if ret is not mapper.EXT_PASS:
+        if ret is not mapper.EXT_CONTINUE:
             return ret
         key = self.mapper.identity_key_from_primary_key(ident)
         instance = self._get(key, ident, reload=True, **kwargs)
@@ -993,7 +993,7 @@ class Query(object):
         """DEPRECATED.  use query.filter_by(\**params).first()"""
 
         ret = self._extension.get_by(self, *args, **params)
-        if ret is not mapper.EXT_PASS:
+        if ret is not mapper.EXT_CONTINUE:
             return ret
 
         return self._legacy_filter_by(*args, **params).first()
@@ -1002,7 +1002,7 @@ class Query(object):
         """DEPRECATED. use use query.filter_by(\**params).all()."""
 
         ret = self._extension.select_by(self, *args, **params)
-        if ret is not mapper.EXT_PASS:
+        if ret is not mapper.EXT_CONTINUE:
             return ret
 
         return self._legacy_filter_by(*args, **params).list()
@@ -1032,7 +1032,7 @@ class Query(object):
         """DEPRECATED.  use query.filter(whereclause).all(), or query.from_statement(statement).all()"""
 
         ret = self._extension.select(self, arg=arg, **kwargs)
-        if ret is not mapper.EXT_PASS:
+        if ret is not mapper.EXT_CONTINUE:
             return ret
         return self._build_select(arg, **kwargs).all()
 

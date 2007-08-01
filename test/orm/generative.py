@@ -103,7 +103,7 @@ class GenerativeQueryTest(PersistTest):
         class ext1(MapperExtension):
             def populate_instance(self, mapper, selectcontext, row, instance, **flags):
                 instance.TEST = "hello world"
-                return EXT_PASS
+                return EXT_CONTINUE
         assert query.options(extension(ext1()))[0].TEST == "hello world"
         
     def test_order_by(self):
