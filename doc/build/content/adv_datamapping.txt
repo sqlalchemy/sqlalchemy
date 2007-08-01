@@ -809,13 +809,13 @@ A self-referential mapper where there is more than one relationship on the table
     mapper(TreeNode, trees, properties={
             'children' : relation(
                             TreeNode, 
-                            primaryjoin=trees.c.parent_node_id==trees.c.node_id
+                            primaryjoin=trees.c.parent_node_id == trees.c.node_id
                             cascade="all",
                             backref=backref("parent", remote_side=[trees.c.node_id])
                          ),
             'root' : relation(
                     TreeNode,
-                    primaryjoin=trees.c.root_node_id=trees.c.node_id, 
+                    primaryjoin=trees.c.root_node_id == trees.c.node_id, 
                     remote_side=[trees.c.node_id],
                     uselist=False
                 )
