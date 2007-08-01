@@ -102,7 +102,9 @@ class ObjectDoc(AbstractDoc):
             self.classes.append(ObjectDoc(class_))
     
     def _is_private_name(self, name):
-        if re.match(r'^__.*__$', name):
+        if name == '__weakref__':
+            return True
+        elif re.match(r'^__.*__$', name):
             return False
         elif name.startswith('_'):
             return True
