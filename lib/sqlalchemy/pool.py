@@ -162,13 +162,15 @@ class Pool(object):
             return _ConnectionFairy(self).checkout()
 
         try:
-            return self._threadconns[thread.get_ident()].connfairy().checkout()
+            return self._threadconns[thread.get_ident()].checkout()
         except KeyError:
-            agent = _ConnectionFairy(self).checkout()
-            self._threadconns[thread.get_ident()] = agent._threadfairy
-            return agent
+            agent = _ConnectionFairy(self)
+            self._threadconns[thread.get_ident()] = agent
+            return agent.checkout()
 
     def return_conn(self, agent):
+        if self._use_threadlocal and thread.get_ident() in self._threadconns:
+            del self._threadconns[thread.get_ident()]
         self.do_return_conn(agent._connection_record)
 
     def get(self):
@@ -230,17 +232,10 @@ class _ConnectionRecord(object):
             self.__pool.log("Error on connect(): %s" % (str(e)))
             raise
 
-class _ThreadFairy(object):
-    """Mark a thread identifier as owning a connection, for a thread local pool."""
-
-    def __init__(self, connfairy):
-        self.connfairy = weakref.ref(connfairy)
-
 class _ConnectionFairy(object):
     """Proxy a DBAPI connection object and provides return-on-dereference support."""
 
     def __init__(self, pool):
-        self._threadfairy = _ThreadFairy(self)
         self._cursors = weakref.WeakKeyDictionary()
         self._pool = pool
         self.__counter = 0
@@ -340,7 +335,6 @@ class _ConnectionFairy(object):
             self._pool.return_conn(self)
         self.connection = None
         self._connection_record = None
-        self._threadfairy = None
         self._cursors = None
 
 class _CursorFairy(object):

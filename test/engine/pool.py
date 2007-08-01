@@ -1,6 +1,6 @@
 import testbase
 from testbase import PersistTest
-import unittest, sys, os, time
+import unittest, sys, os, time, gc
 import threading, thread
 
 import sqlalchemy.pool as pool
@@ -300,7 +300,14 @@ class PoolTest(PersistTest):
         assert not con.closed
         c1.close()
         assert con.closed
-        
+    
+    def test_threadfairy(self):
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True)
+        c1 = p.connect()
+        c1.close()
+        c2 = p.connect()
+        assert c2.connection is not None
+
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
 
@@ -328,7 +335,7 @@ class PoolTest(PersistTest):
                 c2.close()
             else:
                 c2 = None
-        
+
             if useclose:
                 c1 = p.connect()
                 c2 = p.connect()
@@ -340,7 +347,7 @@ class PoolTest(PersistTest):
 
             c1 = c2 = c3 = None
             
-            # extra tests with QueuePool to insure connections get __del__()ed when dereferenced
+            # extra tests with QueuePool to ensure connections get __del__()ed when dereferenced
             if isinstance(p, pool.QueuePool):
                 self.assert_(p.checkedout() == 0)
                 c1 = p.connect()

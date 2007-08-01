@@ -3,6 +3,9 @@
     - added a check for joining from A->B using join(), along two
       different m2m tables.  this raises an error in 0.3 but is 
       possible in 0.4 when aliases are used. [ticket:687]
+- engine
+    - fixed another occasional race condition which could occur
+      when using pool with threadlocal setting
 - mssql
     - added support for TIME columns (simulated using DATETIME) [ticket:679]
     - index names are now quoted when dropping from reflected tables [ticket:684]
