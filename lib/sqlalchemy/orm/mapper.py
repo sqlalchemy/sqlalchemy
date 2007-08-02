@@ -1048,6 +1048,7 @@ class Mapper(object):
 
                 isinsert = not instance_key in uowtransaction.uow.identity_map and not postupdate and not has_identity(obj)
                 params = {}
+                value_params = {}
                 hasdata = False
                 for col in table.columns:
                     if col is mapper.version_id_col:
@@ -1097,7 +1098,10 @@ class Mapper(object):
                             if history:
                                 a = history.added_items()
                                 if len(a):
-                                    params[col.key] = prop.get_col_value(col, a[0])
+                                    if isinstance(a[0], sql.ClauseElement):
+                                        value_params[col] = a[0]
+                                    else:
+                                        params[col.key] = prop.get_col_value(col, a[0])
                                     hasdata = True
                         else:
                             # doing an INSERT, non primary key col ?
@@ -1110,15 +1114,18 @@ class Mapper(object):
                             if value is NO_ATTRIBUTE:
                                 continue
                             if col.default is None or value is not None:
-                                params[col.key] = value
+                                if isinstance(value, sql.ClauseElement):
+                                    value_params[col] = value
+                                else:
+                                    params[col.key] = value
 
                 if not isinsert:
                     if hasdata:
                         # if none of the attributes changed, dont even
                         # add the row to be updated.
-                        update.append((obj, params, mapper, connection))
+                        update.append((obj, params, mapper, connection, value_params))
                 else:
-                    insert.append((obj, params, mapper, connection))
+                    insert.append((obj, params, mapper, connection, value_params))
 
             if len(update):
                 mapper = table_to_mapper[table]
@@ -1138,9 +1145,9 @@ class Mapper(object):
                     return 0
                 update.sort(comparator)
                 for rec in update:
-                    (obj, params, mapper, connection) = rec
-                    c = connection.execute(statement, params)
-                    mapper._postfetch(connection, table, obj, c, c.last_updated_params())
+                    (obj, params, mapper, connection, value_params) = rec
+                    c = connection.execute(statement.values(value_params), params)
+                    mapper._postfetch(connection, table, obj, c, c.last_updated_params(), value_params)
 
                     updated_objects.add((obj, connection))
                     rows += c.rowcount
@@ -1154,8 +1161,8 @@ class Mapper(object):
                     return cmp(a[0]._sa_insert_order, b[0]._sa_insert_order)
                 insert.sort(comparator)
                 for rec in insert:
-                    (obj, params, mapper, connection) = rec
-                    c = connection.execute(statement, params)
+                    (obj, params, mapper, connection, value_params) = rec
+                    c = connection.execute(statement.values(value_params), params)
                     primary_key = c.last_inserted_ids()
                     if primary_key is not None:
                         i = 0
@@ -1163,7 +1170,7 @@ class Mapper(object):
                             if mapper.get_attr_by_column(obj, col) is None and len(primary_key) > i:
                                 mapper.set_attr_by_column(obj, col, primary_key[i])
                             i+=1
-                    mapper._postfetch(connection, table, obj, c, c.last_inserted_params())
+                    mapper._postfetch(connection, table, obj, c, c.last_inserted_params(), value_params)
 
                     # synchronize newly inserted ids from one table to the next
                     # TODO: this fires off more than needed, try to organize syncrules
@@ -1185,22 +1192,23 @@ class Mapper(object):
                 for mapper in object_mapper(obj).iterate_to_root():
                     mapper.extension.after_update(mapper, connection, obj)
 
-    def _postfetch(self, connection, table, obj, resultproxy, params):
+    def _postfetch(self, connection, table, obj, resultproxy, params, value_params):
         """After an ``INSERT`` or ``UPDATE``, assemble newly generated
         values on an instance.  For columns which are marked as being generated
         on the database side, set up a group-based "deferred" loader 
         which will populate those attributes in one query when next accessed.
         """
 
-        postfetch_cols = resultproxy.context.postfetch_cols()
+        postfetch_cols = resultproxy.context.postfetch_cols().union(util.Set(value_params.keys())) 
         deferred_props = []
 
         for c in table.c:
-            if c in postfetch_cols and not c.key in params:
+            if c in postfetch_cols and (not c.key in params or c in value_params):
                 prop = self._getpropbycolumn(c, raiseerror=False)
                 if prop is None:
                     continue
                 deferred_props.append(prop)
+                continue
             if c.primary_key or not c.key in params:
                 continue
             v = self.get_attr_by_column(obj, c, False)

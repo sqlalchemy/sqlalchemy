@@ -3380,6 +3380,8 @@ class Insert(_UpdateBase):
         self.parameters = self.parameters.copy()
 
     def values(self, v):
+        if len(v) == 0:
+            return self
         u = self._clone()
         if u.parameters is None:
             u.parameters = u._process_colparams(v)
@@ -3405,6 +3407,8 @@ class Update(_UpdateBase):
         self.parameters = self.parameters.copy()
         
     def values(self, v):
+        if len(v) == 0:
+            return self
         u = self._clone()
         if u.parameters is None:
             u.parameters = u._process_colparams(v)

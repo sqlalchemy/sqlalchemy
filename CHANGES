@@ -94,6 +94,9 @@
       created/mapped to a single attribute, comprised of the values
       correponding to *columns [ticket:211]
 
+    - added inline UPDATE/INSERT clauses, settable as regular object attributes.
+      the clause gets executed inline during a flush().
+
     - improved support for custom column_property() attributes which
       feature correlated subqueries...work better with eager loading now.
 

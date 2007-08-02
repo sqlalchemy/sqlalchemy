@@ -454,6 +454,74 @@ class ForeignPKTest(UnitOfWorkTest):
         Session.commit()
         assert people.count(people.c.person=='im the key').scalar() == peoplesites.count(peoplesites.c.person=='im the key').scalar() == 1
 
+class ClauseAttributesTest(UnitOfWorkTest):
+    def setUpAll(self):
+        UnitOfWorkTest.setUpAll(self)
+        global metadata, users_table
+        metadata = MetaData(testbase.db)
+        users_table = Table('users', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(30)),
+            Column('counter', Integer, default=1))
+        metadata.create_all()
+    
+    def tearDown(self):
+        users_table.delete().execute()
+        UnitOfWorkTest.tearDown(self)
+        
+    def tearDownAll(self):
+        metadata.drop_all()
+        UnitOfWorkTest.tearDownAll(self)
+        
+    def test_update(self):
+        class User(object):
+            pass
+        mapper(User, users_table)
+        u = User(name='test')
+        sess = Session()
+        sess.save(u)
+        sess.flush()
+        assert u.counter == 1
+        u.counter = users_table.c.counter + 1
+        sess.flush()
+        def go():
+            assert u.counter == 2
+        self.assert_sql_count(testbase.db, go, 1)
+
+    def test_multi_update(self):
+        class User(object):
+            pass
+        mapper(User, users_table)
+        u = User(name='test')
+        sess = Session()
+        sess.save(u)
+        sess.flush()
+        assert u.counter == 1
+        u.name = 'test2'
+        u.counter = users_table.c.counter + 1
+        sess.flush()
+        def go():
+            assert u.name == 'test2'
+            assert u.counter == 2
+        self.assert_sql_count(testbase.db, go, 1)
+        
+        sess.clear()
+        u = sess.query(User).get(u.id)
+        assert u.name == 'test2'
+        assert u.counter == 2
+    
+    def test_insert(self):
+        class User(object):
+            pass
+        mapper(User, users_table)
+        u = User(name='test', counter=select([5]))
+        sess = Session()
+        sess.save(u)
+        sess.flush()
+        assert u.counter == 5
+        
+
+        
 class PassiveDeletesTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)

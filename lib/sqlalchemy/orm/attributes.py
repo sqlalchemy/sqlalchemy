@@ -607,7 +607,7 @@ class AttributeHistory(object):
                     self._deleted_items.append(a)
         else:
             self._current = [current]
-            if attr.is_equal(current, original):
+            if attr.is_equal(current, original) is True:
                 self._unchanged_items = [current]
                 self._added_items = []
                 self._deleted_items = []
