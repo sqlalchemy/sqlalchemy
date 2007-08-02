@@ -750,7 +750,7 @@ class OneToManyTest(UnitOfWorkTest):
         Session.commit()
         Session.delete(u)
         Session.commit()
-        self.assert_(a.address_id is not None and a.user_id is None and not Session().identity_map.has_key(u._instance_key) and Session().identity_map.has_key(a._instance_key))
+        self.assert_(a.address_id is not None and a.user_id is None and not Session.identity_map.has_key(u._instance_key) and Session.identity_map.has_key(a._instance_key))
 
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
@@ -867,7 +867,7 @@ class SaveTest(UnitOfWorkTest):
         # change first users name and save
         Session.update(u)
         u.user_name = 'modifiedname'
-        assert u in Session().dirty
+        assert u in Session.dirty
         Session.commit()
 
         # select both

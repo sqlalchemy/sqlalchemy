@@ -65,7 +65,20 @@ def sessionmaker(autoflush, transactional, bind=None, scope=None, enhance_classe
             global_extensions.append(SessionContextExt())
             
         default_scope=scope
+        
+        class ScopedProps(type):
+            pass
+        def makeprop(name):
+            def set(self, attr):
+                setattr(registry(), name, attr)
+            def get(self):
+                return getattr(registry(), name)
+            return property(get, set)
+        for prop in ('bind', 'dirty', 'identity_map'):
+            setattr(ScopedProps, prop, makeprop(prop))
+            
         class ScopedSess(Sess):
+            __metaclass__ = ScopedProps
             def __new__(cls, **kwargs):
                 if len(kwargs):
                     scope = kwargs.pop('scope', default_scope)
