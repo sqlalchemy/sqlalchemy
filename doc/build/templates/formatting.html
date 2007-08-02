@@ -76,12 +76,15 @@
                 else:
                     g += "\n"
             
-            return g #.rstrip()
+            return g[:-1] #.rstrip()
         
         p = re.compile(r'<pre>(.*?)</pre>', re.S)
         
         def hlight(match):
-            return "<pre>" + highlight.highlight(fix_indent(match.group(1)), html_escape = html_escape, syntaxtype = syntaxtype) + "</pre>"
+            try:
+                return "<pre>" + highlight.highlight(fix_indent(match.group(1)), html_escape = html_escape, syntaxtype = syntaxtype) + "</pre>"
+            except:
+                print "TEXT IS", fix_indent(match.group(1))
             
         def link(match):
             return capture(nav.toclink, toc, match.group(2), extension, paged, description=match.group(1))

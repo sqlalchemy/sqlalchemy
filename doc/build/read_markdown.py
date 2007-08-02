@@ -177,7 +177,7 @@ def replace_pre_with_mako(tree):
             title = m.group(2)
             text = m.group(3)
             text = re.sub(r'{(python|code|diagram).*?}(\n\s*)?', '', text)
-            text = re.sub(r'\\', r'${r"\\\\" + "\\n"}', text)
+            text = re.sub(r'\\\n', r'${r"\\\\" + "\\n\\n"}', text)
             splice_code_tag(parents[precode], text, code=code, title=title)
         elif precode.text.lstrip().startswith('>>> '):
             splice_code_tag(parents[precode], precode.text)

@@ -351,7 +351,8 @@ You also have full ability to use literal strings to construct SQL.  For a singl
 Bind parameters can be specified with string-based SQL, using a colon.  To specify the values, use the `params()` method:
 
     {python}
-    {sql}>>> session.query(User).filter("id<:value and name=:name").params(value=224, name='fred').one() # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> session.query(User).filter("id<:value and name=:name").\
+    ...     params(value=224, name='fred').one() # doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
     WHERE id<? and name=? ORDER BY users.oid 
@@ -374,7 +375,9 @@ To use an entirely string-based statement, using `from_statement()`; just ensure
     >>> from sqlalchemy import select, func
     
     {sql}>>> session.query(User).from_statement(
-    ...     select([users_table], select([func.max(users_table.c.name)]).label('maxuser')==users_table.c.name) 
+    ...     select(
+    ...            [users_table], 
+    ...            select([func.max(users_table.c.name)]).label('maxuser')==users_table.c.name) 
     ...    ).all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
@@ -386,7 +389,8 @@ To use an entirely string-based statement, using `from_statement()`; just ensure
 There's also a way to combine scalar results with objects, using `add_column()`.  This is often used for functions and aggregates.  When `add_column()` (or its cousin `add_entity()`, described later) is used, tuples are returned:
 
     {python}
-    {sql}>>> for r in session.query(User).add_column(select([func.max(users_table.c.name)]).label('maxuser')):
+    {sql}>>> for r in session.query(User).\
+    ...     add_column(select([func.max(users_table.c.name)]).label('maxuser')):
     ...     print r
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password, (SELECT max(users.name) 
     FROM users) AS maxuser 
@@ -593,6 +597,11 @@ The easiest way to join is automatically, using the `join()` method on `Query`. 
     ['jack@google.com']
     {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
 
+By "A to B", we mean a single relation name or a path of relations.  In our case we only have `User->addresses->Address` configured, but if we had a setup like `A->bars->B->bats->C->widgets->D`, a join along all four entities would look like:
+
+    {python}
+    session.query(Foo).join(['bars', 'bats', 'widgets']).filter(...)
+    
 Each time the `join()` is called on `Query`, the **joinpoint** of the query is moved to be that of the endpoint of the join.  As above, when we joined from `users_table` to `addresses_table`, all subsequent criterion used by `filter_by()` are against the `addresses` table.  When you `join()` again, the joinpoint starts back from the root.  We can also backtrack to the beginning explicitly using `reset_joinpoint()`.  This instruction will place the joinpoint back at the root `users` table, where subsequent `filter_by()` criterion are again against `users`:
 
     {python}
@@ -661,9 +670,9 @@ So far, so good.  How about Jack's `Address` objects ?
     ['jack@google.com', 'j25@yahoo.com']
     {stop}2
     
-Uh oh, they're still there !  Anaylzing the flush SQL, we can see that the `user_id` column of each addresss was set to NULL, but the rows weren't deleted.  SQLAlchemy doesn't assume that deletes cascade, you have to tell it so.  
+Uh oh, they're still there !  Anaylzing the flush SQL, we can see that the `user_id` column of each addresss was set to NULL, but the rows weren't deleted.  SQLAlchemy doesn't assume that deletes cascade, you have to tell it so.
 
-So lets rollback our work, and start fresh with new mappers that express the relationship the way we want:
+So let's rollback our work, and start fresh with new mappers that express the relationship the way we want:
 
     {python}
     {sql}>>> session.rollback()  # roll back the transaction
@@ -720,13 +729,15 @@ Deleting Jack will delete both Jack and his remaining `Address`:
 
     {python}
     >>> session.delete(jack)
+    
     {sql}>>> session.commit()
     DELETE FROM addresses WHERE addresses.id = ?
     [1]
     DELETE FROM users WHERE users.id = ?
     [5]
     COMMIT
-
+    {stop}
+    
     {sql}>>> session.query(User).filter_by(name='jack').count()
     BEGIN
     SELECT count(users.id) 
@@ -743,4 +754,166 @@ Deleting Jack will delete both Jack and his remaining `Address`:
     WHERE addresses.email_address IN (?, ?)
     ['jack@google.com', 'j25@yahoo.com']
     {stop}0
+
+## Building a Many To Many Relation
+
+We're moving into the bonus round here, but lets show off a many-to-many relationship.  We'll sneak in some other features too, just to take a tour.  We'll make our application a blog application, where users can write `BlogPost`s, which have `Keywords` associated with them.
+
+First some new tables:
+
+    {python}
+    >>> post_table = Table('posts', metadata, 
+    ...        Column('id', Integer, primary_key=True),
+    ...        Column('user_id', Integer, ForeignKey('users.id')),
+    ...        Column('headline', String(255), nullable=False),
+    ...        Column('body', String)
+    ...        )
     
+    >>> post_keywords = Table('post_keywords', metadata,
+    ...        Column('post_id', Integer, ForeignKey('posts.id')),
+    ...        Column('keyword_id', Integer, ForeignKey('keywords.id')))
+    
+    >>> keywords_table = Table('keywords', metadata,
+    ...        Column('id', Integer, primary_key=True),
+    ...        Column('keyword', String(50), nullable=False, unique=True))
+    
+    {sql}>>> metadata.create_all(engine) # doctest: +NORMALIZE_WHITESPACE
+    PRAGMA table_info("users")
+    {}
+    PRAGMA table_info("posts")
+    {}
+    PRAGMA table_info("keywords")
+    {}
+    PRAGMA table_info("post_keywords")
+    {}
+    PRAGMA table_info("addresses")
+    {}
+    CREATE TABLE posts (
+        id INTEGER NOT NULL, 
+        user_id INTEGER, 
+        headline VARCHAR(255) NOT NULL, 
+        body TEXT, 
+        PRIMARY KEY (id), 
+         FOREIGN KEY(user_id) REFERENCES users (id)
+    )
+    None
+    COMMIT
+    <BLANKLINE>
+    CREATE TABLE keywords (
+        id INTEGER NOT NULL, 
+        keyword VARCHAR(50) NOT NULL, 
+        PRIMARY KEY (id), 
+         UNIQUE (keyword)
+    )
+    None
+    COMMIT
+    <BLANKLINE>
+    CREATE TABLE post_keywords (
+        post_id INTEGER, 
+        keyword_id INTEGER, 
+         FOREIGN KEY(post_id) REFERENCES posts (id), 
+         FOREIGN KEY(keyword_id) REFERENCES keywords (id)
+    )
+    None
+    COMMIT
+
+Then some classes:
+
+    {python}
+    >>> class BlogPost(object):
+    ...     def __init__(self, headline, body, author):
+    ...         self.author = author
+    ...         self.headline = headline
+    ...         self.body = body
+    ...     def __repr__(self):
+    ...         return "BlogPost(%r, %r, %r)" % (self.headline, self.body, self.author)
+    
+    >>> class Keyword(object):
+    ...     def __init__(self, keyword):
+    ...         self.keyword = keyword
+            
+And the mappers.  `BlogPost` will reference `User` via its `author` attribute:
+
+    {python}
+    >>> from sqlalchemy.orm import backref
+    
+    >>> mapper(Keyword, keywords_table) # doctest: +ELLIPSIS
+    <sqlalchemy.orm.mapper.Mapper object at 0x...>
+    
+    >>> mapper(BlogPost, post_table, properties={   # doctest: +ELLIPSIS
+    ...    'author':relation(User, backref=backref('posts', lazy='dynamic')),
+    ...    'keywords':relation(Keyword, secondary=post_keywords)
+    ... }) 
+    <sqlalchemy.orm.mapper.Mapper object at 0x...>
+    
+There's three new things in the above mapper:
+
+  * the `User` relation has a backref, like we've used before, except this time it references a function called `backref()`.  This function is used when you'd like to specify keyword options for the backwards relationship.
+  * the keyword option we specified to `backref()` is `lazy="dynamic"`.  This sets a default **loader strategy** on the attribute, in this case a special strategy that allows partial loading of results.
+  * The `keywords` relation uses a keyword argument `secondary` to indicate the **association table** for the many to many relationship from `BlogPost` to `Keyword`.
+    
+Usage is not too different from what we've been doing.  Let's give Wendy some blog posts:
+
+    {python}
+    {sql}>>> wendy = session.query(User).filter_by(name='wendy').one()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name = ? ORDER BY users.oid 
+     LIMIT 2 OFFSET 0
+    ['wendy']
+    
+    >>> post = BlogPost("Wendy's Blog Post", "This is a test", wendy)
+    >>> session.save(post)
+    
+We're storing keywords uniquely in the database, but we know that we don't have any yet, so we can just create them:
+
+    {python}
+    >>> post.keywords.append(Keyword('wendy'))
+    >>> post.keywords.append(Keyword('firstpost'))
+    
+We can now look up all blog posts with the keyword 'firstpost'.   We'll use a special collection operator `any` to locate "blog posts where any of its keywords has the keyword string 'firstpost'":
+
+    {python}
+    {sql}>>> session.query(BlogPost).filter(BlogPost.keywords.any(keyword='firstpost')).all()
+    INSERT INTO keywords (keyword) VALUES (?)
+    ['wendy']
+    INSERT INTO keywords (keyword) VALUES (?)
+    ['firstpost']
+    INSERT INTO posts (user_id, headline, body) VALUES (?, ?, ?)
+    [2, "Wendy's Blog Post", 'This is a test']
+    INSERT INTO post_keywords (post_id, keyword_id) VALUES (?, ?)
+    [[1, 1], [1, 2]]
+    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
+    FROM posts 
+    WHERE EXISTS (SELECT 1 
+    FROM post_keywords, keywords 
+    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?) ORDER BY posts.oid
+    ['firstpost']
+    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(u'wendy',u'Wendy Williams', u'foobar')>)]
+    
+If we want to look up just Wendy's posts, we can tell the query to narrow down to her as a parent:
+
+    {python}
+    {sql}>>> session.query(BlogPost).with_parent(wendy).\
+    ... filter(BlogPost.keywords.any(keyword='firstpost')).all()
+    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
+    FROM posts 
+    WHERE ? = posts.user_id AND (EXISTS (SELECT 1 
+    FROM post_keywords, keywords 
+    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)) ORDER BY posts.oid
+    [2, 'firstpost']
+    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(u'wendy',u'Wendy Williams', u'foobar')>)]
+
+Or we can use Wendy's own `posts` relation, which is a "dynamic" relation, to query straight from there:
+
+    {python}
+    {sql}>>> wendy.posts.filter(BlogPost.keywords.any(keyword='firstpost')).all()
+    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
+    FROM posts 
+    WHERE ? = posts.user_id AND (EXISTS (SELECT 1 
+    FROM post_keywords, keywords 
+    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)) ORDER BY posts.oid
+    [2, 'firstpost']
+    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(u'wendy',u'Wendy Williams', u'foobar')>)]
+    
+Further information on mapping setups are in [advdatamapping](rel:advdatamapping).

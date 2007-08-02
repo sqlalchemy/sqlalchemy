@@ -264,6 +264,8 @@ class PropertyLoader(StrategizedProperty):
     def create_strategy(self):
         if self.strategy_class:
             return self.strategy_class(self)
+        elif self.lazy == 'dynamic':
+            return strategies.DynaLoader(self)
         elif self.lazy:
             return strategies.LazyLoader(self)
         elif self.lazy is False:

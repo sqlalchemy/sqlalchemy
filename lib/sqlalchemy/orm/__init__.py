@@ -101,17 +101,34 @@ def relation(argument, secondary=None, **kwargs):
           deprecated. use the ``foreign_keys`` argument for foreign key
           specification, or ``remote_side`` for "directional" logic.
 
-        lazy=True
-          specifies how the related items should be loaded. a value of True
-          indicates they should be loaded lazily when the property is first
-          accessed. A value of False indicates they should be loaded by joining
-          against the parent object query, so parent and child are loaded in one
-          round trip (i.e. eagerly). A value of None indicates the related items
-          are not loaded by the mapper in any case; the application will manually
-          insert items into the list in some other way. In all cases, items added
-          or removed to the parent object's collection (or scalar attribute) will
-          cause the appropriate updates and deletes upon flush(), i.e. this
-          option only affects load operations, not save operations.
+        join_depth=None
+          when non-``None``, an integer value indicating how many levels
+          deep eagerload joins should be constructed on a self-referring
+          or cyclical relationship.  The number counts how many times
+          the same Mapper shall be present in the loading condition along
+          a particular join branch.  When left at its default of ``None``, 
+          eager loads will automatically stop chaining joins when they encounter 
+          a mapper which is already higher up in the chain.
+          
+        lazy=(True|False|None|'dynamic')
+          specifies how the related items should be loaded. Values include:
+          
+            True - items should be loaded lazily when the property is first
+                   accessed. 
+          
+            False - items should be loaded "eagerly" in the same query as that 
+                    of the parent, using a JOIN or LEFT OUTER JOIN.
+                    
+            None - no loading should occur at any time.  This is to support
+                   "write-only" attrbitutes, or attributes which are populated in
+                   some manner specific to the application.
+                   
+            'dynamic' - a ``DynaLoader`` will be attached, which returns a
+                        ``Query`` object for all read operations.  The dynamic-
+                        collection supports only ``append()`` and ``remove()``
+                        for write operations; changes to the dynamic property 
+                        will not be visible until the data is flushed to the 
+                        database.  
 
         order_by
           indicates the ordering that should be applied when loading these items.
