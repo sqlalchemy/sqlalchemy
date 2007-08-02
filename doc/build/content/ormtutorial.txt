@@ -312,8 +312,8 @@ and `one()`, applies a limit of *two*, and if not exactly one row returned (no m
 All `Query` methods that don't return a result instead return a new `Query` object, with modifications applied.  Therefore you can call many query methods successively to build up the criterion you want:
 
     {python}
-    >>> query = session.query(User).filter(User.id<2).filter_by(name='ed')
-    {sql}>>> query.filter(User.fullname=='Ed Jones').all()
+    {sql}>>> session.query(User).filter(User.id<2).filter_by(name='ed').\
+    ...     filter(User.fullname=='Ed Jones').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
     WHERE users.id < ? AND users.name = ? AND users.fullname = ? ORDER BY users.oid
@@ -561,8 +561,8 @@ Which brings us to the next big topic.  What if we want to create joins that *do
 One way to join two tables together is just to compose a SQL expression.   Below we make one up using the `id` and `user_id` attributes on our mapped classes:
 
     {python}
-    >>> query = session.query(User).filter(User.id==Address.user_id)
-    {sql}>>> query.filter(Address.email_address=='jack@google.com').all()
+    {sql}>>> session.query(User).filter(User.id==Address.user_id).\
+    ...         filter(Address.email_address=='jack@google.com').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users, addresses 
     WHERE users.id = addresses.user_id AND addresses.email_address = ? ORDER BY users.oid
@@ -572,8 +572,8 @@ One way to join two tables together is just to compose a SQL expression.   Below
 Or we can make a real JOIN construct; below we use the `join()` function available on `Table` to create a `Join` object, then tell the `Query` to use it as our FROM clause:
 
     {python}
-    >>> query = session.query(User).select_from(users_table.join(addresses_table))
-    {sql}>>> query.filter(Address.email_address=='jack@google.com').all()
+    {sql}>>> session.query(User).select_from(users_table.join(addresses_table)).\
+    ...         filter(Address.email_address=='jack@google.com').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users JOIN addresses ON users.id = addresses.user_id 
     WHERE addresses.email_address = ? ORDER BY users.oid
@@ -618,9 +618,9 @@ In all cases, we can get the `User` and the matching `Address` objects back at t
 Another common scenario is the need to join on the same table more than once.  For example, if we want to find a `User` who has two distinct email addresses, both `jack@google.com` as well as `j25@yahoo.com`, we need to join to the `Addresses` table twice.  SQLAlchemy does provide `Alias` objects which can accomplish this; but far easier is just to tell `join()` to alias for you:
 
     {python}
-    >>> query = session.query(User).join('addresses', aliased=True)
-    >>> query = query.filter(Address.email_address=='jack@google.com')
-    >>> query = query.join('addresses', aliased=True).filter(Address.email_address=='j25@yahoo.com')
+    >>> query = session.query(User).join('addresses', aliased=True).\
+    ...     filter(Address.email_address=='jack@google.com').\
+    ...     join('addresses', aliased=True).filter(Address.email_address=='j25@yahoo.com')
     {sql}>>> query.all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id JOIN addresses AS addresses_2 ON users.id = addresses_2.user_id 
@@ -628,4 +628,119 @@ Another common scenario is the need to join on the same table more than once.  F
     ['jack@google.com', 'j25@yahoo.com']
     {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
 
-The key thing which occured above is that our SQL criterion were **alisaed** as appropriate corresponding to the alias generated in the most recent `join()` call.  This is an example of where SQLAlchemy's relational construct engine makes a complicated task simple.
+The key thing which occured above is that our SQL criterion were **aliased** as appropriate corresponding to the alias generated in the most recent `join()` call.  
+
+## Deleting
+
+Lets try to delete `jack` and see how that goes.  We'll mark as deleted in the session, then we'll issue a `count` query to see that no rows remain:
+
+    {python}
+    >>> session.delete(jack)
+    {sql}>>> session.query(User).filter_by(name='jack').count()
+    UPDATE addresses SET user_id=? WHERE addresses.id = ?
+    [None, 1]
+    UPDATE addresses SET user_id=? WHERE addresses.id = ?
+    [None, 2]
+    DELETE FROM users WHERE users.id = ?
+    [5]
+    SELECT count(users.id) 
+    FROM users 
+    WHERE users.name = ?
+    ['jack']
+    {stop}0
+    
+So far, so good.  How about Jack's `Address` objects ?
+
+    {python}
+    {sql}>>> session.query(Address).filter(
+    ...     Address.email_address.in_('jack@google.com', 'j25@yahoo.com')
+    ...  ).count()
+    SELECT count(addresses.id) 
+    FROM addresses 
+    WHERE addresses.email_address IN (?, ?)
+    ['jack@google.com', 'j25@yahoo.com']
+    {stop}2
+    
+Uh oh, they're still there !  Anaylzing the flush SQL, we can see that the `user_id` column of each addresss was set to NULL, but the rows weren't deleted.  SQLAlchemy doesn't assume that deletes cascade, you have to tell it so.  
+
+So lets rollback our work, and start fresh with new mappers that express the relationship the way we want:
+
+    {python}
+    {sql}>>> session.rollback()  # roll back the transaction
+    ROLLBACK
+    
+    >>> session.clear() # clear the session
+    >>> clear_mappers() # clear mappers
+    
+We need to tell the `addresses` relation on `User` that we'd like session.delete() operations to cascade down to the child `Address` objects.  Further, we also want `Address` objects which get detached from their parent `User`, whether or not the parent is deleted, to be deleted.  For these behaviors we use two **cascade options** `delete` and `delete-orphan`, using the string-based `cascade` option to the `relation()` function:
+
+    {python}
+    >>> mapper(User, users_table, properties={    # doctest: +ELLIPSIS
+    ...     'addresses':relation(Address, backref='user', cascade="all, delete, delete-orphan")
+    ... })
+    <sqlalchemy.orm.mapper.Mapper object at 0x...>
+    
+    >>> mapper(Address, addresses_table) # doctest: +ELLIPSIS
+    <sqlalchemy.orm.mapper.Mapper object at 0x...>
+
+Now when we load Jack, removing an address from his `addresses` collection will result in that `Address` being deleted:
+
+    {python}
+    # load Jack by primary key
+    {sql}>>> jack = session.query(User).get(jack.id)    #doctest: +NORMALIZE_WHITESPACE
+    BEGIN
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.id = ? ORDER BY users.oid 
+    LIMIT 1 OFFSET 0
+    [5]
+    {stop}
+    
+    # remove one Address (lazy load fires off)
+    {sql}>>> del jack.addresses[1]  
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM addresses 
+    WHERE ? = addresses.user_id ORDER BY addresses.oid
+    [5]
+    {stop}
+    
+    # only one address remains
+    {sql}>>> session.query(Address).filter(
+    ...     Address.email_address.in_('jack@google.com', 'j25@yahoo.com')
+    ... ).count()
+    DELETE FROM addresses WHERE addresses.id = ?
+    [2]
+    SELECT count(addresses.id) 
+    FROM addresses 
+    WHERE addresses.email_address IN (?, ?)
+    ['jack@google.com', 'j25@yahoo.com']
+    {stop}1
+    
+Deleting Jack will delete both Jack and his remaining `Address`:
+
+    {python}
+    >>> session.delete(jack)
+    {sql}>>> session.commit()
+    DELETE FROM addresses WHERE addresses.id = ?
+    [1]
+    DELETE FROM users WHERE users.id = ?
+    [5]
+    COMMIT
+
+    {sql}>>> session.query(User).filter_by(name='jack').count()
+    BEGIN
+    SELECT count(users.id) 
+    FROM users 
+    WHERE users.name = ?
+    ['jack']
+    {stop}0
+    
+    {sql}>>> session.query(Address).filter(
+    ...    Address.email_address.in_('jack@google.com', 'j25@yahoo.com')
+    ... ).count()
+    SELECT count(addresses.id) 
+    FROM addresses 
+    WHERE addresses.email_address IN (?, ?)
+    ['jack@google.com', 'j25@yahoo.com']
+    {stop}0
+    

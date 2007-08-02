@@ -143,15 +143,15 @@ def replace_pre_with_mako(tree):
         # syntax highlighter which uses the tokenize module
         text = re.sub(r'>>> ', r'">>>" ', text)
 
-        sqlre = re.compile(r'{sql}(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?)\n\s*((?:{stop})|\n|$)', re.S)
+        sqlre = re.compile(r'{sql}(.*?)\n((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?)\n\s*((?:{stop})|\n|$)', re.S)
         if sqlre.search(text) is not None:
             use_sliders = False
         else:
             use_sliders = True
         
-        text = sqlre.sub(r"""${formatting.poplink()}\1\n<%call expr="formatting.codepopper()">\2</%call>\n\n""", text)
+        text = sqlre.sub(r"""${formatting.poplink()}\1<%call expr="formatting.codepopper()">\2</%call>""", text)
 
-        sqlre2 = re.compile(r'{opensql}(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|UPDATE|CREATE|DROP).*?)\n\s*((?:{stop})|\n|$)', re.S)
+        sqlre2 = re.compile(r'{opensql}(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|UPDATE|ROLLBACK|COMMIT|CREATE|DROP).*?)\n\s*((?:{stop})|\n|$)', re.S)
         text = sqlre2.sub(r"<%call expr='formatting.poppedcode()' >\1\n\2</%call>\n\n", text)
 
         tag = et.Element("MAKO:formatting.code", extension='extension', paged='paged', toc='toc')
@@ -177,6 +177,7 @@ def replace_pre_with_mako(tree):
             title = m.group(2)
             text = m.group(3)
             text = re.sub(r'{(python|code|diagram).*?}(\n\s*)?', '', text)
+            text = re.sub(r'\\', r'${r"\\\\" + "\\n"}', text)
             splice_code_tag(parents[precode], text, code=code, title=title)
         elif precode.text.lstrip().startswith('>>> '):
             splice_code_tag(parents[precode], precode.text)

@@ -73,11 +73,13 @@
 
                 if whitespace is not None or re.search(r"\w", line) is not None:
                     g += (line + "\n")
-
-
-            return g.rstrip()
+                else:
+                    g += "\n"
+            
+            return g #.rstrip()
         
         p = re.compile(r'<pre>(.*?)</pre>', re.S)
+        
         def hlight(match):
             return "<pre>" + highlight.highlight(fix_indent(match.group(1)), html_escape = html_escape, syntaxtype = syntaxtype) + "</pre>"
             

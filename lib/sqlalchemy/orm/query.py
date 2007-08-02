@@ -419,6 +419,9 @@ class Query(object):
 
         ops = {'distinct':self._distinct, 'order_by':self._order_by or None, 'from_obj':self._from_obj}
 
+        if self._autoflush and not self._populate_existing:
+            self.session._autoflush()
+
         if self._order_by is not False:
             s1 = sql.select([col], self._criterion, **ops).alias('u')
             return self.session.execute(sql.select([func(s1.corresponding_column(col))]), mapper=self.mapper).scalar()
@@ -791,6 +794,8 @@ class Query(object):
         else:
             primary_key = self.primary_key_columns
             s = sql.select([sql.func.count(list(primary_key)[0])], whereclause, from_obj=from_obj, **context.select_args())
+        if self._autoflush and not self._populate_existing:
+            self.session._autoflush()
         return self.session.scalar(s, params=self._params, mapper=self.mapper)
         
     def compile(self):

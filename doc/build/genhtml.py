@@ -15,7 +15,7 @@ files = [
     'index',
     'documentation',
     'intro',
-    'datamapping',
+    'ormtutorial',
     'adv_datamapping',
     'unitofwork',
     'sqlconstruction',
