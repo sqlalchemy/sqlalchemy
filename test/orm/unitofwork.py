@@ -13,7 +13,7 @@ from testlib import tables
 class UnitOfWorkTest(AssertMixin):
     def setUpAll(self):
         global Session
-        Session = sessionmaker(autoflush=True, transactional=True, enhance_classes=True, scope="thread")
+        Session = scoped_session(sessionmaker(autoflush=True, transactional=True), enhance_classes=True)
     def tearDownAll(self):
         global_extensions[:] = []
     def tearDown(self):

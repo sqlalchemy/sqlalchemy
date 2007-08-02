@@ -26,6 +26,7 @@ def _monkeypatch_session_method(name, ctx, class_):
         setattr(class_, name, do)
         
 def assign_mapper(ctx, class_, *args, **kwargs):
+    util.warn_deprecated("assign_mapper is deprecated. Use scoped_session() instead.")
     extension = kwargs.pop('extension', None)
     if extension is not None:
         extension = util.to_list(extension)

@@ -108,6 +108,12 @@ We're now ready to start talking to the database.  The ORM's "handle" to the dat
     >>> from sqlalchemy.orm import sessionmaker
     >>> Session = sessionmaker(bind=engine, autoflush=True, transactional=True)
 
+If you don't have an `Engine` yet, but want to define `Session`, define it without `bind`, and set the `bind` parameter later:
+
+    {python}
+    >>> Session = sessionmaker(autoflush=True, transactional=True)
+    >>> Session.configure(bind=engine)  # once engine is available
+    
 This `Session` class will create new `Session` objects which are bound to our database and have some various transactional characteristics.  Whenever you need to have a conversation with the database, you instantiate a `Session`:
 
     {python}
