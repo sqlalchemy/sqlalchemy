@@ -1060,6 +1060,11 @@ class CRUDTest(SQLTest):
             "INSERT INTO mytable (myid, name, description) VALUES (:myid, :name, :description)",
             checkparams = {'myid':3, 'name':'jack', 'description':'mydescription'}
         )
+        
+        self.runtest(
+            insert(table1, values={table1.c.myid : bindparam('userid')}).values({table1.c.name : bindparam('username')}),
+            "INSERT INTO mytable (myid, name) VALUES (:userid, :username)"
+        )
     
         
     def testinsertexpression(self):
@@ -1074,6 +1079,7 @@ class CRUDTest(SQLTest):
         self.runtest(update(table1, table1.c.myid == 12, values = {table1.c.myid : 9}), "UPDATE mytable SET myid=:myid, description=:description WHERE mytable.myid = :mytable_myid", params = {'mytable_myid': 12, 'myid': 9, 'description': 'test'})
         s = table1.update(table1.c.myid == 12, values = {table1.c.name : 'lala'})
         c = s.compile(parameters = {'mytable_id':9,'name':'h0h0'})
+        self.runtest(update(table1, table1.c.myid == 12, values = {table1.c.name : table1.c.myid}).values({table1.c.name:table1.c.name + 'foo'}), "UPDATE mytable SET name=(mytable.name || :mytable_name), description=:description WHERE mytable.myid = :mytable_myid", params = {'description':'test'})
         self.assert_(str(s) == str(c))
         
     def testupdateexpression(self):

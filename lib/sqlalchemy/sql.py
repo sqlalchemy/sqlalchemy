@@ -3376,6 +3376,18 @@ class Insert(_UpdateBase):
         else:
             return ()
 
+    def _copy_internals(self):
+        self.parameters = self.parameters.copy()
+
+    def values(self, v):
+        u = self._clone()
+        if u.parameters is None:
+            u.parameters = u._process_colparams(v)
+        else:
+            u.parameters = self.parameters.copy()
+            u.parameters.update(u._process_colparams(v))
+        return u
+        
 class Update(_UpdateBase):
     def __init__(self, table, whereclause, values=None):
         self.table = table
@@ -3388,6 +3400,19 @@ class Update(_UpdateBase):
         else:
             return ()
 
+    def _copy_internals(self):
+        self._whereclause = self._whereclause._clone()
+        self.parameters = self.parameters.copy()
+        
+    def values(self, v):
+        u = self._clone()
+        if u.parameters is None:
+            u.parameters = u._process_colparams(v)
+        else:
+            u.parameters = self.parameters.copy()
+            u.parameters.update(u._process_colparams(v))
+        return u
+
 class Delete(_UpdateBase):
     def __init__(self, table, whereclause):
         self.table = table
@@ -3398,6 +3423,9 @@ class Delete(_UpdateBase):
             return self._whereclause,
         else:
             return ()
+
+    def _copy_internals(self):
+        self._whereclause = self._whereclause._clone()
 
 class _IdentifiedClause(ClauseElement):
     def __init__(self, ident):
