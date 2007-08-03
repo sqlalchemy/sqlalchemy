@@ -8,4 +8,9 @@ from testlib.schema import Table, Column
 import testlib.testing as testing
 from testlib.testing import PersistTest, AssertMixin, ORMTest
 import testlib.profiling
+import testlib.engines
 
+
+__all__ = ('testing',
+           'Table', 'Column',
+           'PersistTest', 'AssertMixin', 'ORMTest')

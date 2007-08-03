@@ -5,6 +5,7 @@ import testbase
 from sqlalchemy import *
 from testlib import *
 
+
 class BindTest(PersistTest):
     def test_create_drop_explicit(self):
         metadata = MetaData()

@@ -5,13 +5,14 @@ import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import mapper, relation, create_session, eagerload
 from testlib import *
+from testlib.engines import utf8_engine
 
 
 class UnicodeSchemaTest(PersistTest):
     def setUpAll(self):
         global unicode_bind, metadata, t1, t2
 
-        unicode_bind = self._unicode_bind()
+        unicode_bind = utf8_engine()
 
         metadata = MetaData(unicode_bind)
         t1 = Table('unitable1', metadata,
@@ -34,16 +35,6 @@ class UnicodeSchemaTest(PersistTest):
         global unicode_bind
         metadata.drop_all()
         del unicode_bind
-
-    def _unicode_bind(self):
-        if testbase.db.name != 'mysql':
-            return testbase.db
-        else:
-            from sqlalchemy.databases import mysql
-            engine = create_engine(testbase.db.url,
-                                   connect_args={'charset': 'utf8',
-                                                 'use_unicode': False})
-            return engine
         
     def test_insert(self):
         t1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})

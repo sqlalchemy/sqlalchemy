@@ -1,10 +1,12 @@
 import testbase
-import optparse, os, sys, ConfigParser, StringIO
+import optparse, os, sys, ConfigParser, StringIO, time
 logging, require = None, None
+
 
 __all__ = 'parser', 'configure', 'options',
 
-db, db_uri, db_type, db_label = None, None, None, None
+db = None
+db_label, db_url, db_opts = None, None, {}
 
 options = None
 file_config = None
@@ -78,6 +80,13 @@ def _list_dbs(*args):
         print "%20s\t%s" % (macro, file_config.get('db', macro))
     sys.exit(0)
 
+def _server_side_cursors(options, opt_str, value, parser):
+    db_opts['server_side_cursors'] = True
+
+def _engine_strategy(options, opt_str, value, parser):
+    if value:
+        db_opts['strategy'] = value
+
 opt = parser.add_option
 opt("--verbose", action="store_true", dest="verbose",
     help="enable stdout echoing/printing")
@@ -96,12 +105,13 @@ opt("--dburi", action="store", dest="dburi",
     help="Database uri (overrides --db)")
 opt("--mockpool", action="store_true", dest="mockpool",
     help="Use mock pool (asserts only one connection used)")
-opt("--enginestrategy", action="store", dest="enginestrategy", default=None,
+opt("--enginestrategy", action="callback", type="string",
+    callback=_engine_strategy,
     help="Engine strategy (plain or threadlocal, defaults toplain)")
 opt("--reversetop", action="store_true", dest="reversetop", default=False,
     help="Reverse the collection ordering for topological sorts (helps "
           "reveal dependency issues)")
-opt("--serverside", action="store_true", dest="serverside",
+opt("--serverside", action="callback", callback=_server_side_cursors,
     help="Turn on server side cursors for PG")
 opt("--mysql-engine", action="store", dest="mysql_engine", default=None,
     help="Use the specified MySQL storage engine for all tables, default is "
@@ -132,23 +142,25 @@ class _ordered_map(object):
         for key in self._keys:
             yield self._data[key]
     
+# at one point in refactoring, modules were injecting into the config
+# process.  this could probably just become a list now.
 post_configure = _ordered_map()
 
 def _engine_uri(options, file_config):
-    global db_label, db_uri
+    global db_label, db_url
     db_label = 'sqlite'
     if options.dburi:
-        db_uri = options.dburi
-        db_label = db_uri[:db_uri.index(':')]
+        db_url = options.dburi
+        db_label = db_url[:db_url.index(':')]
     elif options.db:
         db_label = options.db
-        db_uri = None
+        db_url = None
 
-    if db_uri is None:
+    if db_url is None:
         if db_label not in file_config.options('db'):
             raise RuntimeError(
                 "Unknown engine.  Specify --dbs for known engines.")
-        db_uri = file_config.get('db', db_label)
+        db_url = file_config.get('db', db_label)
 post_configure['engine_uri'] = _engine_uri
 
 def _require(options, file_config):
@@ -177,36 +189,35 @@ def _require(options, file_config):
             pkg_resources.require(requirement)
 post_configure['require'] = _require
 
-def _create_testing_engine(options, file_config):
-    from sqlalchemy import engine, schema
-    global db, db_type
-    engine_opts = {}
-    if options.serverside:
-        engine_opts['server_side_cursors'] = True
-    
-    if options.enginestrategy is not None:
-        engine_opts['strategy'] = options.enginestrategy    
-
+def _engine_pool(options, file_config):
     if options.mockpool:
-        db = engine.create_engine(db_uri, poolclass=pool.AssertionPool,
-                                  **engine_opts)
-    else:
-        db = engine.create_engine(db_uri, **engine_opts)
-    db_type = db.name
+        from sqlalchemy import pool
+        db_opts['poolclass'] = pool.AssertionPool
+post_configure['engine_pool'] = _engine_pool
 
-    print "Dropping existing tables in database: " + db_uri
-    md = schema.MetaData(db, reflect=True)
-    md.drop_all()
-    
-    # decorate the dialect's create_execution_context() method
-    # to produce a wrapper
-    from testlib.testing import ExecutionContextWrapper
-
-    create_context = db.dialect.create_execution_context
-    def create_exec_context(*args, **kwargs):
-        return ExecutionContextWrapper(create_context(*args, **kwargs))
-    db.dialect.create_execution_context = create_exec_context
+def _create_testing_engine(options, file_config):
+    from testlib import engines
+    global db
+    db = engines.testing_engine(db_url, db_opts)
 post_configure['create_engine'] = _create_testing_engine
+
+def _prep_testing_database(options, file_config):
+    from sqlalchemy import schema
+
+    # also create alt schemas etc. here?
+    existing = db.table_names()
+    if existing:
+        print "Dropping existing tables in database: " + db_url
+        try:
+            print "Tables: %s" % ', '.join(existing)
+        except:
+            pass
+        print "Abort within 5 seconds..."
+        time.sleep(5)
+
+        md = schema.MetaData(db, reflect=True)
+        md.drop_all()
+post_configure['prep_db'] = _prep_testing_database
 
 def _set_table_options(options, file_config):
     import testlib.schema
