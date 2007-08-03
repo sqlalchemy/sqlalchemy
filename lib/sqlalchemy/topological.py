@@ -307,9 +307,9 @@ class QueueDependencySorter(object):
         for parent in edges.get_parents():
             traverse(parent)
 
-        for cycle in dict([(id(s), s) for s in cycles.values()]).values():
-            edgecollection = []
-            for edge in edges:
-                if edge[0] in cycle and edge[1] in cycle:
-                    edgecollection.append(edge)
+        # sets are not hashable, so uniquify with id
+        unique_cycles = dict([(id(s), s) for s in cycles.values()]).values()
+        for cycle in unique_cycles:
+            edgecollection = [edge for edge in edges
+                              if edge[0] in cycle and edge[1] in cycle]
             yield edgecollection
