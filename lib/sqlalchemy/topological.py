@@ -198,8 +198,8 @@ class QueueDependencySorter(object):
                 queue.append(n)
         cycles = {}
         output = []
-        while len(nodes) > 0:
-            if len(queue) == 0:
+        while nodes:
+            if not queue:
                 # edges remain but no edgeless nodes to remove; this indicates
                 # a cycle
                 if allow_all_cycles:
