@@ -566,7 +566,7 @@ Then apply an **option** to the query, indicating that we'd like `addresses` to 
     >>> jack.addresses
     [<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
     
-If you think that query is elaborate, it is !  But SQLAlchemy is just getting started.  Note that when using eager loading, *nothing* changes as far as the ultimate results returned.  The "loading strategy", as its called, is designed to be completely transparent in all cases, and is for optimization purposes only.  Any query criterion you use to load objects, including ordering, limiting, other joins, etc., should return identical results regardless of the combiantion of lazily- and eagerly- loaded relationships present.
+If you think that query is elaborate, it is !  But SQLAlchemy is just getting started.  Note that when using eager loading, *nothing* changes as far as the ultimate results returned.  The "loading strategy", as its called, is designed to be completely transparent in all cases, and is for optimization purposes only.  Any query criterion you use to load objects, including ordering, limiting, other joins, etc., should return identical results regardless of the combination of lazily- and eagerly- loaded relationships present.
 
 ## Querying with Joins {@name=joins}
 
@@ -599,8 +599,8 @@ Note that the `join()` construct has no problem figuring out the correct join co
 The easiest way to join is automatically, using the `join()` method on `Query`.  Just give this method the path from A to B, using the name of a mapped relationship directly:
 
     {python}
-    >>> query = session.query(User).join('addresses')
-    {sql}>>> query.filter(Address.email_address=='jack@google.com').all()
+    {sql}>>> session.query(User).join('addresses').\
+    ...     filter(Address.email_address=='jack@google.com').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users JOIN addresses ON users.id = addresses.user_id 
     WHERE addresses.email_address = ? ORDER BY users.oid
@@ -615,8 +615,9 @@ By "A to B", we mean a single relation name or a path of relations.  In our case
 Each time the `join()` is called on `Query`, the **joinpoint** of the query is moved to be that of the endpoint of the join.  As above, when we joined from `users_table` to `addresses_table`, all subsequent criterion used by `filter_by()` are against the `addresses` table.  When you `join()` again, the joinpoint starts back from the root.  We can also backtrack to the beginning explicitly using `reset_joinpoint()`.  This instruction will place the joinpoint back at the root `users` table, where subsequent `filter_by()` criterion are again against `users`:
 
     {python}
-    >>> query = session.query(User).join('addresses').filter_by(email_address='jack@google.com')
-    {sql}>>> query.reset_joinpoint().filter_by(name='jack').all()
+    {sql}>>> session.query(User).join('addresses').\
+    ...     filter_by(email_address='jack@google.com').\
+    ...     reset_joinpoint().filter_by(name='jack').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users JOIN addresses ON users.id = addresses.user_id 
     WHERE addresses.email_address = ? AND users.name = ? ORDER BY users.oid
@@ -626,8 +627,8 @@ Each time the `join()` is called on `Query`, the **joinpoint** of the query is m
 In all cases, we can get the `User` and the matching `Address` objects back at the same time, by telling the session we want both.  This returns the results as a list of tuples:
 
     {python}
-    >>> query = session.query(User).add_entity(Address).join('addresses')
-    {sql}>>> query.filter(Address.email_address=='jack@google.com').all()
+    {sql}>>> session.query(User).add_entity(Address).join('addresses').\
+    ...     filter(Address.email_address=='jack@google.com').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password, addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
     FROM users JOIN addresses ON users.id = addresses.user_id 
     WHERE addresses.email_address = ? ORDER BY users.oid
@@ -637,10 +638,9 @@ In all cases, we can get the `User` and the matching `Address` objects back at t
 Another common scenario is the need to join on the same table more than once.  For example, if we want to find a `User` who has two distinct email addresses, both `jack@google.com` as well as `j25@yahoo.com`, we need to join to the `Addresses` table twice.  SQLAlchemy does provide `Alias` objects which can accomplish this; but far easier is just to tell `join()` to alias for you:
 
     {python}
-    >>> query = session.query(User).join('addresses', aliased=True).\
-    ...     filter(Address.email_address=='jack@google.com').\
-    ...     join('addresses', aliased=True).filter(Address.email_address=='j25@yahoo.com')
-    {sql}>>> query.all()
+    {sql}>>> session.query(User).\
+    ...     join('addresses', aliased=True).filter(Address.email_address=='jack@google.com').\
+    ...     join('addresses', aliased=True).filter(Address.email_address=='j25@yahoo.com').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id JOIN addresses AS addresses_2 ON users.id = addresses_2.user_id 
     WHERE addresses_1.email_address = ? AND addresses_2.email_address = ? ORDER BY users.oid
@@ -651,7 +651,7 @@ The key thing which occured above is that our SQL criterion were **aliased** as 
 
 ## Deleting
 
-Lets try to delete `jack` and see how that goes.  We'll mark as deleted in the session, then we'll issue a `count` query to see that no rows remain:
+Let's try to delete `jack` and see how that goes.  We'll mark as deleted in the session, then we'll issue a `count` query to see that no rows remain:
 
     {python}
     >>> session.delete(jack)
@@ -808,7 +808,6 @@ First some new tables:
     )
     None
     COMMIT
-    <BLANKLINE>
     CREATE TABLE keywords (
         id INTEGER NOT NULL, 
         keyword VARCHAR(50) NOT NULL, 
@@ -817,7 +816,6 @@ First some new tables:
     )
     None
     COMMIT
-    <BLANKLINE>
     CREATE TABLE post_keywords (
         post_id INTEGER, 
         keyword_id INTEGER, 
