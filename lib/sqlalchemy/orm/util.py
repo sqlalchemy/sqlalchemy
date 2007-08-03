@@ -211,8 +211,7 @@ class AliasedClauses(object):
         return aliased_column
 
     def adapt_clause(self, clause):
-        return self.aliased_column(clause)
-#        return sql_util.ClauseAdapter(self.alias).traverse(clause, clone=True)
+        return sql_util.ClauseAdapter(self.alias).traverse(clause, clone=True)
     
     def _create_row_adapter(self):
         """Return a callable which, 

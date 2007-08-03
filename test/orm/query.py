@@ -421,6 +421,9 @@ class JoinTest(QueryTest):
         q = sess.query(User).join('addresses', aliased=True).filter(Address.email_address=='jack@bean.com')
         assert [User(id=7)] == q.all()
 
+        q = sess.query(User).join('addresses', aliased=True).filter(or_(Address.email_address=='jack@bean.com', Address.email_address=='fred@fred.com'))
+        assert [User(id=7), User(id=9)] == q.all()
+
         # test two aliasized paths, one to 'orders' and the other to 'orders','items'.
         # one row is returned because user 7 has order 3 and also has order 1 which has item 1
         # this tests a o2m join and a m2m join.
