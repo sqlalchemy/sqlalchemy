@@ -407,7 +407,7 @@ class InfoCompiler(ansisql.ANSICompiler):
         return ""
 
     def __visit_label(self, label):
-        if len(self.select_stack):
+        if self.select_stack:
             self.typemap.setdefault(label.name.lower(), label.obj.type)
         if self.strings[label.obj]:
             self.strings[label] = self.strings[label.obj] + " AS "  + label.name

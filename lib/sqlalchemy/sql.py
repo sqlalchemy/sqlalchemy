@@ -394,7 +394,7 @@ def case(whens, value=None, else_=None):
     whenlist = [ClauseList('WHEN', c, 'THEN', r, operator=None) for (c,r) in whens]
     if not else_ is None:
         whenlist.append(ClauseList('ELSE', else_, operator=None))
-    if len(whenlist):
+    if whenlist:
         type = list(whenlist[-1])[-1].type
     else:
         type = None
@@ -1051,7 +1051,7 @@ class ClauseElement(object):
     def execute(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``."""
 
-        if len(multiparams):
+        if multiparams:
             compile_params = multiparams[0]
         else:
             compile_params = params
@@ -1520,7 +1520,7 @@ class ColumnElement(Selectable, _CompareMixin):
         """)
 
     def _one_fkey(self):
-        if len(self._foreign_keys):
+        if self._foreign_keys:
             return list(self._foreign_keys)[0]
         else:
             return None
@@ -1668,7 +1668,7 @@ class FromClause(Selectable):
         return [self.oid_column]
 
     def count(self, whereclause=None, **params):
-        if len(self.primary_key):
+        if self.primary_key:
             col = list(self.primary_key)[0]
         else:
             col = list(self.columns)[0]
@@ -2772,7 +2772,7 @@ class TableClause(FromClause):
         raise NotImplementedError()
 
     def count(self, whereclause=None, **params):
-        if len(self.primary_key):
+        if self.primary_key:
             col = list(self.primary_key)[0]
         else:
             col = list(self.columns)[0]
@@ -2901,7 +2901,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
         # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
         for n, s in enumerate(selects):
-            if len(s._order_by_clause):
+            if s._order_by_clause:
                 s = s.order_by(None)
             # unions group from left to right, so don't group first select
             if n:

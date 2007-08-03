@@ -795,7 +795,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
         session = create_session()
 
         def append_child(parent, child):
-            if len(parent.children):
+            if parent.children:
                 parent.children[-1].next_sibling = child
                 child.prev_sibling = parent.children[-1]
             parent.children.append(child)

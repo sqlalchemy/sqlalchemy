@@ -281,7 +281,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
     def visit_label(self, label):
         labelname = self._truncated_identifier("colident", label.name)
         
-        if len(self.select_stack):
+        if self.select_stack:
             self.typemap.setdefault(labelname.lower(), label.obj.type)
             if isinstance(label.obj, sql._ColumnClause):
                 self.column_labels[label.obj._label] = labelname
@@ -299,7 +299,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         else:
             name = column.name
 
-        if len(self.select_stack):
+        if self.select_stack:
             # if we are within a visit to a Select, set up the "typemap"
             # for this column which is used to translate result set values
             self.typemap.setdefault(name.lower(), column.type)
@@ -358,13 +358,13 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         return self.process(clause.clause_expr)
 
     def visit_cast(self, cast, **kwargs):
-        if len(self.select_stack):
+        if self.select_stack:
             # not sure if we want to set the typemap here...
             self.typemap.setdefault("CAST", cast.type)
         return "CAST(%s AS %s)" % (self.process(cast.clause), self.process(cast.typeclause))
 
     def visit_function(self, func, **kwargs):
-        if len(self.select_stack):
+        if self.select_stack:
             self.typemap.setdefault(func.name, func.type)
         if not self.apply_function_parens(func):
             return ".".join(func.packagenames + [func.name])
@@ -544,7 +544,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
                 else:
                     whereclause = w
 
-        if len(froms):
+        if froms:
             text += " \nFROM "
             text += string.join(from_strings, ', ')
         else:
@@ -799,7 +799,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
 
         # On some DB order is significant: visit PK first, then the
         # other constraints (engine.ReflectionTest.testbasic failed on FB2)
-        if len(table.primary_key):
+        if table.primary_key:
             self.traverse_single(table.primary_key)
         for constraint in [c for c in table.constraints if c is not table.primary_key]:
             self.traverse_single(constraint)

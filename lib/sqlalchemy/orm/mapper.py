@@ -182,7 +182,7 @@ class Mapper(object):
             if getattr(klass, key).hasparent(obj, optimistic=optimistic):
                return False
         else:
-            if len(self.delete_orphans):
+            if self.delete_orphans:
                 if not has_identity(obj):
                     raise exceptions.FlushError("instance %s is an unsaved, pending instance and is an orphan (is not attached to %s)" %
                     (
@@ -1097,7 +1097,7 @@ class Mapper(object):
                             history = prop.get_history(obj, passive=True)
                             if history:
                                 a = history.added_items()
-                                if len(a):
+                                if a:
                                     if isinstance(a[0], sql.ClauseElement):
                                         value_params[col] = a[0]
                                     else:
@@ -1127,7 +1127,7 @@ class Mapper(object):
                 else:
                     insert.append((obj, params, mapper, connection, value_params))
 
-            if len(update):
+            if update:
                 mapper = table_to_mapper[table]
                 clause = sql.and_()
                 for col in mapper.pks_by_table[table]:
@@ -1155,7 +1155,7 @@ class Mapper(object):
                 if c.supports_sane_rowcount() and rows != len(update):
                     raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (rows, len(update)))
 
-            if len(insert):
+            if insert:
                 statement = table.insert()
                 def comparator(a, b):
                     return cmp(a[0]._sa_insert_order, b[0]._sa_insert_order)
@@ -1217,7 +1217,7 @@ class Mapper(object):
             elif v != params.get_original(c.key):
                 self.set_attr_by_column(obj, c, params.get_original(c.key))
         
-        if len(deferred_props):
+        if deferred_props:
             deferred_load(obj, props=deferred_props)
 
     def delete_obj(self, objects, uowtransaction):

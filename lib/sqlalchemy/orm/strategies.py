@@ -351,7 +351,7 @@ class LazyLoader(AbstractRelationLoader):
             if self.uselist:
                 return result
             else:
-                if len(result):
+                if result:
                     return result[0]
                 else:
                     return None

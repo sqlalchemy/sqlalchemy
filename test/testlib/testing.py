@@ -394,7 +394,7 @@ def runTests(suite):
 
 def main(suite=None):
     if not suite:
-        if len(sys.argv[1:]):
+        if sys.argv[1:]:
             suite =unittest.TestLoader().loadTestsFromNames(
                 sys.argv[1:], __import__('__main__'))
         else:

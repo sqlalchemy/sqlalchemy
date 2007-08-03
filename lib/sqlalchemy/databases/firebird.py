@@ -318,7 +318,7 @@ class FBCompiler(ansisql.ANSICompiler):
             return self.process(alias.original, asfrom=True)
 
     def visit_function(self, func):
-        if len(func.clauses):
+        if func.clauses:
             return super(FBCompiler, self).visit_function(func)
         else:
             return func.name

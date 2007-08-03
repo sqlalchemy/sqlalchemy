@@ -144,7 +144,7 @@ class _TableSingleton(sql._FigureVisitName):
         key = _get_table_key(name, schema)
         try:
             table = metadata.tables[key]
-            if len(args):
+            if args:
                 if not useexisting:
                     raise exceptions.ArgumentError("Table '%s' is already defined for this MetaData instance." % key)
             return table
@@ -526,7 +526,7 @@ class Column(SchemaItem, sql._ColumnClause):
         self.constraints = util.Set()
         self.__originating_column = self
         self._foreign_keys = util.OrderedSet()
-        if len(kwargs):
+        if kwargs:
             raise exceptions.ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
     primary_key = util.SimpleProperty('_primary_key')

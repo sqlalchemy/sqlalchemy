@@ -1136,7 +1136,7 @@ class MySQLDialect(ansisql.ANSIDialect):
                 ssl[key[4:]] = opts[key]
                 util.coerce_kw_type(ssl, key[4:], str)
                 del opts[key]
-        if len(ssl):
+        if ssl:
             opts['ssl'] = ssl
         
         # FOUND_ROWS must be set in CLIENT_FLAGS to enable

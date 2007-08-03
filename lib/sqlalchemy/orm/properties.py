@@ -422,7 +422,7 @@ class PropertyLoader(StrategizedProperty):
                     self.target.corresponding_column(col, raiseerr=False) is not None or \
                     self.secondary.corresponding_column(col, raiseerr=False) is not None
 
-        if len(self.foreign_keys):
+        if self.foreign_keys:
             self._opposite_side = util.Set()
             def visit_binary(binary):
                 if binary.operator != operator.eq or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
@@ -485,7 +485,7 @@ class PropertyLoader(StrategizedProperty):
                     else:
                         self.direction = sync.MANYTOONE
 
-            elif len(self.remote_side):
+            elif self.remote_side:
                 for f in self.foreign_keys:
                     if f in self.remote_side:
                         self.direction = sync.ONETOMANY

@@ -1274,7 +1274,7 @@ class ManyToManyTest(UnitOfWorkTest):
             objects.append(item)
             item.item_name = elem['item_name']
             item.keywords = []
-            if len(elem['keywords'][1]):
+            if elem['keywords'][1]:
                 klist = Session.query(keywordmapper).select(keywords.c.name.in_(*[e['name'] for e in elem['keywords'][1]]))
             else:
                 klist = []

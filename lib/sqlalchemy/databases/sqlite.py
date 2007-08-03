@@ -331,7 +331,7 @@ class SQLiteCompiler(ansisql.ANSICompiler):
         if self.dialect.supports_cast:
             return super(SQLiteCompiler, self).visit_cast(cast)
         else:
-            if len(self.select_stack):
+            if self.select_stack:
                 # not sure if we want to set the typemap here...
                 self.typemap.setdefault("CAST", cast.type)
             return self.process(cast.clause)

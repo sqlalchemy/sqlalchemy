@@ -61,7 +61,7 @@ class URL(object):
             s += ':' + str(self.port)
         if self.database is not None:
             s += '/' + self.database
-        if len(self.query):
+        if self.query:
             keys = self.query.keys()
             keys.sort()
             s += '?' + "&".join(["%s=%s" % (k, self.query[k]) for k in keys])

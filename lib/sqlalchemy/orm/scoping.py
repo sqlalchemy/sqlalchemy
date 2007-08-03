@@ -25,7 +25,7 @@ class ScopedSession(object):
             global_extensions.append(_ScopedExt(self))
 
     def __call__(self, **kwargs):
-        if len(kwargs):
+        if kwargs:
             scope = kwargs.pop('scope', False)
             if scope is not None:
                 if self.registry.has():

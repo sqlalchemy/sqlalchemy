@@ -26,7 +26,7 @@ class UOWDumper(unitofwork.UOWExecutor):
         self.headers = {}
         try:
             i = self._indent()
-            if len(i):
+            if i:
                 i += "-"
                 #i = i[0:-1] + "-"
             self.buf.write(self._indent() + "\n")
