@@ -4,7 +4,6 @@ from sqlalchemy.orm import *
 from testlib import *
 from testlib.tables import *
 import testlib.tables as tables
-from sqlalchemy.orm.session import Session
 
 class SessionTest(AssertMixin):
     def setUpAll(self):
@@ -98,7 +97,7 @@ class SessionTest(AssertMixin):
         conn1 = testbase.db.connect()
         conn2 = testbase.db.connect()
         
-        sess = Session(bind=conn1, transactional=True, autoflush=True)
+        sess = create_session(bind=conn1, transactional=True, autoflush=True)
         u = User()
         u.user_name='ed'
         sess.save(u)
@@ -116,7 +115,7 @@ class SessionTest(AssertMixin):
         mapper(User, users)
 
         try:
-            sess = Session(transactional=True, autoflush=True)
+            sess = create_session(transactional=True, autoflush=True)
             u = User()
             u.user_name='ed'
             sess.save(u)
@@ -137,7 +136,7 @@ class SessionTest(AssertMixin):
         conn1 = testbase.db.connect()
         conn2 = testbase.db.connect()
         
-        sess = Session(bind=conn1, transactional=True, autoflush=True)
+        sess = create_session(bind=conn1, transactional=True, autoflush=True)
         u = User()
         u.user_name='ed'
         sess.save(u)
@@ -153,7 +152,7 @@ class SessionTest(AssertMixin):
             'addresses':relation(Address)
         })
         
-        sess = Session(transactional=True, autoflush=True)
+        sess = create_session(transactional=True, autoflush=True)
         u = sess.query(User).get(8)
         newad = Address()
         newad.email_address == 'something new'
@@ -173,7 +172,7 @@ class SessionTest(AssertMixin):
         mapper(User, users)
         conn = testbase.db.connect()
         trans = conn.begin()
-        sess = Session(conn, transactional=True, autoflush=True)
+        sess = create_session(bind=conn, transactional=True, autoflush=True)
         sess.begin() 
         u = User()
         sess.save(u)
@@ -189,7 +188,7 @@ class SessionTest(AssertMixin):
         try:
             conn = testbase.db.connect()
             trans = conn.begin()
-            sess = Session(conn, transactional=True, autoflush=True)
+            sess = create_session(bind=conn, transactional=True, autoflush=True)
             u1 = User()
             sess.save(u1)
             sess.flush()
@@ -217,7 +216,7 @@ class SessionTest(AssertMixin):
         mapper(Address, addresses)
         
         engine2 = create_engine(testbase.db.url)
-        sess = Session(transactional=False, autoflush=False, twophase=True)
+        sess = create_session(transactional=False, autoflush=False, twophase=True)
         sess.bind_mapper(User, testbase.db)
         sess.bind_mapper(Address, engine2)
         sess.begin()
@@ -234,7 +233,7 @@ class SessionTest(AssertMixin):
     def test_joined_transaction(self):
         class User(object):pass
         mapper(User, users)
-        sess = Session(transactional=True, autoflush=True)
+        sess = create_session(transactional=True, autoflush=True)
         sess.begin()  
         u = User()
         sess.save(u)
@@ -440,6 +439,75 @@ class SessionTest(AssertMixin):
         key = s.identity_key(User, row=row, entity_name="en")
         self._assert_key(key, (User, (1,), "en"))
         
+class ScopedSessionTest(PersistTest):
+    def setUpAll(self):
+        global metadata, table, table2
+        metadata = MetaData(testbase.db)
+        table = Table('sometable', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+        table2 = Table('someothertable', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('someid', None, ForeignKey('sometable.id'))
+            )
+        metadata.create_all()
+
+    def setUp(self):
+        global SomeObject, SomeOtherObject
+        class SomeObject(object):pass
+        class SomeOtherObject(object):pass
         
+        global Session
+        
+        Session = scoped_session(create_session)
+        Session.mapper(SomeObject, table, properties={
+            'options':relation(SomeOtherObject)
+        })
+        Session.mapper(SomeOtherObject, table2)
+
+        s = SomeObject()
+        s.id = 1
+        s.data = 'hello'
+        sso = SomeOtherObject()
+        s.options.append(sso)
+        Session.flush()
+        Session.clear()
+
+    def tearDownAll(self):
+        metadata.drop_all()
+        
+    def tearDown(self):
+        for table in metadata.table_iterator(reverse=True):
+            table.delete().execute()
+        clear_mappers()
+
+    def test_query(self):
+        sso = SomeOtherObject.query().first()
+        assert SomeObject.query.filter_by(id=1).one().options[0].id == sso.id
+
+    def test_validating_constructor(self):
+        s2 = SomeObject(someid=12)
+        s3 = SomeOtherObject(someid=123, bogus=345)
+
+        class ValidatedOtherObject(object):pass
+        Session.mapper(ValidatedOtherObject, table2, validate=True)
+
+        v1 = ValidatedOtherObject(someid=12)
+        try:
+            v2 = ValidatedOtherObject(someid=12, bogus=345)
+            assert False
+        except exceptions.ArgumentError:
+            pass
+
+    def test_dont_clobber_methods(self):
+        class MyClass(object):
+            def expunge(self):
+                return "an expunge !"
+
+        Session.mapper(MyClass, table2)
+
+        assert MyClass().expunge() == "an expunge !"
+    
+
 if __name__ == "__main__":    
     testbase.main()

@@ -1,4 +1,4 @@
-from sqlalchemy.util import ScopedRegistry, warn_deprecated
+from sqlalchemy.util import ScopedRegistry, warn_deprecated, to_list
 from sqlalchemy.orm import MapperExtension, EXT_CONTINUE
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.mapper import global_extensions
@@ -13,16 +13,21 @@ class ScopedSession(object):
 
     Usage::
 
-      Session = scoped_session(sessionmaker(autoflush=True), enhance_classes=True)
+      Session = scoped_session(sessionmaker(autoflush=True))
+      
+      To map classes so that new instances are saved in the current
+      Session automatically, as well as to provide session-aware
+      class attributes such as "query":
+      
+      mapper = Session.mapper
+      mapper(Class, table, ...)
 
     """
 
-    def __init__(self, session_factory, scopefunc=None, enhance_classes=False):
+    def __init__(self, session_factory, scopefunc=None):
         self.session_factory = session_factory
-        self.enhance_classes = enhance_classes
         self.registry = ScopedRegistry(session_factory, scopefunc)
-        if self.enhance_classes:
-            global_extensions.append(_ScopedExt(self))
+        self.extension = _ScopedExt(self)
 
     def __call__(self, **kwargs):
         if kwargs:
@@ -39,15 +44,28 @@ class ScopedSession(object):
         else:
             return self.registry()
 
+    def mapper(self, *args, **kwargs):
+        """return a mapper() function which associates this ScopedSession with the Mapper."""
+        
+        from sqlalchemy.orm import mapper
+        validate = kwargs.pop('validate', False)
+        extension = to_list(kwargs.setdefault('extension', []))
+        if validate:
+            extension.append(self.extension.validating())
+        else:
+            extension.append(self.extension)
+        return mapper(*args, **kwargs)
+        
     def configure(self, **kwargs):
-        """reconfigure the sessionmaker used by this SessionContext"""
+        """reconfigure the sessionmaker used by this ScopedSession."""
+        
         self.session_factory.configure(**kwargs)
 
 def instrument(name):
     def do(self, *args, **kwargs):
         return getattr(self.registry(), name)(*args, **kwargs)
     return do
-for meth in ('get', 'close', 'save', 'commit', 'update', 'flush', 'query', 'delete'):
+for meth in ('get', 'close', 'save', 'commit', 'update', 'flush', 'query', 'delete', 'clear'):
     setattr(ScopedSession, meth, instrument(meth))
 
 def makeprop(name):
@@ -67,18 +85,22 @@ for prop in ('close_all',):
     setattr(ScopedSession, prop, clslevel(prop))
     
 class _ScopedExt(MapperExtension):
-    def __init__(self, context):
+    def __init__(self, context, validate=False):
         self.context = context
+        self.validate = validate
+    
+    def validating(self):
+        return _ScopedExt(self.context, validate=True)
         
     def get_session(self):
         return self.context.registry()
 
     def instrument_class(self, mapper, class_):
         class query(object):
-            def __getattr__(self, key):
-                return getattr(registry().query(class_), key)
-            def __call__(self):
-                return registry().query(class_)
+            def __getattr__(s, key):
+                return getattr(self.context.registry().query(class_), key)
+            def __call__(s):
+                return self.context.registry().query(class_)
 
         if not hasattr(class_, 'query'): 
             class_.query = query()
@@ -87,9 +109,9 @@ class _ScopedExt(MapperExtension):
         session = kwargs.pop('_sa_session', self.context.registry())
         if not isinstance(oldinit, types.MethodType):
             for key, value in kwargs.items():
-                #if validate:
-                #    if not self.mapper.get_property(key, resolve_synonyms=False, raiseerr=False):
-                #        raise exceptions.ArgumentError("Invalid __init__ argument: '%s'" % key)
+                if self.validate:
+                    if not mapper.get_property(key, resolve_synonyms=False, raiseerr=False):
+                        raise exceptions.ArgumentError("Invalid __init__ argument: '%s'" % key)
                 setattr(instance, key, value)
         session._save_impl(instance, entity_name=kwargs.pop('_sa_entity_name', None))
         return EXT_CONTINUE

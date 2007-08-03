@@ -12,8 +12,9 @@ from testlib import tables
 
 class UnitOfWorkTest(AssertMixin):
     def setUpAll(self):
-        global Session
-        Session = scoped_session(sessionmaker(autoflush=True, transactional=True), enhance_classes=True)
+        global Session, mapper
+        Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
+        mapper = Session.mapper
     def tearDownAll(self):
         global_extensions[:] = []
     def tearDown(self):
