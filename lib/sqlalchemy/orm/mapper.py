@@ -414,7 +414,7 @@ class Mapper(object):
         # may be a join or other construct
         self.tables = sqlutil.TableFinder(self.mapped_table)
 
-        if not len(self.tables):
+        if not self.tables:
             raise exceptions.InvalidRequestError("Could not find any Table objects in mapped table '%s'" % str(self.mapped_table))
 
         # determine primary key columns
@@ -538,7 +538,7 @@ class Mapper(object):
                 vis.traverse(mapper.inherit_condition)
 
         for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
-            if not len(col.foreign_keys):
+            if not col.foreign_keys:
                 result.setdefault(col, util.Set()).add(col)
             else:
                 for fk in col.foreign_keys:

@@ -427,7 +427,7 @@ class OracleDialect(ansisql.ANSIDialect):
 
             table.append_column(schema.Column(colname, coltype, nullable=nullable, *colargs))
 
-        if not len(table.columns):
+        if not table.columns:
            raise exceptions.AssertionError("Couldn't find any column information for table %s" % actual_name)
 
         c = connection.execute("""SELECT

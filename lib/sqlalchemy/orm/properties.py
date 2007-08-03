@@ -520,7 +520,7 @@ class PropertyLoader(StrategizedProperty):
                     "argument." % (str(self)))
 
     def _determine_remote_side(self):
-        if not len(self.remote_side):
+        if not self.remote_side:
             if self.direction is sync.MANYTOONE:
                 self.remote_side = util.Set(self._opposite_side)
             elif self.direction is sync.ONETOMANY or self.direction is sync.MANYTOMANY:
@@ -720,7 +720,7 @@ def deferred_load(instance, props):
 
     """
 
-    if not len(props):
+    if not props:
         return
     column_props = [p for p in props if isinstance(p, ColumnProperty)]
     callable_ = column_props[0]._get_strategy(strategies.DeferredColumnLoader).setup_loader(instance, props=column_props)

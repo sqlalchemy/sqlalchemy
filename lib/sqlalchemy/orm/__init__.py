@@ -483,7 +483,7 @@ def compile_mappers():
     This is equivalent to calling ``compile()`` on any individual mapper.
     """
 
-    if not len(mapper_registry):
+    if not mapper_registry:
         return
     mapper_registry.values()[0].compile()
 

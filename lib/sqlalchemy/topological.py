@@ -137,7 +137,7 @@ class _EdgeCollection(object):
         if children is not None:
             for child in children:
                 self.child_to_parents[child].remove(node)
-                if not len(self.child_to_parents[child]):
+                if not self.child_to_parents[child]:
                     yield child
 
     def __len__(self):
@@ -237,7 +237,7 @@ class QueueDependencySorter(object):
         set as siblings to each other as possible.
         """
 
-        if not len(nodes):
+        if not nodes:
             return None
         # a list of all currently independent subtrees as a tuple of
         # (root_node, set_of_all_tree_nodes, set_of_all_cycle_nodes_in_tree)
