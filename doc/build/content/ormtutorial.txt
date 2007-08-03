@@ -374,9 +374,10 @@ Note that when we use constructed SQL expressions, bind paramters are generated 
 To use an entirely string-based statement, using `from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (below illustrated using an asterisk):
 
     {python}
-    {sql}>>> result = session.query(User).from_statement("SELECT * FROM users").all()
-    SELECT * FROM users
-    []
+    {sql}>>> session.query(User).from_statement("SELECT * FROM users where name=:name").params(name='ed').all()
+    SELECT * FROM users where name=?
+    ['ed']
+    {stop}[<User('ed','Ed Jones', 'f8s7ccs')>]
 
 `from_statement()` can also accomodate full `select()` constructs.  These are described in the [sql](rel:sql):
 
@@ -410,7 +411,7 @@ There's also a way to combine scalar results with objects, using `add_column()`.
     (<User('mary','Mary Contrary', 'xxg527')>, u'wendy')
     (<User('fred','Fred Flinstone', 'blah')>, u'wendy')
 
-## Building a One-to-Many Relation
+## Building a One-to-Many Relation {@name=onetomany}
 
 We've spent a lot of time dealing with just one class, and one table.  Let's now look at how SQLAlchemy deals with two tables, which have a relationship to each other.   Let's say that the users in our system also can store any number of email addresses associated with their username.  This implies a basic one to many association from the `users_table` to a new table which stores email addresess, which we will call `addresses`.  We will also create a relationship between this new table to the users table, using a `ForeignKey`:
 
@@ -764,7 +765,7 @@ Deleting Jack will delete both Jack and his remaining `Address`:
     ['jack@google.com', 'j25@yahoo.com']
     {stop}0
 
-## Building a Many To Many Relation
+## Building a Many To Many Relation {@name=manytomany}
 
 We're moving into the bonus round here, but lets show off a many-to-many relationship.  We'll sneak in some other features too, just to take a tour.  We'll make our application a blog application, where users can write `BlogPost`s, which have `Keywords` associated with them.
 
