@@ -482,7 +482,7 @@ class ClauseAttributesTest(UnitOfWorkTest):
         sess.save(u)
         sess.flush()
         assert u.counter == 1
-        u.counter = users_table.c.counter + 1
+        u.counter = User.counter + 1
         sess.flush()
         def go():
             assert u.counter == 2
@@ -498,7 +498,7 @@ class ClauseAttributesTest(UnitOfWorkTest):
         sess.flush()
         assert u.counter == 1
         u.name = 'test2'
-        u.counter = users_table.c.counter + 1
+        u.counter = User.counter + 1
         sess.flush()
         def go():
             assert u.name == 'test2'
