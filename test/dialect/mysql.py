@@ -8,6 +8,40 @@ class TypesTest(AssertMixin):
     "Test MySQL column types"
 
     @testing.supported('mysql')
+    def test_basic(self):
+        meta1 = MetaData(testbase.db)
+        table = Table(
+            'mysql_types', meta1,
+            Column('id', Integer, primary_key=True),
+            Column('num1', mysql.MSInteger(unsigned=True)),
+            Column('text1', mysql.MSLongText),
+            Column('text2', mysql.MSLongText()),
+            Column('num2', mysql.MSBigInteger),
+            Column('num3', mysql.MSBigInteger()),
+            Column('num4', mysql.MSDouble),
+            Column('num5', mysql.MSDouble()),
+            Column('enum1', mysql.MSEnum('"black"', '"white"')),
+            )
+        try:
+            table.drop(checkfirst=True)
+            table.create()
+            meta2 = MetaData(testbase.db)
+            t2 = Table('mysql_types', meta2, autoload=True)
+            assert isinstance(t2.c.num1.type, mysql.MSInteger)
+            assert t2.c.num1.type.unsigned
+            assert isinstance(t2.c.text1.type, mysql.MSLongText)
+            assert isinstance(t2.c.text2.type, mysql.MSLongText)
+            assert isinstance(t2.c.num2.type, mysql.MSBigInteger)
+            assert isinstance(t2.c.num3.type, mysql.MSBigInteger)
+            assert isinstance(t2.c.num4.type, mysql.MSDouble)
+            assert isinstance(t2.c.num5.type, mysql.MSDouble)
+            assert isinstance(t2.c.enum1.type, mysql.MSEnum)
+            t2.drop()
+            t2.create()
+        finally:
+            meta1.drop_all()
+
+    @testing.supported('mysql')
     def test_numeric(self):
         "Exercise type specification and options for numeric types."
         
@@ -134,6 +168,7 @@ class TypesTest(AssertMixin):
         numeric_table.drop()
     
     @testing.supported('mysql')
+    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_charset(self):
         """Exercise CHARACTER SET and COLLATE-related options on string-type
         columns."""
@@ -282,11 +317,8 @@ class TypesTest(AssertMixin):
         enum_table.drop()
 
     @testing.supported('mysql')
+    @testing.exclude('mysql', '<', (5, 0, 0))
     def test_type_reflection(self):
-        # FIXME: older versions need their own test
-        if testbase.db.dialect.get_version_info(testbase.db) < (5, 0):
-            return
-
         # (ask_for, roundtripped_as_if_different)
         specs = [( String(), mysql.MSText(), ),
                  ( String(1), mysql.MSString(1), ),
@@ -331,38 +363,6 @@ class TypesTest(AssertMixin):
 
         m.drop_all()
 
-class CharsetHelperTest(PersistTest):
-    @testing.supported('mysql')
-    def test_basic(self):
-        if testbase.db.dialect.get_version_info(testbase.db) < (4, 1):
-            return
-
-        helper = mysql.MySQLCharsetOnConnect('utf8')
-
-        e = create_engine(testbase.db.url, listeners=[helper])
-
-        rs = e.execute("SHOW VARIABLES LIKE 'character_set%%'")
-        vars = dict([(row[0], row[1]) for row in mysql._compat_fetchall(rs)])
-        self.assert_(vars['character_set_client'] == 'utf8')
-        self.assert_(vars['character_set_connection'] == 'utf8')
-
-        helper.charset = 'latin1'
-        e.pool.dispose()
-        rs = e.execute("SHOW VARIABLES LIKE 'character_set%%'")
-        vars = dict([(row[0], row[1]) for row in mysql._compat_fetchall(rs)])
-        self.assert_(vars['character_set_client'] == 'latin1')
-        self.assert_(vars['character_set_connection'] == 'latin1')
-
-        helper.charset = 'utf8'
-        helper.collation = 'utf8_bin'
-        e.pool.dispose()
-        rs = e.execute("SHOW VARIABLES LIKE 'character_set%%'")
-        vars = dict([(row[0], row[1]) for row in mysql._compat_fetchall(rs)])
-        self.assert_(vars['character_set_client'] == 'utf8')
-        self.assert_(vars['character_set_connection'] == 'utf8')
-        rs = e.execute("SHOW VARIABLES LIKE 'collation%%'")
-        vars = dict([(row[0], row[1]) for row in mysql._compat_fetchall(rs)])
-        self.assert_(vars['collation_connection'] == 'utf8_bin')
 
 if __name__ == "__main__":
     testbase.main()

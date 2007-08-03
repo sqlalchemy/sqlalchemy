@@ -26,8 +26,9 @@ class UnicodeSchemaTest(PersistTest):
         metadata.create_all()
 
     def tearDown(self):
-        t2.delete().execute()
-        t1.delete().execute()
+        if metadata.tables:
+            t2.delete().execute()
+            t1.delete().execute()
         
     def tearDownAll(self):
         global unicode_bind
@@ -38,20 +39,10 @@ class UnicodeSchemaTest(PersistTest):
         if testbase.db.name != 'mysql':
             return testbase.db
         else:
-            # most mysql installations don't default to utf8 connections
-            version = testbase.db.dialect.get_version_info(testbase.db)
-            if version < (4, 1):
-                raise AssertionError("Unicode not supported on MySQL < 4.1")
-
-            c = testbase.db.connect()
-            if not hasattr(c.connection.connection, 'set_character_set'):
-                raise AssertionError(
-                    "Unicode not supported on this MySQL-python version")
-            else: 
-                c.connection.set_character_set('utf8')
-                c.detach()
-
-            return c
+            from sqlalchemy.databases import mysql
+            engine = create_engine(testbase.db.url,
+                                   connect_args={'charset': 'utf8',
+                                                 'use_unicode': False})
         
     def test_insert(self):
         t1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})
@@ -64,15 +55,19 @@ class UnicodeSchemaTest(PersistTest):
         t1.insert().execute({u'méil':2, u'\u6e2c\u8a66':7})
         t2.insert().execute({'a':2, 'b':2})
 
-        meta = MetaData(unicode_bind)
-        tt1 = Table(t1.name, meta, autoload=True)
-        tt2 = Table(t2.name, meta, autoload=True)
+        meta = MetaData(unicode_bind, reflect=True)
+        tt1 = meta.tables[t1.name]
+        tt2 = meta.tables[t2.name]
 
         tt1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})
         tt2.insert().execute({u'méil':1, u'\u6e2c\u8a66':1})
 
-        assert tt1.select(order_by=desc(u'méil')).execute().fetchall() == [(2, 7), (1, 5)]
-        assert tt2.select(order_by=desc(u'méil')).execute().fetchall() == [(2, 2), (1, 1)]
+        self.assert_(tt1.select(order_by=desc(u'méil')).execute().fetchall() ==
+                     [(2, 7), (1, 5)])
+        self.assert_(tt2.select(order_by=desc(u'méil')).execute().fetchall() ==
+                     [(2, 2), (1, 1)])
+        meta.drop_all()
+        metadata.create_all()
         
     def test_mapping(self):
         # TODO: this test should be moved to the ORM tests, tests should be

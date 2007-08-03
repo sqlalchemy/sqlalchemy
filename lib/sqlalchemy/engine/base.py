@@ -148,6 +148,11 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def server_version_info(self, connection):
+        """Return a tuple of the database's version number."""
+
+        raise NotImplementedError()
+
     def reflecttable(self, connection, table, include_columns=None):
         """Load table description from the database.
 

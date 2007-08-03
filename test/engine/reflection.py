@@ -4,19 +4,16 @@ import pickle, StringIO
 from sqlalchemy import *
 import sqlalchemy.ansisql as ansisql
 from sqlalchemy.exceptions import NoSuchTableError
-import sqlalchemy.databases.mysql as mysql
 from testlib import *
 
 
 class ReflectionTest(PersistTest):
+
+    @testing.exclude('mysql', '<', (4, 1, 1))
     def testbasic(self):
         use_function_defaults = testbase.db.engine.name == 'postgres' or testbase.db.engine.name == 'oracle'
         
         use_string_defaults = use_function_defaults or testbase.db.engine.__module__.endswith('sqlite')
-
-        if (testbase.db.engine.name == 'mysql' and
-            testbase.db.dialect.get_version_info(testbase.db) < (4, 1, 1)):
-            return
 
         if use_function_defaults:
             defval = func.current_date()
@@ -94,12 +91,6 @@ class ReflectionTest(PersistTest):
         users.create()
         addresses.create()
         try:
-            # create a join from the two tables, this ensures that
-            # theres a foreign key set up
-            # previously, we couldnt get foreign keys out of mysql.  seems like
-            # we can now as long as we use InnoDB
-#            if testbase.db.engine.__module__.endswith('mysql'):
- #               addresses.c.remote_user_id.append_item(ForeignKey('engine_users.user_id'))
             print users
             print addresses
             j = join(users, addresses)
@@ -228,41 +219,6 @@ class ReflectionTest(PersistTest):
 
         finally:
             meta.drop_all()
-            
-    @testing.supported('mysql')
-    def testmysqltypes(self):
-        meta1 = MetaData(testbase.db)
-        table = Table(
-            'mysql_types', meta1,
-            Column('id', Integer, primary_key=True),
-            Column('num1', mysql.MSInteger(unsigned=True)),
-            Column('text1', mysql.MSLongText),
-            Column('text2', mysql.MSLongText()),
-            Column('num2', mysql.MSBigInteger),
-            Column('num3', mysql.MSBigInteger()),
-            Column('num4', mysql.MSDouble),
-            Column('num5', mysql.MSDouble()),
-            Column('enum1', mysql.MSEnum('"black"', '"white"')),
-            )
-        try:
-            table.drop(checkfirst=True)
-            table.create()
-            meta2 = MetaData(testbase.db)
-            t2 = Table('mysql_types', meta2, autoload=True)
-            assert isinstance(t2.c.num1.type, mysql.MSInteger)
-            assert t2.c.num1.type.unsigned
-            assert isinstance(t2.c.text1.type, mysql.MSLongText)
-            assert isinstance(t2.c.text2.type, mysql.MSLongText)
-            assert isinstance(t2.c.num2.type, mysql.MSBigInteger)
-            assert isinstance(t2.c.num3.type, mysql.MSBigInteger)
-            assert isinstance(t2.c.num4.type, mysql.MSDouble)
-            assert isinstance(t2.c.num5.type, mysql.MSDouble)
-            assert isinstance(t2.c.enum1.type, mysql.MSEnum)
-            t2.drop()
-            t2.create()
-        finally:
-            table.drop(checkfirst=True)
-            
     
     def test_pks_not_uniques(self):
         """test that primary key reflection not tripped up by unique indexes"""
@@ -346,14 +302,11 @@ class ReflectionTest(PersistTest):
             testbase.db.execute("drop table django_admin_log")
             testbase.db.execute("drop table django_content_type")
 
+    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_composite_fk(self):
         """test reflection of composite foreign keys"""
 
-        if (testbase.db.engine.name == 'mysql' and
-            testbase.db.dialect.get_version_info(testbase.db) < (4, 1, 1)):
-            return
         meta = MetaData(testbase.db)
-
         table = Table(
             'multi', meta, 
             Column('multi_id', Integer, primary_key=True),
@@ -389,6 +342,7 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
 
+    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_to_metadata(self):
         meta = MetaData()
         
@@ -397,13 +351,13 @@ class ReflectionTest(PersistTest):
             Column('name', String(40), nullable=False),
             Column('description', String(30), CheckConstraint("description='hi'")),
             UniqueConstraint('name'),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
         )
         
         table2 = Table('othertable', meta,
             Column('id', Integer, primary_key=True),
             Column('myid', Integer, ForeignKey('mytable.myid')),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
             )
         
         def test_to_metadata():
@@ -413,7 +367,7 @@ class ReflectionTest(PersistTest):
             return (table_c, table2_c)
             
         def test_pickle():
-            meta.connect(testbase.db)
+            meta.bind = testbase.db
             meta2 = pickle.loads(pickle.dumps(meta))
             assert meta2.bind is None
             return (meta2.tables['mytable'], meta2.tables['othertable'])
@@ -617,7 +571,7 @@ class CreateDropTest(PersistTest):
         global metadata, users
         metadata = MetaData()
         users = Table('users', metadata,
-                      Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
+                      Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key=True),
                       Column('user_name', String(40)),
                       )
 
@@ -625,7 +579,6 @@ class CreateDropTest(PersistTest):
             Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key = True),
             Column('user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(40)),
-    
         )
 
         orders = Table('orders', metadata,
@@ -633,14 +586,12 @@ class CreateDropTest(PersistTest):
             Column('user_id', Integer, ForeignKey(users.c.user_id)),
             Column('description', String(50)),
             Column('isopen', Integer),
-    
         )
 
         orderitems = Table('items', metadata,
             Column('item_id', INT, Sequence('items_id_seq', optional=True), primary_key = True),
             Column('order_id', INT, ForeignKey("orders")),
             Column('item_name', VARCHAR(50)),
-    
         )
 
     def test_sorter( self ):
@@ -662,10 +613,11 @@ class CreateDropTest(PersistTest):
         finally:
             metadata.drop_all(bind=testbase.db)
 
+    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_createdrop(self):
         metadata.create_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), True )
-        self.assertEqual( testbase.db.has_table('email_addresses'), True )        
+        self.assertEqual( testbase.db.has_table('email_addresses'), True )
         metadata.create_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), True )        
 

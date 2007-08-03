@@ -69,6 +69,7 @@ class TransactionTest(PersistTest):
         assert len(result.fetchall()) == 0
         connection.close()
         
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedrollback(self):
         connection = testbase.db.connect()
         
@@ -98,6 +99,7 @@ class TransactionTest(PersistTest):
                 connection.close()
             
 
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnesting(self):
         connection = testbase.db.connect()
         transaction = connection.begin()
@@ -116,6 +118,7 @@ class TransactionTest(PersistTest):
         connection.close()
     
     @testing.unsupported('sqlite')
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactionrollback(self):
         connection = testbase.db.connect()
         transaction = connection.begin()
@@ -133,6 +136,7 @@ class TransactionTest(PersistTest):
         connection.close()
 
     @testing.unsupported('sqlite')
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactioncommit(self):
         connection = testbase.db.connect()
         transaction = connection.begin()
@@ -150,6 +154,7 @@ class TransactionTest(PersistTest):
         connection.close()
 
     @testing.unsupported('sqlite')
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testrollbacktosubtransaction(self):
         connection = testbase.db.connect()
         transaction = connection.begin()
@@ -169,6 +174,7 @@ class TransactionTest(PersistTest):
         connection.close()
     
     @testing.supported('postgres', 'mysql')
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testtwophasetransaction(self):
         connection = testbase.db.connect()
         
@@ -197,6 +203,7 @@ class TransactionTest(PersistTest):
         connection.close()
 
     @testing.supported('postgres', 'mysql')
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testmixedtransaction(self):
         connection = testbase.db.connect()
         
@@ -402,8 +409,9 @@ class TLTransactionTest(PersistTest):
             external_connection.close()
         
     @testing.unsupported('sqlite')
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnesting(self):
-        """tests nesting of tranacstions"""
+        """tests nesting of transactions"""
         external_connection = tlengine.connect()
         self.assert_(external_connection.connection is not tlengine.contextual_connect().connection)
         tlengine.begin()
@@ -420,6 +428,7 @@ class TLTransactionTest(PersistTest):
         finally:
             external_connection.close()
 
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testmixednesting(self):
         """tests nesting of transactions off the TLEngine directly inside of 
         tranasctions off the connection from the TLEngine"""
@@ -448,6 +457,7 @@ class TLTransactionTest(PersistTest):
         finally:
             external_connection.close()
 
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testmoremixednesting(self):
         """tests nesting of transactions off the connection from the TLEngine
         inside of tranasctions off thbe TLEngine directly."""
@@ -471,6 +481,7 @@ class TLTransactionTest(PersistTest):
         finally:
             external_connection.close()
 
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def testsessionnesting(self):
         class User(object):
             pass

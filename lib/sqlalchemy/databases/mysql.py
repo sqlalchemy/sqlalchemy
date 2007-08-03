@@ -4,11 +4,87 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import re, datetime, inspect, warnings, weakref, operator
+"""Support for the MySQL database.
+
+SQLAlchemy supports 6 major MySQL versions: 3.23, 4.0, 4.1, 5.0, 5.1 and 6.0,
+with capablities increasing with more modern servers. 
+
+Versions 4.1 and higher support the basic SQL functionality that SQLAlchemy
+uses in the ORM and SQL expressions.  These versions pass the applicable
+tests in the suite 100%.  No heroic measures are taken to work around major
+missing SQL features- if your server version does not support sub-selects, for
+example, they won't work in SQLAlchemy either.
+
+Currently, the only DB-API driver supported is `MySQL-Python` (also referred to
+as `MySQLdb`).  Either 1.2.1 or 1.2.2 are recommended.  The alpha, beta and
+gamma releases of 1.2.1 and 1.2.2 should be avoided.  Support for Jython and
+IronPython is planned.
+
+=====================================  ===============
+Feature                                Minimum Version
+=====================================  ===============
+sqlalchemy.orm                         4.1.1
+Table Reflection                       3.23.x
+DDL Generation                         4.1.1
+utf8/Full Unicode Connections          4.1.1
+Transactions                           3.23.15
+Two-Phase Transactions                 5.0.3
+Nested Transactions                    5.0.3
+=====================================  ===============
+
+See the official MySQL documentation for detailed information about features
+supported in any given server release.
+
+Many MySQL server installations default to a ``latin1`` encoding for client
+connections.  All data sent through the connection will be converted
+into ``latin1``, even if you have ``utf8`` or another character set on your
+tables and columns.  With versions 4.1 and higher, you can change the
+connection character set either through server configuration or by passing
+the  ``charset`` parameter to  ``create_engine``.  The ``charset`` option is
+passed through to MySQL-Python and has the side-effect of also enabling
+``use_unicode`` in the driver by default.  For regular encoded strings, also
+pass ``use_unicode=0`` in the connection arguments.
+
+Most MySQL server installations have a default table type of `MyISAM`, a
+non-transactional table type.  During a transaction, non-transactional
+storage engines do not participate and continue to store table changes in
+autocommit mode.  For fully atomic transactions, all participating tables
+must use a transactional engine such as `InnoDB`, `Falcon`, `SolidDB`,
+`PBXT`, etc.  Storage engines can be elected when creating tables in
+SQLAlchemy by supplying a ``mysql_engine='whatever'`` to the ``Table``
+constructor.  Any MySQL table creation option can be specified in this syntax.
+
+Not all MySQL storage engines support foreign keys.  For `MyISAM` and similar
+engines, the information loaded by table reflection will not include foreign
+keys.  For these tables, you may supply ``ForeignKeyConstraints`` at reflection
+time::
+
+  Table('mytable', metadata, autoload=True,
+        ForeignKeyConstraint(['other_id'], ['othertable.other_id']))
+
+For normal SQLAlchemy usage, loading this module is unnescesary.  It will be
+loaded on-demand when a MySQL connection is needed.  If you would like to use
+one of the MySQL-specific or enhanced column types when creating tables with
+your ``Table`` definitions, then you will need to import them from this module::
+
+  from sqlalchemy.databases import mysql
+
+  Table('mytable', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('ittybittyblob', mysql.MSTinyBlob),
+        Column('biggy', mysql.MSBigInteger(unsigned=True)))
+
+If you have problems that seem server related, first check that you are
+using the most recent stable MySQL-Python package available.  The Database
+Notes page on the wiki at http://sqlalchemy.org is a good resource for timely
+information affecting MySQL in SQLAlchemy.
+"""
+
+import re, datetime, inspect, warnings, weakref, operator, sys
 from array import array as _array
 
 from sqlalchemy import sql, schema, ansisql
-from sqlalchemy.engine import default
+from sqlalchemy.engine import base as engine_base, default
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 import sqlalchemy.util as util
@@ -786,7 +862,7 @@ class MSBinary(_BinaryType):
         pad value.
 
         length
-          Maximum data length, in bytes.  If not length is specified, this
+          Maximum data length, in bytes.  If length is not specified, this
           will generate a BLOB.  This usage is deprecated.
         """
 
@@ -1112,12 +1188,34 @@ class MySQLDialect(ansisql.ANSIDialect):
     def do_execute(self, cursor, statement, parameters, **kwargs):
         cursor.execute(statement, parameters)
 
+    def do_commit(self, connection):
+        """Execute a COMMIT."""
+
+        # COMMIT/ROLLBACK were introduced in 3.23.15.
+        # Yes, we have at least one user who has to talk to these old versions!
+        #
+        # Ignore commit/rollback if support isn't present, otherwise even basic
+        # operations via autocommit fail.
+        try:
+            connection.commit()
+        except:
+            if self._server_version_info(connection) < (3, 23, 15):
+                args = sys.exc_info()[1].args
+                if args and args[0] == 1064:
+                    return
+            raise
+
     def do_rollback(self, connection):
-        # MySQL without InnoDB doesnt support rollback()
+        """Execute a ROLLBACK."""
+        
         try:
             connection.rollback()
         except:
-            pass
+            if self._server_version_info(connection) < (3, 23, 15):
+                args = sys.exc_info()[1].args
+                if args and args[0] == 1064:
+                    return
+            raise
 
     def do_begin_twophase(self, connection, xid):
         connection.execute("XA BEGIN %s", xid)
@@ -1141,6 +1239,9 @@ class MySQLDialect(ansisql.ANSIDialect):
     def do_recover_twophase(self, connection):
         resultset = connection.execute("XA RECOVER")
         return [row['data'][0:row['gtrid_length']] for row in resultset]
+
+    def do_ping(self, connection):
+        connection.ping()
 
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.OperationalError) and \
@@ -1183,13 +1284,28 @@ class MySQLDialect(ansisql.ANSIDialect):
                 return False
             raise
 
-    def get_version_info(self, connectable):
-        """A tuple of the database server version."""
-        
-        if hasattr(connectable, 'connect'):
-            dbapi_con = connectable.connect().connection
-        else:
-            dbapi_con = connectable
+    def server_version_info(self, connection):
+        """A tuple of the database server version.
+
+        Formats the remote server version as a tuple of version values,
+        e.g. ``(5, 0, 44)``.  If there are strings in the version number
+        they will be in the tuple too, so don't count on these all being
+        ``int`` values.
+
+        This is a fast check that does not require a round trip.  It is also
+        cached per-Connection.
+        """
+
+        try:
+            return connection.properties['_mysql_server_version_info']
+        except KeyError:
+            version = connection.properties['_mysql_server_version_info'] = \
+              self._server_version_info(connection.connection.connection)
+            return version
+
+    def _server_version_info(self, dbapi_con):
+        """Convert a MySQL-python server_info string into a tuple."""
+
         version = []
         for n in dbapi_con.get_server_info().split('.'):
             try:
@@ -1197,6 +1313,19 @@ class MySQLDialect(ansisql.ANSIDialect):
             except ValueError:
                 version.append(n)
         return tuple(version)
+
+    # @deprecated
+    def get_version_info(self, connectable):
+        """A tuple of the database server version.
+
+        Deprecated, use ``server_version_info()``.
+        """
+
+        if isinstance(connectable, engine_base.Engine):
+            connectable = connectable.contextual_connect()
+
+        return self.server_version_info(connectable)
+    get_version_info = util.deprecated(get_version_info)
 
     def reflecttable(self, connection, table, include_columns):
         """Load column definitions from the server."""
@@ -1308,7 +1437,7 @@ class MySQLDialect(ansisql.ANSIDialect):
 
         # Note: MySQL-python 1.2.1c7 seems to ignore changes made
         # on a connection via set_character_set()
-        if self.get_version_info(connection) < (4, 1, 0):
+        if self.server_version_info(connection) < (4, 1, 0):
             try:
                 return connection.connection.character_set_name()
             except AttributeError:
@@ -1373,7 +1502,7 @@ class MySQLDialect(ansisql.ANSIDialect):
             return connection.properties['collations']
         except KeyError:
             collations = {}
-            if self.get_version_info(connection) < (4, 1, 0):
+            if self.server_version_info(connection) < (4, 1, 0):
                 pass
             else:
                 rs = connection.execute('SHOW COLLATION')
@@ -1458,6 +1587,11 @@ class MySQLCompiler(ansisql.ANSICompiler):
         return text
         
 
+# ug.  "InnoDB needs indexes on foreign keys and referenced keys [...].
+#       Starting with MySQL 4.1.2, these indexes are created automatically.
+#       In older versions, the indexes must be created explicitly or the
+#       creation of foreign key constraints fails."
+
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False,
                                  first_pk=False):
@@ -1514,6 +1648,8 @@ class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
 
 
 class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+    """MySQL-specific schema identifier configuration."""
+    
     def __init__(self, dialect):
         super(MySQLIdentifierPreparer, self).__init__(dialect,
                                                       initial_quote='`')
@@ -1534,50 +1670,5 @@ class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         # just leave everything as-is.
         return value
 
-class MySQLCharsetOnConnect(object):
-    """Use an alternate connection character set automatically."""
 
-    def __init__(self, charset, collation=None):
-        """Creates a pool listener that decorates new database connections.
-
-        Sets the connection character set on MySQL connections.  Strings
-        sent to and from the server will use this encoding, and if a collation
-        is provided it will be used as the default.
-
-        There is also a MySQL-python 'charset' keyword for connections,
-        however that keyword has the side-effect of turning all strings into
-        Unicode.
-
-        This class is a ``Pool`` listener.  To use, pass an insstance to the
-        ``listeners`` argument to create_engine or Pool constructor, or
-        manually add it to a pool with ``add_listener()``.
-
-        charset:
-          The character set to use
-
-        collation:
-          Optional, use a non-default collation for the given charset
-        """
-
-        self.charset = charset
-        self.collation = collation
-        
-    def connect(self, dbapi_con, con_record):
-        cr = dbapi_con.cursor()
-        try:
-            if self.collation is None:
-                if hasattr(dbapi_con, 'set_character_set'):
-                    dbapi_con.set_character_set(self.charset)
-                else:
-                    cr.execute("SET NAMES %s" % self.charset)
-            else:
-                if hasattr(dbapi_con, 'set_character_set'):
-                    dbapi_con.set_character_set(self.charset)
-                cr.execute("SET NAMES %s COLLATE %s" % (self.charset,
-                                                        self.collation))
-        # let SQL errors (1064 if SET NAMES is not supported) raise
-        finally:
-            cr.close()
-
-        
 dialect = MySQLDialect

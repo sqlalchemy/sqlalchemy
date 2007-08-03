@@ -187,6 +187,9 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def schemadropper(self, *args, **kwargs):
         return SQLiteSchemaDropper(self, *args, **kwargs)
 
+    def server_version_info(self, connection):
+        return self.dbapi.sqlite_version_info
+
     def supports_alter(self):
         return False
 

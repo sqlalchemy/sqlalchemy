@@ -207,6 +207,7 @@ class SessionTest(AssertMixin):
             raise
     
     @testing.supported('postgres', 'mysql')
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_twophase(self):
         # TODO: mock up a failure condition here
         # to ensure a rollback succeeds
@@ -230,8 +231,6 @@ class SessionTest(AssertMixin):
         assert users.count().scalar() == 1
         assert addresses.count().scalar() == 1
         
-        
-        
     def test_joined_transaction(self):
         class User(object):pass
         mapper(User, users)
@@ -245,6 +244,7 @@ class SessionTest(AssertMixin):
         assert len(sess.query(User).select()) == 0
 
     @testing.supported('postgres', 'mysql')
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_nested_transaction(self):
         class User(object):pass
         mapper(User, users)
@@ -267,6 +267,7 @@ class SessionTest(AssertMixin):
         assert len(sess.query(User).select()) == 1
 
     @testing.supported('postgres', 'mysql')
+    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_nested_autotrans(self):
         class User(object):pass
         mapper(User, users)

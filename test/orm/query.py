@@ -90,6 +90,7 @@ class GetTest(QueryTest):
         assert u2.name =='jack'
         assert a not in u2.addresses
         
+    @testing.exclude('mysql', '<', (5, 0))  # fixme
     def test_unicode(self):
         """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail 
         on postgres, mysql and oracle unless it is converted to an encoded string"""

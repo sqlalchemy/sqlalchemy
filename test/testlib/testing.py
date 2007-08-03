@@ -3,13 +3,21 @@
 # monkeypatches unittest.TestLoader.suiteClass at import time
 
 import testbase
-import unittest, re, sys, os
+import unittest, re, sys, os, operator
 from cStringIO import StringIO
 import testlib.config as config
 sql, MetaData, clear_mappers = None, None, None
 
 
 __all__ = 'PersistTest', 'AssertMixin', 'ORMTest'
+
+_ops = { '<': operator.lt,
+         '>': operator.gt,
+         '==': operator.eq,
+         '!=': operator.ne,
+         '<=': operator.le,
+         '>=': operator.ge,
+         'in': operator.contains }
 
 def unsupported(*dbs):
     """Mark a test as unsupported by one or more database implementations"""
@@ -49,6 +57,41 @@ def supported(*dbs):
         return maybe
     return decorate
 
+def exclude(db, op, spec):
+    """Mark a test as unsupported by specific database server versions.
+
+    Stackable, both with other excludes and supported/unsupported. Examples::
+      # Not supported by mydb versions less than 1, 0
+      @exclude('mydb', '<', (1,0))
+      # Other operators work too
+      @exclude('bigdb', '==', (9,0,9))
+      @exclude('yikesdb', 'in', ((0, 3, 'alpha2'), (0, 3, 'alpha3')))
+    """
+
+    def decorate(fn):
+        fn_name = fn.__name__
+        def maybe(*args, **kw):
+            if config.db.name != db:
+                return fn(*args, **kw)
+
+            have = config.db.dialect.server_version_info(
+                config.db.contextual_connect())
+
+            oper = hasattr(op, '__call__') and op or _ops[op]
+
+            if oper(have, spec):
+                print "'%s' unsupported on DB %s version '%s'" % (
+                    fn_name, config.db.name, have)
+                return True
+            else:
+                return fn(*args, **kw)
+        try:
+            maybe.__name__ = fn_name
+        except:
+            pass
+        return maybe
+    return decorate
+        
 class TestData(object):
     """Tracks SQL expressions as they are executed via an instrumented ExecutionContext."""
     
@@ -299,8 +342,11 @@ class TTestSuite(unittest.TestSuite):
             if self._initTest is not None:
                 self._initTest.setUpAll()
         except:
-            result.addError(self._initTest, self.__exc_info())
-            pass
+            # skip tests if global setup fails
+            ex = self.__exc_info()
+            for test in self._tests:
+                result.addError(test, ex)
+            return False
         try:
             return self.do_run(result)
         finally:
