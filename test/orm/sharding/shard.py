@@ -90,14 +90,16 @@ class ShardTest(PersistTest):
                 return ['north_america', 'asia', 'europe', 'south_america']
             else:
                 return ids
+        
+        create_session = sessionmaker(class_=ShardedSession, autoflush=True, transactional=True)
 
-        def create_session():
-            s = ShardedSession(shard_chooser, id_chooser, query_chooser)
-            s.bind_shard('north_america', db1)
-            s.bind_shard('asia', db2)
-            s.bind_shard('europe', db3)
-            s.bind_shard('south_america', db4)
-            return s
+        create_session.configure(shards={
+            'north_america':db1,
+            'asia':db2,
+            'europe':db3,
+            'south_america':db4
+        }, shard_chooser=shard_chooser, id_chooser=id_chooser, query_chooser=query_chooser)
+        
 
     def setup_mappers(self):
         global WeatherLocation, Report
@@ -133,10 +135,13 @@ class ShardTest(PersistTest):
         sess = create_session()
         for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
             sess.save(c)
-        sess.flush()
+        sess.commit()
 
         sess.clear()
 
+        assert db2.execute(weather_locations.select()).fetchall() == [(1, 'Asia', 'Tokyo')]
+        assert db1.execute(weather_locations.select()).fetchall() == [(2, 'North America', 'New York'), (3, 'North America', 'Toronto')]
+        
         t = sess.query(WeatherLocation).get(tokyo.id)
         assert t.city == tokyo.city
         assert t.reports[0].temperature == 80.0

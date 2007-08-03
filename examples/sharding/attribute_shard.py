@@ -34,13 +34,15 @@ db4 = create_engine('sqlite:///shard4.db', echo=echo)
 
 # step 3. create session function.  this binds the shard ids
 # to databases within a ShardedSession and returns it.
-def create_session():
-    s = ShardedSession(shard_chooser, id_chooser, query_chooser)
-    s.bind_shard('north_america', db1)
-    s.bind_shard('asia', db2)
-    s.bind_shard('europe', db3)
-    s.bind_shard('south_america', db4)
-    return s
+create_session = sessionmaker(class_=ShardedSession)
+
+create_session.configure(shards={
+    'north_america':db1,
+    'asia':db2,
+    'europe':db3,
+    'south_america':db4
+})
+
 
 # step 4.  table setup.
 meta = MetaData()
@@ -142,6 +144,9 @@ def query_chooser(query):
         return ['north_america', 'asia', 'europe', 'south_america']
     else:
         return ids
+
+# further configure create_session to use these functions
+create_session.configure(shard_chooser=shard_chooser, id_chooser=id_chooser, query_chooser=query_chooser)
 
 # step 6.  mapped classes.    
 class WeatherLocation(object):

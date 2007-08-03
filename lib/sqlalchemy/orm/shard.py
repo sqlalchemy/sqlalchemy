@@ -4,7 +4,7 @@ from sqlalchemy.orm import Query
 __all__ = ['ShardedSession', 'ShardedQuery']
 
 class ShardedSession(Session):
-    def __init__(self, shard_chooser, id_chooser, query_chooser, **kwargs):
+    def __init__(self, shard_chooser, id_chooser, query_chooser, shards=None, **kwargs):
         """construct a ShardedSession.
         
             shard_chooser
@@ -32,6 +32,9 @@ class ShardedSession(Session):
         self.__binds = {}
         self._mapper_flush_opts = {'connection_callable':self.connection}
         self._query_cls = ShardedQuery
+        if shards is not None:
+            for k in shards:
+                self.bind_shard(k, shards[k])
         
     def connection(self, mapper=None, instance=None, shard_id=None, **kwargs):
         if shard_id is None:

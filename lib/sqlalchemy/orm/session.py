@@ -14,14 +14,17 @@ from sqlalchemy.orm.mapper import global_extensions
 
 __all__ = ['Session', 'SessionTransaction']
 
-def sessionmaker(autoflush=True, transactional=True, bind=None, **kwargs):
+def sessionmaker(bind=None, class_=None, autoflush=True, transactional=True, **kwargs):
     """Generate a Session configuration."""
     
     kwargs['bind'] = bind
     kwargs['autoflush'] = autoflush
     kwargs['transactional'] = transactional
 
-    class Sess(Session):
+    if class_ is None:
+        class_ = Session
+        
+    class Sess(class_):
         def __init__(self, **local_kwargs):
             for k in kwargs:
                 local_kwargs.setdefault(k, kwargs[k])
