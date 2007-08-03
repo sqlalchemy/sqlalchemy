@@ -367,7 +367,7 @@ class OracleDialect(ansisql.ANSIDialect):
         
     def table_names(self, connection, schema):
         # sorry, I have no idea what that dblink stuff is about :)
-        s = "select table_name from all_tables"
+        s = "select table_name from all_tables where tablespace_name NOT IN ('SYSTEM', 'SYSAUX')"
         return [row[0] for row in connection.execute(s)]
 
     def reflecttable(self, connection, table, include_columns):
