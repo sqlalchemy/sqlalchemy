@@ -87,7 +87,7 @@ With our `users_table` as well as our `User` class, we want to map the two toget
     >>> mapper(User, users_table) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     <sqlalchemy.orm.mapper.Mapper object at 0x...>
     
-The `mapper()` function creates a new `Mapper` object and stores it away for future reference.  It also **instruments** the attributes on our `User` class, corresponding to the `users_table` table.  The `id`, `name`, `fullname`, and `password` columns in our `users_table` are now instrumented upon our `User` class, meaning it will keep track of all changes to these attributes, and can save and load their values to/from the database.  Lets create our first user, 'ed', and ensure that the object has all three of these attributes
+The `mapper()` function creates a new `Mapper` object and stores it away for future reference.  It also **instruments** the attributes on our `User` class, corresponding to the `users_table` table.  The `id`, `name`, `fullname`, and `password` columns in our `users_table` are now instrumented upon our `User` class, meaning it will keep track of all changes to these attributes, and can save and load their values to/from the database.  Lets create our first user, 'Ed Jones', and ensure that the object has all three of these attributes:
 
     {python}
     >>> ed_user = User('ed', 'Ed Jones', 'edspassword')
@@ -108,10 +108,13 @@ We're now ready to start talking to the database.  The ORM's "handle" to the dat
     >>> from sqlalchemy.orm import sessionmaker
     >>> Session = sessionmaker(bind=engine, autoflush=True, transactional=True)
 
-If you don't have an `Engine` yet, but want to define `Session`, define it without `bind`, and set the `bind` parameter later:
+In the case where your application does not yet have an `Engine` when you define your module-level objects, just set it up like this:
 
     {python}
     >>> Session = sessionmaker(autoflush=True, transactional=True)
+
+Later, when you create your engine with `create_engine()`, connect it to `Session` like this:
+
     >>> Session.configure(bind=engine)  # once engine is available
     
 This `Session` class will create new `Session` objects which are bound to our database and have some various transactional characteristics.  Whenever you need to have a conversation with the database, you instantiate a `Session`:
@@ -142,9 +145,9 @@ But you'll notice nothing has happened yet.  Well, lets pretend something did, a
     ['ed']
     {stop}<User('ed','Ed Jones', 'edspassword')>
 
-And we get back our new user.  If you view the generated SQL, you'll see that the `Session` issued an `INSERT` statement before querying for us.  The `Session` stores whatever you put into it in memory, and at certain points in time issues a **flush**, which issues SQL to the database to store the object.  You can also manually invoke this operation; however when the `Session` is configured to `autoflush`, its usually not needed.
+And we get back our new user.  If you view the generated SQL, you'll see that the `Session` issued an `INSERT` statement before querying.  The `Session` stores whatever you put into it in memory, and at certain points it issues a **flush**, which issues SQL to the database to store all pending new objects and changes to existing objects.  You can manually invoke the flush operation using `flush()`; however when the `Session` is configured to `autoflush`, its usually not needed.
 
-OK, we'll lets do some more operations.  Lets create and save three more users:
+OK, let's do some more operations.  We'll create and save three more users:
 
     {python}
     >>> session.save(User('wendy', 'Wendy Williams', 'foobar'))
@@ -170,15 +173,15 @@ Then we'll permanently store everything thats been changed and added to the data
     ['fred', 'Fred Flinstone', 'blah']
     COMMIT
 
-`commit()` flushes whatever remaining changes remain to the database, and commits the transaction.  The connection resources referenced by the session are now returned to the connection pool.  Subsequent operations with this session will then automatically be started in a **new** transaction, which will again re-acquire connection resources.
+`commit()` flushes whatever remaining changes remain to the database, and commits the transaction.  The connection resources referenced by the session are now returned to the connection pool.  Subsequent operations with this session will occur in a **new** transaction, which will again re-acquire connection resources when first needed.
 
-Lets take a look at Ed's `id` attribute again, just to make sure its set up:
+If we look at Ed's `id` attribute, which earlier was `None`, it now has a value:
 
     {python}
     >>> ed_user.id
     1
 
-After each `INSERT` operation, the `Session` assigns all newly generated ids and defaults to the mapped object instance.
+After each `INSERT` operation, the `Session` assigns all newly generated ids and column defaults to the mapped object instance.  For column defaults which are database-generated and are not part of the table's primary key, they'll be loaded when you first reference the attribute on the instance.
 
 One crucial thing to note about the `Session` is that each object instance is cached within the Session, based on its primary key identitifer.  The reason for this cache is not as much for performance as it is for maintaining an **identity map** of instances.  This map guarantees that whenever you work with a particular `User` object in a session, **you always get the same instance back**.  As below, reloading Ed gives us the same instance back:
 
@@ -192,6 +195,12 @@ One crucial thing to note about the `Session` is that each object instance is ca
     ['ed']
     {stop}True
 
+Using the `get()` method, which queries based on primary key, will not issue any SQL to the database if the given key is already present:
+
+    {python}
+    >>> ed_user is session.query(User).get(ed_user.id)
+    True
+    
 ## Querying
 
 A whirlwind tour through querying.

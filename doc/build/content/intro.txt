@@ -23,12 +23,12 @@ The SQLAlchemy SQL Toolkit and Object Relational Mapper is a comprehensive set o
                |        [[docs]](rel:pooling)        | |              [[docs]](rel:types)              |
                +----------------------+ +----------------------------------+
 
-Above, the two most significant front-facing portions of SQLAlchemy are the **Object Relational Mapper** and the **SQL Construction Language**.  These are two separate toolkits, one building off the other.  SQL Expressions can be used independently of the ORM.  When using the ORM, the SQL Expression language is used to establish object-relational configurations as well as in querying.
+Above, the two most significant front-facing portions of SQLAlchemy are the **Object Relational Mapper** and the **SQL Expression Language**.  These are two separate toolkits, one building off the other.  SQL Expressions can be used independently of the ORM.  When using the ORM, the SQL Expression language is used to establish object-relational configurations as well as in querying.
 
 ## Tutorials
 
  * [Object Relational Tutorial](rel:datamapping) - This describes the richest feature of SQLAlchemy, its object relational mapper.  If you want to work with higher-level SQL which is constructed automatically for you, as well as management of Python objects, proceed to this tutorial.
- * [SQL Expression Tutorial](rel:sql) - The core of SQLAlchemy is its SQL expression language.  The SQL construction language is a toolkit all its own, independent of the ORM package, which can be used to construct manipulable SQL expressions which can be programmatically constructed, modified, and executed, returning cursor-like result sets.  It's a lot more lightweight than the ORM and is appropriate for higher scaling SQL operations.  It's also heavily present within the ORM's public facing API, so advanced ORM users will want to master this language as well.
+ * [SQL Expression Tutorial](rel:sql) - The core of SQLAlchemy is its SQL expression language.  The SQL Expression Language is a toolkit all its own, independent of the ORM package, which can be used to construct manipulable SQL expressions which can be programmatically constructed, modified, and executed, returning cursor-like result sets.  It's a lot more lightweight than the ORM and is appropriate for higher scaling SQL operations.  It's also heavily present within the ORM's public facing API, so advanced ORM users will want to master this language as well.
 
 ## Reference Documentation
 

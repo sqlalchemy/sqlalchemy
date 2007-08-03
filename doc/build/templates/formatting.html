@@ -134,7 +134,7 @@ javascript:togglePopbox('${name}', '${show}', '${hide}')
 <%def name="codepopper()" filter="trim">
     <%
 		c = capture(caller.body)
-		c = re.sub(r'\n', '<br/>\n', c.strip())
+		c = re.sub(r'\n', '<br/>\n', filters.html_escape(c.strip()))
 	%>
     </pre><%call expr="popbox(class_='codepop')">${c}</%call><pre>
 </%def>
@@ -142,7 +142,7 @@ javascript:togglePopbox('${name}', '${show}', '${hide}')
 <%def name="poppedcode()" filter="trim">
     <%
 		c = capture(caller.body)
-		c = re.sub(r'\n', '<br/>\n', c.strip())
+		c = re.sub(r'\n', '<br/>\n', filters.html_escape(c.strip()))
 	%>
     </pre><div class="codepop">${c}</div><pre>
 </%def>
