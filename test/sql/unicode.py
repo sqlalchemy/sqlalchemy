@@ -43,6 +43,7 @@ class UnicodeSchemaTest(PersistTest):
             engine = create_engine(testbase.db.url,
                                    connect_args={'charset': 'utf8',
                                                  'use_unicode': False})
+            return engine
         
     def test_insert(self):
         t1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})
