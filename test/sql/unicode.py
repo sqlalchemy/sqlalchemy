@@ -89,14 +89,20 @@ class UnicodeSchemaTest(PersistTest):
         sess.save(a1)
         sess.flush()
         sess.clear()
-        new_a1 = sess.query(A).selectone(t1.c[u'méil'] == a1.a)
+        new_a1 = sess.query(A).filter(t1.c[u'méil'] == a1.a).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].a == b1.a
         sess.clear()
-        new_a1 = sess.query(A).options(eagerload('t2s')).selectone(t1.c[u'méil'] == a1.a)
+
+        new_a1 = sess.query(A).options(eagerload('t2s')).filter(t1.c[u'méil'] == a1.a).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].a == b1.a
-        
+        sess.clear()
+
+        new_a1 = sess.query(A).filter(A.a == a1.a).one()
+        assert new_a1.a == a1.a
+        assert new_a1.t2s[0].a == b1.a
+        sess.clear()
         
 if __name__ == '__main__':
     testbase.main()

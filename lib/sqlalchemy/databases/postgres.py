@@ -334,7 +334,7 @@ class PGDialect(ansisql.ANSIDialect):
         WHERE relkind = 'r'
           AND '%(schema)s' = (select nspname from pg_namespace n where n.oid = c.relnamespace)
         """ % locals()
-        return [row[0] for row in connection.execute(s)]
+        return [row[0].decode(self.encoding) for row in connection.execute(s)]
 
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer
