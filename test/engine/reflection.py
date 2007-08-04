@@ -1,11 +1,11 @@
 import testbase
-import pickle, StringIO
+import pickle, StringIO, unicodedata
 
 from sqlalchemy import *
 import sqlalchemy.ansisql as ansisql
 from sqlalchemy.exceptions import NoSuchTableError
 from testlib import *
-
+from testlib import engines
 
 class ReflectionTest(PersistTest):
 
@@ -635,7 +635,36 @@ class CreateDropTest(PersistTest):
         # template.  (*cough* tsearch2 w/ the pg windows installer.)
         self.assert_(not Set(metadata.tables) - Set(testbase.db.table_names()))
         metadata.drop_all(bind=testbase.db)
-    
+
+class UnicodeTest(PersistTest):
+    def test_basic(self):
+        self.assert_(not testbase.db.table_names())
+        try:
+            bind = engines.utf8_engine()
+            metadata = MetaData(bind)
+
+            names = set([u'plain', u'Unit\u00e9ble', u'\u6e2c\u8a66'])
+            for name in names:
+                Table(name, metadata, Column('id', Integer, primary_key=True))
+            metadata.create_all()
+
+            reflected = set(bind.table_names())
+            if reflected != names:
+                # Python source files in the utf-8 coding seem to normalize
+                # literals as NFC (and the above are explicitly NFC).  Maybe
+                # this database normalizes NFD on reflection.
+                nfc = set([unicodedata.normalize('NFC', n) for n in names])
+                self.assert_(nfc == names)
+                # Yep.  But still ensure that bulk reflection and create/drop
+                # work with either normalization.
+        
+            r = MetaData(bind, reflect=True)
+            r.drop_all()
+            r.create_all()
+        finally:
+            metadata.drop_all()
+            bind.dispose()
+        
 
 class SchemaTest(PersistTest):
     # this test should really be in the sql tests somewhere, not engine
