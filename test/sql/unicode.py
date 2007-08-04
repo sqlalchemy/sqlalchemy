@@ -20,7 +20,7 @@ class UnicodeSchemaTest(PersistTest):
             Column(u'\u6e2c\u8a66', Integer),
 
             )
-        t2 = Table(u'Unitéble2', metadata,
+        t2 = Table(u'Unite\u0301ble2', metadata,
             Column(u'méil', Integer, primary_key=True, key="a"),
             Column(u'\u6e2c\u8a66', Integer, ForeignKey(u'unitable1.méil'), key="b"),
             )
