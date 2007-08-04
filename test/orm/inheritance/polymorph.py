@@ -263,14 +263,28 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         session.flush()
         session.clear()
         id = c.company_id
-        c = session.query(Company).get(id)
-        for e in c.employees:
-            print e, e._instance_key, e.company
-        if include_base:
-            assert sets.Set([(e.get_name(), getattr(e, 'status', None)) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('joesmith', None), ('wally', 'CGG'), ('jsmith', 'ABA')])
+        def go():
+            c = session.query(Company).get(id)
+            for e in c.employees:
+                print e, e._instance_key, e.company
+                assert e._instance_key[0] == Person
+            if include_base:
+                assert sets.Set([(e.get_name(), getattr(e, 'status', None)) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('joesmith', None), ('wally', 'CGG'), ('jsmith', 'ABA')])
+            else:
+                assert sets.Set([(e.get_name(), e.status) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('wally', 'CGG'), ('jsmith', 'ABA')])
+            print "\n"
+
+        if not lazy_relation:
+            if polymorphic_fetch=='union':
+                self.assert_sql_count(testbase.db, go, 1)
+            else:
+                self.assert_sql_count(testbase.db, go, 5)
+                
         else:
-            assert sets.Set([(e.get_name(), e.status) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('wally', 'CGG'), ('jsmith', 'ABA')])
-        print "\n"
+            if polymorphic_fetch=='union':
+                self.assert_sql_count(testbase.db, go, 2)
+            else:
+                self.assert_sql_count(testbase.db, go, 6)
 
         # test selecting from the query, using the base mapped table (people) as the selection criterion.
         # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"

@@ -313,6 +313,7 @@ class RelationTest4(ORMTest):
          in the union.  however, the primaryjoin condition is going to be against the base table, and its a many-to-one
          relationship (unlike the test in polymorph.py) so the column in the base table is explicit.  Can the ClauseAdapter
          figure out how to alias the primaryjoin to the polymorphic union ?"""
+         
         # class definitions
         class Person(object):
             def __init__(self, **kwargs):
@@ -397,9 +398,12 @@ class RelationTest4(ORMTest):
         session.clear()
         print "-----------------------------------------------------------------"
         # and now for the lightning round, eager !
-        car1 = session.query(Car).options(eagerload('employee')).get(car1.car_id)
-        assert str(car1.employee) == "Engineer E4, status X"
 
+        def go():
+            testcar = session.query(Car).options(eagerload('employee')).get(car1.car_id)
+            assert str(testcar.employee) == "Engineer E4, status X"
+        self.assert_sql_count(testbase.db, go, 1)
+        
         session.clear()
         s = session.query(Car)
         c = s.join("employee").filter(Person.name=="E4")[0]

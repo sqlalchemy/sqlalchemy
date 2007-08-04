@@ -558,7 +558,7 @@ class EagerLoader(AbstractRelationLoader):
         try:
             decorated_row = decorator(row)
             # check for identity key
-            identity_key = self.mapper.identity_key_from_row(decorated_row)
+            identity_key = self.select_mapper.identity_key_from_row(decorated_row)
             # and its good
             return decorator
         except KeyError, k:
@@ -587,13 +587,13 @@ class EagerLoader(AbstractRelationLoader):
                         # event handlers.
                         #
                         # FIXME: instead of...
-                        sessionlib.attribute_manager.get_attribute(instance, self.key).set_raw_value(instance, self.mapper._instance(selectcontext, decorated_row, None))
+                        sessionlib.attribute_manager.get_attribute(instance, self.key).set_raw_value(instance, self.select_mapper._instance(selectcontext, decorated_row, None))
                         # bypass and set directly:
                         #instance.__dict__[self.key] = ...
                     else:
                         # call _instance on the row, even though the object has been created,
                         # so that we further descend into properties
-                        self.mapper._instance(selectcontext, decorated_row, None)
+                        self.select_mapper._instance(selectcontext, decorated_row, None)
                 else:
                     if isnew:
                         if self._should_log_debug:
