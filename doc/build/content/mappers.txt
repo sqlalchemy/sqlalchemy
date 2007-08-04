@@ -553,7 +553,7 @@ In joined table inheritance, each class along a particular classes' list of pare
 
 The table also has a column called `type`.  It is strongly advised in both single- and joined- table inheritance scenarios that the root table contains a column whose sole purpose is that of the **discriminator**; it stores a value which indicates the type of object represented within the row.  The column may be of any desired datatype.  While there are some "tricks" to work around the requirement that there be a discriminator column, they are more complicated to configure when one wishes to load polymorphically.
 
-Next we define individual tables for each of `Engineer` and `Manager`, which each contain columns that represent the attributes unique to the subclass they represent.  Each table also must contain a primary key column (or columns), and in most cases a foreign key reference to the parent table.  It is  standard practice that **same** column is used for both of these roles, and that the column is also named the same as that of the parent table.  While we will illustrate this pattern below, it's optional in SQLAlchemy; separate columns may be used for primary key and parent-relation, the column may be named differently than that of the parent, and even a custom join condition can be specified between parent and child tables instead of using a foreign key.  In joined table inheritance, the primary key of all instances is always **solely the primary key of the base table** (new in SQLAlchemy 0.4).
+Next we define individual tables for each of `Engineer` and `Manager`, which each contain columns that represent the attributes unique to the subclass they represent.  Each table also must contain a primary key column (or columns), and in most cases a foreign key reference to the parent table.  It is  standard practice that the same column is used for both of these roles, and that the column is also named the same as that of the parent table.  However this is optional in SQLAlchemy; separate columns may be used for primary key and parent-relation, the column may be named differently than that of the parent, and even a custom join condition can be specified between parent and child tables instead of using a foreign key.  In joined table inheritance, the primary key of an instance is always represented by the primary key of the base table only (new in SQLAlchemy 0.4).
 
     {python}
     engineers = Table('engineers', metadata, 
@@ -566,7 +566,7 @@ Next we define individual tables for each of `Engineer` and `Manager`, which eac
        Column('manager_data', String(50)),
     )
 
-We then configure mappers in much the same way, except we use some additional arguments to indicate both the inheritance relationship, the polymorphic discriminator column, as well as the **polymorphic identity** of each class; this is the value that will be stored in the polymorphic discriminator column.
+We then configure mappers as usual, except we use some additional arguments to indicate the inheritance relationship, the polymorphic discriminator column, and the **polymorphic identity** of each class; this is the value that will be stored in the polymorphic discriminator column.
 
     {python}
     mapper(Employee, employees, polymorphic_on=employees.c.type, polymorphic_identity='employee')
@@ -602,7 +602,9 @@ When loading fresh from the database, the joined-table setup above will query fr
     WHERE ? = managers.employee_id
     [1]
 
-The above query works well for a `get()` operation which does not over-join.  The "secondary" load of child rows may be "deferred" using `polymorphic_fetch='deferred'`:
+The above query works well for a `get()` operation, since it limits the queries to only the tables directly involved in fetching a single instance.  For instances which are already present in the session, the secondary table load is not needed.  However, the above loading style is not efficient for loading large groups of objects, as it incurs separate queries for each parent row.
+
+One way to reduce the number of "secondary" loads of child rows is to "defer" them, using `polymorphic_fetch='deferred'`:
 
     {python}
     mapper(Employee, employees, polymorphic_on=employees.c.type, \
@@ -610,9 +612,9 @@ The above query works well for a `get()` operation which does not over-join.  Th
     mapper(Engineer, engineers, inherits=Employee, polymorphic_identity='engineer')
     mapper(Manager, managers, inherits=Employee, polymorphic_identity='manager')
 
-The above configuration queries in the same manner as earlier, except the load of the "secondary" table occurs when attributes referencing those columns are first referenced on the loaded instance.  This style of loading is very efficient for cases where large selects of items occur, but a detailed "drill down" of extra inherited properties is less common.
+The above configuration queries in the same manner as earlier, except the load of each "secondary" table occurs only when attributes referencing those columns are first referenced on the loaded instance.  This style of loading is very efficient for cases where large selects of items occur, but a detailed "drill down" of extra inherited properties is less common.
 
-Finally, an optimized load may be achieved by constructing a query which combines all three tables together, and adding it to the mapper configuration as its `select_table`, which is any selectable which the mapper then uses for load operations only (it has no impact on save operations).  Any query can be used for this, such as a UNION of tables.  For joined table inheritance, the easiest method is to use OUTER JOIN:
+More commonly, an all-at-once load may be achieved by constructing a query which combines all three tables together, and adding it to the mapper configuration as its `select_table`, which is an arbitrary selectable which the mapper will use for load operations (it has no impact on save operations).  Any selectableq can be used for this, such as a UNION of tables.  For joined table inheritance, the easiest method is to use OUTER JOIN:
 
     {python}
     join = employees.outerjoin(engineers).outerjoin(managers)
@@ -633,7 +635,7 @@ Which produces a query like the following:
 
 #### Single Table Inheritance
 
-Single table inheritance is where just one table supports the base class and all subclasses.  A column is present in the table for every attribute mapped to the base class as well as subclasses, and the columns which correspond to a single subclasses need to be nullable.  This configuration looks much like joined-table inheritance except there's only one table.  In this case, a `type` column is required, as there would be no other way to discriminate between classes.  For the inheriting classes, simply leave their `table` parameter blank:
+Single table inheritance is where the attributes of the base class as well as all subclasses are represented within a single table.  A column is present in the table for every attribute mapped to the base class and all subclasses; the columns which correspond to a single subclass are nullable.  This configuration looks much like joined-table inheritance except there's only one table.  In this case, a `type` column is required, as there would be no other way to discriminate between classes.  The table is specified in the base mapper only; for the inheriting classes, leave their `table` parameter blank:
 
     {python}
     employees_table = Table('employees', metadata, 
