@@ -202,21 +202,24 @@ def _create_testing_engine(options, file_config):
 post_configure['create_engine'] = _create_testing_engine
 
 def _prep_testing_database(options, file_config):
+    from testlib import engines
     from sqlalchemy import schema
 
     # also create alt schemas etc. here?
-    existing = db.table_names()
+    e = engines.utf8_engine()
+    existing = e.table_names()
     if existing:
-        print "Dropping existing tables in database: " + db_url
-        try:
-            print "Tables: %s" % ', '.join(existing)
-        except:
-            pass
-        print "Abort within 5 seconds..."
-        time.sleep(5)
-
-        md = schema.MetaData(db, reflect=True)
+        if not options.quiet:
+            print "Dropping existing tables in database: " + db_url
+            try:
+                print "Tables: %s" % ', '.join(existing)
+            except:
+                pass
+            print "Abort within 5 seconds..."
+            time.sleep(5)
+        md = schema.MetaData(e, reflect=True)
         md.drop_all()
+    e.dispose()
 post_configure['prep_db'] = _prep_testing_database
 
 def _set_table_options(options, file_config):
