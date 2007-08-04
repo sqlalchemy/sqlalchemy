@@ -80,7 +80,7 @@ Notes page on the wiki at http://sqlalchemy.org is a good resource for timely
 information affecting MySQL in SQLAlchemy.
 """
 
-import re, datetime, inspect, warnings, weakref, operator, sys
+import re, datetime, inspect, warnings, operator, sys
 from array import array as _array
 
 from sqlalchemy import sql, schema, ansisql
@@ -1331,9 +1331,9 @@ class MySQLDialect(ansisql.ANSIDialect):
         """Load column definitions from the server."""
 
         decode_from = self._detect_charset(connection)
-        case_sensitive = self._detect_case_sensitive(connection, decode_from)
-
-        if not case_sensitive:
+        casing = self._detect_casing(connection, decode_from)
+        if casing == 1:
+            # fixme: is this really needed?
             table.name = table.name.lower()
             table.metadata.tables[table.name]= table
 
@@ -1361,6 +1361,8 @@ class MySQLDialect(ansisql.ANSIDialect):
             extra_1 = match.group(3)
             extra_2 = match.group(4)
 
+            if col_type == 'tinyint' and args == '(1)':
+                col_type = 'boolean'
             try:
                 coltype = ischema_names[col_type]
             except KeyError:
@@ -1469,7 +1471,7 @@ class MySQLDialect(ansisql.ANSIDialect):
                     "MySQL-python >= 1.2.2 is recommended.  Assuming latin1."))
                 return 'latin1'
 
-    def _detect_case_sensitive(self, connection, charset=None):
+    def _detect_casing(self, connection, charset=None):
         """Sniff out identifier case sensitivity.
 
         Cached per-connection. This value can not change without a server
@@ -1485,9 +1487,16 @@ class MySQLDialect(ansisql.ANSIDialect):
                     "SHOW VARIABLES LIKE 'lower_case_table_names'"),
                                    charset=charset)
             if not row:
-                cs = True
+                cs = 0
             else:
-                cs = row[1] in ('0', 'OFF' 'off')
+                # 4.0.15 returns OFF or ON according to [ticket:489]
+                # 3.23 doesn't, 4.0.27 doesn't..
+                if row[1] == 'OFF':
+                    cs = 0
+                elif row[1] == 'ON':
+                    cs = 1
+                else:
+                    cs = int(row[1])
                 row.close()
             connection.properties['lower_case_table_names'] = cs
             return cs
