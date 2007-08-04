@@ -473,28 +473,28 @@ When `passive_deletes` is applied, the `children` relation will not be loaded in
         
 ### Controlling Ordering {@name=orderby}
 
-By default, mappers will attempt to ORDER BY the "oid" column of a table, or the primary key column, when selecting rows.  This can be modified in several ways.
+By default, mappers will attempt to ORDER BY the "oid" column of a table, or the first primary key column, when selecting rows.  This can be modified in several ways.
 
 The "order_by" parameter can be sent to a mapper, overriding the per-engine ordering if any.  A value of None means that the mapper should not use any ordering.  A non-None value, which can be a column, an `asc` or `desc` clause, or an array of either one, indicates the ORDER BY clause that should be added to all select queries:
 
     {python}
     # disable all ordering
-    mapper = mapper(User, users_table, order_by=None)
+    mapper(User, users_table, order_by=None)
 
     # order by a column
-    mapper = mapper(User, users_table, order_by=users_tableusers_table.c.user_id)
+    mapper(User, users_table, order_by=users_tableusers_table.c.user_id)
     
     # order by multiple items
-    mapper = mapper(User, users_table, order_by=[users_table.c.user_id, desc(users_table.c.user_name)])
+    mapper(User, users_table, order_by=[users_table.c.user_id, desc(users_table.c.user_name)])
 
 "order_by" can also be specified with queries, overriding all other per-engine/per-mapper orderings:
 
     {python}
     # order by a column
-    l = query.filter(users_table.c.user_name=='fred').order_by(users_table.c.user_id).all()
+    l = query.filter(User.user_name=='fred').order_by(User.user_id).all()
     
     # order by multiple criterion
-    l = query.filter(users_table.c.user_name=='fred').order_by([users_table.c.user_id, desc(users_table.c.user_name)])
+    l = query.filter(User.user_name=='fred').order_by([User.user_id, desc(User.user_name)])
 
 The "order_by" property can also be specified on a `relation()` which will control the ordering of the collection:
 
@@ -506,45 +506,18 @@ The "order_by" property can also be specified on a `relation()` which will contr
         'addresses' : relation(Address, order_by=addresses_table.c.address_id)
     })
     
-    
-### Limiting Rows Combined with Eager Loads {@name=limits}
-
-As indicated in the docs on `Query`, you can limit rows using `limit()` and `offset()`.  However, things get tricky when dealing with eager relationships, since a straight LIMIT of rows will interfere with the eagerly-loaded rows.  So here is what SQLAlchemy will do when you use limit or offset with an eager relationship:
+Note that when using eager loaders with relations, the tables used by the eager load's join are anonymously aliased.  You can only order by these columns if you specify it at the `relation()` level.  To control ordering at the query level based on a related table, you `join()` to that relation, then order by it:
 
     {python}
-    class User(object):
-        pass
-    class Address(object):
-        pass
-        mapper(User, users_table, properties={
-        'addresses' : relation(mapper(Address, addresses_table), lazy=False)
-    })
-    r = session.query(User).filter(User.c.user_name.like('F%')).limit(20).offset(10).all()
-    {opensql}SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.password AS users_password, addresses.address_id AS addresses_address_id, 
-    addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
-    addresses.city AS addresses_city, addresses.state AS addresses_state, 
-    addresses.zip AS addresses_zip 
-    FROM 
-    (SELECT users.user_id FROM users WHERE users.user_name LIKE %(users_user_name)s
-    ORDER BY users.oid LIMIT 20 OFFSET 10) AS rowcount, 
-     users LEFT OUTER JOIN addresses ON users.user_id = addresses.user_id 
-    WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
-    {'users_user_name': 'F%'}
-    
-The main WHERE clause as well as the limiting clauses are coerced into a subquery; this subquery represents the desired result of objects.  A containing query, which handles the eager relationships, is joined against the subquery to produce the result.  This is something to keep in mind as it's a complex query which may be problematic on databases with poor support for LIMIT, such as Oracle which does not support it natively.
+    session.query(User).join('addresses').order_by(Address.street)
 
-### Mapping a Class with Table Inheritance {@name=inheritance}
+### Mapping Class Inheritance Hierarchies {@name=inheritance}
 
-Inheritance in databases comes in three forms:  *single table inheritance*, where several types of classes are stored in one table, *concrete table inheritance*, where each type of class is stored in its own table, and *joined table inheritance*, where the parent/child classes are stored in their own tables that are joined together in a select.
+SQLAlchemy supports three forms of inheritance:  *single table inheritance*, where several types of classes are stored in one table, *concrete table inheritance*, where each type of class is stored in its own table, and *joined table inheritance*, where the parent/child classes are stored in their own tables that are joined together in a select.  Whereas support for single and joined table inheritance is strong, concrete table inheritance is a less common scenario with some particular problems so is not quite as flexible.
 
-There is also the ability to load "polymorphically", which is that a single query loads objects of multiple types at once.
+When mappers are configured in an inheritance relationship, SQLAlchemy has the ability to load elements "polymorphically", meaning that a single query can return objects of multiple types.
 
-SQLAlchemy supports all three kinds of inheritance.  Additionally, true "polymorphic" loading is supported in a straightfoward way for single table inheritance, and has some more manually-configured features that can make it happen for concrete and multiple table inheritance. 
-
-Working examples of polymorphic inheritance come with the distribution in the directory `examples/polymorphic`.
-
-Here are the classes we will use to represent an inheritance relationship:
+For the following sections, assume this class relationship:
 
     {python}
     class Employee(object):
@@ -567,11 +540,100 @@ Here are the classes we will use to represent an inheritance relationship:
         def __repr__(self):
             return self.__class__.__name__ + " " + self.name + " " +  self.engineer_info
 
-Each class supports a common `name` attribute, while the `Manager` class has its own attribute `manager_data` and the `Engineer` class has its own attribute `engineer_info`.
-        
+#### Joined Table Inheritance {@name=joined}
+
+In joined table inheritance, each class along a particular classes' list of parents is represented by a unique table.  The total set of attributes for a particular instance is represented as a join along all tables in its inheritance path.  Here, we first define a table to represent the `Employee` class.  This table will contain a primary key column (or columns), and a column for each attribute that's represented by `Employee`.  In this case it's just `name`:
+
+    {python}
+    employees = Table('employees', metadata, 
+       Column('employee_id', Integer, primary_key=True),
+       Column('name', String(50)),
+       Column('type', String(30), nullable=False)
+    )
+
+The table also has a column called `type`.  It is strongly advised in both single- and joined- table inheritance scenarios that the root table contains a column whose sole purpose is that of the **discriminator**; it stores a value which indicates the type of object represented within the row.  The column may be of any desired datatype.  While there are some "tricks" to work around the requirement that there be a discriminator column, they are more complicated to configure when one wishes to load polymorphically.
+
+Next we define individual tables for each of `Engineer` and `Manager`, which each contain columns that represent the attributes unique to the subclass they represent.  Each table also must contain a primary key column (or columns), and in most cases a foreign key reference to the parent table.  It is  standard practice that **same** column is used for both of these roles, and that the column is also named the same as that of the parent table.  While we will illustrate this pattern below, it's optional in SQLAlchemy; separate columns may be used for primary key and parent-relation, the column may be named differently than that of the parent, and even a custom join condition can be specified between parent and child tables instead of using a foreign key.  In joined table inheritance, the primary key of all instances is always **solely the primary key of the base table** (new in SQLAlchemy 0.4).
+
+    {python}
+    engineers = Table('engineers', metadata, 
+       Column('employee_id', Integer, ForeignKey('employees.employee_id'), primary_key=True),
+       Column('engineer_info', String(50)),
+    )
+
+    managers = Table('managers', metadata, 
+       Column('employee_id', Integer, ForeignKey('employees.employee_id'), primary_key=True),
+       Column('manager_data', String(50)),
+    )
+
+We then configure mappers in much the same way, except we use some additional arguments to indicate both the inheritance relationship, the polymorphic discriminator column, as well as the **polymorphic identity** of each class; this is the value that will be stored in the polymorphic discriminator column.
+
+    {python}
+    mapper(Employee, employees, polymorphic_on=employees.c.type, polymorphic_identity='employee')
+    mapper(Engineer, engineers, inherits=Employee, polymorphic_identity='engineer')
+    mapper(Manager, managers, inherits=Employee, polymorphic_identity='manager')
+
+And that's it.  Querying against `Employee` will return a combination of `Employee`, `Engineer` and `Manager` objects.
+
+##### Optimizing Joined Table Loads {@name=optimizing}
+
+When loading fresh from the database, the joined-table setup above will query from the parent table first, then for each row will issue a second query to the child table.  For example, for a load of five rows with `Employee` id 3, `Manager` ids 1 and 5 and `Engineer` ids 2 and 4, will produce queries along the lines of this example:
+
+    {python}
+    session.query(Employee).all()
+    {opensql}
+    SELECT employees.employee_id AS employees_employee_id, employees.name AS employees_name, employees.type AS employees_type 
+    FROM employees ORDER BY employees.oid
+    []
+    SELECT managers.employee_id AS managers_employee_id, managers.manager_data AS managers_manager_data 
+    FROM managers 
+    WHERE ? = managers.employee_id
+    [5]
+    SELECT engineers.employee_id AS engineers_employee_id, engineers.engineer_info AS engineers_engineer_info 
+    FROM engineers 
+    WHERE ? = engineers.employee_id
+    [2]
+    SELECT engineers.employee_id AS engineers_employee_id, engineers.engineer_info AS engineers_engineer_info 
+    FROM engineers 
+    WHERE ? = engineers.employee_id
+    [4]
+    SELECT managers.employee_id AS managers_employee_id, managers.manager_data AS managers_manager_data 
+    FROM managers 
+    WHERE ? = managers.employee_id
+    [1]
+
+The above query works well for a `get()` operation which does not over-join.  The "secondary" load of child rows may be "deferred" using `polymorphic_fetch='deferred'`:
+
+    {python}
+    mapper(Employee, employees, polymorphic_on=employees.c.type, \
+        polymorphic_identity='employee', polymorphic_fetch='deferred')
+    mapper(Engineer, engineers, inherits=Employee, polymorphic_identity='engineer')
+    mapper(Manager, managers, inherits=Employee, polymorphic_identity='manager')
+
+The above configuration queries in the same manner as earlier, except the load of the "secondary" table occurs when attributes referencing those columns are first referenced on the loaded instance.  This style of loading is very efficient for cases where large selects of items occur, but a detailed "drill down" of extra inherited properties is less common.
+
+Finally, an optimized load may be achieved by constructing a query which combines all three tables together, and adding it to the mapper configuration as its `select_table`, which is any selectable which the mapper then uses for load operations only (it has no impact on save operations).  Any query can be used for this, such as a UNION of tables.  For joined table inheritance, the easiest method is to use OUTER JOIN:
+
+    {python}
+    join = employees.outerjoin(engineers).outerjoin(managers)
+
+    mapper(Employee, employees, polymorphic_on=employees.c.type, \
+        polymorphic_identity='employee', select_table=join)
+    mapper(Engineer, engineers, inherits=Employee, polymorphic_identity='engineer')
+    mapper(Manager, managers, inherits=Employee, polymorphic_identity='manager')
+
+Which produces a query like the following:
+
+    {python}
+    session.query(Employee).all()
+    {opensql}
+    SELECT employees.employee_id AS employees_employee_id, engineers.employee_id AS engineers_employee_id, managers.employee_id AS managers_employee_id, employees.name AS employees_name, employees.type AS employees_type, engineers.engineer_info AS engineers_engineer_info, managers.manager_data AS managers_manager_data 
+    FROM employees LEFT OUTER JOIN engineers ON employees.employee_id = engineers.employee_id LEFT OUTER JOIN managers ON employees.employee_id = managers.employee_id ORDER BY employees.oid
+    []    
+
 #### Single Table Inheritance
 
-This will support polymorphic loading via the `Employee` mapper.
+Single table inheritance is where just one table supports the base class and all subclasses.  A column is present in the table for every attribute mapped to the base class as well as subclasses, and the columns which correspond to a single subclasses need to be nullable.  This configuration looks much like joined-table inheritance except there's only one table.  In this case, a `type` column is required, as there would be no other way to discriminate between classes.  For the inheriting classes, simply leave their `table` parameter blank:
 
     {python}
     employees_table = Table('employees', metadata, 
@@ -579,18 +641,24 @@ This will support polymorphic loading via the `Employee` mapper.
         Column('name', String(50)),
         Column('manager_data', String(50)),
         Column('engineer_info', String(50)),
-        Column('type', String(20))
+        Column('type', String(20), nullable=False)
     )
     
-    employee_mapper = mapper(Employee, employees_table, polymorphic_on=employees_table.c.type)
+    employee_mapper = mapper(Employee, employees_table, \
+        polymorphic_on=employees_table.c.type, polymorphic_identity='employee')
     manager_mapper = mapper(Manager, inherits=employee_mapper, polymorphic_identity='manager')
     engineer_mapper = mapper(Engineer, inherits=employee_mapper, polymorphic_identity='engineer')
 
 #### Concrete Table Inheritance
 
-Without polymorphic loading, you just define a separate mapper for each class.
+This form of inheritance maps each class to a distinct table, as below:
 
-    {python title="Concrete Inheritance, Non-polymorphic"}
+    {python}
+    employees_table = Table('employees', metadata, 
+        Column('employee_id', Integer, primary_key=True),
+        Column('name', String(50)),
+    )
+
     managers_table = Table('managers', metadata, 
         Column('employee_id', Integer, primary_key=True),
         Column('name', String(50)),
@@ -603,65 +671,127 @@ Without polymorphic loading, you just define a separate mapper for each class.
         Column('engineer_info', String(50)),
     )
 
-    manager_mapper = mapper(Manager, managers_table)
-    engineer_mapper = mapper(Engineer, engineers_table)
-    
-With polymorphic loading, the SQL query to do the actual polymorphic load must be constructed, usually as a UNION.  There is a helper function to create these UNIONS called `polymorphic_union`.
+Notice in this case there is no `type` column.  If polymorphic loading is not required, theres no advantage to using `inherits` here; you just define a separate mapper for each class.
 
-    {python title="Concrete Inheritance, Polymorphic"}
+    {python}
+    mapper(Employee, employees_table)
+    mapper(Manager, managers_table)
+    mapper(Engineer, engineers_table)
+
+To load polymorphically, the `select_table` argument is currently required.  In this case we must construct a UNION of all three tables.  SQLAlchemy includes a helper function to create these called `polymorphic_union`, which will map all the different columns into a structure of selects with the same numbers and names of columns, and also generate a virtual `type` column for each subselect:
+
+    {python}
     pjoin = polymorphic_union({
+        'employee':employees_table,
         'manager':managers_table,
         'engineer':engineers_table
     }, 'type', 'pjoin')
 
-    employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-    manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='manager')
-    engineer_mapper = mapper(Engineer, engineers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='engineer')
+    employee_mapper = mapper(Employee, employees_table, select_table=pjoin, \
+        polymorphic_on=pjoin.c.type, polymorphic_identity='employee')
+    manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, \
+        concrete=True, polymorphic_identity='manager')
+    engineer_mapper = mapper(Engineer, engineers_table, inherits=employee_mapper, \
+        concrete=True, polymorphic_identity='engineer')
 
-#### Joined Table Inheritance
-
-Like concrete table inheritance, this can be done non-polymorphically, or with a little more complexity, polymorphically:
-
-    {python title="Multiple Table Inheritance, Non-polymorphic"}
-    employees = Table('employees', metadata, 
-       Column('person_id', Integer, primary_key=True),
-       Column('name', String(50)),
-       Column('type', String(30))
-    )
-
-    engineers = Table('engineers', metadata, 
-       Column('person_id', Integer, ForeignKey('employees.person_id'), primary_key=True),
-       Column('engineer_info', String(50)),
-    )
-
-    managers = Table('managers', metadata, 
-       Column('person_id', Integer, ForeignKey('employees.person_id'), primary_key=True),
-       Column('manager_data', String(50)),
-    )
-
-    employee_mapper = mapper(Employee, employees)
-    mapper(Engineer, engineers, inherits=employee_mapper)
-    mapper(Manager, managers, inherits=employee_mapper)
-
-Polymorphically, joined-table inheritance is easier than concrete, as a simple outer join can usually work:
-
-    {python title="Joined Table Inheritance, Polymorphic"}
-    employee_join = employees.outerjoin(engineers).outerjoin(managers)
-
-    employee_mapper = mapper(Employee, employees, select_table=employee_join, polymorphic_on=employees.c.type, polymorphic_identity='employee')
-    mapper(Engineer, engineers, inherits=employee_mapper, polymorphic_identity='engineer')
-    mapper(Manager, managers, inherits=employee_mapper, polymorphic_identity='manager')
-
-In SQLAlchemy 0.4, the above mapper setup can load polymorphically *without* the join as well, by issuing distinct queries for each subclasses' table.
-
-The join condition in a joined table inheritance structure can be specified explicitly, using `inherit_condition`:
+Upon select, the polymorphic union produces a query like this:
 
     {python}
-    AddressUser.mapper = mapper(
-            AddressUser,
-            addresses_table, inherits=User.mapper, 
-            inherit_condition=users_table.c.user_id==addresses_table.c.user_id
-        )
+    session.query(Employee).all()
+    {opensql}
+    SELECT pjoin.type AS pjoin_type, pjoin.manager_data AS pjoin_manager_data, pjoin.employee_id AS pjoin_employee_id, 
+    pjoin.name AS pjoin_name, pjoin.engineer_info AS pjoin_engineer_info 
+    FROM (
+        SELECT employees.employee_id AS employee_id, CAST(NULL AS VARCHAR(50)) AS manager_data, employees.name AS name, 
+        CAST(NULL AS VARCHAR(50)) AS engineer_info, 'employee' AS type 
+        FROM employees 
+    UNION ALL 
+        SELECT managers.employee_id AS employee_id, managers.manager_data AS manager_data, managers.name AS name, 
+        CAST(NULL AS VARCHAR(50)) AS engineer_info, 'manager' AS type 
+        FROM managers 
+    UNION ALL 
+        SELECT engineers.employee_id AS employee_id, CAST(NULL AS VARCHAR(50)) AS manager_data, engineers.name AS name, 
+        engineers.engineer_info AS engineer_info, 'engineer' AS type 
+        FROM engineers
+    ) AS pjoin ORDER BY pjoin.oid
+    []
+
+#### Using Relations with Inheritance {@name=relations}
+
+Both joined-table and single table inheritance scenarios produce mappings which are usable in relation() functions; that is, it's possible to map a parent object to a child object which is polymorphic.  Similiarly, inheriting mappers can have `relation()`s of their own at any level, which are inherited to each child class.  The only requirement for relations is that there is a table relationship between parent and child.  An example is the following modification to the joined table inheritance example, which sets a bi-directional relationship between `Employee` and `Company`:
+
+    {python}
+    employees_table = Table('employees', metadata, 
+        Column('employee_id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('company_id', Integer, ForeignKey('companies.company_id'))
+    )
+
+    companies = Table('companies', metadata, 
+       Column('company_id', Integer, primary_key=True),
+       Column('name', String(50)))
+
+    class Company(object):
+        pass
+    
+    mapper(Company, companies, properties={
+       'employees': relation(Employee, backref='company')
+    })
+       
+SQLAlchemy has a lot of experience in this area; the optimized "outer join" approach can be used freely for parent and child relationships, eager loads are fully useable, query aliasing and other tricks are fully supported as well.
+
+In a concrete inheritance scenario, mapping `relation()`s is more difficult since the distinct classes do not share a table.  In this case, you *can* establish a relationship from parent to child if a join condition can be constructed from parent to child, if each child table contains a foreign key to the parent:
+
+    {python}
+    companies = Table('companies', metadata, 
+       Column('id', Integer, primary_key=True),
+       Column('name', String(50)))
+
+    employees_table = Table('employees', metadata, 
+        Column('employee_id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('company_id', Integer, ForeignKey('companies.id'))
+    )
+
+    managers_table = Table('managers', metadata, 
+        Column('employee_id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('manager_data', String(50)),
+        Column('company_id', Integer, ForeignKey('companies.id'))
+    )
+
+    engineers_table = Table('engineers', metadata, 
+        Column('employee_id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('engineer_info', String(50)),
+        Column('company_id', Integer, ForeignKey('companies.id'))
+    )
+
+    mapper(Employee, employees_table, select_table=pjoin, polymorphic_on=pjoin.c.type, polymorphic_identity='employee')
+    mapper(Manager, managers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='manager')
+    mapper(Engineer, engineers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='engineer')
+    mapper(Company, companies, properties={
+        'employees':relation(Employee)
+    })
+
+Let's crank it up and try loading with an eager load:
+
+    {python}
+    session.query(Company).options(eagerload('employees')).all()
+    {opensql}
+    SELECT anon_1.type AS anon_1_type, anon_1.manager_data AS anon_1_manager_data, anon_1.engineer_info AS anon_1_engineer_info, 
+    anon_1.employee_id AS anon_1_employee_id, anon_1.name AS anon_1_name, anon_1.company_id AS anon_1_company_id, 
+    companies.id AS companies_id, companies.name AS companies_name 
+    FROM companies LEFT OUTER JOIN (SELECT CAST(NULL AS VARCHAR(50)) AS engineer_info, employees.employee_id AS employee_id, 
+    CAST(NULL AS VARCHAR(50)) AS manager_data, employees.name AS name, employees.company_id AS company_id, 'employee' AS type 
+    FROM employees UNION ALL SELECT CAST(NULL AS VARCHAR(50)) AS engineer_info, managers.employee_id AS employee_id, 
+    managers.manager_data AS manager_data, managers.name AS name, managers.company_id AS company_id, 'manager' AS type 
+    FROM managers UNION ALL SELECT engineers.engineer_info AS engineer_info, engineers.employee_id AS employee_id, 
+    CAST(NULL AS VARCHAR(50)) AS manager_data, engineers.name AS name, engineers.company_id AS company_id, 'engineer' AS type 
+    FROM engineers) AS anon_1 ON companies.id = anon_1.company_id ORDER BY companies.oid, anon_1.oid
+    []
+
+The big limitation with concrete table inheritance is that relation()s placed on each concrete mapper do **not** propagate to child mappers.  If you want to have the same relation()s set up on all concrete mappers, they must be configured manually on each.
 
 ### Mapping a Class against Multiple Tables {@name=joins}
 
