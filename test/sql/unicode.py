@@ -18,9 +18,8 @@ class UnicodeSchemaTest(PersistTest):
         t1 = Table('unitable1', metadata,
             Column(u'méil', Integer, primary_key=True),
             Column(u'\u6e2c\u8a66', Integer),
-
             )
-        t2 = Table(u'Unite\u0301ble2', metadata,
+        t2 = Table(u'Unitéble2', metadata,
             Column(u'méil', Integer, primary_key=True, key="a"),
             Column(u'\u6e2c\u8a66', Integer, ForeignKey(u'unitable1.méil'), key="b"),
             )
@@ -47,9 +46,9 @@ class UnicodeSchemaTest(PersistTest):
         t1.insert().execute({u'méil':2, u'\u6e2c\u8a66':7})
         t2.insert().execute({'a':2, 'b':2})
 
-        meta = MetaData(unicode_bind, reflect=True)
-        tt1 = meta.tables[t1.name]
-        tt2 = meta.tables[t2.name]
+        meta = MetaData(unicode_bind)
+        tt1 = Table(t1.name, meta, autoload=True)
+        tt2 = Table(t2.name, meta, autoload=True)
 
         tt1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})
         tt2.insert().execute({u'méil':1, u'\u6e2c\u8a66':1})
