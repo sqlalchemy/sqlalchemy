@@ -1363,6 +1363,7 @@ class MySQLDialect(ansisql.ANSIDialect):
 
             if col_type == 'tinyint' and args == '(1)':
                 col_type = 'boolean'
+                args = None
             try:
                 coltype = ischema_names[col_type]
             except KeyError:
