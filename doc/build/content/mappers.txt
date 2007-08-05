@@ -636,7 +636,7 @@ The full list of options for the `relation()` function:
 
 A quick walkthrough of the basic relational patterns.
 
-##### One To Many
+##### One To Many {@name=onetomany}
 
 A one to many relationship places a foreign key in the child table referencing the parent.   SQLAlchemy creates the relationship as a collection on the parent object containing instances of the child object.
 
@@ -658,6 +658,8 @@ A one to many relationship places a foreign key in the child table referencing t
         'children':relation(Child)
     })
 
+    mapper(Child, child_table)
+
 To establish a bi-directional relationship in one-to-many, where the "reverse" side is a many to one, specify the `backref` option:
 
     {python}
@@ -665,9 +667,11 @@ To establish a bi-directional relationship in one-to-many, where the "reverse" s
         'children':relation(Child, backref='parent')
     })
 
+    mapper(Child, child_table)
+
 `Child` will get a `parent` attribute with many-to-one semantics.
 
-##### Many To One
+##### Many To One {@name=manytoone}
 
 Many to one places a foreign key in the parent table referencing the child.  The mapping setup is identical to one-to-many, however SQLAlchemy creates the relationship as a scalar attribute on the parent object referencing a single instance of the child object.
 
@@ -689,12 +693,14 @@ Many to one places a foreign key in the parent table referencing the child.  The
     mapper(Parent, parent_table, properties={
         'child':relation(Child)
     })
+    
+    mapper(Child, child_table)
 
 Backref behavior is available here as well, where `backref="parents"` will place a one-to-many collection on the `Child` class.
 
-##### One To One
+##### One To One {@name=onetoone}
 
-One To One is essentially a bi-directional relationship with a scalar attribute on both sides.  To acheive this the `uselist=False` flag indicates to place a scalar attribute instead of a collection on the "many" side of the relationship.  To convert one-to-many into one-to-one:
+One To One is essentially a bi-directional relationship with a scalar attribute on both sides.  To acheive this, the `uselist=False` flag indicates the placement of a scalar attribute instead of a collection on the "many" side of the relationship.  To convert one-to-many into one-to-one:
 
     {python}
     mapper(Parent, parent_table, properties={
@@ -708,10 +714,11 @@ Or to turn many-to-one into one-to-one:
         'child':relation(Child, backref=backref('parents', uselist=False))
     })
 
-##### Many To Many
+##### Many To Many {@name=manytomany}
 
-Many to Many adds an association table between two classes.
+Many to Many adds an association table between two classes.  The association table is indicated by the `secondary` argument to `relation()`.
 
+    {python}
     left_table = Table('left', metadata,
         Column('id', Integer, primary_key=True))
 
@@ -723,7 +730,180 @@ Many to Many adds an association table between two classes.
         Column('right_id', Integer, ForeignKey('right.id')),
         )
         
+    mapper(Parent, left_table, properties={
+        'children':relation(Child, secondary=association_table)
+    })
+    
+    mapper(Child, right_table)
+
+For a bi-directional relationship, both sides of the relation contain a collection by default, which can be modified on either side via the `uselist` flag to be scalar.  The `backref` keyword will automatically use the same `secondary` argument for the reverse relation:
+
+    {python}
+    mapper(Parent, left_table, properties={
+        'children':relation(Child, secondary=association_table, backref='parents')
+    })
+    
 ##### Association Object
+
+The association object pattern is a variant on many-to-many:  it specifically is used when your association table contains additional columns beyond those which are foreign keys to the left and right tables.  Instead of using the `secondary` argument, you map a new class directly to the association table.  The left side of the relation references the association object via one-to-many, and the association class references the right side via many-to-one.  
+
+    {python}
+    left_table = Table('left', metadata,
+        Column('id', Integer, primary_key=True))
+
+    right_table = Table('right', metadata,
+        Column('id', Integer, primary_key=True))
+    
+    association_table = Table('association', metadata,
+        Column('left_id', Integer, ForeignKey('left.id')),
+        Column('right_id', Integer, ForeignKey('right.id')),
+        Column('data', String(50))
+        )
+    
+    mapper(Parent, left_table, properties={
+        'children':relation(Association)
+    })
+    
+    mapper(Association, association_table, properties={
+        'child':relation(Child)
+    })
+    
+    mapper(Child, right_table)
+
+The bi-directional version adds backrefs to both relations:
+
+    {python}
+    mapper(Parent, left_table, properties={
+        'children':relation(Association, backref="parent")
+    })
+
+    mapper(Association, association_table, properties={
+        'child':relation(Child, backref="parent_assocs")
+    })
+
+    mapper(Child, right_table)
+
+Working with the association pattern in its direct form requires that child objects are associated with an association instance before being appended to the parent; similarly, access from parent to child goes through the association object:
+
+    {python}
+    # create parent, append a child via association
+    p = Parent()
+    a = Association()
+    a.child = Child()
+    p.children.append(a)
+    
+    # iterate through child objects via association, including association 
+    # attributes
+    for assoc in p.children:
+        print assoc.data
+        print assoc.child
+
+To enhance the association object pattern such that direct access to the `Association` object is optional, SQLAlchemy provides the [plugins_associationproxy](rel:plugins_associationproxy).
+
+**Important Note**:  it is strongly advised that the `secondary` table argument not be combined with the Association Object pattern, unless the `relation()` which contains the `secondary` argument is marked `viewonly=True`.  Otherwise, SQLAlchemy may persist conflicting data to the underlying association table since it is represented by two conflicting mappings.  The Association Proxy pattern should be favored in the case where access to the underlying association data is only sometimes needed.
+
+#### Adjacency List Relationships {@name=selfreferential}
+
+The **adjacency list** pattern is a common relational pattern whereby a table contains a foreign key reference to itself.  This is the most common and simple way to represent hierarchical data in flat tables.  The other way is the "nested sets" model, sometimes called "modified preorder".  Despite what many online articles say about modified preorder, the adjacency list model is probably the most appropriate pattern for the large majority of hierarchical storage needs, for reasons of concurrency, reduced complexity, and that modified preorder has little advantage over an application which can fully load subtrees into the application space.
+
+SQLAlchemy commonly refers to an adjacency list relation as a **self-referential mapper**.  In this example, we'll work with a single table called `treenodes` to represent a tree structure:
+
+    {python}
+    nodes = Table('treenodes', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('parent_id', Integer, ForeignKey('treenodes.id')),
+        Column('data', String(50)),
+        )
+
+A graph such as the following:
+
+    {diagram}
+    root --+---> child1
+           +---> child2 --+--> subchild1
+           |              +--> subchild2
+           +---> child3    
+
+Would be represented with data such as:
+
+    {diagram}
+    id       parent_id     data
+    ---      -------       ----
+    1        NULL          root
+    2        1             child1
+    3        1             child2
+    4        3             subchild1
+    5        3             subchild2
+    6        1             child3
+    
+A one-to-many relationship for the above looks exactly like any other one-to-many relationship.  When SQLAlchemy encounters the relation from `treenodes` to `treenodes`, it assumes one-to-many unless told otherwise:    
+    
+    {python title="Adjacency List One-To-Many"}
+    # entity class
+    class Node(object):
+        pass
+
+    mapper(Node, nodes, properties={
+        'children':relation(Node)
+    })
+    
+To create a many-to-one relationship from child to parent, an extra indicator of the "remote side" is added, which contains the `Column` object or objects indicating the remote side of the relation:
+
+    {python title="Adjacency List Many-To-One"}
+    mapper(Node, nodes, properties={
+        'parent':relation(Node, remote_side=[nodes.c.id])
+    })
+    
+And the bi-directional version combines both:
+
+    {python}
+    mapper(Node, nodes, properties={
+        'children':relation(Node, backref=backref('parent', remote_side=[nodes.c.id]))
+    })
+
+There are several examples included with SQLAlchemy illustrating self-referential strategies; these include [basic_tree.py](rel:http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/adjacencytree/basic_tree.py) and [optimized_al.py](rel:http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/elementtree/optimized_al.py), the latter of which illustrates how to persist and search XML documents in conjunction with [ElementTree](rel:http://effbot.org/zone/element-index.htm).
+
+##### Self-Referential Query Strategies {@name=query}
+
+Querying self-referential structures is done in the same way as any other query in SQLAlchemy, such as below, we query for any node with the `data` field of `child2`:
+
+    {python}
+    # get all nodes named 'child2'
+    sess.query(Node).filter(data='child2')
+
+On the subject of joins, i.e. those described in [datamapping_joins](rel:datamapping_joins), self-referential structures require the usage of aliases so that the same table can be referenced multiple times within the FROM clause of the query.   Aliasing can be done either manually using the `nodes` `Table` object as a source of aliases:
+
+    {python}
+    # get all nodes named 'subchild1' with a parent named 'child2'
+    nodealias = nodes.alias()
+    {sql}sess.query(Node).filter(Node.data=='subchild1').\
+        filter(and_(Node.parent_id==nodealias.c.id, nodealias.c.data=='child2')).all()
+    SELECT treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data 
+    FROM treenodes, treenodes AS treenodes_1 
+    WHERE treenodes.data = ? AND treenodes.parent_id = treenodes_1.id AND treenodes_1.data = ? ORDER BY treenodes.oid
+    ['subchild1', 'child2']
+
+or automatically, using `join()` with `aliased=True`:
+
+    {python}
+    # get all nodes named 'subchild1' with a parent named 'child2'
+    {sql}sess.query(Node).filter(Node.data=='subchild1').\
+        join('parent', aliased=True).filter(Node.data=='child2').all()
+    SELECT treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data 
+    FROM treenodes JOIN treenodes AS treenodes_1 ON treenodes_1.id = treenodes.parent_id 
+    WHERE treenodes.data = ? AND treenodes_1.data = ? ORDER BY treenodes.oid
+    ['subchild1', 'child2']
+
+To add criterion to multiple points along a longer join, use `from_joinpoint=True`:
+
+    {python}
+    # get all nodes named 'subchild1' with a parent named 'child2' and a grandparent 'root'
+    {sql}sess.query(Node).filter(Node.data=='subchild1').\
+        join('parent', aliased=True).filter(Node.data=='child2').\
+        join('parent', aliased=True, from_joinpoint=True).filter(Node.data=='root').all()
+    SELECT treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data 
+    FROM treenodes JOIN treenodes AS treenodes_1 ON treenodes_1.id = treenodes.parent_id JOIN treenodes AS treenodes_2 ON treenodes_2.id = treenodes_1.parent_id 
+    WHERE treenodes.data = ? AND treenodes_1.data = ? AND treenodes_2.data = ? ORDER BY treenodes.oid
+    ['subchild1', 'child2', 'root']
 
 #### Specifying Alternate Join Conditions to relation() {@name=customjoin}
 
@@ -779,75 +959,6 @@ Theres no restriction on how many times you can relate from parent to child.  SQ
                     and_(users_table.c.user_id==Address.c.user_id, 
                     Addresses.c.city=='New York')),
     })
-
-#### Self Referential Relationships {@name=selfreferential}
-
-A self-referential mapper is a mapper that is designed to operate with an *adjacency list* table.  This is a table that contains one or more foreign keys back to itself, and is usually used to create hierarchical tree structures.  SQLAlchemy's default model of saving items based on table dependencies is not sufficient in this case, as an adjacency list table introduces dependencies between individual rows.  Fortunately, SQLAlchemy will automatically detect a self-referential mapper and do the extra lifting to make it work.  
-
-    {python}
-    # define a self-referential table
-    trees = Table('treenodes', engine,
-        Column('node_id', Integer, primary_key=True),
-        Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
-        Column('node_name', String(50), nullable=False),
-        )
-
-    # treenode class
-    class TreeNode(object):
-        pass
-
-    # mapper defines "children" property, pointing back to TreeNode class,
-    # with the mapper unspecified.  it will point back to the primary 
-    # mapper on the TreeNode class.
-    TreeNode.mapper = mapper(TreeNode, trees, properties={
-            'children' : relation(
-                            TreeNode, 
-                            cascade="all"
-                         ),
-            }
-        )
-
-This kind of mapper goes through a lot of extra effort when saving and deleting items, to determine the correct dependency graph of nodes within the tree.
-
-A self-referential mapper where there is more than one relationship on the table requires that all join conditions be explicitly spelled out.  Below is a self-referring table that contains a "parent_node_id" column to reference parent/child relationships, and a "root_node_id" column which points child nodes back to the ultimate root node:
-
-    {python}
-    # define a self-referential table with several relations
-    trees = Table('treenodes', engine,
-        Column('node_id', Integer, primary_key=True),
-        Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
-        Column('root_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
-        Column('node_name', String(50), nullable=False),
-        )
-
-    # treenode class
-    class TreeNode(object):
-        pass
-
-    # define the "children" property as well as the "root" property
-    mapper(TreeNode, trees, properties={
-            'children' : relation(
-                            TreeNode, 
-                            primaryjoin=trees.c.parent_node_id == trees.c.node_id
-                            cascade="all",
-                            backref=backref("parent", remote_side=[trees.c.node_id])
-                         ),
-            'root' : relation(
-                    TreeNode,
-                    primaryjoin=trees.c.root_node_id == trees.c.node_id, 
-                    remote_side=[trees.c.node_id],
-                    uselist=False
-                )
-            }
-        )
-
-The "root" property on a TreeNode is a many-to-one relationship.  By default, a self-referential mapper declares relationships as one-to-many, so the extra parameter `remote_side`, pointing to a column or list of columns on the remote side of a relationship, is needed to indicate a "many-to-one" self-referring relationship (note the previous keyword argument `foreignkey` is deprecated).
-Both TreeNode examples above are available in functional form in the `examples/adjacencytree` directory of the distribution.    
-
-##### Self-Referential Query Strategies {@name=query}
-
-todo
-
 
 #### Alternate Collection Implementations {@name=collections}
 
@@ -1011,7 +1122,6 @@ The decorations are lightweight and no-op outside of relations, but they do add 
 The ORM uses this approach for built-ins, quietly substituting a trivial subclass when a `list`, `set` or `dict` is used directly.
 
 The collections package provides additional decorators and support for authoring custom types.  See the [package documentation](rel:docstrings_sqlalchemy.orm.collections) for more information and discussion of advanced usage and Python 2.3-compatible decoration options.
-
 
 #### Working with Large Collections {@name=largecollections}
 
