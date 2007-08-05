@@ -560,7 +560,7 @@ Similar to mapping against a join, a plain select() object can be used with a ma
     
     mapper(Customer, s)
     
-Above, the "customers" table is joined against the "orders" table to produce a full row for each customer row, the total count of related rows in the "orders" table, and the highest price in the "orders" table, grouped against the full set of columns in the "customers" table.  That query is then mapped against the Customer class.  New instances of Customer will contain attributes for each column in the "customers" table as well as an "order_count" and "highest_order" attribute.  Updates to the Customer object will only be reflected in the "customers" table and not the "orders" table.  This is because the primary key columnss of the "orders" table are not represented in this mapper and therefore the table is not affected by save or delete operations.
+Above, the "customers" table is joined against the "orders" table to produce a full row for each customer row, the total count of related rows in the "orders" table, and the highest price in the "orders" table, grouped against the full set of columns in the "customers" table.  That query is then mapped against the Customer class.  New instances of Customer will contain attributes for each column in the "customers" table as well as an "order_count" and "highest_order" attribute.  Updates to the Customer object will only be reflected in the "customers" table and not the "orders" table.  This is because the primary key columns of the "orders" table are not represented in this mapper and therefore the table is not affected by save or delete operations.
 
 #### Multiple Mappers for One Class {@name=multiple}
 
@@ -835,9 +835,9 @@ Would be represented with data such as:
     5        3             subchild2
     6        1             child3
     
-SQLAlchemy's `mapper()` configuration for a self-referential one-to-many relationship exactly like a "normal" other one-to-many relationship.  When SQLAlchemy encounters the foreign key relation from `treenodes` to `treenodes`, it assumes one-to-many unless told otherwise:    
+SQLAlchemy's `mapper()` configuration for a self-referential one-to-many relationship is exactly like a "normal" one-to-many relationship.  When SQLAlchemy encounters the foreign key relation from `treenodes` to `treenodes`, it assumes one-to-many unless told otherwise:    
     
-    {python title="Adjacency List One-To-Many"}
+    {python}
     # entity class
     class Node(object):
         pass
@@ -848,7 +848,7 @@ SQLAlchemy's `mapper()` configuration for a self-referential one-to-many relatio
     
 To create a many-to-one relationship from child to parent, an extra indicator of the "remote side" is added, which contains the `Column` object or objects indicating the remote side of the relation:
 
-    {python title="Adjacency List Many-To-One"}
+    {python}
     mapper(Node, nodes, properties={
         'parent':relation(Node, remote_side=[nodes.c.id])
     })
@@ -864,7 +864,7 @@ There are several examples included with SQLAlchemy illustrating self-referentia
 
 ##### Self-Referential Query Strategies {@name=query}
 
-Querying self-referential structures is done in the same way as any other query in SQLAlchemy, such as below, we query for any node with the `data` field of `child2`:
+Querying self-referential structures is done in the same way as any other query in SQLAlchemy, such as below, we query for any node whose `data` attrbibute stores the value `child2`:
 
     {python}
     # get all nodes named 'child2'
