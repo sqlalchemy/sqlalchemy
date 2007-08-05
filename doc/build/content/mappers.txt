@@ -1139,7 +1139,7 @@ The collections package provides additional decorators and support for authoring
 
 #### Configuring Loader Strategies: Lazy Loading, Eager Loading {@name=strategies}
 
-In the [ormtutorial](rel:ormtutorial), we introduced the concept of **Eager Loading**.  We used an `option` in conjunction with the `Query` object in order to indicate that a relation should be loaded at the same time as the parent, within a single SQL query:
+In the [datamapping](rel:datamapping), we introduced the concept of **Eager Loading**.  We used an `option` in conjunction with the `Query` object in order to indicate that a relation should be loaded at the same time as the parent, within a single SQL query:
 
     {python}
     {sql}>>> jack = session.query(User).options(eagerload('addresses')).filter_by(name='jack').all() #doctest: +NORMALIZE_WHITESPACE
@@ -1220,7 +1220,7 @@ When full statement or result-set loads are used with `Query`, SQLAlchemy does n
     # get results normally
     r = query.from_statement(statement)
 
-If the "eager" portion of the statement is "alisaed", the `alias` keyword argument to `contains_eager()` may be used to indicate it.  This is a string alias name or reference to an actual `Alias` object:
+If the "eager" portion of the statement is "aliased", the `alias` keyword argument to `contains_eager()` may be used to indicate it.  This is a string alias name or reference to an actual `Alias` object:
 
     {python}
     # use an alias of the addresses table
@@ -1233,7 +1233,7 @@ If the "eager" portion of the statement is "alisaed", the `alias` keyword argume
     query = session.query(User).options(contains_eager('addresses', alias=adalias))
 
     # get results normally
-    {sql}r = query.from_statement(query).all()
+    {sql}r = query.from_statement(statement).all()
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, adalias.address_id AS adalias_address_id, 
     adalias.user_id AS adalias_user_id, adalias.email_address AS adalias_email_address, (...other columns...)
     FROM users LEFT OUTER JOIN email_addresses AS adalias ON users.user_id = adalias.user_id
