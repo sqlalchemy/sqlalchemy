@@ -696,58 +696,52 @@ def _instrument_class(cls):
 def _instrument_membership_mutator(method, before, argument, after):
     """Route method args and/or return value through the collection adapter."""
 
-    if type(argument) is int:
-        def wrapper(*args, **kw):
-            if before and len(args) < argument:
-                raise exceptions.ArgumentError(
-                    'Missing argument %i' % argument)
-            initiator = kw.pop('_sa_initiator', None)
-            if initiator is False:
-                executor = None
+    # This isn't smart enough to handle @adds(1) for 'def fn(self, (a, b))'
+    if before:
+        fn_args = list(sautil.flatten_iterator(inspect.getargspec(method)[0]))
+        if type(argument) is int:
+            pos_arg = argument
+            named_arg = len(fn_args) > argument and fn_args[argument] or None
+        else:
+            if argument in fn_args:
+                pos_arg = fn_args.index(argument)
             else:
-                executor = getattr(args[0], '_sa_adapter', None)
-            
-            if before and executor:
-                getattr(executor, before)(args[argument], initiator)
+                pos_arg = None
+            named_arg = argument
+        del fn_args
 
-            if not after or not executor:
-                return method(*args, **kw)
+    def wrapper(*args, **kw):
+        if before:
+            if pos_arg is None:
+                if named_arg not in kw:
+                    raise exceptions.ArgumentError(
+                        "Missing argument %s" % argument)
+                value = kw[named_arg]
             else:
-                res = method(*args, **kw)
-                if res is not None:
-                    getattr(executor, after)(res, initiator)
-                return res
-    else:
-        def wrapper(*args, **kw):
-            if before:
-                vals = inspect.getargvalues(inspect.currentframe())
-                if argument in kw:
-                    value = kw[argument]
+                if len(args) > pos_arg:
+                    value = args[pos_arg]
+                elif named_arg in kw:
+                    value = kw[named_arg]
                 else:
-                    positional = inspect.getargspec(method)[0]
-                    pos = positional.index(argument)
-                    if pos == -1:
-                        raise exceptions.ArgumentError('Missing argument %s' %
-                                                       argument)
-                    else:
-                        value = args[pos]
+                    raise exceptions.ArgumentError(
+                        "Missing argument %s" % argument)
 
-            initiator = kw.pop('_sa_initiator', None)
-            if initiator is False:
-                executor = None
-            else:
-                executor = getattr(args[0], '_sa_adapter', None)
+        initiator = kw.pop('_sa_initiator', None)
+        if initiator is False:
+            executor = None
+        else:
+            executor = getattr(args[0], '_sa_adapter', None)
+            
+        if before and executor:
+            getattr(executor, before)(value, initiator)
 
-            if before and executor:
-                getattr(executor, before)(value, initiator)
-
-            if not after or not executor:
-                return method(*args, **kw)
-            else:
-                res = method(*args, **kw)
-                if res is not None:
-                    getattr(executor, after)(res, initiator)
-                return res
+        if not after or not executor:
+            return method(*args, **kw)
+        else:
+            res = method(*args, **kw)
+            if res is not None:
+                getattr(executor, after)(res, initiator)
+            return res
     try:
         wrapper._sa_instrumented = True
         wrapper.__name__ = method.__name__

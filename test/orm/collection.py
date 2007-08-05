@@ -127,7 +127,7 @@ class CollectionsTest(PersistTest):
             assert_eq()
 
             if reduce(and_, [hasattr(direct, a) for a in
-                             ('__delitem', 'insert', '__len__')], True):
+                             ('__delitem__', 'insert', '__len__')], True):
                 values = [creator(), creator(), creator(), creator()]
                 direct[slice(0,1)] = values
                 control[slice(0,1)] = values
@@ -962,6 +962,107 @@ class CollectionsTest(PersistTest):
         self._test_object(MyCollection2)
         self.assert_(getattr(MyCollection2, '_sa_instrumented') ==
                      id(MyCollection2))
+
+    def test_recipes(self):
+        class Custom(object):
+            def __init__(self):
+                self.data = []
+            @collection.appender
+            @collection.adds('entity')
+            def put(self, entity):
+                self.data.append(entity)
+
+            @collection.remover
+            @collection.removes(1)
+            def remove(self, entity):
+                self.data.remove(entity)
+
+            @collection.adds(1)
+            def push(self, *args):
+                self.data.append(args[0])
+
+            @collection.removes('entity')
+            def yank(self, entity, arg):
+                self.data.remove(entity)
+
+            @collection.replaces(2)
+            def replace(self, arg, entity, **kw):
+                self.data.insert(0, entity)
+                return self.data.pop()
+
+            @collection.removes_return()
+            def pop(self, key):
+                return self.data.pop()
+            
+            @collection.iterator
+            def __iter__(self):
+                return iter(self.data)
+
+        class Foo(object):
+            pass
+        canary = Canary()
+        manager.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=Custom)
+
+        obj = Foo()
+        adapter = collections.collection_adapter(obj.attr)
+        direct = obj.attr
+        control = list()
+        def assert_eq():
+            self.assert_(set(direct) == canary.data)
+            self.assert_(set(adapter) == canary.data)
+            self.assert_(list(direct) == control)
+        creator = entity_maker
+
+        e1 = creator()
+        direct.put(e1)
+        control.append(e1)
+        assert_eq()
+
+        e2 = creator()
+        direct.put(entity=e2)
+        control.append(e2)
+        assert_eq()
+
+        direct.remove(e2)
+        control.remove(e2)
+        assert_eq()
+
+        direct.remove(entity=e1)
+        control.remove(e1)
+        assert_eq()
+
+        e3 = creator()
+        direct.push(e3)
+        control.append(e3)
+        assert_eq()
+
+        direct.yank(e3, 'blah')
+        control.remove(e3)
+        assert_eq()
+
+        e4, e5, e6, e7 = creator(), creator(), creator(), creator()
+        direct.put(e4)
+        direct.put(e5)
+        control.append(e4)
+        control.append(e5)
+
+        dr1 = direct.replace('foo', e6, bar='baz')
+        control.insert(0, e6)
+        cr1 = control.pop()
+        assert_eq()
+        self.assert_(dr1 is cr1)
+
+        dr2 = direct.replace(arg=1, entity=e7)
+        control.insert(0, e7)
+        cr2 = control.pop()
+        assert_eq()
+        self.assert_(dr2 is cr2)
+
+        dr3 = direct.pop('blah')
+        cr3 = control.pop()
+        assert_eq()
+        self.assert_(dr3 is cr3)
 
     def test_lifecycle(self):
         class Foo(object):
