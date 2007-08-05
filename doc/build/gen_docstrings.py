@@ -53,7 +53,7 @@ def make_all_docs():
 def create_docstring_toc(data, root):
     """given a docstring.AbstractDoc structure, create new TOCElement nodes corresponding
     to the elements and cross-reference them back to the doc structure."""
-    root = TOCElement("docstrings", name="docstrings", description="Generated Documentation", parent=root, requires_paged=True)
+    root = TOCElement("docstrings", name="docstrings", description="API Documentation", parent=root, requires_paged=True)
     files = []
     def create_obj_toc(obj, toc):
         if obj.isclass:
