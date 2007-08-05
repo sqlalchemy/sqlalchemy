@@ -8,6 +8,7 @@ from sqlalchemy import util, exceptions, sql, engine
 from sqlalchemy.orm import unitofwork, query
 from sqlalchemy.orm.mapper import object_mapper as _object_mapper
 from sqlalchemy.orm.mapper import class_mapper as _class_mapper
+from sqlalchemy.orm import util as mapperutil
 import weakref
 import sqlalchemy
 
