@@ -159,11 +159,79 @@ class SessionTransaction(object):
             self.rollback()
 
 class Session(object):
-    """Encapsulates a set of objects being operated upon within an
-    object-relational operation.
+    """Encapsulates a set of objects being operated upon within an object-relational operation.
 
-    The Session object is **not** threadsafe.  For thread-management
-    of Sessions, see the ``sqlalchemy.ext.sessioncontext`` module.
+    The Session is the front end to SQLAlchemy's **Unit of Work** implementation. The concept
+    behind Unit of Work is to track modifications to a field of objects, and then be able to
+    flush those changes to the database in a single operation.
+    
+    SQLAlchemy's unit of work includes these functions:
+
+      * The ability to track in-memory changes on scalar- and collection-based object
+        attributes, such that database persistence operations can be assembled based on those
+        changes.
+
+      * The ability to organize individual SQL queries and population of newly generated
+      primary and foreign key-holding attributes during a persist operation
+      such that referential integrity is maintained at all times.  
+      
+      * The ability to maintain insert ordering against the order in which
+      new instances were added to the session.  
+      
+      * an Identity Map, which is a dictionary keying instances to their unique primary key
+        identity. This ensures that only one copy of a particular entity is ever present
+        within the session, even if repeated load operations for the same entity occur. This
+        allows many parts of an application to get a handle to a particular object without
+        any chance of modifications going to two different places.
+
+    When dealing with instances of mapped classes, an instance may be *attached* to a
+    particular Session, else it is *unattached* . An instance also may or may not correspond
+    to an actual row in the database. These conditions break up into four distinct states:
+
+      * *Transient* - a transient instance exists within memory only and is not associated with
+        any Session. It also has no database identity and does not have a corresponding record
+        in the database. When a new instance of a class is constructed, and no default session
+        context exists with which to automatically attach the new instance, it is a transient
+        instance. The instance can then be saved to a particular session in which case it
+        becomes a *pending* instance. If a default session context exists, new instances are
+        added to that Session by default and therefore become *pending* instances immediately.
+
+      * *Pending* - a pending instance is a Session-attached object that has not yet been
+        assigned a database identity. When the Session is flushed (i.e. changes are persisted to
+        the database), a pending instance becomes persistent.
+
+      * *Persistent* - a persistent instance has a database identity and a corresponding record
+        in the database, and is also associated with a particular Session. By "database
+        identity" we mean the object is associated with a table or relational concept in the
+        database combined with a particular primary key in that table. Objects that are loaded
+        by SQLAlchemy in the context of a particular session are automatically considered
+        persistent, as are formerly pending instances which have been subject to a session
+        `flush()`.
+
+      * *Detached* - a detached instance is an instance which has a database identity and
+        corresponding row in the database, but is not attached to any Session. This occurs when
+        an instance has been removed from a Session, either because the session itself was
+        cleared or closed, or the instance was explicitly removed from the Session. The object
+        can be re-attached to a session in which case it becomes Persistent again; any
+        un-persisted changes that exist on the instance, whether they occurred during its
+        previous persistent state or during its detached state will be detected and maintained
+        by the new session. Detached instances are useful when an application needs to represent
+        a long-running operation across multiple Sessions, needs to store an object in a
+        serialized state and then restore it later (such as within an HTTP "session" object), or
+        in some cases where code needs to load instances locally which will later be associated
+        with some other Session.
+
+    The session methods which control instance state include ``save()``, ``update()``,
+    ``save_or_update()``, ``delete()``, ``merge()``, and ``expunge()``.
+    
+    The Session object is **not** threadsafe, particularly during flush operations.  A session
+    which is only read from (i.e. is never flushed) can be used by concurrent threads if it's
+    acceptable that some object instances may be loaded twice.  
+    
+    The typical pattern to managing Sessions in a multi-threaded environment is either to use
+    mutexes to limit concurrent access to one thread at a time, or more commonly to establish
+    a unique session for every thread, using a threadlocal variable.  SQLAlchemy provides 
+    a thread-managed Session adapter, provided by the [sqlalchemy.orm#scoped_session()] function.
     """
 
     def __init__(self, bind=None, autoflush=True, transactional=False, twophase=False, echo_uow=False, weak_identity_map=False):

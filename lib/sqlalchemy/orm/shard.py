@@ -1,5 +1,5 @@
 from sqlalchemy.orm.session import Session
-from sqlalchemy.orm import Query
+from sqlalchemy.orm.query import Query
 
 __all__ = ['ShardedSession', 'ShardedQuery']
 

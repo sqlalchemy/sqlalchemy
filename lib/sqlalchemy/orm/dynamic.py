@@ -2,7 +2,8 @@
 a special AttributeHistory on the 'write' side."""
 
 from sqlalchemy import exceptions
-from sqlalchemy.orm import attributes, Query, object_session
+from sqlalchemy.orm import attributes, object_session
+from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.mapper import has_identity
 
 class DynamicCollectionAttribute(attributes.InstrumentedAttribute):

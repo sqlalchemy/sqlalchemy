@@ -640,7 +640,7 @@ class DefaultTest(UnitOfWorkTest):
         
         Session.close()
         
-        l = Query(Hoho).select()
+        l = Hoho.query.all()
         
         (h1, h2, h3, h4, h5) = l
         
@@ -941,7 +941,7 @@ class SaveTest(UnitOfWorkTest):
 
         # select both
         #Session.close()
-        userlist = Query(m).select(users.c.user_id.in_(u.user_id, u2.user_id), order_by=[users.c.user_name])
+        userlist = User.query.filter(users.c.user_id.in_(u.user_id, u2.user_id)).order_by([users.c.user_name]).all()
         print repr(u.user_id), repr(userlist[0].user_id), repr(userlist[0].user_name)
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
@@ -1464,7 +1464,7 @@ class ManyToManyTest(UnitOfWorkTest):
             item.keywords = []
             for kname in [e['keyword'][1]['name'] for e in elem['keywords'][1]]:
                 try:
-                    k = Query(keywordmapper).select(keywords.c.name == kname)[0]
+                    k = Keyword.query.filter(keywords.c.name == kname)[0]
                 except IndexError:
                     k = Keyword()
                     k.name= kname
@@ -1474,7 +1474,7 @@ class ManyToManyTest(UnitOfWorkTest):
 
         Session.commit()
         Session.close()
-        l = Query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
+        l = Item.query.filter(items.c.item_name.in_(*[e['item_name'] for e in data[1:]])).order_by(items.c.item_name).all()
         self.assert_result(l, *data)
 
     def testm2mmultitable(self):

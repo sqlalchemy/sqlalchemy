@@ -21,24 +21,55 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.orm.session import Session as _Session
 from sqlalchemy.orm.session import object_session, attribute_manager, sessionmaker
-from sqlalchemy.orm.scoping import ScopedSession as scoped_session
+from sqlalchemy.orm.scoping import ScopedSession
 
 __all__ = [ 'relation', 'column_property', 'composite', 'backref', 'eagerload',
             'eagerload_all', 'lazyload', 'noload', 'deferred', 'defer',
             'undefer', 'undefer_group', 'extension', 'mapper', 'clear_mappers',
             'compile_mappers', 'class_mapper', 'object_mapper', 'sessionmaker',
-            'scoped_session', 'dynamic_loader', 'MapperExtension', 'Query', 'polymorphic_union',
+            'scoped_session', 'dynamic_loader', 'MapperExtension', 'polymorphic_union',
             'create_session', 'synonym', 'contains_alias',
             'contains_eager', 'EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS',
             'object_session', 'PropComparator' ]
 
+def scoped_session(session_factory, scopefunc=None):
+  """Provides thread-local management of Sessions.
+
+  Usage::
+
+    Session = scoped_session(sessionmaker(autoflush=True))
+
+  To instantiate a Session object which is part of the scoped
+  context, instantiate normally::
+  
+    session = Session()
+    
+  Most session methods are available as classmethods from
+  the scoped session::
+  
+    Session.commit()
+    Session.close()
+    
+  To map classes so that new instances are saved in the current
+  Session automatically, as well as to provide session-aware
+  class attributes such as "query", use the `mapper` classmethod
+  from the scoped session::
+    
+    mapper = Session.mapper
+    mapper(Class, table, ...)
+
+  """
+  
+  return ScopedSession(session_factory, scopefunc=scopefunc)
+  
 def create_session(bind=None, **kwargs):
     """create a new [sqlalchemy.orm.session#Session].
     
     The session by default does not begin a transaction, and requires that
     flush() be called explicitly in order to persist results to the database.
     
-    It is recommended to use the sessionmaker() function instead of create_session().
+    It is recommended to use the [sqlalchemy.orm#sessionmaker()] function 
+    instead of create_session().
     """
     kwargs.setdefault('autoflush', False)
     kwargs.setdefault('transactional', False)

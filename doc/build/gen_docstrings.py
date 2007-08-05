@@ -38,14 +38,12 @@ def make_all_docs():
         make_doc(obj=orm.interfaces),
         make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.MapperExtension, orm.mapperlib.Mapper]),
         make_doc(obj=orm.properties),
-        make_doc(obj=orm.query, classes=[orm.query.Query, orm.query.QueryContext, orm.query.SelectionContext]),
-        make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionTransaction]),
+        make_doc(obj=orm.query, classes=[orm.query.Query]),
+        make_doc(obj=orm.session, classes=[orm.session.Session]),
         make_doc(obj=orm.shard),
         make_doc(obj=exceptions),
-        make_doc(obj=assignmapper),
         make_doc(obj=associationproxy, classes=[associationproxy.AssociationProxy]),
         make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),
-        make_doc(obj=sessioncontext),
         make_doc(obj=sqlsoup),
     ] + [make_doc(getattr(__import__('sqlalchemy.databases.%s' % m).databases, m)) for m in databases.__all__]
     return objects
