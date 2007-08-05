@@ -614,7 +614,7 @@ One way to reduce the number of "secondary" loads of child rows is to "defer" th
 
 The above configuration queries in the same manner as earlier, except the load of each "secondary" table occurs only when attributes referencing those columns are first referenced on the loaded instance.  This style of loading is very efficient for cases where large selects of items occur, but a detailed "drill down" of extra inherited properties is less common.
 
-More commonly, an all-at-once load may be achieved by constructing a query which combines all three tables together, and adding it to the mapper configuration as its `select_table`, which is an arbitrary selectable which the mapper will use for load operations (it has no impact on save operations).  Any selectableq can be used for this, such as a UNION of tables.  For joined table inheritance, the easiest method is to use OUTER JOIN:
+More commonly, an all-at-once load may be achieved by constructing a query which combines all three tables together, and adding it to the mapper configuration as its `select_table`, which is an arbitrary selectable which the mapper will use for load operations (it has no impact on save operations).  Any selectable can be used for this, such as a UNION of tables.  For joined table inheritance, the easiest method is to use OUTER JOIN:
 
     {python}
     join = employees.outerjoin(engineers).outerjoin(managers)
