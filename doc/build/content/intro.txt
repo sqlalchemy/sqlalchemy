@@ -46,11 +46,11 @@ Installing SQLAlchemy from scratch is most easily achieved with [setuptools][]. 
     
     # easy_install SQLAlchemy
 
-This command will download the latest version of SQLAlchemy from the [Python Cheese Shop][cheese] and install it to your system.
+This command will download the latest version of SQLAlchemy from the [Python Cheese Shop][pypi] and install it to your system.
 
 [setuptools]: http://peak.telecommunity.com/DevCenter/setuptools
 [install setuptools]: http://peak.telecommunity.com/DevCenter/EasyInstall#installation-instructions
-[cheese]: http://cheeseshop.python.org/pypi/SQLAlchemy
+[pypi]: http://pypi.python.org/pypi/SQLAlchemy
 
 Otherwise, you can install from the distribution using the `setup.py` script:
 
@@ -58,21 +58,19 @@ Otherwise, you can install from the distribution using the `setup.py` script:
 
 ### Installing a Database API {@name=dbms}
 
-SQLAlchemy is designed to operate with a [DBAPI](http://www.python.org/doc/peps/pep-0249/) implementation built for a particular database, and includes support for the most popular databases:
+SQLAlchemy is designed to operate with a [DB-API](http://www.python.org/doc/peps/pep-0249/) implementation built for a particular database, and includes support for the most popular databases:
 
 * Postgres:  [psycopg2](http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo)
-* SQLite:  [pysqlite](http://initd.org/tracker/pysqlite)
-* MySQL:   [MySQLDB](http://sourceforge.net/projects/mysql-python)
+* SQLite:  [pysqlite](http://initd.org/tracker/pysqlite), [sqlite3](http://docs.python.org/lib/module-sqlite3.html) (included with Python 2.5 or greater)
+* MySQL:   [MySQLdb](http://sourceforge.net/projects/mysql-python)
 * Oracle:  [cx_Oracle](http://www.cxtools.net/default.aspx?nav=home)
-* MS-SQL:  [pyodbc](http://pyodbc.sourceforge.net/) (recommended) [adodbapi](http://adodbapi.sourceforge.net/)  [pymssql](http://pymssql.sourceforge.net/)
+* MS-SQL:  [pyodbc](http://pyodbc.sourceforge.net/) (recommended), [adodbapi](http://adodbapi.sourceforge.net/)  or [pymssql](http://pymssql.sourceforge.net/)
 * Firebird:  [kinterbasdb](http://kinterbasdb.sourceforge.net/)
 * Informix:  [informixdb](http://informixdb.sourceforge.net/)
 
-When using Python 2.5 or greater, a SQLite database library is already provided.
-
 ### Checking the Installed SQLAlchemy Version
  
-These documents are designed around version 0.4.  If you're working on a system that already has SQLAlchemy installed, check the version from your Python prompt like this:
+This documentation covers SQLAlchemy version 0.4.  If you're working on a system that already has SQLAlchemy installed, check the version from your Python prompt like this:
 
      {python}
      >>> import sqlalchemy
