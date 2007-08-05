@@ -704,14 +704,14 @@ One To One is essentially a bi-directional relationship with a scalar attribute 
 
     {python}
     mapper(Parent, parent_table, properties={
-        'children':relation(Child, uselist=False, backref='parent')
+        'child':relation(Child, uselist=False, backref='parent')
     })
 
 Or to turn many-to-one into one-to-one:
 
     {python}
     mapper(Parent, parent_table, properties={
-        'child':relation(Child, backref=backref('parents', uselist=False))
+        'child':relation(Child, backref=backref('parent', uselist=False))
     })
 
 ##### Many To Many {@name=manytomany}
@@ -904,6 +904,20 @@ To add criterion to multiple points along a longer join, use `from_joinpoint=Tru
     FROM treenodes JOIN treenodes AS treenodes_1 ON treenodes_1.id = treenodes.parent_id JOIN treenodes AS treenodes_2 ON treenodes_2.id = treenodes_1.parent_id 
     WHERE treenodes.data = ? AND treenodes_1.data = ? AND treenodes_2.data = ? ORDER BY treenodes.oid
     ['subchild1', 'child2', 'root']
+
+##### Configuring Eager Loading {@name=eagerloading}
+
+Eager loading of relations occurs using joins or outerjoins from parent to child table during a normal query operation, such that the parent and its child collection can be populated from a single SQL statement.  SQLAlchemy's eager loading uses aliased tables in all cases when joining to related items, so it is compatible with self-referential joining.  However, to use eager loading with a self-referential relation, SQLAlchemy needs to be told how many levels deep it should join; otherwise the eager load will not take place.  This depth setting is configured via `join_depth`:
+
+    {python}
+    mapper(Node, nodes, properties={
+        'children':relation(Node, lazy=False, join_depth=2)
+    })
+    
+    {sql}session.query(Node).all()
+    SELECT treenodes_1.id AS treenodes_1_id, treenodes_1.parent_id AS treenodes_1_parent_id, treenodes_1.data AS treenodes_1_data, treenodes_2.id AS treenodes_2_id, treenodes_2.parent_id AS treenodes_2_parent_id, treenodes_2.data AS treenodes_2_data, treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data 
+    FROM treenodes LEFT OUTER JOIN treenodes AS treenodes_2 ON treenodes.id = treenodes_2.parent_id LEFT OUTER JOIN treenodes AS treenodes_1 ON treenodes_2.id = treenodes_1.parent_id ORDER BY treenodes.oid, treenodes_2.oid, treenodes_1.oid
+    []
 
 #### Specifying Alternate Join Conditions to relation() {@name=customjoin}
 
@@ -1123,6 +1137,123 @@ The ORM uses this approach for built-ins, quietly substituting a trivial subclas
 
 The collections package provides additional decorators and support for authoring custom types.  See the [package documentation](rel:docstrings_sqlalchemy.orm.collections) for more information and discussion of advanced usage and Python 2.3-compatible decoration options.
 
+#### Configuring Loader Strategies: Lazy Loading, Eager Loading {@name=strategies}
+
+In the [ormtutorial](rel:ormtutorial), we introduced the concept of **Eager Loading**.  We used an `option` in conjunction with the `Query` object in order to indicate that a relation should be loaded at the same time as the parent, within a single SQL query:
+
+    {python}
+    {sql}>>> jack = session.query(User).options(eagerload('addresses')).filter_by(name='jack').all() #doctest: +NORMALIZE_WHITESPACE
+    SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address, 
+    addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id 
+    WHERE users.name = ? ORDER BY users.oid, addresses_1.oid
+    ['jack']
+    
+By default, all relations are **lazy loading**.  The scalar or collection attribute associated with a `relation()` contains a trigger which fires the first time the attribute is accessed, which issues a SQL call at that point:
+
+    {python}
+    {sql}>>> jack.addresses
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM addresses 
+    WHERE ? = addresses.user_id ORDER BY addresses.oid
+    [5]
+    {stop}[<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
+
+The default **loader strategy** for any `relation()` is configured by the `lazy` keyword argument, which defaults to `True`.  Below we set it as `False` so that the `children` relation is eager loading:
+
+    {python}
+    # eager load 'children' attribute
+    mapper(Parent, parent_table, properties={
+        'children':relation(Child, lazy=False)
+    })
+
+The loader strategy can be changed from lazy to eager as well as eager to lazy using the `eagerload()` and `lazyload()` query options:
+
+    {python}
+    # set children to load lazily
+    session.query(Parent).options(lazyload('children')).all()
+
+    # set children to load eagerly
+    session.query(Parent).options(eagerload('children')).all()
+
+To reference a relation that is deeper than one level, separate the names by periods:
+
+    {python}
+    session.query(Parent).options(eagerload('foo.bar.bat')).all()
+    
+When using dot-separated names with `eagerload()`, option applies **only** to the actual attribute named, and **not** its ancestors.  For example, suppose a mapping from `A` to `B` to `C`, where the relations, named `atob` and `btoc`, are both lazy-loading.  A statement like the following:
+
+    {python}
+    session.query(A).options(eagerload('atob.btoc')).all()
+    
+will load only `A` objects to start.  When the `atob` attribute on each `A` is accessed, the returned `B` objects will *eagerly* load their `C` objects. 
+
+Therefore, to modify the eager load to load both `atob` as well as `btoc`, place eagerloads for both:
+
+    {python}
+    session.query(A).options(eagerload('atob'), eagerload('atob.btoc')).all()
+    
+or more simply just use `eagerload_all()`:
+
+    {python}
+    session.query(A).options(eagerload_all('atob.btoc')).all()
+
+There are two other loader strategies available, **dynamic loading** and **no loading**; these are described in [advdatamapping_relation_largecollections](rel:advdatamapping_relation_largecollections).
+
+##### Combining Eager Loads with Statement/Result Set Queries
+
+When full statement or result-set loads are used with `Query`, SQLAlchemy does not affect the SQL query itself, and therefore has no way of tacking on its own `LEFT [OUTER] JOIN` conditions that are normally used to eager load relationships.  If the query being constructed is created in such a way that it returns rows not just from a parent table (or tables) but also returns rows from child tables, the result-set mapping can be notified as to which additional properties are contained within the result set.  This is done using the `contains_eager()` query option, which specifies the name of the relationship to be eagerly loaded.
+
+    {python}
+    # mapping is the users->addresses mapping
+    mapper(User, users_table, properties={
+        'addresses':relation(Address, addresses_table)
+    })
+    
+    # define a query on USERS with an outer join to ADDRESSES
+    statement = users_table.outerjoin(addresses_table).select(use_labels=True)
+    
+    # construct a Query object which expects the "addresses" results 
+    query = session.query(User).options(contains_eager('addresses'))
+    
+    # get results normally
+    r = query.from_statement(statement)
+
+If the "eager" portion of the statement is "alisaed", the `alias` keyword argument to `contains_eager()` may be used to indicate it.  This is a string alias name or reference to an actual `Alias` object:
+
+    {python}
+    # use an alias of the addresses table
+    adalias = addresses_table.alias('adalias')
+    
+    # define a query on USERS with an outer join to adalias
+    statement = users_table.outerjoin(adalias).select(use_labels=True)
+
+    # construct a Query object which expects the "addresses" results 
+    query = session.query(User).options(contains_eager('addresses', alias=adalias))
+
+    # get results normally
+    {sql}r = query.from_statement(query).all()
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, adalias.address_id AS adalias_address_id, 
+    adalias.user_id AS adalias_user_id, adalias.email_address AS adalias_email_address, (...other columns...)
+    FROM users LEFT OUTER JOIN email_addresses AS adalias ON users.user_id = adalias.user_id
+
+In the case that the main table itself is also aliased, the `contains_alias()` option can be used:
+
+    {python}
+    # define an aliased UNION called 'ulist'
+    statement = users.select(users.c.user_id==7).union(users.select(users.c.user_id>7)).alias('ulist')
+
+    # add on an eager load of "addresses"
+    statement = statement.outerjoin(addresses).select(use_labels=True)
+    
+    # create query, indicating "ulist" is an alias for the main table, "addresses" property should
+    # be eager loaded
+    query = create_session().query(User).options(contains_alias('ulist'), contains_eager('addresses'))
+    
+    # results
+    r = query.from_statement(statement)
+
 #### Working with Large Collections {@name=largecollections}
 
 The default behavior of `relation()` is to fully load the collection of items in, as according to the loading strategy of the relation.  Additionally, the Session by default only knows how to delete objects which are actually present within the session.  When a parent instance is marked for deletion and flushed, the Session loads its full list of child items in so that they may either be deleted as well, or have their foreign key value set to null; this is to avoid constraint violations.  For large collections of child items, there are several strategies to bypass full loading of child items both at load time as well as deletion time.
@@ -1195,56 +1326,4 @@ Use `passive_deletes=True` to disable child object loading on a DELETE operation
 
 When `passive_deletes` is applied, the `children` relation will not be loaded into memory when an instance of `MyClass` is marked for deletion.  The `cascade="all, delete-orphan"` *will* take effect for instances of `MyOtherClass` which are currently present in the session; however for instances of `MyOtherClass` which are not loaded, SQLAlchemy assumes that "ON DELETE CASCADE" rules will ensure that those rows are deleted by the database and that no foreign key violation will occur.
         
-#### Combining Eager Loads with Statement/Result Set Queries
-
-When full statement/result loads are used with `Query`, SQLAlchemy does not affect the SQL query itself, and therefore has no way of tacking on its own `LEFT [OUTER] JOIN` conditions that are normally used to eager load relationships.  If the query being constructed is created in such a way that it returns rows not just from a parent table (or tables) but also returns rows from child tables, the result-set mapping can be notified as to which additional properties are contained within the result set.  This is done using the `contains_eager()` query option, which specifies the name of the relationship to be eagerly loaded.
-
-    {python}
-    # mapping is the users->addresses mapping
-    mapper(User, users_table, properties={
-        'addresses':relation(Address, addresses_table)
-    })
-    
-    # define a query on USERS with an outer join to ADDRESSES
-    statement = users_table.outerjoin(addresses_table).select(use_labels=True)
-    
-    # construct a Query object which expects the "addresses" results 
-    query = session.query(User).options(contains_eager('addresses'))
-    
-    # get results normally
-    r = query.from_statement(statement)
-
-If the "eager" portion of the statement is "alisaed", the `alias` keyword argument to `contains_eager()` may be used to indicate it.  This is a string alias name or reference to an actual `Alias` object:
-
-    {python}
-    # use an alias of the addresses table
-    adalias = addresses_table.alias('adalias')
-    
-    # define a query on USERS with an outer join to adalias
-    statement = users_table.outerjoin(adalias).select(use_labels=True)
-
-    # construct a Query object which expects the "addresses" results 
-    query = session.query(User).options(contains_eager('addresses', alias=adalias))
-
-    # get results normally
-    {sql}r = query.from_statement(query).all()
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, adalias.address_id AS adalias_address_id, 
-    adalias.user_id AS adalias_user_id, adalias.email_address AS adalias_email_address, (...other columns...)
-    FROM users LEFT OUTER JOIN email_addresses AS adalias ON users.user_id = adalias.user_id
-
-In the case that the main table itself is also aliased, the `contains_alias()` option can be used:
-
-    {python}
-    # define an aliased UNION called 'ulist'
-    statement = users.select(users.c.user_id==7).union(users.select(users.c.user_id>7)).alias('ulist')
-
-    # add on an eager load of "addresses"
-    statement = statement.outerjoin(addresses).select(use_labels=True)
-    
-    # create query, indicating "ulist" is an alias for the main table, "addresses" property should
-    # be eager loaded
-    query = create_session().query(User).options(contains_alias('ulist'), contains_eager('addresses'))
-    
-    # results
-    r = query.from_statement(statement)
 
