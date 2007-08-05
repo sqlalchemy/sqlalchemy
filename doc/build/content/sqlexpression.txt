@@ -1,0 +1,385 @@
+SQL Expression Language Tutorial {@name=sql}
+===============================================
+
+This tutorial will cover SQLAlchemy SQL Expressions, which are Python constructs that represent SQL statements.  The tutorial is in doctest format, meaning each `>>>` line represents something you can type at a Python command prompt, and the following text represents the expected return value.  The tutorial has no prerequisites.
+
+## Imports
+
+A quick check to verify that we are on at least **version 0.4** of SQLAlchemy:
+
+    {python}
+    >>> import sqlalchemy
+    >>> sqlalchemy.__version__ # doctest:+SKIP
+    0.4.0
+    
+First, lets import some symbols to get us started with our database connection as well as what we need to tell SQLAlchemy about the database tables we want to work with.
+
+    {python}
+    >>> from sqlalchemy import create_engine, Table, Column, Integer, String, DateTime, Boolean, MetaData, ForeignKey
+
+Many users prefer to just say `from sqlalchemy import *`, or `import sqlalchemy as sa`, for this step.
+
+## Connecting
+
+For this tutorial we will use an in-memory-only SQLite database.   This is an easy way to test things without needing to have an actual database defined anywhere.  To connect we use `create_engine()`:
+
+    {python}
+    >>> engine = create_engine('sqlite:///:memory:', echo=True)
+    
+The `echo` flag is a shortcut to setting up SQLAlchemy logging, which is accomplished via Python's standard `logging` module.  With it enabled, we'll see all the generated SQL produced.  If you are working through this tutorial and want less output generated, set it to `False`.   This tutorial will format the SQL behind a popup window so it doesn't get in our way; just click the "SQL" links to see whats being generated.
+    
+## Define and Create Tables {@name=tables}
+
+The SQL Expression Language constructs its expressions in most cases against table columns.  In SQLAlchemy, a column is most often represented by an object called `Column`, and in all cases a `Column` is associated with a `Table`.  A collection of `Table` objects and their associated child objects is referred to as **database metadata**.  In this tutorial we will explicitly lay out several `Table` objects, but note that SA can also "import" whole sets of `Table` objects automatically from an existing database (this process is called **table reflection**).
+
+The schema will consist of this table structure, where an arrow (--->) represents a foreign key relationship heading towards the parent table:
+    
+    {diagram}
+    users <----- addresses
+      ^
+      |
+      +---- orders
+              ^
+              |
+         order_items
+              ^
+              |
+            items
+
+The table metadata itself.  We define our tables all within a catalog called `MetaData`, using the `Table` construct, which resembles regular SQL CREATE TABLE statements.
+
+    {python}
+    >>> metadata = MetaData()
+    >>> users = Table('users', metadata,
+    ...     Column('id', Integer, primary_key=True),
+    ...     Column('name', String(40)),
+    ...     Column('fullname', String(100)),
+    ... )
+
+    >>> orders = Table('orders', metadata,
+    ... Column('id', Integer, primary_key=True),
+    ... Column('user_id', None, ForeignKey('users.id')),
+    ... Column('address_id', None, ForeignKey('addresses.id')),
+    ... Column('description', String(30)),
+    ... Column('isopen', Integer)
+    ... )
+
+    >>> addresses = Table('addresses', metadata, 
+    ... Column('id', Integer, primary_key=True),
+    ... Column('user_id', None, ForeignKey('users.id')),
+    ... Column('email_address', String(50), nullable=False))
+
+    >>> items = Table('items', metadata, 
+    ... Column('id', Integer, primary_key=True),
+    ... Column('description', String(30), nullable=False)
+    ... )
+
+    >>> order_items = Table('order_items', metadata,
+    ... Column('item_id', None, ForeignKey('items.id')),
+    ... Column('order_id', None, ForeignKey('orders.id')))
+
+All about how to define `Table` objects, as well as how to create them from an existing database automatically, is described in [metadata](rel:metadata).
+
+Next, to tell the `MetaData` we'd actually like to create our selection of tables for real inside the SQLite database, we use `create_all()`, passing it the `engine` instance which points to our database.  This will check for the presence of each table first before creating, so its safe to call multiple times:
+
+    {python}
+    {sql}>>> metadata.create_all(engine) #doctest: +NORMALIZE_WHITESPACE
+    PRAGMA table_info("users")
+    {}
+    PRAGMA table_info("addresses")
+    {}
+    PRAGMA table_info("orders")
+    {}
+    PRAGMA table_info("items")
+    {}
+    PRAGMA table_info("order_items")
+    {}
+    CREATE TABLE users (
+        id INTEGER NOT NULL, 
+        name VARCHAR(40), 
+        fullname VARCHAR(100), 
+        PRIMARY KEY (id)
+    )
+    None
+    COMMIT
+    CREATE TABLE addresses (
+        id INTEGER NOT NULL, 
+        user_id INTEGER, 
+        email_address VARCHAR(50) NOT NULL, 
+        PRIMARY KEY (id), 
+         FOREIGN KEY(user_id) REFERENCES users (id)
+    )
+    None
+    COMMIT
+    CREATE TABLE orders (
+        id INTEGER NOT NULL, 
+        user_id INTEGER, 
+        address_id INTEGER, 
+        description VARCHAR(30), 
+        isopen INTEGER, 
+        PRIMARY KEY (id), 
+         FOREIGN KEY(user_id) REFERENCES users (id), 
+         FOREIGN KEY(address_id) REFERENCES addresses (id)
+    )
+    None
+    COMMIT
+    <BLANKLINE>
+    CREATE TABLE items (
+        id INTEGER NOT NULL, 
+        description VARCHAR(30) NOT NULL, 
+        PRIMARY KEY (id)
+    )
+    None
+    COMMIT
+    CREATE TABLE order_items (
+        item_id INTEGER, 
+        order_id INTEGER, 
+         FOREIGN KEY(item_id) REFERENCES items (id), 
+         FOREIGN KEY(order_id) REFERENCES orders (id)
+    )
+    None
+    COMMIT
+
+## Insert Expressions
+
+The first SQL expression we'll use is the `Insert` construct, which represents an INSERT statement.   This is typically created relative to its target table:
+
+    {python}
+    >>> ins = users.insert()
+
+All SQL expression constructs can immediately produce their default string representation, using the `str()` function:
+
+    {python}
+    >>> str(ins)
+    'INSERT INTO users (id, name, fullname) VALUES (:id, :name, :fullname)'
+    
+We'll notice above that the INSERT statement names every column in the `users` table.  This can be limited by using the `values` keyword, which establishes the VALUES clause of the INSERT explicitly:
+
+    {python}
+    >>> ins = users.insert(values={'name':'jack', 'fullname':'Jack Jones'})
+    >>> str(ins)
+    'INSERT INTO users (name, fullname) VALUES (:name, :fullname)'
+    
+Above, notice that while the `values` keyword limited the VALUES clause to just two columns, the actual data we placed in `values` didn't come out; instead we got positional bind parameters.  As it turns out, our data *is* stored within our `Insert` construct, but it typically only comes out when the statement is actually executed; since the data consists of literal values, SQLAlchemy autoamatically generates bind parameters for them.
+
+## Executing Inserts
+
+So the interesting part of an `Insert` is executing it.  In this tutorial, we will illustrate several methods of executing SQL constructs.  To begin, we will start with the most explicit.  The `engine` object we created is a repository for database connections capable of issuing SQL to the database.  To acquire one of these we use the `connect()` method:
+
+    {python}
+    >>> conn = engine.connect()
+    >>> conn #doctest: +ELLIPSIS
+    <sqlalchemy.engine.base.Connection object at 0x...>
+
+The `Connection` object represents an actively checked out DBAPI connection resource.  Lets feed it our `Insert` object and see what happens:
+
+    {opensql}>>> result = conn.execute(ins)
+    INSERT INTO users (name, fullname) VALUES (?, ?)
+    ['jack', 'Jack Jones']
+    COMMIT
+
+So the INSERT statement was now issued to the database.  Note however, that the statement does not look like our string representation; whereas our string representation included named bind parameters `:name` and `:fullname`, when executed it only had positional "qmark" style bind parameters.  What's the difference ?  Our `engine` object, connected to SQLite, is associated with a **Dialect** provided with SQLAlchemy known as `sqlalchemy.databases.sqlite.SLDialect`.  This dialect specifies all the behavior of the `pysqlite2` DBAPI module, including that it prefers "qmark" bind parameters by default.  When we called `execute()`, the `Connection` **compiled** the `Insert` object against this dialect, which produced a SQL string specific to SQLite.  On the other hand, when we used the `str()` function alone, SQLAlchemy compiled the statement using its default dialect which uses named parameters.
+
+We can see the SQLite dialect take over if we purposely `compile()` the statement against the SQLite dialect.  The named bind parameters turn into question marks:
+
+    >>> from sqlalchemy.databases.sqlite import SQLiteDialect
+    >>> compiled = ins.compile(dialect=SQLiteDialect())
+    >>> str(compiled)
+    'INSERT INTO users (name, fullname) VALUES (?, ?)'
+
+The `compiled` variable also has our bind parameter values hidden inside of it:
+
+    >>> compiled.construct_params({}) #doctest: +NORMALIZE_WHITESPACE
+    ClauseParameters:{'fullname': 'Jack Jones', 'name': 'jack'}    
+
+What about the `result` variable we got when we called `execute()` ?  As the SQLAlchemy `Connection` object references a DBAPI connection, the result, known as a `ResultProxy` object, is analgous to the DBAPI cursor object.  In the case of an INSERT, we can get important information from it, such as the primary key values which were generated from our statement:
+
+    >>> result.last_inserted_ids()
+    [1]
+    
+The value of `1` was automatically generated by SQLite, but only because we did not specify the `id` column explicitly; otherwise, our explicit version would have been used.   In either case, SQLAlchemy always knows how to get at a newly generated primary key value, even though the method of generating them is different across different databases; each databases' `Dialect` knows the specific steps needed to determine the correct value (or values; note that `last_inserted_ids()` returns a list so that it supports composite primary keys).
+
+## Executing Multiple Inserts
+
+Our insert example above was intentionally a little drawn out to show some various behaviors of expression language constructs.  In the usual case, an `Insert` statement is usually compiled against the parameters sent to the `execute()` method on `Connection`, so that theres no need to construct the object against a specific set of parameters.  Lets create a generic `Insert` statement again and use it in the "normal" way:
+
+    {python}
+    >>> ins = users.insert()
+    {opensql}>>> conn.execute(ins, id=2, name='wendy', fullname='Wendy Williams') # doctest: +ELLIPSIS
+    INSERT INTO users (id, name, fullname) VALUES (?, ?, ?)
+    [2, 'wendy', 'Wendy Williams']
+    COMMIT
+    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+
+Above, because we specified all three columns in the the `execute()` method, the compiled `Insert` included all three columns.  The `Insert` statement is compiled at execution time based on the parameters we specified; if we specified fewer parameters, the `Insert` would have fewer entries in its VALUES clause.
+
+To issue many inserts using DBAPI's `executemany()` method, we can send in a list of dictionaries each containing a distinct set of parameters to be inserted, as we do here to add some email addresses:
+
+    {python}
+    {opensql}>>> conn.execute(addresses.insert(), [ # doctest: +ELLIPSIS
+    ...    {'user_id': 1, 'email_address' : 'jack@yahoo.com'},
+    ...    {'user_id': 1, 'email_address' : 'jack@msn.com'},
+    ...    {'user_id': 2, 'email_address' : 'www@www.org'},
+    ...    {'user_id': 2, 'email_address' : 'wendy@aol.com'},
+    ... ])
+    INSERT INTO addresses (user_id, email_address) VALUES (?, ?)
+    [[1, 'jack@yahoo.com'], [1, 'jack@msn.com'], [2, 'www@www.org'], [2, 'wendy@aol.com']]
+    COMMIT
+    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+
+Above, we again relied upon SQLite's automatic generation of primary key identifiers for each `addresses` row.
+
+When executing multiple sets of parameters, each dictionary must have the **same** set of keys; i.e. you cant have fewer keys in some dictionaries than others.  This is because the `Insert` statement is compiled against the **first** dictionary in the list, and its assumed that all subsequent argument dictionaries are compatible with that statement.
+
+## Selecting 
+
+We began with inserts just so that our test database had some data in it.  The more interesting part of the data is selecting it !  The most typical construct used to select data is the `select()` function:
+
+    {python}
+    >>> from sqlalchemy import select
+    >>> s = select([users])
+    {opensql}>>> result = conn.execute(s)
+    SELECT users.id, users.name, users.fullname 
+    FROM users
+    []
+
+Above, we issued the most basic `select()` construct; that of placing the `users` table within the COLUMNS clause of the select, and then executing.  SQLAlchemy expanded the `users` table into the set of each of its columns, and also generated a FROM clause for us.  The result returned is again a `ResultProxy` object, which acts much like a DBAPI cursor, including methods such as `fetchone()` and `fetchall()`.  The easiest way to get rows from it is to just iterate:
+
+    {python}
+    >>> for row in result:
+    ...     print row
+    (1, u'jack', u'Jack Jones')
+    (2, u'wendy', u'Wendy Williams')
+
+If we'd like to more carefully control the columns which are placed in the COLUMNS clause of the select, we reference individual `Column` objects from our `Table`.  These are available as named attributes off the `c` attribute of the `Table` object:
+
+    {python}
+    >>> s = select([users.c.name, users.c.fullname])
+    {sql}>>> result = conn.execute(s)
+    SELECT users.name, users.fullname 
+    FROM users
+    []
+    >>> result.fetchall() #doctest: +NORMALIZE_WHITESPACE
+    [(u'jack', u'Jack Jones'), (u'wendy', u'Wendy Williams')]
+    
+Lets observe something interesting about the FROM clause.  Whereas the generated statement contains two distinct sections, a "SELECT <columns>" part and a "FROM <table>" part, our `select()` construct only has a list containing columns.  How does this work ?  Let's try putting *two* tables into our `select()` statement:
+
+    {python}
+    {sql}>>> conn.execute(select([users, addresses])).fetchall()
+    SELECT users.id, users.name, users.fullname, addresses.id, addresses.user_id, addresses.email_address 
+    FROM users, addresses
+    []
+    {stop}[(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com'), (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com'), (1, u'jack', u'Jack Jones', 3, 2, u'www@www.org'), (1, u'jack', u'Jack Jones', 4, 2, u'wendy@aol.com'), (2, u'wendy', u'Wendy Williams', 1, 1, u'jack@yahoo.com'), (2, u'wendy', u'Wendy Williams', 2, 1, u'jack@msn.com'), (2, u'wendy', u'Wendy Williams', 3, 2, u'www@www.org'), (2, u'wendy', u'Wendy Williams', 4, 2, u'wendy@aol.com')]
+    
+It placed **both** tables into the FROM clause.  But also, it made a real mess.  Those who are familiar with SQL joins know that this is a **cartesian product**; each row from the `users` table is produced against each row from the `addresses` table.  So to put some sanity into this statement, we need a WHERE clause.  Which brings us to the second argument of `select()`:
+
+    {python}
+    >>> s = select([users, addresses], users.c.id==addresses.c.user_id)
+    {sql}>>> conn.execute(s).fetchall()
+    SELECT users.id, users.name, users.fullname, addresses.id, addresses.user_id, addresses.email_address 
+    FROM users, addresses 
+    WHERE users.id = addresses.user_id
+    []
+    {stop}[(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com'), (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com'), (2, u'wendy', u'Wendy Williams', 3, 2, u'www@www.org'), (2, u'wendy', u'Wendy Williams', 4, 2, u'wendy@aol.com')]
+
+So that looks a lot better, we added an expression to our `select()` which had the effect of adding `WHERE users.id = addresses.user_id` to our statement, and our results were managed down so that the join of `users` and `addresses` rows made sense.  But let's look at that expression ?  It's using just a Python equality operator between two different `Column` objects.  It should be clear that something is up.  Saying `1==1` produces `True`, and `1==2` produces `False`, and neither of those look like a WHERE clause.  So lets see exactly what that expression is doing:
+
+    {python}
+    >>> users.c.id==addresses.c.user_id #doctest: +ELLIPSIS
+    <sqlalchemy.sql._BinaryExpression object at 0x...>
+    
+Wow, surprise !  This is neither a `True` nor a `False`.  Well what is it ?
+
+    {python}
+    >>> str(users.c.id==addresses.c.user_id)
+    'users.id = addresses.user_id'
+
+As you can see, the `==` operator is, thanks to Python's availability of the `__eq__()` built-in method, producing an object that is very much like the `Insert` and `select()` objects we've made so far; you call `str()` on it and it produces SQL.  By now, one can see the pattern that everything we are working with is ultimately the same type of object.  SQLAlchemy terms the base class of all of these expessions as a `sqlalchemy.sql.ClauseElement`.  
+
+## Operators {@name=operators}
+
+Since we've stumbled upon SQLAlchemy's operator paradigm, let's go through some of its capabilities.  We've seen how to equate two columns to each other:
+
+    >>> print users.c.id==addresses.c.user_id
+    users.id = addresses.user_id
+    
+If we put some kind of literal value in there, we get a bind parameter:
+
+    >>> print users.c.id==7
+    users.id = :users_id
+    
+The `7` literal is embedded in there; we can use the same trick we did with the `Insert` object to see it:
+
+    >>> (users.c.id==7).compile().construct_params({})
+    ClauseParameters:{'users_id': 7}
+    
+Most Python operators, as it turns out, produce a SQL expression here.  Such as, if we add two integer columns together, we get an addition expression:
+
+    >>> print users.c.id + addresses.c.id
+    users.id + addresses.id
+    
+Interestingly, the type of the `Column` is important !  If we use `+` with two string based columns (recall we put types like `Integer` and `String` on our `Column` objects at the beginning), we get something different:
+
+    >>> print users.c.name + users.c.fullname
+    users.name || users.fullname
+
+Where `||` is the string concatenation operator used on most databases.  But not all of them.  MySQL users, fear not:
+
+    >>> from sqlalchemy.databases.mysql import MySQLDialect
+    >>> print (users.c.name + users.c.fullname).compile(dialect=MySQLDialect())
+    concat(users.name, users.fullname)
+    
+## Conjunctions {@name=conjunctions}
+
+We'd like to show off some of our operators inside of `select()` constructs.  But we need to lump them together a little more, so lets first introduce some conjunctions.  Conjunctions are those little words like AND and OR that put things together.  We'll also hit upon NOT.  AND, OR and NOT can work from the corresponding functions SQLAlchemy provides (notice we also throw in a LIKE):
+
+    >>> from sqlalchemy import and_, or_, not_
+    >>> print and_(users.c.name.like('j%'), users.c.id==addresses.c.user_id, \
+    ...     or_(addresses.c.email_address=='wendy@aol.com', addresses.c.email_address=='jack@yahoo.com'), \
+    ...     not_(users.c.id>5))
+    users.name LIKE :users_name AND users.id = addresses.user_id AND (addresses.email_address = :addresses_email_address OR addresses.email_address = :addresses_email_address_1) AND users.id <= :users_id
+
+And you can also use the re-jiggered bitwise AND, OR and NOT operators, although because of Python operator precedence you have to watch your parenthesis:
+
+    >>> print users.c.name.like('j%') & (users.c.id==addresses.c.user_id) & \
+    ...     ((addresses.c.email_address=='wendy@aol.com') | (addresses.c.email_address=='jack@yahoo.com')) \
+    ...     & ~(users.c.id>5)
+    users.name LIKE :users_name AND users.id = addresses.user_id AND (addresses.email_address = :addresses_email_address OR addresses.email_address = :addresses_email_address_1) AND users.id <= :users_id
+
+So with all of this vocabulary, let's select all users who have an email address at AOL or MSN, whose name starts with a letter between "m" and "z", and we'll also generate a column containing their full name combined with their email address.  We will add two new constructs to this statement, `between()` and `label()`.  `between()` produces a BETWEEN clause, and `label()` is used in a column expression to produce labels using the `AS` keyword; its recommended when selecting from expressions that otherwise would not have a name:
+
+    >>> s = select([(users.c.fullname + ", " + addresses.c.email_address).label('title')], 
+    ...        and_( 
+    ...            users.c.id==addresses.c.user_id, 
+    ...            users.c.name.between('m', 'z'), 
+    ...           or_(
+    ...              addresses.c.email_address.like('%@aol.com'), 
+    ...              addresses.c.email_address.like('%@msn.com')
+    ...           )
+    ...        )
+    ...    )
+    >>> print conn.execute(s).fetchall()
+    SELECT users.fullname || ? || addresses.email_address AS title 
+    FROM users, addresses 
+    WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
+    [', ', 'm', 'z', '%@aol.com', '%@msn.com']
+    {stop}[(u'Wendy Williams, wendy@aol.com',)]
+
+## Using Text {@name=text}
+
+Our last example really became a handful to type.  Going from what one understands to be a textual SQL expression into a Python construct which groups components together in a programmatic style can be hard.  That's why SQLAlchemy lets you just use strings too.  The `text()` construct represents any textual statement.  To use bind parameters with `text()`, always use the named colon format.  Such as below, we create a `text()` and execute it, feeding in the bind parameters to the `execute()` method:
+
+    >>> from sqlalchemy import text
+    >>> s = text("""SELECT users.fullname || ', ' || addresses.email_address AS title 
+    ...            FROM users, addresses 
+    ...            WHERE users.id = addresses.user_id AND users.name BETWEEN :x AND :y AND 
+    ...            (addresses.email_address LIKE :e1 OR addresses.email_address LIKE :e2)
+    ...        """)
+    {sql}>>> print conn.execute(s, x='m', y='z', e1='%@aol.com', e2='%@msn.com').fetchall() # doctest:+NORMALIZE_WHITESPACE
+    SELECT users.fullname || ', ' || addresses.email_address AS title 
+    FROM users, addresses 
+    WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND 
+    (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
+    ['m', 'z', '%@aol.com', '%@msn.com']
+    {stop}[(u'Wendy Williams, wendy@aol.com',)]
+    
