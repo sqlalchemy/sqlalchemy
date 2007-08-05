@@ -835,7 +835,7 @@ Would be represented with data such as:
     5        3             subchild2
     6        1             child3
     
-A one-to-many relationship for the above looks exactly like any other one-to-many relationship.  When SQLAlchemy encounters the relation from `treenodes` to `treenodes`, it assumes one-to-many unless told otherwise:    
+SQLAlchemy's `mapper()` configuration for a self-referential one-to-many relationship exactly like a "normal" other one-to-many relationship.  When SQLAlchemy encounters the foreign key relation from `treenodes` to `treenodes`, it assumes one-to-many unless told otherwise:    
     
     {python title="Adjacency List One-To-Many"}
     # entity class
@@ -860,7 +860,7 @@ And the bi-directional version combines both:
         'children':relation(Node, backref=backref('parent', remote_side=[nodes.c.id]))
     })
 
-There are several examples included with SQLAlchemy illustrating self-referential strategies; these include [basic_tree.py](rel:http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/adjacencytree/basic_tree.py) and [optimized_al.py](rel:http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/elementtree/optimized_al.py), the latter of which illustrates how to persist and search XML documents in conjunction with [ElementTree](rel:http://effbot.org/zone/element-index.htm).
+There are several examples included with SQLAlchemy illustrating self-referential strategies; these include [basic_tree.py](http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/adjacencytree/basic_tree.py) and [optimized_al.py](http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/elementtree/optimized_al.py), the latter of which illustrates how to persist and search XML documents in conjunction with [ElementTree](http://effbot.org/zone/element-index.htm).
 
 ##### Self-Referential Query Strategies {@name=query}
 
@@ -868,7 +868,7 @@ Querying self-referential structures is done in the same way as any other query 
 
     {python}
     # get all nodes named 'child2'
-    sess.query(Node).filter(data='child2')
+    sess.query(Node).filter(Node.data=='child2')
 
 On the subject of joins, i.e. those described in [datamapping_joins](rel:datamapping_joins), self-referential structures require the usage of aliases so that the same table can be referenced multiple times within the FROM clause of the query.   Aliasing can be done either manually using the `nodes` `Table` object as a source of aliases:
 
