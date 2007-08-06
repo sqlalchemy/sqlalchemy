@@ -1682,7 +1682,7 @@ class FromClause(Selectable):
 
     def alias(self, name=None):
         return Alias(self, name)
-
+      
     def named_with_column(self):
         """True if the name of this FromClause may be prepended to a
         column in a generated SQL statement.
@@ -1714,7 +1714,13 @@ class FromClause(Selectable):
         An example would be an Alias of a Table is derived from that Table."""
         
         return False
-        
+    
+    def replace_selectable(self, old, alias):
+      """replace all occurences of FromClause 'old' with the given Alias object"""
+      
+      from sqlalchemy import sql_util
+      return sql_util.ClauseAdapter(alias).traverse(self, clone=True)
+      
     def corresponding_column(self, column, raiseerr=True, keys_ok=False, require_embedded=False):
         """Given a ``ColumnElement``, return the exported
         ``ColumnElement`` object from this ``Selectable`` which
@@ -2274,6 +2280,16 @@ class _Exists(_UnaryExpression):
         s = select(*args, **kwargs).self_group()
         _UnaryExpression.__init__(self, s, operator=Operators.exists)
 
+    def correlate(self, fromclause):
+      e = self._clone()
+      e.element = self.element.correlate(fromclause).self_group()
+      return e
+    
+    def where(self, clause):
+      e = self._clone()
+      e.element = self.element.where(clause).self_group()
+      return e
+      
     def _hide_froms(self, **modifiers):
         return self._get_from_objects(**modifiers)
 
@@ -2819,6 +2835,11 @@ class _SelectBaseMixin(object):
     def as_scalar(self):
         return _ScalarSelect(self)
     
+    def apply_labels(self):
+        s = self._generate()
+        s.use_labels = True
+        return s
+        
     def label(self, name):
         return self.as_scalar().label(name)
         

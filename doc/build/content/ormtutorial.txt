@@ -6,7 +6,7 @@ Object Relational Tutorial {@name=datamapping}
 
 In this tutorial we will cover a basic SQLAlchemy object-relational mapping scenario, where we store and retrieve Python objects from a database representation.  The database schema will begin with one table, and will later develop into several.  The tutorial is in doctest format, meaning each `>>>` line represents something you can type at a Python command prompt, and the following text represents the expected return value.  The tutorial has no prerequisites.
 
-## Imports
+## Version Check
 
 A quick check to verify that we are on at least **version 0.4** of SQLAlchemy:
 
@@ -15,18 +15,12 @@ A quick check to verify that we are on at least **version 0.4** of SQLAlchemy:
     >>> sqlalchemy.__version__ # doctest:+SKIP
     0.4.0
     
-First, lets import some symbols to get us started with our database connection as well as what we need to tell SQLAlchemy about the database tables we want to work with.
-
-    {python}
-    >>> from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData
-
-Many users prefer to just say `from sqlalchemy import *`, or `import sqlalchemy as sa`, for this step.
-
 ## Connecting
 
 For this tutorial we will use an in-memory-only SQLite database.   This is an easy way to test things without needing to have an actual database defined anywhere.  To connect we use `create_engine()`:
 
     {python}
+    >>> from sqlalchemy import create_engine
     >>> engine = create_engine('sqlite:///:memory:', echo=True)
     
 The `echo` flag is a shortcut to setting up SQLAlchemy logging, which is accomplished via Python's standard `logging` module.  With it enabled, we'll see all the generated SQL produced.  If you are working through this tutorial and want less output generated, set it to `False`.   This tutorial will format the SQL behind a popup window so it doesn't get in our way; just click the "SQL" links to see whats being generated.
@@ -36,6 +30,7 @@ The `echo` flag is a shortcut to setting up SQLAlchemy logging, which is accompl
 Next we want to tell SQLAlchemy about our tables.  We will start with just a single table called `users`, which will store records for the end-users using our application (lets assume its a website).  We define our tables all within a catalog called `MetaData`, using the `Table` construct, which resembles regular SQL CREATE TABLE syntax:
 
     {python}
+    >>> from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey    
     >>> metadata = MetaData()
     >>> users_table = Table('users', metadata,
     ...     Column('id', Integer, primary_key=True),

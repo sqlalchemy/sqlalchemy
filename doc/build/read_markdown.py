@@ -226,6 +226,8 @@ def parse_markdown_files(toc, files):
         if not os.access(infile, os.F_OK):
             continue
         html = markdown.markdown(file(infile).read())
+        #foo = file('foo', 'w')
+        #foo.write(html)
         tree = et.fromstring("<html>" + html + "</html>")
         (title, toc_element) = create_toc(inname, tree, toc)
         safety_code(tree)

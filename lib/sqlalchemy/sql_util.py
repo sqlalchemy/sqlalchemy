@@ -163,6 +163,15 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
         if elem is not None:
             binary.right = elem
     
+    def visit_join(self, join):
+        elem = self.convert_element(join.left)
+        if elem is not None:
+            join.left = elem
+        elem = self.convert_element(join.right)
+        if elem is not None:
+            join.right = elem
+        join._init_primary_key()
+            
     def visit_select(self, select):
         fr = util.OrderedSet()
         for elem in select._froms:
@@ -173,7 +182,6 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
 
         col = []
         for elem in select._raw_columns:
-            print "RAW COLUMN", elem
             n = self.convert_element(elem)
             if n is None:
                 col.append(elem)

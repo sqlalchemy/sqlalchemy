@@ -149,6 +149,27 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.runtest(select([table1, exists([1], from_obj=[table2])]), "SELECT mytable.myid, mytable.name, mytable.description, EXISTS (SELECT 1 FROM myothertable) FROM mytable", params={})
 
         self.runtest(select([table1, exists([1], from_obj=[table2]).label('foo')]), "SELECT mytable.myid, mytable.name, mytable.description, EXISTS (SELECT 1 FROM myothertable) AS foo FROM mytable", params={})
+    
+    def test_generative_exists(self):
+      self.runtest(
+          table1.select(exists([1], table2.c.otherid == table1.c.myid).correlate(table1)),
+          "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)"
+      )
+
+      self.runtest(
+          table1.select(exists([1]).where(table2.c.otherid == table1.c.myid).correlate(table1)),
+          "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)"
+      )
+
+      self.runtest(
+          table1.select(exists([1]).where(table2.c.otherid == table1.c.myid).correlate(table1)).replace_selectable(table2, table2.alias()),
+          "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable AS myothertable_1 WHERE myothertable_1.otherid = mytable.myid)"
+      )
+
+      self.runtest(
+          table1.select(exists([1]).where(table2.c.otherid == table1.c.myid).correlate(table1)).select_from(table1.join(table2, table1.c.myid==table2.c.otherid)).replace_selectable(table2, table2.alias()),
+          "SELECT mytable.myid, mytable.name, mytable.description FROM mytable JOIN myothertable ON mytable.myid = myothertable_1.otherid, myothertable AS myothertable_1 WHERE EXISTS (SELECT 1 FROM myothertable AS myothertable_1 WHERE myothertable_1.otherid = mytable.myid)"
+      )
         
     def testwheresubquery(self):
         s = select([addresses.c.street], addresses.c.user_id==users.c.user_id, correlate=True).alias('s')
@@ -170,6 +191,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             table1.select(exists([1], table2.c.otherid == table1.c.myid)),
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)"
         )
+
 
         talias = table1.alias('ta')
         s = subquery('sq2', [talias], exists([1], table2.c.otherid == talias.c.myid))

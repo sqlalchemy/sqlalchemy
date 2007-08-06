@@ -62,10 +62,11 @@ def replace_file(s, newfile):
         raise ValueError("Couldn't find suitable create_engine call to replace '%s' in it" % oldfile)
     return s
 
-for filename in ('ormtutorial', 'adv_datamapping'):
+for filename in ('ormtutorial', 'sqlexpression'):
+#for filename in ('sqlexpression',):
 	filename = 'content/%s.txt' % filename
 	s = open(filename).read()
 	#s = replace_file(s, ':memory:')
-	s = re.sub(r'{(?:stop|sql)}', '', s)
+	s = re.sub(r'{(?:stop|sql|opensql)}', '', s)
 	teststring(s, filename)
 
