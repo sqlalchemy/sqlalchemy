@@ -368,9 +368,9 @@ So with all of this vocabulary, let's select all users who have an email address
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND 
     (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
     [', ', 'm', 'z', '%@aol.com', '%@msn.com']
-    {stop}[(u'Wendy Williams, wendy@aol.com',)]
+    [(u'Wendy Williams, wendy@aol.com',)]
 
-Once again, SQLAlchemy figured out the correct FROM clause for our statement.  In fact it will determine the FROM clause based on all of its other bits; the columns clause, the whereclause, and also some other elements which we haven't covered yet, which include ORDER BY, GROUP BY, and HAVING.  In the above case both the `users` and `addresses` table were mentioned plenty of times so they came out just fine.
+Once again, SQLAlchemy figured out the FROM clause for our statement.  In fact it will determine the FROM clause based on all of its other bits; the columns clause, the whereclause, and also some other elements which we haven't covered yet, which include ORDER BY, GROUP BY, and HAVING. 
 
 ## Using Text {@name=text}
 
