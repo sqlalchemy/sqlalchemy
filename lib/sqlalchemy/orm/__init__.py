@@ -28,7 +28,7 @@ __all__ = [ 'relation', 'column_property', 'composite', 'backref', 'eagerload',
             'undefer', 'undefer_group', 'extension', 'mapper', 'clear_mappers',
             'compile_mappers', 'class_mapper', 'object_mapper', 'sessionmaker',
             'scoped_session', 'dynamic_loader', 'MapperExtension', 'polymorphic_union',
-            'create_session', 'synonym', 'contains_alias',
+            'create_session', 'synonym', 'contains_alias', 'Query',
             'contains_eager', 'EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS',
             'object_session', 'PropComparator' ]
 
