@@ -985,6 +985,43 @@ class ClauseElement(object):
 
         return []
 
+    def unique_params(self, *optionaldict, **kwargs):
+        """same functionality as ``params()``, except adds `unique=True` to affected
+        bind parameters so that multiple statements can be used.
+        """
+        
+        return self._params(True, optionaldict, kwargs)
+    def params(self, *optionaldict, **kwargs):
+        """return a copy of this ClauseElement, with ``bindparam()`` elements
+        replaced with values taken from the given dictionary.
+        
+            e.g.::
+            
+                >>> clause = column('x') + bindparam('foo')
+                >>> print clause.compile().params
+                {'foo':None}
+                
+                >>> print clause.params({'foo':7}).compile().params
+                {'foo':7}
+        
+        """
+        
+        return self._params(False, optionaldict, kwargs)
+    
+    def _params(self, unique, optionaldict, kwargs):
+        if len(optionaldict) == 1:
+            kwargs.update(optionaldict[0])
+        elif len(optionaldict) > 1:
+            raise exceptions.ArgumentError("params() takes zero or one positional dictionary argument")
+            
+        class Vis(ClauseVisitor):
+            def visit_bindparam(self, bind):
+                if bind.key in kwargs:
+                    bind.value = kwargs[bind.key]
+                if unique:
+                    bind.unique=True
+        return Vis().traverse(self, clone=True)
+        
     def compare(self, other):
         """Compare this ClauseElement to the given ClauseElement.
 
@@ -1716,7 +1753,8 @@ class FromClause(Selectable):
         return False
     
     def replace_selectable(self, old, alias):
-      """replace all occurences of FromClause 'old' with the given Alias object"""
+      """replace all occurences of FromClause 'old' with the given Alias object, returning a 
+      copy of this ``FromClause``."""
       
       from sqlalchemy import sql_util
       return sql_util.ClauseAdapter(alias).traverse(self, clone=True)
@@ -1924,6 +1962,12 @@ class _BindParamClause(ClauseElement, _CompareMixin):
 
     def typeprocess(self, value, dialect):
         return self.type.dialect_impl(dialect).convert_bind_param(value, dialect)
+
+    def _compare_type(self, obj):
+        if not isinstance(self.type, sqltypes.NullType):
+            return self.type
+        else:
+            return obj.type
 
     def compare(self, other):
         """Compare this ``_BindParamClause`` to the given clause.
@@ -3210,7 +3254,7 @@ class Select(_SelectBaseMixin, FromClause):
     
     def distinct(self):
         s = self._generate()
-        s.distinct = True
+        s._distinct = True
         return s
 
     def prefix_with(self, clause):
@@ -3300,6 +3344,18 @@ class Select(_SelectBaseMixin, FromClause):
 
     def union_all(self, other, **kwargs):
         return union_all(self, other, **kwargs)
+
+    def except_(self, other, **kwargs):
+        return except_(self, other, **kwargs)
+
+    def except_all(self, other, **kwargs):
+        return except_all(self, other, **kwargs)
+
+    def intersect(self, other, **kwargs):
+        return intersect(self, other, **kwargs)
+
+    def intersect_all(self, other, **kwargs):
+        return intersect_all(self, other, **kwargs)
 
     def _find_engine(self):
         """Try to return a Engine, either explicitly set in this

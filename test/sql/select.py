@@ -310,6 +310,10 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.runtest(
             select([distinct(table1.c.myid)]), "SELECT DISTINCT mytable.myid FROM mytable"
         )
+
+        self.runtest(
+            select([table1.c.myid]).distinct(), "SELECT DISTINCT mytable.myid FROM mytable"
+        )
         
     def testoperators(self):
 
@@ -868,13 +872,27 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
                  {'myid':5, 'myid_1': 6}, {'myid':5, 'myid_1':6}, [5,6]
              ),
              (
+                bindparam('test', type_=String) + text("'hi'"),
+                ":test || 'hi'",
+                "? || 'hi'",
+                {'test':None}, [None],
+                {}, {'test':None}, [None]
+             ),
+             (
+                 select([table1], or_(table1.c.myid==bindparam('myid'), table2.c.otherid==bindparam('myotherid'))).params({'myid':8, 'myotherid':7}),
+                 "SELECT mytable.myid, mytable.name, mytable.description FROM mytable, myothertable WHERE mytable.myid = :myid OR myothertable.otherid = :myotherid",
+                 "SELECT mytable.myid, mytable.name, mytable.description FROM mytable, myothertable WHERE mytable.myid = ? OR myothertable.otherid = ?",
+                 {'myid':8, 'myotherid':7}, [8, 7],
+                 {'myid':5}, {'myid':5, 'myotherid':7}, [5,7]
+             ),
+             (
                  select([table1], or_(table1.c.myid==bindparam('myid', value=7, unique=True), table2.c.otherid==bindparam('myid', value=8, unique=True))),
                  "SELECT mytable.myid, mytable.name, mytable.description FROM mytable, myothertable WHERE mytable.myid = :myid OR myothertable.otherid = :myid_1",
                  "SELECT mytable.myid, mytable.name, mytable.description FROM mytable, myothertable WHERE mytable.myid = ? OR myothertable.otherid = ?",
                  {'myid':7, 'myid_1':8}, [7,8],
                  {'myid':5, 'myid_1':6}, {'myid':5, 'myid_1':6}, [5,6]
              ),
-             ][2:3]:
+             ]:
              
                 self.runtest(stmt, expected_named_stmt, params=expected_default_params_dict)
                 self.runtest(stmt, expected_positional_stmt, dialect=sqlite.dialect())
@@ -883,6 +901,15 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
                 assert positional.get_params().get_raw_list() == expected_default_params_list
                 assert nonpositional.get_params(**test_param_dict).get_raw_dict() == expected_test_params_dict, "expected :%s got %s" % (str(expected_test_params_dict), str(nonpositional.get_params(**test_param_dict).get_raw_dict()))
                 assert positional.get_params(**test_param_dict).get_raw_list() == expected_test_params_list
+        
+        # check that params() doesnt modify original statement
+        s = select([table1], or_(table1.c.myid==bindparam('myid'), table2.c.otherid==bindparam('myotherid')))
+        s2 = s.params({'myid':8, 'myotherid':7})
+        s3 = s2.params({'myid':9})
+        assert s.compile().params.get_original_dict() == {'myid':None, 'myotherid':None}
+        assert s2.compile().params.get_original_dict() == {'myid':8, 'myotherid':7}
+        assert s3.compile().params.get_original_dict() == {'myid':9, 'myotherid':7}
+        
         
         # check that conflicts with "unique" params are caught
         s = select([table1], or_(table1.c.myid==7, table1.c.myid==bindparam('mytable_myid')))

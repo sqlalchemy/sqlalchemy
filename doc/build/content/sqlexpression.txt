@@ -212,6 +212,11 @@ But another way, whose usefulness will become apparent later on, is to use the `
     {stop}name: jack ; fullname: Jack Jones
     name: wendy ; fullname: Wendy Williams
 
+Result sets which have pending rows remaining should be explicitly closed before discarding.  While the resources referenced by the `ResultProxy` will be closed when the object is garbage collected, it's better to make it explicit as some database APIs are very picky about such things:
+
+    {python}
+    >>> result.close()
+
 If we'd like to more carefully control the columns which are placed in the COLUMNS clause of the select, we reference individual `Column` objects from our `Table`.  These are available as named attributes off the `c` attribute of the `Table` object:
 
     {python}
@@ -301,7 +306,7 @@ Most Python operators, as it turns out, produce a SQL expression here, like equa
      
     >>> # reverse works too 
     >>> print 'fred' > users.c.name
-    :users_name > users.name
+    users.name < :users_name
     
 If we add two integer columns together, we get an addition expression:
 
@@ -579,14 +584,305 @@ One more thing though, with automatic labeling applied as well as anonymous alia
 
     {python}    
     {sql}>>> for row in conn.execute(query):
-    ...     print "Name:", row[users.c.name], "Email Address", row[a1.c.email_address]
+    ...     print "Name:", row[users.c.name], "; Email Address", row[a1.c.email_address]
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, addresses_1.id AS addresses_1_id, addresses_1.user_id AS addresses_1_user_id, addresses_1.email_address AS addresses_1_email_address 
     FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id 
     WHERE users.name = ? AND (EXISTS (SELECT addresses_1.id 
     FROM addresses AS addresses_1 
     WHERE addresses_1.user_id = users.id AND addresses_1.email_address LIKE ?)) ORDER BY users.fullname DESC
     ['jack', '%@msn.com']
-    {stop}Name: jack Email Address jack@yahoo.com
-    Name: jack Email Address jack@msn.com
+    {stop}Name: jack ; Email Address jack@yahoo.com
+    Name: jack ; Email Address jack@msn.com
 
-The above example, by it's end, got significantly more intense than the typical end-user constructed SQL will usually be.  However when writing higher-level tools such as ORMs, they become more significant.  SQLAlchemy's ORM performs transformations like the above in spades.
+The above example, by it's end, got significantly more intense than the typical end-user constructed SQL will usually be.  However when writing higher-level tools such as ORMs, they become more significant.  SQLAlchemy's ORM relies very heavily on techniques like this.
+
+## Everything Else {@name=everythingelse}
+
+The concepts of creating SQL expressions have been introduced.  What's left are more variants of the same themes.  So now we'll catalog the rest of the important things we'll need to know.
+
+### Bind Parameter Objects {@name=bindparams}
+
+Throughout all these examples, SQLAlchemy is busy creating bind parameters wherever literal expressions occur.  You can also specify your own bind parameters with your own names, and use the same statement repeatedly.  The database dialect converts to the appropriate named or positional style, as here where it converts to positional for SQLite:
+
+    {python}
+    >>> from sqlalchemy.sql import bindparam
+    >>> s = users.select(users.c.name==bindparam('username'))
+    {sql}>>> conn.execute(s, username='wendy').fetchall()
+    SELECT users.id, users.name, users.fullname 
+    FROM users 
+    WHERE users.name = ?
+    ['wendy']
+    {stop}[(2, u'wendy', u'Wendy Williams')]
+
+Another important aspect of bind paramters is that they may be assigned a type.  The type of the bind paramter will determine it's behavior within expressions and also how the data bound to it is processed before being sent off to the database:
+
+    {python}
+    >>> s = users.select(users.c.name.like(bindparam('username', type_=String) + text("'%'")))
+    {sql}>>> conn.execute(s, username='wendy').fetchall()
+    SELECT users.id, users.name, users.fullname 
+    FROM users 
+    WHERE users.name LIKE ? || '%'
+    ['wendy']
+    {stop}[(2, u'wendy', u'Wendy Williams')]
+    
+    
+Bind parameters of the same name can also be used multiple times, where only a single named value is needed in the execute paramters:
+
+    {python}
+    >>> s = select([users, addresses], 
+    ...    users.c.name.like(bindparam('name', type_=String) + text("'%'")) | 
+    ...    addresses.c.email_address.like(bindparam('name', type_=String) + text("'@%'")), 
+    ...    from_obj=[users.outerjoin(addresses)])
+    {sql}>>> conn.execute(s, name='jack').fetchall()
+    SELECT users.id, users.name, users.fullname, addresses.id, addresses.user_id, addresses.email_address 
+    FROM users LEFT OUTER JOIN addresses ON users.id = addresses.user_id 
+    WHERE users.name LIKE ? || '%' OR addresses.email_address LIKE ? || '@%'
+    ['jack', 'jack']
+    {stop}[(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com'), (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com')]
+
+### Functions {@name=functions}
+
+SQL functions are created using the `func` keyword, which generates functions using attribute access:
+
+    {python}
+    >>> from sqlalchemy.sql import func
+    >>> print func.now()
+    now()
+
+    >>> print func.concat('x', 'y')
+    concat(:concat, :concat_1)
+    
+Certain functions are marked as "ANSI" functions, which mean they don't get the parenthesis added after them, such as CURRENT_TIMESTAMP:
+
+    {python}
+    >>> print func.current_timestamp()
+    current_timestamp
+    
+Functions are most typically used in the columns clause of a select statement, and can also be labeled as well as given a type.  Labeling a function is recommended so that the result can be targeted in a result row based on a string name, and assigning it a type is required when you need result-set processing to occur, such as for unicode conversion and date conversions.  Below, we use the result function `scalar()` to just read the first column of the first row and then close the result; the label, even though present, is not important in this case:
+
+    {python}
+    >>> print conn.execute(
+    ...     select([func.max(addresses.c.email_address, type_=String).label('maxemail')])
+    ... ).scalar()
+    {opensql}SELECT max(addresses.email_address) AS maxemail 
+    FROM addresses
+    []
+    {stop}www@www.org
+    
+Databases such as Postgres and Oracle which support functions that return whole result sets can be assembled into selectable units, which can be used in statements.   Such as, a database function `calculate()` which takes the parameters `x` and `y`, and returns three columns which we'd like to name `q`, `z` and `r`, we can construct using "lexical" column objects as well as bind parameters:
+
+    {python}
+    >>> from sqlalchemy.sql import column
+    >>> calculate = select([column('q'), column('z'), column('r')], 
+    ...     from_obj=[func.calculate(bindparam('x'), bindparam('y'))])
+    
+    >>> print select([users], users.c.id > calculate.c.z)
+    SELECT users.id, users.name, users.fullname 
+    FROM users, (SELECT q, z, r 
+    FROM calculate(:x, :y)) 
+    WHERE users.id > z
+    
+If we wanted to use our `calculate` statement twice with different bind parameters, the `unique_params()` function will create copies for us, and mark the bind params as "unique" so that conflicting names are isolated.  Note we also make two separate aliases of our selectable:
+
+    {python}
+    >>> s = select([users], users.c.id.between(
+    ...    calculate.alias('c1').unique_params(x=17, y=45).c.z, 
+    ...    calculate.alias('c2').unique_params(x=5, y=12).c.z))
+    
+    >>> print s
+    SELECT users.id, users.name, users.fullname 
+    FROM users, (SELECT q, z, r 
+    FROM calculate(:x, :y)) AS c1, (SELECT q, z, r 
+    FROM calculate(:x_1, :y_1)) AS c2 
+    WHERE users.id BETWEEN c1.z AND c2.z
+
+    >>> s.compile().params
+    ClauseParameters:{'y': 45, 'x': 17, 'y_1': 12, 'x_1': 5}
+    
+### Unions and Other Set Operations {@name=unions}
+
+Unions come in two flavors, UNION and UNION ALL, which are available via module level functions or methods off a Selectable:
+
+    {python}
+    >>> u = addresses.select(addresses.c.email_address=='foo@bar.com').union(
+    ...    addresses.select(addresses.c.email_address.like('%@yahoo.com')),
+    ... ).order_by(addresses.c.email_address)
+
+    {sql}>>> print conn.execute(u).fetchall()
+    SELECT addresses.id, addresses.user_id, addresses.email_address 
+    FROM addresses 
+    WHERE addresses.email_address = ? UNION SELECT addresses.id, addresses.user_id, addresses.email_address 
+    FROM addresses 
+    WHERE addresses.email_address LIKE ? ORDER BY addresses.email_address
+    ['foo@bar.com', '%@yahoo.com']
+    {stop}[(1, 1, u'jack@yahoo.com')]
+    
+Also available, though not supported on all databases, are `intersect()`, `intersect_all()`, `except_()`, and `except_all()`:
+
+    {python}
+    >>> u = addresses.select(addresses.c.email_address.like('%@%.com')).except_(
+    ...    addresses.select(addresses.c.email_address.like('%@msn.com'))
+    ... )
+
+    {sql}>>> print conn.execute(u).fetchall()
+    SELECT addresses.id, addresses.user_id, addresses.email_address 
+    FROM addresses 
+    WHERE addresses.email_address LIKE ? EXCEPT SELECT addresses.id, addresses.user_id, addresses.email_address 
+    FROM addresses 
+    WHERE addresses.email_address LIKE ?
+    ['%@%.com', '%@msn.com']
+    {stop}[(1, 1, u'jack@yahoo.com'), (4, 2, u'wendy@aol.com')]
+
+### Scalar Selects {@name=scalar}
+
+To embed a SELECT in a column expression, use `as_scalar()`:
+
+    {python}
+    {sql}>>> print conn.execute(select([
+    ...       users.c.name, 
+    ...       select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id).as_scalar()
+    ...    ])).fetchall()
+    SELECT users.name, (SELECT count(addresses.id) 
+    FROM addresses 
+    WHERE users.id = addresses.user_id) 
+    FROM users
+    []
+    {stop}[(u'jack', 2), (u'wendy', 2)]
+
+Alternatively, applying a `label()` to a select evaluates it as a scalar as well:
+
+    {python}
+    {sql}>>> print conn.execute(select([
+    ...       users.c.name, 
+    ...       select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id).label('address_count')
+    ...    ])).fetchall()
+    SELECT users.name, (SELECT count(addresses.id) 
+    FROM addresses 
+    WHERE users.id = addresses.user_id) AS address_count 
+    FROM users
+    []
+    {stop}[(u'jack', 2), (u'wendy', 2)]
+
+### Correlated Subqueries {@name=correlated}
+
+Notice in the examples on "scalar selects", the FROM clause of each embedded select did not contain the `users` table in it's FROM clause.  This is because SQLAlchemy automatically attempts to correlate embeded FROM objects to that of an enclosing query.  To disable this, or to specify explicit FROM clauses to be correlated, use `correlate()`:
+
+    {python}
+    >>> s = select([users.c.name], users.c.id==select([users.c.id]).correlate(None))
+    >>> print s
+    SELECT users.name 
+    FROM users 
+    WHERE users.id = (SELECT users.id 
+    FROM users)
+
+    {python}
+    >>> s = select([users.c.name, addresses.c.email_address], users.c.id==
+    ...        select([users.c.id], users.c.id==addresses.c.user_id).correlate(addresses)
+    ...    )
+    >>> print s
+    SELECT users.name, addresses.email_address 
+    FROM users, addresses 
+    WHERE users.id = (SELECT users.id 
+    FROM users 
+    WHERE users.id = addresses.user_id)
+
+### Ordering, Grouping, Limiting, Offset...ing... {@name=ordering}
+
+The `select()` function can take keyword arguments `order_by`, `group_by` (as well as `having`), `limit`, and `offset`.  There's also `distinct=True`.  These are all also available as generative functions.  `order_by()` expressions can use the modifiers `asc()` or `desc()` to indicate ascending or descending.  
+
+    {python}
+    >>> s = select([addresses.c.user_id, func.count(addresses.c.id)]).\
+    ...     group_by(addresses.c.user_id).having(func.count(addresses.c.id>1))
+    {opensql}>>> print conn.execute(s).fetchall()
+    SELECT addresses.user_id, count(addresses.id) 
+    FROM addresses GROUP BY addresses.user_id 
+    HAVING count(addresses.id > ?)
+    [1]
+    {stop}[(1, 2), (2, 2)]
+    
+    >>> s = select([addresses.c.email_address, addresses.c.id]).distinct().\
+    ...     order_by(desc(addresses.c.email_address), addresses.c.id)
+    {opensql}>>> conn.execute(s).fetchall()
+    SELECT DISTINCT addresses.email_address, addresses.id 
+    FROM addresses ORDER BY addresses.email_address DESC, addresses.id
+    []
+    {stop}[(u'www@www.org', 3), (u'wendy@aol.com', 4), (u'jack@yahoo.com', 1), (u'jack@msn.com', 2)]
+    
+    >>> s = select([addresses]).offset(1).limit(1)
+    {opensql}>>> print conn.execute(s).fetchall() # doctest: +NORMALIZE_WHITESPACE
+    SELECT addresses.id, addresses.user_id, addresses.email_address 
+    FROM addresses 
+    LIMIT 1 OFFSET 1
+    []
+    {stop}[(2, 1, u'jack@msn.com')]
+    
+## Updates {@name=update}
+
+Finally, we're back to UPDATE.  Updates work a lot like INSERTS, except there is an additional WHERE clause that can be specified.
+
+    {python}
+    >>> # change 'jack' to 'ed'
+    {sql}>>> conn.execute(users.update(users.c.name=='jack'), name='ed') #doctest: +ELLIPSIS
+    UPDATE users SET name=? WHERE users.name = ?
+    ['ed', 'jack']
+    COMMIT
+    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    
+    >>> # use bind parameters
+    >>> u = users.update(users.c.name==bindparam('oldname'), values={'name':bindparam('newname')})
+    {sql}>>> conn.execute(u, oldname='jack', newname='ed') #doctest: +ELLIPSIS
+    UPDATE users SET name=? WHERE users.name = ?
+    ['ed', 'jack']
+    COMMIT
+    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+
+    >>> # update a column to an expression
+    {sql}>>> conn.execute(users.update(values={users.c.fullname:"Fullname: " + users.c.name})) #doctest: +ELLIPSIS
+    UPDATE users SET fullname=(? || users.name)
+    ['Fullname: ']
+    COMMIT
+    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+
+### Correlated Updates {@name=correlated}
+
+A correlated update lets you update a table using selection from another table, or the same table:
+
+    {python}
+    >>> s = select([addresses.c.email_address], addresses.c.user_id==users.c.id).limit(1)
+    {sql}>>> conn.execute(users.update(values={users.c.fullname:s})) #doctest: +ELLIPSIS,+NORMALIZE_WHITESPACE
+    UPDATE users SET fullname=(SELECT addresses.email_address 
+    FROM addresses 
+    WHERE addresses.user_id = users.id 
+    LIMIT 1 OFFSET 0)
+    []
+    COMMIT
+    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+
+## Deletes {@name=delete}
+
+Finally, a delete.  Easy enough:
+
+    {python}
+    {sql}>>> conn.execute(addresses.delete()) #doctest: +ELLIPSIS
+    DELETE FROM addresses
+    []
+    COMMIT
+    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+    
+    {sql}>>> conn.execute(users.delete(users.c.name > 'm')) #doctest: +ELLIPSIS
+    DELETE FROM users WHERE users.name > ?
+    ['m']
+    COMMIT
+    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+
+## Further Reference {@name=reference}
+
+The best place to get every possible name you can use in constructed SQL is the [Generated Documentation](rel:docstrings_sqlalchemy.sql).
+
+Table Metadata Reference: [metadata](rel:metadata)
+
+Engine/Connection/Execution Reference: [dbengine](rel:dbengine)
+
+SQL Types: [types](rel:types)
+
+    

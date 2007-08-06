@@ -918,5 +918,11 @@ Or we can use Wendy's own `posts` relation, which is a "dynamic" relation, to qu
     WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)) ORDER BY posts.oid
     [2, 'firstpost']
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(u'wendy',u'Wendy Williams', u'foobar')>)]
-    
+
+## Further Reference 
+
+Generated Documentation for Query: [docstrings_sqlalchemy.orm.query_Query](rel:docstrings_sqlalchemy.orm.query_Query)
+
+ORM Generated Docs: [docstrings_sqlalchemy.orm](rel:docstrings_sqlalchemy.orm)
+
 Further information on mapping setups are in [advdatamapping](rel:advdatamapping).
