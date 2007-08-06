@@ -405,6 +405,12 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             table2.select(order_by = [table2.c.otherid, asc(table2.c.othername)]),
             "SELECT myothertable.otherid, myothertable.othername FROM myothertable ORDER BY myothertable.otherid, myothertable.othername ASC"
         )
+
+        self.runtest(
+            table2.select(order_by = [table2.c.otherid, table2.c.othername.desc()]),
+            "SELECT myothertable.otherid, myothertable.othername FROM myothertable ORDER BY myothertable.otherid, myothertable.othername DESC"
+        )
+
     def testgroupby(self):
         self.runtest(
             select([table2.c.othername, func.count(table2.c.otherid)], group_by = [table2.c.othername]),

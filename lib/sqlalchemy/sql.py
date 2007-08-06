@@ -1443,7 +1443,17 @@ class _CompareMixin(ColumnOperators):
     def label(self, name):
         """produce a column label, i.e. ``<columnname> AS <name>``"""
         return _Label(name, self, self.type)
-
+    
+    def desc(self):
+        """produce a DESC clause, i.e. ``<columnname> DESC``"""
+        
+        return desc(self)
+        
+    def asc(self):
+        """produce a ASC clause, i.e. ``<columnname> ASC``"""
+        
+        return asc(self)
+        
     def distinct(self):
         """produce a DISTINCT clause, i.e. ``DISTINCT <columnname>``"""
         return _UnaryExpression(self, operator="DISTINCT")

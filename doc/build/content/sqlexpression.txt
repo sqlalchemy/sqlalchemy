@@ -539,8 +539,7 @@ We encounter search criterion of "name='jack'".  So we apply WHERE criterion sta
 Next, we encounter that they'd like the results in descending order by full name.  We apply ORDER BY, using an extra modifier `desc`:
 
     {python}
-    >>> from sqlalchemy.sql import desc
-    >>> query = query.order_by(desc(users.c.fullname))
+    >>> query = query.order_by(users.c.fullname.desc())
     
 We also come across that they'd like only users who have an address at MSN.  A quick way to tack this on is by using an EXISTS clause, which we correlate to the `users` table in the enclosing SELECT:
 
@@ -801,7 +800,7 @@ The `select()` function can take keyword arguments `order_by`, `group_by` (as we
     {stop}[(1, 2), (2, 2)]
     
     >>> s = select([addresses.c.email_address, addresses.c.id]).distinct().\
-    ...     order_by(desc(addresses.c.email_address), addresses.c.id)
+    ...     order_by(addresses.c.email_address.desc(), addresses.c.id)
     {opensql}>>> conn.execute(s).fetchall()
     SELECT DISTINCT addresses.email_address, addresses.id 
     FROM addresses ORDER BY addresses.email_address DESC, addresses.id
