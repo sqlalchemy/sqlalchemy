@@ -35,7 +35,8 @@ def dump_tree(elem, stream):
             dump_tree(child, stream)
             if child.tail:
                 stream.write(child.tail)
-        stream.write("</%s>" % elem.tag)
+        if elem.tag != 'html':
+            stream.write("</%s>" % elem.tag)
 
 def dump_mako_tag(elem, stream):
     tag = elem.tag[5:]
