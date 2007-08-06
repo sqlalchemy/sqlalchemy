@@ -87,7 +87,7 @@ class CompositeProperty(ColumnProperty):
     def __init__(self, class_, *columns, **kwargs):
         super(CompositeProperty, self).__init__(*columns, **kwargs)
         self.composite_class = class_
-        self.comparator = kwargs.pop('comparator', CompositeProperty.Comparator(self))
+        self.comparator = kwargs.pop('comparator', CompositeProperty.Comparator)(self)
         
     def copy(self):
         return CompositeProperty(deferred=self.deferred, group=self.group, composite_class=self.composite_class, *self.columns)

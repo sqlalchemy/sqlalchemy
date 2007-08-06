@@ -180,6 +180,72 @@ The `column_prefix` option can also help with the above scenario by setting up t
         [(col.key, synonym('_'+col.key)) for col in addresses_table.c]
     ))
 
+#### Composite Column Types {@name=composite}
+
+Sets of columns can be associated with a single datatype.  The ORM treats the group of columns like a single column which accepts and returns objects using the custom datatype you provide.  In this example, we'll create a table `vertices` which stores a pair of x/y coordinates, and a custom datatype `Point` which is a composite type of an x and y column:
+
+    {python}
+    vertices = Table('vertices', metadata, 
+        Column('id', Integer, primary_key=True),
+        Column('x1', Integer),
+        Column('y1', Integer),
+        Column('x2', Integer),
+        Column('y2', Integer),
+        )
+
+The requirements for the custom datatype class are that it have a constructor which accepts positional arguments corresponding to its column format, and also provides a method `__composite_values__()` which returns the state of the object as a list or tuple, in order of its column-based attributes.  It also should supply adequate `__eq__()` and `__ne__()` methods which test the equality of two instances:
+    
+    {python}
+    class Point(object):
+        def __init__(self, x, y):
+            self.x = x
+            self.y = y
+        def __composite_values__(self):
+            return [self.x, self.y]            
+        def __eq__(self, other):
+            return other.x == self.x and other.y == self.y
+        def __ne__(self, other):
+            return not self.__eq__(other)
+
+Setting up the mapping uses the `composite()` function:
+
+
+    {python}
+    class Vertex(object):
+        pass
+        
+    mapper(Vertex, vertices, properties={
+        'start':composite(Point, vertices.c.x1, vertices.c.y1),
+        'end':composite(Point, vertices.c.x2, vertices.c.y2)
+    })
+
+We can now use the `Vertex` instances as well as querying as though the `start` and `end` attributes are regular scalar attributes:
+
+    {python}
+    sess = Session()
+    v = Vertex(Point(3, 4), Point(5, 6))
+    sess.save(v)
+    
+    v2 = sess.query(Vertex).filter(Vertex.start == Point(3, 4))
+    
+The "equals" comparison operation by default produces an AND of all corresponding columns equated to one another.  If you'd like to override this, or define the behavior of other SQL operators for your new type, the `composite()` function accepts an extension object of type `sqlalchemy.orm.PropComparator`:
+
+    {python}
+    from sqlalchemy.orm import PropComparator
+    from sqlalchemy import sql
+    
+    class PointComparator(PropComparator):
+        def __gt__(self, other):
+            """define the 'greater than' operation"""
+
+            return sql.and_(*[a>b for a, b in
+                              zip(self.prop.columns,
+                                  other.__composite_values__())])
+                                  
+    maper(Vertex, vertices, properties={
+        'start':composite(Point, vertices.c.x1, vertices.c.y1, comparator=PointComparator),
+        'end':composite(Point, vertices.c.x2, vertices.c.y2, comparator=PointComparator)
+    })
 
 #### Controlling Ordering {@name=orderby}
 
@@ -192,10 +258,10 @@ The "order_by" parameter can be sent to a mapper, overriding the per-engine orde
     mapper(User, users_table, order_by=None)
 
     # order by a column
-    mapper(User, users_table, order_by=users_tableusers_table.c.user_id)
+    mapper(User, users_table, order_by=users_table.c.user_id)
     
     # order by multiple items
-    mapper(User, users_table, order_by=[users_table.c.user_id, desc(users_table.c.user_name)])
+    mapper(User, users_table, order_by=[users_table.c.user_id, users_table.c.user_name.desc()])
 
 "order_by" can also be specified with queries, overriding all other per-engine/per-mapper orderings:
 
@@ -204,7 +270,7 @@ The "order_by" parameter can be sent to a mapper, overriding the per-engine orde
     l = query.filter(User.user_name=='fred').order_by(User.user_id).all()
     
     # order by multiple criterion
-    l = query.filter(User.user_name=='fred').order_by([User.user_id, desc(User.user_name)])
+    l = query.filter(User.user_name=='fred').order_by([User.user_id, User.user_name.desc()])
 
 The "order_by" property can also be specified on a `relation()` which will control the ordering of the collection:
 
@@ -955,6 +1021,7 @@ Many to many relationships can be customized by one or both of `primaryjoin` and
 
 Very ambitious custom join conditions may fail to be directly persistable, and in some cases may not even load correctly.  To remove the persistence part of the equation, use the flag `viewonly=True` on the `relation()`, which establishes it as a read-only attribute (data written to the collection will be ignored on flush()).  However, in extreme cases, consider using a regular Python property in conjunction with `Query` as follows:
 
+    {python}
     class User(object):
         def _get_addresses(self):
             return object_session(self).query(Address).with_parent(self).filter(...).all()
