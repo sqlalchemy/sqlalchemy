@@ -151,8 +151,9 @@ def replace_pre_with_mako(tree):
         
         text = sqlre.sub(r"""${formatting.poplink()}\1<%call expr="formatting.codepopper()">\2</%call>""", text)
 
-        sqlre2 = re.compile(r'{opensql}(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|UPDATE|ROLLBACK|COMMIT|CREATE|DROP).*?)\n\s*((?:{stop})|\n|$)', re.S)
-        text = sqlre2.sub(r"<%call expr='formatting.poppedcode()' >\1\n\2</%call>\n\n", text)
+        #sqlre2 = re.compile(r'{opensql}(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|UPDATE|ROLLBACK|COMMIT|CREATE|DROP).*?)\n\s*((?:{stop})|\n|$)', re.S)
+        sqlre2 = re.compile(r'{opensql}(.*?)\n?((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?)\n\s*((?:{stop})|\n|$)', re.S)
+        text = sqlre2.sub(r"\1<%call expr='formatting.poppedcode()' >\2</%call>\n\n", text)
 
         tag = et.Element("MAKO:formatting.code", extension='extension', paged='paged', toc='toc')
         if code:

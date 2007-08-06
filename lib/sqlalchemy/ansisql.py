@@ -267,6 +267,9 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
 
         return d
 
+    params = property(lambda self:self.construct_params({}), doc="""Return the `ClauseParameters` corresponding to this compiled object.  
+        A shortcut for `construct_params()`.""")
+        
     def default_from(self):
         """Called when a SELECT statement has no froms, and no FROM clause is to be appended.
 

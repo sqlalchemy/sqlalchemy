@@ -90,10 +90,10 @@ Notice above that the INSERT statement names every column in the `users` table. 
     >>> str(ins)
     'INSERT INTO users (name, fullname) VALUES (:name, :fullname)'
     
-Above, while the `values` keyword limited the VALUES clause to just two columns, the actual data we placed in `values` didn't get rendered into the string; instead we got named bind parameters.  As it turns out, our data *is* stored within our `Insert` construct, but it typically only comes out when the statement is actually executed; since the data consists of literal values, SQLAlchemy automatically generates bind parameters for them.  We can peek at this data for now by looking at the compiled form of the statement;
+Above, while the `values` keyword limited the VALUES clause to just two columns, the actual data we placed in `values` didn't get rendered into the string; instead we got named bind parameters.  As it turns out, our data *is* stored within our `Insert` construct, but it typically only comes out when the statement is actually executed; since the data consists of literal values, SQLAlchemy automatically generates bind parameters for them.  We can peek at this data for now by looking at the compiled form of the statement:
 
     {python}
-    >>> ins.compile().construct_params({}) #doctest: +NORMALIZE_WHITESPACE
+    >>> ins.compile().params #doctest: +NORMALIZE_WHITESPACE
     ClauseParameters:{'fullname': 'Jack Jones', 'name': 'jack'}    
 
 ## Executing Inserts {@name=executing}
@@ -113,21 +113,13 @@ The `Connection` object represents an actively checked out DBAPI connection reso
     ['jack', 'Jack Jones']
     COMMIT
 
-So the INSERT statement was now issued to the database.  Note however, that the statement does not look like our string representation; whereas our string representation included named bind parameters `:name` and `:fullname`, when executed it only had positional "qmark" style bind parameters.  What's the difference ?  Our `engine` object, connected to SQLite, is associated with a **Dialect** provided with SQLAlchemy known as `sqlalchemy.databases.sqlite.SLDialect`.  This dialect specifies all the behavior of the `pysqlite2` DBAPI module, including that it prefers "qmark" bind parameters by default.  When we called `execute()`, the `Connection` **compiled** the `Insert` object against this dialect, which produced a SQL string specific to SQLite.  On the other hand, when we used the `str()` function alone, SQLAlchemy compiled the statement using its default dialect which uses named parameters.
-
-We can see the SQLite dialect take over if we purposely `compile()` the statement against the SQLite dialect.  The named bind parameters turn into question marks:
+So the INSERT statement was now issued to the database.  Although we got positional "qmark" bind parameters instead of "named" bind params in the output.  How come ?  Because when executed, the `Connection` used the SQLite **dialect** to help generate the statement; when we use the `str()` function, the statement isn't aware of this dialect, and falls back onto a default which uses named params. We can view this manually as follows:
 
     {python}
     >>> from sqlalchemy.databases.sqlite import SQLiteDialect
     >>> compiled = ins.compile(dialect=SQLiteDialect())
     >>> str(compiled)
     'INSERT INTO users (name, fullname) VALUES (?, ?)'
-
-The `compiled` variable also has our bind parameter values hidden inside of it:
-
-    {python}
-    >>> compiled.construct_params({}) #doctest: +NORMALIZE_WHITESPACE
-    ClauseParameters:{'fullname': 'Jack Jones', 'name': 'jack'}    
 
 What about the `result` variable we got when we called `execute()` ?  As the SQLAlchemy `Connection` object references a DBAPI connection, the result, known as a `ResultProxy` object, is analgous to the DBAPI cursor object.  In the case of an INSERT, we can get important information from it, such as the primary key values which were generated from our statement:
 
@@ -143,8 +135,8 @@ Our insert example above was intentionally a little drawn out to show some vario
 
     {python}
     >>> ins = users.insert()
-    {opensql}>>> conn.execute(ins, id=2, name='wendy', fullname='Wendy Williams') # doctest: +ELLIPSIS
-    INSERT INTO users (id, name, fullname) VALUES (?, ?, ?)
+    >>> conn.execute(ins, id=2, name='wendy', fullname='Wendy Williams') # doctest: +ELLIPSIS
+    {opensql}INSERT INTO users (id, name, fullname) VALUES (?, ?, ?)
     [2, 'wendy', 'Wendy Williams']
     COMMIT
     {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
@@ -154,13 +146,13 @@ Above, because we specified all three columns in the the `execute()` method, the
 To issue many inserts using DBAPI's `executemany()` method, we can send in a list of dictionaries each containing a distinct set of parameters to be inserted, as we do here to add some email addresses:
 
     {python}
-    {opensql}>>> conn.execute(addresses.insert(), [ # doctest: +ELLIPSIS
+    >>> conn.execute(addresses.insert(), [ # doctest: +ELLIPSIS
     ...    {'user_id': 1, 'email_address' : 'jack@yahoo.com'},
     ...    {'user_id': 1, 'email_address' : 'jack@msn.com'},
     ...    {'user_id': 2, 'email_address' : 'www@www.org'},
     ...    {'user_id': 2, 'email_address' : 'wendy@aol.com'},
     ... ])
-    INSERT INTO addresses (user_id, email_address) VALUES (?, ?)
+    {opensql}INSERT INTO addresses (user_id, email_address) VALUES (?, ?)
     [[1, 'jack@yahoo.com'], [1, 'jack@msn.com'], [2, 'www@www.org'], [2, 'wendy@aol.com']]
     COMMIT
     {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
@@ -171,7 +163,7 @@ When executing multiple sets of parameters, each dictionary must have the **same
 
 ## Selecting {@name=selecting}
 
-We began with inserts just so that our test database had some data in it.  The more interesting part of the data is selecting it !  The most typical construct used to select data is the `select()` function:
+We began with inserts just so that our test database had some data in it.  The more interesting part of the data is selecting it !  We'll cover UPDATE and DELETE statements later.  The primary construct used to generate SELECT statements is the `select()` function:
 
     {python}
     >>> from sqlalchemy.sql import select
@@ -181,7 +173,7 @@ We began with inserts just so that our test database had some data in it.  The m
     FROM users
     []
 
-Above, we issued the most basic `select()` construct; that of placing the `users` table within the COLUMNS clause of the select, and then executing.  SQLAlchemy expanded the `users` table into the set of each of its columns, and also generated a FROM clause for us.  The result returned is again a `ResultProxy` object, which acts much like a DBAPI cursor, including methods such as `fetchone()` and `fetchall()`.  The easiest way to get rows from it is to just iterate:
+Above, we issued a basic `select()` call, placing the `users` table within the COLUMNS clause of the select, and then executing.  SQLAlchemy expanded the `users` table into the set of each of its columns, and also generated a FROM clause for us.  The result returned is again a `ResultProxy` object, which acts much like a DBAPI cursor, including methods such as `fetchone()` and `fetchall()`.  The easiest way to get rows from it is to just iterate:
 
     {python}
     >>> for row in result:
@@ -196,27 +188,28 @@ Above, we see that printing each row produces a simple tuple-like result.  We ha
     SELECT users.id, users.name, users.fullname 
     FROM users
     []
+    
     >>> row = result.fetchone()
-    >>> print "name:", row['name'], "fullname:", row['fullname']
-    name: jack fullname: Jack Jones
+    >>> print "name:", row['name'], "; fullname:", row['fullname']
+    name: jack ; fullname: Jack Jones
 
 Integer indexes work as well:
 
     {python}
     >>> row = result.fetchone()
-    >>> print "name:", row[1], "fullname:", row[2]
-    name: wendy fullname: Wendy Williams
+    >>> print "name:", row[1], "; fullname:", row[2]
+    name: wendy ; fullname: Wendy Williams
 
 But another way, whose usefulness will become apparent later on, is to use the `Column` objects directly as keys:
 
     {python}
     {sql}>>> for row in conn.execute(s):
-    ...     print "name:", row[users.c.name], "fullname:", row[users.c.fullname]
+    ...     print "name:", row[users.c.name], "; fullname:", row[users.c.fullname]
     SELECT users.id, users.name, users.fullname 
     FROM users
     []
-    {stop}name: jack fullname: Jack Jones
-    name: wendy fullname: Wendy Williams
+    {stop}name: jack ; fullname: Jack Jones
+    name: wendy ; fullname: Wendy Williams
 
 If we'd like to more carefully control the columns which are placed in the COLUMNS clause of the select, we reference individual `Column` objects from our `Table`.  These are available as named attributes off the `c` attribute of the `Table` object:
 
@@ -232,24 +225,36 @@ If we'd like to more carefully control the columns which are placed in the COLUM
 Lets observe something interesting about the FROM clause.  Whereas the generated statement contains two distinct sections, a "SELECT columns" part and a "FROM table" part, our `select()` construct only has a list containing columns.  How does this work ?  Let's try putting *two* tables into our `select()` statement:
 
     {python}
-    {sql}>>> conn.execute(select([users, addresses])).fetchall()
+    {sql}>>> for row in conn.execute(select([users, addresses])):
+    ...     print row
     SELECT users.id, users.name, users.fullname, addresses.id, addresses.user_id, addresses.email_address 
     FROM users, addresses
     []
-    {stop}[(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com'), (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com'), (1, u'jack', u'Jack Jones', 3, 2, u'www@www.org'), (1, u'jack', u'Jack Jones', 4, 2, u'wendy@aol.com'), (2, u'wendy', u'Wendy Williams', 1, 1, u'jack@yahoo.com'), (2, u'wendy', u'Wendy Williams', 2, 1, u'jack@msn.com'), (2, u'wendy', u'Wendy Williams', 3, 2, u'www@www.org'), (2, u'wendy', u'Wendy Williams', 4, 2, u'wendy@aol.com')]
-    
+    {stop}(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com')
+    (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com')
+    (1, u'jack', u'Jack Jones', 3, 2, u'www@www.org')
+    (1, u'jack', u'Jack Jones', 4, 2, u'wendy@aol.com')
+    (2, u'wendy', u'Wendy Williams', 1, 1, u'jack@yahoo.com')
+    (2, u'wendy', u'Wendy Williams', 2, 1, u'jack@msn.com')
+    (2, u'wendy', u'Wendy Williams', 3, 2, u'www@www.org')
+    (2, u'wendy', u'Wendy Williams', 4, 2, u'wendy@aol.com')
+
 It placed **both** tables into the FROM clause.  But also, it made a real mess.  Those who are familiar with SQL joins know that this is a **cartesian product**; each row from the `users` table is produced against each row from the `addresses` table.  So to put some sanity into this statement, we need a WHERE clause.  Which brings us to the second argument of `select()`:
 
     {python}
     >>> s = select([users, addresses], users.c.id==addresses.c.user_id)
-    {sql}>>> conn.execute(s).fetchall()
+    {sql}>>> for row in conn.execute(s):
+    ...     print row
     SELECT users.id, users.name, users.fullname, addresses.id, addresses.user_id, addresses.email_address 
     FROM users, addresses 
     WHERE users.id = addresses.user_id
     []
-    {stop}[(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com'), (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com'), (2, u'wendy', u'Wendy Williams', 3, 2, u'www@www.org'), (2, u'wendy', u'Wendy Williams', 4, 2, u'wendy@aol.com')]
+    {stop}(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com')
+    (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com')
+    (2, u'wendy', u'Wendy Williams', 3, 2, u'www@www.org')
+    (2, u'wendy', u'Wendy Williams', 4, 2, u'wendy@aol.com')
 
-So that looks a lot better, we added an expression to our `select()` which had the effect of adding `WHERE users.id = addresses.user_id` to our statement, and our results were managed down so that the join of `users` and `addresses` rows made sense.  But let's look at that expression ?  It's using just a Python equality operator between two different `Column` objects.  It should be clear that something is up.  Saying `1==1` produces `True`, and `1==2` produces `False`, and neither of those look like a WHERE clause.  So lets see exactly what that expression is doing:
+So that looks a lot better, we added an expression to our `select()` which had the effect of adding `WHERE users.id = addresses.user_id` to our statement, and our results were managed down so that the join of `users` and `addresses` rows made sense.  But let's look at that expression?  It's using just a Python equality operator between two different `Column` objects.  It should be clear that something is up.  Saying `1==1` produces `True`, and `1==2` produces `False`, not a WHERE clause.  So lets see exactly what that expression is doing:
 
     {python}
     >>> users.c.id==addresses.c.user_id #doctest: +ELLIPSIS
@@ -261,7 +266,7 @@ Wow, surprise !  This is neither a `True` nor a `False`.  Well what is it ?
     >>> str(users.c.id==addresses.c.user_id)
     'users.id = addresses.user_id'
 
-As you can see, the `==` operator is, thanks to Python's availability of the `__eq__()` built-in method, producing an object that is very much like the `Insert` and `select()` objects we've made so far; you call `str()` on it and it produces SQL.  By now, one can see the pattern that everything we are working with is ultimately the same type of object.  SQLAlchemy terms the base class of all of these expessions as a `sqlalchemy.sql.ClauseElement`.  
+As you can see, the `==` operator is producing an object that is very much like the `Insert` and `select()` objects we've made so far, thanks to Python's `__eq__()` builtin; you call `str()` on it and it produces SQL.  By now, one can that everything we are working with is ultimately the same type of object.  SQLAlchemy terms the base class of all of these expessions as `sqlalchemy.sql.ClauseElement`.
 
 ## Operators {@name=operators}
 
@@ -280,10 +285,23 @@ If we put some kind of literal value in there (a literal meaning, not a SQLAlche
 The `7` literal is embedded in there; we can use the same trick we did with the `Insert` object to see it:
 
     {python}
-    >>> (users.c.id==7).compile().construct_params({})
+    >>> (users.c.id==7).compile().params
     ClauseParameters:{'users_id': 7}
     
-Most Python operators, as it turns out, produce a SQL expression here.  Such as, if we add two integer columns together, we get an addition expression:
+Most Python operators, as it turns out, produce a SQL expression here, like equals, not equals, etc.:
+
+    {python}
+    >>> print users.c.id != 7
+    users.id != :users_id
+    
+    >>> # None converts to IS NULL
+    >>> print users.c.name == None
+    users.name IS NULL
+    
+    >>> print users.c.name > 'fred'
+    users.name > :users_name
+    
+If we add two integer columns together, we get an addition expression:
 
     {python}
     >>> print users.c.id + addresses.c.id
@@ -310,22 +328,26 @@ If you have come across an operator which really isn't available, you can always
     
 ## Conjunctions {@name=conjunctions}
 
-We'd like to show off some of our operators inside of `select()` constructs.  But we need to lump them together a little more, so lets first introduce some conjunctions.  Conjunctions are those little words like AND and OR that put things together.  We'll also hit upon NOT.  AND, OR and NOT can work from the corresponding functions SQLAlchemy provides (notice we also throw in a LIKE):
+We'd like to show off some of our operators inside of `select()` constructs.  But we need to lump them together a little more, so let's first introduce some conjunctions.  Conjunctions are those little words like AND and OR that put things together.  We'll also hit upon NOT.  AND, OR and NOT can work from the corresponding functions SQLAlchemy provides (notice we also throw in a LIKE):
 
     {python}
     >>> from sqlalchemy.sql import and_, or_, not_
-    >>> print and_(users.c.name.like('j%'), users.c.id==addresses.c.user_id, \
-    ...     or_(addresses.c.email_address=='wendy@aol.com', addresses.c.email_address=='jack@yahoo.com'), \
+    >>> print and_(users.c.name.like('j%'), users.c.id==addresses.c.user_id, #doctest: +NORMALIZE_WHITESPACE  
+    ...     or_(addresses.c.email_address=='wendy@aol.com', addresses.c.email_address=='jack@yahoo.com'),
     ...     not_(users.c.id>5))
-    users.name LIKE :users_name AND users.id = addresses.user_id AND (addresses.email_address = :addresses_email_address OR addresses.email_address = :addresses_email_address_1) AND users.id <= :users_id
+    users.name LIKE :users_name AND users.id = addresses.user_id AND 
+    (addresses.email_address = :addresses_email_address OR addresses.email_address = :addresses_email_address_1) 
+    AND users.id <= :users_id
 
 And you can also use the re-jiggered bitwise AND, OR and NOT operators, although because of Python operator precedence you have to watch your parenthesis:
 
     {python}
-    >>> print users.c.name.like('j%') & (users.c.id==addresses.c.user_id) & \
+    >>> print users.c.name.like('j%') & (users.c.id==addresses.c.user_id) &  \
     ...     ((addresses.c.email_address=='wendy@aol.com') | (addresses.c.email_address=='jack@yahoo.com')) \
-    ...     & ~(users.c.id>5)
-    users.name LIKE :users_name AND users.id = addresses.user_id AND (addresses.email_address = :addresses_email_address OR addresses.email_address = :addresses_email_address_1) AND users.id <= :users_id
+    ...     & ~(users.c.id>5) # doctest: +NORMALIZE_WHITESPACE
+    users.name LIKE :users_name AND users.id = addresses.user_id AND 
+    (addresses.email_address = :addresses_email_address OR addresses.email_address = :addresses_email_address_1) 
+    AND users.id <= :users_id
 
 So with all of this vocabulary, let's select all users who have an email address at AOL or MSN, whose name starts with a letter between "m" and "z", and we'll also generate a column containing their full name combined with their email address.  We will add two new constructs to this statement, `between()` and `label()`.  `between()` produces a BETWEEN clause, and `label()` is used in a column expression to produce labels using the `AS` keyword; its recommended when selecting from expressions that otherwise would not have a name:
 
@@ -339,11 +361,12 @@ So with all of this vocabulary, let's select all users who have an email address
     ...              addresses.c.email_address.like('%@msn.com')
     ...           )
     ...        )
-    ...    )
-    >>> print conn.execute(s).fetchall()
+    ...    ) 
+    >>> print conn.execute(s).fetchall() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.fullname || ? || addresses.email_address AS title 
     FROM users, addresses 
-    WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
+    WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND 
+    (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
     [', ', 'm', 'z', '%@aol.com', '%@msn.com']
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
