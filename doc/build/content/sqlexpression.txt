@@ -108,8 +108,8 @@ The interesting part of an `Insert` is executing it.  In this tutorial, we will 
 The `Connection` object represents an actively checked out DBAPI connection resource.  Lets feed it our `Insert` object and see what happens:
 
     {python}
-    {opensql}>>> result = conn.execute(ins)
-    INSERT INTO users (name, fullname) VALUES (?, ?)
+    >>> result = conn.execute(ins)
+    {opensql}INSERT INTO users (name, fullname) VALUES (?, ?)
     ['jack', 'Jack Jones']
     COMMIT
 
