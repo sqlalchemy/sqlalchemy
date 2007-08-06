@@ -196,7 +196,7 @@ class OperatorTest(QueryTest):
     def test_clauses(self):
         for (expr, compare) in (
             (func.max(User.id), "max(users.id)"),
-            (desc(User.id), "users.id DESC"),
+            (User.id.desc(), "users.id DESC"),
             (between(5, User.id, Address.id), ":literal BETWEEN users.id AND addresses.id"),
             # this one would require adding compile() to InstrumentedScalarAttribute.  do we want this ?
             #(User.id, "users.id")

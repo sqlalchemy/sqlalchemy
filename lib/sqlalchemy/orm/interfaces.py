@@ -369,6 +369,12 @@ class PropComparator(sql.ColumnOperators):
     def expression_element(self):
         return self.clause_element()
         
+    def desc(self):
+        return self.clause_element().desc()
+    
+    def asc(self):
+        return self.clause_element().desc()
+        
     def contains_op(a, b):
         return a.contains(b)
     contains_op = staticmethod(contains_op)
