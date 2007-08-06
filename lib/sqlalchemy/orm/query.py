@@ -302,26 +302,12 @@ class Query(object):
 
         #import properties
         
-        alias = None
-        join = None
-        clause = None
         joinpoint = self._joinpoint
 
-        for key, value in kwargs.iteritems():
-            prop = joinpoint.get_property(key, resolve_synonyms=True)
-            c = prop.compare(operator.eq, value)
-
-            if alias is not None:
-                sql_util.ClauseAdapter(alias).traverse(c)
-            if clause is None:
-                clause =  c
-            else:
-                clause &= c
+        clauses = [joinpoint.get_property(key, resolve_synonyms=True).compare(operator.eq, value)
+            for key, value in kwargs.iteritems()]
         
-        if join is not None:
-            return self.select_from(join).filter(clause)
-        else:
-            return self.filter(clause)
+        return self.filter(sql.and_(*clauses))
 
     def _join_to(self, keys, outerjoin=False, start=None, create_aliases=True):
         if start is None:
