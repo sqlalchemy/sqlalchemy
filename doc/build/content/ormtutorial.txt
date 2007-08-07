@@ -75,7 +75,7 @@ So lets create a rudimental `User` object to be mapped in the database.  This ob
 
 ## Setting up the Mapping
 
-With our `users_table` as well as our `User` class, we want to map the two together.  That's where the SQLAlchemy ORM package comes in.  We'll use the `mapper` function to create a **mapping** between `users_table` and `User`:
+With our `users_table` and `User` class, we now want to map the two together.  That's where the SQLAlchemy ORM package comes in.  We'll use the `mapper` function to create a **mapping** between `users_table` and `User`:
 
     {python}
     >>> from sqlalchemy.orm import mapper
@@ -108,16 +108,17 @@ In the case where your application does not yet have an `Engine` when you define
     {python}
     >>> Session = sessionmaker(autoflush=True, transactional=True)
 
-Later, when you create your engine with `create_engine()`, connect it to `Session` like this:
+Later, when you create your engine with `create_engine()`, connect it to the `Session` using `configure()`:
 
+    {python}
     >>> Session.configure(bind=engine)  # once engine is available
     
-This `Session` class will create new `Session` objects which are bound to our database and have some various transactional characteristics.  Whenever you need to have a conversation with the database, you instantiate a `Session`:
+This `Session` class will create new `Session` objects which are bound to our database and have the transactional characteristics we've configured.  Whenever you need to have a conversation with the database, you instantiate a `Session`:
 
     {python}
     >>> session = Session()
     
-The above `Session` is associated with our SQLite `engine`, but it hasn't opened any connections yet.  When it's first used, it retrieves a connection from a pool of connections stored in the `engine`, and holds onto it until we commit all changes and/or close the session object.  With most database configurations, theres also a transaction in progress (one notable exception to this is MySQL, when you use its default table style of MyISAM).  There's many options available to modify this behavior but we'll go with this straightforward version to start.    
+The above `Session` is associated with our SQLite `engine`, but it hasn't opened any connections yet.  When it's first used, it retrieves a connection from a pool of connections maintained by the `engine`, and holds onto it until we commit all changes and/or close the session object.  Because we configured `transactional=True`, theres also a transaction in progress (one notable exception to this is MySQL, when you use its default table style of MyISAM).  There's options available to modify this behavior but we'll go with this straightforward version to start.    
 
 ## Saving Objects
 
@@ -190,7 +191,7 @@ One crucial thing to note about the `Session` is that each object instance is ca
     ['ed']
     {stop}True
 
-Using the `get()` method, which queries based on primary key, will not issue any SQL to the database if the given key is already present:
+The `get()` method, which queries based on primary key, will not issue any SQL to the database if the given key is already present:
 
     {python}
     >>> ed_user is session.query(User).get(ed_user.id)
@@ -241,7 +242,7 @@ Narrowing the results down is accomplished either with `filter_by()`, which uses
     ['Ed Jones', 'ed']
     {stop}<User('ed','Ed Jones', 'f8s7ccs')>
 
-...or `filter()`, which uses SQL expression language constructs.  These allow you to use regular Python operators with the properties on your mapped class:
+...or `filter()`, which uses SQL expression language constructs.  These allow you to use regular Python operators with the class-level attributes on your mapped class:
 
     {python}
     {sql}>>> for user in session.query(User).filter(User.name=='ed'):
@@ -364,7 +365,7 @@ Bind parameters can be specified with string-based SQL, using a colon.  To speci
     [224, 'fred']
     {stop}<User('fred','Fred Flinstone', 'blah')>
 
-Note that when we use constructed SQL expressions, bind paramters are generated for us automatically; we don't need to worry about them.
+Note that when we use constructed SQL expressions, bind parameters are generated for us automatically; we don't need to worry about them.
        
 To use an entirely string-based statement, using `from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (below illustrated using an asterisk):
 
@@ -607,7 +608,7 @@ By "A to B", we mean a single relation name or a path of relations.  In our case
     {python}
     session.query(Foo).join(['bars', 'bats', 'widgets']).filter(...)
     
-Each time the `join()` is called on `Query`, the **joinpoint** of the query is moved to be that of the endpoint of the join.  As above, when we joined from `users_table` to `addresses_table`, all subsequent criterion used by `filter_by()` are against the `addresses` table.  When you `join()` again, the joinpoint starts back from the root.  We can also backtrack to the beginning explicitly using `reset_joinpoint()`.  This instruction will place the joinpoint back at the root `users` table, where subsequent `filter_by()` criterion are again against `users`:
+Each time `join()` is called on `Query`, the **joinpoint** of the query is moved to be that of the endpoint of the join.  As above, when we joined from `users_table` to `addresses_table`, all subsequent criterion used by `filter_by()` are against the `addresses` table.  When you `join()` again, the joinpoint starts back from the root.  We can also backtrack to the beginning explicitly using `reset_joinpoint()`.  This instruction will place the joinpoint back at the root `users` table, where subsequent `filter_by()` criterion are again against `users`:
 
     {python}
     {sql}>>> session.query(User).join('addresses').\
