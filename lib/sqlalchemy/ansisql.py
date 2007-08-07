@@ -15,30 +15,34 @@ import string, re, sets, operator
 from sqlalchemy import schema, sql, engine, util, exceptions
 from  sqlalchemy.engine import default
 
-ANSI_FUNCS = sets.ImmutableSet(['CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
-                                'CURRENT_USER', 'LOCALTIME', 'LOCALTIMESTAMP',
-                                'SESSION_USER', 'USER'])
 
+ANSI_FUNCS = sets.ImmutableSet([
+    'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
+    'CURRENT_USER', 'LOCALTIME', 'LOCALTIMESTAMP',
+    'SESSION_USER', 'USER'])
 
-RESERVED_WORDS = util.Set(['all', 'analyse', 'analyze', 'and', 'any', 'array',
-                           'as', 'asc', 'asymmetric', 'authorization', 'between',
-                           'binary', 'both', 'case', 'cast', 'check', 'collate',
-                           'column', 'constraint', 'create', 'cross', 'current_date',
-                           'current_role', 'current_time', 'current_timestamp',
-                           'current_user', 'default', 'deferrable', 'desc',
-                           'distinct', 'do', 'else', 'end', 'except', 'false',
-                           'for', 'foreign', 'freeze', 'from', 'full', 'grant',
-                           'group', 'having', 'ilike', 'in', 'initially', 'inner',
-                           'intersect', 'into', 'is', 'isnull', 'join', 'leading',
-                           'left', 'like', 'limit', 'localtime', 'localtimestamp',
-                           'natural', 'new', 'not', 'notnull', 'null', 'off', 'offset',
-                           'old', 'on', 'only', 'or', 'order', 'outer', 'overlaps',
-                           'placing', 'primary', 'references', 'right', 'select',
-                           'session_user', 'similar', 'some', 'symmetric', 'table',
-                           'then', 'to', 'trailing', 'true', 'union', 'unique', 'user',
-                           'using', 'verbose', 'when', 'where'])
+RESERVED_WORDS = util.Set([
+    'all', 'analyse', 'analyze', 'and', 'any', 'array',
+    'as', 'asc', 'asymmetric', 'authorization', 'between',
+    'binary', 'both', 'case', 'cast', 'check', 'collate',
+    'column', 'constraint', 'create', 'cross', 'current_date',
+    'current_role', 'current_time', 'current_timestamp',
+    'current_user', 'default', 'deferrable', 'desc',
+    'distinct', 'do', 'else', 'end', 'except', 'false',
+    'for', 'foreign', 'freeze', 'from', 'full', 'grant',
+    'group', 'having', 'ilike', 'in', 'initially', 'inner',
+    'intersect', 'into', 'is', 'isnull', 'join', 'leading',
+    'left', 'like', 'limit', 'localtime', 'localtimestamp',
+    'natural', 'new', 'not', 'notnull', 'null', 'off', 'offset',
+    'old', 'on', 'only', 'or', 'order', 'outer', 'overlaps',
+    'placing', 'primary', 'references', 'right', 'select',
+    'session_user', 'set', 'similar', 'some', 'symmetric', 'table',
+    'then', 'to', 'trailing', 'true', 'union', 'unique', 'user',
+    'using', 'verbose', 'when', 'where'])
 
-LEGAL_CHARACTERS = util.Set(string.ascii_lowercase + string.ascii_uppercase + string.digits + '_$')
+LEGAL_CHARACTERS = util.Set(string.ascii_lowercase +
+                            string.ascii_uppercase +
+                            string.digits + '_$')
 ILLEGAL_INITIAL_CHARACTERS = util.Set(string.digits + '$')
 
 BIND_PARAMS = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
