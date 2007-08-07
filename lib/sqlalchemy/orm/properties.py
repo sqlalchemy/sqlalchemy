@@ -70,8 +70,8 @@ class ColumnProperty(StrategizedProperty):
         def clause_element(self):
             return self.prop.columns[0]
             
-        def operate(self, op, other):
-            return op(self.prop.columns[0], other)
+        def operate(self, op, *other):
+            return op(self.prop.columns[0], *other)
 
         def reverse_operate(self, op, other):
             col = self.prop.columns[0]

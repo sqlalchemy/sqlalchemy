@@ -60,6 +60,7 @@ OPERATORS =  {
     operator.gt : '>',
     operator.ge : '>=',
     operator.eq : '=',
+    sql.ColumnOperators.distinct_op : 'DISTINCT',
     sql.ColumnOperators.concat_op : '||',
     sql.ColumnOperators.like_op : 'LIKE',
     sql.ColumnOperators.notlike_op : 'NOT LIKE',
@@ -69,6 +70,9 @@ OPERATORS =  {
     sql.ColumnOperators.in_op : 'IN',
     sql.ColumnOperators.notin_op : 'NOT IN',
     sql.ColumnOperators.comma_op : ', ',
+    sql.ColumnOperators.desc_op : 'DESC',
+    sql.ColumnOperators.asc_op : 'ASC',
+    
     sql.Operators.from_ : 'FROM',
     sql.Operators.as_ : 'AS',
     sql.Operators.exists : 'EXISTS',
@@ -392,7 +396,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         if unary.operator:
             s = self.operator_string(unary.operator) + " " + s
         if unary.modifier:
-            s = s + " " + unary.modifier
+            s = s + " " + self.operator_string(unary.modifier)
         return s
         
     def visit_binary(self, binary, **kwargs):

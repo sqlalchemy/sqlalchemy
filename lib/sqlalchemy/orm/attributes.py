@@ -98,8 +98,8 @@ class InstrumentedAttribute(interfaces.PropComparator):
     def expression_element(self):
         return self.comparator.expression_element()
         
-    def operate(self, op, other, **kwargs):
-        return op(self.comparator, other, **kwargs)
+    def operate(self, op, *other, **kwargs):
+        return op(self.comparator, *other, **kwargs)
 
     def reverse_operate(self, op, other, **kwargs):
         return op(other, self.comparator, **kwargs)

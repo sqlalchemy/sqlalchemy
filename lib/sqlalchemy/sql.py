@@ -47,7 +47,7 @@ def desc(column):
 
       order_by = [desc(table1.mycol)]
     """
-    return _UnaryExpression(column, modifier="DESC")
+    return _UnaryExpression(column, modifier=ColumnOperators.desc_op)
 
 def asc(column):
     """Return an ascending ``ORDER BY`` clause element.
@@ -56,7 +56,7 @@ def asc(column):
 
       order_by = [asc(table1.mycol)]
     """
-    return _UnaryExpression(column, modifier="ASC")
+    return _UnaryExpression(column, modifier=ColumnOperators.asc_op)
 
 def outerjoin(left, right, onclause=None, **kwargs):
     """Return an ``OUTER JOIN`` clause element.
@@ -362,7 +362,7 @@ def not_(clause):
 def distinct(expr):
     """return a ``DISTINCT`` clause."""
     
-    return _UnaryExpression(expr, operator="DISTINCT")
+    return _UnaryExpression(expr, operator=ColumnOperators.distinct_op)
 
 def between(ctest, cleft, cright):
     """Return a ``BETWEEN`` predicate clause.
@@ -1196,7 +1196,7 @@ class Operators(object):
     def operate(self, op, *other, **kwargs):
         raise NotImplementedError()
 
-    def reverse_operate(self, op, *other, **kwargs):
+    def reverse_operate(self, op, other, **kwargs):
         raise NotImplementedError()
 
 class ColumnOperators(Operators):
@@ -1230,6 +1230,10 @@ class ColumnOperators(Operators):
         raise NotImplementedError()
     notin_op = staticmethod(notin_op)
     
+    def distinct_op(a):
+        return a.distinct()
+    distinct_op = staticmethod(distinct_op)
+    
     def startswith_op(a, b):
         return a.startswith(b)
     startswith_op = staticmethod(startswith_op)
@@ -1245,6 +1249,14 @@ class ColumnOperators(Operators):
     def concat_op(a, b):
         return a.concat(b)
     concat_op = staticmethod(concat_op)
+    
+    def desc_op(a):
+        return a.desc()
+    desc_op = staticmethod(desc_op)
+
+    def asc_op(a):
+        return a.asc()
+    asc_op = staticmethod(asc_op)
     
     def __lt__(self, other):
         return self.operate(operator.lt, other)
@@ -1278,7 +1290,13 @@ class ColumnOperators(Operators):
 
     def endswith(self, other):
         return self.operate(ColumnOperators.endswith_op, other)
-
+    
+    def desc(self):
+        return self.operate(ColumnOperators.desc_op)
+        
+    def asc(self):
+        return self.operate(ColumnOperators.asc_op)
+        
     def __radd__(self, other):
         return self.reverse_operate(operator.add, other)
 
@@ -1292,8 +1310,11 @@ class ColumnOperators(Operators):
         return self.reverse_operate(operator.div, other)
 
     def between(self, cleft, cright):
-        return self.operate(Operators.between_op, (cleft, cright))
+        return self.operate(ColumnOperators.between_op, cleft, cright)
 
+    def distinct(self):
+        return self.operate(ColumnOperators.distinct_op)
+        
     def __add__(self, other):
         return self.operate(operator.add, other)
 
@@ -1340,6 +1361,7 @@ PRECEDENCE = {
     operator.ge:5,
     operator.le:5,
     ColumnOperators.between_op:5,
+    ColumnOperators.distinct_op:5,
     operator.inv:4,
     operator.and_:3,
     operator.or_:2,
@@ -1394,9 +1416,9 @@ class _CompareMixin(ColumnOperators):
         ColumnOperators.like_op : (__compare, ColumnOperators.notlike_op),
     }
 
-    def operate(self, op, other):
+    def operate(self, op, *other):
         o = _CompareMixin.operators[op]
-        return o[0](self, op, other, *o[1:])
+        return o[0](self, op, other[0], *o[1:])
     
     def reverse_operate(self, op, other):
         return self._bind_param(other).operate(op, self)
@@ -1456,7 +1478,7 @@ class _CompareMixin(ColumnOperators):
         
     def distinct(self):
         """produce a DISTINCT clause, i.e. ``DISTINCT <columnname>``"""
-        return _UnaryExpression(self, operator="DISTINCT")
+        return _UnaryExpression(self, operator=ColumnOperators.distinct_op)
 
     def between(self, cleft, cright):
         """produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND <cright>``"""

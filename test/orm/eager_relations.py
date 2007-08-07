@@ -299,7 +299,7 @@ class EagerTest(QueryTest):
         q = sess.query(User)
 
         if testbase.db.engine.name != 'mssql':
-            l = q.join('orders').order_by(desc(Order.user_id)).limit(2).offset(1)
+            l = q.join('orders').order_by(Order.user_id.desc()).limit(2).offset(1)
             assert [
                 User(id=9, 
                     orders=[Order(id=2), Order(id=4)],
@@ -311,7 +311,7 @@ class EagerTest(QueryTest):
                 )
             ] == l.all()
 
-        l = q.join('addresses').order_by(desc(Address.email_address)).limit(1).offset(0)
+        l = q.join('addresses').order_by(Address.email_address.desc()).limit(1).offset(0)
         assert [
             User(id=7, 
                 orders=[Order(id=1), Order(id=3), Order(id=5)],
