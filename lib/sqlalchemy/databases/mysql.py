@@ -94,7 +94,7 @@ RESERVED_WORDS = util.Set(
     ['accessible', 'add', 'all', 'alter', 'analyze','and', 'as', 'asc',
      'asensitive', 'before', 'between', 'bigint', 'binary', 'blob', 'both',
      'by', 'call', 'cascade', 'case', 'change', 'char', 'character', 'check',
-     'collate', 'column', 'con dition', 'constraint', 'continue', 'convert',
+     'collate', 'column', 'condition', 'constraint', 'continue', 'convert',
      'create', 'cross', 'current_date', 'current_time', 'current_timestamp',
      'current_user', 'cursor', 'database', 'databases', 'day_hour',
      'day_microsecond', 'day_minute', 'day_second', 'dec', 'decimal',
