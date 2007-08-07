@@ -294,7 +294,9 @@ class Mapper(object):
                 extlist.add(ext_class)
             else:
                 extlist.add(ext_class())
-
+            # local MapperExtensions have already instrumented the class
+            extlist[-1].instrument_class(self, self.class_)
+            
         extension = self.extension
         if extension is not None:
             for ext_obj in util.to_list(extension):
@@ -303,8 +305,6 @@ class Mapper(object):
         self.extension = ExtensionCarrier()
         for ext in extlist:
             self.extension.append(ext)
-
-        self.extension.instrument_class(self, self.class_)
         
     def _compile_inheritance(self):
         """Determine if this Mapper inherits from another mapper, and
@@ -708,6 +708,9 @@ class Mapper(object):
             mapper_registry[self.class_key] = self
         finally:
             _COMPILE_MUTEX.release()
+
+        for ext in util.to_list(self.extension, []):
+            ext.instrument_class(self, self.class_)
 
         if self.entity_name is None:
             self.class_.c = self.c

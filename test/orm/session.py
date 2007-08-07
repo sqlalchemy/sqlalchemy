@@ -485,6 +485,12 @@ class ScopedSessionTest(PersistTest):
         sso = SomeOtherObject.query().first()
         assert SomeObject.query.filter_by(id=1).one().options[0].id == sso.id
 
+    def test_query_compiles(self):
+        class Foo(object):
+            pass
+        Session.mapper(Foo, table2)
+        assert hasattr(Foo, 'query')
+        
     def test_validating_constructor(self):
         s2 = SomeObject(someid=12)
         s3 = SomeOtherObject(someid=123, bogus=345)
