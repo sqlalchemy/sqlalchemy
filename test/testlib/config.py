@@ -1,5 +1,5 @@
 import testbase
-import optparse, os, sys, ConfigParser, StringIO, time
+import optparse, os, sys, re, ConfigParser, StringIO, time
 logging, require = None, None
 
 
