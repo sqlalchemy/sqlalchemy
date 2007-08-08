@@ -134,7 +134,7 @@ RESERVED_WORDS = util.Set(
 
 
 class _NumericType(object):
-    "Base for MySQL numeric types."
+    """Base for MySQL numeric types."""
 
     def __init__(self, unsigned=False, zerofill=False, **kw):
         self.unsigned = unsigned
@@ -151,7 +151,7 @@ class _NumericType(object):
 
 
 class _StringType(object):
-    "Base for MySQL string types."
+    """Base for MySQL string types."""
 
     def __init__(self, charset=None, collation=None,
                  ascii=False, unicode=False, binary=False,
@@ -415,7 +415,11 @@ class MSTinyInteger(MSInteger):
     """MySQL TINYINT type"""
 
     def __init__(self, length=None, **kw):
-        """Construct a SMALLINTEGER.
+        """Construct a TINYINT.
+
+        Note: following the usual MySQL conventions, TINYINT(1) columns
+        reflected during Table(..., autoload=True) are treated as
+        Boolean columns.
 
         length
           Optional, maximum display width for this number.
@@ -467,6 +471,34 @@ class MSSmallInteger(sqltypes.Smallinteger, _NumericType):
             return self._extend("SMALLINT")
 
 
+class MSBit(sqltypes.TypeEngine):
+    """MySQL BIT type
+
+    This type is for MySQL 5.0.3 or greater for MyISAM, and 5.0.5 or greater for
+    MyISAM, MEMORY, InnoDB and BDB.  For older versions, use a MSTinyInteger(1)
+    type.  
+    """
+    
+    def __init__(self, length=None):
+        self.length = length
+ 
+    def convert_result_value(self, value, dialect):
+        """Converts MySQL's 64 bit, variable length binary string to a long."""
+
+        if value is not None:
+            v = 0L
+            for i in map(ord, value):
+                v = v << 8 | i
+            value = v
+        return value
+
+    def get_col_spec(self):
+        if self.length is not None:
+            return "BIT(%s)" % self.length
+        else:
+            return "BIT"
+
+
 class MSDateTime(sqltypes.DateTime):
     """MySQL DATETIME type"""
 
@@ -499,24 +531,28 @@ class MSTimeStamp(sqltypes.TIMESTAMP):
     """MySQL TIMESTAMP type
 
     To signal the orm to automatically re-select modified rows to retrieve
-    the timestamp, add a PassiveDefault to your column specification:
+    the timestamp, add a PassiveDefault to your column specification::
 
         from sqlalchemy.databases import mysql
-        Column('updated', mysql.MSTimeStamp, PassiveDefault(text('CURRENT_TIMESTAMP()')))
+        Column('updated', mysql.MSTimeStamp,
+               PassiveDefault(sql.text('CURRENT_TIMESTAMP')))
+
+    The full range of MySQL 4.1+ TIMESTAMP defaults can be specified in
+    the PassiveDefault::
+
+        PassiveDefault(sql.text('CURRENT TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'))
+
     """
 
     def get_col_spec(self):
         return "TIMESTAMP"
 
 
-class MSYear(sqltypes.String):
+class MSYear(sqltypes.TypeEngine):
     """MySQL YEAR type, for single byte storage of years 1901-2155"""
 
     def get_col_spec(self):
-        if self.length is None:
-            return "YEAR"
-        else:
-            return "YEAR(%d)" % self.length
+        return "YEAR"
 
 
 class MSText(_StringType, sqltypes.TEXT):
@@ -1002,7 +1038,94 @@ class MSEnum(MSString):
         return self._extend("ENUM(%s)" % ",".join(self.__ddl_values))
 
 
+class MSSet(MSString):
+    """MySQL SET type."""
+    
+    def __init__(self, *values, **kw):
+        """Construct a SET.
+
+        Example::
+
+          Column('myset', MSSet("'foo'", "'bar'", "'baz'"))
+
+        Arguments are:
+        
+        values
+          The range of valid values for this SET.  Values will be used
+          exactly as they appear when generating schemas.
+
+        charset
+          Optional, a column-level character set for this string
+          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+
+        collation
+          Optional, a column-level collation for this string value.
+          Takes precedence to 'binary' short-hand.
+
+        ascii
+          Defaults to False: short-hand for the ``latin1`` character set,
+          generates ASCII in schema.
+
+        unicode
+          Defaults to False: short-hand for the ``ucs2`` character set,
+          generates UNICODE in schema.
+
+        binary
+          Defaults to False: short-hand, pick the binary collation type
+          that matches the column's character set.  Generates BINARY in
+          schema.  This does not affect the type of data stored, only the
+          collation of character data.
+        """
+        
+        self.__ddl_values = values
+
+        strip_values = []
+        for a in values:
+            if a[0:1] == '"' or a[0:1] == "'":
+                a = a[1:-1]
+            strip_values.append(a)
+            
+        self.values = strip_values
+        length = max([len(v) for v in strip_values] + [0])
+        super(MSSet, self).__init__(length, **kw)
+
+    def convert_result_value(self, value, dialect):
+        # The good news:
+        #   No ',' quoting issues- commas aren't allowed in SET values
+        # The bad news:
+        #   Plenty of driver inconsistencies here.
+        if isinstance(value, util.set_types):
+            # ..some versions convert '' to an empty set
+            if not value:
+                value.add('')
+            # ..some return sets.Set, even for pythons that have __builtin__.set
+            if not isinstance(value, util.Set):
+                value = util.Set(value)
+            return value
+        # ...and some versions return strings
+        if value is not None:
+            return util.Set(value.split(','))
+        else:
+            return value
+
+    def convert_bind_param(self, value, engine): 
+        if value is None or isinstance(value, (int, long, basestring)):
+            pass
+        else:
+            if None in value:
+                value = util.Set(value)
+                value.remove(None)
+                value.add('')
+            value = ','.join(value)
+        return super(MSSet, self).convert_bind_param(value, engine)
+
+    def get_col_spec(self):
+        return self._extend("SET(%s)" % ",".join(self.__ddl_values))
+
+
 class MSBoolean(sqltypes.Boolean):
+    """MySQL BOOLEAN type."""
+
     def get_col_spec(self):
         return "BOOL"
 
@@ -1021,7 +1144,6 @@ class MSBoolean(sqltypes.Boolean):
         else:
             return value and True or False
 
-# TODO: SET, BIT
 
 colspecs = {
     sqltypes.Integer: MSInteger,
@@ -1042,11 +1164,11 @@ colspecs = {
     _BinaryType: _BinaryType,
 }
 
-
 ischema_names = {
     'bigint': MSBigInteger,
     'binary': MSBinary,
-    'blob': MSBlob,
+    'bit': MSBit,
+    'blob': MSBlob,    
     'boolean':MSBoolean,
     'char': MSChar,
     'date': MSDate,
@@ -1066,6 +1188,7 @@ ischema_names = {
     'nchar': MSNChar,
     'nvarchar': MSNVarChar,
     'numeric': MSNumeric,
+    'set': MSSet,
     'smallint': MSSmallInteger,
     'text': MSText,
     'time': MSTime,
@@ -1075,6 +1198,7 @@ ischema_names = {
     'tinytext': MSTinyText,
     'varbinary': MSVarBinary,
     'varchar': MSString,
+    'year': MSYear,
 }
 
 def descriptor():
@@ -1378,8 +1502,8 @@ class MySQLDialect(ansisql.ANSIDialect):
             if extra_2 is not None:
                 kw[extra_2] = True
 
-            if args is not None:
-                if col_type == 'enum':
+            if args is not None and coltype is not sqltypes.NULLTYPE:
+                if col_type in ('enum', 'set'):
                     args= args[1:-1]
                     argslist = args.split(',')
                     coltype = coltype(*argslist, **kw)

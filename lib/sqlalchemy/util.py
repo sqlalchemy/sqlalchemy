@@ -4,23 +4,23 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import md5, sys, warnings, sets
+import __builtin__
+
+from sqlalchemy import exceptions, logging
+
 try:
     import thread, threading
 except ImportError:
     import dummy_thread as thread
     import dummy_threading as threading
 
-from sqlalchemy import exceptions, logging
-import md5
-import sys
-import warnings
-import __builtin__
-
 try:
     Set = set
+    set_types = set, sets.Set
 except:
-    import sets
     Set = sets.Set
+    set_types = sets.Set,
 
 try:
     reversed = __builtin__.reversed

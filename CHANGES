@@ -230,6 +230,8 @@
     SelectResultsExt still exist but just return a slightly modified
     Query object for backwards-compatibility.  join_to() method 
     from SelectResults isn't present anymore, need to use join(). 
+- mysql
+  - All MySQL column types are now supported
 - postgres
   - Added PGArray datatype for using postgres array datatypes
 - oracle
