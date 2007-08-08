@@ -1,13 +1,6 @@
 Connection Pooling  {@name=pooling}
 ======================
 
-SQLAlchemy uses *connection pooling* to increase efficiency and control resource consumption.  Pooling is setup automaticaly during `Engine` creation and you don't need to do anything special to take advantage of it.
-
-A connection pool aims to extend the lifetime of a database connection as long as possible.  Instead of closing the connection to the database when work is complete, a pooled connection returns to its "pool" and remains open.  It can then be re-used for the next caller that needs a database connection.  Callers requesting a connection from the pool may receive a brand new database connection or a recycled connection.
-
-In SQLAlchemy, interaction with the pool is largely transaparent.  When you request a database connection with ``connect()``, for example, a connection will be retrieved from the pool.  Calling ``close()`` on that connection will return it to the pool.
-
-
 This section describes the connection pool module of SQLAlchemy.  The `Pool` object it provides is normally embedded within an `Engine` instance.  For most cases, explicit access to the pool module is not required.  However, the `Pool` object can be used on its own, without the rest of SA, to manage DBAPI connections; this section describes that usage.  Also, this section will describe in more detail how to customize the pooling strategy used by an `Engine`.
 
 At the base of any database helper library is a system of efficiently acquiring connections to the database.  Since the establishment of a database connection is typically a somewhat expensive operation, an application needs a way to get at database connections repeatedly without incurring the full overhead each time.  Particularly for server-side web applications, a connection pool is the standard way to maintain a "pool" of database connections which are used over and over again among many requests.  Connection pools typically are configured to maintain a certain "size", which represents how many connections can be used simultaneously without resorting to creating more newly-established connections.
