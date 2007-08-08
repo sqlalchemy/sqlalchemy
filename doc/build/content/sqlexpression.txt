@@ -167,16 +167,27 @@ When executing multiple sets of parameters, each dictionary must have the **same
 We're executing our `Insert` using a `Connection`.  There's two options that allow you to not have to deal with the connection part.  You can execute in the **connectionless** style, using the engine, which opens and closes a connection for you:
 
     {python}
-    result = engine.execute(users.insert(), name='fred', fullname="Fred Flintstone")
+    {sql}>>> result = engine.execute(users.insert(), name='fred', fullname="Fred Flintstone")
+    INSERT INTO users (name, fullname) VALUES (?, ?)
+    ['fred', 'Fred Flintstone']
+    COMMIT
     
 and you can save even more steps than that, if you connect the `Engine` to the `MetaData` object we created earlier.  When this is done, all SQL expressions which involve tables within the `MetaData` object will be automatically **bound** to the `Engine`.  In this case, we call it  **implicit execution**:
 
     {python}
-    metadata.bind = engine
-    result = users.insert().execute(name="mary", fullname="Mary Contrary")
+    >>> metadata.bind = engine
+    {sql}>>> result = users.insert().execute(name="mary", fullname="Mary Contrary")
+    INSERT INTO users (name, fullname) VALUES (?, ?)
+    ['mary', 'Mary Contrary']
+    COMMIT
 
-Detailed examples of connectionless and implicit execution are available at [dbengine_implicit](rel:dbengine_implicit).
+When the `MetaData` is bound, statements will also compile against the engine's dialect.  Since a lot of the examples here assume the default dialect, we'll detach the engine from the metadata which we just attached:
 
+    {python}
+    >>> metadata.bind = None
+
+Detailed examples of connectionless and implicit execution are available in the "Engines" chapter: [dbengine_implicit](rel:dbengine_implicit).
+    
 ## Selecting {@name=selecting}
 
 We began with inserts just so that our test database had some data in it.  The more interesting part of the data is selecting it !  We'll cover UPDATE and DELETE statements later.  The primary construct used to generate SELECT statements is the `select()` function:
@@ -196,6 +207,8 @@ Above, we issued a basic `select()` call, placing the `users` table within the C
     ...     print row
     (1, u'jack', u'Jack Jones')
     (2, u'wendy', u'Wendy Williams')
+    (3, u'fred', u'Fred Flintstone')
+    (4, u'mary', u'Mary Contrary')
 
 Above, we see that printing each row produces a simple tuple-like result.  We have more options at accessing the data in each row.  One very common way is through dictionary access, using the string names of columns:
 
@@ -226,6 +239,8 @@ But another way, whose usefulness will become apparent later on, is to use the `
     []
     {stop}name: jack ; fullname: Jack Jones
     name: wendy ; fullname: Wendy Williams
+    name: fred ; fullname: Fred Flintstone
+    name: mary ; fullname: Mary Contrary
 
 Result sets which have pending rows remaining should be explicitly closed before discarding.  While the resources referenced by the `ResultProxy` will be closed when the object is garbage collected, it's better to make it explicit as some database APIs are very picky about such things:
 
@@ -240,8 +255,12 @@ If we'd like to more carefully control the columns which are placed in the COLUM
     SELECT users.name, users.fullname 
     FROM users
     []
-    {stop}>>> result.fetchall() #doctest: +NORMALIZE_WHITESPACE
-    [(u'jack', u'Jack Jones'), (u'wendy', u'Wendy Williams')]
+    {stop}>>> for row in result:  #doctest: +NORMALIZE_WHITESPACE
+    ...     print row
+    (u'jack', u'Jack Jones')
+    (u'wendy', u'Wendy Williams')
+    (u'fred', u'Fred Flintstone')
+    (u'mary', u'Mary Contrary')
     
 Lets observe something interesting about the FROM clause.  Whereas the generated statement contains two distinct sections, a "SELECT columns" part and a "FROM table" part, our `select()` construct only has a list containing columns.  How does this work ?  Let's try putting *two* tables into our `select()` statement:
 
@@ -259,6 +278,14 @@ Lets observe something interesting about the FROM clause.  Whereas the generated
     (2, u'wendy', u'Wendy Williams', 2, 1, u'jack@msn.com')
     (2, u'wendy', u'Wendy Williams', 3, 2, u'www@www.org')
     (2, u'wendy', u'Wendy Williams', 4, 2, u'wendy@aol.com')
+    (3, u'fred', u'Fred Flintstone', 1, 1, u'jack@yahoo.com')
+    (3, u'fred', u'Fred Flintstone', 2, 1, u'jack@msn.com')
+    (3, u'fred', u'Fred Flintstone', 3, 2, u'www@www.org')
+    (3, u'fred', u'Fred Flintstone', 4, 2, u'wendy@aol.com')
+    (4, u'mary', u'Mary Contrary', 1, 1, u'jack@yahoo.com')
+    (4, u'mary', u'Mary Contrary', 2, 1, u'jack@msn.com')
+    (4, u'mary', u'Mary Contrary', 3, 2, u'www@www.org')
+    (4, u'mary', u'Mary Contrary', 4, 2, u'wendy@aol.com')
 
 It placed **both** tables into the FROM clause.  But also, it made a real mess.  Those who are familiar with SQL joins know that this is a **cartesian product**; each row from the `users` table is produced against each row from the `addresses` table.  So to put some sanity into this statement, we need a WHERE clause.  Which brings us to the second argument of `select()`:
 
@@ -763,7 +790,7 @@ To embed a SELECT in a column expression, use `as_scalar()`:
     WHERE users.id = addresses.user_id) 
     FROM users
     []
-    {stop}[(u'jack', 2), (u'wendy', 2)]
+    {stop}[(u'jack', 2), (u'wendy', 2), (u'fred', 0), (u'mary', 0)]
 
 Alternatively, applying a `label()` to a select evaluates it as a scalar as well:
 
@@ -777,7 +804,7 @@ Alternatively, applying a `label()` to a select evaluates it as a scalar as well
     WHERE users.id = addresses.user_id) AS address_count 
     FROM users
     []
-    {stop}[(u'jack', 2), (u'wendy', 2)]
+    {stop}[(u'jack', 2), (u'wendy', 2), (u'fred', 0), (u'mary', 0)]
 
 ### Correlated Subqueries {@name=correlated}
 
