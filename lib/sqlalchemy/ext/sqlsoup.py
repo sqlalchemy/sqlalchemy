@@ -240,7 +240,7 @@ Raw SQL
 
 SqlSoup works fine with SQLAlchemy's `text block support`__.
 
-__ http://www.sqlalchemy.org/docs/documentation.myt#sql_textual
+__ http://www.sqlalchemy.org/docs/04/sqlexpression.html#sql_text
 
 You can also access the SqlSoup's `engine` attribute to compose SQL
 directly.  The engine's ``execute`` method corresponds to the one of a
