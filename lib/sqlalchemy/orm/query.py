@@ -300,11 +300,7 @@ class Query(object):
     def filter_by(self, **kwargs):
         """apply the given filtering criterion to the query and return the newly resulting ``Query``."""
 
-        #import properties
-        
-        joinpoint = self._joinpoint
-
-        clauses = [joinpoint.get_property(key, resolve_synonyms=True).compare(operator.eq, value)
+        clauses = [self._joinpoint.get_property(key, resolve_synonyms=True).compare(operator.eq, value)
             for key, value in kwargs.iteritems()]
         
         return self.filter(sql.and_(*clauses))
