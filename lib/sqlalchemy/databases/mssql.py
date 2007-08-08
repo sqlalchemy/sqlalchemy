@@ -709,6 +709,15 @@ class MSSQLDialect_pymssql(MSSQLDialect):
 
 class MSSQLDialect_pyodbc(MSSQLDialect):
     
+    def __init__(self, **params):
+        super(MSSQLDialect_pyodbc, self).__init__(**params)
+        # whether use_scope_identity will work depends on the version of pyodbc
+        try:
+            import pyodbc
+            self.use_scope_identity = hasattr(pyodbc.Cursor, 'nextset')
+        except:
+            pass
+        
     def import_dbapi(cls):
         import pyodbc as module
         return module
