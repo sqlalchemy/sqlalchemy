@@ -18,7 +18,7 @@ files = [
     'ormtutorial',
     'sqlexpression',
     'mappers',
-    'unitofwork',
+    'session',
     'dbengine',
     'metadata',
     'types',

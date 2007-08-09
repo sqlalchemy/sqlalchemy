@@ -276,7 +276,7 @@ Implicit execution is also connectionless, and calls the `execute()` method on t
 
     {python}
     engine = create_engine('sqlite:///file.db')
-    meta.connect(engine)
+    meta.bind = engine
     result = users_table.select().execute()
     for row in result:
         # ....

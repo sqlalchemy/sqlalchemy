@@ -4,12 +4,17 @@
 Mapper Configuration {@name=advdatamapping}
 ======================
 
-This section references most major usage patterns involving the [mapper()](rel:docstrings_sqlalchemy.orm_modfunc_mapper) and [relation()](rel:docstrings_sqlalchemy.orm_modfunc_relation) functions.  It assumes you've worked through the [datamapping](rel:datamapping) and know how to construct and use rudimental mappers and relations.
+This section references most major configurational patterns involving the [mapper()](rel:docstrings_sqlalchemy.orm_modfunc_mapper) and [relation()](rel:docstrings_sqlalchemy.orm_modfunc_relation) functions.  It assumes you've worked through the [datamapping](rel:datamapping) and know how to construct and use rudimental mappers and relations.
 
 ### Mapper Configuration
 
-Full API documentation for the ORM is at [docstrings_sqlalchemy.orm](rel:docstrings_sqlalchemy.orm).
-The overall list of options to the `mapper()` function can be viewed at:  [Options for mapper()](rel:docstrings_sqlalchemy.orm_modfunc_mapper).
+Full API documentation for the ORM:
+
+[docstrings_sqlalchemy.orm](rel:docstrings_sqlalchemy.orm).
+
+Options for the `mapper()` function:
+
+[docstrings_sqlalchemy.orm_modfunc_mapper](rel:docstrings_sqlalchemy.orm_modfunc_mapper).
 
 #### Customizing Column Properties {@name=columns}
 
@@ -696,7 +701,7 @@ Multiple extensions will be chained together and processed in order; they are sp
 
 The full list of options for the `relation()` function:
 
-[Options for relation()](rel:docstrings_sqlalchemy.orm_modfunc_relation)
+[docstrings_sqlalchemy.orm_modfunc_relation](rel:docstrings_sqlalchemy.orm_modfunc_relation)
 
 #### Basic Relational Patterns {@name=patterns}
 
