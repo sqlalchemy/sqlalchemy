@@ -210,22 +210,22 @@ class Session(object):
     
     SQLAlchemy's unit of work includes these functions:
 
-      * The ability to track in-memory changes on scalar- and collection-based object
-        attributes, such that database persistence operations can be assembled based on those
-        changes.
+    * The ability to track in-memory changes on scalar- and collection-based object
+      attributes, such that database persistence operations can be assembled based on those
+      changes.
 
-      * The ability to organize individual SQL queries and population of newly generated
-        primary and foreign key-holding attributes during a persist operation
-        such that referential integrity is maintained at all times.  
-      
-      * The ability to maintain insert ordering against the order in which
-        new instances were added to the session.  
-      
-      * an Identity Map, which is a dictionary keying instances to their unique primary key
-        identity. This ensures that only one copy of a particular entity is ever present
-        within the session, even if repeated load operations for the same entity occur. This
-        allows many parts of an application to get a handle to a particular object without
-        any chance of modifications going to two different places.
+    * The ability to organize individual SQL queries and population of newly generated
+      primary and foreign key-holding attributes during a persist operation such that
+      referential integrity is maintained at all times.
+
+    * The ability to maintain insert ordering against the order in which new instances were
+      added to the session.
+
+    * an Identity Map, which is a dictionary keying instances to their unique primary key
+      identity. This ensures that only one copy of a particular entity is ever present
+      within the session, even if repeated load operations for the same entity occur. This
+      allows many parts of an application to get a handle to a particular object without
+      any chance of modifications going to two different places.
 
     When dealing with instances of mapped classes, an instance may be *attached* to a
     particular Session, else it is *unattached* . An instance also may or may not correspond

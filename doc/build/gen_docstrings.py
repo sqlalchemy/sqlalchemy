@@ -36,7 +36,7 @@ def make_all_docs():
                                                orm.collections.MappedCollection,
                                                orm.collections.CollectionAdapter]),
         make_doc(obj=orm.interfaces),
-        make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.MapperExtension, orm.mapperlib.Mapper]),
+        make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.Mapper]),
         make_doc(obj=orm.properties),
         make_doc(obj=orm.query, classes=[orm.query.Query]),
         make_doc(obj=orm.session, classes=[orm.session.Session]),
