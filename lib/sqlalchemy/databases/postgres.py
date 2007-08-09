@@ -464,7 +464,7 @@ class PGDialect(ansisql.ANSIDialect):
                         # the default is related to a Sequence
                         sch = table.schema
                         if '.' not in match.group(2) and sch is not None:
-                            default = match.group(1) + sch + '.' + match.group(2) + match.group(3)
+                            default = match.group(1) + ('"%s"' % sch) + '.' + match.group(2) + match.group(3)
                     colargs.append(schema.PassiveDefault(sql.text(default)))
                 table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
 

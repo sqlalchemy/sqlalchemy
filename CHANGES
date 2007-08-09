@@ -15,6 +15,12 @@
 - mssql
     - added support for TIME columns (simulated using DATETIME) [ticket:679]
     - index names are now quoted when dropping from reflected tables [ticket:684]
+- postgres
+    - when reflecting tables from alternate schemas, the "default" placed upon
+      the primary key, i.e. usually a sequence name, has the "schema" name
+      unconditionally quoted, so that schema names which need quoting are fine.
+      its slightly unnecessary for schema names which don't need quoting
+      but not harmful.
       
 0.3.10
 - general
