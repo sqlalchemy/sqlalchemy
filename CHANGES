@@ -10,6 +10,8 @@
 - engine
     - fixed another occasional race condition which could occur
       when using pool with threadlocal setting
+- mysql
+    - fixed specification of YEAR columns when generating schema
 - mssql
     - added support for TIME columns (simulated using DATETIME) [ticket:679]
     - index names are now quoted when dropping from reflected tables [ticket:684]
