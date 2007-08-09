@@ -1799,6 +1799,9 @@ class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def _escape_identifier(self, value):
         return value.replace('`', '``')
 
+    def _unescape_identifier(self, value):
+        return value.replace('``', '`')
+
     def _fold_identifier_case(self, value):
         # TODO: determine MySQL's case folding rules
         #

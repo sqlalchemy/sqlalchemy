@@ -137,6 +137,56 @@ class QuoteTest(PersistTest):
             x = lc_table1.select(distinct=True).alias("lala").select().scalar()
         finally:
             meta.drop_all()
+
+class PreparerTest(PersistTest):
+    """Test the db-agnostic quoting services of ANSIIdentifierPreparer."""
+
+    def test_unformat(self):
+        prep = ansisql.ANSIIdentifierPreparer(None)
+        unformat = prep.unformat_identifiers
+
+        def a_eq(have, want):
+            if have != want:
+                print "Wanted %s" % want
+                print "Received %s" % have
+            self.assert_(have == want)
+
+        a_eq(unformat('foo'), ['foo'])
+        a_eq(unformat('"foo"'), ['foo'])
+        a_eq(unformat("'foo'"), ["'foo'"])
+        a_eq(unformat('foo.bar'), ['foo', 'bar'])
+        a_eq(unformat('"foo"."bar"'), ['foo', 'bar'])
+        a_eq(unformat('foo."bar"'), ['foo', 'bar'])
+        a_eq(unformat('"foo".bar'), ['foo', 'bar'])
+        a_eq(unformat('"foo"."b""a""r"."baz"'), ['foo', 'b"a"r', 'baz'])
+
+    def test_unformat_custom(self):
+        class Custom(ansisql.ANSIIdentifierPreparer):
+            def __init__(self, dialect):
+                super(Custom, self).__init__(dialect, initial_quote='`',
+                                             final_quote='`')
+            def _escape_identifier(self, value):
+                return value.replace('`', '``')
+            def _unescape_identifier(self, value):
+                return value.replace('``', '`')
+
+        prep = Custom(None)
+        unformat = prep.unformat_identifiers
+
+        def a_eq(have, want):
+            if have != want:
+                print "Wanted %s" % want
+                print "Received %s" % have
+            self.assert_(have == want)
+
+        a_eq(unformat('foo'), ['foo'])
+        a_eq(unformat('`foo`'), ['foo'])
+        a_eq(unformat(`'foo'`), ["'foo'"])
+        a_eq(unformat('foo.bar'), ['foo', 'bar'])
+        a_eq(unformat('`foo`.`bar`'), ['foo', 'bar'])
+        a_eq(unformat('foo.`bar`'), ['foo', 'bar'])
+        a_eq(unformat('`foo`.bar'), ['foo', 'bar'])
+        a_eq(unformat('`foo`.`b``a``r`.`baz`'), ['foo', 'b`a`r', 'baz'])
         
 if __name__ == "__main__":
     testbase.main()

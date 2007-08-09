@@ -974,6 +974,15 @@ class ANSIIdentifierPreparer(object):
 
         return value.replace('"', '""')
 
+    def _unescape_identifier(self, value):
+        """Canonicalize an escaped identifier.
+
+        Subclasses should override this to provide database-dependent
+        unescaping behavior that reverses _escape_identifier.
+        """
+
+        return value.replace('""', '"')
+
     def quote_identifier(self, value):
         """Quote an identifier.
 
@@ -1096,5 +1105,28 @@ class ANSIIdentifierPreparer(object):
                     self.format_table(table, use_schema=False))
         else:
             return (self.format_table(table, use_schema=False), )
+
+    def unformat_identifiers(self, identifiers):
+        """Unpack 'schema.table.column'-like strings into components."""
+
+        try:
+            r = self._r_identifiers
+        except AttributeError:
+            initial, final, escaped_final = \
+                     [re.escape(s) for s in
+                      (self.initial_quote, self.final_quote,
+                       self._escape_identifier(self.final_quote))]
+            r = re.compile(
+                r'(?:'
+                r'(?:%(initial)s((?:%(escaped)s|[^%(final)s])+)%(final)s'
+                r'|([^\.]+))(?=\.|$))+' %
+                { 'initial': initial,
+                  'final': final,
+                  'escaped': escaped_final })
+            self._r_identifiers = r
+        
+        return [self._unescape_identifier(i)
+                for i in [a or b for a, b in r.findall(identifiers)]]
+
 
 dialect = ANSIDialect
