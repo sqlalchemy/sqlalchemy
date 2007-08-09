@@ -33,7 +33,7 @@ The usage of `sessionmaker()` is illustrated below:
     # close when finished
     sess.close()
 
-Above, the `sessionmaker` call creates a class for us, which we assign to the name `Session`.  This class is a subclass of the actual `sqlalchemy.orm.session.Session` class, which will instantiate with the default arguments of `autoflush=True` and `transactional=True`.
+Above, the `sessionmaker` call creates a class for us, which we assign to the name `Session`.  This class is a subclass of the actual `sqlalchemy.orm.session.Session` class, which will instantiate with the arguments of `autoflush=True` and `transactional=True`.
 
 When you write your application, place the call to `sessionmaker()` somewhere global, and then make your new `Session` class available to the rest of your application.
 
@@ -98,9 +98,15 @@ As an alternative to `sessionmaker()`, `create_session()` exists literally as a 
     {python}
     session = create_session(bind=myengine)
     
-The `create_session()` function doesn't add any functionality to the regular `Session`, it just sets up a default argument set of `autoflush=False, transactional=False`.  But also, by calling `create_session()` instead of instantiating `Session` directly, you leave room in your application to change the type of session which the function creates.
+The `create_session()` function doesn't add any functionality to the regular `Session`, it just sets up a default argument set of `autoflush=False, transactional=False`.  But also, by calling `create_session()` instead of instantiating `Session` directly, you leave room in your application to change the type of session which the function creates.  For example, an application which is calling `create_session()` in many places, which is typical for a pre-0.4 application, can be changed to use a `sessionmaker()` by just assigning the return of `sessionmaker()` to the `create_session` name:
 
-    
+    {python}
+    # change from:
+    from sqlalchemy.orm import create_session
+
+    # to:
+    create_session = sessionmaker()
+
 ## Using the Session 
 
 A typical session conversation starts with creating a new session, or acquiring one from an ongoing context.    You save new objects and load existing ones, make changes, mark some as deleted, and then persist your changes to the database.  If your session is transactional, you use `commit()` to persist any remaining changes and to commit the transaction.  If not, you call `flush()` which will flush any remaining data to the database.
@@ -120,7 +126,7 @@ Below, we open a new `Session` using a configured `sessionmaker()`, make some ch
 
 ### Quickie Intro to Object States {@name=states}
 
-It's helpful to know the states at which an instance can have within a session:
+It's helpful to know the states which an instance can have within a session:
 
 * *Transient* - an instance that's not in a session, and is not saved to the database; i.e. it has no database identity.  The only relationship such an object has to the ORM is that its class has a `mapper()` associated with it.
 

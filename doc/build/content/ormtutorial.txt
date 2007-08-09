@@ -927,3 +927,5 @@ Generated Documentation for Query: [docstrings_sqlalchemy.orm.query_Query](rel:d
 ORM Generated Docs: [docstrings_sqlalchemy.orm](rel:docstrings_sqlalchemy.orm)
 
 Further information on mapping setups are in [advdatamapping](rel:advdatamapping).
+
+Further information on working with Sessions: [unitofwork](rel:unitofwork).
