@@ -535,4 +535,4 @@ Vertical partitioning places different kinds of objects, or different tables, ac
 
 Horizontal partitioning partitions the rows of a single table (or a set of tables) across multiple databases.
 
-See the "sharding" example in [attribute_shard.py](rel:http://www.sqlalchemy.org/trac/browser/trunk/examples/sharding/attribute_shard.py)
+See the "sharding" example in [attribute_shard.py](http://www.sqlalchemy.org/trac/browser/trunk/examples/sharding/attribute_shard.py)
