@@ -170,7 +170,7 @@ class ANSICompiler(sql.Compiled):
         # this re will search for params like :param
         # it has a negative lookbehind for an extra ':' so that it doesnt match
         # postgres '::text' tokens
-        match = re.compile(r'(?<!:):([\w_]+)', re.UNICODE)
+        match = re.compile(r'(?<!:):([\w_\$]+)', re.UNICODE)
         if self.paramstyle=='pyformat':
             self.strings[self.statement] = match.sub(lambda m:'%(' + m.group(1) +')s', self.strings[self.statement])
         elif self.positional:

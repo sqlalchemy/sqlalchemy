@@ -7,7 +7,7 @@ import sqlalchemy.databases.sqlite as sqllite
 import tables
 from sqlalchemy import *
 from sqlalchemy.engine import ResultProxy, RowProxy
-from sqlalchemy import exceptions
+from sqlalchemy import exceptions, ansisql
 
 class QueryTest(PersistTest):
     
@@ -183,6 +183,24 @@ class QueryTest(PersistTest):
         s = self.users.select(self.users.c.user_name==u)
         r = s.execute(someshortname='fred').fetchall()
         assert len(r) == 1
+
+    def test_bindparam_detection(self):
+        dialect = ansisql.ANSIDialect(default_paramstyle='qmark')
+        prep = lambda q: str(dialect.compile(sql.text(q)))
+
+        def a_eq(got, wanted):
+            if got != wanted:
+                print "Wanted %s" % wanted
+                print "Received %s" % got
+            self.assert_(got == wanted)
+
+        a_eq(prep('select foo'), 'select foo')
+        a_eq(prep(":this :that"), "? ?")
+        a_eq(prep("(:this),(:that :other)"), "(?),(? ?)")
+        a_eq(prep("(:that_ :other)"), "(? ?)")
+        a_eq(prep("(:that_other)"), "(?)")
+        a_eq(prep("(:that$other)"), "(?)")
+        a_eq(prep(".:that$ :other."), ".? ?.")
         
     def testdelete(self):
         self.users.insert().execute(user_id = 7, user_name = 'jack')
