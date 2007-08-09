@@ -3171,9 +3171,6 @@ class Select(_SelectBaseMixin, FromClause):
 
     name = property(lambda self:"Select statement")
 
-    def expression_element(self):
-        return self.as_scalar()
-    
     def locate_all_froms(self):
         froms = util.Set()
         for col in self._raw_columns:
