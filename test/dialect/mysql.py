@@ -422,8 +422,8 @@ class TypesTest(AssertMixin):
                            Column('y1', mysql.MSYear),
                            Column('y2', mysql.MSYear),
                            Column('y3', mysql.MSYear),
-                           Column('y4', mysql.MSYear),
-                           Column('y5', mysql.MSYear))
+                           Column('y4', mysql.MSYear(2)),
+                           Column('y5', mysql.MSYear(4)))
 
         try:
             year_table.create()
@@ -433,8 +433,11 @@ class TypesTest(AssertMixin):
             for table in year_table, reflected:
                 table.insert(['1950', '50', None, 50, 1950]).execute()
                 row = list(table.select().execute())[0]
-                self.assert_eq(list(row), [1950, 2050, None, 2050, 1950])
+                self.assert_eq(list(row), [1950, 2050, None, 50, 1950])
                 table.delete().execute()
+                self.assert_(colspec(table.c.y1).startswith('y1 YEAR'))
+                self.assert_eq(colspec(table.c.y4), 'y4 YEAR(2)')
+                self.assert_eq(colspec(table.c.y5), 'y5 YEAR(4)')
         finally:
             meta.drop_all()
         

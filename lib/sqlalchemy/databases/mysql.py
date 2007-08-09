@@ -551,9 +551,14 @@ class MSTimeStamp(sqltypes.TIMESTAMP):
 class MSYear(sqltypes.TypeEngine):
     """MySQL YEAR type, for single byte storage of years 1901-2155"""
 
-    def get_col_spec(self):
-        return "YEAR"
+    def __init__(self, length=None):
+        self.length = length
 
+    def get_col_spec(self):
+        if self.length is None:
+            return "YEAR"
+        else:
+            return "YEAR(%s)" % self.length
 
 class MSText(_StringType, sqltypes.TEXT):
     """MySQL TEXT type, for text up to 2^16 characters""" 
