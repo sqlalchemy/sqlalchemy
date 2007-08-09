@@ -63,7 +63,6 @@ def replace_file(s, newfile):
     return s
 
 for filename in ('ormtutorial', 'sqlexpression'):
-#for filename in ('sqlexpression',):
 	filename = 'content/%s.txt' % filename
 	s = open(filename).read()
 	#s = replace_file(s, ':memory:')

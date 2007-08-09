@@ -1549,8 +1549,7 @@ class Selectable(ClauseElement):
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
 
-
-class ColumnElement(Selectable, _CompareMixin):
+class ColumnElement(ClauseElement, _CompareMixin):
     """Represent an element that is useable within the 
     "column clause" portion of a ``SELECT`` statement. 
     
@@ -1581,11 +1580,6 @@ class ColumnElement(Selectable, _CompareMixin):
         """Foreign key accessor.  References a list of ``ForeignKey`` objects 
         which each represent a foreign key placed on this column's ultimate
         ancestor.
-        """)
-    columns = property(lambda self:[self],
-                       doc=\
-        """Columns accessor which returns ``self``, to provide compatibility 
-        with ``Selectable`` objects.
         """)
 
     def _one_fkey(self):
@@ -1909,13 +1903,13 @@ class FromClause(Selectable):
         """return the list of ColumnElements represented within this FromClause's _exportable_columns"""
         export = self._exportable_columns()
         for column in export:
-            # TODO: is this conditional needed ?
             if isinstance(column, Selectable):
-                s = column
+                for co in column.columns:
+                    yield co
+            elif isinstance(column, ColumnElement):
+                yield column
             else:
                 continue
-            for co in s.columns:
-                yield co
         
     def _exportable_columns(self):
         return []
@@ -2219,7 +2213,8 @@ class _Function(_CalculatedClause, FromClause):
             self.append(c)
 
     key = property(lambda self:self.name)
-
+    columns = property(lambda self:[self])
+    
     def _copy_internals(self):
         _CalculatedClause._copy_internals(self)
         self._clone_from_clause()
@@ -2353,18 +2348,21 @@ class _Exists(_UnaryExpression):
     
     def __init__(self, *args, **kwargs):
         kwargs['correlate'] = True
-        s = select(*args, **kwargs).self_group()
+        s = select(*args, **kwargs).as_scalar().self_group()
         _UnaryExpression.__init__(self, s, operator=Operators.exists)
 
+    def select(self, whereclauses = None, **params):
+        return select([self], whereclauses, **params)
+
     def correlate(self, fromclause):
-      e = self._clone()
-      e.element = self.element.correlate(fromclause).self_group()
-      return e
+        e = self._clone()
+        e.element = self.element.correlate(fromclause).self_group()
+        return e
     
     def where(self, clause):
-      e = self._clone()
-      e.element = self.element.where(clause).self_group()
-      return e
+        e = self._clone()
+        e.element = self.element.where(clause).self_group()
+        return e
       
     def _hide_froms(self, **modifiers):
         return self._get_from_objects(**modifiers)
@@ -2427,7 +2425,7 @@ class Join(FromClause):
     primary_key = property(lambda s:s.__primary_key)
 
     def self_group(self, against=None):
-        return _Grouping(self)
+        return _FromGrouping(self)
         
     def _locate_oid_column(self):
         return self.left.oid_column
@@ -2639,7 +2637,6 @@ class _ColumnElementAdapter(ColumnElement):
         
     key = property(lambda s: s.elem.key)
     _label = property(lambda s: s.elem._label)
-    columns = c = property(lambda s:s.elem.columns)
 
     def _copy_internals(self):
         self.elem = self.elem._clone()
@@ -2657,8 +2654,33 @@ class _ColumnElementAdapter(ColumnElement):
         return getattr(self.elem, attr)
 
 class _Grouping(_ColumnElementAdapter):
+    """represent a grouping within a column expression"""
     pass
 
+class _FromGrouping(FromClause):
+    """represent a grouping of a FROM clause"""
+    __visit_name__ = 'grouping'
+
+    def __init__(self, elem):
+        self.elem = elem
+
+    columns = c = property(lambda s:s.elem.columns)
+
+    def get_children(self, **kwargs):
+        return self.elem,
+
+    def _hide_froms(self, **modifiers):
+        return self.elem._hide_froms(**modifiers)
+
+    def _copy_internals(self):
+        self.elem = self.elem._clone()
+
+    def _get_from_objects(self, **modifiers):
+        return self.elem._get_from_objects(**modifiers)
+
+    def __getattr__(self, attr):
+        return getattr(self.elem, attr)
+    
 class _Label(ColumnElement):
     """represent a label, as typically applied to any column-level element
     using the ``AS`` sql keyword.
@@ -2698,7 +2720,7 @@ class _Label(ColumnElement):
         return self.obj._hide_froms(**modifiers)
         
     def _make_proxy(self, selectable, name = None):
-        if isinstance(self.obj, Selectable):
+        if isinstance(self.obj, (Selectable, ColumnElement)):
             return self.obj._make_proxy(selectable, name=self.name)
         else:
             return column(self.name)._make_proxy(selectable=selectable)
@@ -2979,7 +3001,10 @@ class _ScalarSelect(_Grouping):
         super(_ScalarSelect, self).__init__(elem)
         self.type = list(elem.inner_columns)[0].type
 
-    columns = property(lambda self:[self])
+    def _no_cols(self):
+        raise exceptions.InvalidRequestError("Scalar Select expression has no columns; use this object directly within a column-level expression.")
+    c = property(_no_cols)
+    columns = c
     
     def self_group(self, **kwargs):
         return self
@@ -3013,7 +3038,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
     name = property(lambda s:s.keyword + " statement")
 
     def self_group(self, against=None):
-        return _Grouping(self)
+        return _FromGrouping(self)
 
     def _locate_oid_column(self):
         return self.selects[0].oid_column
@@ -3143,6 +3168,11 @@ class Select(_SelectBaseMixin, FromClause):
             return froms
     
     froms = property(_get_display_froms, doc="""Return a list of all FromClause elements which will be applied to the FROM clause of the resulting statement.""")
+
+    name = property(lambda self:"Select statement")
+
+    def expression_element(self):
+        return self.as_scalar()
     
     def locate_all_froms(self):
         froms = util.Set()
@@ -3346,7 +3376,7 @@ class Select(_SelectBaseMixin, FromClause):
         self._froms.add(fromclause)
 
     def _exportable_columns(self):
-        return [c for c in self._raw_columns if isinstance(c, Selectable)]
+        return [c for c in self._raw_columns if isinstance(c, (Selectable, ColumnElement))]
         
     def _proxy_column(self, column):
         if self.use_labels:
@@ -3357,7 +3387,7 @@ class Select(_SelectBaseMixin, FromClause):
     def self_group(self, against=None):
         if isinstance(against, CompoundSelect):
             return self
-        return _Grouping(self)
+        return _FromGrouping(self)
 
     def _locate_oid_column(self):
         for f in self.locate_all_froms():
@@ -3405,14 +3435,13 @@ class Select(_SelectBaseMixin, FromClause):
                 return e
         # look through the columns (largely synomous with looking
         # through the FROMs except in the case of _CalculatedClause/_Function)
-        for cc in self._exportable_columns():
-            for c in cc.columns:
-                if getattr(c, 'table', None) is self:
-                    continue
-                e = c.bind
-                if e is not None:
-                    self._bind = e
-                    return e
+        for c in self._exportable_columns():
+            if getattr(c, 'table', None) is self:
+                continue
+            e = c.bind
+            if e is not None:
+                self._bind = e
+                return e
         return None
 
 class _UpdateBase(ClauseElement):

@@ -64,6 +64,20 @@ class SQLTest(PersistTest):
                 self.assert_(c.get_params().get_original_dict() == checkparams, "params dont match" + repr(c.get_params()))
             
 class SelectTest(SQLTest):
+    
+    def test_attribute_sanity(self):
+        assert hasattr(table1, 'c')
+        assert hasattr(table1.select(), 'c')
+        assert not hasattr(table1.c.myid.self_group(), 'columns')
+        assert hasattr(table1.select().self_group(), 'columns')
+        assert not hasattr(table1.select().as_scalar().self_group(), 'columns')
+        assert not hasattr(table1.c.myid, 'columns')
+        assert not hasattr(table1.c.myid, 'c')
+        assert not hasattr(table1.select().c.myid, 'c')
+        assert not hasattr(table1.select().c.myid, 'columns')
+        assert not hasattr(table1.alias().c.myid, 'columns')
+        assert not hasattr(table1.alias().c.myid, 'c')
+        
     def testtableselect(self):
         self.runtest(table1.select(), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable")
 
@@ -144,7 +158,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.runtest(select([table1], from_obj=[table1, table1.select()]), """SELECT mytable.myid, mytable.name, mytable.description FROM mytable, (SELECT mytable.myid AS myid, mytable.name AS name, mytable.description AS description FROM mytable)""")
     
     def testexistsascolumnclause(self):
-        self.runtest(exists([table1.c.myid], table1.c.myid==5).select(), "SELECT EXISTS (SELECT mytable.myid AS myid FROM mytable WHERE mytable.myid = :mytable_myid)", params={'mytable_myid':5})
+        self.runtest(exists([table1.c.myid], table1.c.myid==5).select(), "SELECT EXISTS (SELECT mytable.myid FROM mytable WHERE mytable.myid = :mytable_myid)", params={'mytable_myid':5})
 
         self.runtest(select([table1, exists([1], from_obj=[table2])]), "SELECT mytable.myid, mytable.name, mytable.description, EXISTS (SELECT 1 FROM myothertable) FROM mytable", params={})
 
@@ -177,10 +191,10 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             select([users, s.c.street], from_obj=[s]),
             """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street AS street FROM addresses WHERE addresses.user_id = users.user_id) AS s""")
 
-        # TODO: this tests that you dont get a "SELECT column" without a FROM but its not working yet.
-        #self.runtest(
-        #    table1.select(table1.c.myid == select([table1.c.myid], table1.c.name=='jack')), ""
-        #)
+        self.runtest(
+            table1.select(table1.c.myid == select([table1.c.myid], table1.c.name=='jack')), 
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = (SELECT mytable.myid FROM mytable WHERE mytable.name = :mytable_name)"
+        )
         
         self.runtest(
             table1.select(table1.c.myid == select([table2.c.otherid], table1.c.name == table2.c.othername)),
@@ -224,7 +238,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
         
         
-    def testcolumnsubquery(self):
+    def test_scalar_select(self):
         s = select([table1.c.myid], scalar=True, correlate=False)
         self.runtest(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) FROM mytable")
 
@@ -244,7 +258,18 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
 
         self.runtest(select([select([table1.c.name]).label('foo')]), "SELECT (SELECT mytable.name FROM mytable) AS foo")
 
+        # scalar selects should not have any attributes on their 'c' or 'columns' attribute
+        s = select([table1.c.myid]).as_scalar()
+        try:
+            s.c.foo
+        except exceptions.InvalidRequestError, err:
+            assert str(err) == 'Scalar Select expression has no columns; use this object directly within a column-level expression.'
 
+        try:
+            s.columns.foo
+        except exceptions.InvalidRequestError, err:
+            assert str(err) == 'Scalar Select expression has no columns; use this object directly within a column-level expression.'
+        
         zips = table('zips',
             column('zipcode'),
             column('latitude'),
