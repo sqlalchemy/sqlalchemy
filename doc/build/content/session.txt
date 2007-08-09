@@ -298,6 +298,8 @@ A session can be configured to issue `flush()` calls before each query.  This al
     # commit session, flushes whatever is remaining
     sess.commit()
 
+Autoflush is particularly handy when using "dynamic" mapper relations, so that changes to the underlying collection are immediately available via its query interface.
+
 ### Expunge / Clear
 
 Expunge removes an object from the Session, sending persistent instances to the detached state, and pending instances to the transient state:
@@ -313,8 +315,6 @@ This `clear()` method is equivalent to `expunge()`-ing everything from the Sessi
     session.clear()
 
 However note that the `clear()` method does not reset any transactional state or connection resources; therefore what you usually want to call instead of `clear()` is `close()`.    
-
-note that objects in collections can be re-saved again
 
 ### Closing
 
@@ -554,4 +554,4 @@ Vertical partitioning places different kinds of objects, or different tables, ac
 
 Horizontal partitioning partitions the rows of a single table (or a set of tables) across multiple databases.
 
-See the "sharding" example in [attribute_shard.py](http://www.sqlalchemy.org/trac/browser/trunk/examples/sharding/attribute_shard.py)
+See the "sharding" example in [attribute_shard.py](http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/sharding/attribute_shard.py)
