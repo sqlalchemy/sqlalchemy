@@ -81,7 +81,7 @@ def clslevel(name):
     def do(cls, *args,**kwargs):
         return getattr(Session, name)(*args, **kwargs)
     return classmethod(do)
-for prop in ('close_all',):
+for prop in ('close_all','object_session', 'identity_key'):
     setattr(ScopedSession, prop, clslevel(prop))
     
 class _ScopedExt(MapperExtension):

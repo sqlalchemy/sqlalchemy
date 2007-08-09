@@ -1,4 +1,4 @@
-Using the Session {@name=unitofwork}
+    Using the Session {@name=unitofwork}
 ============
 
 The [Mapper](rel:advdatamapping) is the entrypoint to the configurational API of the SQLAlchemy object relational mapper.  But the primary object one works with when using the ORM is the [Session](rel:docstrings_sqlalchemy.orm.session_Session).
@@ -156,9 +156,10 @@ Knowing these states is important, since the `Session` tries to be strict about 
 
 * How can I get the `Session` for a certain object ?
 
+    Use the `object_session()` classmethod available on `Session`:
+    
         {python}
-        from sqlalchemy.orm import object_session
-        session = object_session(someobject)
+        session = Session.object_session(someobject)
 
 * Is the session threadsafe ?
 

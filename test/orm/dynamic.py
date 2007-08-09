@@ -144,8 +144,8 @@ def create_backref_test(autoflush, saveuser):
             sess.flush()
         self.assert_(list(u.addresses) == [])
 
-    test_backref.__name__ = "test_%s%s" % (
-        (autoflush and "autoflush" or ""),
+    test_backref.__name__ = "test%s%s" % (
+        (autoflush and "_autoflush" or ""),
         (saveuser and "_saveuser" or "_savead"),
     )
     setattr(FlushTest, test_backref.__name__, test_backref)

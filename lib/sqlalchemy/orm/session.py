@@ -502,12 +502,6 @@ class Session(object):
         self.uow = unitofwork.UnitOfWork(weak_identity_map=self.weak_identity_map)
         self.uow.echo = echo
 
-    def mapper(self, class_, entity_name=None):
-        """Given a ``Class``, return the primary ``Mapper`` responsible for
-        persisting it."""
-
-        return _class_mapper(class_, entity_name = entity_name)
-
     def bind_mapper(self, mapper, bind, entity_name=None):
         """Bind the given `mapper` or `class` to the given ``Engine`` or ``Connection``.
 
@@ -801,7 +795,7 @@ class Session(object):
         finally:
             _recursive.remove(mapper)
             
-    def identity_key(self, *args, **kwargs):
+    def identity_key(cls, *args, **kwargs):
         """Get an identity key.
 
         Valid call signatures:
@@ -863,7 +857,14 @@ class Session(object):
                 % ", ".join(kwargs.keys()))
         mapper = _object_mapper(instance)
         return mapper.identity_key_from_instance(instance)
-
+    identity_key = classmethod(identity_key)
+    
+    def object_session(cls, obj):
+        """return the ``Session`` to which the given object belongs."""
+        
+        return object_session(obj)
+    object_session = classmethod(object_session)
+    
     def _save_impl(self, object, **kwargs):
         if hasattr(object, '_instance_key'):
             if not self.identity_map.has_key(object._instance_key):
@@ -942,15 +943,25 @@ class Session(object):
         return getattr(obj, '_sa_session_id', None) == self.hash_key
 
     def __contains__(self, obj):
+        """return True if the given object is associated with this session.
+        
+        The instance may be pending or persistent within the Session for a
+        result of True.
+        """
+        
         return self._is_attached(obj) and (obj in self.uow.new or self.identity_map.has_key(obj._instance_key))
 
     def __iter__(self):
+        """return an iterator of all objects which are pending or persistent within this Session."""
+        
         return iter(list(self.uow.new) + self.uow.identity_map.values())
 
     def _get(self, key):
         return self.identity_map[key]
 
     def has_key(self, key):
+        """return True if the given identity key is present within this Session's identity map."""
+        
         return self.identity_map.has_key(key)
 
     dirty = property(lambda s:s.uow.locate_dirty(),
