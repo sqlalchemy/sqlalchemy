@@ -439,6 +439,25 @@ Finally, for MySQL, Postgres, and soon Oracle as well, the session can be instru
     # before committing both transactions
     sess.commit()
 
+## Embedding SQL Insert/Update Expressions into a Flush {@name=flushsql}
+
+This feature allows the value of a database column to be set to a SQL expression instead of a literal value.  It's especially useful for atomic updates, calling stored procedures, etc.  All you do is assign an expression to an attribute:
+
+    {python}
+    class SomeClass(object):
+        pass
+    mapper(SomeClass, some_table)
+    
+    someobject = session.query(SomeClass).get(5)
+    
+    # set 'value' attribute to a SQL expression adding one
+    someobject.value = some_table.c.value + 1
+    
+    # issues "UPDATE some_table SET value=value+1"
+    session.commit()
+    
+This works both for INSERT and UPDATE statements.  After the flush/commit operation, the `value` attribute on `someobject` gets "deferred", so that when you again access it the newly generated value will be loaded from the database.  This is the same mechanism at work when database-side column defaults fire off.
+
 ## Using SQL Expressions with Sessions {@name=sql}
 
 SQL constructs and string statements can be executed via the `Session`.  You'd want to do this normally when your `Session` is transactional and youd like your free-standing SQL statements to participate in the same transaction.
