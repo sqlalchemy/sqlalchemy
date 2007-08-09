@@ -46,7 +46,8 @@
         - the aliasing logic used by eager loading has been generalized, so that
           it also adds full automatic aliasing support to Query.  It's no longer 
           necessary to create an explicit Alias to join to the same tables multiple times;
-          *even for self-referential relationships!!*
+          *even for self-referential relationships*.
+          
             - join() and outerjoin() take arguments "aliased=True".  this causes
             their joins to be built on aliased tables; subsequent calls
             to filter() and filter_by() will translate all table expressions
@@ -67,7 +68,42 @@
 
         - added eagerload_all(), allows eagerload_all('x.y.z') to specify eager
           loading of all properties in the given path
+
+    - major overhaul for Session:
+        - new function which "configures" a session called "sessionmaker()".  send
+          various keyword arguments to this function once, returns a new class which
+          creates a Session against that stereotype.
+        - SessionTransaction removed from "public" API.  you now can call begin()/
+          commit()/rollback() on the Session itself.
+        - Session also supports SAVEPOINT transactions; call begin_nested().
+        - Session supports two-phase commit behavior when vertically or horizontally
+          partitioning (i.e., using more than one engine).  use twophase=True.
+        - Session flag "transactional=True" produces a session which always places itself
+          into a transaction when first used.  upon commit()/rollback()/close(), the 
+          transaction ends; but begins again on the next usage.
+        - Session supports "autoflush=True".  this issues a flush() before each query.
+          Use in conjunction with transactional, and you can just save()/update()
+          and then query, the new objects will be there.  use commit() at the end
+          (or flush() if non-transactional) to flush remaining changes.
+        - new scoped_session() function replaces SessionContext and assignmapper.  
+          builds onto "sessionmaker()" concept to produce a class whos Session()
+          construction returns the thread-local session.  Or, call all Session methods
+          as class methods, i.e. Session.save(foo); Session.commit().  just like the
+          old "objectstore" days.
+        - added new "binds" argument to Session to support configuration of multiple 
+          binds with sessionmaker() function.
     
+    - query-based relation()s available with dynamic_loader().  This is a *writable* 
+      collection (supporting append() and remove()) which is also a live Query object
+      when accessed for reads.  Ideal for dealing with very large collections where
+      only partial loading is desired.
+          
+    - flush-embedded inline INSERT/UPDATE expressions.  assign any SQL expression, like
+      "sometable.c.column + 1", to an instance's attribute.  Upon flush(), the mapper
+      detects the expression and embeds it directly in the INSERT or UPDATE statement;
+      the attribute gets deferred on the instance so it loads the new value 
+      the next time you access it.
+      
     - a rudimental sharding (horizontal scaling) system is introduced.  This system
       uses a modified Session which can distribute read and write operations among
       multiple databases, based on user-defined functions defining the 
@@ -93,9 +129,6 @@
       mapper's "properties" dict, and instances of cls will be
       created/mapped to a single attribute, comprised of the values
       correponding to *columns [ticket:211]
-
-    - added inline UPDATE/INSERT clauses, settable as regular object attributes.
-      the clause gets executed inline during a flush().
 
     - improved support for custom column_property() attributes which
       feature correlated subqueries...work better with eager loading now.
@@ -136,13 +169,11 @@
           argument, which can be set to 'select' or 'deferred'
 
     - it's now possible to map only a subset of available selectable columns
-      onto mapper properties [ticket:696].
+      onto mapper properties, using include_columns/exclude_columns
+      [ticket:696].
 
     - added undefer_group() MapperOption, sets a set of "deferred"
       columns joined by a "group" to load as "undeferred".
-      
-    - session enhancements/fixes:
-        - session can be bound to Connections
     
     - rewrite of the "deterministic alias name" logic to be part of the 
     SQL layer, produces much simpler alias and label names more in the
@@ -152,11 +183,13 @@
   - all "type" keyword arguments, such as those to bindparam(), column(),
     Column(), and func.<something>(), renamed to "type_".  those objects
     still name their "type" attribute as "type".
+    
   - transactions:
     - added context manager (with statement) support for transactions
     - added support for two phase commit, works with mysql and postgres so far.
     - added a subtransaction implementation that uses savepoints.
     - added support for savepoints.
+    
   - MetaData:
     - Tables can be reflected from the database en-masse without
       declaring them in advance.  MetaData(engine, reflect=True) will load
@@ -165,54 +198,72 @@
     - DynamicMetaData has been renamed to ThreadLocalMetaData
     - The ThreadLocalMetaData constructor now takes no arguments.
     - BoundMetaData has been removed- regular MetaData is equivalent
+    
   - Numeric and Float types now have an "asdecimal" flag; defaults to 
     True for Numeric, False for Float.  when True, values are returned as
     decimal.Decimal objects; when False, values are returned as float().
     the defaults of True/False are already the behavior for PG and MySQL's
     DBAPI modules. [ticket:646]
+    
   - new SQL operator implementation which removes all hardcoded operators
     from expression structures and moves them into compilation; 
     allows greater flexibility of operator compilation; for example, "+" 
     compiles to "||" when used in a string context, or "concat(a,b)" on 
     MySQL; whereas in a numeric context it compiles to "+".  fixes [ticket:475].
+    
   - "anonymous" alias and label names are now generated at SQL compilation
     time in a completely deterministic fashion...no more random hex IDs
+    
   - significant architectural overhaul to SQL elements (ClauseElement).  
     all elements share  a common "mutability" framework which allows a 
     consistent approach to in-place modifications of elements as well as 
     generative behavior.  improves stability of the ORM which makes 
     heavy usage of mutations to SQL expressions.  
+    
   - select() and union()'s now have "generative" behavior.  methods like
     order_by() and group_by() return a *new* instance - the original instance
     is left unchanged.  non-generative methods remain as well.  
+    
   - the internals of select/union vastly simplified - all decision making
     regarding "is subquery" and "correlation" pushed to SQL generation phase.
     select() elements are now *never* mutated by their enclosing containers
     or by any dialect's compilation process [ticket:52] [ticket:569]
+    
   - select(scalar=True) argument is deprecated; use select(..).as_scalar().
     the resulting object obeys the full "column" interface and plays better
     within expressions
+    
   - added select().with_prefix('foo') allowing any set of keywords to be
     placed before the columns clause of the SELECT [ticket:504]
+    
   - added array slice support to row[<index>] [ticket:686]
+  
   - result sets make a better attempt at matching the DBAPI types present
     in cursor.description to the TypeEngine objects defined by the dialect,
     which are then used for result-processing. Note this only takes effect 
     for textual SQL; constructed SQL statements always have an explicit type map.  
+    
   - result sets from CRUD operations close their underlying cursor immediately.
     will also autoclose the connection if defined for the operation; this 
     allows more efficient usage of connections for successive CRUD operations
     with less chance of "dangling connections".
+    
   - Column defaults and onupdate Python functions (i.e. passed to ColumnDefault)
     may take zero or one arguments; the one argument is the ExecutionContext,
     from which you can call "context.parameters[someparam]" to access the other
-    bind parameter values affixed to the statement [ticket:559]
+    bind parameter values affixed to the statement [ticket:559].  The
+    connection used for the execution is available as well so that you can 
+    pre-execute statements.
+    
   - added "explcit" create/drop/execute support for sequences 
     (i.e. you can pass a "connectable" to each of those methods
     on Sequence)
+    
   - better quoting of identifiers when manipulating schemas
+  
   - standardized the behavior for table reflection where types can't be located;
     NullType is substituted instead, warning is raised.
+
   - ColumnCollection (i.e. the 'c' attribute on tables) follows dictionary
     semantics for "__contains__" [ticket:606]
     
@@ -223,6 +274,7 @@
     lifetime of the underlying DBAPI connection
   - removed auto_close_cursors and disallow_open_cursors arguments from Pool;
     reduces overhead as cursors are normally closed by ResultProxy and Connection.
+
 - extensions
   - proxyengine is temporarily removed, pending an actually working
     replacement.
@@ -230,8 +282,10 @@
     SelectResultsExt still exist but just return a slightly modified
     Query object for backwards-compatibility.  join_to() method 
     from SelectResults isn't present anymore, need to use join(). 
+
 - postgres
   - Added PGArray datatype for using postgres array datatypes
+
 - oracle
   - very rudimental support for OUT parameters added; use sql.outparam(name, type)
     to set up an OUT parameter, just like bindparam(); after execution, values are

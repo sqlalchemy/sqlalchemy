@@ -15,7 +15,47 @@ from sqlalchemy.orm.mapper import global_extensions
 __all__ = ['Session', 'SessionTransaction']
 
 def sessionmaker(bind=None, class_=None, autoflush=True, transactional=True, **kwargs):
-    """Generate a Session configuration."""
+    """Generate a custom-configured [sqlalchemy.orm.session#Session] class.
+    
+    The returned object is a subclass of ``Session``, which, when instantiated with no
+    arguments, uses the
+    keyword arguments configured here as its constructor arguments.  It is intended
+    that the `sessionmaker()` function be called within the global scope of an application,
+    and the returned class be made available to the rest of the application as the 
+    single class used to instantiate sessions.
+    
+    e.g.::
+    
+        # global scope
+        Session = sessionmaker(autoflush=False)
+        
+        # later, in a local scope, create and use a session:
+        sess = Session()
+    
+    Any keyword arguments sent to the constructor itself will override the "configured"
+    keywords::
+    
+        Session = sessionmaker()
+        
+        # bind an individual session to a connection
+        sess = Session(bind=connection)
+        
+    The class also includes a special classmethod ``configure()``, which allows 
+    additional configurational options to take place after the custom ``Session``
+    class has been generated.  This is useful particularly for defining the 
+    specific ``Engine`` (or engines) to which new instances of ``Session``
+    should be bound::
+    
+        Session = sessionmaker()
+        Session.configure(bind=create_engine('sqlite:///foo.db'))
+        
+        sess = Session()
+    
+    The function features a single keyword argument of its own, `class_`, which
+    may be used to specify an alternate class other than ``sqlalchemy.orm.session.Session``
+    which should be used by the returned class.  All other keyword arguments sent to 
+    `sessionmaker()` are passed through to the instantiated `Session()` object.
+    """
     
     kwargs['bind'] = bind
     kwargs['autoflush'] = autoflush
@@ -46,11 +86,14 @@ def sessionmaker(bind=None, class_=None, autoflush=True, transactional=True, **k
 class SessionTransaction(object):
     """Represents a Session-level Transaction.
 
-    This corresponds to one or more sqlalchemy.engine.Transaction
-    instances behind the scenes, with one Transaction per Engine in
+    This corresponds to one or more [sqlalchemy.engine_Transaction]
+    instances behind the scenes, with one ``Transaction`` per ``Engine`` in
     use.
 
-    The SessionTransaction object is **not** threadsafe.
+    Typically, usage of ``SessionTransaction`` is not necessary; use
+    the ``begin()`` and ``commit()`` methods on ``Session`` itself.
+    
+    The ``SessionTransaction`` object is **not** threadsafe.
     """
 
     def __init__(self, session, parent=None, autoflush=True, nested=False):
@@ -220,6 +263,71 @@ class Session(object):
     """
 
     def __init__(self, bind=None, autoflush=True, transactional=False, twophase=False, echo_uow=False, weak_identity_map=False, binds=None):
+        """Construct a new Session.
+
+            autoflush
+                when ``True``, all query operations will issue a ``flush()`` call to this
+                ``Session`` before proceeding. This is a convenience feature so that
+                ``flush()`` need not be called repeatedly in order for database queries to
+                retrieve results. It's typical that ``autoflush`` is used in conjunction with
+                ``transactional=True``, so that ``flush()`` is never called; you just call
+                ``commit()`` when changes are complete to finalize all changes to the
+                database.
+        
+            bind
+                an optional ``Engine`` or ``Connection`` to which this ``Session`` should be
+                bound. When specified, all SQL operations performed by this session will
+                execute via this connectable.
+                
+            binds
+                an optional dictionary, which contains more granular "bind" information than
+                the ``bind`` parameter provides. This dictionary can map individual ``Table``
+                instances as well as ``Mapper`` instances to individual ``Engine`` or
+                ``Connection`` objects. Operations which proceed relative to a particular
+                ``Mapper`` will consult this dictionary for the direct ``Mapper`` instance as
+                well as the mapper's ``mapped_table`` attribute in order to locate an
+                connectable to use. The full resolution is described in the ``get_bind()``
+                method of ``Session``. Usage looks like::
+                
+                    sess = Session(binds={
+                        SomeMappedClass : create_engine('postgres://engine1'),
+                        somemapper : create_engine('postgres://engine2'),
+                        some_table : create_engine('postgres://engine3'),
+                    })
+                    
+                Also see the ``bind_mapper()`` and ``bind_table()`` methods.
+            
+            echo_uow
+                When ``True``, configure Python logging to dump all unit-of-work
+                transactions. This is the equivalent of
+                ``logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG)``.
+                
+            transactional
+                Set up this ``Session`` to automatically begin transactions. Setting this
+                flag to ``True`` is the rough equivalent of calling ``begin()`` after each
+                ``commit()`` operation, after each ``rollback()``, and after each
+                ``close()``. Basically, this has the effect that all session operations are
+                performed within the context of a transaction. Note that the ``begin()``
+                operation does not immediately utilize any connection resources; only when
+                connection resources are first required do they get allocated into a
+                transactional context.
+
+            twophase
+                when ``True``, all transactions will be started using
+                [sqlalchemy.engine_TwoPhaseTransaction]. During a ``commit()``, after
+                ``flush()`` has been issued for all attached databaes, the ``prepare()``
+                method on each database's ``TwoPhaseTransaction`` will be called. This allows
+                each database to roll back the entire transaction, before each transaction is
+                committed.
+
+            weak_identity_map
+                when ``True``, use a ``WeakValueDictionary`` instead of a regular ``dict``
+                for this ``Session`` object's identity map. This will allow objects which
+                fall out of scope to be automatically removed from the ``Session``. However,
+                objects who have been marked as "dirty" will also be garbage collected, and
+                those changes will not be persisted.
+            
+        """
         self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
 
         self.bind = bind
@@ -263,9 +371,20 @@ class Session(object):
     create_transaction = begin
 
     def begin_nested(self):
+        """begin a 'nested' transaction on this Session.
+        
+        this utilizes a SAVEPOINT transaction for databases 
+        which support this feature.
+        """
         return self.begin(nested=True)
     
     def rollback(self):
+        """rollback the current transaction in progress.
+        
+        If no transaction is in progress, this method is a 
+        pass-thru.
+        """
+        
         if self.transaction is None:
             pass
         else:
@@ -279,6 +398,19 @@ class Session(object):
             self.begin()
             
     def commit(self):
+        """commit the current transaction in progress.
+        
+        If no transaction is in progress, this method raises
+        an InvalidRequestError.  
+        
+        If the ``begin()`` method was called on this ``Session``
+        additional times subsequent to its first call, 
+        ``commit()`` will not actually commit, and instead
+        pops an internal SessionTransaction off its internal stack
+        of transactions.  Only when the "root" SessionTransaction
+        is reached does an actual database-level commit occur.
+        
+        """
         if self.transaction is None:
             if self.transactional:
                 self.begin()
@@ -305,7 +437,8 @@ class Session(object):
         progress.
         
         the "mapper" argument is a class or mapper to which a bound engine
-        will be located; use this when the Session itself is unbound.
+        will be located; use this when the Session itself is either bound
+        to multiple engines or connections, or is not bound to any connectable.
         """
 
         if self.transaction is not None:
@@ -322,7 +455,7 @@ class Session(object):
 
         If this method allocates a new ``Connection`` for the operation,
         then the ``ResultProxy`` 's ``close()`` method will release the
-        resources of the underlying ``Connection``, otherwise its a no-op.
+        resources of the underlying ``Connection``.
         """
         return self.connection(mapper, close_with_result=True).execute(clause, params or {}, **kwargs)
 
@@ -335,6 +468,11 @@ class Session(object):
         """Close this Session.  
         
         This clears all items and ends any transaction in progress.
+        
+        If this session were created with ``transactional=True``, a
+        new transaction is immediately begun.  Note that this new
+        transaction does not use any connection resources until they 
+        are first needed.
         """
 
         self.clear()

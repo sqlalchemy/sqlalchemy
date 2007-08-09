@@ -34,6 +34,9 @@ __all__ = [ 'relation', 'column_property', 'composite', 'backref', 'eagerload',
 
 def scoped_session(session_factory, scopefunc=None):
   """Provides thread-local management of Sessions.
+  
+  This is a front-end function to the [sqlalchemy.orm.scoping#ScopedSession]
+  class.
 
   Usage::
 

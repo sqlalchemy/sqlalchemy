@@ -11,45 +11,94 @@ Beyond that, the `Session` implements an interface which let's you move objects 
 
 ## Getting a Session
 
-[This section is under construction !]
+The `Session` object exists just as a regular Python object, which can be directly instantiated.  However, it takes a fair amount of keyword options, several of which you probably want to set explicitly.  It's fairly inconvenient to deal with the "configuration" of a session every time you want to create one.  Therefore, SQLAlchemy recommends the usage of a helper function called `sessionmaker()`, which typically you call only once for the lifespan of an application.  This function creates a customized `Session` subclass for you, with your desired configurational arguments pre-loaded.  Then, whenever you need a new `Session`, you use your custom `Session` class with no arguments to create the session.
 
 ### Using a sessionmaker() Configuration {@name=sessionmaker}
 
+The usage of `sessionmaker()` is illustrated below:
+
     {python}
-    Session = sessionmaker(autoflush=True, transactional=True, **kwargs)
+    from sqlalchemy.orm import sessionmaker
     
+    # create a configured "Session" class
+    Session = sessionmaker(autoflush=True, transactional=True)
+
+    # create a Session
     sess = Session()
-    # work with sess
     
+    # work with sess
+    sess.save(x)
+    sess.commit()
+    
+    # close when finished
     sess.close()
 
-[Generated docstrings for sessionmaker()](rel:docstrings_sqlalchemy.orm_modfunc_sessionmaker)
-    
+Above, the `sessionmaker` call creates a class for us, which we assign to the name `Session`.  This class is a subclass of the actual `sqlalchemy.orm.session.Session` class, which will instantiate with the default arguments of `autoflush=True` and `transactional=True`.
+
+When you write your application, place the call to `sessionmaker()` somewhere global, and then make your new `Session` class available to the rest of your application.
+
 ### Binding Session to an Engine or Connection {@name=binding}
 
-Bind to an engine:
+In our previous example regarding `sessionmaker()`, nowhere did we specify how our session would connect to our database.  When the session is configured in this manner, it will look for a database engine to connect with via the `Table` objects that it works with - the chapter called [metadata_tables_binding](rel:metadata_tables_binding) describes how to associate `Table` objects directly with a source of database connections.
+
+However, it is often more straightforward to explicitly tell the session what database engine (or engines) you'd like it to communicate with.  This is particularly handy with multiple-database scenarios where the session can be used as the central point of configuration.  To acheive this, the constructor keyword `bind` is used for a basic single-database configuration:
 
     {python}
-    Session = sessionmaker(...)
+    # create engine
+    engine = create_engine('postgres://...')
+    
+    # bind custom Session class to the engine
+    Session = sessionmaker(bind=engine, autoflush=True, transactional=True)
+    
+    # work with the session
+    sess = Session()
+    
+One common issue with the above scenario is that an application will often organize its global imports before it ever connects to a database.  Since the `Session` class created by `sessionmaker()` is meant to be a global application object (note we are saying the session *class*, not a session *instance*), we may not have a `bind` argument available.  For this, the `Session` class returned by `sessionmaker()` supports post-configuration of all options, through its method `configure()`:
+
+    {python}
+    # configure Session class with desired options
+    Session = sessionmaker(autoflush=True, transactional=True)
+
+    # later, we create the engine
+    engine = create_engine('postgres://...')
+    
+    # associate it with our custom Session class
     Session.configure(bind=engine)
 
-Bind to a connection:
+    # work with the session
+    sess = Session()
+
+The `Session` also has the ability to be bound to multiple engines.   Descriptions of these scenarios are described in [unitofwork_partitioning](rel:unitofwork_partitioning).
+
+
+#### Binding Session to a Connection {@name=connection}
+
+The examples involving `bind` so far are dealing with the `Engine` object, which is, like the `Session` class itself, a global configurational object.  The `Session` can also be bound to an individual database `Connection`.  The reason you might want to do this is if your application controls the boundaries of transactions using distinct `Transaction` objects (these objects are described in [dbengine_transactions](rel:dbengine_transactions)).  You'd have a transactional `Connection`, and then you'd want to work with an ORM-level `Session` which participates in that transaction.  Since `Connection` is definitely not a globally-scoped object in all but the most rudimental commandline applications, you can bind an individual `Session()` instance to a particular `Connection` not at class configuration time, but at session instance construction time:
 
     {python}
-    Session = sessionmaker(...)
+    # global application scope.  create Session class, engine
+    Session = sessionmaker(autoflush=True, transactional=True)
+
+    engine = create_engine('postgres://...')
     
+    ...
+    
+    # local scope, such as within a controller function
+    
+    # connect to the database
     connection = engine.connect()
     
+    # bind an individual Session to the connection
     sess = Session(bind=connection)
-    
+
 ### Using create_session() {@name=createsession}
 
-This function is a "lower level" version of `sessionmaker()`.  It creates a new `Session` directly:
+As an alternative to `sessionmaker()`, `create_session()` exists literally as a function which calls the normal `Session` constructor directly.  All arguments are passed through and the new `Session` object is returned:
 
     {python}
-    session = create_session(**kwargs)
-
-[Generated docstrings for create_session()](rel:docstrings_sqlalchemy.orm_modfunc_create_session)
+    session = create_session(bind=myengine)
+    
+The `create_session()` function doesn't add any functionality to the regular `Session`, it just sets up a default argument set of `autoflush=False, transactional=False`.  But also, by calling `create_session()` instead of instantiating `Session` directly, you leave room in your application to change the type of session which the function creates.
 
     
 ## Using the Session 
@@ -86,40 +135,40 @@ Knowing these states is important, since the `Session` tries to be strict about 
 ### Frequently Asked Questions {@name=faq}
 
 * When do I make a `sessionmaker` ?
-  
- Just one time, somewhere in your application's global scope.  It should be looked upon as part of your application's configuration.  If your application has three .py files in a package, you could, for example, place the `sessionmaker` line in your `__init__.py` file; from that point on your other modules say "from mypackage import Session".   That way, everyone else just uses `Session()`, and the configuration of that session is controlled by that central point.
-  
- If your application starts up, does imports, but does not know what database it's going to be connecting to, you can bind the `Session` at the "class" level to the engine later on, using `configure()`.
-  
-In the examples in this section, we will frequently show the `sessionmaker` being created right above the line where we actually create the `Session`.  But that's just for example's sake !  In reality, the `sessionmaker` would be somewhere at the module level, and your individual `Session()` calls would be sprinkled all throughout your app, such as in a web application within each controller method.
-  
+
+    Just one time, somewhere in your application's global scope.  It should be looked upon as part of your application's configuration.  If your application has three .py files in a package, you could, for example, place the `sessionmaker` line in your `__init__.py` file; from that point on your other modules say "from mypackage import Session".   That way, everyone else just uses `Session()`, and the configuration of that session is controlled by that central point.
+
+    If your application starts up, does imports, but does not know what database it's going to be connecting to, you can bind the `Session` at the "class" level to the engine later on, using `configure()`.
+
+    In the examples in this section, we will frequently show the `sessionmaker` being created right above the line where we actually invoke `Session()`.  But that's just for example's sake !  In reality, the `sessionmaker` would be somewhere at the module level, and your individual `Session()` calls would be sprinkled all throughout your app, such as in a web application within each controller method.
+
 * When do I make a `Session` ? 
-  
-You typically create a `Session` when you first need to talk to your database, and want to save some objects or load some existing ones.  Then, you work with it, save your changes, and then dispose of it....or at the very least `close()` it.  It's not a "global" kind of object, and should be handled more like a "local variable", as it's generally **not** safe to use with concurrent threads.  Sessions are very inexpensive to make, and don't use any resources whatsoever until they are first used...so create some !
-  
-There is also a pattern whereby you're using a **contextual session**, this is described later in [unitofwork_contextual](rel:unitofwork_contextual).  In this pattern, a helper object is maintaining a `Session` for you, most commonly one that is local to the current thread (and sometimes also local to an application instance).  SQLAlchemy 0.4 has worked this pattern out such that it still *looks* like you're creating a new session as you need one...so in that case, it's still a guaranteed win to just say `Session()` whenever you want a session.  
+
+    You typically invoke `Session()` when you first need to talk to your database, and want to save some objects or load some existing ones.  Then, you work with it, save your changes, and then dispose of it....or at the very least `close()` it.  It's not a "global" kind of object, and should be handled more like a "local variable", as it's generally **not** safe to use with concurrent threads.  Sessions are very inexpensive to make, and don't use any resources whatsoever until they are first used...so create some !
+
+    There is also a pattern whereby you're using a **contextual session**, this is described later in [unitofwork_contextual](rel:unitofwork_contextual).  In this pattern, a helper object is maintaining a `Session` for you, most commonly one that is local to the current thread (and sometimes also local to an application instance).  SQLAlchemy 0.4 has worked this pattern out such that it still *looks* like you're creating a new session as you need one...so in that case, it's still a guaranteed win to just say `Session()` whenever you want a session.  
 
 * Is the Session a cache ? 
-  
-Yeee...no.  It's somewhat used as a cache, in that it implements the identity map pattern, and stores objects keyed to their primary key.  However, it doesn't do any kind of query caching.  This means, if you say `session.query(Foo).filter_by(name='bar')`, even if `Foo(name='bar')` is right there, in the identity map, the session has no idea about that.  It has to issue SQL to the database, get the rows back, and then when it sees the primary key in the row, *then* it can look in the local identity map and see that the object is already there.  It's only when you say `query.get({some primary key})` that the `Session` doesn't have to issue a query.
-  
-Also, the `Session` is not designed to be a global object from which everyone consults as a "registry" of objects.  That is the job of a **second level cache**.  A good library for implementing second level caching is [Memcached](http://www.danga.com/memcached/).  It *is* possible to "sort of" use the `Session` in this manner, if you set it to be non-transactional and it never flushes any SQL, but it's not a terrific solution,  since if concurrent threads load the same objects at the same time, you may have multiple copies of the same objects present in collections.
-  
+
+    Yeee...no.  It's somewhat used as a cache, in that it implements the identity map pattern, and stores objects keyed to their primary key.  However, it doesn't do any kind of query caching.  This means, if you say `session.query(Foo).filter_by(name='bar')`, even if `Foo(name='bar')` is right there, in the identity map, the session has no idea about that.  It has to issue SQL to the database, get the rows back, and then when it sees the primary key in the row, *then* it can look in the local identity map and see that the object is already there.  It's only when you say `query.get({some primary key})` that the `Session` doesn't have to issue a query.
+
+    Also, the `Session` is not designed to be a global object from which everyone consults as a "registry" of objects.  That is the job of a **second level cache**.  A good library for implementing second level caching is [Memcached](http://www.danga.com/memcached/).  It *is* possible to "sort of" use the `Session` in this manner, if you set it to be non-transactional and it never flushes any SQL, but it's not a terrific solution,  since if concurrent threads load the same objects at the same time, you may have multiple copies of the same objects present in collections.
+
 * How can I get the `Session` for a certain object ?
- 
-    {python}
-    from sqlalchemy.orm import object_session
-    session = object_session(someobject)
-  
+
+        {python}
+        from sqlalchemy.orm import object_session
+        session = object_session(someobject)
+
 * Is the session threadsafe ?
 
-Nope.  It has no thread synchronization of any kind built in, and particularly when you do a flush operation, it definitely is not open to concurrent threads accessing it, because it holds onto a single database connection at that point.  If you use a session which is non-transactional for read operations only, it's still not thread-"safe", but you also wont get any catastrophic failures either, since it opens and closes connections on an as-needed basis; its just that different threads might load the same objects independently of each other, but only one will wind up in the identity map (however, the other one might still live in a collection somewhere).
-  
-But the bigger point here is, you should not *want* to use the session with multiple concurrent threads.  That would be like having everyone at a restaurant all eat from the same plate.  The session is a local "workspace" that you use for a specific set of tasks; you don't want to, or need to, share that session with other threads who are doing some other task.  If, on the other hand, there are other threads  participating in the same task you are, such as in a desktop graphical application, then you would be sharing the session with those threads, but you also will have implemented a proper locking scheme (or your graphical framework does) so that those threads do not collide.
+    Nope.  It has no thread synchronization of any kind built in, and particularly when you do a flush operation, it definitely is not open to concurrent threads accessing it, because it holds onto a single database connection at that point.  If you use a session which is non-transactional for read operations only, it's still not thread-"safe", but you also wont get any catastrophic failures either, since it opens and closes connections on an as-needed basis; its just that different threads might load the same objects independently of each other, but only one will wind up in the identity map (however, the other one might still live in a collection somewhere).
+
+    But the bigger point here is, you should not *want* to use the session with multiple concurrent threads.  That would be like having everyone at a restaurant all eat from the same plate.  The session is a local "workspace" that you use for a specific set of tasks; you don't want to, or need to, share that session with other threads who are doing some other task.  If, on the other hand, there are other threads  participating in the same task you are, such as in a desktop graphical application, then you would be sharing the session with those threads, but you also will have implemented a proper locking scheme (or your graphical framework does) so that those threads do not collide.
   
 ### Session Attributes {@name=attributes} 
 
-The session provides a set of attributes and collection-oriented methods which allow you to view (but not to change) the current state of the session.
+The session provides a set of attributes and collection-oriented methods which allow you to view the current state of the session.
 
 The **identity map** is accessed by the `identity_map` attribute, which provides a dictionary interface.  The keys are "identity keys", which are attached to all persistent objects by the attribute `_instance_key`:
 
@@ -134,6 +183,8 @@ The **identity map** is accessed by the `identity_map` attribute, which provides
     [<__main__.User object at 0x712630>, <__main__.Address object at 0x712a70>]
 
 The identity map is a `dict` by default.  This means that objects stay in the session until they are explicitly removed, or the session is cleared.  Some people prefer objects to be automatically garbage collected instead.  For this,  you can specify the flag `weak_identity_map=True` to the `create_session` or `sessionmaker` functions so that the `Session` will use a `weakref.WeakValueDictionary`.  But note that an object that has changes marked on it (i.e. "dirty"), and is then discarded, will not have its changes saved to the database.  It's because of this misleading behavior that SQLAlchemy's identity map is by default strong-referencing.
+
+While the `identity_map` accessor is currently the actual dictionary used by the `Session` to store instances, you should not add or remove items from this dictionary.  Use the session methods `save_or_update()` and `expunge()` to add or remove items.
 
 The Session also supports an iterator interface in order to see all objects in the identity map:
 
@@ -162,7 +213,7 @@ The session is also keeping track of all newly created (i.e. pending) objects, a
 
 Note that if a session is created with the `weak_identity_map` flag, an item which is marked as "dirty" will be silently removed from the session if the item falls out of scope in the user application.  This is because the unit of work does not look for "dirty" changes except for within a flush operation (or any time the session.dirty collection is accessed). 
 
-As for objects inside of `new` and `deleted`, if you abandon all references to new or modified objects within a session, *they are still present* in either of those two lists, and will be saved on the next flush operation, unless they are removed from the Session explicitly or the session is cleared.
+However, the `new` and `deleted` collections are strong-referencing sets.  Even if you're using `weak_identity_map`, if you abandon all references to new or deleted objects within a session, *they are still present* in either of those two lists, and will be saved on the next flush operation, unless they are removed from the Session explicitly or the session is cleared.
 
 ### Querying
 
