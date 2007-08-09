@@ -1,4 +1,7 @@
 0.3.11
+- sql
+    - tweak DISTINCT precedence for clauses like
+      `func.count(t.c.col.distinct())`
 - orm
     - added a check for joining from A->B using join(), along two
       different m2m tables.  this raises an error in 0.3 but is 

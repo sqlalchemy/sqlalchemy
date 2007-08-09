@@ -259,6 +259,14 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.runtest(
             select([distinct(table1.c.myid)]), "SELECT DISTINCT mytable.myid FROM mytable"
         )
+
+        self.runtest(
+            select([func.count(table1.c.myid.distinct())]), "SELECT count(DISTINCT mytable.myid) FROM mytable" 
+        ) 
+
+        self.runtest(
+            select([func.count(distinct(table1.c.myid))]), "SELECT count(DISTINCT mytable.myid) FROM mytable" 
+        )
         
     def testoperators(self):
         self.runtest(
