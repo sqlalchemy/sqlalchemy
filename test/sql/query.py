@@ -1,7 +1,7 @@
 import testbase
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exceptions
+from sqlalchemy import exceptions, ansisql
 from testlib import *
 
 
@@ -164,6 +164,37 @@ class QueryTest(PersistTest):
         s = users.select(users.c.user_name==u)
         r = s.execute(someshortname='fred').fetchall()
         assert len(r) == 1
+
+    def test_bindparam_detection(self):
+        dialect = ansisql.ANSIDialect(default_paramstyle='qmark')
+        prep = lambda q: dialect.compile(sql.text(q)).string
+
+        def a_eq(got, wanted):
+            if got != wanted:
+                print "Wanted %s" % wanted
+                print "Received %s" % got
+            self.assert_(got == wanted)
+
+        a_eq(prep('select foo'), 'select foo')
+        a_eq(prep("time='12:30:00'"), "time='12:30:00'")
+        a_eq(prep(u"time='12:30:00'"), u"time='12:30:00'")
+        a_eq(prep(":this:that"), ":this:that")
+        a_eq(prep(":this :that"), "? ?")
+        a_eq(prep("(:this),(:that :other)"), "(?),(? ?)")
+        a_eq(prep("(:this),(:that:other)"), "(?),(:that:other)")
+        a_eq(prep("(:this),(:that,:other)"), "(?),(?,?)")
+        a_eq(prep("(:that_:other)"), "(:that_:other)")
+        a_eq(prep("(:that_ :other)"), "(? ?)")
+        a_eq(prep("(:that_other)"), "(?)")
+        a_eq(prep("(:that$other)"), "(?)")
+        a_eq(prep("(:that$:other)"), "(:that$:other)")
+        a_eq(prep(".:that$ :other."), ".? ?.")
+
+        a_eq(prep(r'select \foo'), r'select \foo')
+        a_eq(prep(r"time='12\:30:00'"), r"time='12\:30:00'")
+        a_eq(prep(":this \:that"), "? :that")
+        a_eq(prep(r"(\:that$other)"), "(:that$other)")
+        a_eq(prep(r".\:that$ :other."), ".:that$ ?.")
         
     def testdelete(self):
         users.insert().execute(user_id = 7, user_name = 'jack')

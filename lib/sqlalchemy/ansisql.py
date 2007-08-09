@@ -45,8 +45,8 @@ LEGAL_CHARACTERS = util.Set(string.ascii_lowercase +
                             string.digits + '_$')
 ILLEGAL_INITIAL_CHARACTERS = util.Set(string.digits + '$')
 
-BIND_PARAMS = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
-BIND_PARAMS_ESC = re.compile(r'\x5c(:\w+)(?!:)', re.UNICODE)
+BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
+BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
 
 OPERATORS =  {
     operator.and_ : 'AND',
