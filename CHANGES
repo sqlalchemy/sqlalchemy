@@ -296,6 +296,8 @@
     - added a check for joining from A->B using join(), along two
       different m2m tables.  this raises an error in 0.3 but is 
       possible in 0.4 when aliases are used. [ticket:687]
+    - fixed bug where mapper, being linked to a join where one table had 
+      no PK columns, would not detect that the joined table had no PK.
 - engine
     - fixed another occasional race condition which could occur
       when using pool with threadlocal setting

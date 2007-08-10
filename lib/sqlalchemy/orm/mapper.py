@@ -1292,7 +1292,10 @@ class Mapper(object):
 
     def _has_pks(self, table):
         try:
-            for k in self.pks_by_table[table]:
+            pk = self.pks_by_table[table]
+            if not pk:
+                return False
+            for k in pk:
                 if not self.columntoproperty.has_key(k):
                     return False
             else:
