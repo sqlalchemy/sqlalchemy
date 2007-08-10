@@ -1021,7 +1021,7 @@ class Index(SchemaItem):
           Keyword arguments include:
 
           unique
-            Defaults to True: create a unique index.
+            Defaults to False: create a unique index.
             
         """
 
