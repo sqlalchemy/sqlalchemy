@@ -15,9 +15,10 @@ class ShardedSession(Session):
                 the future as participating in that shard.
             
             id_chooser
-                a callable, passed a tuple of identity values, which should return
-                a list of shard ids where the ID might reside.  The databases will
-                be queried in the order of this listing.
+                a callable, passed a query and a tuple of identity values,
+                which should return a list of shard ids where the ID might
+                reside.  The databases will be queried in the order of this
+                listing.
                 
             query_chooser
                 for a given Query, returns the list of shard_ids where the query
@@ -98,7 +99,7 @@ class ShardedQuery(Query):
         if self._shard_id is not None:
             return super(ShardedQuery, self).get(ident)
         else:
-            for shard_id in self.id_chooser(ident):
+            for shard_id in self.id_chooser(self, ident):
                 o = self.set_shard(shard_id).get(ident, **kwargs)
                 if o is not None:
                     return o
@@ -109,7 +110,7 @@ class ShardedQuery(Query):
         if self._shard_id is not None:
             return super(ShardedQuery, self).load(ident)
         else:
-            for shard_id in self.id_chooser(ident):
+            for shard_id in self.id_chooser(self, ident):
                 o = self.set_shard(shard_id).load(ident, raiseerr=False, **kwargs)
                 if o is not None:
                     return o

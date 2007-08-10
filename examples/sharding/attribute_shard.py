@@ -118,7 +118,7 @@ def shard_chooser(mapper, instance):
 # pk so we just return all shard ids. often, youd want to do some 
 # kind of round-robin strategy here so that requests are evenly 
 # distributed among DBs
-def id_chooser(ident):
+def id_chooser(query, ident):
     return ['north_america', 'asia', 'europe', 'south_america']
 
 # query_chooser.  this also returns a list of shard ids, which can

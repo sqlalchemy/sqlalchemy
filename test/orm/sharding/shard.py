@@ -70,7 +70,7 @@ class ShardTest(PersistTest):
             else:
                 return shard_chooser(mapper, instance.location)
 
-        def id_chooser(ident):
+        def id_chooser(query, ident):
             return ['north_america', 'asia', 'europe', 'south_america']
 
         def query_chooser(query):
