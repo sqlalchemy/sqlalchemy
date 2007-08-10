@@ -1389,37 +1389,6 @@ class ManyToManyTest(UnitOfWorkTest):
         ctx.current.clear()
         l = Query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
         self.assert_result(l, *data)
-
-    def testm2mmultitable(self):
-        # many-to-many join on an association table
-        j = join(users, userkeywords, 
-                users.c.user_id==userkeywords.c.user_id).join(keywords, 
-                   userkeywords.c.keyword_id==keywords.c.keyword_id)
-        print "PK", j.primary_key
-        # a class 
-        class KeywordUser(object):
-            pass
-
-        # map to it - the identity of a KeywordUser object will be
-        # (user_id, keyword_id) since those are the primary keys involved
-        m = mapper(KeywordUser, j, properties={
-            'user_id':[users.c.user_id, userkeywords.c.user_id],
-            'keyword_id':[userkeywords.c.keyword_id, keywords.c.keyword_id],
-            'keyword_name':keywords.c.name,
-        }, )
-
-        k = KeywordUser()
-        k.user_name = 'keyworduser'
-        k.keyword_name = 'a keyword'
-        ctx.current.flush()
-        print m.instance_key(k)
-        
-        id = (k.user_id, k.keyword_id)
-        ctx.current.clear()
-        k = ctx.current.query(KeywordUser).get(id)
-        assert k.user_name == 'keyworduser'
-        assert k.keyword_name == 'a keyword'
-
     
 class SaveTest2(UnitOfWorkTest):
 

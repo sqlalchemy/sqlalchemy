@@ -285,6 +285,30 @@ class MapperTest(MapperSuperTest):
         q = create_session().query(m)
         l = q.select()
         self.assert_result(l, User, *user_result[0:2])
+    
+    def testmappingtojoinnopk(self):
+        metadata = MetaData()
+        account_ids_table = Table('account_ids', metadata,
+                Column('account_id', Integer, primary_key=True),
+                Column('username', String(20)))
+        account_stuff_table = Table('account_stuff', metadata,
+                Column('account_id', Integer, ForeignKey('account_ids.account_id')),
+                Column('credit', Numeric))
+        class A(object):pass
+        m = mapper(A, account_ids_table.join(account_stuff_table))
+        m.compile()
+        assert m._has_pks(account_ids_table)
+        assert not m._has_pks(account_stuff_table)
+        metadata.create_all(testbase.db)
+        try:
+            sess = create_session(bind=testbase.db)
+            a = A()
+            sess.save(a)
+            sess.flush()
+            assert testbase.db.execute(account_ids_table.count()).scalar() == 1
+            assert testbase.db.execute(account_stuff_table.count()).scalar() == 0
+        finally:
+            metadata.drop_all(testbase.db)
         
     def testmappingtoouterjoin(self):
         """test mapping to an outer join, with a composite primary key that allows nulls"""
