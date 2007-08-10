@@ -313,7 +313,7 @@ class PGDialect(ansisql.ANSIDialect):
         return bool( not not cursor.rowcount )
 
     def has_sequence(self, connection, sequence_name):
-        cursor = connection.execute('''SELECT relname FROM pg_class WHERE relkind = 'S' AND relnamespace IN ( SELECT oid FROM pg_namespace WHERE nspname NOT LIKE 'pg_%%' AND nspname != 'information_schema' AND relname = %(seqname)s);''', {'seqname': sequence_name})
+        cursor = connection.execute('''SELECT relname FROM pg_class WHERE relkind = 'S' AND relnamespace IN ( SELECT oid FROM pg_namespace WHERE nspname NOT LIKE 'pg_%%' AND nspname != 'information_schema' AND relname = %(seqname)s);''', {'seqname': sequence_name.encode(self.encoding)})
         return bool(not not cursor.rowcount)
 
     def is_disconnect(self, e):
@@ -364,7 +364,7 @@ class PGDialect(ansisql.ANSIDialect):
             ORDER BY a.attnum
         """ % schema_where_clause
 
-        s = sql.text(SQL_COLS, bindparams=[sql.bindparam('table_name', type_=sqltypes.Unicode), sql.bindparam('schema', type_=sqltypes.Unicode)], typemap={'attname':sqltypes.Unicode})
+        s = sql.text(SQL_COLS, bindparams=[sql.bindparam('table_name', type_=sqltypes.Unicode), sql.bindparam('schema', type_=sqltypes.Unicode)], typemap={'attname':sqltypes.Unicode, 'default':sqltypes.Unicode})
         c = connection.execute(s, table_name=table.name,
                                   schema=table.schema)
         rows = c.fetchall()
@@ -605,7 +605,7 @@ class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
 class PGSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_sequence(self, sequence):
         if not sequence.optional and (not self.checkfirst or self.dialect.has_sequence(self.connection, sequence.name)):
-            self.append("DROP SEQUENCE %s" % sequence.name)
+            self.append("DROP SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
 
 class PGDefaultRunner(ansisql.ANSIDefaultRunner):

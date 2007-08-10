@@ -829,7 +829,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
             if isinstance(column.default.arg, basestring):
                 return "'%s'" % column.default.arg
             else:
-                return str(self._compile(column.default.arg, None))
+                return unicode(self._compile(column.default.arg, None))
         else:
             return None
 

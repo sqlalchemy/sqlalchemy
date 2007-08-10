@@ -645,7 +645,7 @@ class UnicodeTest(PersistTest):
 
             names = set([u'plain', u'Unit\u00e9ble', u'\u6e2c\u8a66'])
             for name in names:
-                Table(name, metadata, Column('id', Integer, primary_key=True))
+                Table(name, metadata, Column('id', Integer, Sequence(name + "_id_seq"), primary_key=True))
             metadata.create_all()
 
             reflected = set(bind.table_names())
