@@ -103,6 +103,8 @@ opt('--dbs', action='callback', callback=_list_dbs,
     help="List available prefab dbs")
 opt("--dburi", action="store", dest="dburi",
     help="Database uri (overrides --db)")
+opt("--dropfirst", action="store_true", dest="dropfirst",
+    help="Drop all tables in the target database first (use with caution on Oracle, MS-SQL)")
 opt("--mockpool", action="store_true", dest="mockpool",
     help="Use mock pool (asserts only one connection used)")
 opt("--enginestrategy", action="callback", type="string",
@@ -207,20 +209,21 @@ def _prep_testing_database(options, file_config):
 
     try:
         # also create alt schemas etc. here?
-        e = engines.utf8_engine()
-        existing = e.table_names()
-        if existing:
-            if not options.quiet:
-                print "Dropping existing tables in database: " + db_url
-                try:
-                    print "Tables: %s" % ', '.join(existing)
-                except:
-                    pass
-                print "Abort within 5 seconds..."
-                time.sleep(5)
-            md = schema.MetaData(e, reflect=True)
-            md.drop_all()
-        e.dispose()
+        if options.dropfirst:
+            e = engines.utf8_engine()
+            existing = e.table_names()
+            if existing:
+                if not options.quiet:
+                    print "Dropping existing tables in database: " + db_url
+                    try:
+                        print "Tables: %s" % ', '.join(existing)
+                    except:
+                        pass
+                    print "Abort within 5 seconds..."
+                    time.sleep(5)
+                md = schema.MetaData(e, reflect=True)
+                md.drop_all()
+            e.dispose()
     except (KeyboardInterrupt, SystemExit):
         raise
     except Exception, e:
