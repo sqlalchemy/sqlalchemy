@@ -29,7 +29,10 @@ class ReflectionTest(PersistTest):
             # the colon thing isnt working out for PG reflection just yet
             #defval3 = '1999-09-09 00:00:00'
             deftype3 = Date
-            defval3 = '1999-09-09'
+            if testbase.db.engine.name == 'oracle':
+                defval3 = text("to_date('09-09-1999', 'MM-DD-YYYY')")
+            else:
+                defval3 = '1999-09-09'
         else:
             deftype2, deftype3 = Integer, Integer
             defval2, defval3 = "15", "16"

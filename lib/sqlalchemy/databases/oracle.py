@@ -296,11 +296,11 @@ class OracleDialect(ansisql.ANSIDialect):
         return OracleDefaultRunner(connection, **kwargs)
 
     def has_table(self, connection, table_name, schema=None):
-        cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':table_name.upper()})
+        cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':self._denormalize_name(table_name)})
         return bool( cursor.fetchone() is not None )
 
     def has_sequence(self, connection, sequence_name):
-        cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name""", {'name':sequence_name.upper()})
+        cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name""", {'name':self._denormalize_name(sequence_name)})
         return bool( cursor.fetchone() is not None )
 
     def _locate_owner_row(self, owner, name, rows, raiseerr=False):
@@ -364,25 +364,40 @@ class OracleDialect(ansisql.ANSIDialect):
                     dblink = ''
                 return name, owner, dblink
             raise
-        
+
+    def _normalize_name(self, name):
+        if name is None:
+            return None
+        elif name.upper() == name and not self.identifier_preparer._requires_quotes(name.lower(), True):
+            return name.lower()
+        else:
+            return name
+    
+    def _denormalize_name(self, name):
+        if name is None:
+            return None
+        elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower(), True):
+            return name.upper()
+        else:
+            return name
+    
     def table_names(self, connection, schema):
-        # sorry, I have no idea what that dblink stuff is about :)
+        # note that table_names() isnt loading DBLINKed or synonym'ed tables
         s = "select table_name from all_tables where tablespace_name NOT IN ('SYSTEM', 'SYSAUX')"
-        return [row[0] for row in connection.execute(s)]
+        return [self._normalize_name(row[0]) for row in connection.execute(s)]
 
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer
-        if not preparer.should_quote(table):
-            name = table.name.upper()
-        else:
-            name = table.name
 
         # search for table, including across synonyms and dblinks.
         # locate the actual name of the table, the real owner, and any dblink clause needed.
-        actual_name, owner, dblink = self._resolve_table_owner(connection, name, table)
+        actual_name, owner, dblink = self._resolve_table_owner(connection, self._denormalize_name(table.name), table)
+
+        print "ACTUALNAME:", actual_name
 
         c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':actual_name, 'owner':owner})
 
+                
         while True:
             row = c.fetchone()
             if row is None:
@@ -390,11 +405,7 @@ class OracleDialect(ansisql.ANSIDialect):
             found_table = True
 
             #print "ROW:" , row
-            (colname, coltype, length, precision, scale, nullable, default) = (row[0], row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
-
-            # if name comes back as all upper, assume its case folded
-            if (colname.upper() == colname):
-                colname = colname.lower()
+            (colname, coltype, length, precision, scale, nullable, default) = (self._normalize_name(row[0]), row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
 
             if include_columns and colname not in include_columns:
                 continue
@@ -433,10 +444,10 @@ class OracleDialect(ansisql.ANSIDialect):
         c = connection.execute("""SELECT
              ac.constraint_name,
              ac.constraint_type,
-             LOWER(loc.column_name) AS local_column,
-             LOWER(rem.table_name) AS remote_table,
-             LOWER(rem.column_name) AS remote_column,
-             LOWER(rem.owner) AS remote_owner
+             loc.column_name AS local_column,
+             rem.table_name AS remote_table,
+             rem.column_name AS remote_column,
+             rem.owner AS remote_owner
            FROM all_constraints%(dblink)s ac,
              all_cons_columns%(dblink)s loc,
              all_cons_columns%(dblink)s rem
@@ -457,7 +468,7 @@ class OracleDialect(ansisql.ANSIDialect):
             if row is None:
                 break
             #print "ROW:" , row
-            (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = row
+            (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = row[0:2] + tuple([self._normalize_name(x) for x in row[2:]])
             if cons_type == 'P':
                 table.primary_key.add(table.c[local_column])
             elif cons_type == 'R':
@@ -640,7 +651,7 @@ class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
 class OracleSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_sequence(self, sequence):
         if not self.checkfirst or self.dialect.has_sequence(self.connection, sequence.name):
-            self.append("DROP SEQUENCE %s" % sequence.name)
+            self.append("DROP SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
 
 class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
@@ -649,6 +660,6 @@ class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
         return self.connection.execute(c).scalar()
 
     def visit_sequence(self, seq):
-        return self.connection.execute("SELECT " + seq.name + ".nextval FROM DUAL").scalar()
+        return self.connection.execute("SELECT " + self.dialect.identifier_preparer.format_sequence(seq) + ".nextval FROM DUAL").scalar()
 
 dialect = OracleDialect

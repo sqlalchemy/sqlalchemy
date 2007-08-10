@@ -11,7 +11,7 @@ class FoundRowsTest(AssertMixin):
         global employees_table
 
         employees_table = Table('employees', metadata,
-            Column('employee_id', Integer, primary_key=True),
+            Column('employee_id', Integer, Sequence('employee_id_seq', optional=True), primary_key=True),
             Column('name', String(50)),
             Column('department', String(1)),
         )

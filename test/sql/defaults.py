@@ -208,7 +208,7 @@ class AutoIncrementTest(PersistTest):
     def testwithautoincrement(self):
         meta = MetaData(testbase.db)
         table = Table("aitest", meta, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('ai_id_seq', optional=True), primary_key=True),
             Column('data', String(20)))
         table.create(checkfirst=True)
         try:
@@ -223,7 +223,7 @@ class AutoIncrementTest(PersistTest):
         
         meta = MetaData(testbase.db)
         table = Table("aitest", meta, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('ai_id_seq', optional=True), primary_key=True),
             Column('data', String(20)))
         table.create(checkfirst=True)
 
@@ -231,7 +231,7 @@ class AutoIncrementTest(PersistTest):
             # simulate working on a table that doesn't already exist
             meta2 = MetaData(testbase.db)
             table2 = Table("aitest", meta2,
-                Column('id', Integer, primary_key=True),
+                Column('id', Integer, Sequence('ai_id_seq', optional=True), primary_key=True),
                 Column('data', String(20)))
             class AiTest(object):
                 pass
@@ -260,7 +260,7 @@ class SequenceTest(PersistTest):
         sometable = Table( 'Manager', metadata,
                Column( 'obj_id', Integer, Sequence('obj_id_seq'), ),
                Column( 'name', String, ),
-               Column( 'id', Integer, primary_key= True, ),
+               Column( 'id', Integer, Sequence('Manager_id_seq', optional=True), primary_key=True),
            )
         
         metadata.create_all()

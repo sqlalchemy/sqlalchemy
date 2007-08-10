@@ -9,6 +9,7 @@ from testlib.engines import utf8_engine
 
 
 class UnicodeSchemaTest(PersistTest):
+    @testing.unsupported('oracle')
     def setUpAll(self):
         global unicode_bind, metadata, t1, t2
 
@@ -25,16 +26,19 @@ class UnicodeSchemaTest(PersistTest):
             )
         metadata.create_all()
 
+    @testing.unsupported('oracle')
     def tearDown(self):
         if metadata.tables:
             t2.delete().execute()
             t1.delete().execute()
         
+    @testing.unsupported('oracle')
     def tearDownAll(self):
         global unicode_bind
         metadata.drop_all()
         del unicode_bind
         
+    @testing.unsupported('oracle')
     def test_insert(self):
         t1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})
         t2.insert().execute({'a':1, 'b':1})
@@ -42,6 +46,7 @@ class UnicodeSchemaTest(PersistTest):
         assert t1.select().execute().fetchall() == [(1, 5)]
         assert t2.select().execute().fetchall() == [(1, 1)]
     
+    @testing.unsupported('oracle')
     def test_reflect(self):
         t1.insert().execute({u'méil':2, u'\u6e2c\u8a66':7})
         t2.insert().execute({'a':2, 'b':2})
@@ -60,6 +65,7 @@ class UnicodeSchemaTest(PersistTest):
         meta.drop_all()
         metadata.create_all()
         
+    @testing.unsupported('oracle')
     def test_mapping(self):
         # TODO: this test should be moved to the ORM tests, tests should be
         # added to this module testing SQL syntax and joins, etc.

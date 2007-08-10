@@ -107,7 +107,9 @@ class QuoteTest(PersistTest):
         x = select([sql.literal_column("'FooCol'").label("SomeLabel")], from_obj=[table])
         x = x.select()
         assert str(x) == '''SELECT "SomeLabel" \nFROM (SELECT 'FooCol' AS "SomeLabel" \nFROM "ImATable")'''
-        
+   
+    # oracle doesn't support non-case-sensitive until ticket #726 is fixed 
+    @testing.unsupported('oracle')    
     def testlabelsnocase(self):
         metadata = MetaData()
         table1 = Table('SomeCase1', metadata,
