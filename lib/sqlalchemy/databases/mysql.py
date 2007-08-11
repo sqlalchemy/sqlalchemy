@@ -62,10 +62,28 @@ time::
   Table('mytable', metadata, autoload=True,
         ForeignKeyConstraint(['other_id'], ['othertable.other_id']))
 
+MySQL SQL modes are supported.  Modes that enable ``ANSI_QUOTE`` (such as
+``ANSI``) require an engine option to modify SQLAlchemy's quoting style.
+When using an ANSI-quoting mode, supply ``use_ansiquotes=True`` when
+creating your ``Engine``::
+
+  create_engine('mysql://localhost/test', use_ansiquotes=True)
+
+This is an engine-wide option and is not toggleable on a per-connection basis.
+SQLAlchemy does not presume to ``SET sql_mode`` for you with this option.
+For the best performance, set the quoting style server-wide in ``my.cnf`` or
+by supplying ``--sql-mode`` to ``mysqld``.  You can also use a ``Pool`` hook
+to issue a ``SET SESSION sql_mode='...'`` on connect to configure each
+connection.
+
 For normal SQLAlchemy usage, loading this module is unnescesary.  It will be
-loaded on-demand when a MySQL connection is needed.  If you would like to use
-one of the MySQL-specific or enhanced column types when creating tables with
-your ``Table`` definitions, then you will need to import them from this module::
+loaded on-demand when a MySQL connection is needed.  The generic column types
+like ``String`` and ``Integer`` will automatically be adapted to the optimal
+matching MySQL column type.
+
+But if you would like to use one of the MySQL-specific or enhanced column
+types when creating tables with your ``Table`` definitions, then you will
+need to import them from this module::
 
   from sqlalchemy.databases import mysql
 
@@ -73,6 +91,12 @@ your ``Table`` definitions, then you will need to import them from this module::
         Column('id', Integer, primary_key=True),
         Column('ittybittyblob', mysql.MSTinyBlob),
         Column('biggy', mysql.MSBigInteger(unsigned=True)))
+
+All standard MySQL column types are supported.  The OpenGIS types are
+available for use via table reflection but have no special support or
+mapping to Python classes.  If you're using these types and have opinions
+about how OpenGIS can be smartly integrated into SQLAlchemy please join
+the mailing list!
 
 If you have problems that seem server related, first check that you are
 using the most recent stable MySQL-Python package available.  The Database
@@ -83,11 +107,19 @@ information affecting MySQL in SQLAlchemy.
 import re, datetime, inspect, warnings, operator, sys
 from array import array as _array
 
-from sqlalchemy import sql, schema, ansisql
+from sqlalchemy import ansisql, exceptions, logging, schema, sql, util
 from sqlalchemy.engine import base as engine_base, default
 import sqlalchemy.types as sqltypes
-import sqlalchemy.exceptions as exceptions
-import sqlalchemy.util as util
+
+
+__all__ = (
+    'MSBigInteger', 'MSBinary', 'MSBit', 'MSBlob', 'MSBoolean', 
+    'MSChar', 'MSDate', 'MSDateTime', 'MSDecimal', 'MSDouble', 
+    'MSEnum', 'MSFloat', 'MSInteger', 'MSLongBlob', 'MSLongText', 
+    'MSMediumBlob', 'MSMediumText', 'MSNChar', 'MSNVarChar', 
+    'MSNumeric', 'MSSet', 'MSSmallInteger', 'MSString', 'MSText', 
+    'MSTime', 'MSTimeStamp', 'MSTinyBlob', 'MSTinyInteger', 
+    'MSTinyText', 'MSVarBinary', 'MSYear' )
 
 
 RESERVED_WORDS = util.Set(
@@ -207,7 +239,7 @@ class _StringType(object):
 
 
 class MSNumeric(sqltypes.Numeric, _NumericType):
-    """MySQL NUMERIC type"""
+    """MySQL NUMERIC type."""
     
     def __init__(self, precision=10, length=2, asdecimal=True, **kw):
         """Construct a NUMERIC.
@@ -248,7 +280,7 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
 
 
 class MSDecimal(MSNumeric):
-    """MySQL DECIMAL type"""
+    """MySQL DECIMAL type."""
 
     def __init__(self, precision=10, length=2, asdecimal=True, **kw):
         """Construct a DECIMAL.
@@ -281,7 +313,7 @@ class MSDecimal(MSNumeric):
 
 
 class MSDouble(MSNumeric):
-    """MySQL DOUBLE type"""
+    """MySQL DOUBLE type."""
 
     def __init__(self, precision=10, length=2, asdecimal=True, **kw):
         """Construct a DOUBLE.
@@ -317,7 +349,7 @@ class MSDouble(MSNumeric):
 
 
 class MSFloat(sqltypes.Float, _NumericType):
-    """MySQL FLOAT type"""
+    """MySQL FLOAT type."""
 
     def __init__(self, precision=10, length=None, asdecimal=False, **kw):
         """Construct a FLOAT.
@@ -356,7 +388,7 @@ class MSFloat(sqltypes.Float, _NumericType):
 
 
 class MSInteger(sqltypes.Integer, _NumericType):
-    """MySQL INTEGER type"""
+    """MySQL INTEGER type."""
 
     def __init__(self, length=None, **kw):
         """Construct an INTEGER.
@@ -385,7 +417,7 @@ class MSInteger(sqltypes.Integer, _NumericType):
 
 
 class MSBigInteger(MSInteger):
-    """MySQL BIGINTEGER type"""
+    """MySQL BIGINTEGER type."""
 
     def __init__(self, length=None, **kw):
         """Construct a BIGINTEGER.
@@ -412,7 +444,7 @@ class MSBigInteger(MSInteger):
 
 
 class MSTinyInteger(MSInteger):
-    """MySQL TINYINT type"""
+    """MySQL TINYINT type."""
 
     def __init__(self, length=None, **kw):
         """Construct a TINYINT.
@@ -443,7 +475,7 @@ class MSTinyInteger(MSInteger):
 
 
 class MSSmallInteger(sqltypes.Smallinteger, _NumericType):
-    """MySQL SMALLINTEGER type"""
+    """MySQL SMALLINTEGER type."""
 
     def __init__(self, length=None, **kw):
         """Construct a SMALLINTEGER.
@@ -472,7 +504,7 @@ class MSSmallInteger(sqltypes.Smallinteger, _NumericType):
 
 
 class MSBit(sqltypes.TypeEngine):
-    """MySQL BIT type
+    """MySQL BIT type.
 
     This type is for MySQL 5.0.3 or greater for MyISAM, and 5.0.5 or greater for
     MyISAM, MEMORY, InnoDB and BDB.  For older versions, use a MSTinyInteger(1)
@@ -483,7 +515,7 @@ class MSBit(sqltypes.TypeEngine):
         self.length = length
  
     def convert_result_value(self, value, dialect):
-        """Converts MySQL's 64 bit, variable length binary string to a long."""
+        """Convert a MySQL's 64 bit, variable length binary string to a long."""
 
         if value is not None:
             v = 0L
@@ -500,21 +532,21 @@ class MSBit(sqltypes.TypeEngine):
 
 
 class MSDateTime(sqltypes.DateTime):
-    """MySQL DATETIME type"""
+    """MySQL DATETIME type."""
 
     def get_col_spec(self):
         return "DATETIME"
 
 
 class MSDate(sqltypes.Date):
-    """MySQL DATE type"""
+    """MySQL DATE type."""
 
     def get_col_spec(self):
         return "DATE"
 
 
 class MSTime(sqltypes.Time):
-    """MySQL TIME type"""
+    """MySQL TIME type."""
 
     def get_col_spec(self):
         return "TIME"
@@ -528,10 +560,10 @@ class MSTime(sqltypes.Time):
 
 
 class MSTimeStamp(sqltypes.TIMESTAMP):
-    """MySQL TIMESTAMP type
+    """MySQL TIMESTAMP type.
 
     To signal the orm to automatically re-select modified rows to retrieve
-    the timestamp, add a PassiveDefault to your column specification::
+    the updated timestamp, add a PassiveDefault to your column specification::
 
         from sqlalchemy.databases import mysql
         Column('updated', mysql.MSTimeStamp,
@@ -549,7 +581,7 @@ class MSTimeStamp(sqltypes.TIMESTAMP):
 
 
 class MSYear(sqltypes.TypeEngine):
-    """MySQL YEAR type, for single byte storage of years 1901-2155"""
+    """MySQL YEAR type, for single byte storage of years 1901-2155."""
 
     def __init__(self, length=None):
         self.length = length
@@ -561,7 +593,7 @@ class MSYear(sqltypes.TypeEngine):
             return "YEAR(%s)" % self.length
 
 class MSText(_StringType, sqltypes.TEXT):
-    """MySQL TEXT type, for text up to 2^16 characters""" 
+    """MySQL TEXT type, for text up to 2^16 characters.""" 
     
     def __init__(self, length=None, **kwargs):
         """Construct a TEXT.
@@ -610,7 +642,7 @@ class MSText(_StringType, sqltypes.TEXT):
             
 
 class MSTinyText(MSText):
-    """MySQL TINYTEXT type, for text up to 2^8 characters""" 
+    """MySQL TINYTEXT type, for text up to 2^8 characters.""" 
 
     def __init__(self, **kwargs):
         """Construct a TINYTEXT.
@@ -649,7 +681,7 @@ class MSTinyText(MSText):
 
 
 class MSMediumText(MSText):
-    """MySQL MEDIUMTEXT type, for text up to 2^24 characters""" 
+    """MySQL MEDIUMTEXT type, for text up to 2^24 characters.""" 
 
     def __init__(self, **kwargs):
         """Construct a MEDIUMTEXT.
@@ -688,7 +720,7 @@ class MSMediumText(MSText):
 
 
 class MSLongText(MSText):
-    """MySQL LONGTEXT type, for text up to 2^32 characters""" 
+    """MySQL LONGTEXT type, for text up to 2^32 characters.""" 
 
     def __init__(self, **kwargs):
         """Construct a LONGTEXT.
@@ -800,8 +832,10 @@ class MSChar(_StringType, sqltypes.CHAR):
 
 
 class MSNVarChar(_StringType, sqltypes.String):
-    """MySQL NVARCHAR type, for variable-length character data in the
-    server's configured national character set.
+    """MySQL NVARCHAR type.
+
+    For variable-length character data in the server's configured national
+    character set.
     """
 
     def __init__(self, length=None, **kwargs):
@@ -832,8 +866,10 @@ class MSNVarChar(_StringType, sqltypes.String):
     
 
 class MSNChar(_StringType, sqltypes.CHAR):
-    """MySQL NCHAR type, for fixed-length character data in the
-    server's configured national character set.
+    """MySQL NCHAR type.
+
+    For fixed-length character data in the server's configured national
+    character set.
     """
 
     def __init__(self, length=None, **kwargs):
@@ -861,7 +897,7 @@ class MSNChar(_StringType, sqltypes.CHAR):
 
 
 class _BinaryType(sqltypes.Binary):
-    """MySQL binary types"""
+    """Base for MySQL binary types."""
 
     def get_col_spec(self):
         if self.length:
@@ -877,7 +913,7 @@ class _BinaryType(sqltypes.Binary):
 
 
 class MSVarBinary(_BinaryType):
-    """MySQL VARBINARY type, for variable length binary data"""
+    """MySQL VARBINARY type, for variable length binary data."""
 
     def __init__(self, length=None, **kw):
         """Construct a VARBINARY.  Arguments are:
@@ -953,21 +989,21 @@ class MSBlob(_BinaryType):
 
 
 class MSTinyBlob(MSBlob):
-    """MySQL TINYBLOB type, for binary data up to 2^8 bytes""" 
+    """MySQL TINYBLOB type, for binary data up to 2^8 bytes.""" 
 
     def get_col_spec(self):
         return "TINYBLOB"
 
 
 class MSMediumBlob(MSBlob): 
-    """MySQL MEDIUMBLOB type, for binary data up to 2^24 bytes"""
+    """MySQL MEDIUMBLOB type, for binary data up to 2^24 bytes."""
 
     def get_col_spec(self):
         return "MEDIUMBLOB"
 
 
 class MSLongBlob(MSBlob):
-    """MySQL LONGBLOB type, for binary data up to 2^32 bytes"""
+    """MySQL LONGBLOB type, for binary data up to 2^32 bytes."""
 
     def get_col_spec(self):
         return "LONGBLOB"
@@ -1169,6 +1205,7 @@ colspecs = {
     _BinaryType: _BinaryType,
 }
 
+# Everything 3.23 through 5.1 excepting OpenGIS types.
 ischema_names = {
     'bigint': MSBigInteger,
     'binary': MSBinary,
@@ -1233,9 +1270,12 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
 
 
 class MySQLDialect(ansisql.ANSIDialect):
-    def __init__(self, **kwargs):
-        ansisql.ANSIDialect.__init__(self, default_paramstyle='format',
-                                     **kwargs)
+    """Details of the MySQL dialect.  Not used directly in application code."""
+
+    def __init__(self, use_ansiquotes=False, **kwargs):
+        self.use_ansiquotes = use_ansiquotes
+        kwargs.setdefault('default_paramstyle', 'format')
+        ansisql.ANSIDialect.__init__(self, **kwargs)
 
     def dbapi(cls):
         import MySQLdb as mysql
@@ -1303,7 +1343,10 @@ class MySQLDialect(ansisql.ANSIDialect):
         return MySQLSchemaDropper(self, *args, **kwargs)
 
     def preparer(self):
-        return MySQLIdentifierPreparer(self)
+        if self.use_ansiquotes:
+            return MySQLANSIIdentifierPreparer(self)
+        else:
+            return MySQLIdentifierPreparer(self)
 
     def do_executemany(self, cursor, statement, parameters,
                        context=None, **kwargs):
@@ -1389,9 +1432,8 @@ class MySQLDialect(ansisql.ANSIDialect):
 
         charset = self._detect_charset(connection)
         rp = connection.execute("SHOW TABLES FROM %s" %
-                                 self.preparer().quote_identifier(schema))
-        return [row[0].decode(charset)
-                for row in _compat_fetchall(rp, charset=charset)]
+            self.identifier_preparer.quote_identifier(schema))
+        return [row[0] for row in _compat_fetchall(rp, charset=charset)]
 
     def has_table(self, connection, table_name, schema=None):
         # SHOW TABLE STATUS LIKE and SHOW TABLES LIKE do not function properly
@@ -1399,19 +1441,28 @@ class MySQLDialect(ansisql.ANSIDialect):
         #
         # TODO: if this is not a problem on win, make the strategy swappable
         # based on platform.  DESCRIBE is slower.
-        if schema is not None:
-            st = "DESCRIBE `%s`.`%s`" % (schema, table_name)
-        else:
-            st = "DESCRIBE `%s`" % table_name
+
+        # [ticket:726]
+        # full_name = self.identifier_preparer.format_table(table, use_schema=True)
+
+        full_name = '.'.join(self.identifier_preparer._quote_free_identifiers(
+            schema, table_name))
+        
+        st = "DESCRIBE %s" % full_name
+        rs = None
         try:
-            rs = connection.execute(st)
-            have = rs.rowcount > 0
-            rs.close()
-            return have
-        except exceptions.SQLError, e:
-            if e.orig.args[0] == 1146:
-                return False
-            raise
+            try:
+                rs = connection.execute(st)
+                have = rs.rowcount > 0
+                rs.close()
+                return have
+            except exceptions.SQLError, e:
+                if e.orig.args[0] == 1146:
+                    return False
+                raise
+        finally:
+            if rs:
+                rs.close()
 
     def server_version_info(self, connection):
         """A tuple of the database server version.
@@ -1459,106 +1510,21 @@ class MySQLDialect(ansisql.ANSIDialect):
     def reflecttable(self, connection, table, include_columns):
         """Load column definitions from the server."""
 
-        decode_from = self._detect_charset(connection)
-        casing = self._detect_casing(connection, decode_from)
+        charset = self._detect_charset(connection)
+        casing = self._detect_casing(connection, charset)
         if casing == 1:
-            # fixme: is this really needed?
             table.name = table.name.lower()
             table.metadata.tables[table.name]= table
 
-        table_name = '.'.join(self.identifier_preparer.format_table_seq(table))
+        sql = self._show_create_table(connection, table, charset)
+
         try:
-            rp = connection.execute("DESCRIBE " + table_name)
-        except exceptions.SQLError, e:
-            if e.orig.args[0] == 1146:
-                raise exceptions.NoSuchTableError(table.fullname)
-            raise
+            reflector = self.reflector
+        except AttributeError:
+            self.reflector = reflector = \
+                MySQLSchemaReflector(self.identifier_preparer)
 
-        for row in _compat_fetchall(rp, charset=decode_from):
-            (name, type, nullable, primary_key, default) = \
-                   (row[0], row[1], row[2] == 'YES', row[3] == 'PRI', row[4])
-
-            # leave column names as unicode
-            name = name.decode(decode_from)
-            
-            if include_columns and name not in include_columns:
-                continue
-
-            match = re.match(r'(\w+)(\(.*?\))?\s*(\w+)?\s*(\w+)?', type)
-            col_type = match.group(1)
-            args = match.group(2)
-            extra_1 = match.group(3)
-            extra_2 = match.group(4)
-
-            if col_type == 'tinyint' and args == '(1)':
-                col_type = 'boolean'
-                args = None
-            try:
-                coltype = ischema_names[col_type]
-            except KeyError:
-                warnings.warn(RuntimeWarning(
-                        "Did not recognize type '%s' of column '%s'" %
-                        (col_type, name)))
-                coltype = sqltypes.NULLTYPE
-
-            kw = {}
-            if extra_1 is not None:
-                kw[extra_1] = True
-            if extra_2 is not None:
-                kw[extra_2] = True
-
-            if args is not None and coltype is not sqltypes.NULLTYPE:
-                if col_type in ('enum', 'set'):
-                    args= args[1:-1]
-                    argslist = args.split(',')
-                    coltype = coltype(*argslist, **kw)
-                else:
-                    argslist = re.findall(r'(\d+)', args)
-                    coltype = coltype(*[int(a) for a in argslist], **kw)
-
-            colargs= []
-            if default:
-                if col_type == 'timestamp' and default == 'CURRENT_TIMESTAMP':
-                    default = sql.text(default)
-                colargs.append(schema.PassiveDefault(default))
-            table.append_column(schema.Column(name, coltype, *colargs,
-                                            **dict(primary_key=primary_key,
-                                                   nullable=nullable,
-                                                   )))
-
-        table_options = self.moretableinfo(connection, table, decode_from)
-        table.kwargs.update(table_options)
-
-    def moretableinfo(self, connection, table, charset=None):
-        """SHOW CREATE TABLE to get foreign key/table options."""
-
-        table_name = '.'.join(self.identifier_preparer.format_table_seq(table))
-        rp = connection.execute("SHOW CREATE TABLE " + table_name)
-        row = _compat_fetchone(rp, charset=charset)
-        if not row:
-            raise exceptions.NoSuchTableError(table.fullname)
-        desc = row[1].strip()
-        row.close()
-
-        table_options = {}
-
-        lastparen = re.search(r'\)[^\)]*\Z', desc)
-        if lastparen:
-            match = re.search(r'\b(?P<spec>TYPE|ENGINE)=(?P<ttype>.+)\b', desc[lastparen.start():], re.I)
-            if match:
-                table_options["mysql_%s" % match.group('spec')] = \
-                    match.group('ttype')
-
-        # \x27 == ' (single quote)  (avoid xemacs syntax highlighting issue)
-        fkpat = r'''CONSTRAINT [`"\x27](?P<name>.+?)[`"\x27] FOREIGN KEY \((?P<columns>.+?)\) REFERENCES [`"\x27](?P<reftable>.+?)[`"\x27] \((?P<refcols>.+?)\)'''
-        for match in re.finditer(fkpat, desc):
-            columns = re.findall(r'''[`"\x27](.+?)[`"\x27]''', match.group('columns'))
-            refcols = [match.group('reftable') + "." + x for x in re.findall(r'''[`"\x27](.+?)[`"\x27]''', match.group('refcols'))]
-            schema.Table(match.group('reftable'), table.metadata, autoload=True, autoload_with=connection)
-            constraint = schema.ForeignKeyConstraint(columns, refcols, name=match.group('name'))
-            table.append_constraint(constraint)
-
-        return table_options
+        reflector.reflect(connection, table, sql, charset, only=include_columns)
 
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
@@ -1650,19 +1616,36 @@ class MySQLDialect(ansisql.ANSIDialect):
             connection.properties['collations'] = collations
             return collations
 
-def _compat_fetchall(rp, charset=None):
-    """Proxy result rows to smooth over MySQL-Python driver inconsistencies."""
+    def _show_create_table(self, connection, table, charset=None,
+                           full_name=None):
+        """Run SHOW CREATE TABLE for a ``Table``."""
 
-    return [_MySQLPythonRowProxy(row, charset) for row in rp.fetchall()]
+        if full_name is None:
+            full_name = self.identifier_preparer.format_table(table)
+        st = "SHOW CREATE TABLE %s" % full_name
 
-def _compat_fetchone(rp, charset=None):
-    """Proxy a result row to smooth over MySQL-Python driver inconsistencies."""
+        rp = None
+        try:
+            try:
+                rp = connection.execute(st)
+            except exceptions.SQLError, e:
+                if e.orig.args[0] == 1146:
+                    raise exceptions.NoSuchTableError(full_name)
+                else:
+                    raise
+            row = _compat_fetchone(rp, charset=charset)
+            if not row:
+                raise exceptions.NoSuchTableError(full_name)
+            return row[1].strip()
+        finally:
+            if rp:
+                rp.close()
 
-    return _MySQLPythonRowProxy(rp.fetchone(), charset)
-        
+        return sql
+
 
 class _MySQLPythonRowProxy(object):
-    """Return consistent column values for all versions of MySQL-python (esp. alphas) and unicode settings."""
+    """Return consistent column values for all versions of MySQL-python (esp. alphas) and Unicode settings."""
 
     # Some MySQL-python versions can return some columns as
     # sets.Set(['value']) (seriously) but thankfully that doesn't
@@ -1675,16 +1658,16 @@ class _MySQLPythonRowProxy(object):
         item = self.rowproxy[index]
         if isinstance(item, _array):
             item = item.tostring()
-        if self.charset and isinstance(item, unicode):
-            return item.encode(self.charset)
+        if self.charset and isinstance(item, str):
+            return item.decode(self.charset)
         else:
             return item
     def __getattr__(self, attr):
         item = getattr(self.rowproxy, attr)
         if isinstance(item, _array):
             item = item.tostring()
-        if self.charset and isinstance(item, unicode):
-            return item.encode(self.charset)
+        if self.charset and isinstance(item, str):
+            return item.decode(self.charset)
         else:
             return item
 
@@ -1746,7 +1729,7 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         if not column.nullable:
             colspec.append('NOT NULL')
 
-        # FIXME: #649, also #612 with regard to SHOW CREATE
+        # FIXME: #649 ASAP
         if column.primary_key:
             if (len(column.foreign_keys)==0
                 and first_pk
@@ -1786,21 +1769,541 @@ class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
         self.execute()
 
 
-class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+class MySQLSchemaReflector(object):
+    """Parses SHOW CREATE TABLE output."""
+
+    def __init__(self, identifier_preparer):
+        """Construct a MySQLSchemaReflector.
+
+        identifier_preparer
+          An ANSIIdentifierPreparer type, used to determine the identifier
+          quoting style in effect.
+        """
+        
+        self.preparer = identifier_preparer
+        self._prep_regexes()
+
+    def reflect(self, connection, table, show_create, charset, only=None):
+        """Parse MySQL SHOW CREATE TABLE and fill in a ''Table''.
+
+        show_create
+          Unicode output of SHOW CREATE TABLE
+
+        table
+          A ''Table'', to be loaded with Columns, Indexes, etc.
+          table.name will be set if not already
+
+        charset
+          FIXME, some constructed values (like column defaults)
+          currently can't be Unicode.  ''charset'' will convert them
+          into the connection character set.
+
+        only
+           An optional sequence of column names.  If provided, only
+           these columns will be reflected, and any keys or constraints
+           that include columns outside this set will also be omitted.
+           That means that if ``only`` includes only one column in a
+           2 part primary key, the entire primary key will be omitted.
+        """
+
+        keys, constraints = [], []
+
+        if only:
+            only = util.Set(only)
+
+        for line in re.split(r'\r?\n', show_create):
+            if line.startswith('  ' + self.preparer.initial_quote):
+                self._add_column(table, line, charset, only)
+            elif line.startswith(') '):
+                self._set_options(table, line)
+            elif line.startswith('CREATE '):
+                self._set_name(table, line)
+            # Not present in real reflection, but may be if loading from a file.
+            elif not line:
+                pass
+            else:
+                type_, spec = self.constraints(line)
+                if type_ is None:
+                    warnings.warn(
+                        RuntimeWarning("Unknown schema content: %s" % line))
+                elif type_ == 'key':
+                    keys.append(spec)
+                elif type_ == 'constraint':
+                    constraints.append(spec)
+                else:
+                    pass
+
+        self._set_keys(table, keys, only)
+        self._set_constraints(table, constraints, connection, only)
+
+    def _set_name(self, table, line):
+        """Override a Table name with the reflected name.
+
+        table
+          A ``Table``
+
+        line
+          The first line of SHOW CREATE TABLE output.
+        """
+
+        # Don't override by default.
+        if table.name is None:
+            table.name = self.name(line)
+
+    def _add_column(self, table, line, charset, only=None):
+        spec = self.column(line)
+        if not spec:
+            warnings.warn(RuntimeWarning(
+                "Unknown column definition %s" % line))
+            return
+        if not spec['full']:
+            warnings.warn(RuntimeWarning(
+                "Incomplete reflection of column definition %s" % line))
+
+        name, type_, args, notnull = \
+              spec['name'], spec['coltype'], spec['arg'], spec['notnull']
+
+        if only and name.lower() not in only:
+            self.logger.info("Omitting reflected column %s.%s" %
+                             (table.name, name))
+            return
+
+        # Convention says that TINYINT(1) columns == BOOLEAN
+        if type_ == 'tinyint' and args == '1':
+            type_ = 'boolean'
+            args = None
+
+        try:
+            col_type = ischema_names[type_]
+        except KeyError:
+            warnings.warn(RuntimeWarning(
+                "Did not recognize type '%s' of column '%s'" %
+                (type_, name)))
+            coltype = sqltypes.NULLTYPE
+        
+        # Column type positional arguments eg. varchar(32)
+        if args is None or args == '':
+            type_args = []
+        elif args[0] == "'" and args[-1] == "'":
+            type_args = self._re_csv_str.findall(args)
+        else:
+            type_args = [int(v) for v in self._re_csv_int.findall(args)]
+
+        # Column type keyword options
+        type_kw = {}
+        for kw in ('unsigned', 'zerofill'):
+            if spec.get(kw, False):
+                type_kw[kw] = True
+        for kw in ('charset', 'collate'):
+            if spec.get(kw, False):
+                type_kw[kw] = spec[kw]
+
+        type_instance = col_type(*type_args, **type_kw)
+
+        col_args, col_kw = [], {}
+
+        # NOT NULL
+        if spec.get('notnull', False):
+            col_kw['nullable'] = False
+            
+        # AUTO_INCREMENT
+        if spec.get('autoincr', False):
+            col_kw['autoincrement'] = True
+
+        # DEFAULT
+        default = spec.get('default', None)
+        if default is not None and default != 'NULL':
+            # Defaults should be in the native charset for the moment
+            default = default.decode(charset)
+            if type_ == 'timestamp':
+                # can't be NULL for TIMESTAMPs
+                if (default[0], default[-1]) != ("'", "'"):
+                    default = sql.text(default)
+            else:
+                default = default[1:-1]
+            col_args.append(schema.PassiveDefault(default))
+
+        table.append_column(schema.Column(name, type_instance,
+                                          *col_args, **col_kw))
+
+    def _set_keys(self, table, keys, only):
+        """Add ``Index`` and ``PrimaryKeyConstraint`` items to a ``Table``.
+
+        Most of the information gets dropped here- more is reflected than
+        the schema objects can currently represent.
+
+        table
+          A ``Table``
+
+        keys
+          A sequence of key specifications produced by `constraints`
+
+        only
+          Optional `set` of column names.  If provided, keys covering
+          columns not in this set will be omitted.
+        """
+        
+        for spec in keys:
+            flavor = spec['type']
+            col_names = [s[0] for s in spec['columns']]
+
+            if only and not util.Set(col_names).issubset(only):
+                if flavor is None:
+                    flavor = 'index'
+                self.logger.info(
+                    "Omitting %s KEY for (%s), key covers ommitted columns." %
+                    (flavor, ', '.join(col_names)))
+                continue
+
+            constraint = False
+            if flavor == 'PRIMARY':
+                key = schema.PrimaryKeyConstraint()
+                constraint = True
+            elif flavor == 'UNIQUE':
+                key = schema.Index(spec['name'], unique=True)
+            elif flavor in (None, 'FULLTEXT', 'SPATIAL'):
+                key = schema.Index(spec['name'])
+            else:
+                self.logger.info(
+                    "Converting unknown KEY type %s to a plain KEY" % flavor)
+                key = schema.Index(spec['name'])
+
+            for col in [table.c[name] for name in col_names]:
+                key.append_column(col)
+
+            if constraint:
+                table.append_constraint(key)
+
+    def _set_constraints(self, table, constraints, connection, only):
+        """Apply constraints to a ``Table``."""
+
+        for spec in constraints:
+            # only FOREIGN KEYs
+            ref_name = spec['table'][-1]
+            ref_schema = len(spec['table']) > 1 and spec['table'][-2] or None
+        
+            loc_names = spec['local']
+            if only and not util.Set(loc_names).issubset(only):
+                self.logger.info(
+                    "Omitting FOREIGN KEY for (%s), key covers ommitted "
+                    "columns." % (', '.join(loc_names)))
+                continue
+
+            if ref_name in table.metadata.tables:
+                ref_table = table.metadata.tables[ref_name]
+                if ref_table.schema and ref_table.schema != ref_schema:
+                    warnings.warn(RuntimeWarning(
+                        "Table %s.%s is shadowing %s.%s in this MetaData" %
+                        (ref_table.schema, ref_name, table.schema, table.name)))
+            else:
+                ref_table = schema.Table(ref_name, table.metadata,
+                                         schema=ref_schema,
+                                         autoload=True, autoload_with=connection)
+
+            ref_names = spec['foreign']
+            if not util.Set(ref_names).issubset(
+                util.Set([c.name for c in ref_table.c])):
+                raise exceptions.InvalidRequestError(
+                    "Foreign key columns (%s) are not present on foreign table" %
+                    (', '.join(ref_names), ref_table.fullname()))
+            ref_columns = [ref_table.c[name] for name in ref_names]
+
+            con_kw = {}
+            for opt in ('name', 'onupdate', 'ondelete'):
+                if spec.get(opt, False):
+                    con_kw[opt] = spec[opt]
+                    
+            key = schema.ForeignKeyConstraint([], [], **con_kw)
+            table.append_constraint(key)
+            for pair in zip(loc_names, ref_columns):
+                key.append_element(*pair)
+            
+    def _set_options(self, table, line):
+        """Apply safe reflected table options to a ``Table``.
+
+        table
+          A ``Table``
+
+        line
+          The final line of SHOW CREATE TABLE output.
+        """
+
+        options = self.table_options(line)
+        for nope in ('auto_increment', 'data_directory', 'index_directory'):
+            options.pop(nope, None)
+
+        for opt, val in options.items():
+            table.kwargs['mysql_%s' % opt] = val
+
+    def _prep_regexes(self):
+        """Pre-compile regular expressions."""
+
+        self._re_columns = []
+        self._pr_options = []
+        self._re_options_util = {}
+
+        _initial, _final = (self.preparer.initial_quote,
+                            self.preparer.final_quote)
+        
+        quotes = dict(zip(('iq', 'fq', 'esc_fq'),
+                          [re.escape(s) for s in
+                           (self.preparer.initial_quote,
+                            self.preparer.final_quote,
+                            self.preparer._escape_identifier(_final))]))
+
+        self._pr_name = _pr_compile(
+            r'^CREATE TABLE +'
+            r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +\($' % quotes,
+            self.preparer._unescape_identifier)
+
+        # `col`,`col2`(32),`col3`(15) DESC
+        #
+        # Note: ASC and DESC aren't reflected, so we'll punt...
+        self._re_keyexprs = _re_compile(
+            r'(?:'
+            r'(?:%(iq)s((?:%(esc_fq)s|[^%(fq)s])+)%(fq)s)'
+            r'(?:\((\d+)\))?(?=\,|$))+' % quotes)
+
+        # 'foo' or 'foo','bar' or 'fo,o','ba''a''r'
+        self._re_csv_str = _re_compile(r'\x27(?:\x27\x27|[^\x27])+\x27')
+
+        # 123 or 123,456
+        self._re_csv_int = _re_compile(r'\d+')
+
+
+        # `colname` <type> [type opts]
+        #  (NOT NULL | NULL)
+        #   DEFAULT ('value' | CURRENT_TIMESTAMP...)
+        #   COMMENT 'comment'
+        #  COLUMN_FORMAT (FIXED|DYNAMIC|DEFAULT)
+        #  STORAGE (DISK|MEMORY)
+        self._re_column = _re_compile(
+            r'  '
+            r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +'
+            r'(?P<coltype>\w+)'
+            r'(?:\((?P<arg>(?:\d+|\d+,\d+|'
+              r'(?:\x27(?:\x27\x27|[^\x27])+\x27,?)+))\))?'
+            r'(?: +(?P<unsigned>UNSIGNED))?'
+            r'(?: +(?P<zerofill>ZEROFILL))?'
+            r'(?: +CHARACTER SET +(?P<charset>\w+))?'
+            r'(?: +COLLATE +(P<collate>\w+))?'
+            r'(?: +(?P<notnull>NOT NULL))?'
+            r'(?: +DEFAULT +(?P<default>'
+              r'(?:NULL|\x27(?:\x27\x27|[^\x27])+\x27|\w+)'
+              r'(?:ON UPDATE \w+)?'
+            r'))?'
+            r'(?: +(?P<autoincr>AUTO_INCREMENT))?'
+            r'(?: +COMMENT +(P<comment>(?:\x27\x27|[^\x27])+))?'
+            r'(?: +COLUMN_FORMAT +(?P<colfmt>\w+))?'
+            r'(?: +STORAGE +(?P<storage>\w+))?'
+            r'(?: +(?P<extra>.*))?'
+            r',?$'
+            % quotes
+            )
+
+        # Fallback, try to parse as little as possible
+        self._re_column_loose = _re_compile(
+            r'  '
+            r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +'
+            r'(?P<coltype>\w+)'
+            r'(?:\((?P<arg>(?:\d+|\d+,\d+|\x27(?:\x27\x27|[^\x27])+\x27))\))?'
+            r'.*?(?P<notnull>NOT NULL)?'
+            % quotes
+            )
+
+        # (PRIMARY|UNIQUE|FULLTEXT|SPATIAL) INDEX `name` (USING (BTREE|HASH))?
+        # (`col` (ASC|DESC)?, `col` (ASC|DESC)?)
+        # KEY_BLOCK_SIZE size | WITH PARSER name
+        self._re_key = _re_compile(
+            r'  '
+            r'(?:(?P<type>\S+) )?KEY +'
+            r'(?:%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s)?'
+            r'(?: +USING +(?P<using>\S+) +)?'
+            r' +\((?P<columns>.+?)\)'
+            r'(?: +KEY_BLOCK_SIZE +(?P<keyblock>\S+))?'
+            r'(?: +WITH PARSER +(?P<parser>\S+))?'
+            r',?$'
+            % quotes
+            )
+
+        # CONSTRAINT `name` FOREIGN KEY (`local_col`)
+        # REFERENCES `remote` (`remote_col`)
+        # MATCH FULL | MATCH PARTIAL | MATCH SIMPLE
+        # ON DELETE CASCADE ON UPDATE RESTRICT
+        #
+        # unique constraints come back as KEYs
+        kw = quotes.copy()
+        kw['on'] = 'RESTRICT|CASCASDE|SET NULL|NOACTION'
+        self._re_constraint = _re_compile(
+            r'  '
+            r'CONSTRAINT +'
+            r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +'
+            r'FOREIGN KEY +'
+            r'\((?P<local>[^\)]+?)\) REFERENCES +'
+            r'(?P<table>%(iq)s[^%(fq)s]+%(fq)s) +'
+            r'\((?P<foreign>[^\)]+?)\)'
+            r'(?: +(?P<match>MATCH \w+))?'
+            r'(?: +ON DELETE (?P<ondelete>%(on)s))?'
+            r'(?: +ON UPDATE (?P<onupdate>%(on)s))?'
+            % kw
+            )
+
+        # PARTITION
+        #
+        # punt!
+        self._re_partition = _re_compile(
+            r'  '
+            r'(?:SUB)?PARTITION')
+
+        # Table-level options (COLLATE, ENGINE, etc.)
+        for option in ('ENGINE', 'TYPE', 'AUTO_INCREMENT',
+                       'AVG_ROW_LENGTH', 'CHARACTER SET',
+                       'DEFAULT CHARSET', 'CHECKSUM',
+                       'COLLATE', 'DELAY_KEY_WRITE', 'INSERT_METHOD',
+                       'MAX_ROWS', 'MIN_ROWS', 'PACK_KEYS', 'ROW_FORMAT',
+                       'KEY_BLOCK_SIZE'):
+            self._add_option_word(option)
+
+        for option in (('COMMENT', 'DATA_DIRECTORY', 'INDEX_DIRECTORY',
+                        'PASSWORD', 'CONNECTION')):
+            self._add_option_string(option)
+
+        self._add_option_regex('UNION', r'\([^\)]+\)')
+        self._add_option_regex('TABLESPACE', r'.*? STORAGE DISK')
+        self._add_option_regex('RAID_TYPE',
+          r'\w+\s+RAID_CHUNKS\s*\=\s*\w+RAID_CHUNKSIZE\s*=\s*\w+')
+        self._re_options_util['='] = _re_compile(r'\s*=\s*$')
+
+    def _add_option_string(self, directive):
+        regex = (r'(?P<directive>%s\s*(?:=\s*)?)'
+                 r'(?:\x27.(?P<val>.*?)\x27(?!\x27)\x27)' %
+                 re.escape(directive))
+        self._pr_options.append(
+            _pr_compile(regex, lambda v: v.replace("''", "'")))
+
+    def _add_option_word(self, directive):
+        regex = (r'(?P<directive>%s\s*(?:=\s*)?)'
+                 r'(?P<val>\w+)' % re.escape(directive))
+        self._pr_options.append(_pr_compile(regex))
+
+    def _add_option_regex(self, directive, regex):
+        regex = (r'(?P<directive>%s\s*(?:=\s*)?)'
+                 r'(?P<val>%s)' % (re.escape(directive), regex))
+        self._pr_options.append(_pr_compile(regex))
+
+
+    def name(self, line):
+        """Extract the table name.
+
+        line
+          The first line of SHOW CREATE TABLE
+        """
+
+        regex, cleanup = self._pr_name
+        m = regex.match(line)
+        if not m:
+            return None
+        return cleanup(m.group('name'))
+
+    def column(self, line):
+        """Extract column details.
+
+        Falls back to a 'minimal support' variant if full parse fails.
+
+        line
+          Any column-bearing line from SHOW CREATE TABLE
+        """
+
+        m = self._re_column.match(line)
+        if m:
+            spec = m.groupdict()
+            spec['full'] = True
+            return spec
+        m = self._re_column_loose.match(line)
+        if m:
+            spec = m.groupdict()
+            spec['full'] = False
+            return spec
+        return None
+
+    def constraints(self, line):
+        """Parse a KEY or CONSTRAINT line.
+
+        line
+          A line of SHOW CREATE TABLE output
+        """
+
+        # KEY
+        m = self._re_key.match(line)
+        if m:
+            spec = m.groupdict()
+            # convert columns into name, length pairs
+            spec['columns'] = self._parse_keyexprs(spec['columns'])
+            return 'key', spec
+
+        # CONSTRAINT
+        m = self._re_constraint.match(line)
+        if m:
+            spec = m.groupdict()
+            spec['table'] = \
+              self.preparer.unformat_identifiers(spec['table'])
+            spec['local'] = [c[0]
+                             for c in self._parse_keyexprs(spec['local'])]
+            spec['foreign'] = [c[0]
+                               for c in self._parse_keyexprs(spec['foreign'])]
+            return 'constraint', spec
+
+        # PARTITION and SUBPARTITION
+        m = self._re_partition.match(line)
+        if m:
+            # Punt!
+            return 'partition', line
+
+        # No match.
+        return (None, line)
+        
+    def table_options(self, line):
+        """Build a dictionary of all reflected table-level options.
+
+        line
+          The final line of SHOW CREATE TABLE output.
+        """
+        
+        options = {}
+
+        if not line or line == ')':
+            return options
+
+        r_eq_trim = self._re_options_util['=']
+
+        for regex, cleanup in self._pr_options:
+            m = regex.search(line)
+            if not m:
+                continue
+            directive, value = m.group('directive'), m.group('val')
+            directive = r_eq_trim.sub('', directive).lower()
+            if cleanup:
+                value = cleanup(value)
+            options[directive] = value
+
+        return options
+
+    def _parse_keyexprs(self, identifiers):
+        """Unpack '"col"(2),"col" ASC'-ish strings into components."""
+
+        return self._re_keyexprs.findall(identifiers)
+
+MySQLSchemaReflector.logger = logging.class_logger(MySQLSchemaReflector)
+
+
+class _MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     """MySQL-specific schema identifier configuration."""
     
-    def __init__(self, dialect):
-        super(MySQLIdentifierPreparer, self).__init__(dialect,
-                                                      initial_quote='`')
+    def __init__(self, dialect, **kw):
+        super(_MySQLIdentifierPreparer, self).__init__(dialect, **kw)
 
     def _reserved_words(self):
         return RESERVED_WORDS
-
-    def _escape_identifier(self, value):
-        return value.replace('`', '``')
-
-    def _unescape_identifier(self, value):
-        return value.replace('``', '`')
 
     def _fold_identifier_case(self, value):
         # TODO: determine MySQL's case folding rules
@@ -1812,5 +2315,49 @@ class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         # just leave everything as-is.
         return value
 
+    def _quote_free_identifiers(self, *ids):
+        """Unilaterally identifier-quote any number of strings."""
+
+        return tuple([self.quote_identifier(id) for id in ids if id is not None])
+
+
+class MySQLIdentifierPreparer(_MySQLIdentifierPreparer):
+    """Traditional MySQL-specific schema identifier configuration."""
+
+    def __init__(self, dialect):
+        super(MySQLIdentifierPreparer, self).__init__(dialect, initial_quote="`")
+
+    def _escape_identifier(self, value):
+        return value.replace('`', '``')
+
+    def _unescape_identifier(self, value):
+        return value.replace('``', '`')
+
+
+class MySQLANSIIdentifierPreparer(_MySQLIdentifierPreparer):
+    """ANSI_QUOTES MySQL schema identifier configuration."""
+
+    pass
+
+
+def _compat_fetchall(rp, charset=None):
+    """Proxy result rows to smooth over MySQL-Python driver inconsistencies."""
+
+    return [_MySQLPythonRowProxy(row, charset) for row in rp.fetchall()]
+
+def _compat_fetchone(rp, charset=None):
+    """Proxy a result row to smooth over MySQL-Python driver inconsistencies."""
+
+    return _MySQLPythonRowProxy(rp.fetchone(), charset)
+
+def _pr_compile(regex, cleanup=None):
+    """Prepare a 2-tuple of compiled regex and callable."""
+
+    return (_re_compile(regex), cleanup)
+
+def _re_compile(regex):
+    """Compile a string to regex, I and UNICODE."""
+
+    return re.compile(regex, re.I | re.UNICODE)
 
 dialect = MySQLDialect

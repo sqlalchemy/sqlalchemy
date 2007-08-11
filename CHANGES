@@ -283,6 +283,12 @@
     Query object for backwards-compatibility.  join_to() method 
     from SelectResults isn't present anymore, need to use join(). 
 
+- mysql
+    - table and column names loaded via reflection are now unicode
+    - all standard column types are now supported, including SET
+    - table reflection can now be performed in as little as one round-trip
+    - ANSI and ANSI_QUOTES sql modes are now supported
+    - indexes are now reflected
 - postgres
   - Added PGArray datatype for using postgres array datatypes
 

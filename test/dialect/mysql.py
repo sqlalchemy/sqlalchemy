@@ -21,7 +21,7 @@ class TypesTest(AssertMixin):
             Column('num3', mysql.MSBigInteger()),
             Column('num4', mysql.MSDouble),
             Column('num5', mysql.MSDouble()),
-            Column('enum1', mysql.MSEnum('"black"', '"white"')),
+            Column('enum1', mysql.MSEnum("'black'", "'white'")),
             )
         try:
             table.drop(checkfirst=True)
@@ -448,11 +448,11 @@ class TypesTest(AssertMixin):
 
         meta = MetaData(testbase.db)
         set_table = Table('mysql_set', meta,
-                          Column('s1', mysql.MSSet('"dq"', "'sq'")),
+                          Column('s1', mysql.MSSet("'dq'", "'sq'")),
                           Column('s2', mysql.MSSet("'a'")),
                           Column('s3', mysql.MSSet("'5'", "'7'", "'9'")))
 
-        self.assert_eq(colspec(set_table.c.s1), """s1 SET("dq",'sq')""")
+        self.assert_eq(colspec(set_table.c.s1), "s1 SET('dq','sq')")
         self.assert_eq(colspec(set_table.c.s2), "s2 SET('a')")
         self.assert_eq(colspec(set_table.c.s3), "s3 SET('5','7','9')")
 
@@ -493,21 +493,21 @@ class TypesTest(AssertMixin):
         
         db = testbase.db
         enum_table = Table('mysql_enum', MetaData(testbase.db),
-            Column('e1', mysql.MSEnum('"a"', "'b'")),
-            Column('e2', mysql.MSEnum('"a"', "'b'"),
+            Column('e1', mysql.MSEnum("'a'", "'b'")),
+            Column('e2', mysql.MSEnum("'a'", "'b'"),
                    nullable=False),
-            Column('e3', mysql.MSEnum('"a"', "'b'", strict=True)),
-            Column('e4', mysql.MSEnum('"a"', "'b'", strict=True),
+            Column('e3', mysql.MSEnum("'a'", "'b'", strict=True)),
+            Column('e4', mysql.MSEnum("'a'", "'b'", strict=True),
                    nullable=False))
 
         self.assert_eq(colspec(enum_table.c.e1),
-                       """e1 ENUM("a",'b')""")
+                       "e1 ENUM('a','b')")
         self.assert_eq(colspec(enum_table.c.e2),
-                       """e2 ENUM("a",'b') NOT NULL""")
+                       "e2 ENUM('a','b') NOT NULL")
         self.assert_eq(colspec(enum_table.c.e3),
-                       """e3 ENUM("a",'b')""")
+                       "e3 ENUM('a','b')")
         self.assert_eq(colspec(enum_table.c.e4),
-                       """e4 ENUM("a",'b') NOT NULL""")
+                       "e4 ENUM('a','b') NOT NULL")
         enum_table.drop(checkfirst=True)
         enum_table.create()
 
@@ -594,11 +594,8 @@ class TypesTest(AssertMixin):
         m2 = MetaData(testbase.db)
         rt = Table('mysql_types', m2, autoload=True)
 
-        #print
         expected = [len(c) > 1 and c[1] or c[0] for c in specs]
         for i, reflected in enumerate(rt.c):
-            #print (reflected, specs[i][0], '->',
-            #       reflected.type, '==', expected[i])
             assert isinstance(reflected.type, type(expected[i]))
 
         m.drop_all()
