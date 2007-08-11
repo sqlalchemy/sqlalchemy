@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import re, warnings, operator
+import re, warnings, operator, random
 
 from sqlalchemy import util, sql, schema, ansisql, exceptions, logging
 from sqlalchemy.engine import default, base
@@ -210,10 +210,11 @@ class OracleExecutionContext(default.DefaultExecutionContext):
         return base.ResultProxy(self)
 
 class OracleDialect(ansisql.ANSIDialect):
-    def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, **kwargs):
+    def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, **kwargs):
         ansisql.ANSIDialect.__init__(self, default_paramstyle='named', **kwargs)
         self.use_ansi = use_ansi
         self.threaded = threaded
+        self.allow_twophase = allow_twophase
         self.supports_timestamp = self.dbapi is None or hasattr(self.dbapi, 'TIMESTAMP' )
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
@@ -258,7 +259,8 @@ class OracleDialect(ansisql.ANSIDialect):
             user=url.username,
             password=url.password,
             dsn = dsn,
-            threaded = self.threaded
+            threaded = self.threaded,
+            twophase = self.allow_twophase,
             )
         opts.update(url.query)
         util.coerce_kw_type(opts, 'use_ansi', bool)
@@ -280,10 +282,34 @@ class OracleDialect(ansisql.ANSIDialect):
         else:
             return "rowid"
 
+    def create_xid(self):
+        """create a two-phase transaction ID.
+
+        this id will be passed to do_begin_twophase(), do_rollback_twophase(),
+        do_commit_twophase().  its format is unspecified."""
+
+        id = random.randint(0,2**128)
+        return (0x1234, "%032x" % 9, "%032x" % id)
+
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT
         pass
 
+    def do_begin_twophase(self, connection, xid):
+        connection.connection.begin(*xid)
+        
+    def do_prepare_twophase(self, connection, xid):
+        connection.connection.prepare()
+        
+    def do_rollback_twophase(self, connection, xid, is_prepared=True, recover=False):
+        self.do_rollback(connection.connection)
+
+    def do_commit_twophase(self, connection, xid, is_prepared=True, recover=False):
+        self.do_commit(connection.connection)
+
+    def do_recover_twophase(self, connection):
+        pass
+        
     def create_execution_context(self, *args, **kwargs):
         return OracleExecutionContext(self, *args, **kwargs)
 

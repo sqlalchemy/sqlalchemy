@@ -7,7 +7,7 @@
 """Provide default implementations of per-dialect sqlalchemy.engine classes"""
 
 from sqlalchemy import schema, exceptions, sql, types, util
-import sys, re
+import sys, re, random
 from sqlalchemy.engine import base
 
 
@@ -87,6 +87,14 @@ class DefaultDialect(base.Dialect):
 
         #print "ENGINE COMMIT ON ", connection.connection
         connection.commit()
+    
+    def create_xid(self):
+        """create a two-phase transaction ID.
+        
+        this id will be passed to do_begin_twophase(), do_rollback_twophase(),
+        do_commit_twophase().  its format is unspecified."""
+        
+        return "_sa_%032x" % random.randint(0,2**128)
         
     def do_savepoint(self, connection, name):
         connection.execute(sql.SavepointClause(name))

@@ -203,6 +203,14 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def create_xid(self):
+        """create a two-phase transaction ID.
+
+        this id will be passed to do_begin_twophase(), do_rollback_twophase(),
+        do_commit_twophase().  its format is unspecified."""
+
+        raise NotImplementedError()
+
     def do_commit(self, connection):
         """Provide an implementation of *connection.commit()*, given a DBAPI connection."""
 
@@ -606,7 +614,7 @@ class Connection(Connectable):
         if self.__transaction is not None:
             raise exceptions.InvalidRequestError("Cannot start a two phase transaction when a transaction is already started.")
         if xid is None:
-            xid = "_sa_%032x" % random.randint(0,2**128)
+            xid = self.__engine.dialect.create_xid();
         self.__transaction = TwoPhaseTransaction(self, xid)
         return self.__transaction
         

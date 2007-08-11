@@ -173,7 +173,7 @@ class TransactionTest(PersistTest):
         )
         connection.close()
     
-    @testing.supported('postgres', 'mysql', 'oracle')
+    @testing.supported('postgres', 'mysql')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testtwophasetransaction(self):
         connection = testbase.db.connect()
