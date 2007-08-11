@@ -3113,17 +3113,15 @@ class Select(_SelectBaseMixin, FromClause):
 
         _SelectBaseMixin.__init__(self, **kwargs)
 
-    def _get_display_froms(self, correlation_state=None):
+    def _get_display_froms(self, existing_froms=None):
         """return the full list of 'from' clauses to be displayed.
         
-        takes into account an optional 'correlation_state' 
-        dictionary which contains information about this Select's
-        correlation to an enclosing select, which may cause some 'from'
-        clauses to not display in this Select's FROM clause.  
-        this dictionary is generated during compile time by the 
-        _calculate_correlations() method.  
-        
+        takes into account a set of existing froms which
+        may be rendered in the FROM clause of enclosing selects;
+        this Select may want to leave those absent if it is automatically
+        correlating.
         """
+
         froms = util.OrderedSet()
         hide_froms = util.Set()
         
@@ -3150,8 +3148,8 @@ class Select(_SelectBaseMixin, FromClause):
         
         if len(froms) > 1:
             corr = self.__correlate
-            if correlation_state is not None:
-                corr = correlation_state[self].get('correlate', util.Set()).union(corr)
+            if self._should_correlate and existing_froms is not None:
+                corr = existing_froms.union(corr)
             f = froms.difference(corr)
             if len(f) == 0:
                 raise exceptions.InvalidRequestError("Select statement '%s' is overcorrelated; returned no 'from' clauses" % str(self.__dont_correlate()))
@@ -3178,78 +3176,6 @@ class Select(_SelectBaseMixin, FromClause):
             for f in elem._get_from_objects():
                 froms.add(f)
         return froms
-        
-    def _calculate_correlations(self, correlation_state):
-        """generate a 'correlation_state' dictionary used by the _get_display_froms() method.
-        
-        The dictionary is passed in initially empty, or already 
-        containing the state information added by an enclosing 
-        Select construct.  The method will traverse through all 
-        embedded Select statements and add information about their 
-        position and "from" objects to the dictionary.  Those Select 
-        statements will later consult the 'correlation_state' dictionary 
-        when their list of 'FROM' clauses are generated using their 
-        _get_display_froms() method.
-        """
-        
-        if self not in correlation_state:
-            correlation_state[self] = {}
-
-        display_froms = self._get_display_froms(correlation_state)
-        
-        class CorrelatedVisitor(NoColumnVisitor):
-            def __init__(self, is_where=False, is_column=False, is_from=False):
-                self.is_where = is_where
-                self.is_column = is_column
-                self.is_from = is_from
-                
-            def visit_compound_select(self, cs):
-                self.visit_select(cs)
-
-            def visit_select(s, select):
-                if select not in correlation_state:
-                    correlation_state[select] = {}
-                    
-                if select is self:
-                    return
-                    
-                select_state = correlation_state[select]
-                if s.is_from:
-                    select_state['is_selected_from'] = True
-                if s.is_where:
-                    select_state['is_where'] = True
-                select_state['is_subquery'] = True
-
-                if select._should_correlate:
-                    corr = select_state.setdefault('correlate', util.Set())
-                    # not crazy about this part.  need to be clearer on what elements in the
-                    # subquery correspond to elements in the enclosing query.
-                    for f in display_froms:
-                        corr.add(f)
-                        for f2 in f._get_from_objects():
-                            corr.add(f2)
-        
-        col_vis = CorrelatedVisitor(is_column=True)
-        where_vis = CorrelatedVisitor(is_where=True)
-        from_vis = CorrelatedVisitor(is_from=True)
-    
-        for col in self._raw_columns:
-            col_vis.traverse(col)
-            for f in col._get_from_objects():
-                if f is not self:
-                    from_vis.traverse(f)
-
-        for col in list(self._order_by_clause) + list(self._group_by_clause):
-            col_vis.traverse(col)
-            
-        if self._whereclause is not None:
-            where_vis.traverse(self._whereclause)
-            for f in self._whereclause._get_from_objects(is_where=True):
-                if f is not self:
-                    from_vis.traverse(f)
-                
-        for elem in self._froms:
-            from_vis.traverse(elem)
 
     def _get_inner_columns(self):
         for c in self._raw_columns:
@@ -3439,24 +3365,6 @@ class _UpdateBase(ClauseElement):
     def supports_execution(self):
         return True
 
-    def _calculate_correlations(self, correlate_state):
-        class SelectCorrelator(NoColumnVisitor):
-            def visit_select(s, select):
-                if select._should_correlate:
-                    select_state = correlate_state.setdefault(select, {})
-                    corr = select_state.setdefault('correlate', util.Set())
-                    corr.add(self.table)
-                    
-        vis = SelectCorrelator()
-        
-        if self._whereclause is not None:
-            vis.traverse(self._whereclause)
-        
-        if getattr(self, 'parameters', None) is not None:
-            for key, value in self.parameters.items():
-                if isinstance(value, ClauseElement):
-                    vis.traverse(value)
-                
     def _process_colparams(self, parameters):
         """Receive the *values* of an ``INSERT`` or ``UPDATE``
         statement and construct appropriate bind parameters.
