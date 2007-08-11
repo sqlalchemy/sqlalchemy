@@ -74,53 +74,6 @@ class SchemaItem(object):
             m = self._derived_metadata()
             return m and m.bind or None
 
-    def _set_casing_strategy(self, kwargs, keyname='case_sensitive'):
-        """Set the "case_sensitive" argument sent via keywords to the item's constructor.
-
-        For the purposes of Table's 'schema' property, the name of the
-        variable is optionally configurable.
-        """
-        setattr(self, '_%s_setting' % keyname, kwargs.pop(keyname, None))
-
-    def _determine_case_sensitive(self, keyname='case_sensitive'):
-        """Determine the `case_sensitive` value for this item.
-
-        For the purposes of Table's `schema` property, the name of the
-        variable is optionally configurable.
-
-        A local non-None value overrides all others.  After that, the
-        parent item (i.e. ``Column`` for a ``Sequence``, ``Table`` for
-        a ``Column``, ``MetaData`` for a ``Table``) is searched for a
-        non-None setting, traversing each parent until none are found.
-        finally, case_sensitive is set to True as a default.
-        """
-
-        local = getattr(self, '_%s_setting' % keyname, None)
-        if local is not None:
-            return local
-        parent = self
-        while parent is not None:
-            parent = parent._get_parent()
-            if parent is not None:
-                parentval = getattr(parent, '_case_sensitive_setting', None)
-                if parentval is not None:
-                    return parentval
-        return True
-
-    def _get_case_sensitive(self):
-        """late-compile the 'case-sensitive' setting when first accessed.
-        
-        typically the SchemaItem will be assembled into its final structure
-        of other SchemaItems at this point, whereby it can attain this setting 
-        from its containing SchemaItem if not defined locally.
-        """
-        
-        try:
-            return self.__case_sensitive
-        except AttributeError:
-            self.__case_sensitive = self._determine_case_sensitive()
-            return self.__case_sensitive
-    case_sensitive = property(_get_case_sensitive)
 
     metadata = property(lambda s:s._derived_metadata())
     bind = property(lambda s:s._get_bind())
@@ -270,13 +223,6 @@ class Table(SchemaItem, sql.TableClause):
             the database. This flag overrides all other quoting
             behavior.
 
-          case_sensitive
-            Defaults to True: indicates quoting should be used if the
-            identifier contains mixed case.
-
-          case_sensitive_schema
-            Defaults to True: indicates quoting should be used if the
-            identifier contains mixed case.
         """
         super(Table, self).__init__(name)
         self._metadata = metadata
@@ -294,9 +240,6 @@ class Table(SchemaItem, sql.TableClause):
             self.fullname = self.name
         self.owner = kwargs.pop('owner', None)
 
-        self._set_casing_strategy(kwargs)
-        self._set_casing_strategy(kwargs, keyname='case_sensitive_schema')
-
         if len([k for k in kwargs if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
             raise TypeError("Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
 
@@ -309,14 +252,6 @@ class Table(SchemaItem, sql.TableClause):
         # override FromClause's collection initialization logic; TableClause and Table
         # implement it differently
         pass
-
-    def _get_case_sensitive_schema(self):
-        try:
-            return getattr(self, '_case_sensitive_schema')
-        except AttributeError:
-            setattr(self, '_case_sensitive_schema', self._determine_case_sensitive(keyname='case_sensitive_schema'))
-            return getattr(self, '_case_sensitive_schema')
-    case_sensitive_schema = property(_get_case_sensitive_schema)
 
     def _set_primary_key(self, pk):
         if getattr(self, '_primary_key', None) in self.constraints:
@@ -505,9 +440,6 @@ class Column(SchemaItem, sql._ColumnClause):
             as dialects can auto-detect conditions where quoting is
             required.
 
-          case_sensitive
-            Defaults to True: indicates quoting should be used if the
-            identifier contains mixed case.
         """
 
         super(Column, self).__init__(name, None, type_)
@@ -520,7 +452,6 @@ class Column(SchemaItem, sql._ColumnClause):
         self.index = kwargs.pop('index', None)
         self.unique = kwargs.pop('unique', None)
         self.quote = kwargs.pop('quote', False)
-        self._set_casing_strategy(kwargs)
         self.onupdate = kwargs.pop('onupdate', None)
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = util.Set()
@@ -616,7 +547,7 @@ class Column(SchemaItem, sql._ColumnClause):
         This is used in ``Table.tometadata``.
         """
 
-        return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, case_sensitive=self._case_sensitive_setting, quote=self.quote, index=self.index, *[c.copy() for c in self.constraints])
+        return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, quote=self.quote, index=self.index, *[c.copy() for c in self.constraints])
 
     def _make_proxy(self, selectable, name = None):
         """Create a *proxy* for this column.
@@ -638,13 +569,6 @@ class Column(SchemaItem, sql._ColumnClause):
         [c._init_items(f) for f in fk]
         return c
 
-
-    def _case_sens(self):
-        """Redirect the `case_sensitive` accessor to use the ultimate
-        parent column which created this one."""
-
-        return self.__originating_column._get_case_sensitive()
-    case_sensitive = property(_case_sens, lambda s,v:None)
 
     def get_children(self, schema_visitor=False, **kwargs):
         if schema_visitor:
@@ -852,7 +776,6 @@ class Sequence(DefaultGenerator):
         self.increment = increment
         self.optional=optional
         self.quote = quote
-        self._set_casing_strategy(kwargs)
 
     def __repr__(self):
         return "Sequence(%s)" % ', '.join(
@@ -1109,7 +1032,7 @@ class MetaData(SchemaItem):
 
     __visit_name__ = 'metadata'
     
-    def __init__(self, bind=None, reflect=False, case_sensitive=None):
+    def __init__(self, bind=None, reflect=False):
         """Create a new MetaData object.
             
         bind
@@ -1123,13 +1046,9 @@ class MetaData(SchemaItem):
           set.  For finer control over loaded tables, use the ``reflect``
           method of ``MetaData``.
 
-        case_sensitive
-          A default case sensitive setting for all contained objects.
-          Defaults to sensitive.
         """        
 
         self.tables = {}
-        self._set_casing_strategy({'case_sensitive': case_sensitive})
         self.bind = bind
         if reflect:
             if not bind:
@@ -1144,12 +1063,10 @@ class MetaData(SchemaItem):
         return key in self.tables
         
     def __getstate__(self):
-        return {'tables': self.tables,
-                'casesensitive': self._case_sensitive_setting}
+        return {'tables': self.tables}
 
     def __setstate__(self, state):
         self.tables = state['tables']
-        self._case_sensitive_setting = state['casesensitive']
         self._bind = None
         
     def is_bound(self):

@@ -2577,7 +2577,6 @@ class Alias(FromClause):
             alias = '{ANON %d %s}' % (id(self), alias or 'anon')
         self.name = alias
         self.encodedname = alias.encode('ascii', 'backslashreplace')
-        self.case_sensitive = getattr(baseselectable, "case_sensitive", True)
 
     def is_derived_from(self, fromclause):
         x = self.selectable
@@ -2697,7 +2696,6 @@ class _Label(ColumnElement):
         self.name = name or "{ANON %d %s}" % (id(self), getattr(obj, 'name', 'anon'))
 
         self.obj = obj.self_group(against=Operators.as_)
-        self.case_sensitive = getattr(obj, "case_sensitive", True)
         self.type = sqltypes.to_instance(type_ or getattr(obj, 'type', None))
 
     key = property(lambda s: s.name)
@@ -2743,11 +2741,6 @@ class _ColumnClause(ColumnElement):
         ``TypeEngine`` object which can associate this ``_ColumnClause`` 
         with a type.
       
-      case_sensitive
-        defines whether identifier quoting rules will be applied to the
-        generated text of this ``_ColumnClause`` so that it is identified in
-        a case-sensitive manner.
-      
       is_literal
         if True, the ``_ColumnClause`` is assumed to be an exact expression
         that will be delivered to the output with no quoting rules applied
@@ -2756,7 +2749,7 @@ class _ColumnClause(ColumnElement):
     
     """
 
-    def __init__(self, text, selectable=None, type_=None, _is_oid=False, case_sensitive=True, is_literal=False):
+    def __init__(self, text, selectable=None, type_=None, _is_oid=False, is_literal=False):
         self.key = self.name = text
         self.encodedname = isinstance(self.name, unicode) and self.name.encode('ascii', 'backslashreplace') or self.name
         self.table = selectable
@@ -2764,7 +2757,6 @@ class _ColumnClause(ColumnElement):
         self._is_oid = _is_oid
         self._distance = 0
         self.__label = None
-        self.case_sensitive = case_sensitive
         self.is_literal = is_literal
     
     def _clone(self):

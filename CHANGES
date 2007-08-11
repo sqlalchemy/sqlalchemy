@@ -183,7 +183,13 @@
   - all "type" keyword arguments, such as those to bindparam(), column(),
     Column(), and func.<something>(), renamed to "type_".  those objects
     still name their "type" attribute as "type".
-    
+  
+  - case_sensitive=(True|False) setting removed from schema items, since
+    checking this state added a lot of method call overhead and there was
+    no decent reason to ever set it to False.  Table and column names which are 
+    all lower case will be treated as case-insenstive (yes we adjust for 
+    Oracle's UPPERCASE style too).
+        
   - transactions:
     - added context manager (with statement) support for transactions
     - added support for two phase commit, works with mysql and postgres so far.
@@ -289,6 +295,7 @@
     - table reflection can now be performed in as little as one round-trip
     - ANSI and ANSI_QUOTES sql modes are now supported
     - indexes are now reflected
+    
 - postgres
   - Added PGArray datatype for using postgres array datatypes
 

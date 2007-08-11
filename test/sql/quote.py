@@ -67,18 +67,6 @@ class QuoteTest(PersistTest):
         print res2
         assert(res2==[(1,2,3),(2,2,3),(4,3,2)])
     
-    def testcascade(self):
-        lcmetadata = MetaData(case_sensitive=False)
-        t1 = Table('SomeTable', lcmetadata, 
-            Column('UcCol', Integer),
-            Column('normalcol', String))
-        t2 = Table('othertable', lcmetadata,
-            Column('UcCol', Integer),
-            Column('normalcol', String, ForeignKey('SomeTable.normalcol')))
-        assert lcmetadata.case_sensitive is False
-        assert t1.c.UcCol.case_sensitive is False
-        assert t2.c.normalcol.case_sensitive is False
-   
     @testing.unsupported('oracle') 
     def testlabels(self):
         """test the quoting of labels.
@@ -108,37 +96,6 @@ class QuoteTest(PersistTest):
         x = x.select()
         assert str(x) == '''SELECT "SomeLabel" \nFROM (SELECT 'FooCol' AS "SomeLabel" \nFROM "ImATable")'''
    
-    # oracle doesn't support non-case-sensitive until ticket #726 is fixed 
-    @testing.unsupported('oracle')    
-    def testlabelsnocase(self):
-        metadata = MetaData()
-        table1 = Table('SomeCase1', metadata,
-            Column('lowercase', Integer, primary_key=True),
-            Column('UPPERCASE', Integer),
-            Column('MixedCase', Integer))
-        table2 = Table('SomeCase2', metadata,
-            Column('id', Integer, primary_key=True, key='d123'),
-            Column('col2', Integer, key='u123'),
-            Column('MixedCase', Integer))
-        
-        # first test case sensitive tables migrating via tometadata
-        meta = MetaData(testbase.db, case_sensitive=False)
-        lc_table1 = table1.tometadata(meta)
-        lc_table2 = table2.tometadata(meta)
-        assert lc_table1.case_sensitive is False
-        assert lc_table1.c.UPPERCASE.case_sensitive is False
-        s = lc_table1.select()
-        assert hasattr(s.c.UPPERCASE, "case_sensitive")
-        assert s.c.UPPERCASE.case_sensitive is False
-        
-        # now, the aliases etc. should be case-insensitive.  PG will screw up if this doesnt work.
-        # also, if this test is run in the context of the other tests, we also test that the dialect properly
-        # caches identifiers with "case_sensitive" and "not case_sensitive" separately.
-        meta.create_all()
-        try:
-            x = lc_table1.select(distinct=True).alias("lala").select().scalar()
-        finally:
-            meta.drop_all()
 
 class PreparerTest(PersistTest):
     """Test the db-agnostic quoting services of ANSIIdentifierPreparer."""

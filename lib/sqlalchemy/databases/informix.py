@@ -499,7 +499,7 @@ class InfoIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def _fold_identifier_case(self, value):
         return value.lower()
     
-    def _requires_quotes(self, value, case_sensitive):
+    def _requires_quotes(self, value):
         return False
 
 class InfoSchemaDroper(ansisql.ANSISchemaDropper):

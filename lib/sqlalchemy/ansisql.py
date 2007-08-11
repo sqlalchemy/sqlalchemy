@@ -1013,35 +1013,34 @@ class ANSIIdentifierPreparer(object):
     def _illegal_initial_characters(self):
         return ILLEGAL_INITIAL_CHARACTERS
 
-    def _requires_quotes(self, value, case_sensitive):
+    def _requires_quotes(self, value):
         """Return True if the given identifier requires quoting."""
         return \
             value in self._reserved_words() \
             or (value[0] in self._illegal_initial_characters()) \
             or bool(len([x for x in unicode(value) if x not in self._legal_characters()])) \
-            or (case_sensitive and value.lower() != value)
+            or (value.lower() != value)
 
     def __generic_obj_format(self, obj, ident):
         if getattr(obj, 'quote', False):
             return self.quote_identifier(ident)
         if self.dialect.cache_identifiers:
-            case_sens = getattr(obj, 'case_sensitive', None)
             try:
-                return self.__strings[(ident, case_sens)]
+                return self.__strings[ident]
             except KeyError:
-                if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident == ident.lower())):
-                    self.__strings[(ident, case_sens)] = self.quote_identifier(ident)
+                if self._requires_quotes(ident):
+                    self.__strings[ident] = self.quote_identifier(ident)
                 else:
-                    self.__strings[(ident, case_sens)] = ident
-                return self.__strings[(ident, case_sens)]
+                    self.__strings[ident] = ident
+                return self.__strings[ident]
         else:
-            if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident == ident.lower())):
+            if self._requires_quotes(ident):
                 return self.quote_identifier(ident)
             else:
                 return ident
 
     def should_quote(self, object):
-        return object.quote or self._requires_quotes(object.name, object.case_sensitive)
+        return object.quote or self._requires_quotes(object.name)
 
     def format_sequence(self, sequence):
         return self.__generic_obj_format(sequence, sequence.name)
