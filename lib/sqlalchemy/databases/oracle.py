@@ -280,11 +280,18 @@ class OracleDialect(ansisql.ANSIDialect):
         else:
             return "rowid"
 
+    def do_release_savepoint(self, connection, name):
+        # Oracle does not support RELEASE SAVEPOINT
+        pass
+
     def create_execution_context(self, *args, **kwargs):
         return OracleExecutionContext(self, *args, **kwargs)
 
     def compiler(self, statement, bindparams, **kwargs):
         return OracleCompiler(self, statement, bindparams, **kwargs)
+
+    def preparer(self):
+        return OracleIdentifierPreparer(self)
 
     def schemagenerator(self, *args, **kwargs):
         return OracleSchemaGenerator(self, *args, **kwargs)
@@ -662,4 +669,10 @@ class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
     def visit_sequence(self, seq):
         return self.connection.execute("SELECT " + self.dialect.identifier_preparer.format_sequence(seq) + ".nextval FROM DUAL").scalar()
 
+class OracleIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+    def format_savepoint(self, savepoint):
+        name = re.sub(r'^_+', '', savepoint.ident)
+        return super(OracleIdentifierPreparer, self).format_savepoint(savepoint, name)
+
+    
 dialect = OracleDialect

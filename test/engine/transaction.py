@@ -173,7 +173,7 @@ class TransactionTest(PersistTest):
         )
         connection.close()
     
-    @testing.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql', 'oracle')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testtwophasetransaction(self):
         connection = testbase.db.connect()
@@ -301,7 +301,7 @@ class TLTransactionTest(PersistTest):
         tlengine = create_engine(testbase.db.url, strategy='threadlocal')
         metadata = MetaData()
         users = Table('query_users', metadata,
-            Column('user_id', INT, primary_key = True),
+            Column('user_id', INT, Sequence('query_users_id_seq', optional=True), primary_key=True),
             Column('user_name', VARCHAR(20)),
             test_needs_acid=True,
         )

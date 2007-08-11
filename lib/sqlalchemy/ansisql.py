@@ -745,13 +745,13 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         return text
         
     def visit_savepoint(self, savepoint_stmt):
-        return "SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt.ident)
+        return "SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt)
 
     def visit_rollback_to_savepoint(self, savepoint_stmt):
-        return "ROLLBACK TO SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt.ident)
+        return "ROLLBACK TO SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt)
     
     def visit_release_savepoint(self, savepoint_stmt):
-        return "RELEASE SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt.ident)
+        return "RELEASE SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt)
     
     def __str__(self):
         return self.string
@@ -1052,8 +1052,8 @@ class ANSIIdentifierPreparer(object):
     def format_alias(self, alias, name=None):
         return self.__generic_obj_format(alias, name or alias.name)
 
-    def format_savepoint(self, savepoint):
-        return self.__generic_obj_format(savepoint, savepoint)
+    def format_savepoint(self, savepoint, name=None):
+        return self.__generic_obj_format(savepoint, name or savepoint.ident)
 
     def format_constraint(self, constraint):
         return self.__generic_obj_format(constraint, constraint.name)
