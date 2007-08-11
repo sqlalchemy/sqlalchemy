@@ -22,11 +22,6 @@ class DefaultDialect(base.Dialect):
         self.dbapi = dbapi
         self._figure_paramstyle(paramstyle=paramstyle, default=default_paramstyle)
     
-    def decode_result_columnname(self, name):
-        """decode a name found in cursor.description to a unicode object."""
-        
-        return name.decode(self.encoding)
-        
     def dbapi_type_map(self):
         # most DBAPIs have problems with this (such as, psycocpg2 types 
         # are unhashable).  So far Oracle can return it.
