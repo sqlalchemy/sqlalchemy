@@ -1183,7 +1183,8 @@ class ResultProxy(object):
                 rec = (type, type.dialect_impl(self.dialect), i)
 
                 if rec[0] is None:
-                    raise exceptions.DBAPIError("None for metadata " + colname)
+                    raise exceptions.InvalidRequestError(
+                        "None for metadata " + colname)
                 if self.__props.setdefault(colname.lower(), rec) is not rec:
                     self.__props[colname.lower()] = (type, ResultProxy.AmbiguousColumn(colname), 0)
                 self.__keys.append(colname)

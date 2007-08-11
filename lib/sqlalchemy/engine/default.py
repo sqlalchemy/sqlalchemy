@@ -136,7 +136,8 @@ class DefaultDialect(base.Dialect):
             # to appropriate character upon compilation
             self.positional = True
         else:
-            raise exceptions.DBAPIError("Unsupported paramstyle '%s'" % self._paramstyle)
+            raise exceptions.InvalidRequestError(
+                "Unsupported paramstyle '%s'" % self._paramstyle)
 
     def _get_ischema(self):
         if self._ischema is None:

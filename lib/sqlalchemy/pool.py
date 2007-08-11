@@ -241,6 +241,8 @@ class _ConnectionRecord(object):
             self.connection.close()
         except Exception, e:
             self.__pool.log("Connection %s threw an error on close: %s" % (repr(self.connection), str(e)))
+            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+                raise
 
     def __connect(self):
         try:
@@ -371,6 +373,8 @@ class _ConnectionFairy(object):
             except Exception, e:
                 if self._connection_record is not None:
                     self._connection_record.invalidate(e=e)
+                if isinstance(e, (SystemExit, KeyboardInterrupt)):
+                    raise
         if self._connection_record is not None:
             if self._pool.echo:
                 self._pool.log("Connection %s being returned to pool" % repr(self.connection))
@@ -394,6 +398,8 @@ class _CursorFairy(object):
             self.cursor.close()
         except Exception, e:
             self.__parent._logger.warn("Error closing cursor: " + str(e))
+            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+                raise
 
     def __getattr__(self, key):
         return getattr(self.cursor, key)
@@ -432,8 +438,11 @@ class SingletonThreadPool(Pool):
         for key, conn in self._conns.items():
             try:
                 conn.close()
+            except (SystemExit, KeyboardInterrupt):
+                raise
             except:
-                # sqlite won't even let you close a conn from a thread that didn't create it
+                # sqlite won't even let you close a conn from a thread 
+                # that didn't create it
                 pass
             del self._conns[key]
 
