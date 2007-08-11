@@ -47,6 +47,7 @@ ILLEGAL_INITIAL_CHARACTERS = util.Set(string.digits + '$')
 
 BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
 BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
+ANONYMOUS_LABEL = re.compile(r'{ANON (-?\d+) (.*)}')
 
 OPERATORS =  {
     operator.and_ : 'AND',
@@ -447,8 +448,9 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
     def _truncated_identifier(self, ident_class, name):
         if (ident_class, name) in self.generated_ids:
             return self.generated_ids[(ident_class, name)]
-            
-        anonname = self._anonymize(name)
+        
+        anonname = ANONYMOUS_LABEL.sub(self._process_anon, name)
+
         if len(anonname) > self.dialect.max_identifier_length():
             counter = self.generated_ids.get(ident_class, 1)
             truncname = name[0:self.dialect.max_identifier_length() - 6] + "_" + hex(counter)[2:]
@@ -457,19 +459,20 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
             truncname = anonname
         self.generated_ids[(ident_class, name)] = truncname
         return truncname
+
+    def _process_anon(self, match):
+        (ident, derived) = match.group(1,2)
+        if ('anonymous', ident) in self.generated_ids:
+            return self.generated_ids[('anonymous', ident)]
+        else:
+            anonymous_counter = self.generated_ids.get('anonymous', 1)
+            newname = derived + "_" + str(anonymous_counter)
+            self.generated_ids['anonymous'] = anonymous_counter + 1
+            self.generated_ids[('anonymous', ident)] = newname
+            return newname
     
     def _anonymize(self, name):
-        def anon(match):
-            (ident, derived) = match.group(1,2)
-            if ('anonymous', ident) in self.generated_ids:
-                return self.generated_ids[('anonymous', ident)]
-            else:
-                anonymous_counter = self.generated_ids.get('anonymous', 1)
-                newname = derived + "_" + str(anonymous_counter)
-                self.generated_ids['anonymous'] = anonymous_counter + 1
-                self.generated_ids[('anonymous', ident)] = newname
-                return newname
-        return re.sub(r'{ANON (-?\d+) (.*)}', anon, name)
+        return ANONYMOUS_LABEL.sub(self._process_anon, name)
             
     def bindparam_string(self, name):
         return self.bindtemplate % name

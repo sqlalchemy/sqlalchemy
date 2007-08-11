@@ -2577,7 +2577,7 @@ class Alias(FromClause):
             alias = '{ANON %d %s}' % (id(self), alias or 'anon')
         self.name = alias
         self.encodedname = alias.encode('ascii', 'backslashreplace')
-
+        
     def is_derived_from(self, fromclause):
         x = self.selectable
         while True:
@@ -2780,7 +2780,7 @@ class _ColumnClause(ColumnElement):
             if self.table is not None and self.table.named_with_column():
                 self.__label = self.table.name + "_" + self.name
                 counter = 1
-                while self.table.c.has_key(self.__label):
+                while self.__label in self.table.c:
                     self.__label = self.__label + "_%d" % counter
                     counter += 1
             else:
@@ -2837,7 +2837,7 @@ class TableClause(FromClause):
         self.encodedname = self.name.encode('ascii', 'backslashreplace')
         self._oid_column = _ColumnClause('oid', self, _is_oid=True)
         self._export_columns(columns)
-
+        
     def _clone(self):
         # TableClause is immutable
         return self
