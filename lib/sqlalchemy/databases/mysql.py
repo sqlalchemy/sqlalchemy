@@ -62,6 +62,25 @@ time::
   Table('mytable', metadata, autoload=True,
         ForeignKeyConstraint(['other_id'], ['othertable.other_id']))
 
+When creating tables, SQLAlchemy will automatically set AUTO_INCREMENT on an
+integer primary key column::
+
+  >>> t = Table('mytable', metadata,
+  ...   Column('mytable_id', Integer, primary_key=True))
+  >>> t.create()
+  CREATE TABLE mytable (
+          id INTEGER NOT NULL AUTO_INCREMENT, 
+          PRIMARY KEY (id)
+  )
+
+You can disable this behavior by supplying ``autoincrement=False`` in addition.
+This can also be used to enable auto-increment on a secondary column in a
+multi-column key for some storage engines::
+
+  Table('mytable', metadata,
+        Column('gid', Integer, primary_key=True, autoincrement=False),
+        Column('id', Integer, primary_key=True))
+
 MySQL SQL modes are supported.  Modes that enable ``ANSI_QUOTE`` (such as
 ``ANSI``) require an engine option to modify SQLAlchemy's quoting style.
 When using an ANSI-quoting mode, supply ``use_ansiquotes=True`` when
