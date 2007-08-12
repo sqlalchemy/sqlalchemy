@@ -100,7 +100,7 @@ Or more commonly, just pull in the names you'll need:
 
     {python}
     from sqlalchemy import create_engine, MetaData, Table, Column, types
-    from sqlalchemy.orm import mapper, relation, backref, create_session()
+    from sqlalchemy.orm import mapper, relation, backref, create_session
 
 ### BoundMetaData is now MetaData {@name=metadata}
 
@@ -118,7 +118,7 @@ The `BoundMetaData` name is removed.  Now, you just use `MetaData`.  Additionall
     
 Additionally, `DynamicMetaData` is now known as `ThreadLocalMetaData`.
 
-### Some existing select() methods become genreative {@name=generative}
+### Some existing select() methods become generative {@name=generative}
 
 The methods `correlate()`, `order_by()`, and `group_by()` on the `select()` construct now return a **new** select object, and do not change the original one.  Additionally, the generative methods `where()`, `column()`, `distinct()`, and several others have been added:
 
