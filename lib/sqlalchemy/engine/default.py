@@ -11,7 +11,9 @@ import sys, re, random
 from sqlalchemy.engine import base
 
 
-AUTOCOMMIT_REGEXP = re.compile(r'UPDATE|INSERT|CREATE|DELETE|DROP|ALTER', re.I)
+AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
+                               re.I | re.UNICODE)
+SELECT_REGEXP = re.compile(r'\s*SELECT', re.I | re.UNICODE)
 
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
@@ -225,7 +227,7 @@ class DefaultExecutionContext(base.ExecutionContext):
     def is_select(self):
         """return TRUE if the statement is expected to have result rows."""
         
-        return re.match(r'SELECT', self.statement.lstrip(), re.I) is not None
+        return SELECT_REGEXP.match(self.statement)
 
     def create_cursor(self):
         return self._connection.connection.cursor()
@@ -240,7 +242,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self.get_result_proxy()
 
     def should_autocommit(self):
-        return AUTOCOMMIT_REGEXP.match(self.statement.lstrip())
+        return AUTOCOMMIT_REGEXP.match(self.statement)
             
     def pre_exec(self):
         self._process_defaults()

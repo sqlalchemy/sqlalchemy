@@ -183,6 +183,12 @@ RESERVED_WORDS = util.Set(
      'read_only', 'read_write', # 5.1
      ])
 
+AUTOCOMMIT_RE = re.compile(
+    r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|LOAD +DATA)',
+    re.I | re.UNICODE)
+SELECT_RE = re.compile(
+    r'\s*(?:SELECT|SHOW|DESCRIBE|XA RECOVER)',
+    re.I | re.UNICODE)
 
 class _NumericType(object):
     """Base for MySQL numeric types."""
@@ -1274,7 +1280,7 @@ def descriptor():
 
 
 class MySQLExecutionContext(default.DefaultExecutionContext):
-    _my_is_select = re.compile(r'\s*(?:SELECT|SHOW|DESCRIBE|XA RECOVER)',
+    _my_is_select = re.compile(r'\s*(?:SELECT|SHOW|DESCRIBE|XA +RECOVER)',
                                re.I | re.UNICODE)
 
     def post_exec(self):
@@ -1285,7 +1291,10 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
                                            self._last_inserted_ids[1:])
             
     def is_select(self):
-        return self._my_is_select.match(self.statement) is not None
+        return SELECT_RE.match(self.statement)
+
+    def should_autocommit(self):
+        return AUTOCOMMIT_RE.match(self.statement)
 
 
 class MySQLDialect(ansisql.ANSIDialect):

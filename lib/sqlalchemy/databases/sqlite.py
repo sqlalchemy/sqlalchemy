@@ -13,6 +13,8 @@ import sqlalchemy.types as sqltypes
 import datetime,time, warnings
 import sqlalchemy.util as util
 
+
+SELECT_REGEXP = re.compile(r'\s*(?:SELECT|PRAGMA)', re.I | re.UNICODE)
     
 class SLNumeric(sqltypes.Numeric):
     def get_col_spec(self):
@@ -153,7 +155,7 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
                 self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
 
     def is_select(self):
-        return re.match(r'SELECT|PRAGMA', self.statement.lstrip(), re.I) is not None
+        return SELECT_REGEXP.match(self.statement)
         
 class SQLiteDialect(ansisql.ANSIDialect):
     
