@@ -51,6 +51,8 @@ class ShardTest(PersistTest):
         self.setup_mappers()
         
     def tearDownAll(self):
+        for db in (db1, db2, db3, db4):
+            db.connect().invalidate()        
         for i in range(1,5):
             os.remove("shard%d.db" % i)
 
