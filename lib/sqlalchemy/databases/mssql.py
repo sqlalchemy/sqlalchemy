@@ -44,6 +44,7 @@ import datetime, random, warnings, re
 from sqlalchemy import sql, schema, ansisql, exceptions
 import sqlalchemy.types as sqltypes
 from sqlalchemy.engine import default
+import operator
     
 class MSNumeric(sqltypes.Numeric):
     def convert_result_value(self, value, dialect):
