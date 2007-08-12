@@ -225,10 +225,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         if stack:
             self.stack.append(stack)
         try:
-            x = self.traverse_single(obj, **kwargs)
-            if x is None:
-                raise "hi " + repr(obj)
-            return x
+            return self.traverse_single(obj, **kwargs)
         finally:
             if stack:
                 self.stack.pop(-1)
@@ -383,12 +380,23 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
             return ".".join(func.packagenames + [func.name]) + (not func.group and " " or "") + self.process(func.clause_expr)
 
     def visit_compound_select(self, cs, asfrom=False, parens=True, **kwargs):
+        stack_entry = {'select':cs}
+        
+        if asfrom:
+            stack_entry['is_selected_from'] = stack_entry['is_subquery'] = True
+        elif self.stack and self.stack[-1].get('select'):
+            stack_entry['is_subquery'] = True
+        self.stack.append(stack_entry)
+        
         text = string.join([self.process(c, asfrom=asfrom, parens=False) for c in cs.selects], " " + cs.keyword + " ")
         group_by = self.process(cs._group_by_clause, asfrom=asfrom)
         if group_by:
             text += " GROUP BY " + group_by
+
         text += self.order_by_clause(cs)            
         text += (cs._limit or cs._offset) and self.limit_clause(cs) or ""
+        
+        self.stack.pop(-1)
         
         if asfrom and parens:
             return "(" + text + ")"
@@ -595,7 +603,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
             t = self.process(select._having)
             if t:
                 text += " \nHAVING " + t
-
+        
         text += self.order_by_clause(select)
         text += (select._limit or select._offset) and self.limit_clause(select) or ""
         text += self.for_update_clause(select)
