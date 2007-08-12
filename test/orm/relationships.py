@@ -242,7 +242,7 @@ class RelationTest3(PersistTest):
         pagecomments = Table("pagecomments", metadata,
             Column("jobno", Unicode(15), primary_key=True),
             Column("pagename", Unicode(30), primary_key=True),
-            Column("comment_id", Integer, primary_key=True),
+            Column("comment_id", Integer, primary_key=True, autoincrement=False),
             Column("content", Unicode),
             ForeignKeyConstraint(["jobno", "pagename"], ["pages.jobno", "pages.pagename"])
         )
@@ -504,7 +504,7 @@ class RelationTest5(ORMTest):
             Column('item_policy_num', String(10), primary_key=True, key='policyNum'),
             Column('item_policy_eff_date', Date, primary_key=True, key='policyEffDate'),
             Column('item_type', String(20), primary_key=True, key='type'),
-            Column('item_id', Integer, primary_key=True, key='id'),
+            Column('item_id', Integer, primary_key=True, key='id', autoincrement=False),
         )
 
     def test_basic(self):
