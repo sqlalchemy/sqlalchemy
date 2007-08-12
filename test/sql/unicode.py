@@ -11,7 +11,7 @@ from testlib.engines import utf8_engine
 class UnicodeSchemaTest(PersistTest):
     @testing.unsupported('oracle')
     def setUpAll(self):
-        global unicode_bind, metadata, t1, t2
+        global unicode_bind, metadata, t1, t2, t3
 
         unicode_bind = utf8_engine()
 
@@ -22,13 +22,24 @@ class UnicodeSchemaTest(PersistTest):
             )
         t2 = Table(u'Unitéble2', metadata,
             Column(u'méil', Integer, primary_key=True, key="a"),
-            Column(u'\u6e2c\u8a66', Integer, ForeignKey(u'unitable1.méil'), key="b"),
+            Column(u'\u6e2c\u8a66', Integer, ForeignKey(u'unitable1.méil'),
+                   key="b"),
             )
+        t3 = Table(u'\u6e2c\u8a66', metadata,
+                   Column(u'\u6e2c\u8a66_id', Integer, primary_key=True,
+                          autoincrement=False),
+                   Column(u'unitable1_\u6e2c\u8a66', Integer,
+                          ForeignKey(u'unitable1.\u6e2c\u8a66')),
+                   Column(u'Unitéble2_b', Integer,
+                          ForeignKey(u'Unitéble2.b')),
+                   Column(u'\u6e2c\u8a66_self', Integer,
+                          ForeignKey(u'\u6e2c\u8a66.\u6e2c\u8a66_id')))
         metadata.create_all()
 
     @testing.unsupported('oracle')
     def tearDown(self):
         if metadata.tables:
+            t3.delete().execute()
             t2.delete().execute()
             t1.delete().execute()
         
@@ -42,26 +53,43 @@ class UnicodeSchemaTest(PersistTest):
     def test_insert(self):
         t1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})
         t2.insert().execute({'a':1, 'b':1})
-        
+        t3.insert().execute({u'\u6e2c\u8a66_id': 1,
+                             u'unitable1_\u6e2c\u8a66': 5,
+                             u'Unitéble2_b': 1,
+                             u'\u6e2c\u8a66_self': 1})
+
         assert t1.select().execute().fetchall() == [(1, 5)]
         assert t2.select().execute().fetchall() == [(1, 1)]
+        assert t3.select().execute().fetchall() == [(1, 5, 1, 1)]
     
     @testing.unsupported('oracle')
     def test_reflect(self):
         t1.insert().execute({u'méil':2, u'\u6e2c\u8a66':7})
         t2.insert().execute({'a':2, 'b':2})
+        t3.insert().execute({u'\u6e2c\u8a66_id': 2,
+                             u'unitable1_\u6e2c\u8a66': 7,
+                             u'Unitéble2_b': 2,
+                             u'\u6e2c\u8a66_self': 2})
 
         meta = MetaData(unicode_bind)
         tt1 = Table(t1.name, meta, autoload=True)
         tt2 = Table(t2.name, meta, autoload=True)
+        tt3 = Table(t3.name, meta, autoload=True)
 
         tt1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})
         tt2.insert().execute({u'méil':1, u'\u6e2c\u8a66':1})
+        tt3.insert().execute({u'\u6e2c\u8a66_id': 1,
+                              u'unitable1_\u6e2c\u8a66': 5,
+                              u'Unitéble2_b': 1,
+                              u'\u6e2c\u8a66_self': 1})
 
         self.assert_(tt1.select(order_by=desc(u'méil')).execute().fetchall() ==
                      [(2, 7), (1, 5)])
         self.assert_(tt2.select(order_by=desc(u'méil')).execute().fetchall() ==
                      [(2, 2), (1, 1)])
+        self.assert_(tt3.select(order_by=desc(u'\u6e2c\u8a66_id')).
+                     execute().fetchall() ==
+                     [(2, 7, 2, 2), (1, 5, 1, 1)])
         meta.drop_all()
         metadata.create_all()
         
