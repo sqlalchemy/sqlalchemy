@@ -225,7 +225,10 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         if stack:
             self.stack.append(stack)
         try:
-            return self.traverse_single(obj, **kwargs)
+            x = self.traverse_single(obj, **kwargs)
+            if x is None:
+                raise "hi " + repr(obj)
+            return x
         finally:
             if stack:
                 self.stack.pop(-1)

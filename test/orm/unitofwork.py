@@ -467,13 +467,13 @@ class ClauseAttributesTest(UnitOfWorkTest):
         metadata.create_all()
     
     def tearDown(self):
-        users_table.delete().execute()
         UnitOfWorkTest.tearDown(self)
+        users_table.delete().execute()
         
     def tearDownAll(self):
         metadata.drop_all()
         UnitOfWorkTest.tearDownAll(self)
-        
+    
     @testing.unsupported('mssql') # TEMP: test causes mssql to hang
     def test_update(self):
         class User(object):
@@ -513,6 +513,7 @@ class ClauseAttributesTest(UnitOfWorkTest):
         assert u.name == 'test2'
         assert u.counter == 2
     
+    @testing.unsupported('mssql')
     def test_insert(self):
         class User(object):
             pass
@@ -682,12 +683,14 @@ class OneToManyTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         tables.create()
+
     def tearDownAll(self):
         tables.drop()
         UnitOfWorkTest.tearDownAll(self)
+
     def tearDown(self):
-        tables.delete()
         UnitOfWorkTest.tearDown(self)
+        tables.delete()
 
     def testonetomany_1(self):
         """test basic save of one to many."""
@@ -907,8 +910,8 @@ class SaveTest(UnitOfWorkTest):
         )
 
     def tearDown(self):
-        tables.delete()
         UnitOfWorkTest.tearDown(self)
+        tables.delete()
 
     def testbasic(self):
         # save two users
@@ -1100,12 +1103,14 @@ class ManyToOneTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         tables.create()
+
     def tearDownAll(self):
         tables.drop()
         UnitOfWorkTest.tearDownAll(self)
+
     def tearDown(self):
-        tables.delete()
         UnitOfWorkTest.tearDown(self)
+        tables.delete()
     
     def testm2oonetoone(self):
         # TODO: put assertion in here !!!
@@ -1247,12 +1252,14 @@ class ManyToManyTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         tables.create()
+
     def tearDownAll(self):
         tables.drop()
         UnitOfWorkTest.tearDownAll(self)
+
     def tearDown(self):
-        tables.delete()
         UnitOfWorkTest.tearDown(self)
+        tables.delete()
 
     def testmanytomany(self):
         items = orderitems
@@ -1499,8 +1506,8 @@ class SaveTest2(UnitOfWorkTest):
         meta.create_all()
 
     def tearDown(self):
-        meta.drop_all()
         UnitOfWorkTest.tearDown(self)
+        meta.drop_all()
     
     def testbackwardsnonmatch(self):
         m = mapper(Address, addresses, properties = dict(

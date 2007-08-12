@@ -117,7 +117,7 @@ class TransactionTest(PersistTest):
         assert len(result.fetchall()) == 0
         connection.close()
     
-    @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
+    @testing.supported('postgres', 'mysql', 'oracle')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactionrollback(self):
         connection = testbase.db.connect()
@@ -135,7 +135,7 @@ class TransactionTest(PersistTest):
         )
         connection.close()
 
-    @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
+    @testing.supported('postgres', 'mysql', 'oracle')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactioncommit(self):
         connection = testbase.db.connect()
@@ -153,7 +153,7 @@ class TransactionTest(PersistTest):
         )
         connection.close()
 
-    @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
+    @testing.supported('postgres', 'mysql', 'oracle')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testrollbacktosubtransaction(self):
         connection = testbase.db.connect()
