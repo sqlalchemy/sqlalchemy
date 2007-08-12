@@ -1729,13 +1729,16 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         if not column.nullable:
             colspec.append('NOT NULL')
 
-        # FIXME: #649 ASAP
-        if column.primary_key:
-            if (len(column.foreign_keys)==0
-                and first_pk
-                and column.autoincrement
-                and isinstance(column.type, sqltypes.Integer)):
-                colspec.append('AUTO_INCREMENT')
+        if column.primary_key and column.autoincrement:
+            try:
+                first = [c for c in column.table.primary_key.columns
+                         if (c.autoincrement and
+                             isinstance(c.type, sqltypes.Integer) and
+                             not c.foreign_keys)].pop(0)
+                if column is first:
+                    colspec.append('AUTO_INCREMENT')
+            except IndexError:
+                pass
 
         return ' '.join(colspec)
 
@@ -1909,6 +1912,8 @@ class MySQLSchemaReflector(object):
         # AUTO_INCREMENT
         if spec.get('autoincr', False):
             col_kw['autoincrement'] = True
+        elif issubclass(col_type, sqltypes.Integer):
+            col_kw['autoincrement'] = False
 
         # DEFAULT
         default = spec.get('default', None)
