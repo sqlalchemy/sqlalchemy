@@ -474,6 +474,7 @@ class ClauseAttributesTest(UnitOfWorkTest):
         metadata.drop_all()
         UnitOfWorkTest.tearDownAll(self)
         
+    @testing.unsupported('mssql') # TEMP: test causes mssql to hang
     def test_update(self):
         class User(object):
             pass
@@ -489,6 +490,7 @@ class ClauseAttributesTest(UnitOfWorkTest):
             assert u.counter == 2
         self.assert_sql_count(testbase.db, go, 1)
 
+    @testing.unsupported('mssql') # TEMP: test causes mssql to hang
     def test_multi_update(self):
         class User(object):
             pass
