@@ -11,6 +11,8 @@ import sys, re, random
 from sqlalchemy.engine import base
 
 
+AUTOCOMMIT_REGEXP = re.compile(r'UPDATE|INSERT|CREATE|DELETE|DROP|ALTER', re.I)
+
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
 
@@ -27,7 +29,7 @@ class DefaultDialect(base.Dialect):
         # are unhashable).  So far Oracle can return it.
         
         return {}
-            
+    
     def create_execution_context(self, **kwargs):
         return DefaultExecutionContext(self, **kwargs)
 
@@ -236,6 +238,9 @@ class DefaultExecutionContext(base.ExecutionContext):
     
     def result(self):
         return self.get_result_proxy()
+
+    def should_autocommit(self):
+        return AUTOCOMMIT_REGEXP.match(self.statement.lstrip())
             
     def pre_exec(self):
         self._process_defaults()

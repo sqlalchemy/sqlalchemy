@@ -373,6 +373,11 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
+    def should_autocommit(self):
+        """return True if this context's statement should be 'committed' automatically in a non-transactional context"""
+
+        raise NotImplementedError()
+        
     def last_inserted_ids(self):
         """Return the list of the primary key values for the last insert statement executed.
 
@@ -695,11 +700,11 @@ class Connection(Connectable):
             self.__engine.dialect.do_commit_twophase(self, xid, is_prepared)
         self.__transaction = None
 
-    def _autocommit(self, statement):
+    def _autocommit(self, context):
         """When no Transaction is present, this is called after executions to provide "autocommit" behavior."""
         # TODO: have the dialect determine if autocommit can be set on the connection directly without this
         # extra step
-        if not self.in_transaction() and re.match(r'UPDATE|INSERT|CREATE|DELETE|DROP|ALTER', statement.lstrip(), re.I):
+        if not self.in_transaction() and context.should_autocommit():
             self._commit_impl()
 
     def _autorollback(self):
@@ -782,7 +787,7 @@ class Connection(Connectable):
             self.__executemany(context)
         else:
             self.__execute(context)
-        self._autocommit(context.statement)
+        self._autocommit(context)
         
     def __execute(self, context):
         if context.parameters is None:
