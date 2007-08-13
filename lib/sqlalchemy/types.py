@@ -13,13 +13,9 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
 
 import inspect
 import datetime as dt
-try:
-    import cPickle as pickle
-except:
-    import pickle
 
 from sqlalchemy import exceptions
-from sqlalchemy.util import Decimal
+from sqlalchemy.util import Decimal, pickle
 
 class AbstractType(object):
     def __init__(self, *args, **kwargs):

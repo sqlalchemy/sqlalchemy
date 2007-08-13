@@ -101,10 +101,6 @@ from sqlalchemy import exceptions, schema, util as sautil
 from sqlalchemy.orm import mapper
 
 try:
-    from threading import Lock
-except:
-    from dummy_threading import Lock
-try:
     from operator import attrgetter
 except:
     def attrgetter(attribute):
@@ -525,7 +521,7 @@ class CollectionAdapter(object):
         self._data = weakref.ref(d['data'])
 
 
-__instrumentation_mutex = Lock()
+__instrumentation_mutex = sautil.threading.Lock()
 def _prepare_instrumentation(factory):
     """Prepare a callable for future use as a collection class factory.
 

@@ -18,13 +18,18 @@ except ImportError:
 try:
     Set = set
     set_types = set, sets.Set
-except:
+except NameError:
     Set = sets.Set
     set_types = sets.Set,
 
 try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
+try:
     reversed = __builtin__.reversed
-except:
+except AttributeError:
     def reversed(seq):
         i = len(seq) -1
         while  i >= 0:

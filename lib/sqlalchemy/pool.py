@@ -14,19 +14,11 @@ calling regular DBAPI connect() methods.
 """
 
 import weakref, time
-try:
-    import cPickle as pickle
-except:
-    import pickle
 
 from sqlalchemy import exceptions, logging
 from sqlalchemy import queue as Queue
+from sqlalchemy.util import thread, threading, pickle
 
-try:
-    import thread, threading
-except:
-    import dummy_thread as thread
-    import dummy_threading as threading
 
 proxies = {}
 
