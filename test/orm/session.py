@@ -4,6 +4,7 @@ from sqlalchemy.orm import *
 from testlib import *
 from testlib.tables import *
 import testlib.tables as tables
+import fixtures
 
 class SessionTest(AssertMixin):
     def setUpAll(self):
@@ -438,8 +439,40 @@ class SessionTest(AssertMixin):
         self._assert_key(key, (User, (1,), None))
         key = s.identity_key(User, row=row, entity_name="en")
         self._assert_key(key, (User, (1,), "en"))
+
+class ScopedSessionTest(ORMTest):
+
+    def define_tables(self, metadata):
+        global table, table2
+        table = Table('sometable', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+        table2 = Table('someothertable', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('someid', None, ForeignKey('sometable.id'))
+            )
+    
+    def test_basic(self):
+        Session = scoped_session(sessionmaker())
+
+        class SomeObject(fixtures.Base):pass
+        class SomeOtherObject(fixtures.Base):pass
+
+        mapper(SomeObject, table, properties={
+            'options':relation(SomeOtherObject)
+        })
+        mapper(SomeOtherObject, table2)
+
+        s = SomeObject(id=1, data="hello")
+        sso = SomeOtherObject()
+        s.options.append(sso)
+        Session.save(s)
+        Session.commit()
+        Session.clear()
         
-class ScopedSessionTest(PersistTest):
+        assert SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]) == Session.query(SomeObject).one()
+        
+class ScopedMapperTest(PersistTest):
     def setUpAll(self):
         global metadata, table, table2
         metadata = MetaData(testbase.db)
