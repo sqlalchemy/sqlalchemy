@@ -5,8 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sys, string, re, datetime, random
-from sqlalchemy import sql, engine, schema, ansisql, types, exceptions, pool
+import random
+from sqlalchemy import sql, schema, ansisql, types, exceptions, pool
 import sqlalchemy.engine.default as default
 
 
@@ -149,6 +149,7 @@ class AccessExecutionContext(default.DefaultExecutionContext):
         super(AccessExecutionContext, self).post_exec()
 
 
+const, daoEngine = None, None
 class AccessDialect(ansisql.ANSIDialect):
     colspecs = {
         types.Unicode : AcUnicode,
@@ -180,8 +181,9 @@ class AccessDialect(ansisql.ANSIDialect):
         win32com.client.gencache.EnsureModule('{00025E01-0000-0000-C000-000000000046}', 0, 5, 0)
 
         global const, daoEngine
-        const = win32com.client.constants
-        daoEngine = win32com.client.Dispatch('DAO.DBEngine.36')
+        if const is None:
+            const = win32com.client.constants
+            daoEngine = win32com.client.Dispatch('DAO.DBEngine.36')
 
         import pyodbc as module
         return module

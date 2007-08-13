@@ -9,7 +9,7 @@ higher-level statement-construction, connection-management,
 execution and result contexts."""
 
 from sqlalchemy import exceptions, sql, schema, util, types, logging
-import StringIO, sys, re, random
+import StringIO, sys
 
 
 class Dialect(object):

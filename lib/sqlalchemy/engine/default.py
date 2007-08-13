@@ -6,8 +6,8 @@
 
 """Provide default implementations of per-dialect sqlalchemy.engine classes"""
 
-from sqlalchemy import schema, exceptions, sql, types, util
-import sys, re, random
+from sqlalchemy import schema, exceptions, sql, util
+import re, random
 from sqlalchemy.engine import base
 
 

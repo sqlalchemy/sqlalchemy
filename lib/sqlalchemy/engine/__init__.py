@@ -45,7 +45,7 @@ The package is represented among several individual modules, including:
         
 """
 
-from sqlalchemy import databases
+import sqlalchemy.databases
 from sqlalchemy.engine.base import *
 from sqlalchemy.engine import strategies
 

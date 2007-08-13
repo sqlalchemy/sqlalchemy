@@ -4,7 +4,7 @@ a special AttributeHistory on the 'write' side."""
 from sqlalchemy import exceptions
 from sqlalchemy.orm import attributes, object_session
 from sqlalchemy.orm.query import Query
-from sqlalchemy.orm.mapper import has_identity
+from sqlalchemy.orm.mapper import has_identity, object_mapper
 
 class DynamicCollectionAttribute(attributes.InstrumentedAttribute):
     def __init__(self, class_, attribute_manager, key, typecallable, target_mapper, **kwargs):
@@ -98,9 +98,9 @@ class AppenderQuery(Query):
             sess = object_session(self.instance)
             if sess is None:
                 try:
-                    sess = mapper.object_mapper(instance).get_session()
+                    sess = object_mapper(self.instance).get_session()
                 except exceptions.InvalidRequestError:
-                    raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
+                    raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (self.instance.__class__, self.key))
 
         return sess.query(self.attr.target_mapper).with_parent(self.instance)
 

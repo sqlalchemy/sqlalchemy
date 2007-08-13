@@ -1,5 +1,6 @@
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.query import Query
+from sqlalchemy import exceptions
 
 __all__ = ['ShardedSession', 'ShardedQuery']
 

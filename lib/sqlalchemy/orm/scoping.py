@@ -1,7 +1,6 @@
-from sqlalchemy.util import ScopedRegistry, warn_deprecated, to_list
-from sqlalchemy.orm import MapperExtension, EXT_CONTINUE
+from sqlalchemy.util import ScopedRegistry, to_list
+from sqlalchemy.orm import MapperExtension, EXT_CONTINUE, object_session
 from sqlalchemy.orm.session import Session
-from sqlalchemy.orm.mapper import global_extensions
 from sqlalchemy import exceptions
 import types
 
