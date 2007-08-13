@@ -9,7 +9,7 @@ import testlib.config as config
 sql, MetaData, clear_mappers = None, None, None
 
 
-__all__ = 'PersistTest', 'AssertMixin', 'ORMTest'
+__all__ = ('PersistTest', 'AssertMixin', 'ORMTest', 'SQLCompileTest')
 
 _ops = { '<': operator.lt,
          '>': operator.gt,
@@ -205,6 +205,25 @@ class PersistTest(unittest.TestCase):
     def shortDescription(self):
         """overridden to not return docstrings"""
         return None
+
+class SQLCompileTest(PersistTest):
+    def assert_compile(self, clause, result, params=None, checkparams=None, dialect=None):
+        if dialect is None:
+            dialect = getattr(self, '__dialect__', None)
+            
+        c = clause.compile(parameters=params, dialect=dialect)
+
+        print "\nSQL String:\n" + str(c) + repr(c.get_params())
+
+        cc = re.sub(r'\n', '', str(c))
+
+        self.assert_(cc == result, "\n'" + cc + "'\n does not match \n'" + result + "'")
+
+        if checkparams is not None:
+            if isinstance(checkparams, list):
+                self.assert_(c.get_params().get_raw_list() == checkparams, "params dont match ")
+            else:
+                self.assert_(c.get_params().get_original_dict() == checkparams, "params dont match" + repr(c.get_params()))
 
 class AssertMixin(PersistTest):
     """given a list-based structure of keys/properties which represent information within an object structure, and

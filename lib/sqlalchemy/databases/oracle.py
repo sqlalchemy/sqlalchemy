@@ -401,7 +401,7 @@ class OracleDialect(ansisql.ANSIDialect):
     def _normalize_name(self, name):
         if name is None:
             return None
-        elif name.upper() == name and not self.identifier_preparer._requires_quotes(name.lower(), True):
+        elif name.upper() == name and not self.identifier_preparer._requires_quotes(name.lower()):
             return name.lower()
         else:
             return name
@@ -409,7 +409,7 @@ class OracleDialect(ansisql.ANSIDialect):
     def _denormalize_name(self, name):
         if name is None:
             return None
-        elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower(), True):
+        elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower()):
             return name.upper()
         else:
             return name
@@ -605,7 +605,7 @@ class OracleCompiler(ansisql.ANSICompiler):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
         
         if asfrom:
-            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + alias.name
+            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + self.preparer.format_alias(alias, self._anonymize(alias.name))
         else:
             return self.process(alias.original, **kwargs)
 
@@ -650,7 +650,7 @@ class OracleCompiler(ansisql.ANSICompiler):
                     limitselect.append_whereclause("ora_rn<=%d" % (select._limit + select._offset))
             else:
                 limitselect.append_whereclause("ora_rn<=%d" % select._limit)
-            return self.process(limitselect)
+            return self.process(limitselect, **kwargs)
         else:
             return ansisql.ANSICompiler.visit_select(self, select, **kwargs)
 

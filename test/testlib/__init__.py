@@ -6,11 +6,11 @@ Load after sqlalchemy imports to use instrumented stand-ins like Table.
 import testlib.config
 from testlib.schema import Table, Column
 import testlib.testing as testing
-from testlib.testing import PersistTest, AssertMixin, ORMTest
+from testlib.testing import PersistTest, AssertMixin, ORMTest, SQLCompileTest
 import testlib.profiling
 import testlib.engines
 
 
 __all__ = ('testing',
            'Table', 'Column',
-           'PersistTest', 'AssertMixin', 'ORMTest')
+           'PersistTest', 'AssertMixin', 'ORMTest', 'SQLCompileTest')
