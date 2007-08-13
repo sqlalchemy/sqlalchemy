@@ -174,6 +174,9 @@ class UnitOfWork(object):
 
         flush_context = UOWTransaction(self, session)
 
+        if session.extension is not None:
+            session.extension.before_flush(session, flush_context, objects)
+
         # create the set of all objects we want to operate upon
         if objects is not None:
             # specific list passed in
@@ -204,12 +207,18 @@ class UnitOfWork(object):
         flush_context.transaction = session.transaction
         try:
             flush_context.execute()
+            
+            if session.extension is not None:
+                session.extension.after_flush(session, flush_context)
         except:
             session.rollback()
             raise
         session.commit()
 
         flush_context.post_exec()
+
+        if session.extension is not None:
+            session.extension.after_flush_postexec(session, flush_context)
 
 class UOWTransaction(object):
     """Handles the details of organizing and executing transaction

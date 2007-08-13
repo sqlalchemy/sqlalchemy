@@ -92,6 +92,8 @@
           old "objectstore" days.
         - added new "binds" argument to Session to support configuration of multiple 
           binds with sessionmaker() function.
+        - a rudimental SessionExtension class has been added, allowing user-defined
+          functionality to take place at flush(), commit(), and rollback() boundaries.
     
     - query-based relation()s available with dynamic_loader().  This is a *writable* 
       collection (supporting append() and remove()) which is also a live Query object

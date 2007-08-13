@@ -11,7 +11,7 @@ from sqlalchemy.orm.mapper import object_mapper as _object_mapper
 from sqlalchemy.orm.mapper import class_mapper as _class_mapper
 
 
-__all__ = ['Session', 'SessionTransaction']
+__all__ = ['Session', 'SessionTransaction', 'SessionExtension']
 
 def sessionmaker(bind=None, class_=None, autoflush=True, transactional=True, **kwargs):
     """Generate a custom-configured [sqlalchemy.orm.session#Session] class.
@@ -81,7 +81,50 @@ def sessionmaker(bind=None, class_=None, autoflush=True, transactional=True, **k
         configure = classmethod(configure)
         
     return Sess
+
+# TODO: add unit test coverage for SessionExtension in test/orm/session.py
+class SessionExtension(object):
+    """an extension hook object for Sessions.  Subclasses may be installed into a Session
+    (or sessionmaker) using the ``extension`` keyword argument.
+    """
     
+    def before_commit(self, session):
+        """execute right before commit is called.
+        
+        Note that this may not be per-flush if a longer running transaction is ongoing."""
+
+    def after_commit(self, session):
+        """execute after a commit has occured.
+        
+        Note that this may not be per-flush if a longer running transaction is ongoing."""
+
+    def after_rollback(self, session):
+        """execute after a rollback has occured.
+
+        Note that this may not be per-flush if a longer running transaction is ongoing."""
+
+    def before_flush(self, session, flush_context, objects):
+        """execute before flush process has started.
+        
+        'objects' is an optional list of objects which were passed to the ``flush()``
+        method.
+        """
+
+    def after_flush(self, session, flush_context):
+        """execute after flush has completed, but before commit has been called.
+        
+        Note that the session's state is still in pre-flush, i.e. 'new', 'dirty',
+        and 'deleted' lists still show pre-flush state as well as the history
+        settings on instance attributes."""
+        
+    def after_flush_postexec(self, session, flush_context):
+        """execute after flush has completed, and after the post-exec state occurs.
+        
+        this will be when the 'new', 'dirty', and 'deleted' lists are in their final 
+        state.  An actual commit() may or may not have occured, depending on whether or not
+        the flush started its own transaction or participated in a larger transaction.
+        """
+        
 class SessionTransaction(object):
     """Represents a Session-level Transaction.
 
@@ -89,8 +132,9 @@ class SessionTransaction(object):
     instances behind the scenes, with one ``Transaction`` per ``Engine`` in
     use.
 
-    Typically, usage of ``SessionTransaction`` is not necessary; use
-    the ``begin()`` and ``commit()`` methods on ``Session`` itself.
+    Direct usage of ``SessionTransaction`` is not necessary as of
+    SQLAlchemy 0.4; use the ``begin()`` and ``commit()`` methods on 
+    ``Session`` itself.
     
     The ``SessionTransaction`` object is **not** threadsafe.
     """
@@ -160,6 +204,10 @@ class SessionTransaction(object):
     def commit(self):
         if self.__parent is not None and not self.nested:
             return self.__parent
+
+        if self.session.extension is not None:
+            self.session.before_commit(self.session)
+            
         if self.autoflush:
             self.session.flush()
 
@@ -169,14 +217,23 @@ class SessionTransaction(object):
 
         for t in util.Set(self.__connections.values()):
             t[1].commit()
+
+        if self.session.extension is not None:
+            self.session.after_commit(self.session)
+
         self.close()
         return self.__parent
 
     def rollback(self):
         if self.__parent is not None and not self.nested:
             return self.__parent.rollback()
+        
         for t in util.Set(self.__connections.values()):
             t[1].rollback()
+
+        if self.session.extension is not None:
+            self.session.extension.after_rollback(self.session)
+
         self.close()
         return self.__parent
         
@@ -261,7 +318,7 @@ class Session(object):
     a thread-managed Session adapter, provided by the [sqlalchemy.orm#scoped_session()] function.
     """
 
-    def __init__(self, bind=None, autoflush=True, transactional=False, twophase=False, echo_uow=False, weak_identity_map=False, binds=None):
+    def __init__(self, bind=None, autoflush=True, transactional=False, twophase=False, echo_uow=False, weak_identity_map=False, binds=None, extension=None):
         """Construct a new Session.
 
             autoflush
@@ -300,6 +357,12 @@ class Session(object):
                 When ``True``, configure Python logging to dump all unit-of-work
                 transactions. This is the equivalent of
                 ``logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG)``.
+            
+            extension
+                an optional [sqlalchemy.orm.session_SessionExtension] instance, which will receive
+                pre- and post- commit and flush events, as well as a post-rollback event.  User-
+                defined code may be placed within these hooks using a user-defined subclass
+                of ``SessionExtension``.
                 
             transactional
                 Set up this ``Session`` to automatically begin transactions. Setting this
@@ -338,6 +401,7 @@ class Session(object):
         self.autoflush = autoflush
         self.transactional = transactional
         self.twophase = twophase
+        self.extension = extension
         self._query_cls = query.Query
         self._mapper_flush_opts = {}
         
