@@ -128,7 +128,7 @@ class SessionExtension(object):
 class SessionTransaction(object):
     """Represents a Session-level Transaction.
 
-    This corresponds to one or more [sqlalchemy.engine_Transaction]
+    This corresponds to one or more [sqlalchemy.engine#Transaction]
     instances behind the scenes, with one ``Transaction`` per ``Engine`` in
     use.
 
@@ -359,7 +359,7 @@ class Session(object):
                 ``logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG)``.
             
             extension
-                an optional [sqlalchemy.orm.session_SessionExtension] instance, which will receive
+                an optional [sqlalchemy.orm.session#SessionExtension] instance, which will receive
                 pre- and post- commit and flush events, as well as a post-rollback event.  User-
                 defined code may be placed within these hooks using a user-defined subclass
                 of ``SessionExtension``.
