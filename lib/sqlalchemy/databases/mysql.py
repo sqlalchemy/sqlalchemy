@@ -1540,9 +1540,11 @@ class MySQLDialect(ansisql.ANSIDialect):
 
         charset = self._detect_charset(connection)
         casing = self._detect_casing(connection, charset)
-        if casing == 1:
+        # is this really needed?
+        if casing == 1 and table.name != table.name.lower():
             table.name = table.name.lower()
-            table.metadata.tables[table.name]= table
+            lc_alias = schema._get_table_key(table.name, table.schema)
+            table.metadata.tables[lc_alias] = table
 
         sql = self._show_create_table(connection, table, charset)
 
@@ -2022,12 +2024,9 @@ class MySQLSchemaReflector(object):
                     "columns." % (', '.join(loc_names)))
                 continue
 
-            if ref_name in table.metadata.tables:
-                ref_table = table.metadata.tables[ref_name]
-                if ref_table.schema and ref_table.schema != ref_schema:
-                    warnings.warn(RuntimeWarning(
-                        "Table %s.%s is shadowing %s.%s in this MetaData" %
-                        (ref_table.schema, ref_name, table.schema, table.name)))
+            ref_key = schema._get_table_key(ref_name, ref_schema)
+            if ref_key in table.metadata.tables:
+                ref_table = table.metadata.tables[ref_key]
             else:
                 ref_table = schema.Table(ref_name, table.metadata,
                                          schema=ref_schema,
