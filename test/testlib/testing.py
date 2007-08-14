@@ -221,7 +221,7 @@ class SQLCompileTest(PersistTest):
 
         if checkparams is not None:
             if isinstance(checkparams, list):
-                self.assert_(c.get_params().get_raw_list() == checkparams, "params dont match ")
+                self.assert_(c.get_params().get_raw_list({}) == checkparams, "params dont match ")
             else:
                 self.assert_(c.get_params().get_original_dict() == checkparams, "params dont match" + repr(c.get_params()))
 

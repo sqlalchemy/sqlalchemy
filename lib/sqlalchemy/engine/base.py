@@ -1127,20 +1127,17 @@ class ResultProxy(object):
       col3 = row[mytable.c.mycol] # access via Column object.
 
     ResultProxy also contains a map of TypeEngine objects and will
-    invoke the appropriate ``convert_result_value()`` method before
+    invoke the appropriate ``result_processor()`` method before
     returning columns, as well as the ExecutionContext corresponding
     to the statement execution.  It provides several methods for which
     to obtain information from the underlying ExecutionContext.
     """
 
-    class AmbiguousColumn(object):
-        def __init__(self, key):
-            self.key = key
-        def dialect_impl(self, dialect):
-            return self
-        def convert_result_value(self, arg, engine):
-            raise exceptions.InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % (self.key))
-
+    def __ambiguous_processor(self, colname):
+        def process(value):
+            raise exceptions.InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % colname)
+        return process
+            
     def __init__(self, context):
         """ResultProxy objects are constructed via the execute() method on SQLEngine."""
         self.context = context
@@ -1185,13 +1182,13 @@ class ResultProxy(object):
                 else:
                     type = typemap.get(item[1], types.NULLTYPE)
 
-                rec = (type, type.dialect_impl(self.dialect), i)
+                rec = (type, type.dialect_impl(self.dialect).result_processor(self.dialect), i)
 
                 if rec[0] is None:
                     raise exceptions.InvalidRequestError(
                         "None for metadata " + colname)
                 if self.__props.setdefault(colname.lower(), rec) is not rec:
-                    self.__props[colname.lower()] = (type, ResultProxy.AmbiguousColumn(colname), 0)
+                    self.__props[colname.lower()] = (type, self.__ambiguous_processor(colname), 0)
                 self.__keys.append(colname)
                 self.__props[i] = rec
 
@@ -1298,7 +1295,10 @@ class ResultProxy(object):
 
     def _get_col(self, row, key):
         rec = self._key_cache[key]
-        return rec[1].convert_result_value(row[rec[2]], self.dialect)
+        if rec[1]:
+            return rec[1](row[rec[2]])
+        else:
+            return row[rec[2]]
     
     def _fetchone_impl(self):
         return self.cursor.fetchone()

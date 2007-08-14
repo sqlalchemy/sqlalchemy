@@ -32,26 +32,31 @@ class OracleSmallInteger(sqltypes.Smallinteger):
 class OracleDate(sqltypes.Date):
     def get_col_spec(self):
         return "DATE"
-    def convert_bind_param(self, value, dialect):
-        return value
-    def convert_result_value(self, value, dialect):
-        if not isinstance(value, datetime.datetime):
-            return value
-        else:
-            return value.date()
+    def bind_processor(self, dialect):
+        return None
 
+    def result_processor(self, dialect):
+        def process(value):
+            if not isinstance(value, datetime.datetime):
+                return value
+            else:
+                return value.date()
+        return process
+        
 class OracleDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATE"
         
-    def convert_result_value(self, value, dialect):
-        if value is None or isinstance(value,datetime.datetime):
-            return value
-        else:
-            # convert cx_oracle datetime object returned pre-python 2.4
-            return datetime.datetime(value.year,value.month,
-                value.day,value.hour, value.minute, value.second)
-
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None or isinstance(value,datetime.datetime):
+                return value
+            else:
+                # convert cx_oracle datetime object returned pre-python 2.4
+                return datetime.datetime(value.year,value.month,
+                    value.day,value.hour, value.minute, value.second)
+        return process
+        
 # Note:
 # Oracle DATE == DATETIME
 # Oracle does not allow milliseconds in DATE
@@ -65,14 +70,15 @@ class OracleTimestamp(sqltypes.TIMESTAMP):
     def get_dbapi_type(self, dialect):
         return dialect.TIMESTAMP
 
-    def convert_result_value(self, value, dialect):
-        if value is None or isinstance(value,datetime.datetime):
-            return value
-        else:
-            # convert cx_oracle datetime object returned pre-python 2.4
-            return datetime.datetime(value.year,value.month,
-                value.day,value.hour, value.minute, value.second)
-
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None or isinstance(value,datetime.datetime):
+                return value
+            else:
+                # convert cx_oracle datetime object returned pre-python 2.4
+                return datetime.datetime(value.year,value.month,
+                    value.day,value.hour, value.minute, value.second)
+        return process
 
 class OracleString(sqltypes.String):
     def get_col_spec(self):
@@ -85,15 +91,23 @@ class OracleText(sqltypes.TEXT):
     def get_col_spec(self):
         return "CLOB"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        elif hasattr(value, 'read'):
-            # cx_oracle doesnt seem to be consistent with CLOB returning LOB or str
-            return super(OracleText, self).convert_result_value(value.read(), dialect)
-        else:
-            return super(OracleText, self).convert_result_value(value, dialect)
-
+    def result_processor(self, dialect):
+        super_process = super(OracleText, self).result_processor(dialect)
+        def process(value):
+            if value is None:
+                return None
+            elif hasattr(value, 'read'):
+                # cx_oracle doesnt seem to be consistent with CLOB returning LOB or str
+                if super_process:
+                    return super_process(value.read())
+                else:
+                    return value.read()
+            else:
+                if super_process:
+                    return super_process(value)
+                else:
+                    return value
+        return process
 
 class OracleRaw(sqltypes.Binary):
     def get_col_spec(self):
@@ -110,34 +124,40 @@ class OracleBinary(sqltypes.Binary):
     def get_col_spec(self):
         return "BLOB"
 
-    def convert_bind_param(self, value, dialect):
-        return value
+    def bind_processor(self, dialect):
+        return None
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        else:
-            return value.read()
-
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            else:
+                return value.read()
+        return process
+        
 class OracleBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "SMALLINT"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value and True or False
-
-    def convert_bind_param(self, value, dialect):
-        if value is True:
-            return 1
-        elif value is False:
-            return 0
-        elif value is None:
-            return None
-        else:
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
             return value and True or False
-
+        return process
+        
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is True:
+                return 1
+            elif value is False:
+                return 0
+            elif value is None:
+                return None
+            else:
+                return value and True or False
+        return process
+        
 colspecs = {
     sqltypes.Integer : OracleInteger,
     sqltypes.Smallinteger : OracleSmallInteger,
@@ -196,7 +216,7 @@ class OracleExecutionContext(default.DefaultExecutionContext):
             if self.compiled_parameters is not None:
                  for k in self.out_parameters:
                      type = self.compiled_parameters.get_type(k)
-                     self.out_parameters[k] = type.dialect_impl(self.dialect).convert_result_value(self.out_parameters[k].getvalue(), self.dialect)
+                     self.out_parameters[k] = type.dialect_impl(self.dialect).result_processor(self.dialect)(self.out_parameters[k].getvalue())
             else:
                  for k in self.out_parameters:
                      self.out_parameters[k] = self.out_parameters[k].getvalue()

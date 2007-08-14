@@ -252,24 +252,14 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         for a single statement execution, or one element of an executemany execution.
         """
         
-        if self.parameters is not None:
-            bindparams = self.parameters.copy()
-        else:
-            bindparams = {}
-        bindparams.update(params)
         d = sql.ClauseParameters(self.dialect, self.positiontup)
-        for b in self.binds.values():
-            name = self.bind_names[b]
-            d.set_parameter(b, b.value, name)
 
-        for key, value in bindparams.iteritems():
-            try:
-                b = self.binds[key]
-            except KeyError:
-                continue
-            name = self.bind_names[b]
-            d.set_parameter(b, value, name)
+        pd = self.parameters or {}
+        pd.update(params)
 
+        for key, bind in self.binds.iteritems():
+            d.set_parameter(bind, pd.get(key, bind.value), self.bind_names[bind])
+        
         return d
 
     params = property(lambda self:self.construct_params({}), doc="""Return the `ClauseParameters` corresponding to this compiled object.  

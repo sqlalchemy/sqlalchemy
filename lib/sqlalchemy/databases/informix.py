@@ -61,27 +61,33 @@ class InfoDateTime(sqltypes.DateTime ):
     def get_col_spec(self):
         return "DATETIME YEAR TO SECOND"
     
-    def convert_bind_param(self, value, dialect):
-        if value is not None:
-            if value.microsecond:
-                value = value.replace( microsecond = 0 )
-        return value
-
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                if value.microsecond:
+                    value = value.replace( microsecond = 0 )
+            return value
+        return process
+        
 class InfoTime(sqltypes.Time ):
     def get_col_spec(self):
         return "DATETIME HOUR TO SECOND"
 
-    def convert_bind_param(self, value, dialect):
-        if value is not None:
-            if value.microsecond:
-                value = value.replace( microsecond = 0 )
-        return value
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                if value.microsecond:
+                    value = value.replace( microsecond = 0 )
+            return value
+        return process
         
-    def convert_result_value(self, value, dialect):
-        if isinstance( value , datetime.datetime ):
-            return value.time()
-        else:
-            return value        
+    def result_processor(self, dialect):
+        def process(value):
+            if isinstance( value , datetime.datetime ):
+                return value.time()
+            else:
+                return value        
+        return process
         
 class InfoText(sqltypes.String):
     def get_col_spec(self):
@@ -91,36 +97,45 @@ class InfoString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
     
-    def convert_bind_param( self , value , dialect ):
-        if value == '':
-            return None
-        else:
-            return value
-
+    def bind_processor(self, dialect):
+        def process(value):
+            if value == '':
+                return None
+            else:
+                return value
+        return process
+        
 class InfoChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
+        
 class InfoBinary(sqltypes.Binary):
     def get_col_spec(self):
         return "BYTE"
+        
 class InfoBoolean(sqltypes.Boolean):
     default_type = 'NUM'
     def get_col_spec(self):
         return "SMALLINT"
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value and True or False
-    def convert_bind_param(self, value, dialect):
-        if value is True:
-            return 1
-        elif value is False:
-            return 0
-        elif value is None:
-            return None
-        else:
+        
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
             return value and True or False
-
+        return process
+    
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is True:
+                return 1
+            elif value is False:
+                return 0
+            elif value is None:
+                return None
+            else:
+                return value and True or False
+        return process
         
 colspecs = {
     sqltypes.Integer : InfoInteger,

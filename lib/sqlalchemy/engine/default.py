@@ -163,12 +163,17 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.statement = unicode(compiled)
             if parameters is None:
                 self.compiled_parameters = compiled.construct_params({})
+                self.executemany = False
             elif not isinstance(parameters, (list, tuple)):
                 self.compiled_parameters = compiled.construct_params(parameters)
+                self.executemany = False
             else:
                 self.compiled_parameters = [compiled.construct_params(m or {}) for m in parameters]
                 if len(self.compiled_parameters) == 1:
                     self.compiled_parameters = self.compiled_parameters[0]
+                    self.executemany = False
+                else:
+                    self.executemany = True
         elif statement is not None:
             self.typemap = self.column_labels = None
             self.parameters = self.__encode_param_keys(parameters)
@@ -206,22 +211,26 @@ class DefaultExecutionContext(base.ExecutionContext):
                 return proc(params)
 
     def __convert_compiled_params(self, parameters):
-        executemany = parameters is not None and isinstance(parameters, list)
         encode = not self.dialect.supports_unicode_statements()
         # the bind params are a CompiledParams object.  but all the DBAPI's hate
         # that object (or similar).  so convert it to a clean
         # dictionary/list/tuple of dictionary/tuple of list
         if parameters is not None:
-           if self.dialect.positional:
-                if executemany:
-                    parameters = [p.get_raw_list() for p in parameters]
+            if self.executemany:
+                processors = parameters[0].get_processors()
+            else:
+                processors = parameters.get_processors()
+
+            if self.dialect.positional:
+                if self.executemany:
+                    parameters = [p.get_raw_list(processors) for p in parameters]
                 else:
-                    parameters = parameters.get_raw_list()
-           else:
-                if executemany:
-                    parameters = [p.get_raw_dict(encode_keys=encode) for p in parameters]
+                    parameters = parameters.get_raw_list(processors)
+            else:
+                if self.executemany:
+                    parameters = [p.get_raw_dict(processors, encode_keys=encode) for p in parameters]
                 else:
-                    parameters = parameters.get_raw_dict(encode_keys=encode)
+                    parameters = parameters.get_raw_dict(processors, encode_keys=encode)
         return parameters
                 
     def is_select(self):
@@ -311,28 +320,31 @@ class DefaultExecutionContext(base.ExecutionContext):
         """generate default values for compiled insert/update statements,
         and generate last_inserted_ids() collection."""
 
-        # TODO: cleanup
         if self.isinsert:
-            if isinstance(self.compiled_parameters, list):
-                plist = self.compiled_parameters
-            else:
-                plist = [self.compiled_parameters]
             drunner = self.dialect.defaultrunner(self)
-            for param in plist:
-                last_inserted_ids = []
-                # check the "default" status of each column in the table
+            if self.executemany:
+                # executemany doesn't populate last_inserted_ids()
+                firstparam = self.compiled_parameters[0]
+                processors = firstparam.get_processors()
                 for c in self.compiled.statement.table.c:
-                    # check if it will be populated by a SQL clause - we'll need that
-                    # after execution.
+                    if c.default is not None:
+                        params = self.compiled_parameters
+                        for param in params:
+                            if not c.key in param or param.get_original(c.key) is None:
+                                self.compiled_parameters = param
+                                newid = drunner.get_column_default(c)
+                                if newid is not None:
+                                    param.set_value(c.key, newid)
+                        self.compiled_parameters = params
+            else:
+                param = self.compiled_parameters
+                processors = param.get_processors()
+                last_inserted_ids = []
+                for c in self.compiled.statement.table.c:
                     if c in self.compiled.inline_params:
                         self._postfetch_cols.add(c)
                         if c.primary_key:
                             last_inserted_ids.append(None)
-                    # check if its not present at all.  see if theres a default
-                    # and fire it off, and add to bind parameters.  if
-                    # its a pk, add the value to our last_inserted_ids list,
-                    # or, if its a SQL-side default, let it fire off on the DB side, but we'll need
-                    # the SQL-generated value after execution.
                     elif not c.key in param or param.get_original(c.key) is None:
                         if isinstance(c.default, schema.PassiveDefault):
                             self._postfetch_cols.add(c)
@@ -340,32 +352,33 @@ class DefaultExecutionContext(base.ExecutionContext):
                         if newid is not None:
                             param.set_value(c.key, newid)
                             if c.primary_key:
-                                last_inserted_ids.append(param.get_processed(c.key))
+                                last_inserted_ids.append(param.get_processed(c.key, processors))
                         elif c.primary_key:
                             last_inserted_ids.append(None)
-                    # its an explicitly passed pk value - add it to
-                    # our last_inserted_ids list.
                     elif c.primary_key:
-                        last_inserted_ids.append(param.get_processed(c.key))
-                # TODO: we arent accounting for executemany() situations
-                # here (hard to do since lastrowid doesnt support it either)
+                        last_inserted_ids.append(param.get_processed(c.key, processors))
                 self._last_inserted_ids = last_inserted_ids
                 self._last_inserted_params = param
+
+
         elif self.isupdate:
-            if isinstance(self.compiled_parameters, list):
-                plist = self.compiled_parameters
-            else:
-                plist = [self.compiled_parameters]
             drunner = self.dialect.defaultrunner(self)
-            for param in plist:
-                # check the "onupdate" status of each column in the table
+            if self.executemany:
                 for c in self.compiled.statement.table.c:
-                    # it will be populated by a SQL clause - we'll need that
-                    # after execution.
+                    if c.onupdate is not None:
+                        params = self.compiled_parameters
+                        for param in params:
+                            if not c.key in param or param.get_original(c.key) is None:
+                                self.compiled_parameters = param
+                                value = drunner.get_column_onupdate(c)
+                                if value is not None:
+                                    param.set_value(c.key, value)
+                        self.compiled_parameters = params
+            else:
+                param = self.compiled_parameters
+                for c in self.compiled.statement.table.c:
                     if c in self.compiled.inline_params:
                         self._postfetch_cols.add(c)
-                    # its not in the bind parameters, and theres an "onupdate" defined for the column;
-                    # execute it and add to bind params
                     elif c.onupdate is not None and (not c.key in param or param.get_original(c.key) is None):
                         value = drunner.get_column_onupdate(c)
                         if value is not None:

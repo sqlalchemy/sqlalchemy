@@ -294,14 +294,20 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
         else:
             return self._extend("NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
 
-    def convert_bind_param(self, value, dialect):
-        return value
+    def bind_processor(self, dialect):
+        return None
 
-    def convert_result_value(self, value, dialect):
-        if not self.asdecimal and isinstance(value, util.decimal_type):
-            return float(value)
+    def result_processor(self, dialect):
+        if not self.asdecimal:
+            def process(value):
+                if isinstance(value, util.decimal_type):
+                    return float(value)
+                else:
+                    return value
+            return process
         else:
-            return value
+            return None
+            
 
 
 class MSDecimal(MSNumeric):
@@ -408,8 +414,8 @@ class MSFloat(sqltypes.Float, _NumericType):
         else:
             return self._extend("FLOAT")
 
-    def convert_bind_param(self, value, dialect):
-        return value
+    def bind_processor(self, dialect):
+        return None
 
 
 class MSInteger(sqltypes.Integer, _NumericType):
@@ -539,16 +545,17 @@ class MSBit(sqltypes.TypeEngine):
     def __init__(self, length=None):
         self.length = length
  
-    def convert_result_value(self, value, dialect):
+    def result_processor(self, dialect):
         """Convert a MySQL's 64 bit, variable length binary string to a long."""
-
-        if value is not None:
-            v = 0L
-            for i in map(ord, value):
-                v = v << 8 | i
-            value = v
-        return value
-
+        def process(value):
+            if value is not None:
+                v = 0L
+                for i in map(ord, value):
+                    v = v << 8 | i
+                value = v
+            return value
+        return process
+        
     def get_col_spec(self):
         if self.length is not None:
             return "BIT(%s)" % self.length
@@ -576,13 +583,14 @@ class MSTime(sqltypes.Time):
     def get_col_spec(self):
         return "TIME"
 
-    def convert_result_value(self, value, dialect):
-        # convert from a timedelta value
-        if value is not None:
-            return datetime.time(value.seconds/60/60, value.seconds/60%60, value.seconds - (value.seconds/60*60))
-        else:
-            return None
-
+    def result_processor(self, dialect):
+        def process(value):
+            # convert from a timedelta value
+            if value is not None:
+                return datetime.time(value.seconds/60/60, value.seconds/60%60, value.seconds - (value.seconds/60*60))
+            else:
+                return None
+        return process
 
 class MSTimeStamp(sqltypes.TIMESTAMP):
     """MySQL TIMESTAMP type.
@@ -930,12 +938,13 @@ class _BinaryType(sqltypes.Binary):
         else:
             return "BLOB"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        else:
-            return buffer(value)
-
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            else:
+                return buffer(value)
+        return process
 
 class MSVarBinary(_BinaryType):
     """MySQL VARBINARY type, for variable length binary data."""
@@ -976,12 +985,13 @@ class MSBinary(_BinaryType):
         else:
             return "BLOB"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        else:
-            return buffer(value)
-
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            else:
+                return buffer(value)
+        return process
 
 class MSBlob(_BinaryType):
     """MySQL BLOB type, for binary data up to 2^16 bytes""" 
@@ -1002,13 +1012,15 @@ class MSBlob(_BinaryType):
             return "BLOB(%d)" % self.length
         else:
             return "BLOB"
-
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        else:
-            return buffer(value)
-
+    
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            else:
+                return buffer(value)
+        return process
+        
     def __repr__(self):
         return "%s()" % self.__class__.__name__
 
@@ -1094,12 +1106,18 @@ class MSEnum(MSString):
         length = max([len(v) for v in strip_enums])
         super(MSEnum, self).__init__(length, **kw)
 
-    def convert_bind_param(self, value, engine): 
-        if self.strict and value is not None and value not in self.enums:
-            raise exceptions.InvalidRequestError('"%s" not a valid value for '
-                                                 'this enum' % value)
-        return super(MSEnum, self).convert_bind_param(value, engine)
-
+    def bind_processor(self, dialect):
+        super_convert = super(MSEnum, self).bind_processor(dialect)
+        def process(value):
+            if self.strict and value is not None and value not in self.enums:
+                raise exceptions.InvalidRequestError('"%s" not a valid value for '
+                                                     'this enum' % value)
+            if super_convert:
+                return super_convert(value)
+            else:
+                return value
+        return process
+        
     def get_col_spec(self):
         return self._extend("ENUM(%s)" % ",".join(self.__ddl_values))
 
@@ -1155,36 +1173,44 @@ class MSSet(MSString):
         length = max([len(v) for v in strip_values] + [0])
         super(MSSet, self).__init__(length, **kw)
 
-    def convert_result_value(self, value, dialect):
-        # The good news:
-        #   No ',' quoting issues- commas aren't allowed in SET values
-        # The bad news:
-        #   Plenty of driver inconsistencies here.
-        if isinstance(value, util.set_types):
-            # ..some versions convert '' to an empty set
-            if not value:
-                value.add('')
-            # ..some return sets.Set, even for pythons that have __builtin__.set
-            if not isinstance(value, util.Set):
-                value = util.Set(value)
-            return value
-        # ...and some versions return strings
-        if value is not None:
-            return util.Set(value.split(','))
-        else:
-            return value
-
-    def convert_bind_param(self, value, engine): 
-        if value is None or isinstance(value, (int, long, basestring)):
-            pass
-        else:
-            if None in value:
-                value = util.Set(value)
-                value.remove(None)
-                value.add('')
-            value = ','.join(value)
-        return super(MSSet, self).convert_bind_param(value, engine)
-
+    def result_processor(self, dialect):
+        def process(value):
+            # The good news:
+            #   No ',' quoting issues- commas aren't allowed in SET values
+            # The bad news:
+            #   Plenty of driver inconsistencies here.
+            if isinstance(value, util.set_types):
+                # ..some versions convert '' to an empty set
+                if not value:
+                    value.add('')
+                # ..some return sets.Set, even for pythons that have __builtin__.set
+                if not isinstance(value, util.Set):
+                    value = util.Set(value)
+                return value
+            # ...and some versions return strings
+            if value is not None:
+                return util.Set(value.split(','))
+            else:
+                return value
+        return process
+        
+    def bind_processor(self, dialect):
+        super_convert = super(MSSet, self).bind_processor(dialect)
+        def process(value):
+            if value is None or isinstance(value, (int, long, basestring)):
+                pass
+            else:
+                if None in value:
+                    value = util.Set(value)
+                    value.remove(None)
+                    value.add('')
+                value = ','.join(value)
+            if super_convert:
+                return super_convert(value)
+            else:
+                return value
+        return process
+        
     def get_col_spec(self):
         return self._extend("SET(%s)" % ",".join(self.__ddl_values))
 
@@ -1195,21 +1221,24 @@ class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOL"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value and True or False
-
-    def convert_bind_param(self, value, dialect):
-        if value is True:
-            return 1
-        elif value is False:
-            return 0
-        elif value is None:
-            return None
-        else:
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
             return value and True or False
-
+        return process
+        
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is True:
+                return 1
+            elif value is False:
+                return 0
+            elif value is None:
+                return None
+            else:
+                return value and True or False
+        return process
 
 colspecs = {
     sqltypes.Integer: MSInteger,
@@ -1284,7 +1313,7 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
                                re.I | re.UNICODE)
 
     def post_exec(self):
-        if self.compiled.isinsert:
+        if self.compiled.isinsert and not self.executemany:
             if (not len(self._last_inserted_ids) or
                 self._last_inserted_ids[0] is None):
                 self._last_inserted_ids = ([self.cursor.lastrowid] +

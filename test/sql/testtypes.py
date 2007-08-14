@@ -10,28 +10,47 @@ from testlib import *
 class MyType(types.TypeEngine):
     def get_col_spec(self):
         return "VARCHAR(100)"
-    def convert_bind_param(self, value, engine):
-        return "BIND_IN"+ value
-    def convert_result_value(self, value, engine):
-        return value + "BIND_OUT"
+    def bind_processor(self, dialect):
+        def process(value):
+            return "BIND_IN"+ value
+        return process
+    def result_processor(self, dialect):
+        def process(value):
+            return value + "BIND_OUT"
+        return process
     def adapt(self, typeobj):
         return typeobj()
 
 class MyDecoratedType(types.TypeDecorator):
     impl = String
-    def convert_bind_param(self, value, dialect):
-        return "BIND_IN"+ super(MyDecoratedType, self).convert_bind_param(value, dialect)
-    def convert_result_value(self, value, dialect):
-        return super(MyDecoratedType, self).convert_result_value(value, dialect) + "BIND_OUT"
+    def bind_processor(self, dialect):
+        impl_processor = super(MyDecoratedType, self).bind_processor(dialect) or (lambda value:value)
+        def process(value):
+            return "BIND_IN"+ impl_processor(value)
+        return process
+    def result_processor(self, dialect):
+        impl_processor = super(MyDecoratedType, self).result_processor(dialect) or (lambda value:value)
+        def process(value):
+            return impl_processor(value) + "BIND_OUT"
+        return process
     def copy(self):
         return MyDecoratedType()
         
 class MyUnicodeType(types.TypeDecorator):
     impl = Unicode
-    def convert_bind_param(self, value, dialect):
-        return "UNI_BIND_IN"+ super(MyUnicodeType, self).convert_bind_param(value, dialect)
-    def convert_result_value(self, value, dialect):
-        return super(MyUnicodeType, self).convert_result_value(value, dialect) + "UNI_BIND_OUT"
+    
+    def bind_processor(self, dialect):
+        impl_processor = super(MyUnicodeType, self).bind_processor(dialect)
+        def process(value):
+            return "UNI_BIND_IN"+ impl_processor(value)
+        return process
+        
+    def result_processor(self, dialect):
+        impl_processor = super(MyUnicodeType, self).result_processor(dialect)
+        def process(value):
+            return impl_processor(value) + "UNI_BIND_OUT"
+        return process
+
     def copy(self):
         return MyUnicodeType(self.impl.length)
 

@@ -812,7 +812,6 @@ class ClauseParameters(object):
     """
 
     def __init__(self, dialect, positional=None):
-        super(ClauseParameters, self).__init__()
         self.dialect = dialect
         self.__binds = {}
         self.positional = positional or []
@@ -829,19 +828,31 @@ class ClauseParameters(object):
     def get_type(self, key):
         return self.__binds[key][0].type
 
-    def get_processed(self, key):
-        (bind, name, value) = self.__binds[key]
-        return bind.typeprocess(value, self.dialect)
-   
+    def get_processors(self):
+        """return a dictionary of bind 'processing' functions"""
+        return dict([
+            (key, value) for key, value in 
+            [(
+                key,
+                self.__binds[key][0].bind_processor(self.dialect)
+            ) for key in self.__binds]
+            if value is not None
+        ])
+    
+    def get_processed(self, key, processors):
+        return key in processors and processors[key](self.__binds[key][2]) or self.__binds[key][2]
+            
     def keys(self):
         return self.__binds.keys()
 
     def __iter__(self):
         return iter(self.keys())
- 
-    def __getitem__(self, key):
-        return self.get_processed(key)
         
+    def __getitem__(self, key):
+        (bind, name, value) = self.__binds[key]
+        processor = bind.bind_processor(self.dialect)
+        return processor is not None and processor(value) or value
+ 
     def __contains__(self, key):
         return key in self.__binds
     
@@ -851,14 +862,36 @@ class ClauseParameters(object):
     def get_original_dict(self):
         return dict([(name, value) for (b, name, value) in self.__binds.values()])
 
-    def get_raw_list(self):
-        return [self.get_processed(key) for key in self.positional]
+    def get_raw_list(self, processors):
+#        (bind, name, value) = self.__binds[key]
+        return [
+            (key in processors) and
+                processors[key](self.__binds[key][2]) or
+                self.__binds[key][2]
+            for key in self.positional
+        ]
 
-    def get_raw_dict(self, encode_keys=False):
+    def get_raw_dict(self, processors, encode_keys=False):
         if encode_keys:
-            return dict([(key.encode(self.dialect.encoding), self.get_processed(key)) for key in self.keys()])
+            return dict([
+                (
+                    key.encode(self.dialect.encoding),
+                    (key in processors) and
+                        processors[key](self.__binds[key][2]) or
+                        self.__binds[key][2]
+                )
+                for key in self.keys()
+            ])
         else:
-            return dict([(key, self.get_processed(key)) for key in self.keys()])
+            return dict([
+                (
+                    key,
+                    (key in processors) and
+                        processors[key](self.__binds[key][2]) or
+                        self.__binds[key][2]
+                )
+                for key in self.keys()
+            ])
 
     def __repr__(self):
         return self.__class__.__name__ + ":" + repr(self.get_original_dict())
@@ -1995,8 +2028,8 @@ class _BindParamClause(ClauseElement, _CompareMixin):
     def _get_from_objects(self, **modifiers):
         return []
 
-    def typeprocess(self, value, dialect):
-        return self.type.dialect_impl(dialect).convert_bind_param(value, dialect)
+    def bind_processor(self, dialect):
+        return self.type.dialect_impl(dialect).bind_processor(dialect)
 
     def _compare_type(self, obj):
         if not isinstance(self.type, sqltypes.NullType):

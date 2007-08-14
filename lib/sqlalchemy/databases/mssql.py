@@ -47,16 +47,18 @@ from sqlalchemy.engine import default
 import operator
     
 class MSNumeric(sqltypes.Numeric):
-    def convert_result_value(self, value, dialect):
-        return value
+    def result_processor(self, dialect):
+        return None
 
-    def convert_bind_param(self, value, dialect):
-        if value is None:
-            # Not sure that this exception is needed
-            return value
-        else:
-            return str(value) 
-
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is None:
+                # Not sure that this exception is needed
+                return value
+            else:
+                return str(value) 
+        return process
+        
     def get_col_spec(self):
         if self.precision is None:
             return "NUMERIC"
@@ -67,12 +69,14 @@ class MSFloat(sqltypes.Float):
     def get_col_spec(self):
         return "FLOAT(%(precision)s)" % {'precision': self.precision}
 
-    def convert_bind_param(self, value, dialect):
-        """By converting to string, we can use Decimal types round-trip."""
-        if not value is None:
-            return str(value)
-        return None
-
+    def bind_processor(self, dialect):
+        def process(value):
+            """By converting to string, we can use Decimal types round-trip."""
+            if not value is None:
+                return str(value)
+            return None
+        return process
+        
 class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -108,57 +112,71 @@ class MSTime(sqltypes.Time):
     def get_col_spec(self):
         return "DATETIME"
 
-    def convert_bind_param(self, value, dialect):
-        if isinstance(value, datetime.datetime):
-            value = datetime.datetime.combine(self.__zero_date, value.time())
-        elif isinstance(value, datetime.time):
-            value = datetime.datetime.combine(self.__zero_date, value)
-        return value
-
-    def convert_result_value(self, value, dialect):
-        if isinstance(value, datetime.datetime):
-            return value.time()
-        elif isinstance(value, datetime.date):
-            return datetime.time(0, 0, 0)
-        return value
-
+    def bind_processor(self, dialect):
+        def process(value):
+            if isinstance(value, datetime.datetime):
+                value = datetime.datetime.combine(self.__zero_date, value.time())
+            elif isinstance(value, datetime.time):
+                value = datetime.datetime.combine(self.__zero_date, value)
+            return value
+        return process
+    
+    def result_processor(self, dialect):
+        def process(value):
+            if isinstance(value, datetime.datetime):
+                return value.time()
+            elif isinstance(value, datetime.date):
+                return datetime.time(0, 0, 0)
+            return value
+        return process
+        
 class MSDateTime_adodbapi(MSDateTime):
-    def convert_result_value(self, value, dialect):
-        # adodbapi will return datetimes with empty time values as datetime.date() objects.
-        # Promote them back to full datetime.datetime()
-        if value and not hasattr(value, 'second'):
-            return datetime.datetime(value.year, value.month, value.day)
-        return value
-
+    def result_processor(self, dialect):
+        def process(value):
+            # adodbapi will return datetimes with empty time values as datetime.date() objects.
+            # Promote them back to full datetime.datetime()
+            if value and not hasattr(value, 'second'):
+                return datetime.datetime(value.year, value.month, value.day)
+            return value
+        return process
+        
 class MSDateTime_pyodbc(MSDateTime):
-    def convert_bind_param(self, value, dialect):
-        if value and not hasattr(value, 'second'):
-            return datetime.datetime(value.year, value.month, value.day)
-        else:
-            return value
-
+    def bind_processor(self, dialect):
+        def process(value):
+            if value and not hasattr(value, 'second'):
+                return datetime.datetime(value.year, value.month, value.day)
+            else:
+                return value
+        return process
+        
 class MSDate_pyodbc(MSDate):
-    def convert_bind_param(self, value, dialect):
-        if value and not hasattr(value, 'second'):
-            return datetime.datetime(value.year, value.month, value.day)
-        else:
-            return value
-
-    def convert_result_value(self, value, dialect):
-        # pyodbc returns SMALLDATETIME values as datetime.datetime(). truncate it back to datetime.date()
-        if value and hasattr(value, 'second'):
-            return value.date()
-        else:
-            return value
-
+    def bind_processor(self, dialect):
+        def process(value):
+            if value and not hasattr(value, 'second'):
+                return datetime.datetime(value.year, value.month, value.day)
+            else:
+                return value
+        return process
+    
+    def result_processor(self, dialect):
+        def process(value):
+            # pyodbc returns SMALLDATETIME values as datetime.datetime(). truncate it back to datetime.date()
+            if value and hasattr(value, 'second'):
+                return value.date()
+            else:
+                return value
+        return process
+        
 class MSDate_pymssql(MSDate):
-    def convert_result_value(self, value, dialect):
-        # pymssql will return SMALLDATETIME values as datetime.datetime(), truncate it back to datetime.date()
-        if value and hasattr(value, 'second'):
-            return value.date()
-        else:
-            return value
-
+    def result_processor(self, dialect):
+        def process(value):
+            # pymssql will return SMALLDATETIME values as datetime.datetime(), truncate it back to datetime.date()
+            if value and hasattr(value, 'second'):
+                return value.date()
+            else:
+                return value
+        return process
+        
 class MSText(sqltypes.TEXT):
     def get_col_spec(self):
         if self.dialect.text_as_varchar:
@@ -181,11 +199,11 @@ class MSNVarchar(sqltypes.Unicode):
 
 class AdoMSNVarchar(MSNVarchar):
     """overrides bindparam/result processing to not convert any unicode strings"""
-    def convert_bind_param(self, value, dialect):
-        return value
+    def bind_processor(self, dialect):
+        return None
 
-    def convert_result_value(self, value, dialect):
-        return value        
+    def result_processor(self, dialect):
+        return None
 
 class MSChar(sqltypes.CHAR):
     def get_col_spec(self):
@@ -203,20 +221,24 @@ class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BIT"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value and True or False
-
-    def convert_bind_param(self, value, dialect):
-        if value is True:
-            return 1
-        elif value is False:
-            return 0
-        elif value is None:
-            return None
-        else:
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
             return value and True or False
+        return process
+    
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is True:
+                return 1
+            elif value is False:
+                return 0
+            elif value is None:
+                return None
+            else:
+                return value and True or False
+        return process
         
 class MSTimeStamp(sqltypes.TIMESTAMP):
     def get_col_spec(self):

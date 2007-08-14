@@ -59,12 +59,13 @@ class TypeEngine(AbstractType):
     def get_col_spec(self):
         raise NotImplementedError()
 
-    def convert_bind_param(self, value, dialect):
-        return value
 
-    def convert_result_value(self, value, dialect):
-        return value
-
+    def bind_processor(self, dialect):
+        return None
+        
+    def result_processor(self, dialect):
+        return None
+        
     def adapt(self, cls):
         return cls()
     
@@ -115,11 +116,11 @@ class TypeDecorator(AbstractType):
     def get_col_spec(self):
         return self.impl.get_col_spec()
 
-    def convert_bind_param(self, value, dialect):
-        return self.impl.convert_bind_param(value, dialect)
+    def bind_processor(self, dialect):
+        return self.impl.bind_processor(dialect)
 
-    def convert_result_value(self, value, dialect):
-        return self.impl.convert_result_value(value, dialect)
+    def result_processor(self, dialect):
+        return self.impl.result_processor(dialect)
 
     def copy(self):
         instance = self.__class__.__new__(self.__class__)
@@ -183,11 +184,6 @@ class NullType(TypeEngine):
     def get_col_spec(self):
         raise NotImplementedError()
 
-    def convert_bind_param(self, value, dialect):
-        return value
-
-    def convert_result_value(self, value, dialect):
-        return value
 NullTypeEngine = NullType
 
 class Concatenable(object):
@@ -202,11 +198,27 @@ class String(TypeEngine, Concatenable):
     def adapt(self, impltype):
         return impltype(length=self.length, convert_unicode=self.convert_unicode)
 
-    def convert_bind_param(self, value, dialect):
-        if not (self.convert_unicode or dialect.convert_unicode) or value is None or not isinstance(value, unicode):
-            return value
+    def bind_processor(self, dialect):
+        if self.convert_unicode or dialect.convert_unicode:
+            def process(value):
+                if isinstance(value, unicode):
+                    return value.encode(dialect.encoding)
+                else:
+                    return value
+            return process
         else:
-            return value.encode(dialect.encoding)
+            return None
+        
+    def result_processor(self, dialect):
+        if self.convert_unicode or dialect.convert_unicode:
+            def process(value):
+                if value is not None and not isinstance(value, unicode):
+                    return value.decode(dialect.encoding)
+                else:
+                    return value
+            return process
+        else:
+            return None
 
     def get_search_list(self):
         l = super(String, self).get_search_list()
@@ -215,11 +227,6 @@ class String(TypeEngine, Concatenable):
         else:
             return l
 
-    def convert_result_value(self, value, dialect):
-        if not (self.convert_unicode or dialect.convert_unicode) or value is None or isinstance(value, unicode):
-            return value
-        else:
-            return value.decode(dialect.encoding)
 
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
@@ -254,17 +261,24 @@ class Numeric(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
-    def convert_bind_param(self, value, dialect):
-        if value is not None:
-            return float(value)
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                return float(value)
+            else:
+                return value
+        return process
+    
+    def result_processor(self, dialect):
+        if self.asdecimal:
+            def process(value):
+                if value is not None:
+                    return Decimal(str(value))
+                else:
+                    return value
+            return process
         else:
-            return value
-            
-    def convert_result_value(self, value, dialect):
-        if value is not None and self.asdecimal:
-            return Decimal(str(value))
-        else:
-            return value
+            return None
 
 class Float(Numeric):
     def __init__(self, precision = 10, asdecimal=False, **kwargs):
@@ -308,15 +322,14 @@ class Binary(TypeEngine):
     def __init__(self, length=None):
         self.length = length
 
-    def convert_bind_param(self, value, dialect):
-        if value is not None:
-            return dialect.dbapi.Binary(value)
-        else:
-            return None
-
-    def convert_result_value(self, value, dialect):
-        return value
-
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                return dialect.dbapi.Binary(value)
+            else:
+                return None
+        return process
+        
     def adapt(self, impltype):
         return impltype(length=self.length)
 
@@ -332,17 +345,27 @@ class PickleType(MutableType, TypeDecorator):
         self.mutable = mutable
         super(PickleType, self).__init__()
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        buf = self.impl.convert_result_value(value, dialect)
-        return self.pickler.loads(str(buf))
-
-    def convert_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        return self.impl.convert_bind_param(self.pickler.dumps(value, self.protocol), dialect)
-
+    def bind_processor(self, dialect):
+        impl_process = self.impl.bind_processor(dialect)
+        def process(value):
+            if value is None:
+                return None
+            if impl_process is None:
+                return self.pickler.dumps(value, self.protocol)
+            else:
+                return impl_process(self.pickler.dumps(value, self.protocol))
+        return process
+    
+    def result_processor(self, dialect):
+        impl_process = self.impl.result_processor(dialect)
+        def process(value):
+            if value is None:
+                return None
+            if impl_process is not None:
+                value = impl_process(value)
+            return self.pickler.loads(str(value))
+        return process
+        
     def copy_value(self, value):
         if self.mutable:
             return self.pickler.loads(self.pickler.dumps(value, self.protocol))
@@ -370,8 +393,8 @@ class Interval(TypeDecorator):
 
         Converting is very simple - just use epoch(zero timestamp, 01.01.1970) as
         base, so if we need to store timedelta = 1 day (24 hours) in database it
-        will be stored as DateTime = '2nd Jan 1970 00:00', see convert_bind_param
-        and convert_result_value to actual conversion code
+        will be stored as DateTime = '2nd Jan 1970 00:00', see bind_processor
+        and result_processor to actual conversion code
     """
     #Empty useless type, because at the moment of creation of instance we don't
     #know what type will be decorated - it depends on used dialect.
@@ -396,25 +419,35 @@ class Interval(TypeDecorator):
         
     def __hasNativeImpl(self,dialect):
         return dialect.__class__ in self.__supported
+    
+    def bind_processor(self, dialect):
+        impl_processor = self.impl.bind_processor(dialect)
+        if self.__hasNativeImpl(dialect):
+            return impl_processor
+        else:
+            def process(value):
+                if value is None:
+                    return None
+                tmpval = dt.datetime.utcfromtimestamp(0) + value
+                if impl_processor is not None:
+                    return impl_processor(tmpval)
+                else:
+                    return tmpval
+            return process
             
-    def convert_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        if not self.__hasNativeImpl(dialect):
-            tmpval = dt.datetime.utcfromtimestamp(0) + value
-            return self.impl.convert_bind_param(tmpval,dialect)
+    def result_processor(self, dialect):
+        impl_processor = self.impl.result_processor(dialect)
+        if self.__hasNativeImpl(dialect):
+            return impl_processor
         else:
-            return self.impl.convert_bind_param(value,dialect)
-
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        retval = self.impl.convert_result_value(value,dialect)
-        if not self.__hasNativeImpl(dialect):
-            return retval - dt.datetime.utcfromtimestamp(0)
-        else:
-            return retval
-
+            def process(value):
+                if value is None:
+                    return None
+                if impl_processor is not None:
+                    value = impl_processor(value)
+                return value - dt.datetime.utcfromtimestamp(0)
+            return process
+            
 class FLOAT(Float):pass
 class TEXT(String):pass
 class DECIMAL(Numeric):pass

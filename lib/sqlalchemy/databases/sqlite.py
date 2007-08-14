@@ -32,15 +32,17 @@ class SLSmallInteger(sqltypes.Smallinteger):
         return "SMALLINT"
 
 class DateTimeMixin(object):
-    def convert_bind_param(self, value, dialect):
-        if value is not None:
-            if getattr(value, 'microsecond', None) is not None:
-                return value.strftime(self.__format__ + "." + str(value.microsecond))
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                if getattr(value, 'microsecond', None) is not None:
+                    return value.strftime(self.__format__ + "." + str(value.microsecond))
+                else:
+                    return value.strftime(self.__format__)
             else:
-                return value.strftime(self.__format__)
-        else:
-            return None
-
+                return None
+        return process
+        
     def _cvt(self, value, dialect):
         if value is None:
             return None
@@ -57,30 +59,36 @@ class SLDateTime(DateTimeMixin,sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
 
-    def convert_result_value(self, value, dialect):
-        tup = self._cvt(value, dialect)
-        return tup and datetime.datetime(*tup)
-
+    def result_processor(self, dialect):
+        def process(value):
+            tup = self._cvt(value, dialect)
+            return tup and datetime.datetime(*tup)
+        return process
+        
 class SLDate(DateTimeMixin, sqltypes.Date):
     __format__ = "%Y-%m-%d"
 
     def get_col_spec(self):
         return "DATE"
 
-    def convert_result_value(self, value, dialect):
-        tup = self._cvt(value, dialect)
-        return tup and datetime.date(*tup[0:3])
-
+    def result_processor(self, dialect):
+        def process(value):
+            tup = self._cvt(value, dialect)
+            return tup and datetime.date(*tup[0:3])
+        return process
+        
 class SLTime(DateTimeMixin, sqltypes.Time):
     __format__ = "%H:%M:%S"
 
     def get_col_spec(self):
         return "TIME"
 
-    def convert_result_value(self, value, dialect):
-        tup = self._cvt(value, dialect)
-        return tup and datetime.time(*tup[3:7])
-
+    def result_processor(self, dialect):
+        def process(value):
+            tup = self._cvt(value, dialect)
+            return tup and datetime.time(*tup[3:7])
+        return process
+        
 class SLText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
@@ -101,16 +109,20 @@ class SLBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
 
-    def convert_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        return value and 1 or 0
-
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value and True or False
-
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            return value and 1 or 0
+        return process
+    
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            return value and True or False
+        return process
+        
 colspecs = {
     sqltypes.Integer : SLInteger,
     sqltypes.Smallinteger : SLSmallInteger,
@@ -150,7 +162,7 @@ def descriptor():
 
 class SQLiteExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
-        if self.compiled.isinsert:
+        if self.compiled.isinsert and not self.executemany:
             if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
                 self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
 

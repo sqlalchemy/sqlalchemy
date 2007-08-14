@@ -1,5 +1,9 @@
 0.4.0
 - orm
+    - speed ! along with recent speedups to ResultProxy, total number of
+      function calls significantly reduced for large loads.
+      test/perf/masseagerload.py reports 0.4 as having the fewest number
+      of function calls across all SA versions (0.1, 0.2, and 0.3)
 
     - new collection_class api and implementation [ticket:213]
       collections are now instrumented via decorations rather than 
@@ -135,11 +139,6 @@
     - improved support for custom column_property() attributes which
       feature correlated subqueries...work better with eager loading now.
 
-    - along with recent speedups to ResultProxy, total number of
-      function calls significantly reduced for large loads.
-      test/perf/masseagerload.py reports 0.4 as having the fewest number
-      of function calls across all SA versions (0.1, 0.2, and 0.3)
-
     - primary key "collapse" behavior; the mapper will analyze all columns
       in its given selectable for primary key "equivalence", that is,
       columns which are equivalent via foreign key relationship or via an
@@ -182,6 +181,11 @@
     style of Hibernate
     
 - sql
+  - speed !  clause compilation as well as the mechanics of SQL constructs
+    have been streamlined and simplified to a signficant degree, for a 
+    20-30% improvement of the statement construction/compilation overhead of 
+    0.3
+    
   - all "type" keyword arguments, such as those to bindparam(), column(),
     Column(), and func.<something>(), renamed to "type_".  those objects
     still name their "type" attribute as "type".
@@ -276,8 +280,15 @@
     semantics for "__contains__" [ticket:606]
     
 - engines
+  - speed !  the mechanics of result processing and bind parameter processing
+    have been overhauled, streamlined and optimized to issue as little method 
+    calls as possible.  bench tests for mass INSERT and mass rowset iteration
+    both show 0.4 to be over twice as fast as 0.3, using 68% fewer function
+    calls.
+
   - You can now hook into the pool lifecycle and run SQL statements or
     other logic at new each DBAPI connection, pool check-out and check-in.
+
   - Connections gain a .properties collection, with contents scoped to the
     lifetime of the underlying DBAPI connection
   - removed auto_close_cursors and disallow_open_cursors arguments from Pool;

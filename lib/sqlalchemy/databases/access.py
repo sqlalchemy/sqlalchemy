@@ -11,16 +11,18 @@ import sqlalchemy.engine.default as default
 
 
 class AcNumeric(types.Numeric):
-    def convert_result_value(self, value, dialect):
-        return value
+    def result_processor(self, dialect):
+        return None
 
-    def convert_bind_param(self, value, dialect):
-        if value is None:
-            # Not sure that this exception is needed
-            return value
-        else:
-            return str(value)
-
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is None:
+                # Not sure that this exception is needed
+                return value
+            else:
+                return str(value)
+        return process
+        
     def get_col_spec(self):
         return "NUMERIC"
 
@@ -28,12 +30,14 @@ class AcFloat(types.Float):
     def get_col_spec(self):
         return "FLOAT"
 
-    def convert_bind_param(self, value, dialect):
+    def bind_processor(self, dialect):
         """By converting to string, we can use Decimal types round-trip."""
-        if not value is None:
-            return str(value)
-        return None
-
+        def process(value):
+            if not value is None:
+                return str(value)
+            return None
+        return process
+        
 class AcInteger(types.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -72,11 +76,11 @@ class AcUnicode(types.Unicode):
     def get_col_spec(self):
         return "TEXT" + (self.length and ("(%d)" % self.length) or "")
 
-    def convert_bind_param(self, value, dialect):
-        return value
+    def bind_processor(self, dialect):
+        return None
 
-    def convert_result_value(self, value, dialect):
-        return value
+    def result_processor(self, dialect):
+        return None
 
 class AcChar(types.CHAR):
     def get_col_spec(self):        
@@ -90,21 +94,25 @@ class AcBoolean(types.Boolean):
     def get_col_spec(self):
         return "YESNO"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value and True or False
-
-    def convert_bind_param(self, value, dialect):
-        if value is True:
-            return 1
-        elif value is False:
-            return 0
-        elif value is None:
-            return None
-        else:
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
             return value and True or False
-
+        return process
+        
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is True:
+                return 1
+            elif value is False:
+                return 0
+            elif value is None:
+                return None
+            else:
+                return value and True or False
+        return process
+        
 class AcTimeStamp(types.TIMESTAMP):
     def get_col_spec(self):
         return "TIMESTAMP"

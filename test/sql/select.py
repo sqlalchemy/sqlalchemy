@@ -902,9 +902,9 @@ EXISTS (select yay from foo where boo = lar)",
                 self.assert_compile(stmt, expected_positional_stmt, dialect=sqlite.dialect())
                 nonpositional = stmt.compile()
                 positional = stmt.compile(dialect=sqlite.dialect())
-                assert positional.get_params().get_raw_list() == expected_default_params_list
-                assert nonpositional.get_params(**test_param_dict).get_raw_dict() == expected_test_params_dict, "expected :%s got %s" % (str(expected_test_params_dict), str(nonpositional.get_params(**test_param_dict).get_raw_dict()))
-                assert positional.get_params(**test_param_dict).get_raw_list() == expected_test_params_list
+                assert positional.get_params().get_raw_list({}) == expected_default_params_list
+                assert nonpositional.get_params(**test_param_dict).get_raw_dict({}) == expected_test_params_dict, "expected :%s got %s" % (str(expected_test_params_dict), str(nonpositional.get_params(**test_param_dict).get_raw_dict()))
+                assert positional.get_params(**test_param_dict).get_raw_list({}) == expected_test_params_list
         
         # check that params() doesnt modify original statement
         s = select([table1], or_(table1.c.myid==bindparam('myid'), table2.c.otherid==bindparam('myotherid')))

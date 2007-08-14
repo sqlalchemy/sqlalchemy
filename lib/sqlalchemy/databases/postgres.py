@@ -22,14 +22,19 @@ class PGNumeric(sqltypes.Numeric):
         else:
             return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
 
-    def convert_bind_param(self, value, dialect):
-        return value
+    def bind_processor(self, dialect):
+        return None
 
-    def convert_result_value(self, value, dialect):
-        if not self.asdecimal and isinstance(value, util.decimal_type):
-            return float(value)
+    def result_processor(self, dialect):
+        if self.asdecimal:
+            return None
         else:
-            return value
+            def process(value):
+                if isinstance(value, util.decimal_type):
+                    return float(value)
+                else:
+                    return value
+            return process
         
 class PGFloat(sqltypes.Float):
     def get_col_spec(self):
@@ -98,25 +103,38 @@ class PGArray(sqltypes.TypeEngine, sqltypes.Concatenable):
         impl.__dict__.update(self.__dict__)
         impl.item_type = self.item_type.dialect_impl(dialect)
         return impl
-    def convert_bind_param(self, value, dialect):
-        if value is None:
-            return value
-        def convert_item(item):
-            if isinstance(item, (list,tuple)):
-                return [convert_item(child) for child in item]
-            else:
-                return self.item_type.convert_bind_param(item, dialect)
-        return [convert_item(item) for item in value]
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return value
-        def convert_item(item):
-            if isinstance(item, list):
-                return [convert_item(child) for child in item]
-            else:
-                return self.item_type.convert_result_value(item, dialect)
-        # Could specialcase when item_type.convert_result_value is the default identity func
-        return [convert_item(item) for item in value]
+        
+    def bind_processor(self, dialect):
+        item_proc = self.item_type.bind_processor(dialect)
+        def process(value):
+            if value is None:
+                return value
+            def convert_item(item):
+                if isinstance(item, (list,tuple)):
+                    return [convert_item(child) for child in item]
+                else:
+                    if item_proc:
+                        return item_proc(item)
+                    else:
+                        return item
+            return [convert_item(item) for item in value]
+        return process
+        
+    def result_processor(self, dialect):
+        item_proc = self.item_type.bind_processor(dialect)
+        def process(value):
+            if value is None:
+                return value
+            def convert_item(item):
+                if isinstance(item, list):
+                    return [convert_item(child) for child in item]
+                else:
+                    if item_proc:
+                        return item_proc(item)
+                    else:
+                        return item
+            return [convert_item(item) for item in value]
+        return process
     def get_col_spec(self):
         return self.item_type.get_col_spec() + '[]'
 

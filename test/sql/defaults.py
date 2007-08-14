@@ -9,14 +9,14 @@ import datetime
 class DefaultTest(PersistTest):
 
     def setUpAll(self):
-        global t, f, f2, ts, currenttime, metadata
+        global t, f, f2, ts, currenttime, metadata, default_generator
 
         db = testbase.db
         metadata = MetaData(db)
-        x = {'x':50}
+        default_generator = {'x':50}
         def mydefault():
-            x['x'] += 1
-            return x['x']
+            default_generator['x'] += 1
+            return default_generator['x']
 
         def myupdate_with_ctx(ctx):
             return len(ctx.compiled_parameters['col2'])
@@ -96,6 +96,7 @@ class DefaultTest(PersistTest):
         t.drop()
     
     def tearDown(self):
+        default_generator['x'] = 50
         t.delete().execute()
     
     def testargsignature(self):
@@ -125,7 +126,14 @@ class DefaultTest(PersistTest):
         t.insert().execute()
 
         ctexec = currenttime.scalar()
-        print "Currenttime "+ repr(ctexec)
+        l = t.select().execute()
+        today = datetime.date.today()
+        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (52, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (53, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today)])
+
+    def testinsertmany(self):
+        r = t.insert().execute({}, {}, {})
+
+        ctexec = currenttime.scalar()
         l = t.select().execute()
         today = datetime.date.today()
         self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (52, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (53, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today)])
@@ -134,6 +142,25 @@ class DefaultTest(PersistTest):
         t.insert(values={'col3':50}).execute()
         l = t.select().execute()
         self.assert_(l.fetchone()['col3'] == 50)
+        
+    def testupdatemany(self):
+        t.insert().execute({}, {}, {})
+
+        t.update(t.c.col1==bindparam('pkval')).execute(
+            {'pkval':51,'col7':None, 'col8':None, 'boolcol1':False},
+        )
+        
+        
+        t.update(t.c.col1==bindparam('pkval')).execute(
+            {'pkval':51,},
+            {'pkval':52,},
+            {'pkval':53,},
+        )
+
+        l = t.select().execute()
+        ctexec = currenttime.scalar()
+        today = datetime.date.today()
+        self.assert_(l.fetchall() == [(51, 'im the update', f2, ts, ts, ctexec, False, False, 13, today), (52, 'im the update', f2, ts, ts, ctexec, True, False, 13, today), (53, 'im the update', f2, ts, ts, ctexec, True, False, 13, today)])
         
         
     def testupdate(self):
@@ -147,7 +174,7 @@ class DefaultTest(PersistTest):
         self.assert_(l == (pk, 'im the update', f2, None, None, ctexec, True, False, 13, datetime.date.today()))
         # mysql/other db's return 0 or 1 for count(1)
         self.assert_(14 <= f2 <= 15)
-
+            
     def testupdatevalues(self):
         r = t.insert().execute()
         pk = r.last_inserted_ids()[0]
