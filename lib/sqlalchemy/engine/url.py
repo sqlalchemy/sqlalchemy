@@ -66,7 +66,17 @@ class URL(object):
             keys.sort()
             s += '?' + "&".join(["%s=%s" % (k, self.query[k]) for k in keys])
         return s
-
+    
+    def __eq__(self, other):
+        return \
+            isinstance(other, URL) and \
+            self.drivername == other.drivername and \
+            self.username == other.username and \
+            self.password == other.password and \
+            self.host == other.host and \
+            self.database == other.database and \
+            self.query == other.query
+            
     def get_dialect(self):
         """Return the SQLAlchemy database dialect class corresponding to this URL's driver name."""
         dialect=None

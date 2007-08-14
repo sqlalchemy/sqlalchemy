@@ -7,7 +7,7 @@
 from sqlalchemy.types import *
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
-from sqlalchemy.engine import create_engine
+from sqlalchemy.engine import create_engine, engine_from_config
 
 
 __version__ = 'svn'

@@ -48,6 +48,7 @@ The package is represented among several individual modules, including:
 import sqlalchemy.databases
 from sqlalchemy.engine.base import *
 from sqlalchemy.engine import strategies
+from sqlalchemy import util
 
 def engine_descriptors():
     """Provide a listing of all the database implementations supported.
@@ -151,3 +152,30 @@ def create_engine(*args, **kwargs):
     strategy = kwargs.pop('strategy', default_strategy)
     strategy = strategies.strategies[strategy]
     return strategy.create(*args, **kwargs)
+
+def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
+    """Create a new Engine instance using a configuration dictionary.
+    
+    the dictionary is typically produced from a config file where keys are prefixed,
+    such as sqlalchemy.url, sqlalchemy.echo, etc.  The 'prefix' argument indicates 
+    the prefix to be searched for.
+    
+    A select set of keyword arguments will be "coerced" to their expected type based on 
+    string values.  in a future release, this functionality will be expanded to include 
+    dialect-specific arguments.
+    """
+    
+    opts = dict([(key[len(prefix):], configuration[key]) for key in configuration if key.startswith(prefix)])
+    for opt, type_ in (
+        ('convert_unicode', bool),
+        ('pool_timeout', int),
+        ('echo', bool),
+        ('echo_pool', bool),
+        ('pool_recycle', int),
+    ):
+        util.coerce_kw_type(opts, opt, type_)
+    opts.update(kwargs)
+    url = opts.pop('url')
+    return create_engine(url, **opts)
+
+    
