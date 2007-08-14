@@ -651,7 +651,7 @@ class UnicodeTest(PersistTest):
             metadata.create_all()
 
             reflected = set(bind.table_names())
-            if reflected != names:
+            if not names.issubset(reflected):
                 # Python source files in the utf-8 coding seem to normalize
                 # literals as NFC (and the above are explicitly NFC).  Maybe
                 # this database normalizes NFD on reflection.
