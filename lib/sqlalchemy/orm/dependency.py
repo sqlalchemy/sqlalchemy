@@ -420,6 +420,7 @@ class MapperStub(object):
 
     def __init__(self, parent, mapper, key):
         self.mapper = mapper
+        self.base_mapper = self
         self.class_ = mapper.class_
         self._inheriting_mappers = []
 
@@ -438,5 +439,3 @@ class MapperStub(object):
     def primary_mapper(self):
         return self
 
-    def base_mapper(self):
-        return self

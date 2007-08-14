@@ -74,6 +74,22 @@ class SessionTest(AssertMixin):
         # then see if expunge fails
         session.expunge(u)
     
+    def test_binds_from_expression(self):
+        """test that Session can extract Table objects from ClauseElements and match them to tables."""
+        Session = sessionmaker(binds={users:testbase.db, addresses:testbase.db})
+        sess = Session()
+        sess.execute(users.insert(), params=dict(user_id=1, user_name='ed'))
+        assert sess.execute(users.select()).fetchall() == [(1, 'ed')]
+        
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref=backref("user", cascade="all"), cascade="all")
+        })
+        Session = sessionmaker(binds={User:testbase.db, Address:testbase.db})
+        sess.execute(users.insert(), params=dict(user_id=2, user_name='fred'))
+        assert sess.execute(users.select()).fetchall() == [(1, 'ed'), (2, 'fred')]
+        
+        
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
     def test_transaction(self):
         class User(object):pass

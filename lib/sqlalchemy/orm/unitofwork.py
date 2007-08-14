@@ -307,7 +307,7 @@ class UOWTransaction(object):
             if dontcreate:
                 return None
                 
-            base_mapper = mapper.base_mapper()
+            base_mapper = mapper.base_mapper
             if base_mapper in self.tasks:
                 base_task = self.tasks[base_mapper]
             else:
@@ -336,8 +336,8 @@ class UOWTransaction(object):
         # also convert to the "base mapper", the parentmost task at the top of an inheritance chain
         # dependency sorting is done via non-inheriting mappers only, dependencies between mappers
         # in the same inheritance chain is done at the per-object level
-        mapper = mapper.primary_mapper().base_mapper()
-        dependency = dependency.primary_mapper().base_mapper()
+        mapper = mapper.primary_mapper().base_mapper
+        dependency = dependency.primary_mapper().base_mapper
 
         self.dependencies.add((mapper, dependency))
 
@@ -715,8 +715,8 @@ class UOWTask(object):
             return l
 
         def dependency_in_cycles(dep):
-            proctask = trans.get_task_by_mapper(dep.processor.mapper.base_mapper(), True)
-            targettask = trans.get_task_by_mapper(dep.targettask.mapper.base_mapper(), True)
+            proctask = trans.get_task_by_mapper(dep.processor.mapper.base_mapper, True)
+            targettask = trans.get_task_by_mapper(dep.targettask.mapper.base_mapper, True)
             return targettask in cycles and (proctask is not None and proctask in cycles)
 
         # organize all original UOWDependencyProcessors by their target task

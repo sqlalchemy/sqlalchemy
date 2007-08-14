@@ -368,7 +368,11 @@ class Mapper(object):
             self.polymorphic_map = self.inherits.polymorphic_map
             self.batch = self.inherits.batch
             self.inherits._inheriting_mappers.add(self)
+            self.base_mapper = self.inherits.base_mapper
+            self._all_tables = self.inherits._all_tables
         else:
+            self._all_tables = util.Set()
+            self.base_mapper = self
             self._synchronizer = None
             self.mapped_table = self.local_table
             if self.polymorphic_identity is not None:
@@ -424,6 +428,7 @@ class Mapper(object):
         # go through all of our represented tables
         # and assemble primary key columns
         for t in self.tables + [self.mapped_table]:
+            self._all_tables.add(t)
             try:
                 l = self.pks_by_table[t]
             except KeyError:
@@ -534,7 +539,7 @@ class Mapper(object):
                     result[binary.right] = util.Set([binary.left])
         vis = mapperutil.BinaryVisitor(visit_binary)
 
-        for mapper in self.base_mapper().polymorphic_iterator():
+        for mapper in self.base_mapper.polymorphic_iterator():
             if mapper.inherit_condition is not None:
                 vis.traverse(mapper.inherit_condition)
 
@@ -716,19 +721,10 @@ class Mapper(object):
         if self.entity_name is None:
             self.class_.c = self.c
 
-    def base_mapper(self):
-        """Return the ultimate base mapper in an inheritance chain."""
-
-        # TODO: calculate this at mapper setup time
-        if self.inherits is not None:
-            return self.inherits.base_mapper()
-        else:
-            return self
-
     def common_parent(self, other):
         """Return true if the given mapper shares a common inherited parent as this mapper."""
 
-        return self.base_mapper() is other.base_mapper()
+        return self.base_mapper is other.base_mapper
 
     def isa(self, other):
         """Return True if the given mapper inherits from this mapper."""
@@ -752,7 +748,7 @@ class Mapper(object):
         all their inheriting mappers as well.
 
         To iterate through an entire hierarchy, use
-        ``mapper.base_mapper().polymorphic_iterator()``."""
+        ``mapper.base_mapper.polymorphic_iterator()``."""
 
         yield self
         for mapper in self._inheriting_mappers:
@@ -1033,7 +1029,7 @@ class Mapper(object):
         updated_objects = util.Set()
 
         table_to_mapper = {}
-        for mapper in self.base_mapper().polymorphic_iterator():
+        for mapper in self.base_mapper.polymorphic_iterator():
             for t in mapper.tables:
                 table_to_mapper.setdefault(t, mapper)
 
@@ -1247,7 +1243,7 @@ class Mapper(object):
         
         deleted_objects = util.Set()
         table_to_mapper = {}
-        for mapper in self.base_mapper().polymorphic_iterator():
+        for mapper in self.base_mapper.polymorphic_iterator():
             for t in mapper.tables:
                 table_to_mapper.setdefault(t, mapper)
 

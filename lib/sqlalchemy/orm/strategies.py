@@ -463,9 +463,9 @@ class EagerLoader(AbstractRelationLoader):
         # row-loading phase to match up AliasedClause objects with the current
         # LoaderStack position.
         if parentclauses:
-            path = parentclauses.path + (self.parent.base_mapper(), self.key)
+            path = parentclauses.path + (self.parent.base_mapper, self.key)
         else:
-            path = (self.parent.base_mapper(), self.key)
+            path = (self.parent.base_mapper, self.key)
         
         if self.join_depth:
             if len(path) / 2 > self.join_depth:

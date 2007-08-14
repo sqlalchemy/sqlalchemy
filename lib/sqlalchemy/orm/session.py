@@ -9,6 +9,7 @@ from sqlalchemy import util, exceptions, sql, engine
 from sqlalchemy.orm import unitofwork, query, util as mapperutil
 from sqlalchemy.orm.mapper import object_mapper as _object_mapper
 from sqlalchemy.orm.mapper import class_mapper as _class_mapper
+from sqlalchemy.orm.mapper import Mapper
 
 
 __all__ = ['Session', 'SessionTransaction', 'SessionExtension']
@@ -146,11 +147,8 @@ class SessionTransaction(object):
         self.autoflush = autoflush
         self.nested = nested
 
-    def connection(self, mapper_or_class, entity_name=None, **kwargs):
-        if isinstance(mapper_or_class, type):
-            mapper_or_class = _class_mapper(mapper_or_class, entity_name=entity_name)
-        engine = self.session.get_bind(mapper_or_class, **kwargs)
-        return self.get_or_add(engine)
+    def connection(self, bindkey, **kwargs):
+        return self.session.connection(bindkey, **kwargs)
 
     def _begin(self, **kwargs):
         return SessionTransaction(self.session, self, **kwargs)
@@ -406,10 +404,13 @@ class Session(object):
         self._mapper_flush_opts = {}
         
         if binds is not None:
-            for mapperortable, value in binds:
+            for mapperortable, value in binds.iteritems():
                 if isinstance(mapperortable, type):
-                    mapperortable = _class_mapper(mapperortable)
+                    mapperortable = _class_mapper(mapperortable).base_mapper
                 self.__binds[mapperortable] = value
+                if isinstance(mapperortable, Mapper):
+                    for t in mapperortable._all_tables:
+                        self.__binds[t] = value
                 
         if self.transactional:
             self.begin()
@@ -504,11 +505,14 @@ class Session(object):
         to multiple engines or connections, or is not bound to any connectable.
         """
 
-        if self.transaction is not None:
-            return self.transaction.connection(mapper)
-        else:
-            return self.get_bind(mapper).contextual_connect(**kwargs)
+        return self.__connection(self.get_bind(mapper))
 
+    def __connection(self, engine, **kwargs):
+        if self.transaction is not None:
+            return self.transaction.get_or_add(engine)
+        else:
+            return engine.contextual_connect(**kwargs)
+        
     def execute(self, clause, params=None, mapper=None, **kwargs):
         """Using the given mapper to identify the appropriate ``Engine``
         or ``Connection`` to be used for statement execution, execute the
@@ -520,12 +524,17 @@ class Session(object):
         then the ``ResultProxy`` 's ``close()`` method will release the
         resources of the underlying ``Connection``.
         """
-        return self.connection(mapper, close_with_result=True).execute(clause, params or {}, **kwargs)
+
+        engine = self.get_bind(mapper, clause=clause)
+        
+        return self.__connection(engine, close_with_result=True).execute(clause, params or {}, **kwargs)
 
     def scalar(self, clause, params=None, mapper=None, **kwargs):
         """Like execute() but return a scalar result."""
 
-        return self.connection(mapper, close_with_result=True).scalar(clause, params or {}, **kwargs)
+        engine = self.get_bind(mapper, clause=clause)
+        
+        return self.__connection(engine, close_with_result=True).scalar(clause, params or {}, **kwargs)
 
     def close(self):
         """Close this Session.  
@@ -575,7 +584,9 @@ class Session(object):
         if isinstance(mapper, type):
             mapper = _class_mapper(mapper, entity_name=entity_name)
 
-        self.__binds[mapper] = bind
+        self.__binds[mapper.base_mapper] = bind
+        for t in mapper._all_tables:
+            self.__binds[t] = bind
 
     def bind_table(self, table, bind):
         """Bind the given `table` to the given ``Engine`` or ``Connection``.
@@ -586,45 +597,32 @@ class Session(object):
 
         self.__binds[table] = bind
 
-    def get_bind(self, mapper):
-        """Return the ``Engine`` or ``Connection`` which is used to execute
-        statements on behalf of the given `mapper`.
+    def get_bind(self, mapper, clause=None):
 
-        Calling ``connect()`` on the return result will always result
-        in a ``Connection`` object.  This method disregards any
-        ``SessionTransaction`` that may be in progress.
-
-        The order of searching is as follows:
-
-        1. if an ``Engine`` or ``Connection`` was bound to this ``Mapper``
-           specifically within this ``Session``, return that ``Engine`` or
-           ``Connection``.
-
-        2. if an ``Engine`` or ``Connection`` was bound to this `mapper` 's
-           underlying ``Table`` within this ``Session`` (i.e. not to the ``Table``
-           directly), return that ``Engine`` or ``Connection``.
-
-        3. if an ``Engine`` or ``Connection`` was bound to this ``Session``,
-           return that ``Engine`` or ``Connection``.
-
-        4. finally, return the ``Engine`` which was bound directly to the
-           ``Table`` 's ``MetaData`` object.
-
-        If no ``Engine`` is bound to the ``Table``, an exception is raised.
-        """
-
-        if mapper is None:
+        if mapper is None and clause is None:
             if self.bind is not None:
                 return self.bind
             else:
                 raise exceptions.InvalidRequestError("This session is unbound to any Engine or Connection; specify a mapper to get_bind()")
-        elif self.__binds.has_key(mapper):
-            return self.__binds[mapper]
-        elif self.__binds.has_key(mapper.compile().mapped_table):
-            return self.__binds[mapper.mapped_table]
-        elif self.bind is not None:
+                
+        elif len(self.__binds):
+            if mapper is not None:
+                if isinstance(mapper, type):
+                    mapper = _class_mapper(mapper)
+                if self.__binds.has_key(mapper.base_mapper):
+                    return self.__binds[mapper.base_mapper]
+                elif self.__binds.has_key(mapper.compile().mapped_table):
+                    return self.__binds[mapper.mapped_table]
+            if clause is not None:
+                for t in clause._table_iterator():
+                    if t in self.__binds:
+                        return self.__binds[t]
+                        
+        if self.bind is not None:
             return self.bind
         else:
+            if isinstance(mapper, type):
+                mapper = _class_mapper(mapper)
             e = mapper.mapped_table.bind
             if e is None:
                 raise exceptions.InvalidRequestError("Could not locate any Engine or Connection bound to mapper '%s'" % str(mapper))

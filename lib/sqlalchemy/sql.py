@@ -894,32 +894,41 @@ class ClauseVisitor(object):
         meth = getattr(self, "visit_%s" % obj.__visit_name__, None)
         if meth:
             return meth(obj, **kwargs)
-            
+
+    def iterate(self, obj, stop_on=None):
+        stack = [obj]
+        traversal = []
+        while len(stack) > 0:
+            t = stack.pop()
+            if stop_on is None or t not in stop_on:
+                yield t
+                traversal.insert(0, t)
+                for c in t.get_children(**self.__traverse_options__):
+                    stack.append(c)
+        
     def traverse(self, obj, stop_on=None, clone=False):
         if clone:
             obj = obj._clone()
-
-        v = self
-        visitors = []
-        while v is not None:
-            visitors.append(v)
-            v = getattr(v, '_next', None)
-
-        def _trav(obj):
-            if stop_on is not None and obj in stop_on:
-                return
-            if clone:
-                obj._copy_internals()
-            for c in obj.get_children(**self.__traverse_options__):
-                _trav(c)
-
-            for v in visitors:
-                meth = getattr(v, "visit_%s" % obj.__visit_name__, None)
+            
+        stack = [obj]
+        traversal = []
+        while len(stack) > 0:
+            t = stack.pop()
+            if stop_on is None or t not in stop_on:
+                traversal.insert(0, t)
+                if clone:
+                    t._copy_internals()
+                for c in t.get_children(**self.__traverse_options__):
+                    stack.append(c)
+        for target in traversal:
+            v = self
+            while v is not None:
+                meth = getattr(v, "visit_%s" % target.__visit_name__, None)
                 if meth:
-                    meth(obj)
-        _trav(obj)
+                    meth(target)
+                v = getattr(v, '_next', None)
         return obj
-        
+
     def chain(self, visitor):
         """'chain' an additional ClauseVisitor onto this ClauseVisitor.
         
@@ -2070,6 +2079,9 @@ class _TextClause(ClauseElement):
     def supports_execution(self):
         return True
 
+    def _table_iterator(self):
+        return iter([])
+
 class _Null(ColumnElement):
     """Represent the NULL keyword in a SQL statement.
 
@@ -2592,6 +2604,9 @@ class Alias(FromClause):
     def supports_execution(self):
         return self.original.supports_execution()
 
+    def _table_iterator(self):
+        return self.original._table_iterator()
+
     def _locate_oid_column(self):
         if self.selectable.oid_column is not None:
             return self.selectable.oid_column._make_proxy(self)
@@ -3065,6 +3080,11 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
     def get_children(self, column_collections=True, **kwargs):
         return (column_collections and list(self.c) or []) + \
             [self._order_by_clause, self._group_by_clause] + list(self.selects)
+
+    def _table_iterator(self):
+        for s in self.selects:
+            for t in s._table_iterator():
+                yield t
             
     def _find_engine(self):
         for s in self.selects:
@@ -3334,6 +3354,11 @@ class Select(_SelectBaseMixin, FromClause):
     def intersect_all(self, other, **kwargs):
         return intersect_all(self, other, **kwargs)
 
+    def _table_iterator(self):
+        for t in NoColumnVisitor().iterate(self):
+            if isinstance(t, TableClause):
+                yield t
+        
     def _find_engine(self):
         """Try to return a Engine, either explicitly set in this
         object, or searched within the from clauses for one.
@@ -3365,6 +3390,9 @@ class _UpdateBase(ClauseElement):
     def supports_execution(self):
         return True
 
+    def _table_iterator(self):
+        return iter([self.table])
+        
     def _process_colparams(self, parameters):
         """Receive the *values* of an ``INSERT`` or ``UPDATE``
         statement and construct appropriate bind parameters.

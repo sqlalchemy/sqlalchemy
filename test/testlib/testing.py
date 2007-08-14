@@ -6,7 +6,7 @@ import testbase
 import unittest, re, sys, os, operator
 from cStringIO import StringIO
 import testlib.config as config
-sql, MetaData, clear_mappers = None, None, None
+sql, MetaData, clear_mappers, Session = None, None, None, None
 
 
 __all__ = ('PersistTest', 'AssertMixin', 'ORMTest', 'SQLCompileTest')
@@ -323,6 +323,10 @@ class ORMTest(AssertMixin):
         _otest_metadata.drop_all()
 
     def tearDown(self):
+        global Session
+        if Session is None:
+            from sqlalchemy.orm.session import Session
+        Session.close_all()
         global clear_mappers
         if clear_mappers is None:
             from sqlalchemy.orm import clear_mappers
