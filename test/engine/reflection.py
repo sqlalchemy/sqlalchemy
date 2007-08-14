@@ -641,7 +641,6 @@ class CreateDropTest(PersistTest):
 
 class UnicodeTest(PersistTest):
     def test_basic(self):
-        self.assert_(not testbase.db.table_names())
         try:
             bind = engines.utf8_engine()
             metadata = MetaData(bind)
