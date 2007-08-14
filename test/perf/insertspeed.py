@@ -18,12 +18,14 @@ def test_many_inserts(n):
     i.execute([{'name':'John Doe','sex':1,'age':35} for j in xrange(n)])
     s = Person_table.select()
     r = s.execute()
-    print "Number of records selected: %s\n"%(len(r.fetchall()))
+    print "Fetching all rows and columns"
+    res = [[value for value in row] for row in r.fetchall()]
+    print "Number of records selected: %s\n"%(len(res))
 
 def all():
     metadata.create_all()
     try:
-        test_many_inserts(100000)
+        test_many_inserts(50000)
     finally:
         metadata.drop_all()
 
