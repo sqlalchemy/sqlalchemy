@@ -1,6 +1,7 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy.orm.session import Session as SessionCls
 from testlib import *
 from testlib.tables import *
 import testlib.tables as tables
@@ -12,6 +13,7 @@ class SessionTest(AssertMixin):
     def tearDownAll(self):
         tables.drop()
     def tearDown(self):
+        SessionCls.close_all()
         tables.delete()
         clear_mappers()
     def setUp(self):
