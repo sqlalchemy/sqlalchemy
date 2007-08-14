@@ -143,10 +143,6 @@ class Mapper(object):
         self.include_properties = include_properties
         self.exclude_properties = exclude_properties
 
-        # each time the options() method is called, the resulting Mapper is
-        # stored in this dictionary based on the given options for fast re-access
-        self._options = {}
-
         # a set of all mappers which inherit from this one.
         self._inheriting_mappers = util.Set()
 
@@ -1417,9 +1413,9 @@ class Mapper(object):
                 if not context.identity_map.has_key(identitykey):
                     context.identity_map[identitykey] = instance
                     isnew = True
-                if extension.populate_instance(self, context, row, instance, **{'instancekey':identitykey, 'isnew':isnew}) is EXT_CONTINUE:
-                    self.populate_instance(context, instance, row, **{'instancekey':identitykey, 'isnew':isnew})
-            if extension.append_result(self, context, row, instance, result, **{'instancekey':identitykey, 'isnew':isnew}) is EXT_CONTINUE:
+                if extension.populate_instance(self, context, row, instance, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+                    self.populate_instance(context, instance, row, instancekey=identitykey, isnew=isnew)
+            if extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                 if result is not None:
                     result.append(instance)
             return instance
@@ -1570,7 +1566,7 @@ class Mapper(object):
             for c in param_names:
                 params[c.name] = self.get_attr_by_column(instance, c)
             row = selectcontext.session.connection(self).execute(statement, **params).fetchone()
-            self.populate_instance(selectcontext, instance, row, **{'isnew':False, 'instancekey':identitykey, 'ispostselect':True})
+            self.populate_instance(selectcontext, instance, row, isnew=False, instancekey=identitykey, ispostselect=True)
 
         return post_execute
             
