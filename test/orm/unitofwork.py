@@ -92,7 +92,6 @@ class VersioningTest(UnitOfWorkTest):
             # a concurrent session has modified this, should throw
             # an exception
             s.commit()
-            assert False
         except exceptions.ConcurrentModificationError, e:
             #print e
             success = True
