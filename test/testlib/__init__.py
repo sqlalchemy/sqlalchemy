@@ -7,10 +7,10 @@ import testlib.config
 from testlib.schema import Table, Column
 import testlib.testing as testing
 from testlib.testing import PersistTest, AssertMixin, ORMTest, SQLCompileTest
-import testlib.profiling
+import testlib.profiling as profiling
 import testlib.engines
 
 
 __all__ = ('testing',
            'Table', 'Column',
-           'PersistTest', 'AssertMixin', 'ORMTest', 'SQLCompileTest')
+           'PersistTest', 'AssertMixin', 'ORMTest', 'SQLCompileTest', 'profiling')

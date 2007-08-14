@@ -1,5 +1,4 @@
 import testbase
-import hotshot, hotshot.stats
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *

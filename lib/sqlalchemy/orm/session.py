@@ -148,7 +148,8 @@ class SessionTransaction(object):
         self.nested = nested
 
     def connection(self, bindkey, **kwargs):
-        return self.session.connection(bindkey, **kwargs)
+        engine = self.session.get_bind(bindkey, **kwargs)
+        return self.get_or_add(engine)
 
     def _begin(self, **kwargs):
         return SessionTransaction(self.session, self, **kwargs)
@@ -623,6 +624,8 @@ class Session(object):
         else:
             if isinstance(mapper, type):
                 mapper = _class_mapper(mapper)
+            else:
+                mapper = mapper.compile()
             e = mapper.mapped_table.bind
             if e is None:
                 raise exceptions.InvalidRequestError("Could not locate any Engine or Connection bound to mapper '%s'" % str(mapper))
