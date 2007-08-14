@@ -258,6 +258,8 @@ class AssertMixin(PersistTest):
     def assert_sql(self, db, callable_, list, with_sequences=None):
         global testdata
         testdata = TestData()
+        if config.db.name == 'mssql':            
+            list = [s.endswith('; select scope_identity()') and s[:-25] or s for s in list]
         if with_sequences is not None and (config.db.name == 'postgres' or
                                            config.db.name == 'oracle'):
             testdata.set_assert_list(self, with_sequences)
