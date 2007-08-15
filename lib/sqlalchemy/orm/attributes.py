@@ -708,17 +708,6 @@ class AttributeManager(object):
                 return True
         return object._state.get('modified', False)
 
-    def init_attr(self, obj):
-        """Sets up the __sa_attr_state dictionary on the given instance.
-
-        This dictionary is automatically created when the `_state`
-        attribute of the class is first accessed, but calling it here
-        will save a single throw of an ``AttributeError`` that occurs
-        in that creation step.
-        """
-
-        setattr(obj, '_%s__sa_attr_state' % obj.__class__.__name__, {})
-
     def get_history(self, obj, key, **kwargs):
         """Return a new ``AttributeHistory`` object for the given
         attribute on the given object.

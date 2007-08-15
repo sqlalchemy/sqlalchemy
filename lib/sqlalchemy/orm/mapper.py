@@ -1467,10 +1467,6 @@ class Mapper(object):
         obj = self.class_.__new__(self.class_)
         obj._entity_name = self.entity_name
 
-        # this gets the AttributeManager to do some pre-initialization,
-        # in order to save on KeyErrors later on
-        attribute_manager.init_attr(obj)
-
         return obj
 
     def _deferred_inheritance_condition(self, needs_tables):
