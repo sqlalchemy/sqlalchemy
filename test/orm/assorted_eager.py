@@ -13,7 +13,10 @@ class EagerTest(AssertMixin):
         dbmeta = MetaData(testbase.db)
         
         # determine a literal value for "false" based on the dialect
-        false = Boolean().dialect_impl(testbase.db.dialect).bind_processor(testbase.db.dialect)(False)
+        false = False
+        bp = Boolean().dialect_impl(testbase.db.dialect).bind_processor(testbase.db.dialect)
+        if bp:
+            false = bp(false)
         
         owners = Table ( 'owners', dbmeta ,
         	Column ( 'id', Integer, primary_key=True, nullable=False ),

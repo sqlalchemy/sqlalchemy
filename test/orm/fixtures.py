@@ -168,9 +168,8 @@ def install_fixture_data():
 
 class FixtureTest(ORMTest):
     def define_tables(self, meta):
-        # a slight dirty trick here. 
-        meta.tables = metadata.tables
-        metadata.connect(meta.bind)
+        pass
+FixtureTest.metadata = metadata
     
 class Fixtures(object):
     @property

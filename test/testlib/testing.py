@@ -293,14 +293,19 @@ _otest_metadata = None
 class ORMTest(AssertMixin):
     keep_mappers = False
     keep_data = False
-
+    metadata = None
+    
     def setUpAll(self):
         global MetaData, _otest_metadata
 
         if MetaData is None:
             from sqlalchemy import MetaData
         
-        _otest_metadata = MetaData(config.db)
+        if self.metadata is None:
+            _otest_metadata = MetaData(config.db)
+        else:
+            _otest_metadata = self.metadata
+            _otest_metadata.bind = config.db
         self.define_tables(_otest_metadata)
         _otest_metadata.create_all()
         self.insert_data()
