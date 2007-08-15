@@ -140,7 +140,7 @@ class ExecutionContextWrapper(object):
                 # asserting a dictionary of statements->parameters
                 # this is to specify query assertions where the queries can be in 
                 # multiple orderings
-                if not item.has_key('_converted'):
+                if '_converted' not in item:
                     for key in item.keys():
                         ckey = self.convert_statement(key)
                         item[ckey] = item[key]

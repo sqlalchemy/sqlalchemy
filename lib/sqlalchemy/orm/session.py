@@ -158,7 +158,7 @@ class SessionTransaction(object):
         if self.__parent is not None:
             return self.__parent.add(bind)
             
-        if self.__connections.has_key(bind.engine):
+        if bind.engine in self.__connections:
             raise exceptions.InvalidRequestError("Session already has a Connection associated for the given %sEngine" % (isinstance(bind, engine.Connection) and "Connection's " or ""))
         return self.get_or_add(bind)
 
@@ -173,14 +173,14 @@ class SessionTransaction(object):
             if not self.nested:
                 return self.__parent.get_or_add(bind)
             
-            if self.__connections.has_key(bind):
+            if bind in self.__connections:
                 return self.__connections[bind][0]
 
             if bind in self.__parent._connection_dict():
                 (conn, trans, autoclose) = self.__parent.__connections[bind]
                 self.__connections[conn] = self.__connections[bind.engine] = (conn, conn.begin_nested(), autoclose)
                 return conn
-        elif self.__connections.has_key(bind):
+        elif bind in self.__connections:
             return self.__connections[bind][0]
             
         if not isinstance(bind, engine.Connection):
@@ -610,9 +610,9 @@ class Session(object):
             if mapper is not None:
                 if isinstance(mapper, type):
                     mapper = _class_mapper(mapper)
-                if self.__binds.has_key(mapper.base_mapper):
+                if mapper.base_mapper in self.__binds:
                     return self.__binds[mapper.base_mapper]
-                elif self.__binds.has_key(mapper.compile().mapped_table):
+                elif mapper.compile().mapped_table in self.__binds:
                     return self.__binds[mapper.mapped_table]
             if clause is not None:
                 for t in clause._table_iterator():
@@ -931,7 +931,7 @@ class Session(object):
     
     def _save_impl(self, object, **kwargs):
         if hasattr(object, '_instance_key'):
-            if not self.identity_map.has_key(object._instance_key):
+            if object._instance_key not in self.identity_map:
                 raise exceptions.InvalidRequestError("Instance '%s' is a detached instance "
                                                      "or is already persistent in a "
                                                      "different Session" % repr(object))
@@ -972,7 +972,7 @@ class Session(object):
 
         old_id = getattr(obj, '_sa_session_id', None)
         if old_id != self.hash_key:
-            if old_id is not None and _sessions.has_key(old_id):
+            if old_id is not None and old_id in _sessions:
                 raise exceptions.InvalidRequestError("Object '%s' is already attached "
                                                      "to session '%s' (this is '%s')" %
                                                      (repr(obj), old_id, id(self)))
@@ -1013,7 +1013,7 @@ class Session(object):
         result of True.
         """
         
-        return self._is_attached(obj) and (obj in self.uow.new or self.identity_map.has_key(obj._instance_key))
+        return self._is_attached(obj) and (obj in self.uow.new or obj._instance_key in self.identity_map)
 
     def __iter__(self):
         """return an iterator of all objects which are pending or persistent within this Session."""
@@ -1026,7 +1026,7 @@ class Session(object):
     def has_key(self, key):
         """return True if the given identity key is present within this Session's identity map."""
         
-        return self.identity_map.has_key(key)
+        return key in self.identity_map
 
     dirty = property(lambda s:s.uow.locate_dirty(),
                      doc="A ``Set`` of all objects marked as 'dirty' within this ``Session``")

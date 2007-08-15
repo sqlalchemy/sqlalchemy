@@ -809,7 +809,7 @@ class OneToManyTest(ORMTest):
         Session.commit()
         Session.delete(u)
         Session.commit()
-        self.assert_(a.address_id is not None and a.user_id is None and not Session.identity_map.has_key(u._instance_key) and Session.identity_map.has_key(a._instance_key))
+        self.assert_(a.address_id is not None and a.user_id is None and u._instance_key not in Session.identity_map and a._instance_key in Session.identity_map)
 
     def test_onetoone(self):
         m = mapper(User, users, properties = dict(

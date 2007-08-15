@@ -954,7 +954,7 @@ def _dict_decorators():
         def update(fn):
             def update(self, other):
                 for key in other.keys():
-                    if not self.has_key(key) or self[key] is not other[key]:
+                    if key not in self or self[key] is not other[key]:
                         self[key] = other[key]
             _tidy(update)
             return update

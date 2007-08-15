@@ -638,7 +638,7 @@ class OracleCompiler(ansisql.ANSICompiler):
          """
 
         for c in insert.table.primary_key:
-            if not self.parameters.has_key(c.key):
+            if c.key not in self.parameters:
                 self.parameters[c.key] = None
         return ansisql.ANSICompiler.visit_insert(self, insert)
 

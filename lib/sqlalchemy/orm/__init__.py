@@ -617,7 +617,7 @@ def contains_alias(alias):
             selectable = self.get_selectable(mapper)
             for c in mapper.mapped_table.c:
                 c2 = selectable.corresponding_column(c, keys_ok=True, raiseerr=False)
-                if c2 and row.has_key(c2):
+                if c2 and c2 in row:
                     newrow[c] = row[c2]
             return newrow
 

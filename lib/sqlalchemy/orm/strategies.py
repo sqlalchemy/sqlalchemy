@@ -537,7 +537,7 @@ class EagerLoader(AbstractRelationLoader):
         #print "creating row decorator for path ", "->".join([str(s) for s in path])
         
         # check for a user-defined decorator in the SelectContext (which was set up by the contains_eager() option)
-        if selectcontext.attributes.has_key(("eager_row_processor", self.parent_property)):
+        if ("eager_row_processor", self.parent_property) in selectcontext.attributes:
             # custom row decoration function, placed in the selectcontext by the 
             # contains_eager() mapper option
             decorator = selectcontext.attributes[("eager_row_processor", self.parent_property)]

@@ -1332,7 +1332,7 @@ class ThreadLocalMetaData(MetaData):
         else:
             # TODO: this is squirrely.  we shouldnt have to hold onto engines
             # in a case like this
-            if not self.__engines.has_key(bind):
+            if bind not in self.__engines:
                 self.__engines[bind] = bind
             self.context._engine = bind
 

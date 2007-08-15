@@ -1704,7 +1704,7 @@ class ColumnCollection(util.OrderedProperties):
 
         # Allow an aliased column to replace an unaliased column of the
         # same name.
-        if self.has_key(column.name):
+        if column.name in self:
             other = self[column.name]
             if other.name == other.key:
                 del self[other.name]
@@ -1728,7 +1728,7 @@ class ColumnCollection(util.OrderedProperties):
     def __contains__(self, other):
         if not isinstance(other, basestring):
             raise exceptions.ArgumentError("__contains__ requires a string argument")
-        return self.has_key(other)
+        return util.OrderedProperties.__contains__(self, other)
         
     def contains_column(self, col):
         # have to use a Set here, because it will compare the identity

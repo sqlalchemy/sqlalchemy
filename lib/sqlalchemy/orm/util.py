@@ -99,13 +99,13 @@ class TranslatingDict(dict):
         return super(TranslatingDict, self).__getitem__(self.__translate_col(col))
 
     def has_key(self, col):
-        return super(TranslatingDict, self).has_key(self.__translate_col(col))
+        return col in self
 
     def __setitem__(self, col, value):
         return super(TranslatingDict, self).__setitem__(self.__translate_col(col), value)
 
     def __contains__(self, col):
-        return self.has_key(col)
+        return super(TranslatingDict, self).__contains__(self.__translate_col(col))
 
     def setdefault(self, col, value):
         return super(TranslatingDict, self).setdefault(self.__translate_col(col), value)

@@ -280,7 +280,7 @@ class OrderedProperties(object):
         return key in self._data
 
     def get(self, key, default=None):
-        if self.has_key(key):
+        if key in self:
             return self[key]
         else:
             return default
@@ -320,7 +320,7 @@ class OrderedDict(dict):
             self.update(kwargs)
 
     def setdefault(self, key, value):
-        if not self.has_key(key):
+        if key not in self:
             self.__setitem__(key, value)
             return value
         else:
@@ -348,7 +348,7 @@ class OrderedDict(dict):
         return iter(self.items())
 
     def __setitem__(self, key, object):
-        if not self.has_key(key):
+        if key not in self:
             self._list.append(key)
         dict.__setitem__(self, key, object)
 

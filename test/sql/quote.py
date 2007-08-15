@@ -49,7 +49,7 @@ class QuoteTest(PersistTest):
     def testreflect(self):
         meta2 = MetaData(testbase.db)
         t2 = Table('WorstCase2', meta2, autoload=True, quote=True)
-        assert t2.c.has_key('MixedCase')
+        assert 'MixedCase' in t2.c
 
     def testlabels(self):
         table1.insert().execute({'lowercase':1,'UPPERCASE':2,'MixedCase':3,'a123':4},

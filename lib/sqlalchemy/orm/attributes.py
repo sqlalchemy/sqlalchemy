@@ -556,7 +556,7 @@ class CommittedState(object):
 
     def rollback(self, manager, obj):
         for attr in manager.managed_attributes(obj.__class__):
-            if self.data.has_key(attr.key):
+            if attr.key in self.data:
                 if not isinstance(attr, InstrumentedCollectionAttribute):
                     obj.__dict__[attr.key] = self.data[attr.key]
                 else:

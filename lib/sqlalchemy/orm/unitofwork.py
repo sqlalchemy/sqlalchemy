@@ -116,12 +116,12 @@ class UnitOfWork(object):
             pass
 
     def _validate_obj(self, obj):
-        if (hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key)) or \
+        if (hasattr(obj, '_instance_key') and obj._instance_key not in self.identity_map) or \
             (not hasattr(obj, '_instance_key') and obj not in self.new):
             raise exceptions.InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj))
 
     def _is_valid(self, obj):
-        if (hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key)) or \
+        if (hasattr(obj, '_instance_key') and obj._instance_key not in self.identity_map) or \
             (not hasattr(obj, '_instance_key') and obj not in self.new):
             return False
         else:
@@ -799,7 +799,7 @@ class UOWTask(object):
                 parenttask.append(None, listonly=False, isdelete=originating_task._objects[node.item].isdelete, childtask=t)
             t.append(node.item, originating_task._objects[node.item].listonly, isdelete=originating_task._objects[node.item].isdelete)
 
-            if dependencies.has_key(node.item):
+            if node.item in dependencies:
                 for depprocessor, deptask in dependencies[node.item].iteritems():
                     t.cyclical_dependencies.add(depprocessor.branch(deptask))
             nd = {}

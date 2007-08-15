@@ -92,10 +92,10 @@ class _EdgeCollection(object):
         """Add an edge to this collection."""
 
         (parentnode, childnode) = edge
-        if not self.parent_to_children.has_key(parentnode):
+        if parentnode not in self.parent_to_children:
             self.parent_to_children[parentnode] = util.Set()
         self.parent_to_children[parentnode].add(childnode)
-        if not self.child_to_parents.has_key(childnode):
+        if childnode not in self.child_to_parents:
             self.child_to_parents[childnode] = util.Set()
         self.child_to_parents[childnode].add(parentnode)
         parentnode.dependencies.add(childnode)
@@ -115,10 +115,10 @@ class _EdgeCollection(object):
             return None
 
     def has_parents(self, node):
-        return self.child_to_parents.has_key(node) and len(self.child_to_parents[node]) > 0
+        return node in self.child_to_parents and len(self.child_to_parents[node]) > 0
 
     def edges_by_parent(self, node):
-        if self.parent_to_children.has_key(node):
+        if node in self.parent_to_children:
             return [(node, child) for child in self.parent_to_children[node]]
         else:
             return []
@@ -176,7 +176,7 @@ class QueueDependencySorter(object):
         nodes = {}
         edges = _EdgeCollection()
         for item in allitems + [t[0] for t in tuples] + [t[1] for t in tuples]:
-            if not nodes.has_key(item):
+            if item not in nodes:
                 node = _Node(item)
                 nodes[item] = node
 
@@ -294,7 +294,7 @@ class QueueDependencySorter(object):
                     cycset = util.Set(cycle)
                     for x in cycle:
                         involved_in_cycles.add(x)
-                        if cycles.has_key(x):
+                        if x in cycles:
                             existing_set = cycles[x]
                             [existing_set.add(y) for y in cycset]
                             for y in existing_set:

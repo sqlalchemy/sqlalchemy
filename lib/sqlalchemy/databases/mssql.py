@@ -425,13 +425,13 @@ class MSSQLDialect(ansisql.ANSIDialect):
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         opts.update(url.query)
-        if opts.has_key('auto_identity_insert'):
+        if 'auto_identity_insert' in opts:
             self.auto_identity_insert = bool(int(opts.pop('auto_identity_insert')))
-        if opts.has_key('query_timeout'):
+        if 'query_timeout' in opts:
             self.query_timeout = int(opts.pop('query_timeout'))
-        if opts.has_key('text_as_varchar'):
+        if 'text_as_varchar' in opts:
             self.text_as_varchar = bool(int(opts.pop('text_as_varchar')))
-        if opts.has_key('use_scope_identity'):
+        if 'use_scope_identity' in opts:
             self.use_scope_identity = bool(int(opts.pop('use_scope_identity')))
         return self.make_connect_string(opts)
 
@@ -870,7 +870,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             
     def _schema_aliased_table(self, table):
         if getattr(table, 'schema', None) is not None:
-            if not self.tablealiases.has_key(table):
+            if table not in self.tablealiases:
                 self.tablealiases[table] = table.alias()
             return self.tablealiases[table]
         else:

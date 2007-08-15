@@ -573,15 +573,15 @@ class Mapper(object):
 
         if self.inherits is not None:
             for key, prop in self.inherits.__props.iteritems():
-                if not self.__props.has_key(key):
+                if key not in self.__props:
                     self._adapt_inherited_property(key, prop)
 
         # load properties from the main table object,
         # not overriding those set up in the 'properties' argument
         for column in self.mapped_table.columns:
-            if self.columntoproperty.has_key(column):
+            if column in self.columntoproperty:
                 continue
-            if not self.columns.has_key(column.key):
+            if column.key not in self.columns:
                 self.columns[column.key] = self.select_table.corresponding_column(column, keys_ok=True, raiseerr=True)
 
             column_key = (self.column_prefix or '') + column.key
@@ -675,7 +675,7 @@ class Mapper(object):
         if self.non_primary:
             return
 
-        if not self.non_primary and (mapper_registry.has_key(self.class_key)):
+        if not self.non_primary and (self.class_key in mapper_registry):
              raise exceptions.ArgumentError("Class '%s' already has a primary mapper defined with entity name '%s'.  Use non_primary=True to create a non primary Mapper, or to create a new primary mapper, remove this mapper first via sqlalchemy.orm.clear_mapper(mapper), or preferably sqlalchemy.orm.clear_mappers() to clear all mappers." % (self.class_, self.entity_name))
 
         attribute_manager.reset_class_managed(self.class_)
@@ -1289,7 +1289,7 @@ class Mapper(object):
             if not pk:
                 return False
             for k in pk:
-                if not self.columntoproperty.has_key(k):
+                if k not in self.columntoproperty:
                     return False
             else:
                 return True
@@ -1410,7 +1410,7 @@ class Mapper(object):
                 raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self.get_attr_by_column(instance, self.version_id_col), row[self.version_id_col]))
 
             if populate_existing or context.session.is_expired(instance, unexpire=True):
-                if not context.identity_map.has_key(identitykey):
+                if identitykey not in context.identity_map:
                     context.identity_map[identitykey] = instance
                     isnew = True
                 if extension.populate_instance(self, context, row, instance, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
@@ -1498,7 +1498,7 @@ class Mapper(object):
         newrow = util.DictDecorator(row)
         for c in tomapper.mapped_table.c:
             c2 = self.mapped_table.corresponding_column(c, keys_ok=True, raiseerr=False)
-            if c2 and row.has_key(c2):
+            if c2 and c2 in row:
                 newrow[c] = row[c2]
         return newrow
 

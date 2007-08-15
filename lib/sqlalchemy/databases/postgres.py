@@ -234,7 +234,7 @@ class PGDialect(ansisql.ANSIDialect):
     
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
-        if opts.has_key('port'):
+        if 'port' in opts:
             opts['port'] = int(opts['port'])
         opts.update(url.query)
         return ([], opts)
