@@ -196,7 +196,7 @@ class QueueDependencySorter(object):
         for n in nodes.values():
             if not edges.has_parents(n):
                 queue.append(n)
-        cycles = {}
+
         output = []
         while nodes:
             if not queue:

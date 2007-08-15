@@ -366,26 +366,32 @@ class OrderedDict(dict):
         self._list.remove(item[0])
         return item
 
-class ThreadLocal(object):
-    """An object in which attribute access occurs only within the context of the current thread."""
+try:
+    from threading import local as ThreadLocal
+except ImportError:
+    try:
+        from dummy_threading import local as ThreadLocal
+    except ImportError:
+        class ThreadLocal(object):
+            """An object in which attribute access occurs only within the context of the current thread."""
 
-    def __init__(self):
-        self.__dict__['_tdict'] = {}
+            def __init__(self):
+                self.__dict__['_tdict'] = {}
 
-    def __delattr__(self, key):
-        try:
-            del self._tdict["%d_%s" % (thread.get_ident(), key)]
-        except KeyError:
-            raise AttributeError(key)
+            def __delattr__(self, key):
+                try:
+                    del self._tdict[(thread.get_ident(), key)]
+                except KeyError:
+                    raise AttributeError(key)
 
-    def __getattr__(self, key):
-        try:
-            return self._tdict["%d_%s" % (thread.get_ident(), key)]
-        except KeyError:
-            raise AttributeError(key)
+            def __getattr__(self, key):
+                try:
+                    return self._tdict[(thread.get_ident(), key)]
+                except KeyError:
+                    raise AttributeError(key)
 
-    def __setattr__(self, key, value):
-        self._tdict["%d_%s" % (thread.get_ident(), key)] = value
+            def __setattr__(self, key, value):
+                self._tdict[(thread.get_ident(), key)] = value
 
 class DictDecorator(dict):
     """A Dictionary that delegates items not found to a second wrapped dictionary."""

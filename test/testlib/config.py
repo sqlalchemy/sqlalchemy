@@ -109,7 +109,7 @@ opt("--mockpool", action="store_true", dest="mockpool",
     help="Use mock pool (asserts only one connection used)")
 opt("--enginestrategy", action="callback", type="string",
     callback=_engine_strategy,
-    help="Engine strategy (plain or threadlocal, defaults toplain)")
+    help="Engine strategy (plain or threadlocal, defaults to plain)")
 opt("--reversetop", action="store_true", dest="reversetop", default=False,
     help="Reverse the collection ordering for topological sorts (helps "
           "reveal dependency issues)")
