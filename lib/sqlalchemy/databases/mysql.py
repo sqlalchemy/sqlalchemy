@@ -1887,7 +1887,8 @@ class MySQLSchemaReflector(object):
                 type_, spec = self.constraints(line)
                 if type_ is None:
                     warnings.warn(
-                        RuntimeWarning("Unknown schema content: %s" % line))
+                        RuntimeWarning("Unknown schema content: %s" %
+                                       repr(line)))
                 elif type_ == 'key':
                     keys.append(spec)
                 elif type_ == 'constraint':
