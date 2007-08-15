@@ -45,7 +45,6 @@ class ScopedSession(object):
     
     def remove(self):
         self.registry.clear()
-    remove = classmethod(remove)
     
     def mapper(self, *args, **kwargs):
         """return a mapper() function which associates this ScopedSession with the Mapper."""

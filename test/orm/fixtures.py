@@ -24,14 +24,12 @@ class Base(object):
         only look at attributes that are present on the source object.
         
         """
-        print "WE ARE IN EQ"
         if self in _recursion_stack:
             return True
         _recursion_stack.add(self)
         try:
             # use __dict__ to avoid instrumented properties
             for attr in self.__dict__.keys():
-                print "ATTR", attr
                 if attr[0] == '_':
                     continue
                 value = getattr(self, attr)
