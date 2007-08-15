@@ -1561,7 +1561,7 @@ class Mapper(object):
             params = {}
             for c in param_names:
                 params[c.name] = self.get_attr_by_column(instance, c)
-            row = selectcontext.session.connection(self).execute(statement, **params).fetchone()
+            row = selectcontext.session.connection(self).execute(statement, params).fetchone()
             self.populate_instance(selectcontext, instance, row, isnew=False, instancekey=identitykey, ispostselect=True)
 
         return post_execute

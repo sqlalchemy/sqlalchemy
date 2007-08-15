@@ -1,3 +1,4 @@
+# coding: utf-8
 import testbase
 import pickleable
 from sqlalchemy import *
@@ -5,6 +6,7 @@ from sqlalchemy.orm import *
 from testlib import *
 from testlib.tables import *
 from testlib import tables
+import fixtures
 
 """tests unitofwork operations"""
 
@@ -178,6 +180,71 @@ class UnicodeTest(ORMTest):
         t1 = Session.query(Test).get_by(id=t1.id)
         assert len(t1.t2s) == 2
 
+class UnicodeSchemaTest(ORMTest):
+    @testing.supported('sqlite', 'postgres')
+    def define_tables(self, metadata):
+        global t1, t2, t3
+
+        #unicode_bind = utf8_engine()
+
+        t1 = Table('unitable1', metadata,
+            Column(u'méil', Integer, primary_key=True, key='a'),
+            Column(u'\u6e2c\u8a66', Integer, key='b'),
+            Column('type',  String(20)),
+            test_needs_fk=True,
+            )
+        t2 = Table(u'Unitéble2', metadata,
+            Column(u'méil', Integer, primary_key=True, key="cc"),
+            Column(u'\u6e2c\u8a66', Integer, ForeignKey(u'unitable1.a'), key="d"),
+           Column(u'\u6e2c\u8a66_2', Integer, key="e"),
+                  test_needs_fk=True,
+            )
+        
+    @testing.supported('sqlite', 'postgres')
+    def test_mapping(self):
+        class A(fixtures.Base):pass
+        class B(fixtures.Base):pass
+
+        mapper(A, t1, properties={
+            't2s':relation(B),
+        })
+        mapper(B, t2)
+        a1 = A()
+        b1 = B()
+        a1.t2s.append(b1)
+        Session.flush()
+        Session.clear()
+        new_a1 = Session.query(A).filter(t1.c.a == a1.a).one()
+        assert new_a1.a == a1.a
+        assert new_a1.t2s[0].d == b1.d
+        Session.clear()
+
+        new_a1 = Session.query(A).options(eagerload('t2s')).filter(t1.c.a == a1.a).one()
+        assert new_a1.a == a1.a
+        assert new_a1.t2s[0].d == b1.d
+        Session.clear()
+
+        new_a1 = Session.query(A).filter(A.a == a1.a).one()
+        assert new_a1.a == a1.a
+        assert new_a1.t2s[0].d == b1.d
+        Session.clear()
+
+    @testing.supported('sqlite', 'postgres')
+    def test_inheritance_mapping(self):
+        class A(fixtures.Base):pass
+        class B(A):pass
+        mapper(A, t1, polymorphic_on=t1.c.type, polymorphic_identity='a')
+        mapper(B, t2, inherits=A, polymorphic_identity='b')
+        a1 = A(b=5)
+        b1 = B(e=7)
+
+        Session.flush()
+        Session.clear()
+        # TODO: somehow, not assigning to "l" first
+        # breaks the comparison ?????
+        l = Session.query(A).all()
+        assert [A(b=5), B(e=7)] == l
+    
 class MutableTypesTest(ORMTest):
     def define_tables(self, metadata):
         global table

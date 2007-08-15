@@ -3,7 +3,6 @@
 
 import testbase
 from sqlalchemy import *
-from sqlalchemy.orm import mapper, relation, create_session, eagerload
 from testlib import *
 from testlib.engines import utf8_engine
 
@@ -104,40 +103,7 @@ class UnicodeSchemaTest(PersistTest):
         meta.drop_all()
         metadata.create_all()
         
-    @testing.unsupported('oracle')
-    def test_mapping(self):
-        # TODO: this test should be moved to the ORM tests, tests should be
-        # added to this module testing SQL syntax and joins, etc.
-        class A(object):pass
-        class B(object):pass
-        
-        mapper(A, t1, properties={
-            't2s':relation(B),
-            'a':t1.c[u'méil'],
-            'b':t1.c[u'\u6e2c\u8a66']
-        })
-        mapper(B, t2)
-        sess = create_session()
-        a1 = A()
-        b1 = B()
-        a1.t2s.append(b1)
-        sess.save(a1)
-        sess.flush()
-        sess.clear()
-        new_a1 = sess.query(A).filter(t1.c[u'méil'] == a1.a).one()
-        assert new_a1.a == a1.a
-        assert new_a1.t2s[0].a == b1.a
-        sess.clear()
 
-        new_a1 = sess.query(A).options(eagerload('t2s')).filter(t1.c[u'méil'] == a1.a).one()
-        assert new_a1.a == a1.a
-        assert new_a1.t2s[0].a == b1.a
-        sess.clear()
 
-        new_a1 = sess.query(A).filter(A.a == a1.a).one()
-        assert new_a1.a == a1.a
-        assert new_a1.t2s[0].a == b1.a
-        sess.clear()
-        
 if __name__ == '__main__':
     testbase.main()

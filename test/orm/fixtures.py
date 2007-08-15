@@ -7,7 +7,12 @@ class Base(object):
     def __init__(self, **kwargs):
         for k in kwargs:
             setattr(self, k, kwargs[k])
-            
+    
+    def __repr__(self):
+        return "%s(%s)" % (
+            (self.__class__.__name__), 
+            ','.join(["%s=%s" % (key, repr(getattr(self, key))) for key in self.__dict__ if not key.startswith('_')])
+        )
     def __ne__(self, other):
         return not self.__eq__(other)
         
@@ -17,13 +22,14 @@ class Base(object):
         only look at attributes that are present on the source object.
         
         """
-        
+        print "WE ARE IN EQ"
         if self in _recursion_stack:
             return True
         _recursion_stack.add(self)
         try:
             # use __dict__ to avoid instrumented properties
             for attr in self.__dict__.keys():
+                print "ATTR", attr
                 if attr[0] == '_':
                     continue
                 value = getattr(self, attr)
@@ -42,6 +48,7 @@ class Base(object):
                         continue
                 else:
                     if value is not None:
+                        print "KEY", attr, "COMPARING", value, "TO", getattr(other, attr, None)
                         if value != getattr(other, attr, None):
                             return False
             else:
