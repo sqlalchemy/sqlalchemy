@@ -1352,7 +1352,7 @@ class ThreadLocalMetaData(MetaData):
         """Dispose any and all ``Engines`` to which this ``ThreadLocalMetaData`` has been connected."""
 
         for e in self.__engines.values():
-            if e.hasattr('dispose'):
+            if hasattr(e, 'dispose'):
                 e.dispose()
 
 
