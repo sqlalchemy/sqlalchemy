@@ -1,6 +1,7 @@
 """a directed graph example."""
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
 
 import logging
 logging.basicConfig()
