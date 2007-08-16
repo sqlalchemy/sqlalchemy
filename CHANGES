@@ -2,41 +2,41 @@
 CHANGES
 =======
 
-0.4.0beta
----------
+0.4.0beta4
+----------
 
-- fix to bind param processing such that "False" values (like blank strings)
-  still get processed/encoded
+- Fix to bind param processing such that "False" values (like blank strings)
+  still get processed/encoded.
 
-- added session.prune(), trims away instances cached in a session that are
-  no longer referenced elsewhere. (a utility for for strong-ref identity maps)
+- Added session.prune(), trims away instances cached in a session that are no
+  longer referenced elsewhere. (A utility for strong-ref identity maps).
 
 0.4.0beta3
 ----------
 
-- sql types optimization:
+- SQL types optimization:
 
-  - new performance tests show a combined mass-insert/mass-select test
-    as having 68% fewer function calls than the same test run against 0.3.  
+  - New performance tests show a combined mass-insert/mass-select test as
+    having 68% fewer function calls than the same test run against 0.3.
 
-  - general performance improvement of result set iteration is around 10-20%.
+  - General performance improvement of result set iteration is around 10-20%.
 
-  - in types.AbstractType, convert_bind_param() and convert_result_value()
-    have migrated to callable-returning bind_processor() and result_processor()
-    methods.  if no callable is returned, no pre/post processing function is
-    called.
+  - In types.AbstractType, convert_bind_param() and convert_result_value()
+    have migrated to callable-returning bind_processor() and
+    result_processor() methods.  If no callable is returned, no pre/post
+    processing function is called.
 
-  - hooks added throughout base/sql/defaults to optimize the calling of bind
+  - Hooks added throughout base/sql/defaults to optimize the calling of bind
     aram/result processors so that method call overhead is minimized.
 
-  - support added for executemany() scenarios such that unneeded "last row id"
+  - Support added for executemany() scenarios such that unneeded "last row id"
     logic doesn't kick in, parameters aren't excessively traversed.
 
-- added 'inherit_foreign_keys' arg to mapper()
+- Added 'inherit_foreign_keys' arg to mapper().
 
-- added support for string date passthru in sqlite
+- Added support for string date passthrough in sqlite.
 
-- tickets fixed:
+- Tickets fixed:
 
   - [ticket:738]
   - [ticket:739]
@@ -46,28 +46,29 @@ CHANGES
 0.4.0beta2
 ----------
 
-- mssql improvements
+- mssql improvements.
 
-- oracle improvements
+- oracle improvements.
 
-- auto-commit after LOAD DATA INFILE for mysql
-- a rudimental SessionExtension class has been added, allowing user-defined
+- Auto-commit after LOAD DATA INFILE for mysql.
+
+- A rudimental SessionExtension class has been added, allowing user-defined
   functionality to take place at flush(), commit(), and rollback() boundaries.
 
-- added engine_from_config() function for helping to create_engine() from an
-  .ini style config
+- Added engine_from_config() function for helping to create_engine() from an
+  .ini style config.
 
-- base_mapper() becomes a plain attribute
+- base_mapper() becomes a plain attribute.
 
 - session.execute() and scalar() can search for a Table with which to bind from
-  using the given ClauseElement
+  using the given ClauseElement.
 
-- session automatically extrapolates tables from mappers with binds, also uses
-  base_mapper so that inheritance hierarchies bind automatically
+- Session automatically extrapolates tables from mappers with binds, also uses
+  base_mapper so that inheritance hierarchies bind automatically.
 
-- moved ClauseVisitor traversal back to inlined non-recursive
+- Moved ClauseVisitor traversal back to inlined non-recursive.
 
-- tickets fixed:
+- Tickets fixed:
 
   - [ticket:730]
   - [ticket:732]
@@ -79,50 +80,49 @@ CHANGES
 
 - orm
 
-  - speed! along with recent speedups to ResultProxy, total number of function
+  - Speed! Along with recent speedups to ResultProxy, total number of function
     calls significantly reduced for large loads.
 
   - test/perf/masseagerload.py reports 0.4 as having the fewest number of
-    function calls across all SA versions (0.1, 0.2, and 0.3)
+    function calls across all SA versions (0.1, 0.2, and 0.3).
 
-  - new collection_class api and implementation [ticket:213] collections are
-    now instrumented via decorations rather than proxying.  you can now have
+  - New collection_class api and implementation [ticket:213]. Collections are
+    now instrumented via decorations rather than proxying.  You can now have
     collections that manage their own membership, and your class instance will
-    be directly exposed on the relation property.  the changes are transparent
+    be directly exposed on the relation property.  The changes are transparent
     for most users.
 
     - InstrumentedList (as it was) is removed, and relation properties no
       longer have 'clear()', '.data', or any other added methods beyond those
-      provided by the collection type. you are free, of course, to add them to
+      provided by the collection type. You are free, of course, to add them to
       a custom class.
 
     - __setitem__-like assignments now fire remove events for the existing
       value, if any.
 
     - dict-likes used as collection classes no longer need to change __iter__
-      semantics- itervalues() is used by default instead. this is a backwards
+      semantics- itervalues() is used by default instead. This is a backwards
       incompatible change.
 
-    - subclassing dict for a mapped collection is no longer needed in
-      most cases. orm.collections provides canned implementations that
-      key objects by a specified column or a custom function of your
-      choice.
+    - Subclassing dict for a mapped collection is no longer needed in most
+      cases. orm.collections provides canned implementations that key objects
+      by a specified column or a custom function of your choice.
 
-    - collection assignment now requires a compatible type- assigning
-      None to clear a collection or assigning a list to a dict
-      collection will now raise an argument error.
+    - Collection assignment now requires a compatible type- assigning None to
+      clear a collection or assigning a list to a dict collection will now
+      raise an argument error.
 
-    - AttributeExtension moved to interfaces, and .delete is now
-      .remove The event method signature has also been swapped around.
+    - AttributeExtension moved to interfaces, and .delete is now .remove The
+      event method signature has also been swapped around.
 
-  - major overhaul for Query
+  - Major overhaul for Query:
 
-    - all selectXXX methods are deprecated. generative methods are now the
+    - All selectXXX methods are deprecated.  Generative methods are now the
       standard way to do things, i.e. filter(), filter_by(), all(), one(),
-      etc.  deprecated methods are docstring'ed with their new replacements.
+      etc.  Deprecated methods are docstring'ed with their new replacements.
 
-    - class-level properties are now usable as query elements... no more
-      '.c.'! "Class.c.propname" is now superceded by "Class.propname".  all
+    - Class-level properties are now usable as query elements... no more
+      '.c.'!  "Class.c.propname" is now superceded by "Class.propname".  All
       clause operators are supported, as well as higher level operators such
       as Class.prop==<some instance> for scalar attributes,
       Class.prop.contains(<some instance>) and Class.prop.any(<some
@@ -131,88 +131,87 @@ CHANGES
       on mapped classes via 'c' are of course still fully available and can be
       freely mixed with the new attributes.  [ticket:643]
 
-    - removed ancient query.select_by_attributename() capability.
+    - Removed ancient query.select_by_attributename() capability.
 
-    - the aliasing logic used by eager loading has been generalized, so that
+    - The aliasing logic used by eager loading has been generalized, so that
       it also adds full automatic aliasing support to Query.  It's no longer
       necessary to create an explicit Alias to join to the same tables
       multiple times; *even for self-referential relationships*.
 
-      - join() and outerjoin() take arguments "aliased=True".  this causes
+      - join() and outerjoin() take arguments "aliased=True".  Yhis causes
         their joins to be built on aliased tables; subsequent calls to
         filter() and filter_by() will translate all table expressions (yes,
         real expressions using the original mapped Table) to be that of the
         Alias for the duration of that join() (i.e. until reset_joinpoint() or
         another join() is called).
 
-      - join() and outerjoin() take arguments "id=<somestring>".  when used
+      - join() and outerjoin() take arguments "id=<somestring>".  When used
         with "aliased=True", the id can be referenced by add_entity(cls,
         id=<somestring>) so that you can select the joined instances even if
         they're from an alias.
 
       - join() and outerjoin() now work with self-referential relationships!
-        using "aliased=True", you can join as many levels deep as desired,
+        Using "aliased=True", you can join as many levels deep as desired,
         i.e. query.join(['children', 'children'], aliased=True); filter
         criterion will be against the rightmost joined table
 
-    - added query.populate_existing() - marks the query to reload all
+    - Added query.populate_existing(), marks the query to reload all
       attributes and collections of all instances touched in the query,
-      including eagerly-loaded entities [ticket:660]
+      including eagerly-loaded entities.  [ticket:660]
 
-    - added eagerload_all(), allows eagerload_all('x.y.z') to specify eager
-      loading of all properties in the given path
+    - Added eagerload_all(), allows eagerload_all('x.y.z') to specify eager
+      loading of all properties in the given path.
 
-  - major overhaul for Session:
+  - Major overhaul for Session:
 
-    - new function which "configures" a session called "sessionmaker()".  send
+    - New function which "configures" a session called "sessionmaker()".  Send
       various keyword arguments to this function once, returns a new class
       which creates a Session against that stereotype.
 
-    - SessionTransaction removed from "public" API.  you now can call begin()/
+    - SessionTransaction removed from "public" API.  You now can call begin()/
       commit()/rollback() on the Session itself.
 
     - Session also supports SAVEPOINT transactions; call begin_nested().
 
     - Session supports two-phase commit behavior when vertically or
-      horizontally partitioning (i.e., using more than one engine).  use
+      horizontally partitioning (i.e., using more than one engine).  Use
       twophase=True.
 
     - Session flag "transactional=True" produces a session which always places
-      itself into a transaction when first used.  upon
-      commit()/rollback()/close(), the transaction ends; but begins again on
-      the next usage.
+      itself into a transaction when first used.  Upon commit(), rollback() or
+      close(), the transaction ends; but begins again on the next usage.
 
-    - Session supports "autoflush=True".  this issues a flush() before each
+    - Session supports "autoflush=True".  This issues a flush() before each
       query.  Use in conjunction with transactional, and you can just
-      save()/update() and then query, the new objects will be there.  use
+      save()/update() and then query, the new objects will be there.  Use
       commit() at the end (or flush() if non-transactional) to flush remaining
       changes.
 
-    - new scoped_session() function replaces SessionContext and assignmapper.
-      builds onto "sessionmaker()" concept to produce a class whos Session()
+    - New scoped_session() function replaces SessionContext and assignmapper.
+      Builds onto "sessionmaker()" concept to produce a class whos Session()
       construction returns the thread-local session.  Or, call all Session
       methods as class methods, i.e. Session.save(foo); Session.commit().
       just like the old "objectstore" days.
 
-    - added new "binds" argument to Session to support configuration of
+    - Added new "binds" argument to Session to support configuration of
       multiple binds with sessionmaker() function.
 
-    - a rudimental SessionExtension class has been added, allowing
+    - A rudimental SessionExtension class has been added, allowing
       user-defined functionality to take place at flush(), commit(), and
       rollback() boundaries.
 
-  - query-based relation()s available with dynamic_loader().  This is a
+  - Query-based relation()s available with dynamic_loader().  This is a
     *writable* collection (supporting append() and remove()) which is also a
     live Query object when accessed for reads.  Ideal for dealing with very
     large collections where only partial loading is desired.
 
-  - flush-embedded inline INSERT/UPDATE expressions.  assign any SQL
+  - flush()-embedded inline INSERT/UPDATE expressions.  Assign any SQL
     expression, like "sometable.c.column + 1", to an instance's attribute.
     Upon flush(), the mapper detects the expression and embeds it directly in
     the INSERT or UPDATE statement; the attribute gets deferred on the
     instance so it loads the new value the next time you access it.
 
-  - a rudimental sharding (horizontal scaling) system is introduced.  this
+  - A rudimental sharding (horizontal scaling) system is introduced.  This
     system uses a modified Session which can distribute read and write
     operations among multiple databases, based on user-defined functions
     defining the "sharding strategy".  Instances and their dependents can be
@@ -229,27 +228,27 @@ CHANGES
     scheme now and are a lot easier on the eyes, as well as of course
     completely deterministic. [ticket:659]
 
-  - added composite column properties. this allows you to create a type which
+  - Added composite column properties.  This allows you to create a type which
     is represented by more than one column, when using the ORM.  Objects of
     the new type are fully functional in query expressions, comparisons,
     query.get() clauses, etc. and act as though they are regular single-column
-    scalars..except they're not !  Use the function composite(cls, *columns)
+    scalars... except they're not!  Use the function composite(cls, *columns)
     inside of the mapper's "properties" dict, and instances of cls will be
     created/mapped to a single attribute, comprised of the values correponding
-    to *columns [ticket:211]
+    to *columns. [ticket:211]
 
-  - improved support for custom column_property() attributes which feature
-    correlated subqueries...work better with eager loading now.
+  - Improved support for custom column_property() attributes which feature
+    correlated subqueries, works better with eager loading now.
 
-  - primary key "collapse" behavior; the mapper will analyze all columns in
+  - Primary key "collapse" behavior; the mapper will analyze all columns in
     its given selectable for primary key "equivalence", that is, columns which
     are equivalent via foreign key relationship or via an explicit
     inherit_condition. primarily for joined-table inheritance scenarios where
     different named PK columns in inheriting tables should "collapse" into a
-    single-valued (or fewer-valued) primary key.  fixes things like
+    single-valued (or fewer-valued) primary key.  Fixes things like
     [ticket:611].
 
-  - joined-table inheritance will now generate the primary key columns of all
+  - Joined-table inheritance will now generate the primary key columns of all
     inherited classes against the root table of the join only.  This implies
     that each row in the root table is distinct to a single instance.  If for
     some rare reason this is not desireable, explicit primary_key settings on
@@ -258,38 +257,38 @@ CHANGES
   - When "polymorphic" flags are used with joined-table or single-table
     inheritance, all identity keys are generated against the root class of the
     inheritance hierarchy; this allows query.get() to work polymorphically
-    using the same caching semantics as a non-polymorphic get.  note that this
+    using the same caching semantics as a non-polymorphic get.  Note that this
     currently does not work with concrete inheritance.
 
-  - secondary inheritance loading: polymorphic mappers can be constructed
+  - Secondary inheritance loading: polymorphic mappers can be constructed
     *without* a select_table argument. inheriting mappers whose tables were
     not represented in the initial load will issue a second SQL query
     immediately, once per instance (i.e. not very efficient for large lists),
     in order to load the remaining columns.
 
-    - secondary inheritance loading can also move its second query into a
-      column- level "deferred" load, via the "polymorphic_fetch" argument,
-      which can be set to 'select' or 'deferred'
+  - Secondary inheritance loading can also move its second query into a
+    column-level "deferred" load, via the "polymorphic_fetch" argument, which
+    can be set to 'select' or 'deferred'
 
-  - it's now possible to map only a subset of available selectable columns
-    onto mapper properties, using include_columns/exclude_columns
+  - It's now possible to map only a subset of available selectable columns
+    onto mapper properties, using include_columns/exclude_columns.
     [ticket:696].
 
-  - added undefer_group() MapperOption, sets a set of "deferred" columns
+  - Added undefer_group() MapperOption, sets a set of "deferred" columns
     joined by a "group" to load as "undeferred".
 
-  - rewrite of the "deterministic alias name" logic to be part of the SQL
+  - Rewrite of the "deterministic alias name" logic to be part of the SQL
     layer, produces much simpler alias and label names more in the style of
     Hibernate
 
 - sql
 
-  - speed!  clause compilation as well as the mechanics of SQL constructs have
+  - Speed!  Clause compilation as well as the mechanics of SQL constructs have
     been streamlined and simplified to a signficant degree, for a 20-30%
-    improvement of the statement construction/compilation overhead of 0.3
+    improvement of the statement construction/compilation overhead of 0.3.
 
-  - all "type" keyword arguments, such as those to bindparam(), column(),
-    Column(), and func.<something>(), renamed to "type_".  those objects still
+  - All "type" keyword arguments, such as those to bindparam(), column(),
+    Column(), and func.<something>(), renamed to "type_".  Those objects still
     name their "type" attribute as "type".
 
   - case_sensitive=(True|False) setting removed from schema items, since
@@ -298,12 +297,12 @@ CHANGES
     all lower case will be treated as case-insenstive (yes we adjust for
     Oracle's UPPERCASE style too).
 
-  - transactions:
+  - Transactions:
 
-    - added context manager (with statement) support for transactions
-    - added support for two phase commit, works with mysql and postgres so far.
-    - added a subtransaction implementation that uses savepoints.
-    - added support for savepoints.
+    - Added context manager (with statement) support for transactions.
+    - Added support for two phase commit, works with mysql and postgres so far.
+    - Added a subtransaction implementation that uses savepoints.
+    - Added support for savepoints.
 
   - MetaData:
 
@@ -315,53 +314,53 @@ CHANGES
     - BoundMetaData has been removed- regular MetaData is equivalent
 
   - Numeric and Float types now have an "asdecimal" flag; defaults to True for
-    Numeric, False for Float.  when True, values are returned as
-    decimal.Decimal objects; when False, values are returned as float().  the
+    Numeric, False for Float.  When True, values are returned as
+    decimal.Decimal objects; when False, values are returned as float().  The
     defaults of True/False are already the behavior for PG and MySQL's DBAPI
     modules. [ticket:646]
 
-  - new SQL operator implementation which removes all hardcoded operators from
+  - New SQL operator implementation which removes all hardcoded operators from
     expression structures and moves them into compilation; allows greater
     flexibility of operator compilation; for example, "+" compiles to "||"
     when used in a string context, or "concat(a,b)" on MySQL; whereas in a
-    numeric context it compiles to "+".  fixes [ticket:475].
+    numeric context it compiles to "+".  Fixes [ticket:475].
 
-  - "anonymous" alias and label names are now generated at SQL compilation
-    time in a completely deterministic fashion...no more random hex IDs
+  - "Anonymous" alias and label names are now generated at SQL compilation
+    time in a completely deterministic fashion... no more random hex IDs
 
-  - significant architectural overhaul to SQL elements (ClauseElement).  all
+  - Significant architectural overhaul to SQL elements (ClauseElement).  All
     elements share a common "mutability" framework which allows a consistent
     approach to in-place modifications of elements as well as generative
-    behavior.  improves stability of the ORM which makes heavy usage of
+    behavior.  Improves stability of the ORM which makes heavy usage of
     mutations to SQL expressions.
 
-  - select() and union()'s now have "generative" behavior.  methods like
+  - select() and union()'s now have "generative" behavior.  Methods like
     order_by() and group_by() return a *new* instance - the original instance
-    is left unchanged.  non-generative methods remain as well.
+    is left unchanged.  Non-generative methods remain as well.
 
-  - the internals of select/union vastly simplified - all decision making
+  - The internals of select/union vastly simplified- all decision making
     regarding "is subquery" and "correlation" pushed to SQL generation phase.
     select() elements are now *never* mutated by their enclosing containers or
     by any dialect's compilation process [ticket:52] [ticket:569]
 
   - select(scalar=True) argument is deprecated; use select(..).as_scalar().
-    the resulting object obeys the full "column" interface and plays better
-    within expressions
+    The resulting object obeys the full "column" interface and plays better
+    within expressions.
 
-  - added select().with_prefix('foo') allowing any set of keywords to be
+  - Added select().with_prefix('foo') allowing any set of keywords to be
     placed before the columns clause of the SELECT [ticket:504]
 
-  - added array slice support to row[<index>] [ticket:686]
+  - Added array slice support to row[<index>] [ticket:686]
 
-  - result sets make a better attempt at matching the DBAPI types present in
+  - Result sets make a better attempt at matching the DBAPI types present in
     cursor.description to the TypeEngine objects defined by the dialect, which
     are then used for result-processing. Note this only takes effect for
     textual SQL; constructed SQL statements always have an explicit type map.
 
-  - result sets from CRUD operations close their underlying cursor
-    immediately. will also autoclose the connection if defined for the
-    operation; this allows more efficient usage of connections for successive
-    CRUD operations with less chance of "dangling connections".
+  - Result sets from CRUD operations close their underlying cursor immediately
+    and will also autoclose the connection if defined for the operation; this
+    allows more efficient usage of connections for successive CRUD operations
+    with less chance of "dangling connections".
 
   - Column defaults and onupdate Python functions (i.e. passed to
     ColumnDefault) may take zero or one arguments; the one argument is the
@@ -370,12 +369,12 @@ CHANGES
     [ticket:559].  The connection used for the execution is available as well
     so that you can pre-execute statements.
 
-  - added "explcit" create/drop/execute support for sequences (i.e. you can
-    pass a "connectable" to each of those methods on Sequence)
+  - Added "explcit" create/drop/execute support for sequences (i.e. you can
+    pass a "connectable" to each of those methods on Sequence).
 
-  - better quoting of identifiers when manipulating schemas
+  - Better quoting of identifiers when manipulating schemas.
 
-  - standardized the behavior for table reflection where types can't be
+  - Standardized the behavior for table reflection where types can't be
     located; NullType is substituted instead, warning is raised.
 
   - ColumnCollection (i.e. the 'c' attribute on tables) follows dictionary
@@ -383,19 +382,19 @@ CHANGES
 
 - engines
 
-  - speed! the mechanics of result processing and bind parameter processing
+  - Speed! The mechanics of result processing and bind parameter processing
     have been overhauled, streamlined and optimized to issue as little method
-    calls as possible.  bench tests for mass INSERT and mass rowset iteration
+    calls as possible.  Bench tests for mass INSERT and mass rowset iteration
     both show 0.4 to be over twice as fast as 0.3, using 68% fewer function
     calls.
 
-  - you can now hook into the pool lifecycle and run SQL statements or other
+  - You can now hook into the pool lifecycle and run SQL statements or other
     logic at new each DBAPI connection, pool check-out and check-in.
 
   - Connections gain a .properties collection, with contents scoped to the
     lifetime of the underlying DBAPI connection
 
-  - removed auto_close_cursors and disallow_open_cursors arguments from Pool;
+  - Removed auto_close_cursors and disallow_open_cursors arguments from Pool;
     reduces overhead as cursors are normally closed by ResultProxy and
     Connection.
 
@@ -411,23 +410,23 @@ CHANGES
 
 - mysql
 
-  - table and column names loaded via reflection are now unicode
+  - Table and column names loaded via reflection are now Unicode.
 
-  - all standard column types are now supported, including SET
+  - All standard column types are now supported, including SET.
 
-  - table reflection can now be performed in as little as one round-trip
+  - Table reflection can now be performed in as little as one round-trip.
 
-  - ANSI and ANSI_QUOTES sql modes are now supported
+  - ANSI and ANSI_QUOTES sql modes are now supported.
 
-  - indexes are now reflected
+  - Indexes are now reflected.
 
 - postgres
 
-  - Added PGArray datatype for using postgres array datatypes
+  - Added PGArray datatype for using postgres array datatypes.
 
 - oracle
 
-  - very rudimental support for OUT parameters added; use sql.outparam(name,
+  - Very rudimental support for OUT parameters added; use sql.outparam(name,
     type) to set up an OUT parameter, just like bindparam(); after execution,
     values are avaiable via result.out_parameters dictionary. [ticket:507]
 
