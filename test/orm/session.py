@@ -486,9 +486,10 @@ class ScopedSessionTest(ORMTest):
         s.options.append(sso)
         Session.save(s)
         Session.commit()
-        Session.clear()
+        Session.remove()
         
         assert SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]) == Session.query(SomeObject).one()
+        
         
 class ScopedMapperTest(PersistTest):
     def setUpAll(self):
