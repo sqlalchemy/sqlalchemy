@@ -184,7 +184,10 @@ class UnicodeTest(AssertMixin):
         unicode_table.create()
     def tearDownAll(self):
         unicode_table.drop()
-
+    
+    def tearDown(self):
+        unicode_table.delete().execute()
+        
     def testbasic(self):
         assert unicode_table.c.unicode_varchar.type.length == 250
         rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
@@ -206,6 +209,10 @@ class UnicodeTest(AssertMixin):
         else:
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
 
+    def testblanks(self):
+        unicode_table.insert().execute(unicode_varchar=u'')
+        assert select([unicode_table.c.unicode_varchar]).scalar() == u''
+        
     def testengineparam(self):
         """tests engine-wide unicode conversion"""
         prev_unicode = testbase.db.engine.dialect.convert_unicode

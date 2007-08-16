@@ -862,23 +862,21 @@ class ClauseParameters(object):
     def get_original_dict(self):
         return dict([(name, value) for (b, name, value) in self.__binds.values()])
 
+    def __get_processed(self, key, processors):
+        if key in processors:
+            return processors[key](self.__binds[key][2])
+        else:
+            return self.__binds[key][2]
+            
     def get_raw_list(self, processors):
-#        (bind, name, value) = self.__binds[key]
-        return [
-            (key in processors) and
-                processors[key](self.__binds[key][2]) or
-                self.__binds[key][2]
-            for key in self.positional
-        ]
+        return [self.__get_processed(key, processors) for key in self.positional]
 
     def get_raw_dict(self, processors, encode_keys=False):
         if encode_keys:
             return dict([
                 (
                     key.encode(self.dialect.encoding),
-                    (key in processors) and
-                        processors[key](self.__binds[key][2]) or
-                        self.__binds[key][2]
+                    self.__get_processed(key, processors)
                 )
                 for key in self.keys()
             ])
@@ -886,9 +884,7 @@ class ClauseParameters(object):
             return dict([
                 (
                     key,
-                    (key in processors) and
-                        processors[key](self.__binds[key][2]) or
-                        self.__binds[key][2]
+                    self.__get_processed(key, processors)
                 )
                 for key in self.keys()
             ])
