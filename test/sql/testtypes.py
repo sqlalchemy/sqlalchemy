@@ -347,7 +347,26 @@ class DateTest(AssertMixin):
         l = map(list, users_with_date.select().execute().fetchall())
         self.assert_(l == insert_data, 'DateTest mismatch: got:%s expected:%s' % (l, insert_data))
 
+    @testing.supported('sqlite')
+    def test_sqlite_date(self):
+        meta = MetaData(testbase.db)
+        t = Table('testdate', meta,
+                  Column('id', Integer, primary_key=True),
+                Column('adate', Date), 
+                Column('adatetime', DateTime))
+        t.create(checkfirst=True)
+        try:
+            d1 = datetime.date(2007, 10, 30)
+            d2 = datetime.datetime(2007, 10, 30)
 
+            t.insert().execute(adate=str(d1), adatetime=str(d2))
+            
+            assert t.select().execute().fetchall()[0] == (1, datetime.date(2007, 10, 30), datetime.datetime(2007, 10, 30))
+            
+        finally:
+            t.drop(checkfirst=True)
+        
+        
     def testtextdate(self):     
         x = testbase.db.text("select user_datetime from query_users_with_date", typemap={'user_datetime':DateTime}).execute().fetchall()
         

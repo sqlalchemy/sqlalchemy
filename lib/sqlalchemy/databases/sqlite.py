@@ -34,7 +34,10 @@ class SLSmallInteger(sqltypes.Smallinteger):
 class DateTimeMixin(object):
     def bind_processor(self, dialect):
         def process(value):
-            if value is not None:
+            if isinstance(value, basestring):
+                # pass string values thru
+                return value
+            elif value is not None:
                 if getattr(value, 'microsecond', None) is not None:
                     return value.strftime(self.__format__ + "." + str(value.microsecond))
                 else:
