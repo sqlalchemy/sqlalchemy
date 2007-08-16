@@ -1,3 +1,45 @@
+0.4.0beta3
+- sql types optimization:
+  - new performance tests show a combined mass-insert/mass-select test
+    as having 68% fewer function calls than the same test run against 0.3.  
+  - general performance improvement of result set iteration is around 10-20%.
+  - in types.AbstractType, convert_bind_param() and convert_result_value()
+    have migrated to callable-returning bind_processor() and result_processor()
+    methods.  if no callable is returned, no pre/post processing function is
+    called.
+  - hooks added throughout base/sql/defaults to optimize the calling of bind
+    aram/result processors so that method call overhead is minimized.
+  - support added for executemany() scenarios such that unneeded "last row id"
+    logic doesn't kick in, parameters aren't excessively traversed.
+- added 'inherit_foreign_keys' arg to mapper()
+- added support for string date passthru in sqlite
+- tickets fixed:
+  - [ticket:738]
+  - [ticket:739]
+  - [ticket:743]
+  - [ticket:744]
+0.4.0beta2
+- mssql improvements
+- oracle improvements
+- auto-commit after LOAD DATA INFILE for mysql
+- a rudimental SessionExtension class has been added, allowing user-defined
+  functionality to take place at flush(), commit(), and rollback() boundaries.
+- added engine_from_config() function for helping to create_engine() from an
+  .ini style config
+- base_mapper() becomes a plain attribute
+- session.execute() and scalar() can search for a Table with which to bind from
+  using the given ClauseElement
+- session automatically extrapolates tables from mappers with binds, also uses
+  base_mapper so that inheritance hierarchies bind automatically
+- moved ClauseVisitor traversal back to inlined non-recursive
+- tickets fixed:
+  - [ticket:730]	
+  - [ticket:732]
+  - [ticket:733]
+  - [ticket:734]
+0.4.0beta1
+- beta released
+
 0.4.0
 - orm
     - speed ! along with recent speedups to ResultProxy, total number of
