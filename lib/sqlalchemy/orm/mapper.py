@@ -49,6 +49,7 @@ class Mapper(object):
                  non_primary = False,
                  inherits = None,
                  inherit_condition = None,
+                 inherit_foreign_keys = None,
                  extension = None,
                  order_by = False,
                  allow_column_override = False,
@@ -98,6 +99,7 @@ class Mapper(object):
         self.select_table = select_table
         self.local_table = local_table
         self.inherit_condition = inherit_condition
+        self.inherit_foreign_keys = inherit_foreign_keys
         self.extension = extension
         self.properties = properties or {}
         self.allow_column_override = allow_column_override
@@ -342,7 +344,11 @@ class Mapper(object):
                     # stricter set of tables to create "sync rules" by,based on the immediate
                     # inherited table, rather than all inherited tables
                     self._synchronizer = sync.ClauseSynchronizer(self, self, sync.ONETOMANY)
-                    self._synchronizer.compile(self.mapped_table.onclause)
+                    if self.inherit_foreign_keys:
+                        fks = util.Set(self.inherit_foreign_keys)
+                    else:
+                        fks = None
+                    self._synchronizer.compile(self.mapped_table.onclause, foreign_keys=fks)
             else:
                 self._synchronizer = None
                 self.mapped_table = self.local_table

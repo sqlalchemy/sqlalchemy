@@ -13,6 +13,7 @@ def suite():
         'orm.inheritance.abc_inheritance',
         'orm.inheritance.productspec',
         'orm.inheritance.magazine',
+        'orm.inheritance.selects',
         
         )
     alltests = unittest.TestSuite()
