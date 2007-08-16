@@ -385,6 +385,55 @@ class SessionTest(AssertMixin):
         import gc
         gc.collect()
         assert len(s.identity_map) == 1
+
+    def test_prune(self):
+        tables.delete()
+        s = create_session()
+        class User(object):pass
+        mapper(User, users)
+
+        for o in [User() for x in xrange(10)]:
+            s.save(o)
+        # o is still live after this loop...
+
+        self.assert_(len(s.identity_map) == 0)
+        self.assert_(s.prune() == 0)
+        s.flush()
+        self.assert_(s.prune() == 9)
+        self.assert_(len(s.identity_map) == 1)
+
+        user_id = o.user_id
+        del o
+        self.assert_(s.prune() == 1)
+        self.assert_(len(s.identity_map) == 0)
+
+        u = s.query(User).get(user_id)
+        self.assert_(s.prune() == 0)
+        self.assert_(len(s.identity_map) == 1)
+        u.user_name = 'squiznart'
+        del u
+        self.assert_(s.prune() == 0)
+        self.assert_(len(s.identity_map) == 1)
+        s.flush()
+        self.assert_(s.prune() == 1)
+        self.assert_(len(s.identity_map) == 0)
+
+        s.save(User())
+        self.assert_(s.prune() == 0)
+        self.assert_(len(s.identity_map) == 0)
+        s.flush()
+        self.assert_(len(s.identity_map) == 1)
+        self.assert_(s.prune() == 1)
+        self.assert_(len(s.identity_map) == 0)
+
+        u = s.query(User).get(user_id)
+        s.delete(u)
+        del u
+        self.assert_(s.prune() == 0)
+        self.assert_(len(s.identity_map) == 1)
+        s.flush()
+        self.assert_(s.prune() == 0)
+        self.assert_(len(s.identity_map) == 0)
         
     def test_no_save_cascade(self):
         mapper(Address, addresses)

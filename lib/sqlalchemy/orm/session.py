@@ -725,6 +725,16 @@ class Session(object):
         for c in [obj] + list(_object_mapper(obj).cascade_iterator('refresh-expire', obj)):
             self._expire_impl(c)
 
+    def prune(self):
+        """Removes unreferenced instances cached in the identity map.
+
+        Removes any object in this Session'sidentity map that is not
+        referenced in user code, modified, new or scheduled for deletion.
+        Returns the number of objects pruned.
+        """
+        
+        return self.uow.prune_identity_map()
+
     def _expire_impl(self, obj):
         self._validate_persistent(obj)
 

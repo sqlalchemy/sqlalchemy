@@ -19,12 +19,11 @@ new, dirty, or deleted and provides the capability to flush all those
 changes at once.
 """
 
+import gc, StringIO, weakref
 from sqlalchemy import util, logging, topological, exceptions
 from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.mapper import object_mapper
-import StringIO
-import weakref
 
 # Load lazily
 object_session = None
@@ -219,6 +218,24 @@ class UnitOfWork(object):
 
         if session.extension is not None:
             session.extension.after_flush_postexec(session, flush_context)
+
+    def prune_identity_map(self):
+        """Removes unreferenced instances cached in the identity map.
+
+        Removes any object in the identity map that is not referenced
+        in user code or scheduled for a unit of work operation.  Returns
+        the number of objects pruned.
+        """
+
+        if isinstance(self.identity_map, weakref.WeakValueDictionary):
+            return 0
+        ref_count = len(self.identity_map)
+        dirty = self.locate_dirty()
+        keepers = weakref.WeakValueDictionary(self.identity_map)
+        self.identity_map.clear()
+        gc.collect()
+        self.identity_map.update(keepers)
+        return ref_count - len(self.identity_map)
 
 class UOWTransaction(object):
     """Handles the details of organizing and executing transaction

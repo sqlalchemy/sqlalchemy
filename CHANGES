@@ -1,6 +1,8 @@
 0.4.0beta4
 - fix to bind param processing such that "False" values (like blank strings)
   still get processed/encoded
+- added session.prune(), trims away instances cached in a session that are
+  no longer referenced elsewhere. (a utility for for strong-ref identity maps)
 
 0.4.0beta3
 - sql types optimization:
