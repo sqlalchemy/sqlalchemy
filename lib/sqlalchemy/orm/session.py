@@ -390,6 +390,7 @@ class Session(object):
             
         """
         self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
+        self.identity_map = self.uow.identity_map
 
         self.bind = bind
         self.__binds = {}
@@ -573,6 +574,7 @@ class Session(object):
             self._unattach(instance)
         echo = self.uow.echo
         self.uow = unitofwork.UnitOfWork(weak_identity_map=self.weak_identity_map)
+        self.identity_map = self.uow.identity_map
         self.uow.echo = echo
 
     def bind_mapper(self, mapper, bind, entity_name=None):
@@ -853,7 +855,7 @@ class Session(object):
         try:
             key = getattr(object, '_instance_key', None)
             if key is None:
-                merged = mapper._create_instance(self)
+                merged = mapper.class_.__new__(mapper.class_)
             else:
                 if key in self.identity_map:
                     merged = self.identity_map[key]
@@ -1033,11 +1035,6 @@ class Session(object):
     def _get(self, key):
         return self.identity_map[key]
 
-    def has_key(self, key):
-        """return True if the given identity key is present within this Session's identity map."""
-        
-        return key in self.identity_map
-
     dirty = property(lambda s:s.uow.locate_dirty(),
                      doc="A ``Set`` of all objects marked as 'dirty' within this ``Session``")
 
@@ -1046,10 +1043,6 @@ class Session(object):
 
     new = property(lambda s:s.uow.new,
                    doc="A ``Set`` of all objects marked as 'new' within this ``Session``.")
-
-    identity_map = property(lambda s:s.uow.identity_map,
-                            doc="A dictionary consisting of all objects "
-                            "within this ``Session`` keyed to their `_instance_key` value.")
 
     def import_instance(self, *args, **kwargs):
         """A synynom for ``merge()``."""

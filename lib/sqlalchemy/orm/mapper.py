@@ -10,7 +10,7 @@ from sqlalchemy import sql_util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier
 from sqlalchemy.orm import sync
-from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, MapperExtension, SynonymProperty
+from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, EXT_STOP, MapperExtension, SynonymProperty
 deferred_load = None
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
@@ -287,20 +287,22 @@ class Mapper(object):
         creates a linked list of those extensions.
         """
 
-        extlist = util.Set()
-        for ext_class in global_extensions:
-            if isinstance(ext_class, MapperExtension):
-                extlist.add(ext_class)
-            else:
-                extlist.add(ext_class())
-            # local MapperExtensions have already instrumented the class
-            extlist[-1].instrument_class(self, self.class_)
-            
+        extlist = util.OrderedSet()
+
         extension = self.extension
         if extension is not None:
             for ext_obj in util.to_list(extension):
+                # local MapperExtensions have already instrumented the class
                 extlist.add(ext_obj)
 
+        for ext in global_extensions:
+            if isinstance(ext_class, type):
+                ext = ext()
+            extlist.add(ext)
+            ext.instrument_class(self, self.class_)
+            
+        extlist.add(_DefaultExtension())
+        
         self.extension = ExtensionCarrier()
         for ext in extlist:
             self.extension.append(ext)
@@ -1387,9 +1389,7 @@ class Mapper(object):
         else:
             extension = self.extension
 
-        ret = extension.translate_row(self, context, row)
-        if ret is not EXT_CONTINUE:
-            row = ret
+        row = extension.translate_row(self, context, row)
 
         if not skip_polymorphic and self.polymorphic_on is not None:
             discriminator = row[self.polymorphic_on]
@@ -1407,7 +1407,7 @@ class Mapper(object):
 
         identitykey = self.identity_key_from_row(row)
         populate_existing = context.populate_existing or self.always_refresh
-        if context.session.has_key(identitykey):
+        if identitykey in context.session.identity_map:
             instance = context.session._get(identitykey)
             if self.__should_log_debug:
                 self.__log_debug("_instance(): using existing instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
@@ -1419,11 +1419,8 @@ class Mapper(object):
                 if identitykey not in context.identity_map:
                     context.identity_map[identitykey] = instance
                     isnew = True
-                if extension.populate_instance(self, context, row, instance, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
-                    self.populate_instance(context, instance, row, instancekey=identitykey, isnew=isnew)
-            if extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
-                if result is not None:
-                    result.append(instance)
+                extension.populate_instance(self, context, row, instance, instancekey=identitykey, isnew=isnew)
+            extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew)
             return instance
         else:
             if self.__should_log_debug:
@@ -1447,10 +1444,7 @@ class Mapper(object):
 
             # plugin point
             instance = extension.create_instance(self, context, row, self.class_)
-            if instance is EXT_CONTINUE:
-                instance = self._create_instance(context.session)
-            else:
-                instance._entity_name = self.entity_name
+            instance._entity_name = self.entity_name
             if self.__should_log_debug:
                 self.__log_debug("_instance(): created new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
             context.identity_map[identitykey] = instance
@@ -1462,18 +1456,9 @@ class Mapper(object):
         # call further mapper properties on the row, to pull further
         # instances from the row and possibly populate this item.
         flags = {'instancekey':identitykey, 'isnew':isnew}
-        if extension.populate_instance(self, context, row, instance, **flags) is EXT_CONTINUE:
-            self.populate_instance(context, instance, row, **flags)
-        if extension.append_result(self, context, row, instance, result, **flags) is EXT_CONTINUE:
-            if result is not None:
-                result.append(instance)
+        extension.populate_instance(self, context, row, instance, **flags)
+        extension.append_result(self, context, row, instance, result, **flags)
         return instance
-
-    def _create_instance(self, session):
-        obj = self.class_.__new__(self.class_)
-        obj._entity_name = self.entity_name
-
-        return obj
 
     def _deferred_inheritance_condition(self, needs_tables):
         cond = self.inherit_condition
@@ -1575,7 +1560,21 @@ class Mapper(object):
 Mapper.logger = logging.class_logger(Mapper)
 
 
+class _DefaultExtension(MapperExtension):
+    def translate_row(self, mapper, context, row):
+        return row
 
+    def populate_instance(self, mapper, context, row, instance, instancekey, isnew):
+        mapper.populate_instance(context, instance, row, instancekey=instancekey, isnew=isnew)
+        return EXT_STOP
+        
+    def append_result(self, mapper, context, row, instance, result, instancekey, isnew):
+        if result is not None:
+            result.append(instance)
+        return EXT_STOP
+        
+    def create_instance(self, mapper, context, row, class_):
+        return class_.__new__(class_)
 
 class ClassKey(object):
     """Key a class and an entity name to a mapper, via the mapper_registry."""

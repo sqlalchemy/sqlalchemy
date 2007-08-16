@@ -31,10 +31,10 @@ class TLSession(object):
     def in_transaction(self):
         return self.__tcount > 0
 
-    def begin(self):
+    def begin(self, **kwargs):
         if self.__tcount == 0:
             self.__transaction = self.get_connection()
-            self.__trans = self.__transaction._begin()
+            self.__trans = self.__transaction._begin(**kwargs)
         self.__tcount += 1
         return self.__trans
 
@@ -75,8 +75,8 @@ class TLConnection(base.Connection):
     def in_transaction(self):
         return self.session.in_transaction()
 
-    def begin(self):
-        return self.session.begin()
+    def begin(self, **kwargs):
+        return self.session.begin(**kwargs)
 
     def close(self):
         if self.__opencount == 1:
@@ -143,8 +143,8 @@ class TLEngine(base.Engine):
 
         return self.session.get_connection(**kwargs)
 
-    def begin(self):
-        return self.session.begin()
+    def begin(self, **kwargs):
+        return self.session.begin(**kwargs)
 
     def commit(self):
         self.session.commit()

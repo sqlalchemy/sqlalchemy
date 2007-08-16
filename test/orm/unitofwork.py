@@ -6,7 +6,7 @@ from sqlalchemy.orm import *
 from testlib import *
 from testlib.tables import *
 from testlib import tables
-import fixtures
+from testlib import fixtures
 
 """tests unitofwork operations"""
 

@@ -104,7 +104,7 @@ class _ScopedExt(MapperExtension):
             def __call__(s):
                 return self.context.registry().query(class_)
 
-        if not hasattr(class_, 'query'): 
+        if not 'query' in class_.__dict__: 
             class_.query = query()
         
     def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):

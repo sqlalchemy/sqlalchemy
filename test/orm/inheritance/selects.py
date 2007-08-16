@@ -2,54 +2,8 @@ import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
+from testlib.fixtures import Base
 
-# TODO: refactor "fixtures" to be part of testlib, so Base is globally available
-_recursion_stack = util.Set()
-class Base(object):
-    def __init__(self, **kwargs):
-        for k in kwargs:
-            setattr(self, k, kwargs[k])
-    
-    def __ne__(self, other):
-        return not self.__eq__(other)
-        
-    def __eq__(self, other):
-        """'passively' compare this object to another.
-        
-        only look at attributes that are present on the source object.
-        
-        """
-        if self in _recursion_stack:
-            return True
-        _recursion_stack.add(self)
-        try:
-            # use __dict__ to avoid instrumented properties
-            for attr in self.__dict__.keys():
-                if attr[0] == '_':
-                    continue
-                value = getattr(self, attr)
-                if hasattr(value, '__iter__') and not isinstance(value, basestring):
-                    try:
-                        # catch AttributeError so that lazy loaders trigger
-                        otherattr = getattr(other, attr)
-                    except AttributeError:
-                        return False
-                    if len(value) != len(getattr(other, attr)):
-                       return False
-                    for (us, them) in zip(value, getattr(other, attr)):
-                        if us != them:
-                            return False
-                    else:
-                        continue
-                else:
-                    if value is not None:
-                        print "KEY", attr, "COMPARING", value, "TO", getattr(other, attr, None)
-                        if value != getattr(other, attr, None):
-                            return False
-            else:
-                return True
-        finally:
-            _recursion_stack.remove(self)
 
 class InheritingSelectablesTest(ORMTest):
     def define_tables(self, metadata):

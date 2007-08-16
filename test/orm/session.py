@@ -5,17 +5,20 @@ from sqlalchemy.orm.session import Session as SessionCls
 from testlib import *
 from testlib.tables import *
 import testlib.tables as tables
-import fixtures
+from testlib import fixtures
 
 class SessionTest(AssertMixin):
     def setUpAll(self):
         tables.create()
+        
     def tearDownAll(self):
         tables.drop()
+        
     def tearDown(self):
         SessionCls.close_all()
         tables.delete()
         clear_mappers()
+        
     def setUp(self):
         pass
 
@@ -614,7 +617,46 @@ class ScopedMapperTest(PersistTest):
         Session.mapper(MyClass, table2)
 
         assert MyClass().expunge() == "an expunge !"
+
+class ScopedMapperTest2(ORMTest):
+    def define_tables(self, metadata):
+        global table, table2
+        table = Table('sometable', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            Column('type', String(30))
+            
+            )
+        table2 = Table('someothertable', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('someid', None, ForeignKey('sometable.id')),
+            Column('somedata', String(30)),
+            )
     
+    def test_inheritance(self):
+        def expunge_list(l):
+            for x in l:
+                Session.expunge(x)
+            return l
+            
+        class BaseClass(fixtures.Base):
+            pass
+        class SubClass(BaseClass):
+            pass
+        
+        Session = scoped_session(sessionmaker())
+        Session.mapper(BaseClass, table, polymorphic_identity='base', polymorphic_on=table.c.type)
+        Session.mapper(SubClass, table2, polymorphic_identity='sub', inherits=BaseClass)
+        
+        b = BaseClass(data='b1')
+        s =  SubClass(data='s1', somedata='somedata')
+        Session.commit()
+        Session.clear()
+        
+        assert expunge_list([BaseClass(data='b1'), SubClass(data='s1', somedata='somedata')]) == BaseClass.query.all()
+        assert expunge_list([SubClass(data='s1', somedata='somedata')]) == SubClass.query.all()
+        
+        
 
 if __name__ == "__main__":    
     testbase.main()

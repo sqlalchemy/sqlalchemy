@@ -19,30 +19,30 @@ class EagerTest(AssertMixin):
             false = bp(false)
         
         owners = Table ( 'owners', dbmeta ,
-        	Column ( 'id', Integer, primary_key=True, nullable=False ),
-        	Column('data', String(30)) )
+            Column ( 'id', Integer, primary_key=True, nullable=False ),
+            Column('data', String(30)) )
         categories=Table( 'categories', dbmeta,
-        	Column ( 'id', Integer,primary_key=True, nullable=False ),
-        	Column ( 'name', VARCHAR(20), index=True ) )
+            Column ( 'id', Integer,primary_key=True, nullable=False ),
+            Column ( 'name', VARCHAR(20), index=True ) )
         tests = Table ( 'tests', dbmeta ,
-        	Column ( 'id', Integer, primary_key=True, nullable=False ),
-        	Column ( 'owner_id',Integer, ForeignKey('owners.id'), nullable=False,index=True ),
-        	Column ( 'category_id', Integer, ForeignKey('categories.id'),nullable=False,index=True ))
+            Column ( 'id', Integer, primary_key=True, nullable=False ),
+            Column ( 'owner_id',Integer, ForeignKey('owners.id'), nullable=False,index=True ),
+            Column ( 'category_id', Integer, ForeignKey('categories.id'),nullable=False,index=True ))
         options = Table ( 'options', dbmeta ,
-        	Column ( 'test_id', Integer, ForeignKey ( 'tests.id' ), primary_key=True, nullable=False ),
-        	Column ( 'owner_id', Integer, ForeignKey ( 'owners.id' ), primary_key=True, nullable=False ),
-        	Column ( 'someoption', Boolean, PassiveDefault(str(false)), nullable=False ) )
+            Column ( 'test_id', Integer, ForeignKey ( 'tests.id' ), primary_key=True, nullable=False ),
+            Column ( 'owner_id', Integer, ForeignKey ( 'owners.id' ), primary_key=True, nullable=False ),
+            Column ( 'someoption', Boolean, PassiveDefault(str(false)), nullable=False ) )
 
         dbmeta.create_all()
 
         class Owner(object):
-        	pass
+            pass
         class Category(object):
-        	pass
+            pass
         class Test(object):
-        	pass
+            pass
         class Option(object):
-        	pass
+            pass
         mapper(Owner,owners)
         mapper(Category,categories)
         mapper(Option,options,properties={'owner':relation(Owner),'test':relation(Test)})
@@ -66,17 +66,17 @@ class EagerTest(AssertMixin):
         s.save(c)
 
         for i in range(3):
-        	t=Test()
-        	t.owner=o
-        	t.category=c
-        	s.save(t)
-        	if i==1:
-        		op=Option()
-        		op.someoption=True
-        		t.owner_option=op
-        	if i==2:
-        		op=Option()
-        		t.owner_option=op
+            t=Test()
+            t.owner=o
+            t.category=c
+            s.save(t)
+            if i==1:
+                op=Option()
+                op.someoption=True
+                t.owner_option=op
+            if i==2:
+                op=Option()
+                t.owner_option=op
 
         s.flush()
         s.close()
@@ -99,16 +99,16 @@ class EagerTest(AssertMixin):
         # not orm style correct query
         print "Obtaining correct results without orm"
         result = select( [tests.c.id,categories.c.name],
-        	and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
-        	order_by=[tests.c.id],
-        	from_obj=[tests.join(categories).outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))] ).execute().fetchall()
+            and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
+            order_by=[tests.c.id],
+            from_obj=[tests.join(categories).outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))] ).execute().fetchall()
         print result
         assert result == [(1, u'Some Category'), (3, u'Some Category')]
     
     def test_withouteagerload(self):
         s = create_session()
         l=s.query(Test).select ( and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
-        	from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
+            from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
@@ -119,7 +119,7 @@ class EagerTest(AssertMixin):
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
         l=q.select ( and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
-        	from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
+            from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
@@ -140,7 +140,7 @@ class EagerTest(AssertMixin):
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
         l=q.select( (tests.c.owner_id==1) & ('options.someoption is null or options.someoption=%s' % false) & q.join_to('owner_option') )
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]	
+        result = ["%d %s" % ( t.id,t.category.name ) for t in l]    
         print result
         assert result == [u'3 Some Category']
 
@@ -148,7 +148,7 @@ class EagerTest(AssertMixin):
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
         l=q.select( (tests.c.owner_id==1) & ((options.c.someoption==None) | (options.c.someoption==False)) & q.join_to('owner_option') )
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]	
+        result = ["%d %s" % ( t.id,t.category.name ) for t in l]    
         print result
         assert result == [u'3 Some Category']
 
@@ -421,23 +421,23 @@ class EagerTest6(ORMTest):
     def define_tables(self, metadata):
         global designType, design, part, inheritedPart
         designType = Table('design_types', metadata, 
-        	Column('design_type_id', Integer, primary_key=True),
-        	)
+            Column('design_type_id', Integer, primary_key=True),
+            )
 
         design =Table('design', metadata, 
-        	Column('design_id', Integer, primary_key=True),
-        	Column('design_type_id', Integer, ForeignKey('design_types.design_type_id')))
+            Column('design_id', Integer, primary_key=True),
+            Column('design_type_id', Integer, ForeignKey('design_types.design_type_id')))
 
         part = Table('parts', metadata, 
-        	Column('part_id', Integer, primary_key=True),
-        	Column('design_id', Integer, ForeignKey('design.design_id')),
-        	Column('design_type_id', Integer, ForeignKey('design_types.design_type_id')))
+            Column('part_id', Integer, primary_key=True),
+            Column('design_id', Integer, ForeignKey('design.design_id')),
+            Column('design_type_id', Integer, ForeignKey('design_types.design_type_id')))
 
         inheritedPart = Table('inherited_part', metadata,
-        	Column('ip_id', Integer, primary_key=True),
-        	Column('part_id', Integer, ForeignKey('parts.part_id')),
-        	Column('design_id', Integer, ForeignKey('design.design_id')),
-        	)
+            Column('ip_id', Integer, primary_key=True),
+            Column('part_id', Integer, ForeignKey('parts.part_id')),
+            Column('design_id', Integer, ForeignKey('design.design_id')),
+            )
 
     def testone(self):
         class Part(object):pass
@@ -448,16 +448,16 @@ class EagerTest6(ORMTest):
         mapper(Part, part)
 
         mapper(InheritedPart, inheritedPart, properties=dict(
-        	part=relation(Part, lazy=False)
+            part=relation(Part, lazy=False)
         ))
 
         mapper(Design, design, properties=dict(
-        	parts=relation(Part, private=True, backref="design"),
-        	inheritedParts=relation(InheritedPart, private=True, backref="design"),
+            parts=relation(Part, private=True, backref="design"),
+            inheritedParts=relation(InheritedPart, private=True, backref="design"),
         ))
 
         mapper(DesignType, designType, properties=dict(
-        #	designs=relation(Design, private=True, backref="type"),
+        #   designs=relation(Design, private=True, backref="type"),
         ))
 
         class_mapper(Design).add_property("type", relation(DesignType, lazy=False, backref="designs"))
