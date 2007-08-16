@@ -55,8 +55,8 @@ class InheritingSelectablesTest(ORMTest):
     def define_tables(self, metadata):
         global foo, bar, baz
         foo = Table('foo', metadata,
-                    Column('a', String, primary_key=1),
-                    Column('b', String, nullable=0))
+                    Column('a', String(30), primary_key=1),
+                    Column('b', String(30), nullable=0))
 
         bar = foo.select(foo.c.b == 'bar').alias('bar')
         baz = foo.select(foo.c.b == 'baz').alias('baz')
