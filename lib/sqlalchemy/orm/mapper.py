@@ -107,9 +107,6 @@ class Mapper(object):
         self.delete_orphans = []
         self.batch = batch
         self.column_prefix = column_prefix
-        # a Column which is used during a select operation to retrieve the
-        # "polymorphic identity" of the row, which indicates which Mapper should be used
-        # to construct a new object instance from that row.
         self.polymorphic_on = polymorphic_on
         self._eager_loaders = util.Set()
 
@@ -131,16 +128,7 @@ class Mapper(object):
         else:
             self.polymorphic_map = _polymorphic_map
 
-        class LOrderedProp(util.OrderedProperties):
-            """this extends OrderedProperties to trigger a compile() before the
-            members of the object are accessed."""
-            def _get_data(s):
-                self.compile()
-                return s.__dict__['_data']
-            _data = property(_get_data)
-
-        self.columns = LOrderedProp()
-        self.c = self.columns
+        self.columns = self.c = util.OrderedProperties()
 
         self.include_properties = include_properties
         self.exclude_properties = exclude_properties
@@ -163,11 +151,6 @@ class Mapper(object):
 
         self.__should_log_debug = logging.is_debug_enabled(self.logger)
         self.__log("constructed")
-
-        # uncomment to compile at construction time (the old way)
-        # this will break mapper setups that arent declared in the order
-        # of dependency
-        #self.compile()
 
     def __log(self, msg):
         self.logger.info("(" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.name or str(self.local_table)) + (not self._is_primary_mapper() and "|non-primary" or "") + ") " + msg)

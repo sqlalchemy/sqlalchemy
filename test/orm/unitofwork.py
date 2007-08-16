@@ -858,11 +858,11 @@ class OneToManyTest(ORMTest):
         m2 = mapper(Address, addresses)
         m = mapper(User, users, properties={
             'boston_addresses' : relation(m2, primaryjoin=
-                        and_(users.c.user_id==Address.c.user_id, 
-                        Address.c.email_address.like('%boston%'))),
+                        and_(users.c.user_id==addresses.c.user_id, 
+                        addresses.c.email_address.like('%boston%'))),
             'newyork_addresses' : relation(m2, primaryjoin=
-                        and_(users.c.user_id==Address.c.user_id, 
-                        Address.c.email_address.like('%newyork%'))),
+                        and_(users.c.user_id==addresses.c.user_id, 
+                        addresses.c.email_address.like('%newyork%'))),
         })
         u = User()
         a = Address()
