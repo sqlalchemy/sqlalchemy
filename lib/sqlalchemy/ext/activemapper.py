@@ -88,7 +88,8 @@ class relationship(object):
         relclass = ActiveMapperMeta.classes[self.classname]
         
         if klass.__name__ == self.classname:
-            br_fkey = getattr(relclass.c, self.colname)
+            class_mapper(relclass).compile()
+            br_fkey = relclass.c[self.colname]
         else:
             br_fkey = None
         
