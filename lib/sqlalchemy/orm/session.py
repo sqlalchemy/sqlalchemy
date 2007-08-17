@@ -242,6 +242,8 @@ class SessionTransaction(object):
         for t in util.Set(self.__connections.values()):
             if t[2]:
                 t[0].close()
+            else:
+                t[1].rollback()
         self.session.transaction = None
 
     def __enter__(self):

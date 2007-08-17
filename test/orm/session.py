@@ -357,7 +357,28 @@ class SessionTest(AssertMixin):
         transaction.rollback()
         assert len(sess.query(User).select()) == 0
         sess.close()
-    
+
+    def test_bound_connection_transactional(self):
+        class User(object):pass
+        mapper(User, users)
+        c = testbase.db.connect()
+
+        sess = create_session(bind=c, transactional=True)
+        u = User()
+        sess.save(u)
+        sess.flush()
+        sess.close()
+        assert not c.in_transaction()
+        assert c.scalar("select count(1) from users") == 0
+
+        sess = create_session(bind=c, transactional=True)
+        u = User()
+        sess.save(u)
+        sess.flush()
+        sess.commit()
+        assert not c.in_transaction()
+        assert c.scalar("select count(1) from users") == 1
+        
     @engines.close_open_connections
     def test_update(self):
         """test that the update() method functions and doesnet blow away changes"""
