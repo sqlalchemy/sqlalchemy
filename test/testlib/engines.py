@@ -21,12 +21,12 @@ class ConnectionKiller(object):
                 except Exception, e:
                     # fixme
                     sys.stderr.write("\n" + str(e) + "\n")
-        del self.record_refs[:]
 
     def rollback_all(self):
         self._apply_all(('rollback',))
+
     def close_all(self):
-        self._apply_all(('rollback','close'))
+        self._apply_all(('rollback', 'close'))
 
 testing_reaper = ConnectionKiller()
 
@@ -36,8 +36,9 @@ def rollback_open_connections(fn):
     def decorated(*args, **kw):
         try:
             fn(*args, **kw)
-        finally:
+        except:
             testing_reaper.rollback_all()
+            raise
     decorated.__name__ = fn.__name__
     return decorated
 

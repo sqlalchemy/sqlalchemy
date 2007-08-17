@@ -79,6 +79,7 @@ class SessionTest(AssertMixin):
         # then see if expunge fails
         session.expunge(u)
     
+    @engines.rollback_open_connections
     def test_binds_from_expression(self):
         """test that Session can extract Table objects from ClauseElements and match them to tables."""
         Session = sessionmaker(binds={users:testbase.db, addresses:testbase.db})
@@ -93,9 +94,10 @@ class SessionTest(AssertMixin):
         Session = sessionmaker(binds={User:testbase.db, Address:testbase.db})
         sess.execute(users.insert(), params=dict(user_id=2, user_name='fred'))
         assert sess.execute(users.select()).fetchall() == [(1, 'ed'), (2, 'fred')]
-        
+        sess.close()
         
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
+    @engines.rollback_open_connections
     def test_transaction(self):
         class User(object):pass
         mapper(User, users)
@@ -111,8 +113,10 @@ class SessionTest(AssertMixin):
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+        sess.close()
     
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
+    @engines.rollback_open_connections
     def test_autoflush(self):
         class User(object):pass
         mapper(User, users)
@@ -130,8 +134,10 @@ class SessionTest(AssertMixin):
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+        sess.close()
 
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
+    @engines.rollback_open_connections
     def test_autoflush_unbound(self):
         class User(object):pass
         mapper(User, users)
@@ -148,10 +154,12 @@ class SessionTest(AssertMixin):
             sess.commit()
             assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
             assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+            sess.close()
         except:
             sess.rollback()
             raise
             
+    @engines.rollback_open_connections
     def test_autoflush_2(self):
         class User(object):pass
         mapper(User, users)
@@ -165,6 +173,7 @@ class SessionTest(AssertMixin):
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+        sess.commit()
 
     # TODO: not doing rollback of attributes right now.
     def dont_test_autoflush_rollback(self):
@@ -189,6 +198,7 @@ class SessionTest(AssertMixin):
         assert newad not in u.addresses
         
         
+    @engines.rollback_open_connections
     def test_external_joined_transaction(self):
         class User(object):pass
         mapper(User, users)
@@ -202,8 +212,10 @@ class SessionTest(AssertMixin):
         sess.commit() # commit does nothing
         trans.rollback() # rolls back
         assert len(sess.query(User).select()) == 0
+        sess.close()
 
     @testing.supported('postgres', 'mysql')
+    @engines.rollback_open_connections
     def test_external_nested_transaction(self):
         class User(object):pass
         mapper(User, users)
@@ -263,6 +275,7 @@ class SessionTest(AssertMixin):
         sess.commit() # commit does nothing
         sess.rollback() # rolls back
         assert len(sess.query(User).select()) == 0
+        sess.close()
 
     @testing.supported('postgres', 'mysql')
     @testing.exclude('mysql', '<', (5, 0, 3))
@@ -286,6 +299,7 @@ class SessionTest(AssertMixin):
     
         sess.commit()
         assert len(sess.query(User).select()) == 1
+        sess.close()
 
     @testing.supported('postgres', 'mysql')
     @testing.exclude('mysql', '<', (5, 0, 3))
@@ -302,12 +316,14 @@ class SessionTest(AssertMixin):
         u2 = User()
         sess.save(u2)
         sess.flush()
-
+        
         sess.rollback() 
 
         sess.commit()
         assert len(sess.query(User).select()) == 1
+        sess.close()
 
+    @engines.rollback_open_connections
     def test_bound_connection(self):
         class User(object):pass
         mapper(User, users)
@@ -340,6 +356,7 @@ class SessionTest(AssertMixin):
             
         transaction.rollback()
         assert len(sess.query(User).select()) == 0
+        sess.close()
              
     def test_update(self):
         """test that the update() method functions and doesnet blow away changes"""
