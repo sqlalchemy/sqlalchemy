@@ -28,6 +28,11 @@ class TLSession(object):
             pass
         self.__tcount = 0
 
+    def _conn_closed(self):
+        if self.__tcount == 1:
+            self.__trans._trans.rollback()
+            self.reset()
+            
     def in_transaction(self):
         return self.__tcount > 0
     
@@ -104,6 +109,7 @@ class TLConnection(base.Connection):
     def close(self):
         if self.__opencount == 1:
             base.Connection.close(self)
+            self.__session._conn_closed()
         self.__opencount -= 1
 
     def _force_close(self):

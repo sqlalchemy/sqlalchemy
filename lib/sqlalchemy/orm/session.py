@@ -241,7 +241,6 @@ class SessionTransaction(object):
             return
         for t in util.Set(self.__connections.values()):
             if t[2]:
-                # closing the connection will also issue a rollback()
                 t[0].close()
         self.session.transaction = None
 
