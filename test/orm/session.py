@@ -239,11 +239,9 @@ class SessionTest(AssertMixin):
             conn.close()
             raise
     
-    @testing.supported('mysql')
-#    @testing.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql')
     @testing.exclude('mysql', '<', (5, 0, 3))
-#    @engines.rollback_open_connections
-    def dont_test_twophase(self):
+    def test_twophase(self):
         # TODO: mock up a failure condition here
         # to ensure a rollback succeeds
         class User(object):pass
