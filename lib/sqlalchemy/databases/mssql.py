@@ -758,15 +758,19 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
 
     def supports_unicode_statements(self):
         """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
+        # PyODBC unicode is broken on UCS-4 builds
         return sys.maxunicode == 65535
 
     def make_connect_string(self, keys):
-        connectors = ["Driver={SQL Server}"]
-        if 'port' in keys:
-            connectors.append('Server=%s,%d' % (keys.get('host'), keys.get('port')))
+        if 'dsn' in keys:
+            connectors = ['dsn=%s' % keys['dsn']]
         else:
-            connectors.append('Server=%s' % keys.get('host'))
-        connectors.append("Database=%s" % keys.get("database"))
+            connectors = ["Driver={SQL Server}"]
+            if 'port' in keys:
+                connectors.append('Server=%s,%d' % (keys.get('host'), keys.get('port')))
+            else:
+                connectors.append('Server=%s' % keys.get('host'))
+            connectors.append("Database=%s" % keys.get("database"))
         user = keys.get("user")
         if user:
             connectors.append("UID=%s" % user)

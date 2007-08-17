@@ -20,6 +20,7 @@
     - added support for BIGINT, MONEY, SMALLMONEY, UNIQUEIDENTIFIER and 
       SQL_VARIANT [ticket:721]
     - index names are now quoted when dropping from reflected tables [ticket:684]
+    - can now specify a DSN for PyODBC, using a URI like mssql:///?dsn=bob
 - postgres
     - when reflecting tables from alternate schemas, the "default" placed upon
       the primary key, i.e. usually a sequence name, has the "schema" name
