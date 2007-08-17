@@ -48,6 +48,7 @@ import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
+import sys
 
     
 class MSNumeric(sqltypes.Numeric):
@@ -733,7 +734,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
 
     def supports_unicode_statements(self):
         """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
-        return True
+        return sys.maxunicode == 65535
 
     def make_connect_string(self, keys):
         connectors = ["Driver={SQL Server}"]
