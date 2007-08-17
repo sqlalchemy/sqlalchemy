@@ -250,7 +250,7 @@ class SessionTest(AssertMixin):
         mapper(Address, addresses)
         
         engine2 = create_engine(testbase.db.url)
-        sess = create_session(transactional=False, autoflush=False, twophase=False)
+        sess = create_session(transactional=False, autoflush=False, twophase=True)
         sess.bind_mapper(User, testbase.db)
         sess.bind_mapper(Address, engine2)
         sess.begin()

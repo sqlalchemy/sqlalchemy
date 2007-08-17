@@ -39,6 +39,9 @@ class TLSession(object):
                 self.reset()
 
     def begin_twophase(self, xid=None):
+        raise NotImplementedError("Two phase transactions not yet implemented for 'threadlocal' strategy")
+    
+    def _dont_begin_twophase(self, xid=None):    
         if self.__tcount == 0:
             self.__transaction = self.get_connection()
             self.__trans = self.__transaction._begin_twophase(xid=xid)
