@@ -17,6 +17,8 @@
     - fixed specification of YEAR columns when generating schema
 - mssql
     - added support for TIME columns (simulated using DATETIME) [ticket:679]
+    - added support for BIGINT, MONEY, SMALLMONEY, UNIQUEIDENTIFIER and 
+      SQL_VARIANT [ticket:721]
     - index names are now quoted when dropping from reflected tables [ticket:684]
 - postgres
     - when reflecting tables from alternate schemas, the "default" placed upon
