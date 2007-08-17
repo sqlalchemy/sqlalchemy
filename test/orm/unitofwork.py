@@ -50,7 +50,8 @@ class VersioningTest(ORMTest):
         Column('version_id', Integer, nullable=False),
         Column('value', String(40), nullable=False)
         )
-    
+
+    @engines.close_open_connections
     def test_basic(self):
         s = Session(scope=None)
         class Foo(object):pass
@@ -97,7 +98,8 @@ class VersioningTest(ORMTest):
             success = True
         if testbase.db.dialect.supports_sane_rowcount():
             assert success
-
+        
+    @engines.close_open_connections
     def test_versioncheck(self):
         """test that query.with_lockmode performs a 'version check' on an already loaded instance"""
         s1 = Session(scope=None)
@@ -124,6 +126,7 @@ class VersioningTest(ORMTest):
         s1.close()
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
         
+    @engines.close_open_connections
     def test_noversioncheck(self):
         """test that query.with_lockmode works OK when the mapper has no version id col"""
         s1 = Session()
@@ -414,6 +417,7 @@ class PKTest(ORMTest):
         e.data = 'some more data'
         Session.commit()
 
+    @engines.assert_conns_closed
     def test_pksimmutable(self):
         class Entry(object):
             pass
@@ -430,7 +434,6 @@ class PKTest(ORMTest):
             assert False
         except exceptions.FlushError, fe:
             assert str(fe) == "Can't change the identity of instance Entry@%s in session (existing identity: (%s, (5, 5), None); new identity: (%s, (5, 6), None))" % (hex(id(e)), repr(e.__class__), repr(e.__class__))
-            
             
 class ForeignPKTest(ORMTest):
     """tests mapper detection of the relationship direction when parent/child tables are joined on their

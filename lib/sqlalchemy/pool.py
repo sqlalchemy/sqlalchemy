@@ -318,7 +318,7 @@ class _ConnectionFairy(object):
         while attempts > 0:
             try:
                 for l in self._pool._on_checkout:
-                    l.checkout(self.connection, self._connection_record)
+                    l.checkout(self.connection, self._connection_record, self)
                 return self
             except exceptions.DisconnectionError, e:
                 self._pool.log(
@@ -372,7 +372,7 @@ class _ConnectionFairy(object):
                 self._pool.log("Connection %s being returned to pool" % repr(self.connection))
             if self._pool._on_checkin:
                 for l in self._pool._on_checkin:
-                    l.checkin(self.connection, self._connection_record)
+                    l.checkin(self.connection, self._connection_record, self)
             self._pool.return_conn(self)
         self.connection = None
         self._connection_record = None

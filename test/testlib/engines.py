@@ -4,18 +4,20 @@ from testlib import config
 
 class ConnectionKiller(object):
     def __init__(self):
-        self.record_refs = []
+        self.proxy_refs = weakref.WeakKeyDictionary()
         
-    def connect(self, dbapi_con, con_record):
-        self.record_refs.append(weakref.ref(con_record))
-
+    def checkout(self, dbapi_con, con_record, con_proxy):
+        self.proxy_refs[con_proxy] = True
+        
     def _apply_all(self, methods):
-        for ref in self.record_refs:
-            rec = ref()
-            if rec is not None and rec.connection is not None:
+        for rec in self.proxy_refs:
+            if rec is not None and rec.is_valid:
                 try:
                     for name in methods:
-                        getattr(rec.connection, name)()
+                        if callable(name):
+                            name(rec)
+                        else:
+                            getattr(rec, name)()
                 except (SystemExit, KeyboardInterrupt):
                     raise
                 except Exception, e:
@@ -27,18 +29,31 @@ class ConnectionKiller(object):
 
     def close_all(self):
         self._apply_all(('rollback', 'close'))
-
+        
+    def assert_all_closed(self):
+        for rec in self.proxy_refs:
+            if rec.is_valid:
+                assert False
+        
 testing_reaper = ConnectionKiller()
 
+def assert_conns_closed(fn):
+    def decorated(*args, **kw):
+        try:
+            fn(*args, **kw)
+        finally:
+            testing_reaper.assert_all_closed()
+    decorated.__name__ = fn.__name__
+    return decorated
+    
 def rollback_open_connections(fn):
     """Decorator that rolls back all open connections after fn execution."""
 
     def decorated(*args, **kw):
         try:
             fn(*args, **kw)
-        except:
+        finally:
             testing_reaper.rollback_all()
-            raise
     decorated.__name__ = fn.__name__
     return decorated
 

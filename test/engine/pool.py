@@ -418,15 +418,17 @@ class PoolTest(PersistTest):
                 assert con is not None
                 assert record is not None
                 self.connected.append(con)
-            def inst_checkout(self, con, record):
-                print "checkout(%s, %s)" % (con, record)
+            def inst_checkout(self, con, record, proxy):
+                print "checkout(%s, %s, %s)" % (con, record, proxy)
                 assert con is not None
                 assert record is not None
+                assert proxy is not None
                 self.checked_out.append(con)
-            def inst_checkin(self, con, record):
-                print "checkin(%s, %s)" % (con, record)
+            def inst_checkin(self, con, record, proxy):
+                print "checkin(%s, %s, %s)" % (con, record, proxy)
                 # con can be None if invalidated
                 assert record is not None
+                assert proxy is not None
                 self.checked_in.append(con)
         class ListenAll(interfaces.PoolListener, InstrumentingListener):
             pass
@@ -434,10 +436,10 @@ class PoolTest(PersistTest):
             def connect(self, con, record):
                 pass
         class ListenCheckOut(InstrumentingListener):
-            def checkout(self, con, record, num):
+            def checkout(self, con, record, proxy, num):
                 pass
         class ListenCheckIn(InstrumentingListener):
-            def checkin(self, con, record):
+            def checkin(self, con, proxy, record):
                 pass
 
         def _pool(**kw):

@@ -340,7 +340,10 @@ class ORMTest(AssertMixin):
             clear_mappers()
         if not self.keep_data:
             for t in _otest_metadata.table_iterator(reverse=True):
-                t.delete().execute().close()
+                try:
+                    t.delete().execute().close()
+                except Exception, e:
+                    print "EXCEPTION DELETING...", e
 
 
 class TTestSuite(unittest.TestSuite):

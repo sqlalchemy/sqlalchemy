@@ -50,17 +50,22 @@ class PoolListener(object):
           ``Connection`` wrapper).
 
         con_record
-          The ``_ConnectionRecord`` that currently owns the connection
+          The ``_ConnectionRecord`` that persistently manages the connection
+          
         """
 
-    def checkout(dbapi_con, con_record):
+    def checkout(dbapi_con, con_record, con_proxy):
         """Called when a connection is retrieved from the Pool.
 
         dbapi_con
           A raw DB-API connection
 
         con_record
-          The ``_ConnectionRecord`` that currently owns the connection
+          The ``_ConnectionRecord`` that persistently manages the connection
+
+        con_proxy
+          The ``_ConnectionFairy`` which manages the connection for the span of
+          the current checkout.
 
         If you raise an ``exceptions.DisconnectionError``, the current
         connection will be disposed and a fresh connection retrieved.
@@ -68,7 +73,7 @@ class PoolListener(object):
         using the new connection.
         """
 
-    def checkin(dbapi_con, con_record):
+    def checkin(dbapi_con, con_record, con_proxy):
         """Called when a connection returns to the pool.
 
         Note that the connection may be closed, and may be None if the
@@ -79,5 +84,10 @@ class PoolListener(object):
           A raw DB-API connection
 
         con_record
-          The _ConnectionRecord that currently owns the connection
+          The ``_ConnectionRecord`` that persistently manages the connection
+
+        con_proxy
+          The ``_ConnectionFairy`` which manages the connection for the span of
+          the current checkout.
+
         """

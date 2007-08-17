@@ -30,6 +30,20 @@ class TLSession(object):
 
     def in_transaction(self):
         return self.__tcount > 0
+    
+    def prepare(self):
+        if self.__tcount == 1:
+            try:
+                self.__trans._trans.prepare()
+            finally:
+                self.reset()
+
+    def begin_twophase(self, xid=None):
+        if self.__tcount == 0:
+            self.__transaction = self.get_connection()
+            self.__trans = self.__transaction._begin_twophase(xid=xid)
+        self.__tcount += 1
+        return self.__trans
 
     def begin(self, **kwargs):
         if self.__tcount == 0:
@@ -41,14 +55,14 @@ class TLSession(object):
     def rollback(self):
         if self.__tcount > 0:
             try:
-                self.__trans._rollback_impl()
+                self.__trans._trans.rollback()
             finally:
                 self.reset()
 
     def commit(self):
         if self.__tcount == 1:
             try:
-                self.__trans._commit_impl()
+                self.__trans._trans.commit()
             finally:
                 self.reset()
         elif self.__tcount > 1:
@@ -69,14 +83,20 @@ class TLConnection(base.Connection):
         self.__opencount += 1
         return self
 
-    def _begin(self):
-        return TLTransaction(self)
-
+    def _begin(self, **kwargs):
+        return TLTransaction(super(TLConnection, self).begin(**kwargs), self.__session)
+    
+    def _begin_twophase(self, xid=None):
+        return TLTransaction(super(TLConnection, self).begin_twophase(xid=xid), self.__session)
+        
     def in_transaction(self):
         return self.session.in_transaction()
 
     def begin(self, **kwargs):
         return self.session.begin(**kwargs)
+
+    def begin_twophase(self, xid=None):
+        return self.session.begin_twophase(xid=xid)
 
     def close(self):
         if self.__opencount == 1:
@@ -87,18 +107,29 @@ class TLConnection(base.Connection):
         self.__opencount = 0
         base.Connection.close(self)
 
-class TLTransaction(base.RootTransaction):
-    def _commit_impl(self):
-        base.Transaction.commit(self)
+class TLTransaction(base.Transaction):
+    def __init__(self, trans, session):
+        self._trans = trans
+        self._session = session
 
-    def _rollback_impl(self):
-        base.Transaction.rollback(self)
-
-    def commit(self):
-        self.connection.session.commit()
+    connection = property(lambda s:s._trans.connection)
+    is_active = property(lambda s:s._trans.is_active)
 
     def rollback(self):
-        self.connection.session.rollback()
+        self._session.rollback()
+
+    def prepare(self):
+        self._session.prepare()
+        
+    def commit(self):
+        self._session.commit()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self._trans.__exit__(type, value, traceback)
+
 
 class TLEngine(base.Engine):
     """An Engine that includes support for thread-local managed transactions.
