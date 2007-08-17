@@ -456,10 +456,10 @@ class EagerTest6(testbase.ORMTest):
                                 )
 
     def setUp(self):
-        testbase.db.execute("INSERT INTO prj (title) values('project 1');")
-        testbase.db.execute("INSERT INTO task_status (id) values(1);")
-        testbase.db.execute("INSERT INTO task_type(id) values(1);")
-        testbase.db.execute("INSERT INTO task (title, task_type_id, status_id, prj_id) values('task 1',1,1,1);")
+        testbase.db.execute(project_t.insert(), {'title':'project 1'})
+        testbase.db.execute(task_status_t.insert(), {'id':1})
+        testbase.db.execute(task_type_t.insert(), {'id':1})
+        testbase.db.execute(task_t.insert(), {'title':'task 1', 'task_type_id':1, 'status_id':1, 'prj_id':1})
             
     def test_nested_joins(self):
         # this is testing some subtle column resolution stuff,
