@@ -32,8 +32,6 @@ Known issues / TODO:
 
 * No support for more than one ``IDENTITY`` column per table
 
-* No support for ``GUID`` type columns (yet)
-
 * pymssql has problems with binary and unicode data that this module
   does **not** work around
   
@@ -81,11 +79,15 @@ class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
 
-class MSTinyInteger(sqltypes.Integer): 
+class MSBigInteger(MSInteger):
+    def get_col_spec(self):
+        return "BIGINT"
+
+class MSTinyInteger(MSInteger):
     def get_col_spec(self):
         return "TINYINT"
 
-class MSSmallInteger(sqltypes.Smallinteger):
+class MSSmallInteger(MSInteger):
     def get_col_spec(self):
         return "SMALLINT"
 
@@ -244,6 +246,22 @@ class MSTimeStamp(sqltypes.TIMESTAMP):
     def get_col_spec(self):
         return "TIMESTAMP"
         
+class MSMoney(sqltypes.TypeEngine):
+    def get_col_spec(self):
+        return "MONEY"
+        
+class MSSmallMoney(MSMoney):
+    def get_col_spec(self):
+        return "SMALLMONEY"
+        
+class MSUniqueIdentifier(sqltypes.TypeEngine):
+    def get_col_spec(self):
+        return "UNIQUEIDENTIFIER"
+        
+class MSVariant(sqltypes.TypeEngine):
+    def get_col_spec(self):
+        return "SQL_VARIANT"
+        
 def descriptor():
     return {'name':'mssql',
     'description':'MSSQL',
@@ -369,6 +387,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
 
     ischema_names = {
         'int' : MSInteger,
+        'bigint': MSBigInteger,
         'smallint' : MSSmallInteger,
         'tinyint' : MSTinyInteger,
         'varchar' : MSString,
@@ -383,10 +402,15 @@ class MSSQLDialect(ansisql.ANSIDialect):
         'datetime' : MSDateTime,
         'smalldatetime' : MSDate,
         'binary' : MSBinary,
+        'varbinary' : MSBinary,
         'bit': MSBoolean,
         'real' : MSFloat,
         'image' : MSBinary,
         'timestamp': MSTimeStamp,
+        'money': MSMoney,
+        'smallmoney': MSSmallMoney,
+        'uniqueidentifier': MSUniqueIdentifier,
+        'sql_variant': MSVariant,
     }
 
     def __new__(cls, dbapi=None, *args, **kwargs):
