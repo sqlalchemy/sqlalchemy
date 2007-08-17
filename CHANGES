@@ -8,6 +8,11 @@ CHANGES
 - Fix to bind param processing such that "False" values (like blank strings)
   still get processed/encoded.
 
+- Added a "legacy" adapter to types, such that user-defined TypeEngine
+  and TypeDecorator classes which define convert_bind_param()/convert_result_value()
+  will continue to function.  Also supports calling the super() version of
+  those methods.
+  
 - Added session.prune(), trims away instances cached in a session that are no
   longer referenced elsewhere. (A utility for strong-ref identity maps).
 

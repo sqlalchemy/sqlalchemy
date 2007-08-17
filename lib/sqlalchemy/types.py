@@ -17,17 +17,97 @@ import datetime as dt
 from sqlalchemy import exceptions
 from sqlalchemy.util import Decimal, pickle
 
+class _UserTypeAdapter(type):
+    """adapts 0.3 style user-defined types with convert_bind_param/convert_result_value
+    to use newer bind_processor()/result_processor() methods."""
+    
+    def __init__(cls, clsname, bases, dict):
+        if not hasattr(cls.convert_result_value, '_sa_override'):
+            cls.__instrument_result_proc(cls)
+            
+        if not hasattr(cls.convert_bind_param, '_sa_override'):
+            cls.__instrument_bind_proc(cls)
+            
+        return super(_UserTypeAdapter, cls).__init__(clsname, bases, dict)
+
+    def __instrument_bind_proc(cls, class_):
+        def bind_processor(self, dialect):
+            def process(value):
+                return self.convert_bind_param(value, dialect)
+            return process
+        class_.super_bind_processor = class_.bind_processor
+        class_.bind_processor = bind_processor
+
+    def __instrument_result_proc(cls, class_):    
+        def result_processor(self, dialect):
+            def process(value):
+                return self.convert_result_value(value, dialect)
+            return process
+        class_.super_result_processor = class_.result_processor
+        class_.result_processor = result_processor
+
+        
 class AbstractType(object):
+    __metaclass__ = _UserTypeAdapter
+    
     def __init__(self, *args, **kwargs):
         pass
         
     def copy_value(self, value):
         return value
 
+    def convert_result_value(self, value, dialect):
+        """legacy convert_result_value() method.
+        
+        this method is only used when called via a user-defined
+        subclass' own convert_result_value() method, and adapts
+        the call to use the result_processor() callable.
+
+        The method is configured at class definition time 
+        by a legacy adapter metaclass, and
+        will not work with a subclass that does not 
+        define a convert_result_value() method of its own.
+        """
+        return self.super_result_processor(dialect)(value)
+    convert_result_value._sa_override = True
+    
+    def convert_bind_param(self, value, dialect):
+        """legacy convert_bind_param() method.
+        
+        this method is only used when called via a user-defined
+        subclass' own convert_bind_param() method, and adapts
+        the call to use the bind_processor() callable.
+        
+        The method is configured at class definition time 
+        by a legacy adapter metaclass, and
+        will not work with a subclass that does not 
+        define a convert_bind_param() method of its own.
+        """
+        return self.super_bind_processor(dialect)(value)
+    convert_bind_param._sa_override = True
+    
+    def bind_processor(self, dialect):
+        """define a bind parameter processing function."""
+        
+        return None
+
+    def result_processor(self, dialect):
+        """define a result-column processing function."""
+        
+        return None
+
     def compare_values(self, x, y):
+        """compare two values for equality."""
+        
         return x == y
 
     def is_mutable(self):
+        """return True if the target Python type is 'mutable'.
+        
+        This allows systems like the ORM to know if an object
+        can be considered 'not changed' by identity alone.
+        """
+        
         return False
 
     def get_dbapi_type(self, dbapi):
@@ -67,7 +147,7 @@ class TypeEngine(AbstractType):
         return None
         
     def adapt(self, cls):
-        return cls()
+        return cls()   
     
     def get_search_list(self):
         """return a list of classes to test for a match 

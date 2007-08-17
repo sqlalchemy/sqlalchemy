@@ -54,6 +54,28 @@ class MyUnicodeType(types.TypeDecorator):
     def copy(self):
         return MyUnicodeType(self.impl.length)
 
+class LegacyType(types.TypeEngine):
+    def get_col_spec(self):
+        return "VARCHAR(100)"
+    def convert_bind_param(self, value, dialect):
+        return "BIND_IN"+ value
+    def convert_result_value(self, value, dialect):
+        return value + "BIND_OUT"
+    def adapt(self, typeobj):
+        return typeobj()
+
+class LegacyUnicodeType(types.TypeDecorator):
+    impl = Unicode
+
+    def convert_bind_param(self, value, dialect):
+        return "UNI_BIND_IN" + super(LegacyUnicodeType, self).convert_bind_param(value, dialect)
+
+    def convert_result_value(self, value, dialect):
+        return super(LegacyUnicodeType, self).convert_result_value(value, dialect) + "UNI_BIND_OUT"
+
+    def copy(self):
+        return LegacyUnicodeType(self.impl.length)
+
 class AdaptTest(PersistTest):
     def testadapt(self):
         e1 = url.URL('postgres').get_dialect()()
@@ -102,8 +124,8 @@ class AdaptTest(PersistTest):
         assert isinstance(dialect.type_descriptor(t2), mysql.MSVarBinary)
         
         
-class OverrideTest(PersistTest):
-    """tests user-defined types, including a full type as well as a TypeDecorator"""
+class UserDefinedTest(PersistTest):
+    """tests user-defined types."""
 
     def testbasic(self):
         print users.c.goofy4.type
@@ -113,17 +135,21 @@ class OverrideTest(PersistTest):
     def testprocessing(self):
 
         global users
-        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4='jack')
-        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4='lala')
-        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4='fred')
+        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4='jack', goofy5='jack', goofy6='jack')
+        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4='lala', goofy5='lala', goofy6='lala')
+        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4='fred', goofy5='fred', goofy6='fred')
         
         l = users.select().execute().fetchall()
-        print repr(l)
-        self.assert_(l == [(2, 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', u'UNI_BIND_INjackUNI_BIND_OUT'), (3, 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', u'UNI_BIND_INlalaUNI_BIND_OUT'), (4, 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', u'UNI_BIND_INfredUNI_BIND_OUT')])
+        assert l == [
+            (2, 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', u'UNI_BIND_INjackUNI_BIND_OUT', u'UNI_BIND_INjackUNI_BIND_OUT', 'BIND_INjackBIND_OUT'), 
+            (3, 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', u'UNI_BIND_INlalaUNI_BIND_OUT', u'UNI_BIND_INlalaUNI_BIND_OUT', 'BIND_INlalaBIND_OUT'),
+            (4, 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', u'UNI_BIND_INfredUNI_BIND_OUT', u'UNI_BIND_INfredUNI_BIND_OUT', 'BIND_INfredBIND_OUT')
+        ]
 
     def setUpAll(self):
-        global users
-        users = Table('type_users', MetaData(testbase.db),
+        global users, metadata
+        metadata = MetaData(testbase.db)
+        users = Table('type_users', metadata,
             Column('user_id', Integer, primary_key = True),
             # totall custom type
             Column('goofy', MyType, nullable = False),
@@ -135,14 +161,15 @@ class OverrideTest(PersistTest):
             Column('goofy3', MyDecoratedType, nullable = False),
 
             Column('goofy4', MyUnicodeType, nullable = False),
+            Column('goofy5', LegacyUnicodeType, nullable = False),
+            Column('goofy6', LegacyType, nullable = False),
 
         )
         
-        users.create()
+        metadata.create_all()
+        
     def tearDownAll(self):
-        global users
-        users.drop()
-
+        metadata.drop_all()
 
 class ColumnsTest(AssertMixin):
 

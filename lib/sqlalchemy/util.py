@@ -579,7 +579,7 @@ def deprecated(func, add_deprecation_to_docstring=True):
         warnings.warn(logging.SADeprecationWarning("Call to deprecated function %s" % func.__name__),
                       stacklevel=2)
         return func(*args, **kwargs)
-    func_with_warning.__doc__ = (add_deprecation_to_docstring and 'Deprecated.\n' or '') + func.__doc__
+    func_with_warning.__doc__ = (add_deprecation_to_docstring and 'Deprecated.\n' or '') + str(func.__doc__)
     func_with_warning.__dict__.update(func.__dict__)
     try:
         func_with_warning.__name__ = func.__name__
