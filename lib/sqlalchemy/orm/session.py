@@ -243,7 +243,7 @@ class SessionTransaction(object):
             if t[2]:
                 t[0].close()
             else:
-                t[1].rollback()
+                t[1].close()
         self.session.transaction = None
 
     def __enter__(self):

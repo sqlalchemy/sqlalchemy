@@ -864,6 +864,20 @@ class Transaction(object):
     connection = property(lambda s:s._connection, doc="The Connection object referenced by this Transaction")
     is_active = property(lambda s:s._is_active)
 
+    def close(self):
+        """close this transaction.
+        
+        If this transaction is the base transaction in a begin/commit nesting, 
+        the transaction will rollback().  Otherwise, the method returns.
+        
+        This is used to cancel a Transaction without affecting the scope of
+        an enclosign transaction.
+        """
+        if not self._parent._is_active:
+            return
+        if self._parent is self:
+            self.rollback()
+        
     def rollback(self):
         if not self._parent._is_active:
             return

@@ -11,6 +11,14 @@ CHANGES
 - Added session.prune(), trims away instances cached in a session that are no
   longer referenced elsewhere. (A utility for strong-ref identity maps).
 
+- added close() method to Transaction.  closes out a transaction using rollback
+  if it's the outermost transaction, otherwise just ends without affecting
+  the outer transaction.
+
+- transactional and non-transactional Session integrates better with bound 
+  connection; a close() will ensure that connection transactional state is 
+  the same as that which existed on it before being bound to the Session.
+
 0.4.0beta3
 ----------
 

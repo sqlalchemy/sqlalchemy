@@ -378,6 +378,21 @@ class SessionTest(AssertMixin):
         sess.commit()
         assert not c.in_transaction()
         assert c.scalar("select count(1) from users") == 1
+        c.execute("delete from users")
+        assert c.scalar("select count(1) from users") == 0
+        
+        c = testbase.db.connect()
+
+        trans = c.begin()
+        sess = create_session(bind=c, transactional=False)
+        u = User()
+        sess.save(u)
+        sess.flush()
+        assert c.in_transaction()
+        trans.commit()
+        assert not c.in_transaction()
+        assert c.scalar("select count(1) from users") == 1
+        
         
     @engines.close_open_connections
     def test_update(self):

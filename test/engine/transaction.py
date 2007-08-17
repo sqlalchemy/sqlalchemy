@@ -116,6 +116,49 @@ class TransactionTest(PersistTest):
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
+
+    @testing.exclude('mysql', '<', (5, 0, 3))
+    def testclose(self):
+        connection = testbase.db.connect()
+        transaction = connection.begin()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        trans2 = connection.begin()
+        connection.execute(users.insert(), user_id=4, user_name='user4')
+        connection.execute(users.insert(), user_id=5, user_name='user5')
+        assert connection.in_transaction()
+        trans2.close()
+        assert connection.in_transaction()
+        transaction.commit()
+        assert not connection.in_transaction()
+        self.assert_(connection.scalar("select count(1) from query_users") == 5)
+
+        result = connection.execute("select * from query_users")
+        assert len(result.fetchall()) == 5
+        connection.close()
+
+    @testing.exclude('mysql', '<', (5, 0, 3))
+    def testclose2(self):
+        connection = testbase.db.connect()
+        transaction = connection.begin()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        trans2 = connection.begin()
+        connection.execute(users.insert(), user_id=4, user_name='user4')
+        connection.execute(users.insert(), user_id=5, user_name='user5')
+        assert connection.in_transaction()
+        trans2.close()
+        assert connection.in_transaction()
+        transaction.close()
+        assert not connection.in_transaction()
+        self.assert_(connection.scalar("select count(1) from query_users") == 0)
+
+        result = connection.execute("select * from query_users")
+        assert len(result.fetchall()) == 0
+        connection.close()
+
     
     @testing.supported('postgres', 'mysql', 'oracle')
     @testing.exclude('mysql', '<', (5, 0, 3))
