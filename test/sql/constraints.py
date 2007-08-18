@@ -179,7 +179,7 @@ class ConstraintTest(AssertMixin):
             capt.append(repr(context.parameters))
             ex(context)
         connection._Connection__execute = proxy
-        schemagen = testbase.db.dialect.schemagenerator(connection)
+        schemagen = testbase.db.dialect.schemagenerator(testbase.db.dialect, connection)
         schemagen.traverse(events)
         
         assert capt[0].strip().startswith('CREATE TABLE events')

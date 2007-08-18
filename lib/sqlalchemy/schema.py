@@ -18,8 +18,11 @@ objects as well as the visitor interface, so that the schema package
 """
 
 import re, inspect
-from sqlalchemy import sql, types, exceptions, util, databases
+from sqlalchemy import types, exceptions, util, databases
+from sqlalchemy.sql import expression, visitors
 import sqlalchemy
+
+
 URL = None
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
@@ -31,7 +34,7 @@ __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
 class SchemaItem(object):
     """Base class for items that define a database schema."""
 
-    __metaclass__ = sql._FigureVisitName
+    __metaclass__ = expression._FigureVisitName
 
     def _init_items(self, *args):
         """Initialize the list of child items for this SchemaItem."""
@@ -84,7 +87,7 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
 
-class _TableSingleton(sql._FigureVisitName):
+class _TableSingleton(expression._FigureVisitName):
     """A metaclass used by the ``Table`` object to provide singleton behavior."""
 
     def __call__(self, name, metadata, *args, **kwargs):
@@ -124,10 +127,10 @@ class _TableSingleton(sql._FigureVisitName):
             return table
 
 
-class Table(SchemaItem, sql.TableClause):
+class Table(SchemaItem, expression.TableClause):
     """Represent a relational database table.
 
-    This subclasses ``sql.TableClause`` to provide a table that is
+    This subclasses ``expression.TableClause`` to provide a table that is
     associated with an instance of ``MetaData``, which in turn
     may be associated with an instance of ``Engine``.  
 
@@ -229,7 +232,7 @@ class Table(SchemaItem, sql.TableClause):
         self.schema = kwargs.pop('schema', None)
         self.indexes = util.Set()
         self.constraints = util.Set()
-        self._columns = sql.ColumnCollection()
+        self._columns = expression.ColumnCollection()
         self.primary_key = PrimaryKeyConstraint()
         self._foreign_keys = util.OrderedSet()
         self.quote = kwargs.pop('quote', False)
@@ -291,7 +294,7 @@ class Table(SchemaItem, sql.TableClause):
 
     def get_children(self, column_collections=True, schema_visitor=False, **kwargs):
         if not schema_visitor:
-            return sql.TableClause.get_children(self, column_collections=column_collections, **kwargs)
+            return expression.TableClause.get_children(self, column_collections=column_collections, **kwargs)
         else:
             if column_collections:
                 return [c for c in self.columns]
@@ -338,10 +341,10 @@ class Table(SchemaItem, sql.TableClause):
                 args.append(c.copy())
             return Table(self.name, metadata, schema=schema, *args)
 
-class Column(SchemaItem, sql._ColumnClause):
+class Column(SchemaItem, expression._ColumnClause):
     """Represent a column in a database table.
 
-    This is a subclass of ``sql.ColumnClause`` and represents an
+    This is a subclass of ``expression.ColumnClause`` and represents an
     actual existing table in the database, in a similar fashion as
     ``TableClause``/``Table``.
     """
@@ -575,7 +578,7 @@ class Column(SchemaItem, sql._ColumnClause):
             return [x for x in (self.default, self.onupdate) if x is not None] + \
                 list(self.foreign_keys) + list(self.constraints)
         else:
-            return sql._ColumnClause.get_children(self, **kwargs)
+            return expression._ColumnClause.get_children(self, **kwargs)
 
 
 class ForeignKey(SchemaItem):
@@ -806,7 +809,7 @@ class Constraint(SchemaItem):
 
     def __init__(self, name=None):
         self.name = name
-        self.columns = sql.ColumnCollection()
+        self.columns = expression.ColumnCollection()
 
     def __contains__(self, x):
         return self.columns.contains_column(x)
@@ -1124,12 +1127,12 @@ class MetaData(SchemaItem):
         del self.tables[table.key]
         
     def table_iterator(self, reverse=True, tables=None):
-        import sqlalchemy.sql_util
+        from sqlalchemy.sql import util as sql_util
         if tables is None:
             tables = self.tables.values()
         else:
             tables = util.Set(tables).intersection(self.tables.values())
-        sorter = sqlalchemy.sql_util.TableCollection(list(tables))
+        sorter = sql_util.TableCollection(list(tables))
         return iter(sorter.sort(reverse=reverse))
 
     def _get_parent(self):
@@ -1356,7 +1359,7 @@ class ThreadLocalMetaData(MetaData):
                 e.dispose()
 
 
-class SchemaVisitor(sql.ClauseVisitor):
+class SchemaVisitor(visitors.ClauseVisitor):
     """Define the visiting for ``SchemaItem`` objects."""
 
     __traverse_options__ = {'schema_visitor':True}

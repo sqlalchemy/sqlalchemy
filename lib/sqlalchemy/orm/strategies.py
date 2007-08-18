@@ -6,7 +6,9 @@
 
 """sqlalchemy.orm.interfaces.LoaderStrategy implementations, and related MapperOptions."""
 
-from sqlalchemy import sql, util, exceptions, sql_util, logging
+from sqlalchemy import sql, util, exceptions, logging
+from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import visitors
 from sqlalchemy.orm import mapper, attributes
 from sqlalchemy.orm.interfaces import LoaderStrategy, StrategizedOption, MapperOption, PropertyOption
 from sqlalchemy.orm import session as sessionlib
@@ -292,7 +294,7 @@ class LazyLoader(AbstractRelationLoader):
             (criterion, lazybinds, rev) = LazyLoader._create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
         bind_to_col = dict([(lazybinds[col].key, col) for col in lazybinds])
 
-        class Visitor(sql.ClauseVisitor):
+        class Visitor(visitors.ClauseVisitor):
             def visit_bindparam(s, bindparam):
                 mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
                 if bindparam.key in bind_to_col:
@@ -396,7 +398,7 @@ class LazyLoader(AbstractRelationLoader):
             if not isinstance(expr, sql.ColumnElement):
                 return None
             columns = []
-            class FindColumnInColumnClause(sql.ClauseVisitor):
+            class FindColumnInColumnClause(visitors.ClauseVisitor):
                 def visit_column(self, c):
                     columns.append(c)
             FindColumnInColumnClause().traverse(expr)

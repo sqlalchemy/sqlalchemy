@@ -1,7 +1,6 @@
 import testbase
 import operator
 from sqlalchemy import *
-from sqlalchemy import ansisql
 from sqlalchemy.orm import *
 from testlib import *
 from testlib.fixtures import *

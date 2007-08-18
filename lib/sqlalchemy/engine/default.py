@@ -9,7 +9,7 @@
 from sqlalchemy import schema, exceptions, sql, util
 import re, random
 from sqlalchemy.engine import base
-
+from sqlalchemy.sql import compiler, expression
 
 AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
                                re.I | re.UNICODE)
@@ -18,6 +18,12 @@ SELECT_REGEXP = re.compile(r'\s*SELECT', re.I | re.UNICODE)
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
 
+    schemagenerator = compiler.SchemaGenerator
+    schemadropper = compiler.SchemaDropper
+    statement_compiler = compiler.DefaultCompiler
+    preparer = compiler.IdentifierPreparer
+    defaultrunner = base.DefaultRunner
+
     def __init__(self, convert_unicode=False, encoding='utf-8', default_paramstyle='named', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode
         self.encoding = encoding
@@ -25,6 +31,7 @@ class DefaultDialect(base.Dialect):
         self._ischema = None
         self.dbapi = dbapi
         self._figure_paramstyle(paramstyle=paramstyle, default=default_paramstyle)
+        self.identifier_preparer = self.preparer(self)
     
     def dbapi_type_map(self):
         # most DBAPIs have problems with this (such as, psycocpg2 types 
@@ -45,6 +52,7 @@ class DefaultDialect(base.Dialect):
         if type(typeobj) is type:
             typeobj = typeobj()
         return typeobj
+
 
     def supports_unicode_statements(self):
         """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
@@ -96,13 +104,13 @@ class DefaultDialect(base.Dialect):
         return "_sa_%032x" % random.randint(0,2**128)
         
     def do_savepoint(self, connection, name):
-        connection.execute(sql.SavepointClause(name))
+        connection.execute(expression.SavepointClause(name))
 
     def do_rollback_to_savepoint(self, connection, name):
-        connection.execute(sql.RollbackToSavepointClause(name))
+        connection.execute(expression.RollbackToSavepointClause(name))
 
     def do_release_savepoint(self, connection, name):
-        connection.execute(sql.ReleaseSavepointClause(name))
+        connection.execute(expression.ReleaseSavepointClause(name))
 
     def do_executemany(self, cursor, statement, parameters, **kwargs):
         cursor.executemany(statement, parameters)
@@ -110,8 +118,6 @@ class DefaultDialect(base.Dialect):
     def do_execute(self, cursor, statement, parameters, **kwargs):
         cursor.execute(statement, parameters)
 
-    def defaultrunner(self, context):
-        return base.DefaultRunner(context)
 
     def is_disconnect(self, e):
         return False

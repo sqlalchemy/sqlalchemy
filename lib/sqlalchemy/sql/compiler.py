@@ -1,22 +1,18 @@
-# ansisql.py
+# compiler.py
 # Copyright (C) 2005, 2006, 2007 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Defines ANSI SQL operations.
+"""SQL expression compilation routines and DDL implementations."""
 
-Contains default implementations for the abstract objects in the sql
-module.
-"""
+import string, re
+from sqlalchemy import schema, engine, util, exceptions
+from sqlalchemy.sql import operators, visitors
+from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import expression as sql
 
-import string, re, sets, operator
-
-from sqlalchemy import schema, sql, engine, util, exceptions, operators
-from  sqlalchemy.engine import default
-
-
-ANSI_FUNCS = sets.ImmutableSet([
+ANSI_FUNCS = util.Set([
     'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
     'CURRENT_USER', 'LOCALTIME', 'LOCALTIMESTAMP',
     'SESSION_USER', 'USER'])
@@ -77,7 +73,6 @@ OPERATORS =  {
     operators.comma_op : ', ',
     operators.desc_op : 'DESC',
     operators.asc_op : 'ASC',
-    
     operators.from_ : 'FROM',
     operators.as_ : 'AS',
     operators.exists : 'EXISTS',
@@ -85,36 +80,10 @@ OPERATORS =  {
     operators.isnot : 'IS NOT'
 }
 
-class ANSIDialect(default.DefaultDialect):
-    def __init__(self, cache_identifiers=True, **kwargs):
-        super(ANSIDialect,self).__init__(**kwargs)
-        self.identifier_preparer = self.preparer()
-        self.cache_identifiers = cache_identifiers
-
-    def create_connect_args(self):
-        return ([],{})
-
-    def schemagenerator(self, *args, **kwargs):
-        return ANSISchemaGenerator(self, *args, **kwargs)
-
-    def schemadropper(self, *args, **kwargs):
-        return ANSISchemaDropper(self, *args, **kwargs)
-
-    def compiler(self, statement, parameters, **kwargs):
-        return ANSICompiler(self, statement, parameters, **kwargs)
-
-    def preparer(self):
-        """Return an IdentifierPreparer.
-
-        This object is used to format table and column names including
-        proper quoting and case conventions.
-        """
-        return ANSIIdentifierPreparer(self)
-
-class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
+class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
     """Default implementation of Compiled.
 
-    Compiles ClauseElements into ANSI-compliant SQL strings.
+    Compiles ClauseElements into SQL strings.
     """
 
     __traverse_options__ = {'column_collections':False, 'entry':True}
@@ -122,7 +91,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
     operators = OPERATORS
     
     def __init__(self, dialect, statement, parameters=None, **kwargs):
-        """Construct a new ``ANSICompiler`` object.
+        """Construct a new ``DefaultCompiler`` object.
 
         dialect
           Dialect to be used
@@ -139,7 +108,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
           correspond to the keys present in the parameters.
         """
         
-        super(ANSICompiler, self).__init__(dialect, statement, parameters, **kwargs)
+        super(DefaultCompiler, self).__init__(dialect, statement, parameters, **kwargs)
 
         # if we are insert/update.  set to true when we visit an INSERT or UPDATE
         self.isinsert = self.isupdate = False
@@ -170,17 +139,17 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         self.bindtemplate = ":%s"
 
         # paramstyle from the dialect (comes from DBAPI)
-        self.paramstyle = dialect.paramstyle
+        self.paramstyle = self.dialect.paramstyle
 
         # true if the paramstyle is positional
-        self.positional = dialect.positional
+        self.positional = self.dialect.positional
 
         # a list of the compiled's bind parameter names, used to help
         # formulate a positional argument list
         self.positiontup = []
 
-        # an ANSIIdentifierPreparer that formats the quoting of identifiers
-        self.preparer = dialect.identifier_preparer
+        # an IdentifierPreparer that formats the quoting of identifiers
+        self.preparer = self.dialect.identifier_preparer
         
         # for UPDATE and INSERT statements, a set of columns whos values are being set
         # from a SQL expression (i.e., not one of the bind parameter values).  if present,
@@ -244,7 +213,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         return None
 
     def construct_params(self, params):
-        """Return a sql.ClauseParameters object.
+        """Return a sql.util.ClauseParameters object.
         
         Combines the given bind parameter dictionary (string keys to object values)
         with the _BindParamClause objects stored within this Compiled object
@@ -252,7 +221,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         for a single statement execution, or one element of an executemany execution.
         """
         
-        d = sql.ClauseParameters(self.dialect, self.positiontup)
+        d = sql_util.ClauseParameters(self.dialect, self.positiontup)
 
         pd = self.parameters or {}
         pd.update(params)
@@ -781,7 +750,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
     def __str__(self):
         return self.string
 
-class ANSISchemaBase(engine.SchemaIterator):
+class DDLBase(engine.SchemaIterator):
     def find_alterables(self, tables):
         alterables = []
         class FindAlterables(schema.SchemaVisitor):
@@ -794,12 +763,12 @@ class ANSISchemaBase(engine.SchemaIterator):
                 findalterables.traverse(c)
         return alterables
 
-class ANSISchemaGenerator(ANSISchemaBase):
+class SchemaGenerator(DDLBase):
     def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
-        super(ANSISchemaGenerator, self).__init__(connection, **kwargs)
+        super(SchemaGenerator, self).__init__(connection, **kwargs)
         self.checkfirst = checkfirst
         self.tables = tables and util.Set(tables) or None
-        self.preparer = dialect.preparer()
+        self.preparer = dialect.identifier_preparer
         self.dialect = dialect
 
     def get_column_specification(self, column, first_pk=False):
@@ -860,7 +829,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
 
     def _compile(self, tocompile, parameters):
         """compile the given string/parameters using this SchemaGenerator's dialect."""
-        compiler = self.dialect.compiler(tocompile, parameters)
+        compiler = self.dialect.statement_compiler(self.dialect, tocompile, parameters)
         compiler.compile()
         return compiler
 
@@ -930,12 +899,12 @@ class ANSISchemaGenerator(ANSISchemaBase):
                        string.join([preparer.format_column(c) for c in index.columns], ', ')))
         self.execute()
 
-class ANSISchemaDropper(ANSISchemaBase):
+class SchemaDropper(DDLBase):
     def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
-        super(ANSISchemaDropper, self).__init__(connection, **kwargs)
+        super(SchemaDropper, self).__init__(connection, **kwargs)
         self.checkfirst = checkfirst
         self.tables = tables
-        self.preparer = dialect.preparer()
+        self.preparer = dialect.identifier_preparer
         self.dialect = dialect
 
     def visit_metadata(self, metadata):
@@ -964,14 +933,11 @@ class ANSISchemaDropper(ANSISchemaBase):
         self.append("\nDROP TABLE " + self.preparer.format_table(table))
         self.execute()
 
-class ANSIDefaultRunner(engine.DefaultRunner):
-    pass
-
-class ANSIIdentifierPreparer(object):
+class IdentifierPreparer(object):
     """Handle quoting and case-folding of identifiers based on options."""
 
     def __init__(self, dialect, initial_quote='"', final_quote=None, omit_schema=False):
-        """Construct a new ``ANSIIdentifierPreparer`` object.
+        """Construct a new ``IdentifierPreparer`` object.
 
         initial_quote
           Character that begins a delimited identifier.
@@ -1049,20 +1015,14 @@ class ANSIIdentifierPreparer(object):
     def __generic_obj_format(self, obj, ident):
         if getattr(obj, 'quote', False):
             return self.quote_identifier(ident)
-        if self.dialect.cache_identifiers:
-            try:
-                return self.__strings[ident]
-            except KeyError:
-                if self._requires_quotes(ident):
-                    self.__strings[ident] = self.quote_identifier(ident)
-                else:
-                    self.__strings[ident] = ident
-                return self.__strings[ident]
-        else:
+        try:
+            return self.__strings[ident]
+        except KeyError:
             if self._requires_quotes(ident):
-                return self.quote_identifier(ident)
+                self.__strings[ident] = self.quote_identifier(ident)
             else:
-                return ident
+                self.__strings[ident] = ident
+            return self.__strings[ident]
 
     def should_quote(self, object):
         return object.quote or self._requires_quotes(object.name)
@@ -1152,5 +1112,3 @@ class ANSIIdentifierPreparer(object):
         return [self._unescape_identifier(i)
                 for i in [a or b for a, b in r.findall(identifiers)]]
 
-
-dialect = ANSIDialect

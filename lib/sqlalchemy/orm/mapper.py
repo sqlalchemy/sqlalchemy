@@ -6,7 +6,8 @@
 
 import weakref, warnings, operator
 from sqlalchemy import sql, util, exceptions, logging
-from sqlalchemy import sql_util as sqlutil
+from sqlalchemy.sql import expression
+from sqlalchemy.sql import util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier
 from sqlalchemy.orm import sync
@@ -77,7 +78,7 @@ class Mapper(object):
             raise exceptions.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
 
         for table in (local_table, select_table):
-            if table is not None and isinstance(table, sql._SelectBaseMixin):
+            if table is not None and isinstance(table, expression._SelectBaseMixin):
                 # some db's, noteably postgres, dont want to select from a select
                 # without an alias.  also if we make our own alias internally, then
                 # the configured properties on the mapper are not matched against the alias
@@ -438,7 +439,7 @@ class Mapper(object):
             # against the "mapped_table" of this mapper.
             equivalent_columns = self._get_equivalent_columns()
         
-            primary_key = sql.ColumnSet()
+            primary_key = expression.ColumnSet()
 
             for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
                 c = self.mapped_table.corresponding_column(col, raiseerr=False)
@@ -644,9 +645,9 @@ class Mapper(object):
             props = {}
             if self.properties is not None:
                 for key, prop in self.properties.iteritems():
-                    if sql.is_column(prop):
+                    if expression.is_column(prop):
                         props[key] = self.select_table.corresponding_column(prop)
-                    elif (isinstance(prop, list) and sql.is_column(prop[0])):
+                    elif (isinstance(prop, list) and expression.is_column(prop[0])):
                         props[key] = [self.select_table.corresponding_column(c) for c in prop]
             self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, _polymorphic_map=self.polymorphic_map, polymorphic_on=self.select_table.corresponding_column(self.polymorphic_on), primary_key=self.primary_key_argument)
 
@@ -768,7 +769,7 @@ class Mapper(object):
 
     def _create_prop_from_column(self, column):
         column = util.to_list(column)
-        if not sql.is_column(column[0]):
+        if not expression.is_column(column[0]):
             return None
         mapped_column = []
         for c in column:

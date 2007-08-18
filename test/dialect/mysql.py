@@ -154,7 +154,7 @@ class TypesTest(AssertMixin):
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         numeric_table = Table(*table_args)
-        gen = testbase.db.dialect.schemagenerator(testbase.db, None, None)
+        gen = testbase.db.dialect.schemagenerator(testbase.db.dialect, testbase.db, None, None)
         
         for col in numeric_table.c:
             index = int(col.name[1:])
@@ -238,7 +238,7 @@ class TypesTest(AssertMixin):
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         charset_table = Table(*table_args)
-        gen = testbase.db.dialect.schemagenerator(testbase.db, None, None)
+        gen = testbase.db.dialect.schemagenerator(testbase.db.dialect, testbase.db, None, None)
         
         for col in charset_table.c:
             index = int(col.name[1:])
@@ -707,7 +707,7 @@ class SQLTest(AssertMixin):
 
 
 def colspec(c):
-    return testbase.db.dialect.schemagenerator(
+    return testbase.db.dialect.schemagenerator(testbase.db.dialect, 
         testbase.db, None, None).get_column_specification(c)
 
 if __name__ == "__main__":

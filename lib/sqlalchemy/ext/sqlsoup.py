@@ -294,7 +294,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy.exceptions import *
-
+from sqlalchemy.sql import expression
 
 _testsql = """
 CREATE TABLE books (
@@ -415,7 +415,7 @@ def _selectable_name(selectable):
         return x
 
 def class_for_table(selectable, **mapper_kwargs):
-    selectable = sql._selectable(selectable)
+    selectable = expression._selectable(selectable)
     mapname = 'Mapped' + _selectable_name(selectable)
     if isinstance(selectable, Table):
         klass = TableClassType(mapname, (object,), {})
@@ -499,7 +499,7 @@ class SqlSoup:
 
     def with_labels(self, item):
         # TODO give meaningful aliases
-        return self.map(sql._selectable(item).select(use_labels=True).alias('foo'))
+        return self.map(expression._selectable(item).select(use_labels=True).alias('foo'))
 
     def join(self, *args, **kwargs):
         j = join(*args, **kwargs)

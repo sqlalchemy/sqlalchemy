@@ -347,7 +347,7 @@ class AccessDialect(ansisql.ANSIDialect):
         return names
 
 
-class AccessCompiler(ansisql.ANSICompiler):
+class AccessCompiler(compiler.DefaultCompiler):
     def visit_select_precolumns(self, select):
         """Access puts TOP, it's version of LIMIT here """
         s = select.distinct and "DISTINCT " or ""
@@ -387,7 +387,7 @@ class AccessCompiler(ansisql.ANSICompiler):
         return ''
 
 
-class AccessSchemaGenerator(ansisql.ANSISchemaGenerator):
+class AccessSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
 
@@ -410,7 +410,7 @@ class AccessSchemaGenerator(ansisql.ANSISchemaGenerator):
 
         return colspec
 
-class AccessSchemaDropper(ansisql.ANSISchemaDropper):
+class AccessSchemaDropper(compiler.SchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX [%s].[%s]" % (index.table.name, index.name))
         self.execute()
@@ -418,7 +418,7 @@ class AccessSchemaDropper(ansisql.ANSISchemaDropper):
 class AccessDefaultRunner(ansisql.ANSIDefaultRunner):
     pass
 
-class AccessIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+class AccessIdentifierPreparer(compiler.IdentifierPreparer):
     def __init__(self, dialect):
         super(AccessIdentifierPreparer, self).__init__(dialect, initial_quote='[', final_quote=']')
 

@@ -6,6 +6,7 @@
 
 
 from sqlalchemy import util, logging, sql
+from sqlalchemy.sql import expression
 
 __all__ = ['EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS', 'MapperExtension',
            'MapperProperty', 'PropComparator', 'StrategizedProperty', 
@@ -363,7 +364,7 @@ class MapperProperty(object):
 
         return operator(self.comparator, value)
 
-class PropComparator(sql.ColumnOperators):
+class PropComparator(expression.ColumnOperators):
     """defines comparison operations for MapperProperty objects"""
     
     def expression_element(self):

@@ -1,6 +1,7 @@
 import testbase
 from sqlalchemy import *
 from testlib import *
+from sqlalchemy.sql.visitors import *
 
 class TraversalTest(AssertMixin):
     """test ClauseVisitor's traversal, particularly its ability to copy and modify
@@ -213,7 +214,7 @@ class ClauseTest(SQLCompileTest):
         self.assert_compile(Vis().traverse(s, clone=True), "SELECT * FROM table1 WHERE table1.col1 = table2.col1 AND table1.col2 = :table1_col2")
 
     def test_clause_adapter(self):
-        from sqlalchemy import sql_util
+        from sqlalchemy.sql import util as sql_util
         
         t1alias = t1.alias('t1alias')
         

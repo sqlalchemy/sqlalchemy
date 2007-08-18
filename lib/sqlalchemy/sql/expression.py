@@ -26,13 +26,14 @@ classes usually have few or no public methods and are less guaranteed
 to stay the same in future releases.
 """
 
-from sqlalchemy import util, exceptions, operators
+from sqlalchemy import util, exceptions
+from sqlalchemy.sql import operators, visitors
 from sqlalchemy import types as sqltypes
 import re
 
 __all__ = [
-    'Alias', 'ClauseElement', 'ClauseParameters',
-    'ClauseVisitor', 'ColumnCollection', 'ColumnElement',
+    'Alias', 'ClauseElement', 
+    'ColumnCollection', 'ColumnElement',
     'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join',
     'Select', 'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc',
     'between', 'bindparam', 'case', 'cast', 'column', 'delete',
@@ -810,187 +811,6 @@ def is_column(col):
     """True if ``col`` is an instance of ``ColumnElement``."""
     return isinstance(col, ColumnElement)
 
-class ClauseParameters(object):
-    """Represent a dictionary/iterator of bind parameter key names/values.
-
-    Tracks the original [sqlalchemy.sql#_BindParamClause] objects
-    as well as the keys/position of each parameter, and can return
-    parameters as a dictionary or a list.  Will process parameter
-    values according to the ``TypeEngine`` objects present in the
-    ``_BindParamClause`` instances.
-    """
-
-    def __init__(self, dialect, positional=None):
-        self.dialect = dialect
-        self.__binds = {}
-        self.positional = positional or []
-
-    def get_parameter(self, key):
-        return self.__binds[key]
-
-    def set_parameter(self, bindparam, value, name):
-        self.__binds[name] = [bindparam, name, value]
-
-    def get_original(self, key):
-        return self.__binds[key][2]
-
-    def get_type(self, key):
-        return self.__binds[key][0].type
-
-    def get_processors(self):
-        """return a dictionary of bind 'processing' functions"""
-        return dict([
-            (key, value) for key, value in
-            [(
-                key,
-                self.__binds[key][0].bind_processor(self.dialect)
-            ) for key in self.__binds]
-            if value is not None
-        ])
-
-    def get_processed(self, key, processors):
-        return key in processors and processors[key](self.__binds[key][2]) or self.__binds[key][2]
-
-    def keys(self):
-        return self.__binds.keys()
-
-    def __iter__(self):
-        return iter(self.keys())
-
-    def __getitem__(self, key):
-        (bind, name, value) = self.__binds[key]
-        processor = bind.bind_processor(self.dialect)
-        return processor is not None and processor(value) or value
-
-    def __contains__(self, key):
-        return key in self.__binds
-
-    def set_value(self, key, value):
-        self.__binds[key][2] = value
-
-    def get_original_dict(self):
-        return dict([(name, value) for (b, name, value) in self.__binds.values()])
-
-    def __get_processed(self, key, processors):
-        if key in processors:
-            return processors[key](self.__binds[key][2])
-        else:
-            return self.__binds[key][2]
-
-    def get_raw_list(self, processors):
-        return [self.__get_processed(key, processors) for key in self.positional]
-
-    def get_raw_dict(self, processors, encode_keys=False):
-        if encode_keys:
-            return dict([
-                (
-                    key.encode(self.dialect.encoding),
-                    self.__get_processed(key, processors)
-                )
-                for key in self.keys()
-            ])
-        else:
-            return dict([
-                (
-                    key,
-                    self.__get_processed(key, processors)
-                )
-                for key in self.keys()
-            ])
-
-    def __repr__(self):
-        return self.__class__.__name__ + ":" + repr(self.get_original_dict())
-
-class ClauseVisitor(object):
-    """A class that knows how to traverse and visit ``ClauseElements``.
-
-    Calls visit_XXX() methods dynamically generated for each
-    particualr ``ClauseElement`` subclass encountered.  Traversal of a
-    hierarchy of ``ClauseElements`` is achieved via the ``traverse()``
-    method, which is passed the lead ``ClauseElement``.
-
-    By default, ``ClauseVisitor`` traverses all elements fully.
-    Options can be specified at the class level via the
-    ``__traverse_options__`` dictionary which will be passed to the
-    ``get_children()`` method of each ``ClauseElement``; these options
-    can indicate modifications to the set of elements returned, such
-    as to not return column collections (column_collections=False) or
-    to return Schema-level items (schema_visitor=True).
-
-    ``ClauseVisitor`` also supports a simultaneous copy-and-traverse
-    operation, which will produce a copy of a given ``ClauseElement``
-    structure while at the same time allowing ``ClauseVisitor``
-    subclasses to modify the new structure in-place.
-    """
-
-    __traverse_options__ = {}
-
-    def traverse_single(self, obj, **kwargs):
-        meth = getattr(self, "visit_%s" % obj.__visit_name__, None)
-        if meth:
-            return meth(obj, **kwargs)
-
-    def iterate(self, obj, stop_on=None):
-        stack = [obj]
-        traversal = []
-        while len(stack) > 0:
-            t = stack.pop()
-            if stop_on is None or t not in stop_on:
-                yield t
-                traversal.insert(0, t)
-                for c in t.get_children(**self.__traverse_options__):
-                    stack.append(c)
-
-    def traverse(self, obj, stop_on=None, clone=False):
-        if clone:
-            obj = obj._clone()
-
-        stack = [obj]
-        traversal = []
-        while len(stack) > 0:
-            t = stack.pop()
-            if stop_on is None or t not in stop_on:
-                traversal.insert(0, t)
-                if clone:
-                    t._copy_internals()
-                for c in t.get_children(**self.__traverse_options__):
-                    stack.append(c)
-        for target in traversal:
-            v = self
-            while v is not None:
-                meth = getattr(v, "visit_%s" % target.__visit_name__, None)
-                if meth:
-                    meth(target)
-                v = getattr(v, '_next', None)
-        return obj
-
-    def chain(self, visitor):
-        """'chain' an additional ClauseVisitor onto this ClauseVisitor.
-
-        The chained visitor will receive all visit events after this one.
-        """
-
-        tail = self
-        while getattr(tail, '_next', None) is not None:
-            tail = tail._next
-        tail._next = visitor
-        return self
-
-class NoColumnVisitor(ClauseVisitor):
-    """A ClauseVisitor that will not traverse exported column collections.
-
-    Will not traverse the exported Column collections on Table, Alias,
-    Select, and CompoundSelect objects (i.e. their 'columns' or 'c'
-    attribute).
-
-    This is useful because most traversals don't need those columns,
-    or in the case of ANSICompiler it traverses them explicitly; so
-    skipping their traversal here greatly cuts down on method call
-    overhead.
-    """
-
-    __traverse_options__ = {'column_collections': False}
-
 
 class _FigureVisitName(type):
     def __init__(cls, clsname, bases, dict):
@@ -1061,7 +881,7 @@ class ClauseElement(object):
         elif len(optionaldict) > 1:
             raise exceptions.ArgumentError("params() takes zero or one positional dictionary argument")
 
-        class Vis(ClauseVisitor):
+        class Vis(visitors.ClauseVisitor):
             def visit_bindparam(self, bind):
                 if bind.key in kwargs:
                     bind.value = kwargs[bind.key]
@@ -1156,7 +976,7 @@ class ClauseElement(object):
         if any.
 
         Finally, if there is no bound ``Engine``, uses an
-        ``ANSIDialect`` to create a default ``Compiler``.
+        ``DefaultDialect`` to create a default ``Compiler``.
 
         `parameters` is a dictionary representing the default bind
         parameters to be used with the statement.  If `parameters` is
@@ -1175,15 +995,16 @@ class ClauseElement(object):
 
         if compiler is None:
             if dialect is not None:
-                compiler = dialect.compiler(self, parameters)
+                compiler = dialect.statement_compiler(dialect, self, parameters)
             elif bind is not None:
-                compiler = bind.compiler(self, parameters)
+                compiler = bind.statement_compiler(self, parameters)
             elif self.bind is not None:
-                compiler = self.bind.compiler(self, parameters)
+                compiler = self.bind.statement_compiler(self, parameters)
 
         if compiler is None:
-            import sqlalchemy.ansisql as ansisql
-            compiler = ansisql.ANSIDialect().compiler(self, parameters=parameters)
+            from sqlalchemy.engine.default import DefaultDialect
+            dialect = DefaultDialect()
+            compiler = dialect.statement_compiler(dialect, self, parameters=parameters)
         compiler.compile()
         return compiler
 
@@ -1727,7 +1548,7 @@ class FromClause(Selectable):
 
     def _get_all_embedded_columns(self):
         ret = []
-        class FindCols(ClauseVisitor):
+        class FindCols(visitors.ClauseVisitor):
             def visit_column(self, col):
                 ret.append(col)
         FindCols().traverse(self)
@@ -1744,8 +1565,8 @@ class FromClause(Selectable):
     def replace_selectable(self, old, alias):
       """replace all occurences of FromClause 'old' with the given Alias object, returning a copy of this ``FromClause``."""
 
-      from sqlalchemy import sql_util
-      return sql_util.ClauseAdapter(alias).traverse(self, clone=True)
+      from sqlalchemy.sql import util
+      return util.ClauseAdapter(alias).traverse(self, clone=True)
 
     def corresponding_column(self, column, raiseerr=True, keys_ok=False, require_embedded=False):
         """Given a ``ColumnElement``, return the exported ``ColumnElement``
@@ -2376,7 +2197,7 @@ class Join(FromClause):
                 else:
                     equivs[x] = util.Set([y])
 
-        class BinaryVisitor(ClauseVisitor):
+        class BinaryVisitor(visitors.ClauseVisitor):
             def visit_binary(self, binary):
                 if binary.operator == operators.eq:
                     add_equiv(binary.left, binary.right)
@@ -2460,7 +2281,7 @@ class Join(FromClause):
             return self.__folded_equivalents
         if equivs is None:
             equivs = util.Set()
-        class LocateEquivs(NoColumnVisitor):
+        class LocateEquivs(visitors.NoColumnVisitor):
             def visit_binary(self, binary):
                 if binary.operator == operators.eq and binary.left.name == binary.right.name:
                     equivs.add(binary.right)
@@ -3331,7 +3152,7 @@ class Select(_SelectBaseMixin, FromClause):
         return intersect_all(self, other, **kwargs)
 
     def _table_iterator(self):
-        for t in NoColumnVisitor().iterate(self):
+        for t in visitors.NoColumnVisitor().iterate(self):
             if isinstance(t, TableClause):
                 yield t
 

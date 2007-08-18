@@ -39,10 +39,10 @@ Known issues / TODO:
 
 import datetime, random, warnings, re
 
-from sqlalchemy import sql, schema, ansisql, exceptions
-import sqlalchemy.types as sqltypes
-from sqlalchemy.engine import default
-import operator, sys
+from sqlalchemy import util, sql, schema, exceptions
+from sqlalchemy.sql import compiler, expression
+from sqlalchemy.engine import default, base
+from sqlalchemy import types as sqltypes
     
 class MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect):
@@ -366,7 +366,7 @@ class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):
             super(MSSQLExecutionContext_pyodbc, self).post_exec()
 
 
-class MSSQLDialect(ansisql.ANSIDialect):
+class MSSQLDialect(default.DefaultDialect):
     colspecs = {
         sqltypes.Unicode : MSNVarchar,
         sqltypes.Integer : MSInteger,
@@ -475,21 +475,6 @@ class MSSQLDialect(ansisql.ANSIDialect):
     # this is only implemented in the dbapi-specific subclasses
     def supports_sane_rowcount(self):
         raise NotImplementedError()
-
-    def compiler(self, statement, bindparams, **kwargs):
-        return MSSQLCompiler(self, statement, bindparams, **kwargs)
-
-    def schemagenerator(self, *args, **kwargs):
-        return MSSQLSchemaGenerator(self, *args, **kwargs)
-
-    def schemadropper(self, *args, **kwargs):
-        return MSSQLSchemaDropper(self, *args, **kwargs)
-
-    def defaultrunner(self, connection, **kwargs):
-        return MSSQLDefaultRunner(connection, **kwargs)
-
-    def preparer(self):
-        return MSSQLIdentifierPreparer(self)
 
     def get_default_schema_name(self, connection):
         return self.schema_name
@@ -878,7 +863,7 @@ dialect_mapping = {
     }
 
 
-class MSSQLCompiler(ansisql.ANSICompiler):
+class MSSQLCompiler(compiler.DefaultCompiler):
     def __init__(self, dialect, statement, parameters, **kwargs):
         super(MSSQLCompiler, self).__init__(dialect, statement, parameters, **kwargs)
         self.tablealiases = {}
@@ -931,13 +916,13 @@ class MSSQLCompiler(ansisql.ANSICompiler):
 
     def visit_binary(self, binary):
         """Move bind parameters to the right-hand side of an operator, where possible."""
-        if isinstance(binary.left, sql._BindParamClause) and binary.operator == operator.eq:
-            return self.process(sql._BinaryExpression(binary.right, binary.left, binary.operator))
+        if isinstance(binary.left, expression._BindParamClause) and binary.operator == operator.eq:
+            return self.process(expression._BinaryExpression(binary.right, binary.left, binary.operator))
         else:
             return super(MSSQLCompiler, self).visit_binary(binary)
 
     def label_select_column(self, select, column):
-        if isinstance(column, sql._Function):
+        if isinstance(column, expression._Function):
             return column.label(column.name + "_" + hex(random.randint(0, 65535))[2:])        
         else:
             return super(MSSQLCompiler, self).label_select_column(select, column)
@@ -963,7 +948,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             return ""
 
 
-class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
+class MSSQLSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
         
@@ -986,7 +971,7 @@ class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         
         return colspec
 
-class MSSQLSchemaDropper(ansisql.ANSISchemaDropper):
+class MSSQLSchemaDropper(compiler.SchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(index.table.name),
@@ -995,11 +980,11 @@ class MSSQLSchemaDropper(ansisql.ANSISchemaDropper):
         self.execute()
 
 
-class MSSQLDefaultRunner(ansisql.ANSIDefaultRunner):
+class MSSQLDefaultRunner(base.DefaultRunner):
     # TODO: does ms-sql have standalone sequences ?
     pass
 
-class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+class MSSQLIdentifierPreparer(compiler.IdentifierPreparer):
     def __init__(self, dialect):
         super(MSSQLIdentifierPreparer, self).__init__(dialect, initial_quote='[', final_quote=']')
 
@@ -1012,6 +997,11 @@ class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         return value
 
 dialect = MSSQLDialect
+dialect.statement_compiler = MSSQLCompiler
+dialect.schemagenerator = MSSQLSchemaGenerator
+dialect.schemadropper = MSSQLSchemaDropper
+dialect.preparer = MSSQLIdentifierPreparer
+dialect.defaultrunner = MSSQLDefaultRunner
 
 
 

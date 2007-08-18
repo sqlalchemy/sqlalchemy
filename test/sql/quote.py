@@ -1,7 +1,7 @@
 import testbase
 from sqlalchemy import *
 from testlib import *
-
+from sqlalchemy.sql import compiler
 
 class QuoteTest(PersistTest):
     def setUpAll(self):
@@ -98,10 +98,10 @@ class QuoteTest(PersistTest):
    
 
 class PreparerTest(PersistTest):
-    """Test the db-agnostic quoting services of ANSIIdentifierPreparer."""
+    """Test the db-agnostic quoting services of IdentifierPreparer."""
 
     def test_unformat(self):
-        prep = ansisql.ANSIIdentifierPreparer(None)
+        prep = compiler.IdentifierPreparer(None)
         unformat = prep.unformat_identifiers
 
         def a_eq(have, want):
@@ -120,7 +120,7 @@ class PreparerTest(PersistTest):
         a_eq(unformat('"foo"."b""a""r"."baz"'), ['foo', 'b"a"r', 'baz'])
 
     def test_unformat_custom(self):
-        class Custom(ansisql.ANSIIdentifierPreparer):
+        class Custom(compiler.IdentifierPreparer):
             def __init__(self, dialect):
                 super(Custom, self).__init__(dialect, initial_quote='`',
                                              final_quote='`')

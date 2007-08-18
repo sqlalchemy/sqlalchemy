@@ -126,11 +126,12 @@ information affecting MySQL in SQLAlchemy.
 import re, datetime, inspect, warnings, sys
 from array import array as _array
 
-from sqlalchemy import ansisql, exceptions, logging, schema, sql, util
-from sqlalchemy import operators as sql_operators
+from sqlalchemy import exceptions, logging, schema, sql, util
+from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy.sql import compiler
 
 from sqlalchemy.engine import base as engine_base, default
-import sqlalchemy.types as sqltypes
+from sqlalchemy import types as sqltypes
 
 
 __all__ = (
@@ -1328,13 +1329,17 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
         return AUTOCOMMIT_RE.match(self.statement)
 
 
-class MySQLDialect(ansisql.ANSIDialect):
+class MySQLDialect(default.DefaultDialect):
     """Details of the MySQL dialect.  Not used directly in application code."""
 
     def __init__(self, use_ansiquotes=False, **kwargs):
         self.use_ansiquotes = use_ansiquotes
         kwargs.setdefault('default_paramstyle', 'format')
-        ansisql.ANSIDialect.__init__(self, **kwargs)
+        if self.use_ansiquotes:
+            self.preparer = MySQLANSIIdentifierPreparer
+        else:
+            self.preparer = MySQLIdentifierPreparer
+        default.DefaultDialect.__init__(self, **kwargs)
 
     def dbapi(cls):
         import MySQLdb as mysql
@@ -1393,19 +1398,13 @@ class MySQLDialect(ansisql.ANSIDialect):
         return True
 
     def compiler(self, statement, bindparams, **kwargs):
-        return MySQLCompiler(self, statement, bindparams, **kwargs)
+        return MySQLCompiler(statement, bindparams, dialect=self, **kwargs)
 
     def schemagenerator(self, *args, **kwargs):
         return MySQLSchemaGenerator(self, *args, **kwargs)
 
     def schemadropper(self, *args, **kwargs):
         return MySQLSchemaDropper(self, *args, **kwargs)
-
-    def preparer(self):
-        if self.use_ansiquotes:
-            return MySQLANSIIdentifierPreparer(self)
-        else:
-            return MySQLIdentifierPreparer(self)
 
     def do_executemany(self, cursor, statement, parameters,
                        context=None, **kwargs):
@@ -1733,8 +1732,8 @@ class _MySQLPythonRowProxy(object):
             return item
 
 
-class MySQLCompiler(ansisql.ANSICompiler):
-    operators = ansisql.ANSICompiler.operators.copy()
+class MySQLCompiler(compiler.DefaultCompiler):
+    operators = compiler.DefaultCompiler.operators.copy()
     operators.update(
         {
             sql_operators.concat_op: \
@@ -1783,7 +1782,7 @@ class MySQLCompiler(ansisql.ANSICompiler):
 #       In older versions, the indexes must be created explicitly or the
 #       creation of foreign key constraints fails."
 
-class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
+class MySQLSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, override_pk=False,
                                  first_pk=False):
         """Builds column DDL."""
@@ -1827,7 +1826,7 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         return ' '.join(table_opts)
 
 
-class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
+class MySQLSchemaDropper(compiler.SchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX %s ON %s" %
                     (self.preparer.format_index(index),
@@ -2368,7 +2367,7 @@ class MySQLSchemaReflector(object):
 MySQLSchemaReflector.logger = logging.class_logger(MySQLSchemaReflector)
 
 
-class _MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+class _MySQLIdentifierPreparer(compiler.IdentifierPreparer):
     """MySQL-specific schema identifier configuration."""
     
     def __init__(self, dialect, **kw):
@@ -2433,3 +2432,6 @@ def _re_compile(regex):
     return re.compile(regex, re.I | re.UNICODE)
 
 dialect = MySQLDialect
+dialect.statement_compiler = MySQLCompiler
+dialect.schemagenerator = MySQLSchemaGenerator
+dialect.schemadropper = MySQLSchemaDropper

@@ -2,7 +2,6 @@ import testbase
 import pickle, StringIO, unicodedata
 
 from sqlalchemy import *
-import sqlalchemy.ansisql as ansisql
 from sqlalchemy.exceptions import NoSuchTableError
 from testlib import *
 from testlib import engines
@@ -686,7 +685,7 @@ class SchemaTest(PersistTest):
         def foo(s, p=None):
             buf.write(s)
         gen = create_engine(testbase.db.name + "://", strategy="mock", executor=foo)
-        gen = gen.dialect.schemagenerator(gen)
+        gen = gen.dialect.schemagenerator(gen.dialect, gen)
         gen.traverse(table1)
         gen.traverse(table2)
         buf = buf.getvalue()

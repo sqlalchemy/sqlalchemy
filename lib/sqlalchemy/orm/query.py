@@ -4,7 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import sql, util, exceptions, sql_util, logging
+from sqlalchemy import sql, util, exceptions, logging
+from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import expression, visitors
 from sqlalchemy.orm import mapper, object_mapper
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.interfaces import OperationContext, LoaderStack
@@ -312,7 +314,7 @@ class Query(object):
         clause = self._from_obj[-1]
 
         currenttables = [clause]
-        class FindJoinedTables(sql.NoColumnVisitor):
+        class FindJoinedTables(visitors.NoColumnVisitor):
             def visit_join(self, join):
                 currenttables.append(join.left)
                 currenttables.append(join.right)
@@ -836,7 +838,7 @@ class Query(object):
             # if theres an order by, add those columns to the column list
             # of the "rowcount" query we're going to make
             if order_by:
-                order_by = [sql._literal_as_text(o) for o in util.to_list(order_by) or []]
+                order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
                 cf = sql_util.ColumnFinder()
                 for o in order_by:
                     cf.traverse(o)

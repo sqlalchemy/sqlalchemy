@@ -5,11 +5,13 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import re, warnings, operator, random
+import re, warnings, random
 
-from sqlalchemy import util, sql, schema, ansisql, exceptions, logging
+from sqlalchemy import util, sql, schema, exceptions, logging
 from sqlalchemy.engine import default, base
-import sqlalchemy.types as sqltypes
+from sqlalchemy.sql import compiler, visitors
+from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy import types as sqltypes
 
 import datetime
 
@@ -229,9 +231,9 @@ class OracleExecutionContext(default.DefaultExecutionContext):
         
         return base.ResultProxy(self)
 
-class OracleDialect(ansisql.ANSIDialect):
+class OracleDialect(default.DefaultDialect):
     def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, **kwargs):
-        ansisql.ANSIDialect.__init__(self, default_paramstyle='named', **kwargs)
+        default.DefaultDialect.__init__(self, default_paramstyle='named', **kwargs)
         self.use_ansi = use_ansi
         self.threaded = threaded
         self.allow_twophase = allow_twophase
@@ -332,21 +334,6 @@ class OracleDialect(ansisql.ANSIDialect):
         
     def create_execution_context(self, *args, **kwargs):
         return OracleExecutionContext(self, *args, **kwargs)
-
-    def compiler(self, statement, bindparams, **kwargs):
-        return OracleCompiler(self, statement, bindparams, **kwargs)
-
-    def preparer(self):
-        return OracleIdentifierPreparer(self)
-
-    def schemagenerator(self, *args, **kwargs):
-        return OracleSchemaGenerator(self, *args, **kwargs)
-
-    def schemadropper(self, *args, **kwargs):
-        return OracleSchemaDropper(self, *args, **kwargs)
-
-    def defaultrunner(self, connection, **kwargs):
-        return OracleDefaultRunner(connection, **kwargs)
 
     def has_table(self, connection, table_name, schema=None):
         cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':self._denormalize_name(table_name)})
@@ -560,16 +547,16 @@ class _OuterJoinColumn(sql.ClauseElement):
     def __init__(self, column):
         self.column = column
         
-class OracleCompiler(ansisql.ANSICompiler):
+class OracleCompiler(compiler.DefaultCompiler):
     """Oracle compiler modifies the lexical structure of Select
     statements to work under non-ANSI configured Oracle databases, if
     the use_ansi flag is False.
     """
 
-    operators = ansisql.ANSICompiler.operators.copy()
+    operators = compiler.DefaultCompiler.operators.copy()
     operators.update(
         {
-            operator.mod : lambda x, y:"mod(%s, %s)" % (x, y)
+            sql_operators.mod : lambda x, y:"mod(%s, %s)" % (x, y)
         }
     )
 
@@ -590,13 +577,13 @@ class OracleCompiler(ansisql.ANSICompiler):
 
     def visit_join(self, join, **kwargs):
         if self.dialect.use_ansi:
-            return ansisql.ANSICompiler.visit_join(self, join, **kwargs)
+            return compiler.DefaultCompiler.visit_join(self, join, **kwargs)
 
         (where, parentjoin) = self.__wheres.get(join, (None, None))
 
-        class VisitOn(sql.ClauseVisitor):
+        class VisitOn(visitors.ClauseVisitor):
             def visit_binary(s, binary):
-                if binary.operator == operator.eq:
+                if binary.operator == sql_operators.eq:
                     if binary.left.table is join.right:
                         binary.left = _OuterJoinColumn(binary.left)
                     elif binary.right.table is join.right:
@@ -640,7 +627,7 @@ class OracleCompiler(ansisql.ANSICompiler):
         for c in insert.table.primary_key:
             if c.key not in self.parameters:
                 self.parameters[c.key] = None
-        return ansisql.ANSICompiler.visit_insert(self, insert)
+        return compiler.DefaultCompiler.visit_insert(self, insert)
 
     def _TODO_visit_compound_select(self, select):
         """Need to determine how to get ``LIMIT``/``OFFSET`` into a ``UNION`` for Oracle."""
@@ -672,7 +659,7 @@ class OracleCompiler(ansisql.ANSICompiler):
                 limitselect.append_whereclause("ora_rn<=%d" % select._limit)
             return self.process(limitselect, **kwargs)
         else:
-            return ansisql.ANSICompiler.visit_select(self, select, **kwargs)
+            return compiler.DefaultCompiler.visit_select(self, select, **kwargs)
 
     def limit_clause(self, select):
         return ""
@@ -684,7 +671,7 @@ class OracleCompiler(ansisql.ANSICompiler):
             return super(OracleCompiler, self).for_update_clause(select)
 
 
-class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
+class OracleSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
         colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
@@ -701,13 +688,13 @@ class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
             self.append("CREATE SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
 
-class OracleSchemaDropper(ansisql.ANSISchemaDropper):
+class OracleSchemaDropper(compiler.SchemaDropper):
     def visit_sequence(self, sequence):
         if not self.checkfirst or self.dialect.has_sequence(self.connection, sequence.name):
             self.append("DROP SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
 
-class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
+class OracleDefaultRunner(base.DefaultRunner):
     def exec_default_sql(self, default):
         c = sql.select([default.arg], from_obj=["DUAL"]).compile(bind=self.connection)
         return self.connection.execute(c).scalar()
@@ -715,10 +702,15 @@ class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
     def visit_sequence(self, seq):
         return self.connection.execute("SELECT " + self.dialect.identifier_preparer.format_sequence(seq) + ".nextval FROM DUAL").scalar()
 
-class OracleIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+class OracleIdentifierPreparer(compiler.IdentifierPreparer):
     def format_savepoint(self, savepoint):
         name = re.sub(r'^_+', '', savepoint.ident)
         return super(OracleIdentifierPreparer, self).format_savepoint(savepoint, name)
 
     
 dialect = OracleDialect
+dialect.statement_compiler = OracleCompiler
+dialect.schemagenerator = OracleSchemaGenerator
+dialect.schemadropper = OracleSchemaDropper
+dialect.preparer = OracleIdentifierPreparer
+dialect.defaultrunner = OracleDefaultRunner

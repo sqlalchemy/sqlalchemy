@@ -161,7 +161,8 @@ class ExecutionContextWrapper(object):
             if params is not None and isinstance(params, list) and len(params) == 1:
                 params = params[0]
             
-            if isinstance(ctx.compiled_parameters, sql.ClauseParameters):
+            from sqlalchemy.sql.util import ClauseParameters
+            if isinstance(ctx.compiled_parameters, ClauseParameters):
                 parameters = ctx.compiled_parameters.get_original_dict()
             elif isinstance(ctx.compiled_parameters, list):
                 parameters = [p.get_original_dict() for p in ctx.compiled_parameters]

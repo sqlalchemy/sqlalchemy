@@ -11,7 +11,8 @@ operations.  PropertyLoader also relies upon the dependency.py module
 to handle flush-time dependency sorting and processing.
 """
 
-from sqlalchemy import sql, schema, util, exceptions, sql_util, logging
+from sqlalchemy import sql, schema, util, exceptions, logging
+from sqlalchemy.sql import util as sql_util
 from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil

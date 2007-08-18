@@ -4,7 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import sql, util, exceptions, sql_util
+from sqlalchemy import sql, util, exceptions
+from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import visitors
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE
 
 all_cascades = util.Set(["delete", "delete-orphan", "all", "merge",
@@ -161,7 +163,7 @@ class ExtensionCarrier(MapperExtension):
     before_delete = _create_do('before_delete')
     after_delete = _create_do('after_delete')
 
-class BinaryVisitor(sql.ClauseVisitor):
+class BinaryVisitor(visitors.ClauseVisitor):
     def __init__(self, func):
         self.func = func
 
@@ -196,7 +198,7 @@ class AliasedClauses(object):
         # for column-level subqueries, swap out its selectable with our
         # eager version as appropriate, and manually build the 
         # "correlation" list of the subquery.  
-        class ModifySubquery(sql.ClauseVisitor):
+        class ModifySubquery(visitors.ClauseVisitor):
             def visit_select(s, select):
                 select._should_correlate = False
                 select.append_correlation(self.alias)
