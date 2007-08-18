@@ -2,7 +2,9 @@ from toc import TOCElement
 import docstring
 import re
 
-from sqlalchemy import schema, types, ansisql, engine, sql, pool, orm, exceptions, databases, interfaces
+from sqlalchemy import schema, types, engine, sql, pool, orm, exceptions, databases, interfaces
+from sqlalchemy.sql import compiler
+from sqlalchemy.engine import default, strategies, threadlocal
 import sqlalchemy.orm.shard
 import sqlalchemy.ext.sessioncontext as sessioncontext
 import sqlalchemy.ext.selectresults as selectresults
@@ -26,10 +28,10 @@ def make_all_docs():
         make_doc(obj=types),
         make_doc(obj=engine),
         make_doc(obj=engine.url),
-        make_doc(obj=engine.strategies),
-        make_doc(obj=engine.default),
-        make_doc(obj=engine.threadlocal),
-        make_doc(obj=ansisql),
+        make_doc(obj=strategies),
+        make_doc(obj=default),
+        make_doc(obj=threadlocal),
+        make_doc(obj=compiler),
         make_doc(obj=interfaces),
         make_doc(obj=orm),
         make_doc(obj=orm.collections, classes=[orm.collections.collection,
