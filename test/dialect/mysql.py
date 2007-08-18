@@ -667,7 +667,44 @@ class TypesTest(AssertMixin):
             print "Expected %s" % wanted
             print "Found %s" % got
         self.assertEqual(got, wanted)
-    
+
+
+class SQLTest(AssertMixin):
+    """Tests MySQL-dialect specific compilation."""
+
+    @testing.supported('mysql')
+    def test_precolumns(self):
+        dialect = testbase.db.dialect
+
+        def gen(distinct=None, prefixes=None):
+            kw = {}
+            if distinct is not None:
+                kw['distinct'] = distinct
+            if prefixes is not None:
+                kw['prefixes'] = prefixes
+            return str(select(['q'], **kw).compile(dialect=dialect))
+
+        self.assertEqual(gen(None), 'SELECT q')
+        self.assertEqual(gen(True), 'SELECT DISTINCT q')
+        self.assertEqual(gen(1), 'SELECT DISTINCT q')
+        self.assertEqual(gen('diSTInct'), 'SELECT DISTINCT q')
+        self.assertEqual(gen('DISTINCT'), 'SELECT DISTINCT q')
+
+        # Standard SQL
+        self.assertEqual(gen('all'), 'SELECT ALL q')
+        self.assertEqual(gen('distinctrow'), 'SELECT DISTINCTROW q')
+
+        # Interaction with MySQL prefix extensions
+        self.assertEqual(
+            gen(None, ['straight_join']),
+            'SELECT straight_join q')
+        self.assertEqual(
+            gen('all', ['HIGH_PRIORITY SQL_SMALL_RESULT']),
+            'SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL q')
+        self.assertEqual(
+            gen(True, ['high_priority', sql.text('sql_cache')]),
+            'SELECT high_priority sql_cache DISTINCT q')
+
 
 def colspec(c):
     return testbase.db.dialect.schemagenerator(

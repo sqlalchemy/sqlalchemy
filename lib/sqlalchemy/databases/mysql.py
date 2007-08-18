@@ -1752,6 +1752,14 @@ class MySQLCompiler(ansisql.ANSICompiler):
             # TODO: put whatever MySQL does for CAST here.
             return self.process(cast.clause)
 
+    def get_select_precolumns(self, select):
+        if isinstance(select._distinct, basestring):
+            return select._distinct.upper() + " "
+        elif select._distinct:
+            return "DISTINCT "
+        else:
+            return ""
+
     def for_update_clause(self, select):
         if select.for_update == 'read':
              return ' LOCK IN SHARE MODE'

@@ -9,26 +9,30 @@ CHANGES
   still get processed/encoded.
 
 - Added a "legacy" adapter to types, such that user-defined TypeEngine
-  and TypeDecorator classes which define convert_bind_param()/convert_result_value()
-  will continue to function.  Also supports calling the super() version of
-  those methods.
+  and TypeDecorator classes which define convert_bind_param() and/or
+  convert_result_value() will continue to function.  Also supports
+  calling the super() version of those methods.
   
-- Added session.prune(), trims away instances cached in a session that are no
-  longer referenced elsewhere. (A utility for strong-ref identity maps).
+- Added session.prune(), trims away instances cached in a session that
+  are no longer referenced elsewhere. (A utility for strong-ref
+  identity maps).
 
-- added close() method to Transaction.  closes out a transaction using rollback
-  if it's the outermost transaction, otherwise just ends without affecting
-  the outer transaction.
+- Added close() method to Transaction.  Closes out a transaction using
+  rollback if it's the outermost transaction, otherwise just ends
+  without affecting the outer transaction.
 
-- transactional and non-transactional Session integrates better with bound 
-  connection; a close() will ensure that connection transactional state is 
-  the same as that which existed on it before being bound to the Session.
+- Transactional and non-transactional Session integrates better with
+  bound connection; a close() will ensure that connection
+  transactional state is the same as that which existed on it before
+  being bound to the Session.
 
-- modified SQL operator functions to be module-level operators, allowing
-  SQL expressions to be pickleable [ticket:735]
+- Modified SQL operator functions to be module-level operators,
+  allowing SQL expressions to be pickleable. [ticket:735]
 
-- small adjustment to mapper class.__init__ to allow for Py2.6 object.__init__()
-  behavior
+- Small adjustment to mapper class.__init__ to allow for Py2.6
+  object.__init__() behavior.
+
+- Fixed 'prefix' argument for select()
     
 0.4.0beta3
 ----------
