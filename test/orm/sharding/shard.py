@@ -3,8 +3,8 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 from sqlalchemy.orm.shard import ShardedSession
-from sqlalchemy.sql import ColumnOperators
-import datetime, operator, os
+from sqlalchemy.sql import operators
+import datetime, os
 from testlib import PersistTest
 
 # TODO: ShardTest can be turned into a base for further subclasses
@@ -81,9 +81,9 @@ class ShardTest(PersistTest):
             class FindContinent(sql.ClauseVisitor):
                 def visit_binary(self, binary):
                     if binary.left is weather_locations.c.continent:
-                        if binary.operator == operator.eq:
+                        if binary.operator == operators.eq:
                             ids.append(shard_lookup[binary.right.value])
-                        elif binary.operator == ColumnOperators.in_op:
+                        elif binary.operator == operators.in_op:
                             for bind in binary.right.clauses:
                                 ids.append(shard_lookup[bind.value])
 

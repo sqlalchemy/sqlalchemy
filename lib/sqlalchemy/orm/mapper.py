@@ -670,14 +670,13 @@ class Mapper(object):
         attribute_manager.reset_class_managed(self.class_)
 
         oldinit = self.class_.__init__
-        if oldinit is object.__init__:
-            oldinit = None
+        doinit = oldinit is not None and oldinit is not object.__init__
             
         def init(instance, *args, **kwargs):
             self.compile()
             self.extension.init_instance(self, self.class_, oldinit, instance, args, kwargs)
 
-            if oldinit is not None:
+            if doinit:
                 try:
                     oldinit(instance, *args, **kwargs)
                 except:

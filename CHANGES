@@ -24,6 +24,12 @@ CHANGES
   connection; a close() will ensure that connection transactional state is 
   the same as that which existed on it before being bound to the Session.
 
+- modified SQL operator functions to be module-level operators, allowing
+  SQL expressions to be pickleable [ticket:735]
+
+- small adjustment to mapper class.__init__ to allow for Py2.6 object.__init__()
+  behavior
+    
 0.4.0beta3
 ----------
 

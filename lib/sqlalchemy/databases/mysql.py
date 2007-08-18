@@ -123,10 +123,12 @@ Notes page on the wiki at http://sqlalchemy.org is a good resource for timely
 information affecting MySQL in SQLAlchemy.
 """
 
-import re, datetime, inspect, warnings, operator, sys
+import re, datetime, inspect, warnings, sys
 from array import array as _array
 
 from sqlalchemy import ansisql, exceptions, logging, schema, sql, util
+from sqlalchemy import operators as sql_operators
+
 from sqlalchemy.engine import base as engine_base, default
 import sqlalchemy.types as sqltypes
 
@@ -1735,9 +1737,9 @@ class MySQLCompiler(ansisql.ANSICompiler):
     operators = ansisql.ANSICompiler.operators.copy()
     operators.update(
         {
-            sql.ColumnOperators.concat_op: \
+            sql_operators.concat_op: \
               lambda x, y: "concat(%s, %s)" % (x, y),
-            operator.mod: '%%'
+            sql_operators.mod: '%%'
         }
     )
 

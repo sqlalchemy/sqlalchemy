@@ -12,7 +12,7 @@ module.
 
 import string, re, sets, operator
 
-from sqlalchemy import schema, sql, engine, util, exceptions
+from sqlalchemy import schema, sql, engine, util, exceptions, operators
 from  sqlalchemy.engine import default
 
 
@@ -50,39 +50,39 @@ BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
 ANONYMOUS_LABEL = re.compile(r'{ANON (-?\d+) (.*)}')
 
 OPERATORS =  {
-    operator.and_ : 'AND',
-    operator.or_ : 'OR',
-    operator.inv : 'NOT',
-    operator.add : '+',
-    operator.mul : '*',
-    operator.sub : '-',
-    operator.div : '/',
-    operator.mod : '%',
-    operator.truediv : '/',
-    operator.lt : '<',
-    operator.le : '<=',
-    operator.ne : '!=',
-    operator.gt : '>',
-    operator.ge : '>=',
-    operator.eq : '=',
-    sql.ColumnOperators.distinct_op : 'DISTINCT',
-    sql.ColumnOperators.concat_op : '||',
-    sql.ColumnOperators.like_op : 'LIKE',
-    sql.ColumnOperators.notlike_op : 'NOT LIKE',
-    sql.ColumnOperators.ilike_op : 'ILIKE',
-    sql.ColumnOperators.notilike_op : 'NOT ILIKE',
-    sql.ColumnOperators.between_op : 'BETWEEN',
-    sql.ColumnOperators.in_op : 'IN',
-    sql.ColumnOperators.notin_op : 'NOT IN',
-    sql.ColumnOperators.comma_op : ', ',
-    sql.ColumnOperators.desc_op : 'DESC',
-    sql.ColumnOperators.asc_op : 'ASC',
+    operators.and_ : 'AND',
+    operators.or_ : 'OR',
+    operators.inv : 'NOT',
+    operators.add : '+',
+    operators.mul : '*',
+    operators.sub : '-',
+    operators.div : '/',
+    operators.mod : '%',
+    operators.truediv : '/',
+    operators.lt : '<',
+    operators.le : '<=',
+    operators.ne : '!=',
+    operators.gt : '>',
+    operators.ge : '>=',
+    operators.eq : '=',
+    operators.distinct_op : 'DISTINCT',
+    operators.concat_op : '||',
+    operators.like_op : 'LIKE',
+    operators.notlike_op : 'NOT LIKE',
+    operators.ilike_op : 'ILIKE',
+    operators.notilike_op : 'NOT ILIKE',
+    operators.between_op : 'BETWEEN',
+    operators.in_op : 'IN',
+    operators.notin_op : 'NOT IN',
+    operators.comma_op : ', ',
+    operators.desc_op : 'DESC',
+    operators.asc_op : 'ASC',
     
-    sql.Operators.from_ : 'FROM',
-    sql.Operators.as_ : 'AS',
-    sql.Operators.exists : 'EXISTS',
-    sql.Operators.is_ : 'IS',
-    sql.Operators.isnot : 'IS NOT'
+    operators.from_ : 'FROM',
+    operators.as_ : 'AS',
+    operators.exists : 'EXISTS',
+    operators.is_ : 'IS',
+    operators.isnot : 'IS NOT'
 }
 
 class ANSIDialect(default.DefaultDialect):
@@ -284,7 +284,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
             if isinstance(label.obj, sql._ColumnClause):
                 self.column_labels[label.obj._label] = labelname
             self.column_labels[label.name] = labelname
-        return " ".join([self.process(label.obj), self.operator_string(sql.ColumnOperators.as_), self.preparer.format_label(label, labelname)])
+        return " ".join([self.process(label.obj), self.operator_string(operators.as_), self.preparer.format_label(label, labelname)])
         
     def visit_column(self, column, **kwargs):
         # there is actually somewhat of a ruleset when you would *not* necessarily
@@ -343,7 +343,7 @@ class ANSICompiler(engine.Compiled, sql.ClauseVisitor):
         sep = clauselist.operator
         if sep is None:
             sep = " "
-        elif sep == sql.ColumnOperators.comma_op:
+        elif sep == operators.comma_op:
             sep = ', '
         else:
             sep = " " + self.operator_string(clauselist.operator) + " "

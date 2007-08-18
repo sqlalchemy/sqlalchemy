@@ -1,6 +1,7 @@
 import testbase
 import re, operator
 from sqlalchemy import *
+from sqlalchemy import util
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird, mssql
 from testlib import *
 
@@ -406,6 +407,10 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             table1.select(table1.c.myid.op('hoho')(12)==14),
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (mytable.myid hoho :mytable_myid) = :literal"
         )
+        
+        # test that clauses can be pickled (operators need to be module-level, etc.)
+        clause = (table1.c.myid == 12) & table1.c.myid.between(15, 20) & table1.c.myid.like('hoho')
+        assert str(clause) == str(util.pickle.loads(util.pickle.dumps(clause)))
 
     def testunicodestartswith(self):
         string = u"hi \xf6 \xf5"
