@@ -33,6 +33,9 @@ CHANGES
   object.__init__() behavior.
 
 - Fixed 'prefix' argument for select()
+
+- Connection.begin() no longer accepts nested=True, this logic is now
+  all in begin_nested().
     
 0.4.0beta3
 ----------
