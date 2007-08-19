@@ -114,6 +114,7 @@ class FilterTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
 
+    @testbase.unsupported('mssql')
     def test_limit(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).limit(2).offset(1).all()
 

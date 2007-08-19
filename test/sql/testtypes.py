@@ -312,8 +312,8 @@ class DateTest(AssertMixin):
             ]
 
             if db.engine.name == 'mssql':
-                # MSSQL Datetime values have only a 3.33 milliseconds precision
-                insert_data[2] = [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 547000), datetime.date(1970,4,1), datetime.time(23,59,59,997000)]
+                # MSSQL can't reliably fetch the millisecond part
+                insert_data[2] = [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(1970,4,1), datetime.time(23,59,59)]
 
             fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
 

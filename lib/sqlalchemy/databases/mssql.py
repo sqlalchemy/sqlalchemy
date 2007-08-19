@@ -468,7 +468,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
     def preparer(self):
         return MSSQLIdentifierPreparer(self)
 
-    def get_default_schema_name(self):
+    def get_default_schema_name(self, connection):
         return self.schema_name
 
     def set_default_schema_name(self, schema_name):
@@ -513,7 +513,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
     def has_table(self, connection, tablename, schema=None):
         import sqlalchemy.databases.information_schema as ischema
 
-        current_schema = schema or self.get_default_schema_name()
+        current_schema = schema or self.get_default_schema_name(connection)
         columns = self.uppercase_table(ischema.columns)
         s = sql.select([columns],
                    current_schema
@@ -532,7 +532,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         if table.schema is not None:
             current_schema = table.schema
         else:
-            current_schema = self.get_default_schema_name()
+            current_schema = self.get_default_schema_name(connection)
 
         columns = self.uppercase_table(ischema.columns)
         s = sql.select([columns],
