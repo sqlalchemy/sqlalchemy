@@ -4,9 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""defines the basic components used to interface DBAPI modules with
-higher-level statement-construction, connection-management, 
-execution and result contexts."""
+
+"""Basic components for SQL execution and interfacing with DB-API..
+
+Defines the basic components used to interface DB-API modules with
+higher-level statement-construction, connection-management, execution
+and result contexts.
+"""
 
 from sqlalchemy import exceptions, schema, util, types, logging
 from sqlalchemy.sql import expression, visitors
@@ -14,105 +18,124 @@ import StringIO, sys
 
 
 class Dialect(object):
-    """Define the behavior of a specific database/DBAPI.
+    """Define the behavior of a specific database and DB-API combination.
 
-    Any aspect of metadata definition, SQL query generation, execution,
-    result-set handling, or anything else which varies between
-    databases is defined under the general category of the Dialect.
-    The Dialect acts as a factory for other database-specific object
-    implementations including ExecutionContext, Compiled,
-    DefaultGenerator, and TypeEngine.
+    Any aspect of metadata definition, SQL query generation,
+    execution, result-set handling, or anything else which varies
+    between databases is defined under the general category of the
+    Dialect.  The Dialect acts as a factory for other
+    database-specific object implementations including
+    ExecutionContext, Compiled, DefaultGenerator, and TypeEngine.
 
     All Dialects implement the following attributes:
 
-      positional
-        True if the paramstyle for this Dialect is positional
+    positional
+      True if the paramstyle for this Dialect is positional.
 
-      paramstyle
-        The paramstyle to be used (some DBAPIs support multiple paramstyles)
+    paramstyle
+      the paramstyle to be used (some DB-APIs support multiple
+      paramstyles).
 
-      convert_unicode
-        True if unicode conversion should be applied to all str types
+    convert_unicode
+      True if Unicode conversion should be applied to all ``str``
+      types.
 
-      encoding
-        type of encoding to use for unicode, usually defaults to 'utf-8'
+    encoding
+      type of encoding to use for unicode, usually defaults to
+      'utf-8'.
 
-      schemagenerator
-        a [sqlalchemy.schema#SchemaVisitor] class which generates schemas.
+    schemagenerator
+      a [sqlalchemy.schema#SchemaVisitor] class which generates
+      schemas.
 
-      schemadropper
-        a [sqlalchemy.schema#SchemaVisitor] class which drops schemas.
+    schemadropper
+      a [sqlalchemy.schema#SchemaVisitor] class which drops schemas.
 
-      defaultrunner
-        a [sqlalchemy.schema#SchemaVisitor] class which executes defaults.
+    defaultrunner
+      a [sqlalchemy.schema#SchemaVisitor] class which executes
+      defaults.
 
-      statement_compiler
-        a [sqlalchemy.engine.base#Compiled] class used to compile SQL statements
+    statement_compiler
+      a [sqlalchemy.engine.base#Compiled] class used to compile SQL
+      statements
 
-      preparer
-        a [sqlalchemy.sql.compiler#IdentifierPreparer] class used to quote
-        identifiers.
+    preparer
+      a [sqlalchemy.sql.compiler#IdentifierPreparer] class used to
+      quote identifiers.
     """
 
     def create_connect_args(self, url):
-        """Build DBAPI compatible connection arguments.
+        """Build DB-API compatible connection arguments.
 
-        Given a [sqlalchemy.engine.url#URL] object, returns a
-        tuple consisting of a `*args`/`**kwargs` suitable to send directly
-        to the dbapi's connect function. 
+        Given a [sqlalchemy.engine.url#URL] object, returns a tuple
+        consisting of a `*args`/`**kwargs` suitable to send directly
+        to the dbapi's connect function.
         """
 
         raise NotImplementedError()
 
     def dbapi_type_map(self):
-        """return a mapping of DBAPI type objects present in this Dialect's DBAPI
-        mapped to TypeEngine implementations used by the dialect. 
-        
-        This is used to apply types to result sets based on the DBAPI types
-        present in cursor.description; it only takes effect for result sets against
-        textual statements where no explicit typemap was present.  Constructed SQL statements
-        always have type information explicitly embedded.
+        """Returns a DB-API to sqlalchemy.types mapping.
+
+        A mapping of DB-API type objects present in this Dialect's
+        DB-API implmentation mapped to TypeEngine implementations used
+        by the dialect.
+
+        This is used to apply types to result sets based on the DB-API
+        types present in cursor.description; it only takes effect for
+        result sets against textual statements where no explicit
+        typemap was present.  Constructed SQL statements always have
+        type information explicitly embedded.
         """
 
         raise NotImplementedError()
 
     def type_descriptor(self, typeobj):
-        """Transform the given [sqlalchemy.types#TypeEngine] instance from generic to database-specific.
+        """Transform a generic type to a database-specific type.
 
-        Subclasses will usually use the [sqlalchemy.types#adapt_type()] method in the types module
-        to make this job easy.
+        Transforms the given [sqlalchemy.types#TypeEngine] instance
+        from generic to database-specific.
+
+        Subclasses will usually use the
+        [sqlalchemy.types#adapt_type()] method in the types module to
+        make this job easy.
         """
 
         raise NotImplementedError()
 
     def oid_column_name(self, column):
-        """Return the oid column name for this dialect, or ``None`` if the dialect can't/won't support OID/ROWID.
+        """Return the oid column name for this Dialect
 
-        The [sqlalchemy.schema#Column] instance which represents OID for the query being
-        compiled is passed, so that the dialect can inspect the column
-        and its parent selectable to determine if OID/ROWID is not
-        selected for a particular selectable (i.e. oracle doesnt
-        support ROWID for UNION, GROUP BY, DISTINCT, etc.)
+        May return ``None`` if the dialect can't o won't support
+        OID/ROWID features.
+
+        The [sqlalchemy.schema#Column] instance which represents OID
+        for the query being compiled is passed, so that the dialect
+        can inspect the column and its parent selectable to determine
+        if OID/ROWID is not selected for a particular selectable
+        (i.e. Oracle doesnt support ROWID for UNION, GROUP BY,
+        DISTINCT, etc.)
         """
 
         raise NotImplementedError()
 
     def supports_alter(self):
-        """return ``True`` if the database supports ``ALTER TABLE``."""
+        """Return ``True`` if the database supports ``ALTER TABLE``."""
         raise NotImplementedError()
 
     def max_identifier_length(self):
         """Return the maximum length of identifier names.
-        
-        Return ``None`` if no limit."""
-        
+
+        Returns ``None`` if no limit.
+        """
+
         return None
 
     def supports_unicode_statements(self):
-        """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
-        
+        """Indicate whether the DB-API can receive SQL statements as Python unicode strings"""
+
         raise NotImplementedError()
-        
+
     def supports_sane_rowcount(self):
         """Indicate whether the dialect properly implements rowcount for ``UPDATE`` and ``DELETE`` statements.
 
@@ -131,9 +154,11 @@ class Dialect(object):
     def reflecttable(self, connection, table, include_columns=None):
         """Load table description from the database.
 
-        Given a [sqlalchemy.engine#Connection] and a [sqlalchemy.schema#Table] object, reflect its
-        columns and properties from the database.  If include_columns (a list or set) is specified, limit the autoload
-        to the given column names.
+        Given a [sqlalchemy.engine#Connection] and a
+        [sqlalchemy.schema#Table] object, reflect its columns and
+        properties from the database.  If include_columns (a list or
+        set) is specified, limit the autoload to the given column
+        names.
         """
 
         raise NotImplementedError()
@@ -141,9 +166,10 @@ class Dialect(object):
     def has_table(self, connection, table_name, schema=None):
         """Check the existence of a particular table in the database.
 
-        Given a [sqlalchemy.engine#Connection] object and a string `table_name`, return True
-        if the given table (possibly within the specified `schema`)
-        exists in the database, False otherwise.
+        Given a [sqlalchemy.engine#Connection] object and a string
+        `table_name`, return True if the given table (possibly within
+        the specified `schema`) exists in the database, False
+        otherwise.
         """
 
         raise NotImplementedError()
@@ -151,9 +177,9 @@ class Dialect(object):
     def has_sequence(self, connection, sequence_name):
         """Check the existence of a particular sequence in the database.
 
-        Given a [sqlalchemy.engine#Connection] object and a string `sequence_name`, return
-        True if the given sequence exists in the database, False
-        otherwise.
+        Given a [sqlalchemy.engine#Connection] object and a string
+        `sequence_name`, return True if the given sequence exists in
+        the database, False otherwise.
         """
 
         raise NotImplementedError()
@@ -165,29 +191,31 @@ class Dialect(object):
 
     def create_execution_context(self, connection, compiled=None, compiled_parameters=None, statement=None, parameters=None):
         """Return a new [sqlalchemy.engine#ExecutionContext] object."""
-        
+
         raise NotImplementedError()
 
     def do_begin(self, connection):
-        """Provide an implementation of *connection.begin()*, given a DBAPI connection."""
+        """Provide an implementation of *connection.begin()*, given a DB-API connection."""
 
         raise NotImplementedError()
 
     def do_rollback(self, connection):
-        """Provide an implementation of *connection.rollback()*, given a DBAPI connection."""
+        """Provide an implementation of *connection.rollback()*, given a DB-API connection."""
 
         raise NotImplementedError()
 
     def create_xid(self):
-        """create a two-phase transaction ID.
+        """Create a two-phase transaction ID.
 
-        this id will be passed to do_begin_twophase(), do_rollback_twophase(),
-        do_commit_twophase().  its format is unspecified."""
+        This id will be passed to do_begin_twophase(),
+        do_rollback_twophase(), do_commit_twophase().  Its format is
+        unspecified.
+        """
 
         raise NotImplementedError()
 
     def do_commit(self, connection):
-        """Provide an implementation of *connection.commit()*, given a DBAPI connection."""
+        """Provide an implementation of *connection.commit()*, given a DB-API connection."""
 
         raise NotImplementedError()
 
@@ -242,8 +270,8 @@ class Dialect(object):
         raise NotImplementedError()
 
     def is_disconnect(self, e):
-        """Return True if the given DBAPI error indicates an invalid connection"""
-        
+        """Return True if the given DB-API error indicates an invalid connection"""
+
         raise NotImplementedError()
 
 
@@ -251,107 +279,106 @@ class ExecutionContext(object):
     """A messenger object for a Dialect that corresponds to a single execution.
 
     ExecutionContext should have these datamembers:
-    
-        connection
-            Connection object which can be freely used by default value generators
-            to execute SQL.  This Connection should reference the same underlying
-            connection/transactional resources of root_connection.
-            
-        root_connection
-            Connection object which is the source of this ExecutionContext.  This
-            Connection may have close_with_result=True set, in which case it can
-            only be used once.
 
-        dialect
-            dialect which created this ExecutionContext.
-            
-        cursor
-            DBAPI cursor procured from the connection
-            
-        compiled
-            if passed to constructor, sqlalchemy.engine.base.Compiled object being executed
-        
-        statement
-            string version of the statement to be executed.  Is either
-            passed to the constructor, or must be created from the 
-            sql.Compiled object by the time pre_exec() has completed.
-            
-        parameters
-            bind parameters passed to the execute() method.  for
-            compiled statements, this is a dictionary or list 
-            of dictionaries.  for textual statements, it should
-            be in a format suitable for the dialect's paramstyle
-            (i.e. dict or list of dicts for non positional,
-            list or list of lists/tuples for positional).
-            
-        isinsert
-          True if the statement is an INSERT
-            
-        isupdate
-          True if the statement is an UPDATE
-    
+    connection
+      Connection object which can be freely used by default value
+      generators to execute SQL.  This Connection should reference the
+      same underlying connection/transactional resources of
+      root_connection.
+
+    root_connection
+      Connection object which is the source of this ExecutionContext.  This
+      Connection may have close_with_result=True set, in which case it can
+      only be used once.
+
+   dialect
+      dialect which created this ExecutionContext.
+
+    cursor
+      DB-API cursor procured from the connection,
+
+    compiled
+      if passed to constructor, sqlalchemy.engine.base.Compiled object
+      being executed,
+
+    statement
+      string version of the statement to be executed.  Is either
+      passed to the constructor, or must be created from the
+      sql.Compiled object by the time pre_exec() has completed.
+
+    parameters
+      bind parameters passed to the execute() method.  For compiled
+      statements, this is a dictionary or list of dictionaries.  For
+      textual statements, it should be in a format suitable for the
+      dialect's paramstyle (i.e. dict or list of dicts for non
+      positional, list or list of lists/tuples for positional).
+
+    isinsert
+      True if the statement is an INSERT.
+
+    isupdate
+      True if the statement is an UPDATE.
+
     The Dialect should provide an ExecutionContext via the
     create_execution_context() method.  The `pre_exec` and `post_exec`
     methods will be called for compiled statements.
-    
     """
 
     def create_cursor(self):
         """Return a new cursor generated from this ExecutionContext's connection.
-        
-        Some dialects may wish to change the behavior of connection.cursor(),
-        such as postgres which may return a PG "server side" cursor.
+
+        Some dialects may wish to change the behavior of
+        connection.cursor(), such as postgres which may return a PG
+        "server side" cursor.
         """
 
         raise NotImplementedError()
 
     def pre_execution(self):
         """Called before an execution of a compiled statement.
-        
-        If a compiled statement was passed to this
-        ExecutionContext, the `statement` and `parameters` datamembers
-        must be initialized after this statement is complete.
+
+        If a compiled statement was passed to this ExecutionContext,
+        the `statement` and `parameters` datamembers must be
+        initialized after this statement is complete.
         """
 
         raise NotImplementedError()
 
     def post_execution(self):
         """Called after the execution of a compiled statement.
-        
+
         If a compiled statement was passed to this ExecutionContext,
-        the `last_insert_ids`, `last_inserted_params`, etc. 
-        datamembers should be available after this method
-        completes.
+        the `last_insert_ids`, `last_inserted_params`, etc.
+        datamembers should be available after this method completes.
         """
 
         raise NotImplementedError()
-    
+
     def result(self):
-        """return a result object corresponding to this ExecutionContext.
-        
-        Returns a ResultProxy."""
-        
+        """Return a result object corresponding to this ExecutionContext.
+
+        Returns a ResultProxy.
+        """
+
         raise NotImplementedError()
-        
+
     def get_rowcount(self):
         """Return the count of rows updated/deleted for an UPDATE/DELETE statement."""
 
         raise NotImplementedError()
 
     def should_autocommit(self):
-        """return True if this context's statement should be 'committed' automatically in a non-transactional context"""
+        """Return True if this context's statement should be 'committed' automatically in a non-transactional context"""
 
         raise NotImplementedError()
-        
+
     def last_inserted_ids(self):
         """Return the list of the primary key values for the last insert statement executed.
 
         This does not apply to straight textual clauses; only to
-        ``sql.Insert`` objects compiled against a ``schema.Table`` object.
-        The order of
-        items in the list is the same as that of the Table's
-        'primary_key' attribute.
-
+        ``sql.Insert`` objects compiled against a ``schema.Table``
+        object.  The order of items in the list is the same as that of
+        the Table's 'primary_key' attribute.
         """
 
         raise NotImplementedError()
@@ -498,7 +525,7 @@ class Connectable(object):
     dialect = util.NotImplProperty("Dialect which this Connectable is associated with.")
 
 class Connection(Connectable):
-    """Represent a single DBAPI connection returned from the underlying connection pool.
+    """Provides high-level functionality for a wrapped DB-API connection.
 
     Provides execution support for string-based SQL statements as well
     as ClauseElement, Compiled and DefaultGenerator objects.  Provides
@@ -507,7 +534,15 @@ class Connection(Connectable):
     The Connection object is **not** threadsafe.
     """
 
-    def __init__(self, engine, connection=None, close_with_result=False, _branch=False):
+    def __init__(self, engine, connection=None, close_with_result=False,
+                 _branch=False):
+        """Construct a new Connection.
+
+        Connection objects are typically constructed by an
+        [sqlalchemy.engine#Engine], see the ``connect()`` and
+        ``contextual_connect()`` methods of Engine.
+        """
+
         self.__engine = engine
         self.__connection = connection or engine.raw_connection()
         self.__transaction = None
@@ -525,82 +560,130 @@ class Connection(Connectable):
         """return a new Connection which references this Connection's 
         engine and connection; but does not have close_with_result enabled,
         and also whose close() method does nothing.
-        
+
         This is used to execute "sub" statements within a single execution,
         usually an INSERT statement.
         """
-        
+
         return Connection(self.__engine, self.__connection, _branch=True)
-        
+
     engine = property(lambda s:s.__engine, doc="The Engine with which this Connection is associated.")
     dialect = property(lambda s:s.__engine.dialect, doc="Dialect used by this Connection.")
-    connection = property(_get_connection, doc="The underlying DBAPI connection managed by this Connection.")
+    connection = property(_get_connection, doc="The underlying DB-API connection managed by this Connection.")
     should_close_with_result = property(lambda s:s.__close_with_result, doc="Indicates if this Connection should be closed when a corresponding ResultProxy is closed; this is essentially an auto-release mode.")
     properties = property(lambda s: s._get_connection().properties,
-                          doc="A set of per-DBAPI connection properties.")
+                          doc="A collection of per-DB-API connection instance properties.")
 
     def connect(self):
-        """connect() is implemented to return self so that an incoming Engine or Connection object can be treated similarly."""
+        """Returns self.
+
+        This ``Connectable`` interface method returns self, allowing
+        Connections to be used interchangably with Engines in most
+        situations that require a bind.
+        """
+
         return self
 
     def contextual_connect(self, **kwargs):
-        """contextual_connect() is implemented to return self so that an incoming Engine or Connection object can be treated similarly."""
+        """Returns self.
+
+        This ``Connectable`` interface method returns self, allowing
+        Connections to be used interchangably with Engines in most
+        situations that require a bind.
+        """
+
         return self
 
     def invalidate(self):
-        """invalidate the underying DBAPI connection and immediately close this Connection.
-        
-        The underlying DBAPI connection is literally closed (if possible), and is discarded.
-        Its source connection pool will typically create a new connection to replace it, once
-        requested.
+        """Invalidate and close the Connection.
+
+        The underlying DB-API connection is literally closed (if
+        possible), and is discarded.  Its source connection pool will
+        typically lazilly create a new connection to replace it.
         """
-        
+
         self.__connection.invalidate()
         self.__connection = None
 
     def detach(self):
-        """detach the underlying DBAPI connection from its connection pool.
-        
-        This Connection instance will remain useable.  When closed, the 
-        DBAPI connection will be literally closed and not returned to its pool.
-        The pool will typically create a new connection to replace it, once requested.
-        
-        This method can be used to insulate the rest of an application from a modified
-        state on a connection (such as a transaction isolation level or similar).
+        """Detach the underlying DB-API connection from its connection pool.
+
+        This Connection instance will remain useable.  When closed,
+        the DB-API connection will be literally closed and not
+        returned to its pool.  The pool will typically lazily create a
+        new connection to replace the detached connection.
+
+        This method can be used to insulate the rest of an application
+        from a modified state on a connection (such as a transaction
+        isolation level or similar).  Also see
+        [sqlalchemy.interfaces#PoolListener] for a mechanism to modify
+        connection state when connections leave and return to their
+        connection pool.
         """
-        
+
         self.__connection.detach()
-        
-    def begin(self, nested=False):
+
+    def begin(self):
+        """Begin a transaction and return a Transaction handle.
+
+        Repeated calls to ``begin`` on the same Connection will create
+        a lightweight, emulated nested transaction.  Only the
+        outermost transaction may ``commit``.  Calls to ``commit`` on
+        inner transactions are ignored.  Any transaction in the
+        hierarchy may ``rollback``, however.
+        """
+
         if self.__transaction is None:
             self.__transaction = RootTransaction(self)
-        elif nested:
-            self.__transaction = NestedTransaction(self, self.__transaction)
         else:
             return Transaction(self, self.__transaction)
         return self.__transaction
 
     def begin_nested(self):
-        return self.begin(nested=True)
-    
+        """Begin a nested transaction and return a Transaction handle.
+
+        Nested transactions require SAVEPOINT support in the
+        underlying database.  Any transaction in the hierarchy may
+        ``commit`` and ``rollback``, however the outermost transaction
+        still controls the overall ``commit`` or ``rollback`` of the
+        transaction of a whole.
+        """
+
+        if self.__transaction is None:
+            self.__transaction = RootTransaction(self)
+        else:
+            self.__transaction = NestedTransaction(self, self.__transaction)
+        return self.__transaction
+
     def begin_twophase(self, xid=None):
+        """Begin a two-phase or XA transaction and return a Transaction handle.
+
+        xid
+          the two phase transaction id.  If not supplied, a random id
+          will be generated.
+        """
+
         if self.__transaction is not None:
-            raise exceptions.InvalidRequestError("Cannot start a two phase transaction when a transaction is already started.")
+            raise exceptions.InvalidRequestError(
+                "Cannot start a two phase transaction when a transaction "
+                "is already in progress.")
         if xid is None:
             xid = self.__engine.dialect.create_xid();
         self.__transaction = TwoPhaseTransaction(self, xid)
         return self.__transaction
-        
+
     def recover_twophase(self):
         return self.__engine.dialect.do_recover_twophase(self)
-    
+
     def rollback_prepared(self, xid, recover=False):
         self.__engine.dialect.do_rollback_twophase(self, xid, recover=recover)
-    
+
     def commit_prepared(self, xid, recover=False):
         self.__engine.dialect.do_commit_twophase(self, xid, recover=recover)
 
     def in_transaction(self):
+        """Return True if a transaction is in progress."""
+
         return self.__transaction is not None
 
     def _begin_impl(self):
@@ -636,26 +719,26 @@ class Connection(Connectable):
         if self.__connection.is_valid:
             self.__engine.dialect.do_savepoint(self, name)
             return name
-    
+
     def _rollback_to_savepoint_impl(self, name, context):
         if self.__connection.is_valid:
             self.__engine.dialect.do_rollback_to_savepoint(self, name)
         self.__transaction = context
-    
+
     def _release_savepoint_impl(self, name, context):
         if self.__connection.is_valid:
             self.__engine.dialect.do_release_savepoint(self, name)
         self.__transaction = context
-    
+
     def _begin_twophase_impl(self, xid):
         if self.__connection.is_valid:
             self.__engine.dialect.do_begin_twophase(self, xid)
-    
+
     def _prepare_twophase_impl(self, xid):
         if self.__connection.is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
             self.__engine.dialect.do_prepare_twophase(self, xid)
-    
+
     def _rollback_twophase_impl(self, xid, is_prepared):
         if self.__connection.is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
@@ -669,17 +752,26 @@ class Connection(Connectable):
         self.__transaction = None
 
     def _autocommit(self, context):
-        """When no Transaction is present, this is called after executions to provide "autocommit" behavior."""
-        # TODO: have the dialect determine if autocommit can be set on the connection directly without this
-        # extra step
+        """Possibly issue a commit.
+
+        When no Transaction is present, this is called after statement
+        execution to provide "autocommit" behavior.  Dialects may
+        inspect the statement to determine if a commit is actually
+        required.
+        """
+
+        # TODO: have the dialect determine if autocommit can be set on
+        # the connection directly without this extra step
         if not self.in_transaction() and context.should_autocommit():
             self._commit_impl()
 
     def _autorollback(self):
         if not self.in_transaction():
             self._rollback_impl()
-    
+
     def close(self):
+        """Close this Connection."""
+
         try:
             c = self.__connection
         except AttributeError:
@@ -690,12 +782,16 @@ class Connection(Connectable):
         del self.__connection
 
     def scalar(self, object, *multiparams, **params):
+        """Executes and returns the first column of the first row."""
+
         return self.execute(object, *multiparams, **params).scalar()
 
     def statement_compiler(self, statement, parameters, **kwargs):
         return self.dialect.statement_compiler(self.dialect, statement, parameters, bind=self, **kwargs)
 
     def execute(self, object, *multiparams, **params):
+        """Executes and returns a ResultProxy."""
+
         for c in type(object).__mro__:
             if c in Connection.executors:
                 return Connection.executors[c](self, object, multiparams, params)
@@ -722,7 +818,7 @@ class Connection(Connectable):
 
     def _execute_function(self, func, multiparams, params):
         return self._execute_clauseelement(func.select(), multiparams, params)
-        
+
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
         executemany = multiparams is not None and len(multiparams) > 0
         if executemany:
@@ -738,15 +834,15 @@ class Connection(Connectable):
 
         params = self.__distill_params(multiparams, params)
         context = self.__create_execution_context(compiled=compiled, parameters=params)
-        
+
         context.pre_execution()
         self.__execute_raw(context)
         context.post_execution()
         return context.result()
-            
+
     def __create_execution_context(self, **kwargs):
         return self.__engine.dialect.create_execution_context(connection=self, **kwargs)
-        
+
     def __execute_raw(self, context):
         if logging.is_info_enabled(self.__engine.logger):
             self.__engine.logger.info(context.statement)
@@ -756,7 +852,7 @@ class Connection(Connectable):
         else:
             self.__execute(context)
         self._autocommit(context)
-        
+
     def __execute(self, context):
         if context.parameters is None:
             if context.dialect.positional:
@@ -834,10 +930,11 @@ class Transaction(object):
 
     def close(self):
         """close this transaction.
-        
-        If this transaction is the base transaction in a begin/commit nesting, 
-        the transaction will rollback().  Otherwise, the method returns.
-        
+
+        If this transaction is the base transaction in a begin/commit
+        nesting, the transaction will rollback().  Otherwise, the
+        method returns.
+
         This is used to cancel a Transaction without affecting the scope of
         an enclosign transaction.
         """
@@ -845,13 +942,13 @@ class Transaction(object):
             return
         if self._parent is self:
             self.rollback()
-        
+
     def rollback(self):
         if not self._parent._is_active:
             return
         self._is_active = False
         self._do_rollback()
-    
+
     def _do_rollback(self):
         self._parent.rollback()
 
@@ -860,7 +957,7 @@ class Transaction(object):
             raise exceptions.InvalidRequestError("This transaction is inactive")
         self._is_active = False
         self._do_commit()
-    
+
     def _do_commit(self):
         pass
 
@@ -1084,7 +1181,7 @@ class Engine(Connectable):
         return self.run_callable(lambda c: self.dialect.has_table(c, table_name, schema=schema))
 
     def raw_connection(self):
-        """Return a DBAPI connection."""
+        """Return a DB-API connection."""
 
         return self.pool.connect()
 
@@ -1094,7 +1191,7 @@ class Engine(Connectable):
         self.logger.info(msg)
 
 class ResultProxy(object):
-    """Wraps a DBAPI cursor object to provide easier access to row columns.
+    """Wraps a DB-API cursor object to provide easier access to row columns.
 
     Individual columns may be accessed by their integer position,
     case-insensitive column name, or by ``schema.Column``
@@ -1119,7 +1216,7 @@ class ResultProxy(object):
         def process(value):
             raise exceptions.InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % colname)
         return process
-            
+
     def __init__(self, context):
         """ResultProxy objects are constructed via the execute() method on SQLEngine."""
         self.context = context
@@ -1134,9 +1231,9 @@ class ResultProxy(object):
         else:
             self._rowcount = context.get_rowcount()
             self.close()
-            
+
     connection = property(lambda self:self.context.root_connection)
-    
+
     def _get_rowcount(self):
         if self._rowcount is not None:
             return self._rowcount
@@ -1145,7 +1242,7 @@ class ResultProxy(object):
     rowcount = property(_get_rowcount)
     lastrowid = property(lambda s:s.cursor.lastrowid)
     out_parameters = property(lambda s:s.context.out_parameters)
-    
+
     def _init_metadata(self):
         if hasattr(self, '_ResultProxy__props'):
             return
@@ -1201,13 +1298,13 @@ class ResultProxy(object):
 
             return rec
         return util.PopulateDict(lookup_key)
-        
+
     def close(self):
-        """Close this ResultProxy, and the underlying DBAPI cursor corresponding to the execution.
+        """Close this ResultProxy, and the underlying DB-API cursor corresponding to the execution.
 
         If this ResultProxy was generated from an implicit execution,
         the underlying Connection will also be closed (returns the
-        underlying DBAPI connection to the connection pool.)
+        underlying DB-API connection to the connection pool.)
 
         This method is also called automatically when all result rows
         are exhausted.
@@ -1217,9 +1314,9 @@ class ResultProxy(object):
             self.cursor.close()
             if self.connection.should_close_with_result:
                 self.connection.close()
-    
+
     keys = property(lambda s:s.__keys)
-    
+
     def _has_key(self, row, key):
         try:
             self._key_cache[key]
@@ -1267,7 +1364,6 @@ class ResultProxy(object):
 
         return self.context.lastrow_has_defaults()
 
-        
     def supports_sane_rowcount(self):
         """Return ``supports_sane_rowcount()`` from the underlying ExecutionContext.
 
@@ -1282,7 +1378,7 @@ class ResultProxy(object):
             return rec[1](row[rec[2]])
         else:
             return row[rec[2]]
-    
+
     def _fetchone_impl(self):
         return self.cursor.fetchone()
     def _fetchmany_impl(self, size=None):
@@ -1292,16 +1388,16 @@ class ResultProxy(object):
 
     def _row_processor(self):
         return RowProxy
-        
+
     def fetchall(self):
-        """Fetch all rows, just like DBAPI ``cursor.fetchall()``."""
+        """Fetch all rows, just like DB-API ``cursor.fetchall()``."""
 
         l = [self._process_row(self, row) for row in self._fetchall_impl()]
         self.close()
         return l
 
     def fetchmany(self, size=None):
-        """Fetch many rows, just like DBAPI ``cursor.fetchmany(size=cursor.arraysize)``."""
+        """Fetch many rows, just like DB-API ``cursor.fetchmany(size=cursor.arraysize)``."""
 
         l = [self._process_row(self, row) for row in self._fetchmany_impl(size)]
         if len(l) == 0:
@@ -1309,7 +1405,7 @@ class ResultProxy(object):
         return l
 
     def fetchone(self):
-        """Fetch one row, just like DBAPI ``cursor.fetchone()``."""
+        """Fetch one row, just like DB-API ``cursor.fetchone()``."""
         row = self._fetchone_impl()
         if row is not None:
             return self._process_row(self, row)
@@ -1329,20 +1425,23 @@ class ResultProxy(object):
             self.close()
 
 class BufferedRowResultProxy(ResultProxy):
-    """``ResultProxy`` that buffers the contents of a selection of rows before 
-    ``fetchone()`` is called.  This is to allow the results of 
-    ``cursor.description`` to be available immediately, when interfacing
-    with a DBAPI that requires rows to be consumed before this information is
-    available (currently psycopg2, when used with server-side cursors).
-    
-    The pre-fetching behavior fetches only one row initially, and then grows
-    its buffer size by a fixed amount with each successive need for additional 
-    rows up to a size of 100.
+    """A ResultProxy with row buffering behavior.
+
+    ``ResultProxy`` that buffers the contents of a selection of rows
+    before ``fetchone()`` is called.  This is to allow the results of
+    ``cursor.description`` to be available immediately, when
+    interfacing with a DB-API that requires rows to be consumed before
+    this information is available (currently psycopg2, when used with
+    server-side cursors).
+
+    The pre-fetching behavior fetches only one row initially, and then
+    grows its buffer size by a fixed amount with each successive need
+    for additional rows up to a size of 100.
     """
     def _init_metadata(self):
         self.__buffer_rows()
         super(BufferedRowResultProxy, self)._init_metadata()
-    
+
     # this is a "growth chart" for the buffering of rows.
     # each successive __buffer_rows call will use the next
     # value in the list for the buffer size until the max
@@ -1354,13 +1453,13 @@ class BufferedRowResultProxy(ResultProxy):
         20 : 50,
         50 : 100
     }
-    
+
     def __buffer_rows(self):
         size = getattr(self, '_bufsize', 1)
         self.__rowbuffer = self.cursor.fetchmany(size)
         #self.context.engine.logger.debug("Buffered %d rows" % size)
         self._bufsize = self.size_growth.get(size, size)
-    
+
     def _fetchone_impl(self):
         if self.closed:
             return None
@@ -1378,19 +1477,22 @@ class BufferedRowResultProxy(ResultProxy):
                 break
             result.append(row)
         return result
-        
+
     def _fetchall_impl(self):
         return self.__rowbuffer + list(self.cursor.fetchall())
 
 class BufferedColumnResultProxy(ResultProxy):
-    """``ResultProxy`` that loads all columns into memory each time fetchone() is
-    called.  If fetchmany() or fetchall() are called, the full grid of results
-    is fetched.  This is to operate with databases where result rows contain "live"
-    results that fall out of scope unless explicitly fetched.  Currently this includes
-    just cx_Oracle LOB objects, but this behavior is known to exist in other DBAPIs as 
-    well (Pygresql, currently unsupported).
+    """A ResultProxy with column buffering behavior.
 
+    ``ResultProxy`` that loads all columns into memory each time
+    fetchone() is called.  If fetchmany() or fetchall() are called,
+    the full grid of results is fetched.  This is to operate with
+    databases where result rows contain "live" results that fall out
+    of scope unless explicitly fetched.  Currently this includes just
+    cx_Oracle LOB objects, but this behavior is known to exist in
+    other DB-APIs as well (Pygresql, currently unsupported).
     """
+
     def _get_col(self, row, key):
         rec = self._key_cache[key]
         return row[rec[2]]
@@ -1443,7 +1545,7 @@ class RowProxy(object):
 
     def __contains__(self, key):
         return self.__parent._has_key(self.__row, key)
-        
+
     def __iter__(self):
         for i in range(0, len(self.__row)):
             yield self.__parent._get_col(self.__row, i)
@@ -1531,7 +1633,7 @@ class DefaultRunner(schema.SchemaVisitor):
         self.context = context
         self.connection = self.context._connection._branch()
     dialect = property(lambda self:self.context.dialect)
-    
+
     def get_column_default(self, column):
         if column.default is not None:
             return self.traverse_single(column.default)

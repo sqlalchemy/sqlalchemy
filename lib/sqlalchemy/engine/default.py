@@ -4,16 +4,19 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Provide default implementations of per-dialect sqlalchemy.engine classes"""
+"""Default implementations of per-dialect sqlalchemy.engine classes."""
+
 
 from sqlalchemy import schema, exceptions, util
 import re, random
 from sqlalchemy.engine import base
 from sqlalchemy.sql import compiler, expression
 
+
 AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
                                re.I | re.UNICODE)
 SELECT_REGEXP = re.compile(r'\s*SELECT', re.I | re.UNICODE)
+
 
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
@@ -34,7 +37,7 @@ class DefaultDialect(base.Dialect):
         self.identifier_preparer = self.preparer(self)
     
     def dbapi_type_map(self):
-        # most DBAPIs have problems with this (such as, psycocpg2 types 
+        # most DB-APIs have problems with this (such as, psycocpg2 types 
         # are unhashable).  So far Oracle can return it.
         
         return {}
@@ -53,14 +56,12 @@ class DefaultDialect(base.Dialect):
             typeobj = typeobj()
         return typeobj
 
-
     def supports_unicode_statements(self):
-        """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
+        """True if DB-API can receive SQL statements as Python Unicode."""
         return False
 
     def max_identifier_length(self):
-        # TODO: probably raise this and fill out
-        # db modules better
+        # TODO: probably raise this and fill out db modules better
         return 9999
 
     def supports_alter(self):
@@ -84,7 +85,6 @@ class DefaultDialect(base.Dialect):
         autocommit on/off, etc.
         """
 
-        #print "ENGINE ROLLBACK ON ", connection.connection
         connection.rollback()
 
     def do_commit(self, connection):
@@ -92,14 +92,13 @@ class DefaultDialect(base.Dialect):
         autocommit on/off, etc.
         """
 
-        #print "ENGINE COMMIT ON ", connection.connection
         connection.commit()
     
     def create_xid(self):
-        """create a two-phase transaction ID.
+        """Create a random two-phase transaction ID.
         
-        this id will be passed to do_begin_twophase(), do_rollback_twophase(),
-        do_commit_twophase().  its format is unspecified."""
+        This id will be passed to do_begin_twophase(), do_rollback_twophase(),
+        do_commit_twophase().  Its format is unspecified."""
         
         return "_sa_%032x" % random.randint(0,2**128)
         
@@ -118,7 +117,6 @@ class DefaultDialect(base.Dialect):
     def do_execute(self, cursor, statement, parameters, **kwargs):
         cursor.execute(statement, parameters)
 
-
     def is_disconnect(self, e):
         return False
         
@@ -127,7 +125,6 @@ class DefaultDialect(base.Dialect):
         self._figure_paramstyle(style)
 
     paramstyle = property(lambda s:s._paramstyle, _set_paramstyle)
-
 
     def _figure_paramstyle(self, paramstyle=None, default='named'):
         if paramstyle is not None:
@@ -155,6 +152,7 @@ class DefaultDialect(base.Dialect):
             self._ischema = ischema.ISchema(self)
         return self._ischema
     ischema = property(_get_ischema, doc="""returns an ISchema object for this engine, which allows access to information_schema tables (if supported)""")
+
 
 class DefaultExecutionContext(base.ExecutionContext):
     def __init__(self, dialect, connection, compiled=None, statement=None, parameters=None):
@@ -218,9 +216,9 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def __convert_compiled_params(self, parameters):
         encode = not self.dialect.supports_unicode_statements()
-        # the bind params are a CompiledParams object.  but all the DBAPI's hate
-        # that object (or similar).  so convert it to a clean
-        # dictionary/list/tuple of dictionary/tuple of list
+        # the bind params are a CompiledParams object.  but all the
+        # DB-API's hate that object (or similar).  so convert it to a
+        # clean dictionary/list/tuple of dictionary/tuple of list
         if parameters is not None:
             if self.executemany:
                 processors = parameters[0].get_processors()
@@ -295,7 +293,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         
     def set_input_sizes(self):
         """Given a cursor and ClauseParameters, call the appropriate
-        style of ``setinputsizes()`` on the cursor, using DBAPI types
+        style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
         """
 

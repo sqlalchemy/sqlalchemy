@@ -1,4 +1,4 @@
-"""Define different strategies for creating new instances of sql.Engine.
+"""Strategies for creating new instances of Engine types.
 
 By default there are two, one which is the "thread-local" strategy,
 one which is the "plain" strategy.
@@ -15,9 +15,10 @@ from sqlalchemy import pool as poollib
 strategies = {}
 
 class EngineStrategy(object):
-    """Define a function that receives input arguments and produces an
-    instance of sql.Engine, typically an instance
-    sqlalchemy.engine.base.Engine or a subclass.
+    """An adaptor that processes input arguements and produces an Engine.
+
+    Provides a ``create`` method that receives input arguments and
+    produces an instance of base.Engine or a subclass.
     """
 
     def __init__(self, name):
@@ -30,11 +31,13 @@ class EngineStrategy(object):
         strategies[self.name] = self
 
     def create(self, *args, **kwargs):
-        """Given arguments, returns a new sql.Engine instance."""
+        """Given arguments, returns a new Engine instance."""
 
         raise NotImplementedError()
 
 class DefaultEngineStrategy(EngineStrategy):
+    """Base class for built-in stratgies."""
+
     def create(self, name_or_url, **kwargs):
         # create url.URL object
         u = url.make_url(name_or_url)
@@ -54,9 +57,9 @@ class DefaultEngineStrategy(EngineStrategy):
                 if k in kwargs:
                     dbapi_args[k] = kwargs.pop(k)
             dbapi = dialect_cls.dbapi(**dbapi_args)
-        
+
         dialect_args['dbapi'] = dbapi
-        
+
         # create dialect
         dialect = dialect_cls(**dialect_args)
 
@@ -78,9 +81,13 @@ class DefaultEngineStrategy(EngineStrategy):
                          getattr(dialect_cls, 'poolclass', poollib.QueuePool))
             pool_args = {}
 
-            # consume pool arguments from kwargs, translating a few of the arguments
+            # consume pool arguments from kwargs, translating a few of
+            # the arguments
+            translate = {'echo': 'echo_pool',
+                         'timeout': 'pool_timeout',
+                         'recycle': 'pool_recycle'}
             for k in util.get_cls_kwargs(poolclass):
-                tk = {'echo':'echo_pool', 'timeout':'pool_timeout', 'recycle':'pool_recycle'}.get(k, k)
+                tk = translate.get(k, k)
                 if tk in kwargs:
                     pool_args[k] = kwargs.pop(tk)
             pool_args['use_threadlocal'] = self.pool_threadlocal()
@@ -100,8 +107,14 @@ class DefaultEngineStrategy(EngineStrategy):
 
         # all kwargs should be consumed
         if kwargs:
-            raise TypeError("Invalid argument(s) %s sent to create_engine(), using configuration %s/%s/%s.  Please check that the keyword arguments are appropriate for this combination of components." % (','.join(["'%s'" % k for k in kwargs]), dialect.__class__.__name__, pool.__class__.__name__, engineclass.__name__))
-
+            raise TypeError(
+                "Invalid argument(s) %s sent to create_engine(), "
+                "using configuration %s/%s/%s.  Please check that the "
+                "keyword arguments are appropriate for this combination "
+                "of components." % (','.join(["'%s'" % k for k in kwargs]),
+                                    dialect.__class__.__name__,
+                                    pool.__class__.__name__,
+                                    engineclass.__name__))
         return engineclass(pool, dialect, u, **engine_args)
 
     def pool_threadlocal(self):
@@ -111,6 +124,8 @@ class DefaultEngineStrategy(EngineStrategy):
         raise NotImplementedError()
 
 class PlainEngineStrategy(DefaultEngineStrategy):
+    """Strategy for configuring a regular Engine."""
+
     def __init__(self):
         DefaultEngineStrategy.__init__(self, 'plain')
 
@@ -123,6 +138,8 @@ class PlainEngineStrategy(DefaultEngineStrategy):
 PlainEngineStrategy()
 
 class ThreadLocalEngineStrategy(DefaultEngineStrategy):
+    """Strategy for configuring an Engine with thredlocal behavior."""
+
     def __init__(self):
         DefaultEngineStrategy.__init__(self, 'threadlocal')
 
@@ -136,11 +153,15 @@ ThreadLocalEngineStrategy()
 
 
 class MockEngineStrategy(EngineStrategy):
-    """Produces a single Connection object which dispatches statement executions
-    to a passed-in function"""
+    """Strategy for configuring an Engine-like object with mocked execution.
+
+    Produces a single mock Connectable object which dispatches
+    statement execution to a passed-in function.
+    """
+
     def __init__(self):
         EngineStrategy.__init__(self, 'mock')
-        
+
     def create(self, name_or_url, executor, **kwargs):
         # create url.URL object
         u = url.make_url(name_or_url)
@@ -165,12 +186,13 @@ class MockEngineStrategy(EngineStrategy):
 
         engine = property(lambda s: s)
         dialect = property(lambda s:s._dialect)
-        
+
         def contextual_connect(self, **kwargs):
             return self
 
         def compiler(self, statement, parameters, **kwargs):
-            return self._dialect.compiler(statement, parameters, engine=self, **kwargs)
+            return self._dialect.compiler(
+                statement, parameters, engine=self, **kwargs)
 
         def create(self, entity, **kwargs):
             kwargs['checkfirst'] = False

@@ -1,11 +1,10 @@
 from sqlalchemy import util
 from sqlalchemy.engine import base
 
-"""Provide a thread-local transactional wrapper around the root Engine class.
+"""Provides a thread-local transactional wrapper around the root Engine class.
 
-Multiple calls to engine.connect() will return the same connection for
-the same thread. also provides begin/commit methods on the engine
-itself which correspond to a thread-local transaction.
+Provides begin/commit methods on the engine itself which correspond to
+a thread-local transaction.
 """
 
 class TLSession(object):
@@ -32,10 +31,10 @@ class TLSession(object):
         if self.__tcount == 1:
             self.__trans._trans.rollback()
             self.reset()
-            
+
     def in_transaction(self):
         return self.__tcount > 0
-    
+
     def prepare(self):
         if self.__tcount == 1:
             try:
@@ -44,9 +43,11 @@ class TLSession(object):
                 self.reset()
 
     def begin_twophase(self, xid=None):
-        raise NotImplementedError("Two phase transactions not yet implemented for 'threadlocal' strategy")
-    
-    def _dont_begin_twophase(self, xid=None):    
+        raise NotImplementedError(
+            "Two phase transactions not yet implemented for 'threadlocal' "
+            "strategy")
+
+    def _dont_begin_twophase(self, xid=None):
         if self.__tcount == 0:
             self.__transaction = self.get_connection()
             self.__trans = self.__transaction._begin_twophase(xid=xid)
@@ -79,9 +80,11 @@ class TLSession(object):
     def is_begun(self):
         return self.__tcount > 0
 
+
 class TLConnection(base.Connection):
     def __init__(self, session, close_with_result):
-        base.Connection.__init__(self, session.engine, close_with_result=close_with_result)
+        base.Connection.__init__(self, session.engine,
+                                 close_with_result=close_with_result)
         self.__session = session
         self.__opencount = 1
 
@@ -92,11 +95,13 @@ class TLConnection(base.Connection):
         return self
 
     def _begin(self, **kwargs):
-        return TLTransaction(super(TLConnection, self).begin(**kwargs), self.__session)
-    
+        return TLTransaction(
+            super(TLConnection, self).begin(**kwargs), self.__session)
+
     def _begin_twophase(self, xid=None):
-        return TLTransaction(super(TLConnection, self).begin_twophase(xid=xid), self.__session)
-        
+        return TLTransaction(
+            super(TLConnection, self).begin_twophase(xid=xid), self.__session)
+
     def in_transaction(self):
         return self.session.in_transaction()
 
@@ -116,6 +121,7 @@ class TLConnection(base.Connection):
         self.__opencount = 0
         base.Connection.close(self)
 
+
 class TLTransaction(base.Transaction):
     def __init__(self, trans, session):
         self._trans = trans
@@ -129,7 +135,7 @@ class TLTransaction(base.Transaction):
 
     def prepare(self):
         self._session.prepare()
-        
+
     def commit(self):
         self._session.commit()
 
@@ -143,22 +149,19 @@ class TLTransaction(base.Transaction):
 class TLEngine(base.Engine):
     """An Engine that includes support for thread-local managed transactions.
 
-    This engine is better suited to be used with threadlocal Pool
-    object.
+    The TLEngine relies upon its Pool having "threadlocal" behavior,
+    so that once a connection is checked out for the current thread,
+    you get that same connection repeatedly.
     """
 
     def __init__(self, *args, **kwargs):
-        """The TLEngine relies upon the Pool having
-        "threadlocal" behavior, so that once a connection is checked out
-        for the current thread, you get that same connection
-        repeatedly.
-        """
+        """Construct a new TLEngine."""
 
         super(TLEngine, self).__init__(*args, **kwargs)
         self.context = util.ThreadLocal()
 
     def raw_connection(self):
-        """Return a DBAPI connection."""
+        """Return a DB-API connection."""
 
         return self.pool.connect()
 
@@ -166,7 +169,7 @@ class TLEngine(base.Engine):
         """Return a Connection that is not thread-locally scoped.
 
         This is the equivalent to calling ``connect()`` on a
-        ComposedSQLEngine.
+        base.Engine.
         """
 
         return base.Connection(self, self.pool.unique_connection())
@@ -176,7 +179,7 @@ class TLEngine(base.Engine):
             self.context.session = TLSession(self)
         return self.context.session
 
-    session = property(_session, doc="returns the current thread's TLSession")
+    session = property(_session, doc="Returns the current thread's TLSession")
 
     def contextual_connect(self, **kwargs):
         """Return a TLConnection which is thread-locally scoped."""
@@ -192,3 +195,5 @@ class TLEngine(base.Engine):
     def rollback(self):
         self.session.rollback()
 
+    def __repr__(self):
+        return 'TLEngine(%s)' % str(self.url)

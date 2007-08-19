@@ -1,4 +1,4 @@
-"""Provide the URL object as well as the make_url parsing function."""
+"""Provides URL facilities for specifying database connections."""
 
 import re, cgi, sys, urllib
 from sqlalchemy import exceptions
@@ -7,15 +7,16 @@ from sqlalchemy import exceptions
 class URL(object):
     """Represent the components of a URL used to connect to a database.
 
-    This object is suitable to be passed directly to a ``create_engine()``
-    call.  The fields of the URL are parsed from a string by the
-    ``module-level make_url()`` function.  the string format of the URL is
-    an RFC-1738-style string.
+    This object is suitable to be passed directly to a
+    ``create_engine()`` call.  The fields of the URL are parsed from a
+    string by the ``module-level make_url()`` function.  the string
+    format of the URL is an RFC-1738-style string.
 
     Attributes on URL include:
 
     drivername
-      The name of the database backend.  this name will correspond to a module in sqlalchemy/databases
+      the name of the database backend.  This name will correspond to
+      a module in sqlalchemy/databases or a third party plug-in.
 
     username
       The user name for the connection.
@@ -33,7 +34,8 @@ class URL(object):
       The database.
 
     query
-      A dictionary containing key/value pairs representing the URL's query string.
+      A dictionary containing key/value pairs representing the URL's
+      query string.
     """
 
     def __init__(self, drivername, username=None, password=None, host=None, port=None, database=None, query=None):
@@ -100,7 +102,7 @@ class URL(object):
         raise ImportError('unknown database %r' % self.drivername) 
   
     def translate_connect_args(self, names):
-        """Translate this URL's attributes into a dictionary of connection arguments.
+        """Translate attributes into a dictionary of connection arguments.
 
         Given a list of argument names corresponding to the URL
         attributes (`host`, `database`, `username`, `password`,
@@ -121,7 +123,7 @@ class URL(object):
 def make_url(name_or_url):
     """Given a string or unicode instance, produce a new URL instance.
 
-    The given string is parsed according to the rfc1738 spec.  If an
+    The given string is parsed according to the RFC 1738 spec.  If an
     existing URL object is passed, just returns the object.
     """
 
