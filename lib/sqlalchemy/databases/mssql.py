@@ -310,7 +310,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                 self.IINSERT = False
 
             if self.IINSERT:
-                self.cursor.execute("SET IDENTITY_INSERT %s ON" % self.dialect.preparer().format_table(self.compiled.statement.table))
+                self.cursor.execute("SET IDENTITY_INSERT %s ON" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
 
         super(MSSQLExecutionContext, self).pre_exec()
 
@@ -322,7 +322,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
         
         if self.compiled.isinsert:
             if self.IINSERT:
-                self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.preparer().format_table(self.compiled.statement.table))
+                self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
                 self.IINSERT = False
             elif self.HASIDENT:
                 if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
