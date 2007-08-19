@@ -128,6 +128,8 @@ class ExecutionContextWrapper(object):
         ctx = self.ctx
         statement = unicode(ctx.compiled)
         statement = re.sub(r'\n', '', ctx.statement)
+        if config.db.name == 'mssql' and statement.endswith('; select scope_identity()'):
+            statement = statement[:-25]
         if testdata.buffer is not None:
             testdata.buffer.write(statement + "\n")
 
@@ -168,8 +170,6 @@ class ExecutionContextWrapper(object):
                 parameters = [p.get_original_dict() for p in ctx.compiled_parameters]
                     
             query = self.convert_statement(query)
-            if config.db.name == 'mssql' and statement.endswith('; select scope_identity()'):
-                statement = statement[:-25]
             testdata.unittest.assert_(statement == query and (params is None or params == parameters), "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         testdata.sql_count += 1
         self.ctx.post_execution()
