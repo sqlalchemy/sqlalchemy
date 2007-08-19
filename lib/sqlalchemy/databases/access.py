@@ -7,6 +7,7 @@
 
 import random
 from sqlalchemy import sql, schema, ansisql, types, exceptions, pool
+from sqlalchemy.sql import compiler
 import sqlalchemy.engine.default as default
 
 

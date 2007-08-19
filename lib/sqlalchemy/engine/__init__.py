@@ -164,7 +164,7 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     string values.  in a future release, this functionality will be expanded to include 
     dialect-specific arguments.
     """
-    
+
     opts = dict([(key[len(prefix):], configuration[key]) for key in configuration if key.startswith(prefix)])
     for opt, type_ in (
         ('convert_unicode', bool),
@@ -177,5 +177,3 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     opts.update(kwargs)
     url = opts.pop('url')
     return create_engine(url, **opts)
-
-    

@@ -9,7 +9,7 @@ attributes between two objects in a manner corresponding to a SQL
 clause that compares column values.
 """
 
-from sqlalchemy import sql, schema, exceptions
+from sqlalchemy import schema, exceptions
 from sqlalchemy.sql import visitors, operators
 from sqlalchemy import logging
 from sqlalchemy.orm import util as mapperutil

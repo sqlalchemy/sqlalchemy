@@ -11,7 +11,7 @@ from sqlalchemy.sql import util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier
 from sqlalchemy.orm import sync
-from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, MapperExtension, SynonymProperty
+from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, SynonymProperty
 deferred_load = None
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
@@ -280,7 +280,7 @@ class Mapper(object):
                 extlist.add(ext_obj)
 
         for ext in global_extensions:
-            if isinstance(ext_class, type):
+            if isinstance(ext, type):
                 ext = ext()
             extlist.add(ext)
             ext.instrument_class(self, self.class_)

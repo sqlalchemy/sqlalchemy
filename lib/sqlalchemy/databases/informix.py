@@ -506,10 +506,10 @@ class InfoIdentifierPreparer(compiler.IdentifierPreparer):
     def _requires_quotes(self, value):
         return False
 
-class InfoSchemaDroper(compiler.SchemaDropper):
+class InfoSchemaDropper(compiler.SchemaDropper):
     def drop_foreignkey(self, constraint):
         if constraint.name is not None:
-            super( InfoSchemaDroper , self ).drop_foreignkey( constraint )
+            super( InfoSchemaDropper , self ).drop_foreignkey( constraint )
 
 dialect = InfoDialect
 poolclass = pool.SingletonThreadPool
