@@ -78,7 +78,7 @@ This is also equivalent to
 
 filter_by is like filter, but takes kwargs instead of full clause expressions.
 This makes it more concise for simple queries like this, but you can't do
-complex queries like the or_ above or non-equality based comparisons this way.
+complex queries like the or\_ above or non-equality based comparisons this way.
 
 Full query documentation
 ------------------------
