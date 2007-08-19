@@ -145,6 +145,12 @@ class QueryTest(PersistTest):
         s = select([users], users.c.user_id==bindparam('id')).compile()
         c = testbase.db.connect()
         assert c.execute(s, id=7).fetchall()[0]['user_id'] == 7
+    
+    def test_compiled_insert_execute(self):
+        users.insert().compile().execute(user_id = 7, user_name = 'jack') 
+        s = select([users], users.c.user_id==bindparam('id')).compile()
+        c = testbase.db.connect()
+        assert c.execute(s, id=7).fetchall()[0]['user_id'] == 7
 
     def test_repeated_bindparams(self):
         """test that a BindParam can be used more than once.  

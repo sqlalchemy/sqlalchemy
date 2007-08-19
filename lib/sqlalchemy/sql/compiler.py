@@ -681,11 +681,6 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
             self.binds[col.key] = bindparam
             return self.bindparam_string(self._truncate_bindparam(bindparam))
 
-        # no parameters in the statement, no parameters in the
-        # compiled params - return binds for all columns
-        if self.parameters is None and stmt.parameters is None:
-            return [(c, create_bind_param(c, None)) for c in stmt.table.columns]
-
         def create_clause_param(col, value):
             self.traverse(value)
             self.inline_params.add(col)
@@ -698,6 +693,11 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
                 return stmt.table.columns.get(unicode(key), key)
             else:
                 return key
+
+        # no parameters in the statement, no parameters in the
+        # compiled params - return binds for all columns
+        if self.parameters is None and stmt.parameters is None:
+            return [(c, create_bind_param(c, None)) for c in stmt.table.columns]
 
         # if we have statement parameters - set defaults in the
         # compiled params
