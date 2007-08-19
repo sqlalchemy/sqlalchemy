@@ -5,12 +5,15 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-"""Provide a connection pool implementation, which optionally manages
-connections on a thread local basis.
+"""Connection pooling for DB-API connections.
 
-Also provides a DBAPI2 transparency layer so that pools can be managed
-automatically, based on module type and connect arguments, simply by
-calling regular DBAPI connect() methods.
+Provides a number of connection pool implementations for a variety of
+usage scenarios and thread behavior requirements imposed by the
+application, DB-API or database itself.
+
+Also provides a DB-API 2.0 connection proxying mechanism allowing
+regular DB-API connect() methods to be transparently managed by a
+SQLAlchemy connection pool.
 """
 
 import weakref, time
@@ -23,21 +26,21 @@ from sqlalchemy.util import thread, threading, pickle
 proxies = {}
 
 def manage(module, **params):
-    """Return a proxy for module that automatically pools connections.
+    """Returns a proxy for module that automatically pools connections.
 
-    Given a DBAPI2 module and pool management parameters, returns a
-    proxy for the module that will automatically pool connections,
+    Given a DB-API 2.0 module and pool management parameters, returns
+    a proxy for the module that will automatically pool connections,
     creating new connection pools for each distinct set of connection
     arguments sent to the decorated module's connect() function.
 
     Arguments:
 
     module
-      A DBAPI2 database module.
+      A DB-API 2.0 database module.
 
     poolclass
-      The class used by the pool module to provide pooling.
-      Defaults to ``QueuePool``.
+      The class used by the pool module to provide pooling.  Defaults
+      to ``QueuePool``.
 
     See the ``Pool`` class for options.
     """
@@ -47,7 +50,7 @@ def manage(module, **params):
         return proxies.setdefault(module, _DBProxy(module, **params))
 
 def clear_managers():
-    """Remove all current DBAPI2 managers.
+    """Remove all current DB-API 2.0 managers.
 
     All pools and connections are disposed.
     """
@@ -57,10 +60,10 @@ def clear_managers():
     proxies.clear()
 
 class Pool(object):
-    """Base Pool class.
+    """Base class for connection pools.
 
-    This is an abstract class, which is implemented by various
-    subclasses including:
+    This is an abstract class, implemented by various subclasses
+    including:
 
     QueuePool
       Pools multiple connections using ``Queue.Queue``.
@@ -76,7 +79,7 @@ class Pool(object):
       is checked out at a time.
 
     The main argument, `creator`, is a callable function that returns
-    a newly connected DBAPI connection object.
+    a newly connected DB-API connection object.
 
     Options that are understood by Pool are:
 
@@ -105,9 +108,8 @@ class Pool(object):
 
     listeners
       A list of ``PoolListener``-like objects that receive events when
-      DBAPI connections are created, checked out and checked in to the
-      pool.
-
+      DB-API connections are created, checked out and checked in to
+      the pool.
     """
 
     def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False,
@@ -247,7 +249,7 @@ class _ConnectionRecord(object):
             raise
 
 class _ConnectionFairy(object):
-    """Proxy a DBAPI connection object and provides return-on-dereference support."""
+    """Proxies a DB-API connection and provides return-on-dereference support."""
 
     def __init__(self, pool):
         self._pool = pool
@@ -267,7 +269,7 @@ class _ConnectionFairy(object):
     is_valid = property(lambda self:self.connection is not None)
 
     def _get_properties(self):
-        """A property collection unique to this DBAPI connection."""
+        """A property collection unique to this DB-API connection."""
         
         try:
             return self._connection_record.properties
@@ -284,8 +286,8 @@ class _ConnectionFairy(object):
     def invalidate(self, e=None):
         """Mark this connection as invalidated.
         
-        The connection will be immediately closed.  The 
-        containing ConnectionRecord will create a new connection when next used.
+        The connection will be immediately closed.  The containing
+        ConnectionRecord will create a new connection when next used.
         """
         if self.connection is None:
             raise exceptions.InvalidRequestError("This connection is closed")
@@ -332,12 +334,17 @@ class _ConnectionFairy(object):
         raise exceptions.InvalidRequestError("This connection is closed")
 
     def detach(self):
-        """Separate this Connection from its Pool.
+        """Separate this connection from its Pool.
         
-        This means that the connection will no longer be returned to the 
-        pool when closed, and will instead be literally closed.  The 
-        containing ConnectionRecord is separated from the DBAPI connection, and
-        will create a new connection when next used.
+        This means that the connection will no longer be returned to
+        the pool when closed, and will instead be literally closed.
+        The containing ConnectionRecord is separated from the DB-API
+        connection, and will create a new connection when next used.
+
+        Note that any overall connection limiting constraints imposed
+        by a Pool implementation may be violated after a detach, as
+        the detached connection is removed from the pool's knowledge
+        and control.
         """
         
         if self._connection_record is not None:
@@ -397,7 +404,9 @@ class _CursorFairy(object):
         return getattr(self.cursor, key)
 
 class SingletonThreadPool(Pool):
-    """Maintain one connection per each thread, never moving a
+    """Maintains a single connection per thread.
+
+    Maintains one connection per each thread, never moving a
     connection to a thread other than the one which it was created in.
 
     This is used for SQLite, which both does not handle multithreading
@@ -406,7 +415,7 @@ class SingletonThreadPool(Pool):
 
     Options are the same as those of Pool, as well as:
 
-    pool_size : 5
+    pool_size: 5
       The number of threads in which to maintain connections at once.
     """
 
@@ -421,12 +430,14 @@ class SingletonThreadPool(Pool):
         return SingletonThreadPool(self._creator, pool_size=self.size, recycle=self._recycle, echo=self.echo, use_threadlocal=self._use_threadlocal)
         
     def dispose(self):
-        """dispose of this pool.
+        """Dispose of this pool.
         
-        this method leaves the possibility of checked-out connections remaining opened,
-        so it is advised to not reuse the pool once dispose() is called, and to instead
-        use a new pool constructed by the recreate() method.
+        this method leaves the possibility of checked-out connections
+        remaining opened, so it is advised to not reuse the pool once
+        dispose() is called, and to instead use a new pool constructed
+        by the recreate() method.
         """
+
         for key, conn in self._conns.items():
             try:
                 conn.close()
@@ -582,7 +593,7 @@ class QueuePool(Pool):
 class NullPool(Pool):
     """A Pool implementation which does not pool connections.
 
-    Instead it literally opens and closes the underlying DBAPI
+    Instead it literally opens and closes the underlying DB-API
     connection per each connection open/close.
     """
 
@@ -659,7 +670,7 @@ class AssertionPool(Pool):
         return c
 
 class _DBProxy(object):
-    """Proxy a DBAPI2 connect() call to a pooled connection keyed to
+    """Proxy a DB-API 2.0 connect() call to a pooled connection keyed to
     the specific connect parameters. Other attributes are proxied
     through via __getattr__.
     """
@@ -668,7 +679,7 @@ class _DBProxy(object):
         """Initialize a new proxy.
 
         module
-          a DBAPI2 module.
+          a DB-API 2.0 module.
 
         poolclass
           a Pool class, defaulting to QueuePool.

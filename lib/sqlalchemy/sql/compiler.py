@@ -138,7 +138,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         # default formatting style for bind parameters
         self.bindtemplate = ":%s"
 
-        # paramstyle from the dialect (comes from DBAPI)
+        # paramstyle from the dialect (comes from DB-API)
         self.paramstyle = self.dialect.paramstyle
 
         # true if the paramstyle is positional

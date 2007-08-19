@@ -111,7 +111,7 @@ class AbstractType(object):
         return False
 
     def get_dbapi_type(self, dbapi):
-        """Return the corresponding type object from the underlying DBAPI, if any.
+        """Return the corresponding type object from the underlying DB-API, if any.
 
         This can be useful for calling ``setinputsizes()``, for example.
         """

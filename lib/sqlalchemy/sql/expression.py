@@ -578,7 +578,7 @@ def literal(value, type_=None):
 
     value
       the value to be bound.  Can be any Python object supported by
-      the underlying DBAPI, or is translatable via the given type
+      the underlying DB-API, or is translatable via the given type
       argument.
 
     type\_

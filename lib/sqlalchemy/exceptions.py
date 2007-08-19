@@ -59,7 +59,7 @@ class NoSuchColumnError(KeyError, SQLAlchemyError):
 
 
 class DisconnectionError(SQLAlchemyError):
-    """Raised within ``Pool`` when a disconnect is detected on a raw DBAPI connection."""
+    """Raised within ``Pool`` when a disconnect is detected on a raw DB-API connection."""
 
 
 class DBAPIError(SQLAlchemyError):

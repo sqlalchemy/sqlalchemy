@@ -292,7 +292,7 @@ class OracleDialect(default.DefaultDialect):
         return sqltypes.adapt_type(typeobj, colspecs)
 
     def supports_unicode_statements(self):
-        """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
+        """indicate whether the DB-API can receive SQL statements as Python unicode strings"""
         return False
 
     def max_identifier_length(self):
