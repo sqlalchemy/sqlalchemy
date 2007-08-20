@@ -549,7 +549,6 @@ class Connection(Connectable):
         This is used to execute "sub" statements within a single execution,
         usually an INSERT statement.
         """
-
         return Connection(self.__engine, self.__connection, _branch=True)
 
     engine = property(lambda s:s.__engine, doc="The Engine with which this Connection is associated.")
@@ -1616,8 +1615,8 @@ class DefaultRunner(schema.SchemaVisitor):
 
     def __init__(self, context):
         self.context = context
-        self.connection = self.context._connection._branch()
-    dialect = property(lambda self:self.context.dialect)
+        self.connection = context._connection._branch()
+        self.dialect = context.dialect
 
     def get_column_default(self, column):
         if column.default is not None:

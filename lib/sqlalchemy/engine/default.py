@@ -131,11 +131,14 @@ class DefaultExecutionContext(base.ExecutionContext):
         self._connection = connection
         self.compiled = compiled
         self._postfetch_cols = util.Set()
+        self.engine = connection.engine
         
         if compiled is not None:
             self.typemap = compiled.typemap
             self.column_labels = compiled.column_labels
             self.statement = unicode(compiled)
+            self.isinsert = compiled.isinsert
+            self.isupdate = compiled.isupdate
             if parameters is None:
                 self.compiled_parameters = compiled.construct_params({})
                 self.executemany = False
@@ -149,21 +152,20 @@ class DefaultExecutionContext(base.ExecutionContext):
                     self.executemany = False
                 else:
                     self.executemany = True
+
         elif statement is not None:
             self.typemap = self.column_labels = None
             self.parameters = self.__encode_param_keys(parameters)
             self.statement = statement
+            self.isinsert = self.isupdate = False
         else:
             self.statement = None
+            self.isinsert = self.isupdate = False
             
         if self.statement is not None and not dialect.supports_unicode_statements:
             self.statement = self.statement.encode(self.dialect.encoding)
             
         self.cursor = self.create_cursor()
-    
-    engine = property(lambda s:s.connection.engine)
-    isinsert = property(lambda s:s.compiled and s.compiled.isinsert)
-    isupdate = property(lambda s:s.compiled and s.compiled.isupdate)
     
     connection = property(lambda s:s._connection._branch())
     
