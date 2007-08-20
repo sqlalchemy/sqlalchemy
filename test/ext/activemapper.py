@@ -175,7 +175,7 @@ class testcase(PersistTest):
             objectstore.context.current = s1
             objectstore.flush()
             # Only dialects with a sane rowcount can detect the ConcurrentModificationError
-            if testbase.db.dialect.supports_sane_rowcount():
+            if testbase.db.dialect.supports_sane_rowcount:
                 assert False
         except exceptions.ConcurrentModificationError:
             pass

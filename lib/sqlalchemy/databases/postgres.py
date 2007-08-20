@@ -223,6 +223,11 @@ class PGExecutionContext(default.DefaultExecutionContext):
         super(PGExecutionContext, self).post_exec()
         
 class PGDialect(default.DefaultDialect):
+    supports_alter = True
+    supports_unicode_statements = False
+    max_identifier_length = 63
+    supports_sane_rowcount = True
+
     def __init__(self, use_oids=False, server_side_cursors=False, **kwargs):
         default.DefaultDialect.__init__(self, default_paramstyle='pyformat', **kwargs)
         self.use_oids = use_oids
@@ -241,13 +246,9 @@ class PGDialect(default.DefaultDialect):
         opts.update(url.query)
         return ([], opts)
 
-
     def create_execution_context(self, *args, **kwargs):
         return PGExecutionContext(self, *args, **kwargs)
 
-    def max_identifier_length(self):
-        return 63
-        
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 

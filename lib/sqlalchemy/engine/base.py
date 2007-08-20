@@ -62,6 +62,19 @@ class Dialect(object):
     preparer
       a [sqlalchemy.sql.compiler#IdentifierPreparer] class used to
       quote identifiers.
+
+    supports_alter
+      ``True`` if the database supports ``ALTER TABLE``.
+
+    max_identifier_length
+      The maximum length of identifier names.
+
+    supports_unicode_statements
+      Indicate whether the DB-API can receive SQL statements as Python unicode strings
+
+    supports_sane_rowcount
+      Indicate whether the dialect properly implements rowcount for ``UPDATE`` and ``DELETE`` statements.
+
     """
 
     def create_connect_args(self, url):
@@ -119,31 +132,6 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def supports_alter(self):
-        """Return ``True`` if the database supports ``ALTER TABLE``."""
-        raise NotImplementedError()
-
-    def max_identifier_length(self):
-        """Return the maximum length of identifier names.
-
-        Returns ``None`` if no limit.
-        """
-
-        return None
-
-    def supports_unicode_statements(self):
-        """Indicate whether the DB-API can receive SQL statements as Python unicode strings"""
-
-        raise NotImplementedError()
-
-    def supports_sane_rowcount(self):
-        """Indicate whether the dialect properly implements rowcount for ``UPDATE`` and ``DELETE`` statements.
-
-        This was needed for MySQL which had non-standard behavior of rowcount,
-        but this issue has since been resolved.
-        """
-
-        raise NotImplementedError()
 
 
     def server_version_info(self, connection):
@@ -520,9 +508,6 @@ class Connectable(object):
 
     def execute(self, object, *multiparams, **params):
         raise NotImplementedError()
-
-    engine = util.NotImplProperty("The Engine which this Connectable is associated with.")
-    dialect = util.NotImplProperty("Dialect which this Connectable is associated with.")
 
 class Connection(Connectable):
     """Provides high-level functionality for a wrapped DB-API connection.
@@ -1020,14 +1005,13 @@ class Engine(Connectable):
     def __init__(self, pool, dialect, url, echo=None):
         self.pool = pool
         self.url = url
-        self._dialect=dialect
+        self.dialect=dialect
         self.echo = echo
+        self.engine = self
         self.logger = logging.instance_logger(self)
         self._should_log = logging.is_info_enabled(self.logger)
 
     name = property(lambda s:sys.modules[s.dialect.__module__].descriptor()['name'], doc="String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``.")
-    engine = property(lambda s:s)
-    dialect = property(lambda s:s._dialect, doc="the [sqlalchemy.engine#Dialect] in use by this engine.")
     echo = logging.echo_property()
     
     def __repr__(self):

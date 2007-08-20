@@ -58,27 +58,21 @@ class SchemaItem(object):
     def __repr__(self):
         return "%s()" % self.__class__.__name__
 
-    def _derived_metadata(self):
-        """Return the the MetaData to which this item is bound."""
-
-        return None
-
     def _get_bind(self, raiseerr=False):
         """Return the engine or None if no engine."""
 
         if raiseerr:
-            m = self._derived_metadata()
+            m = self.metadata
             e = m and m.bind or None
             if e is None:
                 raise exceptions.InvalidRequestError("This SchemaItem is not connected to any Engine or Connection.")
             else:
                 return e
         else:
-            m = self._derived_metadata()
+            m = self.metadata
             return m and m.bind or None
 
 
-    metadata = property(lambda s:s._derived_metadata())
     bind = property(lambda s:s._get_bind())
     
 def _get_table_key(name, schema):
@@ -228,7 +222,7 @@ class Table(SchemaItem, expression.TableClause):
 
         """
         super(Table, self).__init__(name)
-        self._metadata = metadata
+        self.metadata = metadata
         self.schema = kwargs.pop('schema', None)
         self.indexes = util.Set()
         self.constraints = util.Set()
@@ -263,9 +257,6 @@ class Table(SchemaItem, expression.TableClause):
         self.constraints.add(pk)
     primary_key = property(lambda s:s._primary_key, _set_primary_key)
 
-    def _derived_metadata(self):
-        return self._metadata
-
     def __repr__(self):
         return "Table(%s)" % ', '.join(
             [repr(self.name)] + [repr(self.metadata)] +
@@ -286,11 +277,11 @@ class Table(SchemaItem, expression.TableClause):
         constraint._set_parent(self)
 
     def _get_parent(self):
-        return self._metadata
+        return self.metadata
 
     def _set_parent(self, metadata):
         metadata.tables[_get_table_key(self.name, self.schema)] = self
-        self._metadata = metadata
+        self.metadata = metadata
 
     def get_children(self, column_collections=True, schema_visitor=False, **kwargs):
         if not schema_visitor:
@@ -476,9 +467,6 @@ class Column(SchemaItem, expression._ColumnClause):
         else:
             return self.encodedname
 
-    def _derived_metadata(self):
-        return self.table.metadata
-
     def _get_bind(self):
         return self.table.bind
 
@@ -515,6 +503,7 @@ class Column(SchemaItem, expression._ColumnClause):
         return self.table
 
     def _set_parent(self, table):
+        self.metadata = table.metadata
         if getattr(self, 'table', None) is not None:
             raise exceptions.ArgumentError("this Column already has a table!")
         if not self._is_oid:
@@ -699,20 +688,14 @@ class DefaultGenerator(SchemaItem):
 
     def __init__(self, for_update=False, metadata=None):
         self.for_update = for_update
-        self._metadata = util.assert_arg_type(metadata, (MetaData, type(None)), 'metadata')
-
-    def _derived_metadata(self):
-        try:
-            return self.column.table.metadata
-        except AttributeError:
-            return self._metadata
+        self.metadata = util.assert_arg_type(metadata, (MetaData, type(None)), 'metadata')
 
     def _get_parent(self):
         return getattr(self, 'column', None)
 
     def _set_parent(self, column):
         self.column = column
-        self._metadata = self.column.table.metadata
+        self.metadata = self.column.table.metadata
         if self.for_update:
             self.column.onupdate = self
         else:
@@ -957,9 +940,6 @@ class Index(SchemaItem):
         self.unique = kwargs.pop('unique', False)
         self._init_items(*columns)
 
-    def _derived_metadata(self):
-        return self.table.metadata
-
     def _init_items(self, *args):
         for column in args:
             self.append_column(column)
@@ -969,6 +949,7 @@ class Index(SchemaItem):
 
     def _set_parent(self, table):
         self.table = table
+        self.metadata = table.metadata
         table.indexes.add(self)
 
     def append_column(self, column):
@@ -1053,6 +1034,7 @@ class MetaData(SchemaItem):
 
         self.tables = {}
         self.bind = bind
+        self.metadata = self
         if reflect:
             if not bind:
                 raise exceptions.ArgumentError(
@@ -1238,9 +1220,6 @@ class MetaData(SchemaItem):
         if bind is None:
             bind = self._get_bind(raiseerr=True)
         bind.drop(self, checkfirst=checkfirst, tables=tables)
-
-    def _derived_metadata(self):
-        return self
 
     def _get_bind(self, raiseerr=False):
         if not self.is_bound():

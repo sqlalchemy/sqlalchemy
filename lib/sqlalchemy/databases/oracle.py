@@ -232,6 +232,11 @@ class OracleExecutionContext(default.DefaultExecutionContext):
         return base.ResultProxy(self)
 
 class OracleDialect(default.DefaultDialect):
+    supports_alter = True
+    supports_unicode_statements = False
+    max_identifier_length = 30
+    supports_sane_rowcount = True
+
     def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, **kwargs):
         default.DefaultDialect.__init__(self, default_paramstyle='named', **kwargs)
         self.use_ansi = use_ansi
@@ -291,13 +296,6 @@ class OracleDialect(default.DefaultDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def supports_unicode_statements(self):
-        """indicate whether the DB-API can receive SQL statements as Python unicode strings"""
-        return False
-
-    def max_identifier_length(self):
-        return 30
-        
     def oid_column_name(self, column):
         if not isinstance(column.table, (sql.TableClause, sql.Select)):
             return None

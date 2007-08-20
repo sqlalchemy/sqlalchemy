@@ -268,7 +268,11 @@ class OrderedProperties(object):
     def __setattr__(self, key, object):
         self._data[key] = object
 
-    _data = property(lambda s:s.__dict__['_data'])
+    def __getstate__(self):
+        return self._data
+    
+    def __setstate__(self, value):
+        self.__dict__['_data'] = value
 
     def __getattr__(self, key):
         try:

@@ -205,6 +205,8 @@ class InfoExecutionContext(default.DefaultExecutionContext):
         return informix_cursor( self.connection.connection )
         
 class InfoDialect(default.DefaultDialect):
+    # for informix 7.31
+    max_identifier_length = 18
     
     def __init__(self, use_ansi=True,**kwargs):
         self.use_ansi = use_ansi
@@ -216,10 +218,6 @@ class InfoDialect(default.DefaultDialect):
         return informixdb
     dbapi = classmethod(dbapi)
 
-    def max_identifier_length( self ):
-        # for informix 7.31
-        return 18
-    
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):
             return 'closed the connection' in str(e) or 'connection not open' in str(e)

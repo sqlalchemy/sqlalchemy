@@ -27,7 +27,7 @@ class LongLabelsTest(PersistTest):
         metadata.create_all()
         
         maxlen = testbase.db.dialect.max_identifier_length
-        testbase.db.dialect.max_identifier_length = lambda: 29
+        testbase.db.dialect.max_identifier_length = 29
         
     def tearDown(self):
         table1.delete().execute()
@@ -89,7 +89,7 @@ class LongLabelsTest(PersistTest):
         """test that a primary key column compiled as the 'oid' column gets proper length truncation"""
         from sqlalchemy.databases import postgres
         dialect = postgres.PGDialect()
-        dialect.max_identifier_length = lambda: 30
+        dialect.max_identifier_length = 30
         tt = table1.select(use_labels=True).alias('foo')
         x = select([tt], use_labels=True, order_by=tt.oid_column).compile(dialect=dialect)
         #print x

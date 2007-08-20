@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import random
-from sqlalchemy import sql, schema, ansisql, types, exceptions, pool
+from sqlalchemy import sql, schema, types, exceptions, pool
 from sqlalchemy.sql import compiler
 import sqlalchemy.engine.default as default
 
@@ -159,7 +159,7 @@ class AccessExecutionContext(default.DefaultExecutionContext):
 
 
 const, daoEngine = None, None
-class AccessDialect(ansisql.ANSIDialect):
+class AccessDialect(compiler.DefaultDialect):
     colspecs = {
         types.Unicode : AcUnicode,
         types.Integer : AcInteger,
@@ -175,6 +175,9 @@ class AccessDialect(ansisql.ANSIDialect):
         types.CHAR: AcChar,
         types.TIMESTAMP: AcTimeStamp,
     }
+
+    supports_sane_rowcount = False
+
 
     def type_descriptor(self, typeobj):
         newobj = types.adapt_type(typeobj, self.colspecs)
@@ -210,9 +213,6 @@ class AccessDialect(ansisql.ANSIDialect):
 
     def create_execution_context(self, *args, **kwargs):
         return AccessExecutionContext(self, *args, **kwargs)
-
-    def supports_sane_rowcount(self):
-        return False
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
@@ -416,7 +416,7 @@ class AccessSchemaDropper(compiler.SchemaDropper):
         self.append("\nDROP INDEX [%s].[%s]" % (index.table.name, index.name))
         self.execute()
 
-class AccessDefaultRunner(ansisql.ANSIDefaultRunner):
+class AccessDefaultRunner(compiler.DefaultRunner):
     pass
 
 class AccessIdentifierPreparer(compiler.IdentifierPreparer):

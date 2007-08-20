@@ -47,21 +47,21 @@ class FoundRowsTest(AssertMixin):
         # WHERE matches 3, 3 rows changed
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='Z')
-        if testbase.db.dialect.supports_sane_rowcount():
+        if testbase.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
     def test_update_rowcount2(self):
         # WHERE matches 3, 0 rows changed
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='C')
-        if testbase.db.dialect.supports_sane_rowcount():
+        if testbase.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
     def test_delete_rowcount(self):
         # WHERE matches 3, 3 rows deleted
         department = employees_table.c.department
         r = employees_table.delete(department=='C').execute()
-        if testbase.db.dialect.supports_sane_rowcount():
+        if testbase.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
 if __name__ == '__main__':

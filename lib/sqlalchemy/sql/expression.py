@@ -1007,7 +1007,7 @@ class ClauseElement(object):
             compiler = dialect.statement_compiler(dialect, self, parameters=parameters)
         compiler.compile()
         return compiler
-
+    
     def __str__(self):
         return unicode(self.compile()).encode('ascii', 'backslashreplace')
 
@@ -1618,13 +1618,6 @@ class FromClause(Selectable):
             else:
                 raise exceptions.InvalidRequestError("Given column '%s', attached to table '%s', failed to locate a corresponding column from table '%s'" % (str(column), str(getattr(column, 'table', None)), self.name))
 
-    def _get_exported_attribute(self, name):
-        try:
-            return getattr(self, name)
-        except AttributeError:
-            self._export_columns()
-            return getattr(self, name)
-
     def _clone_from_clause(self):
         # delete all the "generated" collections of columns for a
         # newly cloned FromClause, so that they will be re-derived
@@ -1635,11 +1628,20 @@ class FromClause(Selectable):
             if hasattr(self, attr):
                 delattr(self, attr)
 
-    columns = property(lambda s:s._get_exported_attribute('_columns'))
-    c = property(lambda s:s._get_exported_attribute('_columns'))
-    primary_key = property(lambda s:s._get_exported_attribute('_primary_key'))
-    foreign_keys = property(lambda s:s._get_exported_attribute('_foreign_keys'))
-    original_columns = property(lambda s:s._get_exported_attribute('_orig_cols'), doc=\
+    def _expr_attr_func(name):
+        def attr(self):
+            try:
+                return getattr(self, name)
+            except AttributeError:
+                self._export_columns()
+                return getattr(self, name)
+        return attr
+
+    columns = property(_expr_attr_func('_columns'))
+    c = property(_expr_attr_func('_columns'))
+    primary_key = property(_expr_attr_func('_primary_key'))
+    foreign_keys = property(_expr_attr_func('_foreign_keys'))
+    original_columns = property(_expr_attr_func('_orig_cols'), doc=\
         """A dictionary mapping an original Table-bound 
         column to a proxied column in this FromClause.
         """)
@@ -1659,7 +1661,6 @@ class FromClause(Selectable):
         """
 
         if hasattr(self, '_columns') and columns is None:
-            # TODO: put a mutex here ?  this is a key place for threading probs
             return
         self._columns = ColumnCollection()
         self._primary_key = ColumnSet()
@@ -1753,9 +1754,11 @@ class _BindParamClause(ClauseElement, _CompareMixin):
         self.shortname = shortname or key
         self.unique = unique
         self.isoutparam = isoutparam
-        type_ = sqltypes.to_instance(type_)
-        if isinstance(type_, sqltypes.NullType) and type(value) in _BindParamClause.type_map:
-            self.type = sqltypes.to_instance(_BindParamClause.type_map[type(value)])
+
+        if type_ is None:
+            self.type = self.type_map.get(type(value), sqltypes.NullType)()
+        elif isinstance(type_, type):
+            self.type = type_()
         else:
             self.type = type_
 
@@ -1764,7 +1767,8 @@ class _BindParamClause(ClauseElement, _CompareMixin):
         str : sqltypes.String,
         unicode : sqltypes.Unicode,
         int : sqltypes.Integer,
-        float : sqltypes.Numeric
+        float : sqltypes.Numeric,
+        type(None):sqltypes.NullType
     }
 
     def _get_from_objects(self, **modifiers):

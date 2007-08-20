@@ -78,7 +78,7 @@ class VersioningTest(ORMTest):
             success = True
 
         # Only dialects with a sane rowcount can detect the ConcurrentModificationError
-        if testbase.db.dialect.supports_sane_rowcount():
+        if testbase.db.dialect.supports_sane_rowcount:
             assert success
         
         s.close()
@@ -96,7 +96,7 @@ class VersioningTest(ORMTest):
         except exceptions.ConcurrentModificationError, e:
             #print e
             success = True
-        if testbase.db.dialect.supports_sane_rowcount():
+        if testbase.db.dialect.supports_sane_rowcount:
             assert success
         
     @engines.close_open_connections

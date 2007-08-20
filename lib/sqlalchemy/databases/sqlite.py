@@ -174,6 +174,8 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         return SELECT_REGEXP.match(self.statement)
         
 class SQLiteDialect(default.DefaultDialect):
+    supports_alter = False
+    supports_unicode_statements = True
     
     def __init__(self, **kwargs):
         default.DefaultDialect.__init__(self, default_paramstyle='qmark', **kwargs)
@@ -199,9 +201,6 @@ class SQLiteDialect(default.DefaultDialect):
     def server_version_info(self, connection):
         return self.dbapi.sqlite_version_info
 
-    def supports_alter(self):
-        return False
-
     def create_connect_args(self, url):
         filename = url.database or ':memory:'
 
@@ -219,9 +218,6 @@ class SQLiteDialect(default.DefaultDialect):
 
     def create_execution_context(self, **kwargs):
         return SQLiteExecutionContext(self, **kwargs)
-
-    def supports_unicode_statements(self):
-        return True
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids

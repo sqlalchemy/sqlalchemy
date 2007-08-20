@@ -101,6 +101,9 @@ class FBExecutionContext(default.DefaultExecutionContext):
 
 
 class FBDialect(default.DefaultDialect):
+    supports_sane_rowcount = False
+    max_identifier_length = 31
+
     def __init__(self, type_conv=200, concurrency_level=1, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
 
@@ -133,12 +136,6 @@ class FBDialect(default.DefaultDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def supports_sane_rowcount(self):
-        return False
-
-    def max_identifier_length(self):
-        return 31
-    
     def table_names(self, connection, schema):
         s = "SELECT R.RDB$RELATION_NAME FROM RDB$RELATIONS R"
         return [row[0] for row in connection.execute(s)]
@@ -408,11 +405,10 @@ RESERVED_WORDS = util.Set(
 
 
 class FBIdentifierPreparer(compiler.IdentifierPreparer):
+    reserved_words = RESERVED_WORDS
+    
     def __init__(self, dialect):
         super(FBIdentifierPreparer,self).__init__(dialect, omit_schema=True)
-
-    def _reserved_words(self):
-        return RESERVED_WORDS
 
 
 dialect = FBDialect

@@ -1332,6 +1332,12 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
 class MySQLDialect(default.DefaultDialect):
     """Details of the MySQL dialect.  Not used directly in application code."""
 
+    supports_alter = True
+    supports_unicode_statements = False
+    # identifiers are 64, however aliases can be 255...
+    max_identifier_length = 255
+    supports_sane_rowcount = True
+
     def __init__(self, use_ansiquotes=False, **kwargs):
         self.use_ansiquotes = use_ansiquotes
         kwargs.setdefault('default_paramstyle', 'format')
@@ -1389,13 +1395,6 @@ class MySQLDialect(default.DefaultDialect):
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
-
-    # identifiers are 64, however aliases can be 255...
-    def max_identifier_length(self):
-        return 255;
-
-    def supports_sane_rowcount(self):
-        return True
 
     def compiler(self, statement, bindparams, **kwargs):
         return MySQLCompiler(statement, bindparams, dialect=self, **kwargs)
@@ -2369,12 +2368,11 @@ MySQLSchemaReflector.logger = logging.class_logger(MySQLSchemaReflector)
 
 class _MySQLIdentifierPreparer(compiler.IdentifierPreparer):
     """MySQL-specific schema identifier configuration."""
+
+    reserved_words = RESERVED_WORDS
     
     def __init__(self, dialect, **kw):
         super(_MySQLIdentifierPreparer, self).__init__(dialect, **kw)
-
-    def _reserved_words(self):
-        return RESERVED_WORDS
 
     def _fold_identifier_case(self, value):
         # TODO: determine MySQL's case folding rules

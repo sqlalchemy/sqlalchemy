@@ -472,10 +472,6 @@ class MSSQLDialect(default.DefaultDialect):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
-    # this is only implemented in the dbapi-specific subclasses
-    def supports_sane_rowcount(self):
-        raise NotImplementedError()
-
     def get_default_schema_name(self, connection):
         return self.schema_name
 
@@ -665,6 +661,8 @@ class MSSQLDialect(default.DefaultDialect):
             table.append_constraint(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
 
 class MSSQLDialect_pymssql(MSSQLDialect):
+    supports_sane_rowcount = False
+
     def import_dbapi(cls):
         import pymssql as module
         # pymmsql doesn't have a Binary method.  we use string
@@ -682,12 +680,6 @@ class MSSQLDialect_pymssql(MSSQLDialect):
     def __init__(self, **params):
         super(MSSQLDialect_pymssql, self).__init__(**params)
         self.use_scope_identity = True
-
-    def supports_sane_rowcount(self):
-        return False
-
-    def max_identifier_length(self):
-        return 30
 
     def do_rollback(self, connection):
         # pymssql throws an error on repeated rollbacks. Ignore it.
@@ -746,6 +738,9 @@ class MSSQLDialect_pymssql(MSSQLDialect):
 ##        r.fetch_array()
 
 class MSSQLDialect_pyodbc(MSSQLDialect):
+    supports_sane_rowcount = False
+    # PyODBC unicode is broken on UCS-4 builds
+    supports_unicode_statements = sys.maxunicode == 65535
     
     def __init__(self, **params):
         super(MSSQLDialect_pyodbc, self).__init__(**params)
@@ -770,14 +765,6 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
     ischema_names['nvarchar'] = AdoMSNVarchar
     ischema_names['smalldatetime'] = MSDate_pyodbc
     ischema_names['datetime'] = MSDateTime_pyodbc
-
-    def supports_sane_rowcount(self):
-        return False
-
-    def supports_unicode_statements(self):
-        """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
-        # PyODBC unicode is broken on UCS-4 builds
-        return sys.maxunicode == 65535
 
     def make_connect_string(self, keys):
         if 'dsn' in keys:
@@ -818,6 +805,9 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
             context._last_inserted_ids = [int(row[0])]
 
 class MSSQLDialect_adodbapi(MSSQLDialect):
+    supports_sane_rowcount = True
+    supports_unicode_statements = True
+
     def import_dbapi(cls):
         import adodbapi as module
         return module
@@ -830,13 +820,6 @@ class MSSQLDialect_adodbapi(MSSQLDialect):
     ischema_names = MSSQLDialect.ischema_names.copy()
     ischema_names['nvarchar'] = AdoMSNVarchar
     ischema_names['datetime'] = MSDateTime_adodbapi
-
-    def supports_sane_rowcount(self):
-        return True
-
-    def supports_unicode_statements(self):
-        """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
-        return True
 
     def make_connect_string(self, keys):
         connectors = ["Provider=SQLOLEDB"]

@@ -26,6 +26,10 @@ class DefaultDialect(base.Dialect):
     statement_compiler = compiler.DefaultCompiler
     preparer = compiler.IdentifierPreparer
     defaultrunner = base.DefaultRunner
+    supports_alter = True
+    supports_unicode_statements = False
+    max_identifier_length = 9999
+    supports_sane_rowcount = True
 
     def __init__(self, convert_unicode=False, encoding='utf-8', default_paramstyle='named', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode
@@ -33,7 +37,13 @@ class DefaultDialect(base.Dialect):
         self.positional = False
         self._ischema = None
         self.dbapi = dbapi
-        self._figure_paramstyle(paramstyle=paramstyle, default=default_paramstyle)
+        if paramstyle is not None:
+            self.paramstyle = paramstyle
+        elif self.dbapi is not None:
+            self.paramstyle = self.dbapi.paramstyle
+        else:
+            self.paramstyle = default_paramstyle
+        self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
         self.identifier_preparer = self.preparer(self)
     
     def dbapi_type_map(self):
@@ -56,22 +66,9 @@ class DefaultDialect(base.Dialect):
             typeobj = typeobj()
         return typeobj
 
-    def supports_unicode_statements(self):
-        """True if DB-API can receive SQL statements as Python Unicode."""
-        return False
-
-    def max_identifier_length(self):
-        # TODO: probably raise this and fill out db modules better
-        return 9999
-
-    def supports_alter(self):
-        return True
         
     def oid_column_name(self, column):
         return None
-
-    def supports_sane_rowcount(self):
-        return True
 
     def do_begin(self, connection):
         """Implementations might want to put logic here for turning
@@ -120,32 +117,6 @@ class DefaultDialect(base.Dialect):
     def is_disconnect(self, e):
         return False
         
-    def _set_paramstyle(self, style):
-        self._paramstyle = style
-        self._figure_paramstyle(style)
-
-    paramstyle = property(lambda s:s._paramstyle, _set_paramstyle)
-
-    def _figure_paramstyle(self, paramstyle=None, default='named'):
-        if paramstyle is not None:
-            self._paramstyle = paramstyle
-        elif self.dbapi is not None:
-            self._paramstyle = self.dbapi.paramstyle
-        else:
-            self._paramstyle = default
-
-        if self._paramstyle == 'named':
-            self.positional=False
-        elif self._paramstyle == 'pyformat':
-            self.positional=False
-        elif self._paramstyle == 'qmark' or self._paramstyle == 'format' or self._paramstyle == 'numeric':
-            # for positional, use pyformat internally, ANSICompiler will convert
-            # to appropriate character upon compilation
-            self.positional = True
-        else:
-            raise exceptions.InvalidRequestError(
-                "Unsupported paramstyle '%s'" % self._paramstyle)
-
     def _get_ischema(self):
         if self._ischema is None:
             import sqlalchemy.databases.information_schema as ischema
@@ -185,7 +156,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         else:
             self.statement = None
             
-        if self.statement is not None and not dialect.supports_unicode_statements():
+        if self.statement is not None and not dialect.supports_unicode_statements:
             self.statement = self.statement.encode(self.dialect.encoding)
             
         self.cursor = self.create_cursor()
@@ -200,7 +171,7 @@ class DefaultExecutionContext(base.ExecutionContext):
     
     def __encode_param_keys(self, params):
         """apply string encoding to the keys of dictionary-based bind parameters"""
-        if self.dialect.positional or self.dialect.supports_unicode_statements():
+        if self.dialect.positional or self.dialect.supports_unicode_statements:
             return params
         else:
             def proc(d):
@@ -215,7 +186,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 return proc(params)
 
     def __convert_compiled_params(self, parameters):
-        encode = not self.dialect.supports_unicode_statements()
+        encode = not self.dialect.supports_unicode_statements
         # the bind params are a CompiledParams object.  but all the
         # DB-API's hate that object (or similar).  so convert it to a
         # clean dictionary/list/tuple of dictionary/tuple of list
@@ -274,7 +245,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             return self.cursor.rowcount
 
     def supports_sane_rowcount(self):
-        return self.dialect.supports_sane_rowcount()
+        return self.dialect.supports_sane_rowcount
 
     def last_inserted_ids(self):
         return self._last_inserted_ids
