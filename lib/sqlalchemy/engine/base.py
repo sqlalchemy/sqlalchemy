@@ -844,7 +844,7 @@ class Connection(Connectable):
         return self.__engine.dialect.create_execution_context(connection=self, **kwargs)
 
     def __execute_raw(self, context):
-        if logging.is_info_enabled(self.__engine.logger):
+        if self.__engine._should_log:
             self.__engine.logger.info(context.statement)
             self.__engine.logger.info(repr(context.parameters))
         if context.parameters is not None and isinstance(context.parameters, list) and len(context.parameters) > 0 and isinstance(context.parameters[0], (list, tuple, dict)):
@@ -1023,6 +1023,7 @@ class Engine(Connectable):
         self._dialect=dialect
         self.echo = echo
         self.logger = logging.instance_logger(self)
+        self._should_log = logging.is_info_enabled(self.logger)
 
     name = property(lambda s:sys.modules[s.dialect.__module__].descriptor()['name'], doc="String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``.")
     engine = property(lambda s:s)
@@ -1136,7 +1137,7 @@ class Engine(Connectable):
         This Connection is meant to be used by the various "auto-connecting" operations.
         """
 
-        return Connection(self, close_with_result=close_with_result, **kwargs)
+        return Connection(self, self.pool.connect(), close_with_result=close_with_result, **kwargs)
     
     def table_names(self, schema=None, connection=None):
         """Return a list of all table names available in the database.
@@ -1183,7 +1184,7 @@ class Engine(Connectable):
     def raw_connection(self):
         """Return a DB-API connection."""
 
-        return self.pool.connect()
+        return self.pool.unique_connection()
 
     def log(self, msg):
         """Log a message using this SQLEngine's logger stream."""
@@ -1223,7 +1224,7 @@ class ResultProxy(object):
         self.dialect = context.dialect
         self.closed = False
         self.cursor = context.cursor
-        self.__echo = logging.is_debug_enabled(context.engine.logger)
+        self.__echo = context.engine._should_log
         self._process_row = self._row_processor()
         if context.is_select():
             self._init_metadata()

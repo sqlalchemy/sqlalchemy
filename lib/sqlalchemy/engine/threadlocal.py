@@ -16,7 +16,7 @@ class TLSession(object):
         try:
             return self.__transaction._increment_connect()
         except AttributeError:
-            return TLConnection(self, close_with_result=close_with_result)
+            return TLConnection(self, self.engine.pool.connect(), close_with_result=close_with_result)
 
     def reset(self):
         try:
@@ -82,9 +82,8 @@ class TLSession(object):
 
 
 class TLConnection(base.Connection):
-    def __init__(self, session, close_with_result):
-        base.Connection.__init__(self, session.engine,
-                                 close_with_result=close_with_result)
+    def __init__(self, session, connection, close_with_result):
+        base.Connection.__init__(self, session.engine, connection, close_with_result=close_with_result)
         self.__session = session
         self.__opencount = 1
 
@@ -159,20 +158,6 @@ class TLEngine(base.Engine):
 
         super(TLEngine, self).__init__(*args, **kwargs)
         self.context = util.ThreadLocal()
-
-    def raw_connection(self):
-        """Return a DB-API connection."""
-
-        return self.pool.connect()
-
-    def connect(self, **kwargs):
-        """Return a Connection that is not thread-locally scoped.
-
-        This is the equivalent to calling ``connect()`` on a
-        base.Engine.
-        """
-
-        return base.Connection(self, self.pool.unique_connection())
 
     def _session(self):
         if not hasattr(self.context, 'session'):

@@ -85,12 +85,13 @@ class DefaultEngineStrategy(EngineStrategy):
             # the arguments
             translate = {'echo': 'echo_pool',
                          'timeout': 'pool_timeout',
-                         'recycle': 'pool_recycle'}
+                         'recycle': 'pool_recycle',
+                         'use_threadlocal':'pool_threadlocal'}
             for k in util.get_cls_kwargs(poolclass):
                 tk = translate.get(k, k)
                 if tk in kwargs:
                     pool_args[k] = kwargs.pop(tk)
-            pool_args['use_threadlocal'] = self.pool_threadlocal()
+            pool_args.setdefault('use_threadlocal', self.pool_threadlocal())
             pool = poolclass(creator, **pool_args)
         else:
             if isinstance(pool, poollib._DBProxy):

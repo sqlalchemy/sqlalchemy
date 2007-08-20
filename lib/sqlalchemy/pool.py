@@ -112,10 +112,10 @@ class Pool(object):
       the pool.
     """
 
-    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False,
+    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=True,
                  listeners=None):
         self.logger = logging.instance_logger(self)
-        self._threadconns = weakref.WeakValueDictionary()
+        self._threadconns = {}
         self._creator = creator
         self._recycle = recycle
         self._use_threadlocal = use_threadlocal
@@ -124,6 +124,8 @@ class Pool(object):
         self._on_connect = []
         self._on_checkout = []
         self._on_checkin = []
+        self._should_log = logging.is_info_enabled(self.logger)
+        
         if listeners:
             for l in listeners:
                 self.add_listener(l)
@@ -153,10 +155,10 @@ class Pool(object):
             return _ConnectionFairy(self).checkout()
 
         try:
-            return self._threadconns[thread.get_ident()].checkout()
+            return self._threadconns[thread.get_ident()]().checkout()
         except KeyError:
             agent = _ConnectionFairy(self)
-            self._threadconns[thread.get_ident()] = agent
+            self._threadconns[thread.get_ident()] = weakref.ref(agent)
             return agent.checkout()
 
     def return_conn(self, agent):
@@ -201,14 +203,16 @@ class _ConnectionRecord(object):
 
     def close(self):
         if self.connection is not None:
-            self.__pool.log("Closing connection %s" % repr(self.connection))
+            if self.__pool._should_log:
+                self.__pool.log("Closing connection %s" % repr(self.connection))
             self.connection.close()
 
     def invalidate(self, e=None):
-        if e is not None:
-            self.__pool.log("Invalidate connection %s (reason: %s:%s)" % (repr(self.connection), e.__class__.__name__, str(e)))
-        else:
-            self.__pool.log("Invalidate connection %s" % repr(self.connection))
+        if self.__pool._should_log:
+            if e is not None:
+                self.__pool.log("Invalidate connection %s (reason: %s:%s)" % (repr(self.connection), e.__class__.__name__, str(e)))
+            else:
+                self.__pool.log("Invalidate connection %s" % repr(self.connection))
         self.__close()
         self.connection = None
 
@@ -220,7 +224,8 @@ class _ConnectionRecord(object):
                 for l in self.__pool._on_connect:
                     l.connect(self.connection, self)
         elif (self.__pool._recycle > -1 and time.time() - self.starttime > self.__pool._recycle):
-            self.__pool.log("Connection %s exceeded timeout; recycling" % repr(self.connection))
+            if self.__pool._should_log:
+                self.__pool.log("Connection %s exceeded timeout; recycling" % repr(self.connection))
             self.__close()
             self.connection = self.__connect()
             self.properties.clear()
@@ -231,10 +236,12 @@ class _ConnectionRecord(object):
 
     def __close(self):
         try:
-            self.__pool.log("Closing connection %s" % (repr(self.connection)))
+            if self.__pool._should_log:
+                self.__pool.log("Closing connection %s" % (repr(self.connection)))
             self.connection.close()
         except Exception, e:
-            self.__pool.log("Connection %s threw an error on close: %s" % (repr(self.connection), str(e)))
+            if self.__pool._should_log:
+                self.__pool.log("Connection %s threw an error on close: %s" % (repr(self.connection), str(e)))
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise
 
@@ -242,10 +249,12 @@ class _ConnectionRecord(object):
         try:
             self.starttime = time.time()
             connection = self.__pool._creator()
-            self.__pool.log("Created new connection %s" % repr(connection))
+            if self.__pool._should_log:
+                self.__pool.log("Created new connection %s" % repr(connection))
             return connection
         except Exception, e:
-            self.__pool.log("Error on connect(): %s" % (str(e)))
+            if self.__pool._should_log:
+                self.__pool.log("Error on connect(): %s" % (str(e)))
             raise
 
 class _ConnectionFairy(object):
@@ -261,7 +270,7 @@ class _ConnectionFairy(object):
             self.connection = None # helps with endless __getattr__ loops later on
             self._connection_record = None
             raise
-        if self._pool.echo:
+        if self._pool._should_log:
             self._pool.log("Connection %s checked out from pool" % repr(self.connection))
     
     _logger = property(lambda self: self._pool.logger)
@@ -323,13 +332,15 @@ class _ConnectionFairy(object):
                     l.checkout(self.connection, self._connection_record, self)
                 return self
             except exceptions.DisconnectionError, e:
-                self._pool.log(
+                if self._pool._should_log:
+                    self._pool.log(
                     "Disconnection detected on checkout: %s" % (str(e)))
                 self._connection_record.invalidate(e)
                 self.connection = self._connection_record.get_connection()
                 attempts -= 1
 
-        self._pool.log("Reconnection attempts exhausted on checkout")
+        if self._pool._should_log:
+            self._pool.log("Reconnection attempts exhausted on checkout")
         self.invalidate()
         raise exceptions.InvalidRequestError("This connection is closed")
 
@@ -375,7 +386,7 @@ class _ConnectionFairy(object):
                 if isinstance(e, (SystemExit, KeyboardInterrupt)):
                     raise
         if self._connection_record is not None:
-            if self._pool.echo:
+            if self._pool._should_log:
                 self._pool.log("Connection %s being returned to pool" % repr(self.connection))
             if self._pool._on_checkin:
                 for l in self._pool._on_checkin:
@@ -572,7 +583,8 @@ class QueuePool(Pool):
                 break
 
         self._overflow = 0 - self.size()
-        self.log("Pool disposed. " + self.status())
+        if self._should_log:
+            self.log("Pool disposed. " + self.status())
 
     def status(self):
         tup = (self.size(), self.checkedin(), self.overflow(), self.checkedout())
