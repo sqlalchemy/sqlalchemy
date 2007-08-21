@@ -1,6 +1,7 @@
 import testbase
 import sets
 from sqlalchemy import *
+from sqlalchemy import sql, exceptions
 from sqlalchemy.databases import mysql
 from testlib import *
 
