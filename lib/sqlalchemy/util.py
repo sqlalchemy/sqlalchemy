@@ -419,30 +419,32 @@ class DictDecorator(dict):
         return dict.__repr__(self) + repr(self.decorate)
 
 class OrderedSet(Set):
-    def __init__(self, d=None, **kwargs):
-      super(OrderedSet, self).__init__(**kwargs)
-      self._list = []
-      if d: self.update(d, **kwargs)
+    def __init__(self, d=None):
+        Set.__init__(self)
+        self._list = []
+        if d is not None:
+            self.update(d)
 
     def add(self, key):
-      if key not in self:
-          self._list.append(key)
-      super(OrderedSet, self).add(key)
+        if key not in self:
+            self._list.append(key)
+        Set.add(self, key)
 
     def remove(self, element):
-      super(OrderedSet, self).remove(element)
-      self._list.remove(element)
+        Set.remove(self, element)
+        self._list.remove(element)
 
     def discard(self, element):
-      try:
-          super(OrderedSet, self).remove(element)
-      except KeyError: pass
-      else:
-          self._list.remove(element)
+        try:
+            Set.remove(self, element)
+        except KeyError:
+            pass
+        else:
+            self._list.remove(element)
 
     def clear(self):
-      super(OrderedSet, self).clear()
-      self._list=[]
+        Set.clear(self)
+        self._list = []
 
     def __getitem__(self, key):
         return self._list[key]
@@ -452,7 +454,8 @@ class OrderedSet(Set):
 
     def update(self, iterable):
       add = self.add
-      for i in iterable: add(i)
+      for i in iterable:
+          add(i)
       return self
 
     def __repr__(self):
@@ -487,14 +490,14 @@ class OrderedSet(Set):
     __ior__ = update
 
     def intersection_update(self, other):
-      super(OrderedSet, self).intersection_update(other)
+      Set.intersection_update(self, other)
       self._list = [ a for a in self._list if a in other]
       return self
 
     __iand__ = intersection_update
 
     def symmetric_difference_update(self, other):
-      super(OrderedSet, self).symmetric_difference_update(other)
+      Set.symmetric_difference_update(self, other)
       self._list =  [ a for a in self._list if a in self]
       self._list += [ a for a in other._list if a in self]
       return self
@@ -502,7 +505,7 @@ class OrderedSet(Set):
     __ixor__ = symmetric_difference_update
 
     def difference_update(self, other):
-      super(OrderedSet, self).difference_update(other)
+      Set.difference_update(self, other)
       self._list = [ a for a in self._list if a in self]
       return self
 

@@ -212,7 +212,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         
         return None
 
-    def construct_params(self, params):
+    def construct_params(self, params=None):
         """Return a sql.util.ClauseParameters object.
         
         Combines the given bind parameter dictionary (string keys to object values)
@@ -223,15 +223,20 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         
         d = sql_util.ClauseParameters(self.dialect, self.positiontup)
 
-        pd = self.parameters or {}
-        pd.update(params)
+        if self.parameters is None:
+            pd = {}
+        else:
+            pd = self.parameters
+        if params is not None:
+            pd.update(params)
 
+        bind_names = self.bind_names
         for key, bind in self.binds.iteritems():
-            d.set_parameter(bind, pd.get(key, bind.value), self.bind_names[bind])
+            d.set_parameter(bind, pd.get(key, bind.value), bind_names[bind])
         
         return d
 
-    params = property(lambda self:self.construct_params({}), doc="""Return the `ClauseParameters` corresponding to this compiled object.  
+    params = property(lambda self:self.construct_params(), doc="""Return the `ClauseParameters` corresponding to this compiled object.  
         A shortcut for `construct_params()`.""")
         
     def default_from(self):

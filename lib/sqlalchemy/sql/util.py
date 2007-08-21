@@ -12,10 +12,15 @@ class ClauseParameters(object):
     the ``TypeEngine`` objects present in the ``_BindParamClause`` instances.
     """
 
+    __slots__ = 'dialect', '__binds', 'positional'
+
     def __init__(self, dialect, positional=None):
         self.dialect = dialect
         self.__binds = {}
-        self.positional = positional or []
+        if positional is None:
+            self.positional = []
+        else:
+            self.positional = positional
 
     def get_parameter(self, key):
         return self.__binds[key]
@@ -68,9 +73,15 @@ class ClauseParameters(object):
             return processors[key](self.__binds[key][2])
         else:
             return self.__binds[key][2]
-            
+
     def get_raw_list(self, processors):
-        return [self.__get_processed(key, processors) for key in self.positional]
+        binds, res = self.__binds, []
+        for key in self.positional:
+            if key in processors:
+                res.append(processors[key](binds[key][2]))
+            else:
+                res.append(binds[key][2])
+        return res
 
     def get_raw_dict(self, processors, encode_keys=False):
         if encode_keys:

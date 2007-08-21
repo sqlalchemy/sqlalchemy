@@ -140,13 +140,13 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
             if parameters is None:
-                self.compiled_parameters = compiled.construct_params({})
+                self.compiled_parameters = compiled.construct_params()
                 self.executemany = False
             elif not isinstance(parameters, (list, tuple)):
                 self.compiled_parameters = compiled.construct_params(parameters)
                 self.executemany = False
             else:
-                self.compiled_parameters = [compiled.construct_params(m or {}) for m in parameters]
+                self.compiled_parameters = [compiled.construct_params(m) for m in parameters]
                 if len(self.compiled_parameters) == 1:
                     self.compiled_parameters = self.compiled_parameters[0]
                     self.executemany = False
