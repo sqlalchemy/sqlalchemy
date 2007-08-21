@@ -8,7 +8,7 @@
 import random
 from sqlalchemy import sql, schema, types, exceptions, pool
 from sqlalchemy.sql import compiler
-import sqlalchemy.engine.default as default
+from sqlalchemy.engine import default, base
 
 
 class AcNumeric(types.Numeric):
@@ -159,7 +159,7 @@ class AccessExecutionContext(default.DefaultExecutionContext):
 
 
 const, daoEngine = None, None
-class AccessDialect(compiler.DefaultDialect):
+class AccessDialect(default.DefaultDialect):
     colspecs = {
         types.Unicode : AcUnicode,
         types.Integer : AcInteger,
@@ -416,7 +416,7 @@ class AccessSchemaDropper(compiler.SchemaDropper):
         self.append("\nDROP INDEX [%s].[%s]" % (index.table.name, index.name))
         self.execute()
 
-class AccessDefaultRunner(compiler.DefaultRunner):
+class AccessDefaultRunner(base.DefaultRunner):
     pass
 
 class AccessIdentifierPreparer(compiler.IdentifierPreparer):

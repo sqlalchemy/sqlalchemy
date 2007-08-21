@@ -7,6 +7,9 @@ def suite():
         'dialect.postgres',
         'dialect.oracle',
         'dialect.mssql',
+        'dialect.access',
+        'dialect.informix',
+        'dialect.firebird',
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:
