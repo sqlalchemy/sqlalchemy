@@ -1,5 +1,6 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy import util
 from testlib import *
 
 _recursion_stack = util.Set()

@@ -1,5 +1,6 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy import exceptions, util
 from sqlalchemy.orm import *
 from testlib import *
 

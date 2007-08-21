@@ -1,7 +1,7 @@
 import testbase
 import datetime
 from sqlalchemy import *
-from sqlalchemy import types
+from sqlalchemy import exceptions, types
 from sqlalchemy.orm import *
 from sqlalchemy.orm import collections
 from sqlalchemy.orm.collections import collection

@@ -1,7 +1,6 @@
 import testbase
 from sqlalchemy import *
-import sqlalchemy.util as util
-import sqlalchemy.schema as schema
+from sqlalchemy import exceptions, schema, util
 from sqlalchemy.orm import mapper, create_session
 from testlib import *
 import datetime

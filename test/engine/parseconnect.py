@@ -1,5 +1,6 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy import exceptions, pool
 import sqlalchemy.engine.url as url
 from testlib import *
 

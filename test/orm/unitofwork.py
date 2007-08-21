@@ -2,11 +2,11 @@
 import testbase
 import pickleable
 from sqlalchemy import *
+from sqlalchemy import exceptions, sql
 from sqlalchemy.orm import *
 from testlib import *
 from testlib.tables import *
-from testlib import tables
-from testlib import fixtures
+from testlib import tables, fixtures
 
 """tests unitofwork operations"""
 

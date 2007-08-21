@@ -2,7 +2,7 @@ import testbase
 import pickle, StringIO, unicodedata
 
 from sqlalchemy import *
-from sqlalchemy.exceptions import NoSuchTableError
+from sqlalchemy import exceptions
 from testlib import *
 from testlib import engines
 
@@ -420,7 +420,7 @@ class ReflectionTest(PersistTest):
             meta.drop_all(testbase.db)
             
     def test_nonexistent(self):
-        self.assertRaises(NoSuchTableError, Table,
+        self.assertRaises(exceptions.NoSuchTableError, Table,
                           'fake_table',
                           MetaData(testbase.db), autoload=True)
         

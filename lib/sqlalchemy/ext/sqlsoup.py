@@ -291,6 +291,7 @@ Boring tests here.  Nothing of real expository value.
 """
 
 from sqlalchemy import *
+from sqlalchemy import schema, sql
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy.exceptions import *

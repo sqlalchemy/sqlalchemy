@@ -1,11 +1,11 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy import exceptions
 from sqlalchemy.orm import *
 from sqlalchemy.orm.session import Session as SessionCls
 from testlib import *
 from testlib.tables import *
-import testlib.tables as tables
-from testlib import fixtures
+from testlib import fixtures, tables
 
 class SessionTest(AssertMixin):
     def setUpAll(self):

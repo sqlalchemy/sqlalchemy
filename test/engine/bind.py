@@ -3,6 +3,7 @@ including the deprecated versions of these arguments"""
 
 import testbase
 from sqlalchemy import *
+from sqlalchemy import engine, exceptions
 from testlib import *
 
 

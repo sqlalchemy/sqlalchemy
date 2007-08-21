@@ -2,6 +2,7 @@ import testbase
 import pickleable
 import datetime, os
 from sqlalchemy import *
+from sqlalchemy import types
 import sqlalchemy.engine.url as url
 from sqlalchemy.databases import mssql, oracle, mysql
 from testlib import *

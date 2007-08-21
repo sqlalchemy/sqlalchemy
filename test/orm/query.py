@@ -1,7 +1,8 @@
 import testbase
 import operator
-from sqlalchemy.sql import compiler
 from sqlalchemy import *
+from sqlalchemy import exceptions
+from sqlalchemy.sql import compiler
 from sqlalchemy.engine import default
 from sqlalchemy.orm import *
 from testlib import *

@@ -2,8 +2,8 @@
 
 import testbase
 from sqlalchemy import *
+from sqlalchemy import exceptions, sql
 from sqlalchemy.orm import *
-import sqlalchemy.exceptions as exceptions
 from sqlalchemy.ext.sessioncontext import SessionContext, SessionContextExt
 from testlib import *
 from testlib.tables import *

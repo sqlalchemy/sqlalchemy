@@ -1,6 +1,7 @@
 import testbase
 
 from sqlalchemy import *
+from sqlalchemy import exceptions
 from sqlalchemy.orm import create_session, clear_mappers, relation, class_mapper
 from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy.ext.sessioncontext import SessionContext

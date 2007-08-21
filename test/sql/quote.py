@@ -1,7 +1,8 @@
 import testbase
 from sqlalchemy import *
-from testlib import *
+from sqlalchemy import sql
 from sqlalchemy.sql import compiler
+from testlib import *
 
 class QuoteTest(PersistTest):
     def setUpAll(self):

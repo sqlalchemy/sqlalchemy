@@ -1,10 +1,10 @@
 import testbase
+import datetime, os
 from sqlalchemy import *
+from sqlalchemy import exceptions, sql
 from sqlalchemy.orm import *
-
 from sqlalchemy.orm.shard import ShardedSession
 from sqlalchemy.sql import operators
-import datetime, os
 from testlib import PersistTest
 
 # TODO: ShardTest can be turned into a base for further subclasses
