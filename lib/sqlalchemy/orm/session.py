@@ -390,12 +390,12 @@ class Session(object):
                 those changes will not be persisted.
             
         """
-        self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
+        self.echo_uow = echo_uow
+        self.uow = unitofwork.UnitOfWork(self, weak_identity_map=weak_identity_map)
         self.identity_map = self.uow.identity_map
 
         self.bind = bind
         self.__binds = {}
-        self.echo_uow = echo_uow
         self.weak_identity_map = weak_identity_map
         self.transaction = None
         self.hash_key = id(self)
@@ -419,13 +419,6 @@ class Session(object):
             self.begin()
         _sessions[self.hash_key] = self
             
-    def _get_echo_uow(self):
-        return self.uow.echo
-
-    def _set_echo_uow(self, value):
-        self.uow.echo = value
-    echo_uow = property(_get_echo_uow,_set_echo_uow)
-    
     def begin(self, **kwargs):
         """Begin a transaction on this Session."""
 
@@ -573,10 +566,8 @@ class Session(object):
 
         for instance in self:
             self._unattach(instance)
-        echo = self.uow.echo
-        self.uow = unitofwork.UnitOfWork(weak_identity_map=self.weak_identity_map)
+        self.uow = unitofwork.UnitOfWork(self, weak_identity_map=self.weak_identity_map)
         self.identity_map = self.uow.identity_map
-        self.uow.echo = echo
 
     def bind_mapper(self, mapper, bind, entity_name=None):
         """Bind the given `mapper` or `class` to the given ``Engine`` or ``Connection``.

@@ -114,7 +114,7 @@ class Pool(object):
 
     def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=True,
                  listeners=None):
-        self.logger = logging.instance_logger(self)
+        self.logger = logging.instance_logger(self, echoflag=echo)
         self._threadconns = {}
         self._creator = creator
         self._recycle = recycle
@@ -124,12 +124,10 @@ class Pool(object):
         self._on_connect = []
         self._on_checkout = []
         self._on_checkin = []
-        self._should_log = logging.is_info_enabled(self.logger)
         
         if listeners:
             for l in listeners:
                 self.add_listener(l)
-    echo = logging.echo_property()
 
     def unique_connection(self):
         return _ConnectionFairy(self).checkout()
@@ -203,12 +201,12 @@ class _ConnectionRecord(object):
 
     def close(self):
         if self.connection is not None:
-            if self.__pool._should_log:
+            if self.__pool._should_log_info:
                 self.__pool.log("Closing connection %s" % repr(self.connection))
             self.connection.close()
 
     def invalidate(self, e=None):
-        if self.__pool._should_log:
+        if self.__pool._should_log_info:
             if e is not None:
                 self.__pool.log("Invalidate connection %s (reason: %s:%s)" % (repr(self.connection), e.__class__.__name__, str(e)))
             else:
@@ -224,7 +222,7 @@ class _ConnectionRecord(object):
                 for l in self.__pool._on_connect:
                     l.connect(self.connection, self)
         elif (self.__pool._recycle > -1 and time.time() - self.starttime > self.__pool._recycle):
-            if self.__pool._should_log:
+            if self.__pool._should_log_info:
                 self.__pool.log("Connection %s exceeded timeout; recycling" % repr(self.connection))
             self.__close()
             self.connection = self.__connect()
@@ -236,11 +234,11 @@ class _ConnectionRecord(object):
 
     def __close(self):
         try:
-            if self.__pool._should_log:
+            if self.__pool._should_log_info:
                 self.__pool.log("Closing connection %s" % (repr(self.connection)))
             self.connection.close()
         except Exception, e:
-            if self.__pool._should_log:
+            if self.__pool._should_log_info:
                 self.__pool.log("Connection %s threw an error on close: %s" % (repr(self.connection), str(e)))
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise
@@ -249,11 +247,11 @@ class _ConnectionRecord(object):
         try:
             self.starttime = time.time()
             connection = self.__pool._creator()
-            if self.__pool._should_log:
+            if self.__pool._should_log_info:
                 self.__pool.log("Created new connection %s" % repr(connection))
             return connection
         except Exception, e:
-            if self.__pool._should_log:
+            if self.__pool._should_log_info:
                 self.__pool.log("Error on connect(): %s" % (str(e)))
             raise
             
@@ -273,7 +271,7 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
                 raise
     if connection_record is not None:
         connection_record.backref = None
-        if pool._should_log:
+        if pool._should_log_info:
             pool.log("Connection %s being returned to pool" % repr(connection))
         if pool._on_checkin:
             for l in pool._on_checkin:
@@ -294,7 +292,7 @@ class _ConnectionFairy(object):
             self.connection = None # helps with endless __getattr__ loops later on
             self._connection_record = None
             raise
-        if self._pool._should_log:
+        if self._pool._should_log_info:
             self._pool.log("Connection %s checked out from pool" % repr(self.connection))
     
     _logger = property(lambda self: self._pool.logger)
@@ -356,14 +354,14 @@ class _ConnectionFairy(object):
                     l.checkout(self.connection, self._connection_record, self)
                 return self
             except exceptions.DisconnectionError, e:
-                if self._pool._should_log:
+                if self._pool._should_log_info:
                     self._pool.log(
                     "Disconnection detected on checkout: %s" % (str(e)))
                 self._connection_record.invalidate(e)
                 self.connection = self._connection_record.get_connection()
                 attempts -= 1
 
-        if self._pool._should_log:
+        if self._pool._should_log_info:
             self._pool.log("Reconnection attempts exhausted on checkout")
         self.invalidate()
         raise exceptions.InvalidRequestError("This connection is closed")
@@ -443,7 +441,7 @@ class SingletonThreadPool(Pool):
 
     def recreate(self):
         self.log("Pool recreating")
-        return SingletonThreadPool(self._creator, pool_size=self.size, recycle=self._recycle, echo=self.echo, use_threadlocal=self._use_threadlocal)
+        return SingletonThreadPool(self._creator, pool_size=self.size, recycle=self._recycle, echo=self._should_log_info, use_threadlocal=self._use_threadlocal)
         
     def dispose(self):
         """Dispose of this pool.
@@ -537,7 +535,7 @@ class QueuePool(Pool):
 
     def recreate(self):
         self.log("Pool recreating")
-        return QueuePool(self._creator, pool_size=self._pool.maxsize, max_overflow=self._max_overflow, timeout=self._timeout, recycle=self._recycle, echo=self.echo, use_threadlocal=self._use_threadlocal)
+        return QueuePool(self._creator, pool_size=self._pool.maxsize, max_overflow=self._max_overflow, timeout=self._timeout, recycle=self._recycle, echo=self._should_log_info, use_threadlocal=self._use_threadlocal)
 
     def do_return_conn(self, conn):
         try:
@@ -588,7 +586,7 @@ class QueuePool(Pool):
                 break
 
         self._overflow = 0 - self.size()
-        if self._should_log:
+        if self._should_log_info:
             self.log("Pool disposed. " + self.status())
 
     def status(self):

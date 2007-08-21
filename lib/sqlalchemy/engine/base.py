@@ -828,7 +828,7 @@ class Connection(Connectable):
         return self.__engine.dialect.create_execution_context(connection=self, **kwargs)
 
     def __execute_raw(self, context):
-        if self.__engine._should_log:
+        if self.__engine._should_log_info:
             self.__engine.logger.info(context.statement)
             self.__engine.logger.info(repr(context.parameters))
         if context.parameters is not None and isinstance(context.parameters, list) and len(context.parameters) > 0 and isinstance(context.parameters[0], (list, tuple, dict)):
@@ -1007,11 +1007,9 @@ class Engine(Connectable):
         self.dialect=dialect
         self.echo = echo
         self.engine = self
-        self.logger = logging.instance_logger(self)
-        self._should_log = logging.is_info_enabled(self.logger)
+        self.logger = logging.instance_logger(self, echoflag=echo)
 
     name = property(lambda s:sys.modules[s.dialect.__module__].descriptor()['name'], doc="String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``.")
-    echo = logging.echo_property()
     
     def __repr__(self):
         return 'Engine(%s)' % str(self.url)
@@ -1207,7 +1205,7 @@ class ResultProxy(object):
         self.dialect = context.dialect
         self.closed = False
         self.cursor = context.cursor
-        self.__echo = context.engine._should_log
+        self.__echo = context.engine._should_log_info
         self._process_row = self._row_processor()
         if context.is_select():
             self._init_metadata()
