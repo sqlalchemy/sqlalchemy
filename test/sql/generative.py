@@ -1,5 +1,6 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy.sql import table, column, ClauseElement
 from testlib import *
 from sqlalchemy.sql.visitors import *
 

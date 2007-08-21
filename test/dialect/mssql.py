@@ -1,6 +1,7 @@
 import testbase
 import re
 from sqlalchemy import *
+from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 from testlib import *
 

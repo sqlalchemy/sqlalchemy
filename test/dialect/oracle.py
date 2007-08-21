@@ -1,5 +1,6 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy.sql import table, column
 from sqlalchemy.databases import oracle
 
 from testlib import *

@@ -1,6 +1,7 @@
 import testbase
 import datetime
 from sqlalchemy import *
+from sqlalchemy import types
 from sqlalchemy.orm import *
 from sqlalchemy.orm import collections
 from sqlalchemy.orm.collections import collection
@@ -674,7 +675,7 @@ class TypedAssociationTable(ORMTest):
     def define_tables(self, metadata):
         global t1, t2, t3
         
-        class MySpecialType(TypeDecorator):
+        class MySpecialType(types.TypeDecorator):
             impl = String
             def convert_bind_param(self, value, dialect):
                 return "lala" + value

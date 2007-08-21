@@ -2,6 +2,7 @@ import testbase
 import re, operator
 from sqlalchemy import *
 from sqlalchemy import util
+from sqlalchemy.sql import table, column
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird, mssql
 from testlib import *
 

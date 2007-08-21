@@ -5,6 +5,20 @@ CHANGES
 0.4.0beta4
 ----------
 
+- Tidied up what ends up in your namespace when you 'from sqlalchemy import *':
+
+  - 'table' and 'column' are no longer imported.  They remain available by
+    direct reference (as in 'sql.table' and 'sql.column') or a glob import
+    from the sql package.  It was too easy to accidentally use a
+    sql.expressions.table instead of schema.Table when just starting out
+    with SQLAlchemy, likewise column.
+
+  - internal-ish classes like ClauseElement, FromClause, NullTypeEngine, etc.,
+    are also no longer imported into your namespace
+
+  - the 'Smallinteger' compatiblity name (small i!) is no longer imported, but
+    remains in schema.py for now.  SmallInteger (big I!) is still imported.
+
 - Fix to bind param processing such that "False" values (like blank strings)
   still get processed/encoded.
 
@@ -1292,7 +1306,7 @@ CHANGES
 - added example/docs for dealing with large collections
 - added object_session() method to sqlalchemy namespace
 - fixed QueuePool bug whereby its better able to reconnect to a database
-that was not reachable (thanks to Sébastien Lelong), also fixed dispose()
+that was not reachable (thanks to SÃ©bastien Lelong), also fixed dispose()
 method
 - patch that makes MySQL rowcount work correctly! [ticket:396]
 - fix to MySQL catch of 2006/2014 errors to properly re-raise OperationalError

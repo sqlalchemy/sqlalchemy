@@ -188,7 +188,7 @@ class ColumnsTest(AssertMixin):
         print db.engine.__module__
         testTable = Table('testColumns', MetaData(db),
             Column('int_column', Integer),
-            Column('smallint_column', Smallinteger),
+            Column('smallint_column', SmallInteger),
             Column('varchar_column', String(20)),
             Column('numeric_column', Numeric(12,3)),
             Column('float_column', Float(25)),

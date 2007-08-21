@@ -4,11 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-__all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
+__all__ = [ 'TypeEngine', 'TypeDecorator',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'FLOAT', 'DECIMAL',
-            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'SmallInteger','Smallinteger',
-            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean', 'Unicode', 'PickleType', 'NULLTYPE', 'NullType',
-        'SMALLINT', 'DATE', 'TIME','Interval'
+            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN',
+            'SMALLINT', 'DATE', 'TIME',
+            'String', 'Integer', 'SmallInteger','Smallinteger',
+            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
+            'Boolean', 'Unicode', 'PickleType', 'Interval',
             ]
 
 import inspect

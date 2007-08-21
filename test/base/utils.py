@@ -1,5 +1,5 @@
 import testbase
-from sqlalchemy import util, column, sql, exceptions
+from sqlalchemy import util, sql, exceptions
 from testlib import *
 
 
@@ -37,9 +37,9 @@ class OrderedDictTest(PersistTest):
 class ColumnCollectionTest(PersistTest):
     def test_in(self):
         cc = sql.ColumnCollection()
-        cc.add(column('col1'))
-        cc.add(column('col2'))
-        cc.add(column('col3'))
+        cc.add(sql.column('col1'))
+        cc.add(sql.column('col2'))
+        cc.add(sql.column('col3'))
         assert 'col1' in cc
         assert 'col2' in cc
 
@@ -53,9 +53,9 @@ class ColumnCollectionTest(PersistTest):
         cc1 = sql.ColumnCollection()
         cc2 = sql.ColumnCollection()
         cc3 = sql.ColumnCollection()
-        c1 = column('col1')
+        c1 = sql.column('col1')
         c2 = c1.label('col2')
-        c3 = column('col3')
+        c3 = sql.column('col3')
         cc1.add(c1)
         cc2.add(c2)
         cc3.add(c3)
