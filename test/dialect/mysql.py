@@ -568,8 +568,8 @@ class TypesTest(AssertMixin):
                  ( NCHAR(2), mysql.MSChar(2), ),
                  ( mysql.MSNChar(2), mysql.MSChar(2), ), # N is CREATE only
                  ( mysql.MSNVarChar(22), mysql.MSString(22), ),
-                 ( Smallinteger(), mysql.MSSmallInteger(), ),
-                 ( Smallinteger(4), mysql.MSSmallInteger(4), ),
+                 ( SmallInteger(), mysql.MSSmallInteger(), ),
+                 ( SmallInteger(4), mysql.MSSmallInteger(4), ),
                  ( mysql.MSSmallInteger(), ),
                  ( mysql.MSSmallInteger(4), mysql.MSSmallInteger(4), ),
                  ( Binary(3), mysql.MSBlob(3), ),
