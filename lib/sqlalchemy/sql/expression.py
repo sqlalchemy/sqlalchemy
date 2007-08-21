@@ -2905,6 +2905,11 @@ class Select(_SelectBaseMixin, FromClause):
 
         self._should_correlate = correlate
         self._distinct = distinct
+    
+        # NOTE: the _generate()
+        # operation creates a *shallow* copy of the object, so append_XXX() methods,
+        # usually called via a generative method, create a copy of each collection
+        # by default
 
         self._raw_columns = []
         self.__correlate = util.Set()
@@ -2915,11 +2920,11 @@ class Select(_SelectBaseMixin, FromClause):
 
         if columns is not None:
             for c in columns:
-                self.append_column(c)
+                self.append_column(c, copy_collection=False)
 
         if from_obj is not None:
             for f in from_obj:
-                self.append_from(f)
+                self.append_from(f, copy_collection=False)
 
         if whereclause is not None:
             self.append_whereclause(whereclause)
@@ -2929,7 +2934,7 @@ class Select(_SelectBaseMixin, FromClause):
 
         if prefixes is not None:
             for p in prefixes:
-                self.append_prefix(p)
+                self.append_prefix(p, copy_collection=False)
 
         _SelectBaseMixin.__init__(self, **kwargs)
 
@@ -3078,20 +3083,29 @@ class Select(_SelectBaseMixin, FromClause):
             s.append_correlation(fromclause)
         return s
 
-    def append_correlation(self, fromclause):
-        self.__correlate.add(fromclause)
+    def append_correlation(self, fromclause, copy_collection=True):
+        if not copy_collection:
+            self.__correlate.add(fromclause)
+        else:
+            self.__correlate = util.Set(list(self.__correlate) + [fromclause])
 
-    def append_column(self, column):
+    def append_column(self, column, copy_collection=True):
         column = _literal_as_column(column)
 
         if isinstance(column, _ScalarSelect):
             column = column.self_group(against=operators.comma_op)
+        
+        if not copy_collection:
+            self._raw_columns.append(column)
+        else:
+            self._raw_columns = self._raw_columns + [column]
 
-        self._raw_columns.append(column)
-
-    def append_prefix(self, clause):
+    def append_prefix(self, clause, copy_collection=True):
         clause = _literal_as_text(clause)
-        self._prefixes.append(clause)
+        if not copy_collection:
+            self._prefixes.append(clause)
+        else:
+            self._prefixes = self._prefixes + [clause]
 
     def append_whereclause(self, whereclause):
         if self._whereclause  is not None:
@@ -3105,10 +3119,14 @@ class Select(_SelectBaseMixin, FromClause):
         else:
             self._having = _literal_as_text(having)
 
-    def append_from(self, fromclause):
+    def append_from(self, fromclause, copy_collection=True):
         if _is_literal(fromclause):
             fromclause = FromClause(fromclause)
-        self._froms.add(fromclause)
+            
+        if not copy_collection:
+            self._froms.add(fromclause)
+        else:
+            self._froms = util.Set(list(self._froms) + [fromclause])
 
     def _exportable_columns(self):
         return [c for c in self._raw_columns if isinstance(c, (Selectable, ColumnElement))]

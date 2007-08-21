@@ -270,6 +270,53 @@ class SelectTest(SQLCompileTest):
         s = s.correlate(t1).order_by(t2.c.col3)
         self.assert_compile(t1.select().select_from(s).order_by(t1.c.col3), "SELECT table1.col1, table1.col2, table1.col3 FROM table1, (SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 FROM table2 WHERE table2.col1 = table1.col1 ORDER BY table2.col3) ORDER BY table1.col3")
 
+    def test_columns(self):
+        s = t1.select()
+        self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
+        select_copy = s.column('yyy')
+        self.assert_compile(select_copy, "SELECT table1.col1, table1.col2, table1.col3, yyy FROM table1")
+        assert s.columns is not select_copy.columns 
+        assert s._columns is not select_copy._columns
+        assert s._raw_columns is not select_copy._raw_columns
+        self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
+
+    def test_froms(self):
+        s = t1.select()
+        self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
+        select_copy = s.select_from(t2)
+        self.assert_compile(select_copy, "SELECT table1.col1, table1.col2, table1.col3 FROM table1, table2")
+        assert s._froms is not select_copy._froms
+        self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
+
+    def test_correlation(self):
+        s = select([t2], t1.c.col1==t2.c.col1)
+        self.assert_compile(s, "SELECT table2.col1, table2.col2, table2.col3 FROM table2, table1 WHERE table1.col1 = table2.col1")
+        s2 = select([t1], t1.c.col2==s.c.col2)
+        self.assert_compile(s2, "SELECT table1.col1, table1.col2, table1.col3 FROM table1, "
+                "(SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 FROM table2 "
+                "WHERE table1.col1 = table2.col1) WHERE table1.col2 = col2")
+                
+        s3 = s.correlate(None)        
+        self.assert_compile(select([t1], t1.c.col2==s3.c.col2), "SELECT table1.col1, table1.col2, table1.col3 FROM table1, "
+                "(SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 FROM table2, table1 "
+                "WHERE table1.col1 = table2.col1) WHERE table1.col2 = col2")
+        self.assert_compile(select([t1], t1.c.col2==s.c.col2), "SELECT table1.col1, table1.col2, table1.col3 FROM table1, "
+                "(SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 FROM table2 "
+                "WHERE table1.col1 = table2.col1) WHERE table1.col2 = col2")
+        s4 = s3.correlate(t1)
+        self.assert_compile(select([t1], t1.c.col2==s4.c.col2), "SELECT table1.col1, table1.col2, table1.col3 FROM table1, "
+                "(SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 FROM table2 "
+                "WHERE table1.col1 = table2.col1) WHERE table1.col2 = col2")
+        self.assert_compile(select([t1], t1.c.col2==s3.c.col2), "SELECT table1.col1, table1.col2, table1.col3 FROM table1, "
+                "(SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 FROM table2, table1 "
+                "WHERE table1.col1 = table2.col1) WHERE table1.col2 = col2")
+    
+    def test_prefixes(self):
+        s = t1.select()
+        self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
+        select_copy = s.prefix_with("FOOBER")
+        self.assert_compile(select_copy, "SELECT FOOBER table1.col1, table1.col2, table1.col3 FROM table1")
+        self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
 
 if __name__ == '__main__':
     testbase.main()        
