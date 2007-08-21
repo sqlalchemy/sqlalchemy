@@ -161,10 +161,10 @@ class Pool(object):
             self._threadconns[thread.get_ident()] = weakref.ref(agent)
             return agent.checkout()
 
-    def return_conn(self, agent):
+    def return_conn(self, record):
         if self._use_threadlocal and thread.get_ident() in self._threadconns:
             del self._threadconns[thread.get_ident()]
-        self.do_return_conn(agent._connection_record)
+        self.do_return_conn(record)
 
     def get(self):
         return self.do_get()
@@ -256,7 +256,30 @@ class _ConnectionRecord(object):
             if self.__pool._should_log:
                 self.__pool.log("Error on connect(): %s" % (str(e)))
             raise
-
+            
+def _finalize_fairy(connection, connection_record, pool, ref=None):
+    if ref is not None and connection_record.backref is not ref:
+        return
+    if connection is not None:
+        try:
+            connection.rollback()
+            # Immediately close detached instances
+            if connection_record is None:
+                connection.close()
+        except Exception, e:
+            if connection_record is not None:
+                connection_record.invalidate(e=e)
+            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+                raise
+    if connection_record is not None:
+        connection_record.backref = None
+        if pool._should_log:
+            pool.log("Connection %s being returned to pool" % repr(connection))
+        if pool._on_checkin:
+            for l in pool._on_checkin:
+                l.checkin(connection, connection_record)
+        pool.return_conn(connection_record)
+    
 class _ConnectionFairy(object):
     """Proxies a DB-API connection and provides return-on-dereference support."""
 
@@ -264,8 +287,9 @@ class _ConnectionFairy(object):
         self._pool = pool
         self.__counter = 0
         try:
-            self._connection_record = pool.get()
-            self.connection = self._connection_record.get_connection()
+            rec = self._connection_record = pool.get()
+            conn = self.connection = self._connection_record.get_connection()
+            self._connection_record.backref = weakref.ref(self, lambda ref:_finalize_fairy(conn, rec, pool, ref))
         except:
             self.connection = None # helps with endless __getattr__ loops later on
             self._connection_record = None
@@ -359,7 +383,8 @@ class _ConnectionFairy(object):
         """
         
         if self._connection_record is not None:
-            self._connection_record.connection = None        
+            self._connection_record.connection = None
+            self._connection_record.backref = None
             self._pool.do_return_conn(self._connection_record)
             self._detatched_properties = \
               self._connection_record.properties.copy()
@@ -370,28 +395,8 @@ class _ConnectionFairy(object):
         if self.__counter == 0:
             self._close()
 
-    def __del__(self):
-        self._close()
-
     def _close(self):
-        if self.connection is not None:
-            try:
-                self.connection.rollback()
-                # Immediately close detached instances
-                if self._connection_record is None:
-                    self.connection.close()
-            except Exception, e:
-                if self._connection_record is not None:
-                    self._connection_record.invalidate(e=e)
-                if isinstance(e, (SystemExit, KeyboardInterrupt)):
-                    raise
-        if self._connection_record is not None:
-            if self._pool._should_log:
-                self._pool.log("Connection %s being returned to pool" % repr(self.connection))
-            if self._pool._on_checkin:
-                for l in self._pool._on_checkin:
-                    l.checkin(self.connection, self._connection_record, self)
-            self._pool.return_conn(self)
+        _finalize_fairy(self.connection, self._connection_record, self._pool)
         self.connection = None
         self._connection_record = None
 

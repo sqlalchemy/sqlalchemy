@@ -111,7 +111,7 @@ class PoolTest(PersistTest):
         self.assert_(status(p) == (3,3,0,0))
         c1 = p.connect()
         c2 = p.connect()
-        self.assert_(status(p) == (3, 1, 0, 2))
+        self.assert_(status(p) == (3, 1, 0, 2), status(p))
         if useclose:
             c2.close()
         else:
@@ -437,11 +437,10 @@ class PoolTest(PersistTest):
                 assert record is not None
                 assert proxy is not None
                 self.checked_out.append(con)
-            def inst_checkin(self, con, record, proxy):
-                print "checkin(%s, %s, %s)" % (con, record, proxy)
+            def inst_checkin(self, con, record):
+                print "checkin(%s, %s)" % (con, record)
                 # con can be None if invalidated
                 assert record is not None
-                assert proxy is not None
                 self.checked_in.append(con)
         class ListenAll(interfaces.PoolListener, InstrumentingListener):
             pass

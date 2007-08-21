@@ -73,7 +73,7 @@ class PoolListener(object):
         using the new connection.
         """
 
-    def checkin(dbapi_con, con_record, con_proxy):
+    def checkin(dbapi_con, con_record):
         """Called when a connection returns to the pool.
 
         Note that the connection may be closed, and may be None if the
@@ -85,9 +85,5 @@ class PoolListener(object):
 
         con_record
           The ``_ConnectionRecord`` that persistently manages the connection
-
-        con_proxy
-          The ``_ConnectionFairy`` which manages the connection for the span of
-          the current checkout.
 
         """
