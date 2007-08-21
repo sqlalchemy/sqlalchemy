@@ -12,27 +12,27 @@ class ClauseParameters(object):
     the ``TypeEngine`` objects present in the ``_BindParamClause`` instances.
     """
 
-    __slots__ = 'dialect', '__binds', 'positional'
+    __slots__ = 'dialect', '_binds', 'positional'
 
     def __init__(self, dialect, positional=None):
         self.dialect = dialect
-        self.__binds = {}
+        self._binds = {}
         if positional is None:
             self.positional = []
         else:
             self.positional = positional
 
     def get_parameter(self, key):
-        return self.__binds[key]
+        return self._binds[key]
 
     def set_parameter(self, bindparam, value, name):
-        self.__binds[name] = [bindparam, name, value]
+        self._binds[name] = [bindparam, name, value]
         
     def get_original(self, key):
-        return self.__binds[key][2]
+        return self._binds[key][2]
 
     def get_type(self, key):
-        return self.__binds[key][0].type
+        return self._binds[key][0].type
 
     def get_processors(self):
         """return a dictionary of bind 'processing' functions"""
@@ -40,36 +40,42 @@ class ClauseParameters(object):
             (key, value) for key, value in 
             [(
                 key,
-                self.__binds[key][0].bind_processor(self.dialect)
-            ) for key in self.__binds]
+                self._binds[key][0].bind_processor(self.dialect)
+            ) for key in self._binds]
             if value is not None
         ])
     
     def get_processed(self, key, processors):
-        return key in processors and processors[key](self.__binds[key][2]) or self.__binds[key][2]
+        if key in processors:
+            return processors[key](self._binds[key][2])
+        else:
+            return self._binds[key][2]
             
     def keys(self):
-        return self.__binds.keys()
+        return self._binds.keys()
 
     def __iter__(self):
         return iter(self.keys())
         
     def __getitem__(self, key):
-        (bind, name, value) = self.__binds[key]
+        (bind, name, value) = self._binds[key]
         processor = bind.bind_processor(self.dialect)
-        return processor is not None and processor(value) or value
+        if processor is not None:
+            return processor(value)
+        else:
+            return value
  
     def __contains__(self, key):
-        return key in self.__binds
+        return key in self._binds
     
     def set_value(self, key, value):
-        self.__binds[key][2] = value
+        self._binds[key][2] = value
             
     def get_original_dict(self):
-        return dict([(name, value) for (b, name, value) in self.__binds.values()])
+        return dict([(name, value) for (b, name, value) in self._binds.values()])
 
     def get_raw_list(self, processors):
-        binds, res = self.__binds, []
+        binds, res = self._binds, []
         for key in self.positional:
             if key in processors:
                 res.append(processors[key](binds[key][2]))
@@ -78,7 +84,7 @@ class ClauseParameters(object):
         return res
 
     def get_raw_dict(self, processors, encode_keys=False):
-        binds, res = self.__binds, {}
+        binds, res = self._binds, {}
         if encode_keys:
             encoding = self.dialect.encoding
             for key in self.keys():

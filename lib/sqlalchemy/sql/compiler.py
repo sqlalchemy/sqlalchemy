@@ -229,8 +229,9 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
 
         bind_names = self.bind_names
         for key, bind in self.binds.iteritems():
-            d.set_parameter(bind, pd.get(key, bind.value), bind_names[bind])
-        
+            # the following is an inlined ClauseParameters.set_parameter()
+            name = bind_names[bind]
+            d._binds[name] = [bind, name, pd.get(key, bind.value)]
         return d
 
     params = property(lambda self:self.construct_params(), doc="""Return the `ClauseParameters` corresponding to this compiled object.  
