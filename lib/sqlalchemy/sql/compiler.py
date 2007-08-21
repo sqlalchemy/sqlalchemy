@@ -223,10 +223,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         
         d = sql_util.ClauseParameters(self.dialect, self.positiontup)
 
-        if self.parameters is None:
-            pd = {}
-        else:
-            pd = self.parameters
+        pd = self.parameters or {}
         if params is not None:
             pd.update(params)
 
