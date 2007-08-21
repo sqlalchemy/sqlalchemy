@@ -1530,6 +1530,9 @@ class RowProxy(object):
     def __contains__(self, key):
         return self.__parent._has_key(self.__row, key)
 
+    def __len__(self):
+        return len(self.__row)
+        
     def __iter__(self):
         for i in range(0, len(self.__row)):
             yield self.__parent._get_col(self.__row, i)
