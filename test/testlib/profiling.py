@@ -3,6 +3,7 @@
 import testbase
 from testlib.config import parser, post_configure
 import testlib.config
+import os
 
 __all__ = 'profiled',
 
@@ -52,9 +53,9 @@ def profiled(target, **target_opts):
             if not testlib.config.options.quiet:
                 print "Profiled target '%s', wall time: %.2f seconds" % (
                     target, ended - began)
-
+            
             report = target_opts.get('report', profile_config['report'])
-            if report:
+            if report and testlib.config.options.verbose:
                 sort_ = target_opts.get('sort', profile_config['sort'])
                 limit = target_opts.get('limit', profile_config['limit'])
                 print "Profile report for target '%s' (%s)" % (
@@ -66,6 +67,13 @@ def profiled(target, **target_opts):
                     stats.print_stats(limit)
                 else:
                     stats.print_stats()
+
+            assert_range = target_opts.get('call_range')
+            if assert_range:
+                stats = hotshot.stats.load(filename)
+                assert stats.total_calls >= assert_range[0] and stats.total_calls <= assert_range[1], stats.total_calls
+            
+            os.unlink(filename)
             return result
         try:
             profiled.__name__ = fn.__name__
