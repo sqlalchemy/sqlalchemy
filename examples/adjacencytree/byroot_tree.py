@@ -48,7 +48,7 @@ class TreeNode(object):
         if isinstance(node, str):
             node = TreeNode(node)
         node._set_root(self.root)
-        self.children.append(node)
+        self.children.set(node)
 
     def __repr__(self):
         return self._getstring(0, False)
@@ -90,8 +90,8 @@ class TreeLoader(MapperExtension):
             result.append(instance)
         else:
             if isnew or selectcontext.populate_existing:
-                parentnode = selectcontext.identity_map[mapper.identity_key(instance.parent_id)]
-                parentnode.children.append(instance)
+                parentnode = selectcontext.identity_map[mapper.identity_key_from_primary_key(instance.parent_id)]
+                parentnode.children.set(instance)
         return False
             
 class TreeData(object):
@@ -196,7 +196,7 @@ session.clear()
 
 # load some nodes.  we do this based on "root id" which will load an entire sub-tree in one pass.
 # the MapperExtension will assemble the incoming nodes into a tree structure.
-t = session.query(TreeNode).select(TreeNode.c.root_id==nodeid, order_by=[TreeNode.c.id])[0]
+t = session.query(TreeNode).filter(TreeNode.c.root_id==nodeid).order_by([TreeNode.c.id])[0]
 
 print "\n\n\n----------------------------"
 print "Full Tree:"

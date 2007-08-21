@@ -113,7 +113,7 @@ print "tree new where node_id=%d:" % nodeid
 print "----------------------------"
 
 session.clear()
-t = session.query(TreeNode).select(TreeNode.c.id==nodeid)[0]
+t = session.query(TreeNode).filter(TreeNode.c.id==nodeid)[0]
 
 print "\n\n\n----------------------------"
 print "Full Tree:"
