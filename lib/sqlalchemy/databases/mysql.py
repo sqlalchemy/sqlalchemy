@@ -2186,7 +2186,7 @@ class MySQLSchemaReflector(object):
             r'  '
             r'(?:(?P<type>\S+) )?KEY +'
             r'(?:%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s)?'
-            r'(?: +USING +(?P<using>\S+) +)?'
+            r'(?: +USING +(?P<using>\S+))?'
             r' +\((?P<columns>.+?)\)'
             r'(?: +KEY_BLOCK_SIZE +(?P<keyblock>\S+))?'
             r'(?: +WITH PARSER +(?P<parser>\S+))?'
