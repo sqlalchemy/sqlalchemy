@@ -99,13 +99,26 @@ class DefaultTest(PersistTest):
         t.delete().execute()
     
     def testargsignature(self):
-        def mydefault(x, y):
-            pass
-        try:
-            c = ColumnDefault(mydefault)
-            assert False
-        except exceptions.ArgumentError, e:
-            assert str(e) == "ColumnDefault Python function takes zero or one positional arguments", str(e)
+        ex_msg = \
+          "ColumnDefault Python function takes zero or one positional arguments"
+
+        def fn1(x, y): pass
+        def fn2(x, y, z=3): pass
+        for fn in fn1, fn2:
+            try:
+                c = ColumnDefault(fn)
+                assert False
+            except exceptions.ArgumentError, e:
+                assert str(e) == ex_msg
+
+        def fn3(): pass
+        def fn4(): pass
+        def fn5(x=1): pass
+        def fn6(x=1, y=2, z=3): pass
+        fn7 = list
+
+        for fn in fn3, fn4, fn5, fn6, fn7:
+            c = ColumnDefault(fn)
             
     def teststandalone(self):
         c = testbase.db.engine.contextual_connect()

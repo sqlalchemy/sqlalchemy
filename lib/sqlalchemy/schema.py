@@ -735,10 +735,14 @@ class ColumnDefault(DefaultGenerator):
                 argspec = inspect.getargspec(arg)
                 if len(argspec[0]) == 0:
                     self.arg = lambda ctx: arg()
-                elif len(argspec[0]) != 1:
-                    raise exceptions.ArgumentError("ColumnDefault Python function takes zero or one positional arguments")
                 else:
-                    self.arg = arg
+                    defaulted = argspec[3] is not None and len(argspec[3]) or 0
+                    if len(argspec[0]) - defaulted > 1:
+                        raise exceptions.ArgumentError(
+                            "ColumnDefault Python function takes zero or one "
+                            "positional arguments")
+                    else:
+                        self.arg = arg
         else:
             self.arg = arg
 
