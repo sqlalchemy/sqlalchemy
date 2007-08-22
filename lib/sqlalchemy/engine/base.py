@@ -1010,6 +1010,7 @@ class Engine(Connectable):
         self.logger = logging.instance_logger(self, echoflag=echo)
 
     name = property(lambda s:sys.modules[s.dialect.__module__].descriptor()['name'], doc="String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``.")
+    echo = logging.echo_property()
     
     def __repr__(self):
         return 'Engine(%s)' % str(self.url)

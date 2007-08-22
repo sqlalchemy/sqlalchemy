@@ -75,4 +75,23 @@ def instance_logger(instance, echoflag=None):
     instance._should_log_debug = l.isEnabledFor(logging.DEBUG)
     instance._should_log_info = l.isEnabledFor(logging.INFO)
     return l
+
+class echo_property(object):
+    __doc__ = """when ``True``, enable log output for this element.
+
+    This has the effect of setting the Python logging level for the
+    namespace of this element's class and object reference.  A value
+    of boolean ``True`` indicates that the loglevel ``logging.INFO`` will be
+    set for the logger, whereas the string value ``debug`` will set the loglevel
+    to ``logging.DEBUG``.
+    """
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        else:
+            return instance._should_log_debug and 'debug' or (instance._should_log_info and True or False)
+
+    def __set__(self, instance, value):
+        instance_logger(instance, echoflag=value)
     

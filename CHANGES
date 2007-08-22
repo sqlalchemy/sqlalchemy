@@ -22,6 +22,10 @@ CHANGES
 - Fix to bind param processing such that "False" values (like blank strings)
   still get processed/encoded.
 
+- Fix to select() "generative" behavior, such that calling column(),
+  select_from(), correlate(), and with_prefix() does not modify the
+  original select object [ticket:752]
+  
 - Added a "legacy" adapter to types, such that user-defined TypeEngine
   and TypeDecorator classes which define convert_bind_param() and/or
   convert_result_value() will continue to function.  Also supports
