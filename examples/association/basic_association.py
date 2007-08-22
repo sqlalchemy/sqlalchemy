@@ -12,10 +12,11 @@ of the price on each Item (since those can change).
 
 import logging
 from datetime import datetime
+
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-# Uncomment these to see watch database activity.
+# Uncomment these to watch database activity.
 #logging.basicConfig(format='%(message)s')
 #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
@@ -31,7 +32,7 @@ orders = Table('orders', metadata,
 items = Table('items', metadata,
     Column('item_id', Integer, primary_key=True),
     Column('description', String(30), nullable=False),
-    Column('price', Float, nullable=False)
+    Column('price', Numeric(8, 2), nullable=False)
     )
 
 orderitems = Table('orderitems', metadata,
@@ -39,7 +40,7 @@ orderitems = Table('orderitems', metadata,
            primary_key=True),
     Column('item_id', Integer, ForeignKey('items.item_id'),
            primary_key=True),
-    Column('price', Float, nullable=False)
+    Column('price', Numeric(8, 2), nullable=False)
     )
 metadata.create_all()
 
@@ -51,6 +52,8 @@ class Item(object):
     def __init__(self, description, price):
         self.description = description
         self.price = price
+    def __repr__(self):
+        return 'Item(%s, %s)' % (repr(self.description), repr(self.price))
 
 class OrderItem(object):
     def __init__(self, item, price=None):
@@ -58,11 +61,12 @@ class OrderItem(object):
         self.price = price or item.price
         
 mapper(Order, orders, properties={
-    'items':relation(OrderItem, cascade="all, delete-orphan", lazy=False)
+    'order_items': relation(OrderItem, cascade="all, delete-orphan",
+                            backref='order')
 })
 mapper(Item, items)
 mapper(OrderItem, orderitems, properties={
-    'item':relation(Item, lazy=False)
+    'item': relation(Item, lazy=False)
 })
 
 session = create_session()
@@ -82,9 +86,9 @@ def item(name):
 order = Order('john smith')
 
 # add three OrderItem associations to the Order and save
-order.items.append(OrderItem(item('SA Mug')))
-order.items.append(OrderItem(item('MySQL Crowbar'), 10.99))
-order.items.append(OrderItem(item('SA Hat')))
+order.order_items.append(OrderItem(item('SA Mug')))
+order.order_items.append(OrderItem(item('MySQL Crowbar'), 10.99))
+order.order_items.append(OrderItem(item('SA Hat')))
 session.save(order)
 session.flush()
 
@@ -92,10 +96,11 @@ session.clear()
 
 # query the order, print items
 order = session.query(Order).filter_by(customer_name='john smith').one()
-print [(item.item.description, item.price) for item in order.items]
+print [(order_item.item.description, order_item.price) 
+       for order_item in order.order_items]
 
 # print customers who bought 'MySQL Crowbar' on sale
-q = session.query(Order).join('items')
+q = session.query(Order).join(['order_items', 'item'])
 q = q.filter(and_(Item.description == 'MySQL Crowbar',
                   Item.price > OrderItem.price))
 
