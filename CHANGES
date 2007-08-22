@@ -19,6 +19,15 @@ CHANGES
   - the 'Smallinteger' compatiblity name (small i!) is no longer imported, but
     remains in schema.py for now.  SmallInteger (big I!) is still imported.
 
+- the connection pool uses a "threadlocal" strategy internally to return
+  the same connection already bound to a thread, for "contextual" connections;
+  these are the connections used when you do a "connectionless" execution
+  like insert().execute().  This is like a "partial" version of the
+  "threadlocal" engine strategy but without the thread-local transaction part 
+  of it.  We're hoping it reduces connection pool overhead as well as 
+  database usage.  However, if it proves to impact stability in a negative way,
+  we'll roll it right back.
+  
 - Fix to bind param processing such that "False" values (like blank strings)
   still get processed/encoded.
 
