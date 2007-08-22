@@ -66,10 +66,15 @@ def is_info_enabled(logger):
     return logger.isEnabledFor(logging.INFO)
 
 def instance_logger(instance, echoflag=None):
-    if echoflag:
+    if echoflag is not None:
         default_logging(_get_instance_name(instance))
         l = logging.getLogger(_get_instance_name(instance))
-        l.setLevel(echoflag == 'debug' and logging.DEBUG or logging.INFO)
+        if echoflag == 'debug':
+            l.setLevel(logging.DEBUG)
+        elif echoflag is True:
+            l.setLevel(logging.INFO)
+        elif echoflag is False:
+            l.setLevel(logging.NOTSET)
     else:
         l = logging.getLogger(_get_instance_name(instance))
     instance._should_log_debug = l.isEnabledFor(logging.DEBUG)

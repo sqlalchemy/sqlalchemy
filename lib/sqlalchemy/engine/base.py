@@ -672,7 +672,8 @@ class Connection(Connectable):
 
     def _begin_impl(self):
         if self.__connection.is_valid:
-            self.__engine.logger.info("BEGIN")
+            if self.__engine._should_log_info:
+                self.__engine.logger.info("BEGIN")
             try:
                 self.__engine.dialect.do_begin(self.connection)
             except Exception, e:
@@ -680,7 +681,8 @@ class Connection(Connectable):
 
     def _rollback_impl(self):
         if self.__connection.is_valid:
-            self.__engine.logger.info("ROLLBACK")
+            if self.__engine._should_log_info:
+                self.__engine.logger.info("ROLLBACK")
             try:
                 self.__engine.dialect.do_rollback(self.connection)
             except Exception, e:
@@ -689,7 +691,8 @@ class Connection(Connectable):
 
     def _commit_impl(self):
         if self.__connection.is_valid:
-            self.__engine.logger.info("COMMIT")
+            if self.__engine._should_log_info:
+                self.__engine.logger.info("COMMIT")
             try:
                 self.__engine.dialect.do_commit(self.connection)
             except Exception, e:
@@ -1167,11 +1170,6 @@ class Engine(Connectable):
         """Return a DB-API connection."""
 
         return self.pool.unique_connection()
-
-    def log(self, msg):
-        """Log a message using this SQLEngine's logger stream."""
-
-        self.logger.info(msg)
 
 class ResultProxy(object):
     """Wraps a DB-API cursor object to provide easier access to row columns.
