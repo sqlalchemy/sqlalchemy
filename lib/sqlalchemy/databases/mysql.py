@@ -1390,8 +1390,8 @@ class MySQLDialect(default.DefaultDialect):
             opts['client_flag'] = client_flag
         return [[], opts]
 
-    def create_execution_context(self, *args, **kwargs):
-        return MySQLExecutionContext(self, *args, **kwargs)
+    def create_execution_context(self, connection, **kwargs):
+        return MySQLExecutionContext(self, connection, **kwargs)
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
@@ -1405,8 +1405,7 @@ class MySQLDialect(default.DefaultDialect):
     def schemadropper(self, *args, **kwargs):
         return MySQLSchemaDropper(self, *args, **kwargs)
 
-    def do_executemany(self, cursor, statement, parameters,
-                       context=None, **kwargs):
+    def do_executemany(self, cursor, statement, parameters, context=None):
         rowcount = cursor.executemany(statement, parameters)
         if context is not None:
             context._rowcount = rowcount
@@ -1414,7 +1413,7 @@ class MySQLDialect(default.DefaultDialect):
     def supports_unicode_statements(self):
         return True
                 
-    def do_execute(self, cursor, statement, parameters, **kwargs):
+    def do_execute(self, cursor, statement, parameters, context=None):
         cursor.execute(statement, parameters)
 
     def do_commit(self, connection):
@@ -1782,8 +1781,7 @@ class MySQLCompiler(compiler.DefaultCompiler):
 #       creation of foreign key constraints fails."
 
 class MySQLSchemaGenerator(compiler.SchemaGenerator):
-    def get_column_specification(self, column, override_pk=False,
-                                 first_pk=False):
+    def get_column_specification(self, column, first_pk=False):
         """Builds column DDL."""
         
         colspec = [self.preparer.format_column(column),
@@ -1950,7 +1948,7 @@ class MySQLSchemaReflector(object):
             warnings.warn(RuntimeWarning(
                 "Did not recognize type '%s' of column '%s'" %
                 (type_, name)))
-            coltype = sqltypes.NULLTYPE
+            col_type = sqltypes.NULLTYPE
         
         # Column type positional arguments eg. varchar(32)
         if args is None or args == '':
@@ -2066,15 +2064,16 @@ class MySQLSchemaReflector(object):
             if ref_key in table.metadata.tables:
                 ref_table = table.metadata.tables[ref_key]
             else:
-                ref_table = schema.Table(ref_name, table.metadata,
-                                         schema=ref_schema,
-                                         autoload=True, autoload_with=connection)
+                ref_table = schema.Table(
+                    ref_name, table.metadata, schema=ref_schema,
+                    autoload=True, autoload_with=connection)
 
             ref_names = spec['foreign']
             if not util.Set(ref_names).issubset(
                 util.Set([c.name for c in ref_table.c])):
                 raise exceptions.InvalidRequestError(
-                    "Foreign key columns (%s) are not present on foreign table" %
+                    "Foreign key columns (%s) are not present on "
+                    "foreign table %s" %
                     (', '.join(ref_names), ref_table.fullname()))
             ref_columns = [ref_table.c[name] for name in ref_names]
 
@@ -2112,13 +2111,12 @@ class MySQLSchemaReflector(object):
         self._pr_options = []
         self._re_options_util = {}
 
-        _initial, _final = (self.preparer.initial_quote,
-                            self.preparer.final_quote)
+        _final = self.preparer.final_quote
         
         quotes = dict(zip(('iq', 'fq', 'esc_fq'),
                           [re.escape(s) for s in
                            (self.preparer.initial_quote,
-                            self.preparer.final_quote,
+                            _final,
                             self.preparer._escape_identifier(_final))]))
 
         self._pr_name = _pr_compile(
@@ -2387,7 +2385,7 @@ class _MySQLIdentifierPreparer(compiler.IdentifierPreparer):
     def _quote_free_identifiers(self, *ids):
         """Unilaterally identifier-quote any number of strings."""
 
-        return tuple([self.quote_identifier(id) for id in ids if id is not None])
+        return tuple([self.quote_identifier(i) for i in ids if i is not None])
 
 
 class MySQLIdentifierPreparer(_MySQLIdentifierPreparer):

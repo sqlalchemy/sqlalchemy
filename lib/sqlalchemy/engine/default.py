@@ -52,8 +52,8 @@ class DefaultDialect(base.Dialect):
         
         return {}
     
-    def create_execution_context(self, **kwargs):
-        return DefaultExecutionContext(self, **kwargs)
+    def create_execution_context(self, connection, **kwargs):
+        return DefaultExecutionContext(self, connection, **kwargs)
 
     def type_descriptor(self, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given
@@ -108,10 +108,10 @@ class DefaultDialect(base.Dialect):
     def do_release_savepoint(self, connection, name):
         connection.execute(expression.ReleaseSavepointClause(name))
 
-    def do_executemany(self, cursor, statement, parameters, **kwargs):
+    def do_executemany(self, cursor, statement, parameters, context=None):
         cursor.executemany(statement, parameters)
 
-    def do_execute(self, cursor, statement, parameters, **kwargs):
+    def do_execute(self, cursor, statement, parameters, context=None):
         cursor.execute(statement, parameters)
 
     def is_disconnect(self, e):

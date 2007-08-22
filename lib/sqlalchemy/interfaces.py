@@ -42,7 +42,7 @@ class PoolListener(object):
     providing implementations for the hooks you'll be using.
     """
 
-    def connect(dbapi_con, con_record):
+    def connect(self, dbapi_con, con_record):
         """Called once for each new DB-API connection or Pool's ``creator()``.
 
         dbapi_con
@@ -54,7 +54,7 @@ class PoolListener(object):
           
         """
 
-    def checkout(dbapi_con, con_record, con_proxy):
+    def checkout(self, dbapi_con, con_record, con_proxy):
         """Called when a connection is retrieved from the Pool.
 
         dbapi_con
@@ -73,7 +73,7 @@ class PoolListener(object):
         using the new connection.
         """
 
-    def checkin(dbapi_con, con_record):
+    def checkin(self, dbapi_con, con_record):
         """Called when a connection returns to the pool.
 
         Note that the connection may be closed, and may be None if the

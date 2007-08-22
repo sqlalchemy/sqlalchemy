@@ -42,6 +42,8 @@ class SLSmallInteger(sqltypes.Smallinteger):
         return "SMALLINT"
 
 class DateTimeMixin(object):
+    __format__ = "%Y-%m-%d %H:%M:%S"
+
     def bind_processor(self, dialect):
         def process(value):
             if isinstance(value, basestring):
@@ -63,7 +65,7 @@ class DateTimeMixin(object):
             (value, microsecond) = value.split('.')
             microsecond = int(microsecond)
         except ValueError:
-            (value, microsecond) = (value, 0)
+            microsecond = 0
         return time.strptime(value, self.__format__)[0:6] + (microsecond,)
 
 class SLDateTime(DateTimeMixin,sqltypes.DateTime):
@@ -225,11 +227,8 @@ class SQLiteDialect(default.DefaultDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def create_execution_context(self, **kwargs):
-        return SQLiteExecutionContext(self, **kwargs)
-
-    def last_inserted_ids(self):
-        return self.context.last_inserted_ids
+    def create_execution_context(self, connection, **kwargs):
+        return SQLiteExecutionContext(self, connection, **kwargs)
 
     def oid_column_name(self, column):
         return "oid"
@@ -255,13 +254,13 @@ class SQLiteDialect(default.DefaultDialect):
             row = c.fetchone()
             if row is None:
                 break
-            #print "row! " + repr(row)
+
             found_table = True
-            (name, type, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4] is not None, row[5])
+            (name, type_, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4] is not None, row[5])
             name = re.sub(r'^\"|\"$', '', name)
             if include_columns and name not in include_columns:
                 continue
-            match = re.match(r'(\w+)(\(.*?\))?', type)
+            match = re.match(r'(\w+)(\(.*?\))?', type_)
             if match:
                 coltype = match.group(1)
                 args = match.group(2)
@@ -269,7 +268,6 @@ class SQLiteDialect(default.DefaultDialect):
                 coltype = "VARCHAR"
                 args = ''
 
-            #print "coltype: " + repr(coltype) + " args: " + repr(args)
             try:
                 coltype = pragma_names[coltype]
             except KeyError:
@@ -278,7 +276,6 @@ class SQLiteDialect(default.DefaultDialect):
                 
             if args is not None:
                 args = re.findall(r'(\d+)', args)
-                #print "args! " +repr(args)
                 coltype = coltype(*[int(a) for a in args])
 
             colargs= []
@@ -335,14 +332,14 @@ class SQLiteDialect(default.DefaultDialect):
                 if row is None:
                     break
                 cols.append(row[2])
-                col = table.columns[row[2]]
+
 
 class SQLiteCompiler(compiler.DefaultCompiler):
-    def visit_cast(self, cast):
+    def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
             return super(SQLiteCompiler, self).visit_cast(cast)
         else:
-            if self.select_stack:
+            if self.stack and self.stack[-1].get('select'):
                 # not sure if we want to set the typemap here...
                 self.typemap.setdefault("CAST", cast.type)
             return self.process(cast.clause)

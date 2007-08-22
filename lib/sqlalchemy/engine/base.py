@@ -247,12 +247,12 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_executemany(self, cursor, statement, parameters):
+    def do_executemany(self, cursor, statement, parameters, context=None):
         """Provide an implementation of *cursor.executemany(statement, parameters)*."""
 
         raise NotImplementedError()
 
-    def do_execute(self, cursor, statement, parameters):
+    def do_execute(self, cursor, statement, parameters, context=None):
         """Provide an implementation of *cursor.execute(statement, parameters)*."""
 
         raise NotImplementedError()
