@@ -5,6 +5,7 @@ import unittest
 def suite():
     modules_to_test = (
         'profiling.compiler',
+        'profiling.pool',
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:

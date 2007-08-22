@@ -115,7 +115,10 @@ class Pool(object):
     def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=True,
                  listeners=None):
         self.logger = logging.instance_logger(self, echoflag=echo)
-        self._threadconns = {}
+        # the WeakValueDictionary works more nicely than a regular dict
+        # of weakrefs.  the latter can pile up dead reference objects which don't
+        # get cleaned out.  WVD adds from 1-6 method calls to a checkout operation.
+        self._threadconns = weakref.WeakValueDictionary()
         self._creator = creator
         self._recycle = recycle
         self._use_threadlocal = use_threadlocal
@@ -153,10 +156,10 @@ class Pool(object):
             return _ConnectionFairy(self).checkout()
 
         try:
-            return self._threadconns[thread.get_ident()]().checkout()
+            return self._threadconns[thread.get_ident()].checkout()
         except KeyError:
             agent = _ConnectionFairy(self)
-            self._threadconns[thread.get_ident()] = weakref.ref(agent)
+            self._threadconns[thread.get_ident()] = agent
             return agent.checkout()
 
     def return_conn(self, record):
