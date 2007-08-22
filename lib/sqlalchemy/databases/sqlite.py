@@ -18,6 +18,15 @@ from sqlalchemy.sql import compiler
 SELECT_REGEXP = re.compile(r'\s*(?:SELECT|PRAGMA)', re.I | re.UNICODE)
     
 class SLNumeric(sqltypes.Numeric):
+    def bind_processor(self, dialect):
+        type_ = self.asdecimal and str or float
+        def process(value):
+            if value is not None:
+                return type_(value)
+            else:
+                return value
+        return process
+
     def get_col_spec(self):
         if self.precision is None:
             return "NUMERIC"
