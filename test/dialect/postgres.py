@@ -115,6 +115,24 @@ class MiscTest(AssertMixin):
             t.drop(checkfirst=True)
 
     @testing.supported('postgres')
+    def test_distinct_on(self):
+        t = Table('mytable', MetaData(testbase.db),
+                  Column('id', Integer, primary_key=True),
+                  Column('a', String(8)))
+        self.assertEquals(
+            str(t.select(distinct=t.c.a)),
+            'SELECT DISTINCT ON (mytable.a) mytable.id, mytable.a \n'
+            'FROM mytable')
+        self.assertEquals(
+            str(t.select(distinct=['id','a'])),
+            'SELECT DISTINCT ON (id, a) mytable.id, mytable.a \n'
+            'FROM mytable')
+        self.assertEquals(
+            str(t.select(distinct=[t.c.id, t.c.a])),
+            'SELECT DISTINCT ON (mytable.id, mytable.a) mytable.id, mytable.a \n'
+            'FROM mytable')
+
+    @testing.supported('postgres')
     def test_schema_reflection(self):
         """note: this test requires that the 'alt_schema' schema be separate and accessible by the test user"""
 
