@@ -2426,7 +2426,7 @@ class Alias(FromClause):
             yield c
         yield self.selectable
 
-    def _get_from_objects(self):
+    def _get_from_objects(self, **modifiers):
         return [self]
 
     bind = property(lambda s: s.selectable.bind)

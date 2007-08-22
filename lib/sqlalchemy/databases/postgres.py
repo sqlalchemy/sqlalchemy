@@ -567,15 +567,14 @@ class PGCompiler(compiler.DefaultCompiler):
 
     def get_select_precolumns(self, select):
         if select._distinct:
-            if type(select._distinct) == bool:
+            if isinstance(select._distinct, bool):
                 return "DISTINCT "
-            if type(select._distinct) == list:
-                dist_set = "DISTINCT ON ("
-                for col in select._distinct:
-                    dist_set += self.strings[col] + ", "
-                    dist_set = dist_set[:-2] + ") "
-                return dist_set
-            return "DISTINCT ON (" + str(select._distinct) + ") "
+            elif isinstance(select._distinct, (list, tuple)):
+                return "DISTINCT ON (" + ', '.join(
+                    [(isinstance(col, basestring) and col or self.process(col)) for col in select._distinct]
+                )+ ") "
+            else:
+                return "DISTINCT ON (" + unicode(select._distinct) + ") "
         else:
             return ""
 
