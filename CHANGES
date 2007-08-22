@@ -54,6 +54,8 @@ CHANGES
 
 - Connection.begin() no longer accepts nested=True, this logic is now
   all in begin_nested().
+
+- fixes to new "dynamic" relation loader involving cascades
     
 0.4.0beta3
 ----------

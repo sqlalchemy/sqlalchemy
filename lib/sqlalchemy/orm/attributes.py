@@ -417,7 +417,7 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
 
         obj._state['modified'] = True
 
-        collection = self._get_collection(obj)
+        collection = self.get_collection(obj)
         collection.clear_with_event()
         del obj.__dict__[self.key]
 
@@ -431,13 +431,13 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
     def append(self, obj, value, initiator):
         if initiator is self:
             return
-        collection = self._get_collection(obj)
+        collection = self.get_collection(obj)
         collection.append_with_event(value, initiator)
 
     def remove(self, obj, value, initiator):
         if initiator is self:
             return
-        collection = self._get_collection(obj)
+        collection = self.get_collection(obj)
         collection.remove_with_event(value, initiator)
 
     def set(self, obj, value, initiator):
@@ -459,7 +459,7 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
             trig()
 
         old = self.get(obj)
-        old_collection = self._get_collection(obj, old)
+        old_collection = self.get_collection(obj, old)
 
         new_collection, user_data = self._build_collection(obj)
         self._load_collection(obj, value or [], emit_events=True,
@@ -497,7 +497,7 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
         return collection, user_data
 
     def _load_collection(self, obj, values, emit_events=True, collection=None):
-        collection = collection or self._get_collection(obj)
+        collection = collection or self.get_collection(obj)
         if values is None:
             return
         elif emit_events:
@@ -507,7 +507,7 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
             for item in values:
                 collection.append_without_event(item)
             
-    def _get_collection(self, obj, user_data=None):
+    def get_collection(self, obj, user_data=None):
         if user_data is None:
             user_data = self.get(obj)
         try:
@@ -557,10 +557,10 @@ class CommittedState(object):
     def rollback(self, manager, obj):
         for attr in manager.managed_attributes(obj.__class__):
             if attr.key in self.data:
-                if not isinstance(attr, InstrumentedCollectionAttribute):
+                if not hasattr(attr, 'get_collection'):
                     obj.__dict__[attr.key] = self.data[attr.key]
                 else:
-                    collection = attr._get_collection(obj)
+                    collection = attr.get_collection(obj)
                     collection.clear_without_event()
                     for item in self.data[attr.key]:
                         collection.append_without_event(item)
@@ -589,14 +589,14 @@ class AttributeHistory(object):
         else:
             original = None
 
-        if isinstance(attr, InstrumentedCollectionAttribute):
+        if hasattr(attr, 'get_collection'):
             self._current = current
             s = util.Set(original or [])
             self._added_items = []
             self._unchanged_items = []
             self._deleted_items = []
             if current:
-                collection = attr._get_collection(obj, current)
+                collection = attr.get_collection(obj, current)
                 for a in collection:
                     if a in s:
                         self._unchanged_items.append(a)
@@ -730,8 +730,8 @@ class AttributeManager(object):
         x = attr.get(obj, passive=passive)
         if x is PASSIVE_NORESULT:
             return []
-        elif isinstance(attr, InstrumentedCollectionAttribute):
-            return list(attr._get_collection(obj, x))
+        elif hasattr(attr, 'get_collection'):
+            return list(attr.get_collection(obj, x))
         elif isinstance(x, list):
             return x
         else:
@@ -853,7 +853,6 @@ class AttributeManager(object):
 
     def init_collection(self, instance, key):
         """Initialize a collection attribute and return the collection adapter."""
-
         attr = self.get_attribute(instance, key)
         user_data = attr.initialize(instance)
-        return attr._get_collection(instance, user_data)
+        return attr.get_collection(instance, user_data)

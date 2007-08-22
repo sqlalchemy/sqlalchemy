@@ -21,7 +21,10 @@ class DynamicCollectionAttribute(attributes.InstrumentedAttribute):
         # we have our own AttributeHistory therefore dont need CommittedState
         # instead, we reset the history stored on the attribute
         obj.__dict__[self.key] = CollectionHistory(self, obj)
-    
+
+    def get_collection(self, obj, user_data=None):
+        return self.get_history(obj)._added_items
+        
     def set(self, obj, value, initiator):
         if initiator is self:
             return
