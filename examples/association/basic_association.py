@@ -1,22 +1,25 @@
-"""basic example of using the association object pattern, which is
-a richer form of a many-to-many relationship."""
+"""A basic example of using the association object pattern.
 
+The association object pattern is a richer form of a many-to-many
+relationship.
 
-# the model will be an ecommerce example.  We will have an
-# Order, which represents a set of Items purchased by a user.
-# each Item has a price.  however, the Order must store its own price for
-# each Item, representing the price paid by the user for that particular order, which 
-# is independent of the price on each Item (since those can change).
-
-from sqlalchemy import *
-from sqlalchemy.ext.selectresults import SelectResults
-from datetime import datetime
+The model will be an ecommerce example.  We will have an Order, which
+represents a set of Items purchased by a user.  Each Item has a price.
+However, the Order must store its own price for each Item, representing
+the price paid by the user for that particular order, which is independent
+of the price on each Item (since those can change).
+"""
 
 import logging
-logging.basicConfig(format='%(message)s')
-logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+from datetime import datetime
+from sqlalchemy import *
+from sqlalchemy.orm import *
 
-engine = create_engine('sqlite://')
+# Uncomment these to see watch database activity.
+#logging.basicConfig(format='%(message)s')
+#logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+engine = create_engine('sqlite:///')
 metadata = MetaData(engine)
 
 orders = Table('orders', metadata, 
@@ -32,8 +35,10 @@ items = Table('items', metadata,
     )
 
 orderitems = Table('orderitems', metadata,
-    Column('order_id', Integer, ForeignKey('orders.order_id'), primary_key=True),
-    Column('item_id', Integer, ForeignKey('items.item_id'), primary_key=True),
+    Column('order_id', Integer, ForeignKey('orders.order_id'),
+           primary_key=True),
+    Column('item_id', Integer, ForeignKey('items.item_id'),
+           primary_key=True),
     Column('price', Float, nullable=False)
     )
 metadata.create_all()
@@ -71,7 +76,7 @@ session.flush()
 
 # function to return items from the DB
 def item(name):
-    return session.query(Item).get_by(description=name)
+    return session.query(Item).filter_by(description=name).one()
     
 # create an order
 order = Order('john smith')
@@ -86,19 +91,12 @@ session.flush()
 session.clear()
 
 # query the order, print items
-order = session.query(Order).get_by(customer_name='john smith')
+order = session.query(Order).filter_by(customer_name='john smith').one()
 print [(item.item.description, item.price) for item in order.items]
 
 # print customers who bought 'MySQL Crowbar' on sale
-result = SelectResults(session.query(Order)).join_to('item').select(and_(items.c.description=='MySQL Crowbar', items.c.price>orderitems.c.price))
-print [order.customer_name for order in result]
+q = session.query(Order).join('items')
+q = q.filter(and_(Item.description == 'MySQL Crowbar',
+                  Item.price > OrderItem.price))
 
-
-
-
-
-
-
-
-
-
+print [order.customer_name for order in q]
