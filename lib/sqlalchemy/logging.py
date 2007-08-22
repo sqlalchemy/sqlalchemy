@@ -67,11 +67,12 @@ def is_info_enabled(logger):
 
 def instance_logger(instance, echoflag=None):
     if echoflag is not None:
-        default_logging(_get_instance_name(instance))
         l = logging.getLogger(_get_instance_name(instance))
         if echoflag == 'debug':
+            default_logging(_get_instance_name(instance))
             l.setLevel(logging.DEBUG)
         elif echoflag is True:
+            default_logging(_get_instance_name(instance))
             l.setLevel(logging.INFO)
         elif echoflag is False:
             l.setLevel(logging.NOTSET)

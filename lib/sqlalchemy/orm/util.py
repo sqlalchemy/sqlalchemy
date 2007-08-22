@@ -271,14 +271,15 @@ class PropertyAliasedClauses(AliasedClauses):
         if prop.secondary:
             self.secondary = prop.secondary.alias()
             if parentclauses is not None:
-                aliasizer = sql_util.ClauseAdapter(self.alias).\
-                        chain(sql_util.ClauseAdapter(self.secondary)).\
-                        chain(sql_util.ClauseAdapter(parentclauses.alias))
+                primary_aliasizer = sql_util.ClauseAdapter(self.secondary).chain(sql_util.ClauseAdapter(parentclauses.alias))
+                secondary_aliasizer = sql_util.ClauseAdapter(self.alias).chain(sql_util.ClauseAdapter(self.secondary))
+
             else:
-                aliasizer = sql_util.ClauseAdapter(self.alias).\
-                    chain(sql_util.ClauseAdapter(self.secondary))
-            self.secondaryjoin = aliasizer.traverse(secondaryjoin, clone=True)
-            self.primaryjoin = aliasizer.traverse(primaryjoin, clone=True)
+                primary_aliasizer = sql_util.ClauseAdapter(self.secondary)
+                secondary_aliasizer = sql_util.ClauseAdapter(self.alias).chain(sql_util.ClauseAdapter(self.secondary))
+                
+            self.secondaryjoin = secondary_aliasizer.traverse(secondaryjoin, clone=True)
+            self.primaryjoin = primary_aliasizer.traverse(primaryjoin, clone=True)
         else:
             if parentclauses is not None: 
                 aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side)

@@ -510,5 +510,43 @@ class SelfReferentialEagerTest(ORMTest):
             ]) == d
         self.assert_sql_count(testbase.db, go, 3)
 
+class SelfReferentialM2MEagerTest(ORMTest):
+    def define_tables(self, metadata):
+        global widget, widget_rel
+        
+        widget = Table('widget', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', Unicode(40), nullable=False, unique=True),
+        )
+
+        widget_rel = Table('widget_rel', metadata,
+            Column('parent_id', Integer, ForeignKey('widget.id')),
+            Column('child_id', Integer, ForeignKey('widget.id')),
+            UniqueConstraint('parent_id', 'child_id'),
+        )
+    def test_basic(self):
+        class Widget(Base):
+            pass
+
+        mapper(Widget, widget, properties={
+            'children': relation(Widget, secondary=widget_rel,
+                primaryjoin=widget_rel.c.parent_id==widget.c.id,
+                secondaryjoin=widget_rel.c.child_id==widget.c.id,
+                lazy=False, join_depth=1,
+            )
+        })
+
+        sess = create_session()
+        w1 = Widget(name='w1')
+        w2 = Widget(name='w2')
+        w1.children.append(w2)
+        sess.save(w1)
+        sess.flush()
+        sess.clear()
+        
+#        l = sess.query(Widget).filter(Widget.name=='w1').all()
+#        print l
+        assert [Widget(name='w1', children=[Widget(name='w2')])] == sess.query(Widget).filter(Widget.name=='w1').all()
+        
 if __name__ == '__main__':
     testbase.main()
