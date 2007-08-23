@@ -148,9 +148,11 @@ class AssociationProxy(object):
             return
         elif self.scalar is None:
             self.scalar = self._target_is_scalar()
+            if self.scalar:
+                self._initialize_scalar_accessors()
 
         if self.scalar:
-            return getattr(getattr(obj, self.target_collection), self.value_attr)
+            return self._scalar_get(getattr(obj, self.target_collection))
         else:
             try:
                 return getattr(obj, self.key)
@@ -162,6 +164,8 @@ class AssociationProxy(object):
     def __set__(self, obj, values):
         if self.scalar is None:
             self.scalar = self._target_is_scalar()
+            if self.scalar:
+                self._initialize_scalar_accessors()
 
         if self.scalar:
             creator = self.creator and self.creator or self.target_class
@@ -169,7 +173,7 @@ class AssociationProxy(object):
             if target is None:
                 setattr(obj, self.target_collection, creator(values))
             else:
-                setattr(target, self.value_attr, values)
+                self._scalar_set(target, values)
         else:
             proxy = self.__get__(obj, None)
             proxy.clear()
@@ -177,6 +181,13 @@ class AssociationProxy(object):
 
     def __delete__(self, obj):
         delattr(obj, self.key)
+
+    def _initialize_scalar_accessors(self):
+        if self.getset_factory:
+            get, set = self.getset_factory(None, self)
+        else:
+            get, set = self._default_getset(None)
+        self._scalar_get, self._scalar_set = get, set
 
     def _default_getset(self, collection_class):
         attr = self.value_attr
