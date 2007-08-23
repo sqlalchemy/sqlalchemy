@@ -98,13 +98,8 @@ through the adapter, allowing for some very sophisticated behavior.
 import copy, inspect, sys, weakref
 
 from sqlalchemy import exceptions, schema, util as sautil
+from sqlalchemy.util import attrgetter
 from sqlalchemy.orm import mapper
-
-try:
-    from operator import attrgetter
-except:
-    def attrgetter(attribute):
-        return lambda value: getattr(value, attribute)
 
 
 __all__ = ['collection', 'collection_adapter',

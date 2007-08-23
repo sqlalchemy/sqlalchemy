@@ -53,6 +53,12 @@ except ImportError:
     Decimal.warn = True
     decimal_type = float
 
+try:
+    from operator import attrgetter
+except:
+    def attrgetter(attribute):
+        return lambda value: getattr(value, attribute)
+
 if sys.version_info >= (2, 5):
     class PopulateDict(dict):
         """a dict which populates missing values via a creation function.
