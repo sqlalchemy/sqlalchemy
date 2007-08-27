@@ -39,10 +39,10 @@ SQLAlchemy has a variety of extensions available which provide extra functionali
         def __init__(self, keyword):
             self.keyword = keyword
 
-    mapper(User, users, properties={
-        'kw': relation(Keyword, secondary=userkeywords)
+    mapper(User, users_table, properties={
+        'kw': relation(Keyword, secondary=userkeywords_table)
         })
-    mapper(Keyword, keywords)
+    mapper(Keyword, keywords_table)
 
 Above are three simple tables, modeling users, keywords and a many-to-many relationship between the two.  These ``Keyword`` objects are little more than a container for a name, and accessing them via the relation is awkward:
 
