@@ -29,8 +29,8 @@ def ilike_op(a, b):
 def notilike_op(a, b):
     raise NotImplementedError()
 
-def between_op(a, b):
-    return a.between(b)
+def between_op(a, b, c):
+    return a.between(b, c)
 
 def in_op(a, b):
     return a.in_(*b)

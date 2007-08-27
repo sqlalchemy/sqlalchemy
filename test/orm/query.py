@@ -193,8 +193,13 @@ class OperatorTest(QueryTest):
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
     
     def test_in(self):
-         self._test(User.id.in_('a', 'b'), "users.id IN (:users_id, :users_id_1)")
-    
+         self._test(User.id.in_('a', 'b'),
+                    "users.id IN (:users_id, :users_id_1)")
+
+    def test_between(self):
+        self._test(User.id.between('a', 'b'),
+                   "users.id BETWEEN :users_id AND :users_id_1")
+
     def test_clauses(self):
         for (expr, compare) in (
             (func.max(User.id), "max(users.id)"),
