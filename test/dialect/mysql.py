@@ -587,19 +587,37 @@ class TypesTest(AssertMixin):
 
         columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
 
-        m = MetaData(testbase.db)
+        db = testbase.db
+        m = MetaData(db)
         t_table = Table('mysql_types', m, *columns)
-        m.drop_all()
-        m.create_all()
+        try:
+            m.create_all()
         
-        m2 = MetaData(testbase.db)
-        rt = Table('mysql_types', m2, autoload=True)
+            m2 = MetaData(db)
+            rt = Table('mysql_types', m2, autoload=True)
+            try:
+                db.execute('CREATE OR REPLACE VIEW mysql_types_v '
+                           'AS SELECT * from mysql_types')
+                rv = Table('mysql_types_v', m2, autoload=True)
+        
+                expected = [len(c) > 1 and c[1] or c[0] for c in specs]
 
-        expected = [len(c) > 1 and c[1] or c[0] for c in specs]
-        for i, reflected in enumerate(rt.c):
-            assert isinstance(reflected.type, type(expected[i]))
+                # Early 5.0 releases seem to report more "general" for columns
+                # in a view, e.g. char -> varchar, tinyblob -> mediumblob
+                #
+                # Not sure exactly which point version has the fix.
+                if db.dialect.server_version_info(db.connect()) < (5, 0, 11):
+                    tables = rt,
+                else:
+                    tables = rt, rv
 
-        m.drop_all()
+                for table in tables:
+                    for i, reflected in enumerate(table.c):
+                        assert isinstance(reflected.type, type(expected[i]))
+            finally:
+                db.execute('DROP VIEW mysql_types_v')
+        finally:
+            m.drop_all()
 
     @testing.supported('mysql')
     def test_autoincrement(self):

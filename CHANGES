@@ -2,6 +2,11 @@
 CHANGES
 =======
 
+0.4.0beta5
+----------
+
+- MySQL views can be reflected again [ticket:748]
+
 0.4.0beta4
 ----------
 

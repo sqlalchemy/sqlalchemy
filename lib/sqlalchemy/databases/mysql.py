@@ -1543,7 +1543,8 @@ class MySQLDialect(default.DefaultDialect):
         """Convert a MySQL-python server_info string into a tuple."""
 
         version = []
-        for n in dbapi_con.get_server_info().split('.'):
+        r = re.compile('[.\-]')
+        for n in r.split(dbapi_con.get_server_info()):
             try:
                 version.append(int(n))
             except ValueError:
@@ -1567,14 +1568,6 @@ class MySQLDialect(default.DefaultDialect):
         """Load column definitions from the server."""
 
         charset = self._detect_charset(connection)
-        casing = self._detect_casing(connection, charset)
-        # is this really needed?
-        if casing == 1 and table.name != table.name.lower():
-            table.name = table.name.lower()
-            lc_alias = schema._get_table_key(table.name, table.schema)
-            table.metadata.tables[lc_alias] = table
-
-        sql = self._show_create_table(connection, table, charset)
 
         try:
             reflector = self.reflector
@@ -1582,7 +1575,31 @@ class MySQLDialect(default.DefaultDialect):
             self.reflector = reflector = \
                 MySQLSchemaReflector(self.identifier_preparer)
 
-        reflector.reflect(connection, table, sql, charset, only=include_columns)
+        sql = self._show_create_table(connection, table, charset) 
+        if sql.startswith('CREATE ALGORITHM'):
+            # Adapt views to something table-like.
+            columns = self._describe_table(connection, table, charset)
+            sql = reflector._describe_to_create(table, columns)
+
+        self._adjust_casing(connection, table, charset)
+
+        return reflector.reflect(connection, table, sql, charset,
+                                 only=include_columns)
+
+    def _adjust_casing(self, connection, table, charset=None):
+        """Adjust Table name to the server case sensitivity, if needed."""
+        
+        if charset is None:
+            charset = self._detect_charset(connection)
+            
+        casing = self._detect_casing(connection, charset)
+
+        # For winxx database hosts.  TODO: is this really needed?
+        if casing == 1 and table.name != table.name.lower():
+            table.name = table.name.lower()
+            lc_alias = schema._get_table_key(table.name, table.schema)
+            table.metadata.tables[lc_alias] = table
+        
 
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
@@ -1701,9 +1718,36 @@ class MySQLDialect(default.DefaultDialect):
 
         return sql
 
+    def _describe_table(self, connection, table, charset=None,
+                             full_name=None):
+        """Run DESCRIBE for a ``Table`` and return processed rows."""
+
+        if full_name is None:
+            full_name = self.identifier_preparer.format_table(table)
+        st = "DESCRIBE %s" % full_name
+
+        rp, rows = None, None
+        try:
+            try:
+                rp = connection.execute(st)
+            except exceptions.SQLError, e:
+                if e.orig.args[0] == 1146:
+                    raise exceptions.NoSuchTableError(full_name)
+                else:
+                    raise
+            rows = _compat_fetchall(rp, charset=charset)
+        finally:
+            if rp:
+                rp.close()
+        return rows
 
 class _MySQLPythonRowProxy(object):
-    """Return consistent column values for all versions of MySQL-python (esp. alphas) and Unicode settings."""
+    """Return consistent column values for all versions of MySQL-python.
+
+    Smooth over data type issues (esp. with alpha driver versions) and
+    normalize strings as Unicode regardless of user-configured driver
+    encoding settings.
+    """
 
     # Some MySQL-python versions can return some columns as
     # sets.Set(['value']) (seriously) but thankfully that doesn't
@@ -1732,13 +1776,10 @@ class _MySQLPythonRowProxy(object):
 
 class MySQLCompiler(compiler.DefaultCompiler):
     operators = compiler.DefaultCompiler.operators.copy()
-    operators.update(
-        {
-            sql_operators.concat_op: \
-              lambda x, y: "concat(%s, %s)" % (x, y),
-            sql_operators.mod: '%%'
-        }
-    )
+    operators.update({
+        sql_operators.concat_op: lambda x, y: "concat(%s, %s)" % (x, y),
+        sql_operators.mod: '%%'
+    })
 
     def visit_cast(self, cast, **kwargs):
         if isinstance(cast.type, (sqltypes.Date, sqltypes.Time,
@@ -1890,7 +1931,7 @@ class MySQLSchemaReflector(object):
             elif not line:
                 pass
             else:
-                type_, spec = self.constraints(line)
+                type_, spec = self.parse_constraints(line)
                 if type_ is None:
                     warnings.warn(
                         RuntimeWarning("Unknown schema content: %s" %
@@ -1917,10 +1958,10 @@ class MySQLSchemaReflector(object):
 
         # Don't override by default.
         if table.name is None:
-            table.name = self.name(line)
+            table.name = self.parse_name(line)
 
     def _add_column(self, table, line, charset, only=None):
-        spec = self.column(line)
+        spec = self.parse_column(line)
         if not spec:
             warnings.warn(RuntimeWarning(
                 "Unknown column definition %s" % line))
@@ -2097,7 +2138,7 @@ class MySQLSchemaReflector(object):
           The final line of SHOW CREATE TABLE output.
         """
 
-        options = self.table_options(line)
+        options = self.parse_table_options(line)
         for nope in ('auto_increment', 'data_directory', 'index_directory'):
             options.pop(nope, None)
 
@@ -2184,8 +2225,8 @@ class MySQLSchemaReflector(object):
         # KEY_BLOCK_SIZE size | WITH PARSER name
         self._re_key = _re_compile(
             r'  '
-            r'(?:(?P<type>\S+) )?KEY +'
-            r'(?:%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s)?'
+            r'(?:(?P<type>\S+) )?KEY'
+            r'(?: +%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s)?'
             r'(?: +USING +(?P<using>\S+))?'
             r' +\((?P<columns>.+?)\)'
             r'(?: +KEY_BLOCK_SIZE +(?P<keyblock>\S+))?'
@@ -2260,7 +2301,7 @@ class MySQLSchemaReflector(object):
         self._pr_options.append(_pr_compile(regex))
 
 
-    def name(self, line):
+    def parse_name(self, line):
         """Extract the table name.
 
         line
@@ -2273,7 +2314,7 @@ class MySQLSchemaReflector(object):
             return None
         return cleanup(m.group('name'))
 
-    def column(self, line):
+    def parse_column(self, line):
         """Extract column details.
 
         Falls back to a 'minimal support' variant if full parse fails.
@@ -2294,7 +2335,7 @@ class MySQLSchemaReflector(object):
             return spec
         return None
 
-    def constraints(self, line):
+    def parse_constraints(self, line):
         """Parse a KEY or CONSTRAINT line.
 
         line
@@ -2330,7 +2371,7 @@ class MySQLSchemaReflector(object):
         # No match.
         return (None, line)
         
-    def table_options(self, line):
+    def parse_table_options(self, line):
         """Build a dictionary of all reflected table-level options.
 
         line
@@ -2355,6 +2396,51 @@ class MySQLSchemaReflector(object):
             options[directive] = value
 
         return options
+
+    def _describe_to_create(self, table, columns):
+        """Re-format DESCRIBE output as a SHOW CREATE TABLE string.
+
+        DESCRIBE is a much simpler reflection and is sufficient for
+        reflecting views for runtime use.  This method formats DDL
+        for columns only- keys are omitted.
+
+        `columns` is a sequence of DESCRIBE or SHOW COLUMNS 6-tuples.
+        SHOW FULL COLUMNS FROM rows must be rearranged for use with
+        this function.
+        """
+
+        buffer = []
+        for row in columns:
+            (name, col_type, nullable, default, extra) = \
+                   [row[i] for i in (0, 1, 2, 4, 5)]
+
+            line = [' ']
+            line.append(self.preparer.quote_identifier(name))
+            line.append(col_type)
+            if not nullable:
+                line.append('NOT NULL')
+            if default:
+                if 'auto_increment' in default:
+                    pass
+                elif (col_type.startswith('timestamp') and
+                      default.startswith('C')):
+                    line.append('DEFAULT')
+                    line.append(default)
+                elif default == 'NULL':
+                    line.append('DEFAULT')
+                    line.append(default)
+                else:
+                    line.append('DEFAULT')
+                    line.append("'%s'" % default.replace("'", "''"))
+            if extra:
+                line.append(extra)
+
+            buffer.append(' '.join(line))
+
+        return ''.join([('CREATE TABLE %s (\n' %
+                         self.preparer.quote_identifier(table.name)),
+                        ',\n'.join(buffer),
+                        '\n) '])
 
     def _parse_keyexprs(self, identifiers):
         """Unpack '"col"(2),"col" ASC'-ish strings into components."""
