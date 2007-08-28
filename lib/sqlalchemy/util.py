@@ -275,10 +275,10 @@ class OrderedProperties(object):
         self._data[key] = object
 
     def __getstate__(self):
-        return self._data
+        return {'_data': self.__dict__['_data']}
     
-    def __setstate__(self, value):
-        self.__dict__['_data'] = value
+    def __setstate__(self, state):
+        self.__dict__['_data'] = state['_data']
 
     def __getattr__(self, key):
         try:

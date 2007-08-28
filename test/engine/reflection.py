@@ -372,6 +372,7 @@ class ReflectionTest(PersistTest):
             meta.bind = testbase.db
             meta2 = pickle.loads(pickle.dumps(meta))
             assert meta2.bind is None
+            meta3 = pickle.loads(pickle.dumps(meta2))
             return (meta2.tables['mytable'], meta2.tables['othertable'])
 
         def test_pickle_via_reflect():
