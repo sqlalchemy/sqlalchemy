@@ -5,7 +5,18 @@ CHANGES
 0.4.0beta5
 ----------
 
-- MySQL views can be reflected again [ticket:748]
+- mysql views can be reflected again. [ticket:748]
+
+- AssociationProxy can now take custom getters and setters.
+
+- Fixed malfunctioning BETWEEN in orm queries.
+
+- Fixed OrderedProperties pickling [ticket:762]
+
+- Tickets fixed:
+
+  - [ticket:748]
+  - [ticket:762]
 
 0.4.0beta4
 ----------
@@ -18,13 +29,14 @@ CHANGES
     sql.expressions.table instead of schema.Table when just starting out
     with SQLAlchemy, likewise column.
 
-  - internal-ish classes like ClauseElement, FromClause, NullTypeEngine, etc.,
-    are also no longer imported into your namespace
+  - Internal-ish classes like ClauseElement, FromClause, NullTypeEngine,
+    etc., are also no longer imported into your namespace
 
-  - the 'Smallinteger' compatiblity name (small i!) is no longer imported, but
-    remains in schema.py for now.  SmallInteger (big I!) is still imported.
+  - The 'Smallinteger' compatiblity name (small i!) is no longer imported,
+    but remains in schema.py for now.  SmallInteger (big I!) is still
+    imported.
 
-- the connection pool uses a "threadlocal" strategy internally to return
+- The connection pool uses a "threadlocal" strategy internally to return
   the same connection already bound to a thread, for "contextual" connections;
   these are the connections used when you do a "connectionless" execution
   like insert().execute().  This is like a "partial" version of the
@@ -69,8 +81,13 @@ CHANGES
 - Connection.begin() no longer accepts nested=True, this logic is now
   all in begin_nested().
 
-- fixes to new "dynamic" relation loader involving cascades
-    
+- Fixes to new "dynamic" relation loader involving cascades
+
+- Tickets fixed:
+
+  - [ticket:735]
+  - [ticket:752]
+
 0.4.0beta3
 ----------
 
