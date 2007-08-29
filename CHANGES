@@ -5,6 +5,9 @@ CHANGES
 0.4.0beta5
 ----------
 
+- Extended 'engine_from_config' coercion for QueuePool size / overflow.
+  [ticket:763]
+
 - mysql views can be reflected again. [ticket:748]
 
 - AssociationProxy can now take custom getters and setters.
@@ -19,6 +22,7 @@ CHANGES
   - [ticket:748]
   - [ticket:760]
   - [ticket:762]
+  - [ticket:763]
 
 0.4.0beta4
 ----------

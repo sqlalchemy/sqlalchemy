@@ -166,21 +166,30 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     'prefix' argument indicates the prefix to be searched for.
 
     A select set of keyword arguments will be "coerced" to their
-    expected type based on string values.  in a future release, this
-    functionality will be expanded to include dialect-specific
+    expected type based on string values.  In a future release, this
+    functionality will be expanded and include dialect-specific
     arguments.
     """
 
-    opts = dict([(key[len(prefix):], configuration[key])
+    opts = _coerce_config(configuration, prefix)
+    opts.update(kwargs)
+    url = opts.pop('url')
+    return create_engine(url, **opts)
+
+def _coerce_config(configuration, prefix):
+    """Convert configuration values to expected types."""
+
+    options = dict([(key[len(prefix):], configuration[key])
                  for key in configuration if key.startswith(prefix)])
-    for opt, type_ in (
+    for option, type_ in (
         ('convert_unicode', bool),
         ('pool_timeout', int),
         ('echo', bool),
         ('echo_pool', bool),
         ('pool_recycle', int),
+        ('pool_size', int),
+        ('max_overflow', int),
+        ('pool_threadlocal', bool),
     ):
-        util.coerce_kw_type(opts, opt, type_)
-    opts.update(kwargs)
-    url = opts.pop('url')
-    return create_engine(url, **opts)
+        util.coerce_kw_type(options, option, type_)
+    return options

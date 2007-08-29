@@ -1,6 +1,7 @@
 import testbase
+import ConfigParser, StringIO
 from sqlalchemy import *
-from sqlalchemy import exceptions, pool
+from sqlalchemy import exceptions, pool, engine
 import sqlalchemy.engine.url as url
 from testlib import *
 
@@ -52,12 +53,56 @@ class CreateEngineTest(PersistTest):
         e = create_engine('postgres://scott:tiger@somehost/test?fooz=somevalue', connect_args={'foober':12, 'lala':18, 'hoho':{'this':'dict'}}, module=dbapi)
         c = e.connect()
 
+    def test_coerce_config(self):
+        raw = r"""
+[prefixed]
+sqlalchemy.url=postgres://scott:tiger@somehost/test?fooz=somevalue
+sqlalchemy.convert_unicode=0
+sqlalchemy.echo=0
+sqlalchemy.echo_pool=1
+sqlalchemy.max_overflow=2
+sqlalchemy.pool_recycle=50
+sqlalchemy.pool_size=2
+sqlalchemy.pool_threadlocal=1
+sqlalchemy.pool_timeout=10
+[plain]
+url=postgres://scott:tiger@somehost/test?fooz=somevalue
+convert_unicode=0
+echo=0
+echo_pool=1
+max_overflow=2
+pool_recycle=50
+pool_size=2
+pool_threadlocal=1
+pool_timeout=10
+"""
+        ini = ConfigParser.ConfigParser()
+        ini.readfp(StringIO.StringIO(raw))
+
+        expected = {
+            'url': 'postgres://scott:tiger@somehost/test?fooz=somevalue',
+            'convert_unicode': 0,
+            'echo': False,
+            'echo_pool': True,
+            'max_overflow': 2,
+            'pool_recycle': 50,
+            'pool_size': 2,
+            'pool_threadlocal': True,
+            'pool_timeout': 10,
+            }
+
+        prefixed = dict(ini.items('prefixed'))
+        self.assert_(engine._coerce_config(prefixed, 'sqlalchemy.') == expected)
+
+        plain = dict(ini.items('plain'))
+        self.assert_(engine._coerce_config(plain, '') == expected)
+
     def test_engine_from_config(self):
         dbapi = MockDBAPI()
 
         config = {
             'sqlalchemy.url':'postgres://scott:tiger@somehost/test?fooz=somevalue',
-            'sqlalchemy.pool_recycle':50
+            'sqlalchemy.pool_recycle':'50'
         }
 
         e = engine_from_config(config, module=dbapi)
