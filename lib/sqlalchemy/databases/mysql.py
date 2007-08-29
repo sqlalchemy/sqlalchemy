@@ -1353,7 +1353,8 @@ class MySQLDialect(default.DefaultDialect):
     dbapi = classmethod(dbapi)
     
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(['host', 'db', 'user', 'passwd', 'port'])
+        opts = url.translate_connect_args(database='db', username='user',
+                                          password='passwd')
         opts.update(url.query)
 
         util.coerce_kw_type(opts, 'compress', bool)

@@ -240,7 +240,7 @@ class PGDialect(default.DefaultDialect):
     dbapi = classmethod(dbapi)
     
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
+        opts = url.translate_connect_args(username='user')
         if 'port' in opts:
             opts['port'] = int(opts['port'])
         opts.update(url.query)

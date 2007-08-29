@@ -202,14 +202,14 @@ class AccessDialect(default.DefaultDialect):
     dbapi = classmethod(dbapi)
 
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(['host', 'database', 'username', 'password', 'port'])
+        opts = url.translate_connect_args()
         connectors = ["Driver={Microsoft Access Driver (*.mdb)}"]
         connectors.append("Dbq=%s" % opts["database"])
-        user = opts.get("user")
+        user = opts.get("username", None)
         if user:
             connectors.append("UID=%s" % user)
             connectors.append("PWD=%s" % opts.get("password", ""))
-        return [[";".join (connectors)], {}]
+        return [[";".join(connectors)], {}]
 
     def create_execution_context(self, *args, **kwargs):
         return AccessExecutionContext(self, *args, **kwargs)
@@ -273,8 +273,7 @@ class AccessDialect(default.DefaultDialect):
             
         # A fresh DAO connection is opened for each reflection
         # This is necessary, so we get the latest updates
-        opts = connection.engine.url.translate_connect_args(['host', 'database', 'username', 'password', 'port'])
-        dtbs = daoEngine.OpenDatabase(opts['database'])
+        dtbs = daoEngine.OpenDatabase(connection.engine.url.database)
         
         try:
             for tbl in dtbs.TableDefs:
@@ -340,8 +339,7 @@ class AccessDialect(default.DefaultDialect):
     def table_names(self, connection, schema):
         # A fresh DAO connection is opened for each reflection
         # This is necessary, so we get the latest updates
-        opts = connection.engine.url.translate_connect_args(['host', 'database', 'username', 'password', 'port'])
-        dtbs = daoEngine.OpenDatabase(opts['database'])
+        dtbs = daoEngine.OpenDatabase(connection.engine.url.database)
 
         names = [t.Name for t in dtbs.TableDefs if t.Name[:4] != "MSys" and t.Name[:4] <> "~TMP"]
         dtbs.Close()
