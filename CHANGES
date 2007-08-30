@@ -10,6 +10,8 @@
     - fixed small exception throw bug in Session.merge()
     - fixed bug where mapper, being linked to a join where one table had 
       no PK columns, would not detect that the joined table had no PK.
+    - fixed bugs in determining proper sync clauses from custom inherit
+      conditions [ticket:769]
 - engine
     - fixed another occasional race condition which could occur
       when using pool with threadlocal setting
