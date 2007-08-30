@@ -44,6 +44,8 @@ class ScopedSession(object):
             return self.registry()
     
     def remove(self):
+        if self.registry.has():
+            self.registry().close()
         self.registry.clear()
     
     def mapper(self, *args, **kwargs):
