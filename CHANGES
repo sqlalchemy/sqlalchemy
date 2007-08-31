@@ -5,6 +5,10 @@ CHANGES
 0.4.0beta5
 ----------
 
+- connection pool fixes; the better performance of beta4
+  remains but fixes "connection overflow" and other bugs
+  which were present (like [ticket:754])
+  
 - fixed bugs in determining proper sync clauses from custom inherit
   conditions [ticket:769]
   
