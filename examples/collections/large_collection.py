@@ -1,6 +1,11 @@
-"""illlustrates techniques for dealing with very large collections"""
+"""illlustrates techniques for dealing with very large collections.
+
+Also see the docs regarding the new "dynamic" relation option, which 
+presents a more refined version of some of these patterns.
+"""
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
 meta = MetaData('sqlite://')
 meta.bind.echo = True
 
@@ -60,7 +65,7 @@ sess.clear()
 # reload. load the org and some child members
 print "-------------------------\nload subset of members"
 org = sess.query(Organization).get(org.org_id)
-members = org.member_query.filter_by(member_table.c.name.like('%member t%')).list()
+members = org.member_query.filter(member_table.c.name.like('%member t%')).all()
 print members
 
 sess.clear()

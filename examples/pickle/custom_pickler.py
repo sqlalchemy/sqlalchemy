@@ -11,7 +11,7 @@ meta = MetaData('sqlite://')
 meta.bind.echo = True
 
 class MyExt(MapperExtension):
-    def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
+    def populate_instance(self, mapper, selectcontext, row, instance, **flags):
         MyPickler.sessions.current = selectcontext.session
         return EXT_CONTINUE
     def before_insert(self, mapper, connection, instance):

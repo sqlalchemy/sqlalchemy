@@ -392,11 +392,9 @@ class ExecutionContext(object):
         raise NotImplementedError()
 
     def lastrow_has_defaults(self):
-        """Return True if the last row INSERTED via a compiled insert statement contained PassiveDefaults.
+        """Return True if the last INSERT or UPDATE row contained 
+        inlined or database-side defaults.
 
-        The presence of PassiveDefaults indicates that the database
-        inserted data beyond that which we passed to the query
-        programmatically.
         """
 
         raise NotImplementedError()
@@ -1349,7 +1347,14 @@ class ResultProxy(object):
         """
 
         return self.context.lastrow_has_defaults()
+    
+    def postfetch_cols(self):
+        """Return ``postfetch_cols()`` from the underlying ExecutionContext.
 
+        See ExecutionContext for details.
+        """
+        return self.context.postfetch_cols()
+        
     def supports_sane_rowcount(self):
         """Return ``supports_sane_rowcount`` from the dialect.
 

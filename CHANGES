@@ -23,10 +23,12 @@ CHANGES
 
 - Fixed OrderedProperties pickling [ticket:762]
 
-- Defaults and sequences now execute "inline" for all executemany()
-  calls, using no prefetch whatsoever.  inline=True flag on any 
-  insert/update statement also forces the same behavior with a single
-  execute().
+- SQL-expression defaults and sequences now execute "inline" for all non-primary key
+  columns during an INSERT or UPDATE, and for all columns during an executemany()-style 
+  call. inline=True flag on any insert/update statement also forces the same 
+  behavior with a single execute().  result.postfetch_cols() is a collection of columns
+  for which the previous single insert or update statement contained a SQL-side 
+  default expression.
 
 - fixed PG executemany() behavior, [ticket:759]
 

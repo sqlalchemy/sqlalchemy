@@ -308,7 +308,10 @@ class FBCompiler(compiler.DefaultCompiler):
 
     def uses_sequences_for_inserts(self):
         return True
-
+        
+    def visit_sequence(self, seq):
+        return "gen_id(" + seq.name + ", 1)"
+        
     def get_select_precolumns(self, select):
         """Called when building a ``SELECT`` statement, position is just
         before column list Firebird puts the limit and offset right

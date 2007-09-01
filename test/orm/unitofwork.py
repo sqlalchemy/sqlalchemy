@@ -602,7 +602,7 @@ class DefaultTest(ORMTest):
         default_table = Table('default_test', metadata,
         Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
         Column('hoho', hohotype, PassiveDefault(str(self.hohoval))),
-        Column('counter', Integer, PassiveDefault("7")),
+        Column('counter', Integer, default=func.length("1234567")),
         Column('foober', String(30), default="im foober", onupdate="im the update")
         )
 

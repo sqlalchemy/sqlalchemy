@@ -10,7 +10,7 @@ engine = create_engine('sqlite:///:memory:', echo=True)
 
 metadata = MetaData(engine)
 
-"""create the treenodes table.  This is ia basic adjacency list model table.
+"""create the treenodes table.  This is a basic adjacency list model table.
 One additional column, "root_node_id", references a "root node" row and is used
 in the 'byroot_tree' example."""
 
@@ -83,7 +83,6 @@ class TreeLoader(MapperExtension):
         append root nodes to the result list, and will attach child nodes to their appropriate parent
         node as they arrive from the select results.  This allows a SELECT statement which returns
         both root and child nodes in one query to return a list of "roots"."""
-
         isnew = flags.get('isnew', False)
 
         if instance.parent_id is None:
@@ -108,14 +107,19 @@ print "----------------------------"
 
 metadata.create_all()
 
-# the mapper is created with properties that specify "lazy=None" - this is because we are going 
-# to handle our own "eager load" of nodes based on root id
 mapper(TreeNode, trees, properties=dict(
     id=trees.c.node_id,
     name=trees.c.node_name,
     parent_id=trees.c.parent_node_id,
     root_id=trees.c.root_node_id,
-    root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, remote_side=trees.c.node_id, lazy=None),
+    
+    # 'root' attribute.  has a load-only backref '_descendants' that loads all nodes with the same root ID eagerly,
+    # which are intercepted by the TreeLoader extension and populated into the "children" collection.
+    root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, remote_side=trees.c.node_id, lazy=None,
+        backref=backref('_descendants', lazy=False, join_depth=1, primaryjoin=trees.c.root_node_id==trees.c.node_id,viewonly=True)),
+        
+    # 'children' attribute.  collection of immediate child nodes.  this is a non-loading relation
+    # which is populated by the TreeLoader extension.  
     children=relation(TreeNode, 
         primaryjoin=trees.c.parent_node_id==trees.c.node_id, 
         lazy=None, 
@@ -123,6 +127,8 @@ mapper(TreeNode, trees, properties=dict(
         collection_class=attribute_mapped_collection('name'),
         backref=backref('parent', primaryjoin=trees.c.parent_node_id==trees.c.node_id, remote_side=trees.c.node_id)
         ),
+        
+    # 'data' attribute.  A collection of secondary objects which also loads eagerly.
     data=relation(TreeData, cascade="all, delete-orphan", lazy=False)
     
 ), extension = TreeLoader())

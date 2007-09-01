@@ -1190,7 +1190,7 @@ class Mapper(object):
         which will populate those attributes in one query when next accessed.
         """
 
-        postfetch_cols = resultproxy.context.postfetch_cols().union(util.Set(value_params.keys())) 
+        postfetch_cols = resultproxy.postfetch_cols().union(util.Set(value_params.keys())) 
         deferred_props = []
 
         for c in table.c:

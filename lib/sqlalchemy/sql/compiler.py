@@ -614,7 +614,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         return False
 
     def visit_sequence(self, seq):
-        raise NotImplementedError()
+        return None
 
     def visit_insert(self, insert_stmt):
 
@@ -688,32 +688,26 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
                 values.append((c, value))
             elif isinstance(c, schema.Column):
                 if self.isinsert:
-                    if isinstance(c.default, schema.ColumnDefault):
-                        if self.inline and isinstance(c.default.arg, sql.ClauseElement):
+                    if c.primary_key and self.uses_sequences_for_inserts() and not self.inline:
+                        values.append((c, create_bind_param(c, None)))
+                        self.prefetch.add(c)
+                    elif isinstance(c.default, schema.ColumnDefault):
+                        if isinstance(c.default.arg, sql.ClauseElement):
                             values.append((c, self.process(c.default.arg)))
                             self.postfetch.add(c)
                         else:
                             values.append((c, create_bind_param(c, None)))
                             self.prefetch.add(c)
                     elif isinstance(c.default, schema.PassiveDefault):
-                        if c.primary_key and self.uses_sequences_for_inserts() and not self.inline:
-                            values.append((c, create_bind_param(c, None)))
-                            self.prefetch.add(c)
-                        else:
+                        self.postfetch.add(c)
+                    elif isinstance(c.default, schema.Sequence):
+                        proc = self.process(c.default)
+                        if proc is not None:
+                            values.append((c, proc))
                             self.postfetch.add(c)
-                    elif (c.primary_key or isinstance(c.default, schema.Sequence)) and self.uses_sequences_for_inserts():
-                        if self.inline:
-                            if c.default is not None:
-                                proc = self.process(c.default)
-                                if proc is not None:
-                                    values.append((c, proc))
-                                    self.postfetch.add(c)
-                        else:
-                            values.append((c, create_bind_param(c, None)))
-                            self.prefetch.add(c)
                 elif self.isupdate:
                     if isinstance(c.onupdate, schema.ColumnDefault):
-                        if self.inline and isinstance(c.onupdate.arg, sql.ClauseElement):
+                        if isinstance(c.onupdate.arg, sql.ClauseElement):
                             values.append((c, self.process(c.onupdate.arg)))
                             self.postfetch.add(c)
                         else:

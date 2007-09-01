@@ -537,8 +537,7 @@ class TimezoneTest(AssertMixin):
         somedate = testbase.db.connect().scalar(func.current_timestamp().select())
         tztable.insert().execute(id=1, name='row1', date=somedate)
         c = tztable.update(tztable.c.id==1).execute(name='newname')
-        x = c.last_updated_params()
-        print x['date'] == somedate
+        print tztable.select(tztable.c.id==1).execute().fetchone()
 
     @testing.supported('postgres')
     def test_without_timezone(self):
@@ -546,8 +545,7 @@ class TimezoneTest(AssertMixin):
         somedate = datetime.datetime(2005, 10,20, 11, 52, 00)
         notztable.insert().execute(id=1, name='row1', date=somedate)
         c = notztable.update(notztable.c.id==1).execute(name='newname')
-        x = c.last_updated_params()
-        print x['date'] == somedate
+        print notztable.select(tztable.c.id==1).execute().fetchone()
 
 class ArrayTest(AssertMixin):
     @testing.supported('postgres')
