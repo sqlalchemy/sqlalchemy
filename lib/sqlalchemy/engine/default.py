@@ -322,7 +322,6 @@ class DefaultExecutionContext(base.ExecutionContext):
                 if self.isinsert:
                     self._last_inserted_ids = []
                 for c in self.compiled.prefetch:
-                    print "PREFETCH COL", c.key
                     if self.isinsert:
                         val = drunner.get_column_default(c)
                     else:

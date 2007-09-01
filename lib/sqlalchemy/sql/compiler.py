@@ -709,7 +709,6 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
                                     values.append((c, proc))
                                     self.postfetch.add(c)
                         else:
-                            print "ISINSERT, HAS A SEQUENCE, IS PRIMARY KEY, ADDING PREFETCH:", c.key
                             values.append((c, create_bind_param(c, None)))
                             self.prefetch.add(c)
                 elif self.isupdate:
