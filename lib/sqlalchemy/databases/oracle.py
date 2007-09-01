@@ -237,6 +237,7 @@ class OracleDialect(default.DefaultDialect):
     max_identifier_length = 30
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
+    preexecute_sequences = True
 
     def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, **kwargs):
         default.DefaultDialect.__init__(self, default_paramstyle='named', **kwargs)
@@ -594,9 +595,6 @@ class OracleCompiler(compiler.DefaultCompiler):
     def visit_outer_join_column(self, vc):
         return self.process(vc.column) + "(+)"
         
-    def uses_sequences_for_inserts(self):
-        return True
-
     def visit_sequence(self, seq):
         return self.dialect.identifier_preparer.format_sequence(seq) + ".nextval"
         

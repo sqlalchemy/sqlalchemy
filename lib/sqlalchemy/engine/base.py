@@ -79,6 +79,9 @@ class Dialect(object):
       Indicate whether the dialect properly implements rowcount for ``UPDATE`` and ``DELETE`` statements
       when executed via executemany.
 
+    preexecute_sequences
+      Indicate if the dialect should pre-execute sequences on primary key columns during an INSERT,
+      if it's desired that the new row's primary key be available after execution.
     """
 
     def create_connect_args(self, url):

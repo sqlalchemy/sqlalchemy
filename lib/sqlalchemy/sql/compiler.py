@@ -610,9 +610,6 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         return (self.process(join.left, asfrom=True) + (join.isouter and " LEFT OUTER JOIN " or " JOIN ") + \
             self.process(join.right, asfrom=True) + " ON " + self.process(join.onclause))
 
-    def uses_sequences_for_inserts(self):
-        return False
-
     def visit_sequence(self, seq):
         return None
 
@@ -688,7 +685,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
                 values.append((c, value))
             elif isinstance(c, schema.Column):
                 if self.isinsert:
-                    if c.primary_key and self.uses_sequences_for_inserts() and not self.inline:
+                    if c.primary_key and self.dialect.preexecute_sequences and not self.inline:
                         values.append((c, create_bind_param(c, None)))
                         self.prefetch.add(c)
                     elif isinstance(c.default, schema.ColumnDefault):

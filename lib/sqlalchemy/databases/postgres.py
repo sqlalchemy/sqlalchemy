@@ -228,6 +228,7 @@ class PGDialect(default.DefaultDialect):
     max_identifier_length = 63
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
+    preexecute_sequences = True
 
     def __init__(self, use_oids=False, server_side_cursors=False, **kwargs):
         default.DefaultDialect.__init__(self, default_paramstyle='pyformat', **kwargs)
@@ -542,9 +543,6 @@ class PGCompiler(compiler.DefaultCompiler):
             sql_operators.mod : '%%'
         }
     )
-
-    def uses_sequences_for_inserts(self):
-        return True
 
     def visit_sequence(self, seq):
         if seq.optional:

@@ -103,6 +103,7 @@ class FBExecutionContext(default.DefaultExecutionContext):
 class FBDialect(default.DefaultDialect):
     supports_sane_rowcount = False
     max_identifier_length = 31
+    preexecute_sequences = True
 
     def __init__(self, type_conv=200, concurrency_level=1, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -306,9 +307,6 @@ class FBCompiler(compiler.DefaultCompiler):
         else:
             return func.name
 
-    def uses_sequences_for_inserts(self):
-        return True
-        
     def visit_sequence(self, seq):
         return "gen_id(" + seq.name + ", 1)"
         
