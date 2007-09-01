@@ -673,7 +673,7 @@ class OracleSchemaDropper(compiler.SchemaDropper):
 
 class OracleDefaultRunner(base.DefaultRunner):
     def visit_sequence(self, seq):
-        return self.execute_string("SELECT " + self.dialect.identifier_preparer.format_sequence(seq) + ".nextval FROM DUAL")
+        return self.execute_string("SELECT " + self.dialect.identifier_preparer.format_sequence(seq) + ".nextval FROM DUAL", {})
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
     def format_savepoint(self, savepoint):
