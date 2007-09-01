@@ -611,9 +611,9 @@ class PGSchemaDropper(compiler.SchemaDropper):
 class PGDefaultRunner(base.DefaultRunner):
     def get_column_default(self, column, isinsert=True):
         if column.primary_key:
-            # passive defaults on primary keys have to be overridden
+            # pre-execute passive defaults on primary keys
             if isinstance(column.default, schema.PassiveDefault):
-                return self.connection.execute("select %s" % column.default.arg).scalar()
+                return self.execute_string("select %s" % column.default.arg)
             elif (isinstance(column.type, sqltypes.Integer) and column.autoincrement) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
                 sch = column.table.schema
                 # TODO: this has to build into the Sequence object so we can get the quoting
@@ -622,13 +622,13 @@ class PGDefaultRunner(base.DefaultRunner):
                     exc = "select nextval('\"%s\".\"%s_%s_seq\"')" % (sch, column.table.name, column.name)
                 else:
                     exc = "select nextval('\"%s_%s_seq\"')" % (column.table.name, column.name)
-                return self.connection.execute(exc).scalar()
+                return self.execute_string(exc.encode(self.dialect.encoding))
 
         return super(PGDefaultRunner, self).get_column_default(column)
 
     def visit_sequence(self, seq):
         if not seq.optional:
-            return self.connection.execute("select nextval('%s')" % self.dialect.identifier_preparer.format_sequence(seq)).scalar()
+            return self.execute_string(("select nextval('%s')" % self.dialect.identifier_preparer.format_sequence(seq)).encode(self.dialect.encoding))
         else:
             return None
 

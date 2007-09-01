@@ -672,12 +672,8 @@ class OracleSchemaDropper(compiler.SchemaDropper):
             self.execute()
 
 class OracleDefaultRunner(base.DefaultRunner):
-    def exec_default_sql(self, default):
-        c = sql.select([default.arg], from_obj=["DUAL"]).compile(bind=self.connection)
-        return self.connection.execute(c).scalar()
-
     def visit_sequence(self, seq):
-        return self.connection.execute("SELECT " + self.dialect.identifier_preparer.format_sequence(seq) + ".nextval FROM DUAL").scalar()
+        return self.execute_string("SELECT " + self.dialect.identifier_preparer.format_sequence(seq) + ".nextval FROM DUAL")
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
     def format_savepoint(self, savepoint):
