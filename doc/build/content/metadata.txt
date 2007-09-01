@@ -427,13 +427,13 @@ Note that some databases do not actively support check constraints such as MySQL
     mytable = Table('mytable', meta,
     
         # per-column CHECK constraint
-        Column('col1', Integer, CheckConstraint('col1&gt;5')),
+        Column('col1', Integer, CheckConstraint('col1>5')),
         
         Column('col2', Integer),
         Column('col3', Integer),
         
         # table level CHECK constraint.  'name' is optional.
-        CheckConstraint('col2 &gt; col3 + 5', name='check1')
+        CheckConstraint('col2 > col3 + 5', name='check1')
         )
     
 #### Indexes
