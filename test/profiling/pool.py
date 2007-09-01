@@ -14,7 +14,7 @@ class QueuePoolTest(AssertMixin):
     # [ticket:754] immediately got opened when we tried a dict of weakrefs, and though the solution there
     # is simple, it still doesn't solve the issue of "dead" weakrefs sitting in the dict taking up space
     
-    @profiling.profiled('pooltest_connect', call_range=(40, 45), always=True)
+    @profiling.profiled('pooltest_connect', call_range=(40, 50), always=True)
     def test_first_connect(self):
         conn = pool.connect()
 
