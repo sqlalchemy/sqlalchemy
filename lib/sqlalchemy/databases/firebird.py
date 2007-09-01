@@ -307,6 +307,9 @@ class FBCompiler(compiler.DefaultCompiler):
         else:
             return func.name
 
+    def default_from(self):
+        return " FROM rdb$database"
+
     def visit_sequence(self, seq):
         return "gen_id(" + seq.name + ", 1)"
         
@@ -356,12 +359,8 @@ class FBSchemaDropper(compiler.SchemaDropper):
 
 
 class FBDefaultRunner(base.DefaultRunner):
-    def exec_default_sql(self, default):
-        c = sql.select([default.arg], from_obj=["rdb$database"]).compile(bind=self.connection)
-        return self.connection.execute_compiled(c).scalar()
-
     def visit_sequence(self, seq):
-        return self.connection.execute_text("SELECT gen_id(" + seq.name + ", 1) FROM rdb$database").scalar()
+        return self.execute_string("SELECT gen_id(" + seq.name + ", 1) FROM rdb$database")
 
 
 RESERVED_WORDS = util.Set(
