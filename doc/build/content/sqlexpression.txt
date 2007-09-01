@@ -306,8 +306,8 @@ So that looks a lot better, we added an expression to our `select()` which had t
 
     {python}
     >>> users.c.id==addresses.c.user_id #doctest: +ELLIPSIS
-    <sqlalchemy.sql._BinaryExpression object at 0x...>
-    
+    <sqlalchemy.sql.expression._BinaryExpression object at 0x...>
+
 Wow, surprise !  This is neither a `True` nor a `False`.  Well what is it ?
 
     {python}

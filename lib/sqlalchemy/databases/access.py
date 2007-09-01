@@ -244,7 +244,7 @@ class AccessDialect(default.DefaultDialect):
             c.execute(statement, parameters)
             self.context.rowcount = c.rowcount
         except Exception, e:
-            raise exceptions.SQLError(statement, parameters, e)
+            raise exceptions.DBAPIError.instance(statement, parameters, e)
 
     def has_table(self, connection, tablename, schema=None):
         # This approach seems to be more reliable that using DAO

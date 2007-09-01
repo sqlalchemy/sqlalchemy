@@ -23,6 +23,22 @@ CHANGES
 
 - Fixed OrderedProperties pickling [ticket:762]
 
+- Defaults and sequences now execute "inline" for all executemany()
+  calls, using no prefetch whatsoever.  inline=True flag on any 
+  insert/update statement also forces the same behavior with a single
+  execute().
+
+- fixed PG executemany() behavior, [ticket:759]
+
+- postgres reflects tables with autoincrement=False for primary key
+  columns which have no defaults.
+    
+- postgres no longer wraps executemany() with 
+  individual execute() calls, instead favoring performance.  
+  "rowcount"/"concurrency" checks with deleted items (which use executemany) 
+  are disabled with PG since psycopg2 does not report proper rowcount for 
+  executemany().
+  
 - Tickets fixed:
 
   - [ticket:742]

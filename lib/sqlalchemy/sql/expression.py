@@ -249,7 +249,7 @@ def subquery(alias, *args, **kwargs):
 
     return Select(*args, **kwargs).alias(alias)
 
-def insert(table, values = None, **kwargs):
+def insert(table, values=None, inline=False):
     """Return an [sqlalchemy.sql#Insert] clause element.
 
     Similar functionality is available via the ``insert()`` method on
@@ -266,6 +266,10 @@ def insert(table, values = None, **kwargs):
       bind parameters also are None during the compile phase, then the
       column specifications will be generated from the full list of
       table columns.
+      
+    inline
+      if True, SQL defaults will be compiled 'inline' into the statement
+      and not pre-executed.
 
     If both `values` and compile-time bind parameters are present, the
     compile-time bind parameters override the information specified
@@ -283,9 +287,9 @@ def insert(table, values = None, **kwargs):
     against the ``INSERT`` statement.
     """
 
-    return Insert(table, values, **kwargs)
+    return Insert(table, values, inline=inline)
 
-def update(table, whereclause = None, values = None, **kwargs):
+def update(table, whereclause=None, values=None, inline=False):
     """Return an [sqlalchemy.sql#Update] clause element.
 
     Similar functionality is available via the ``update()`` method on
@@ -307,6 +311,11 @@ def update(table, whereclause = None, values = None, **kwargs):
       ``SET`` conditions will be generated from the full list of table
       columns.
 
+    inline
+      if True, SQL defaults will be compiled 'inline' into the statement
+      and not pre-executed.
+
+
     If both `values` and compile-time bind parameters are present, the
     compile-time bind parameters override the information specified
     within `values` on a per-key basis.
@@ -323,7 +332,7 @@ def update(table, whereclause = None, values = None, **kwargs):
     against the ``UPDATE`` statement.
     """
 
-    return Update(table, whereclause, values, **kwargs)
+    return Update(table, whereclause=whereclause, values=values, inline=inline)
 
 def delete(table, whereclause = None, **kwargs):
     """Return a [sqlalchemy.sql#Delete] clause element.
@@ -959,14 +968,14 @@ class ClauseElement(object):
             compile_params = multiparams[0]
         else:
             compile_params = params
-        return self.compile(bind=self.bind, parameters=compile_params).execute(*multiparams, **params)
+        return self.compile(bind=self.bind, parameters=compile_params, inline=(len(multiparams) > 1)).execute(*multiparams, **params)
 
     def scalar(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``, returning the result's scalar representation."""
 
         return self.execute(*multiparams, **params).scalar()
 
-    def compile(self, bind=None, parameters=None, compiler=None, dialect=None):
+    def compile(self, bind=None, parameters=None, compiler=None, dialect=None, inline=False):
         """Compile this SQL expression.
 
         Uses the given ``Compiler``, or the given ``AbstractDialect``
@@ -995,16 +1004,16 @@ class ClauseElement(object):
 
         if compiler is None:
             if dialect is not None:
-                compiler = dialect.statement_compiler(dialect, self, parameters)
+                compiler = dialect.statement_compiler(dialect, self, parameters, inline=inline)
             elif bind is not None:
-                compiler = bind.statement_compiler(self, parameters)
+                compiler = bind.statement_compiler(self, parameters, inline=inline)
             elif self.bind is not None:
-                compiler = self.bind.statement_compiler(self, parameters)
+                compiler = self.bind.statement_compiler(self, parameters, inline=inline)
 
         if compiler is None:
             from sqlalchemy.engine.default import DefaultDialect
             dialect = DefaultDialect()
-            compiler = dialect.statement_compiler(dialect, self, parameters=parameters)
+            compiler = dialect.statement_compiler(dialect, self, parameters=parameters, inline=inline)
         compiler.compile()
         return compiler
     
@@ -2705,13 +2714,13 @@ class TableClause(FromClause):
     def select(self, whereclause = None, **params):
         return select([self], whereclause, **params)
 
-    def insert(self, values = None):
-        return insert(self, values=values)
+    def insert(self, values=None, inline=False):
+        return insert(self, values=values, inline=inline)
 
-    def update(self, whereclause = None, values = None):
-        return update(self, whereclause, values)
+    def update(self, whereclause=None, values=None, inline=False):
+        return update(self, whereclause=whereclause, values=values, inline=inline)
 
-    def delete(self, whereclause = None):
+    def delete(self, whereclause=None):
         return delete(self, whereclause)
 
     def _get_from_objects(self, **modifiers):
@@ -3213,41 +3222,26 @@ class _UpdateBase(ClauseElement):
         return iter([self.table])
 
     def _process_colparams(self, parameters):
-        """Receive the *values* of an ``INSERT`` or ``UPDATE`` statement and construct appropriate bind parameters."""
 
         if parameters is None:
             return None
 
         if isinstance(parameters, (list, tuple)):
             pp = {}
-            i = 0
-            for c in self.table.c:
+            for i, c in enumerate(self.table.c):
                 pp[c.key] = parameters[i]
-                i +=1
-            parameters = pp
-
-        for key in parameters.keys():
-            value = parameters[key]
-            if isinstance(value, ClauseElement):
-                parameters[key] = value.self_group()
-            elif _is_literal(value):
-                if _is_literal(key):
-                    col = self.table.c[key]
-                else:
-                    col = key
-                try:
-                    parameters[key] = bindparam(col, value, unique=True)
-                except KeyError:
-                    del parameters[key]
-        return parameters
-
+            return pp
+        else:
+            return parameters
+            
     def _find_engine(self):
         return self.table.bind
 
 class Insert(_UpdateBase):
-    def __init__(self, table, values=None):
+    def __init__(self, table, values=None, inline=False):
         self.table = table
         self.select = None
+        self.inline=inline
         self.parameters = self._process_colparams(values)
 
     def get_children(self, **kwargs):
@@ -3271,9 +3265,10 @@ class Insert(_UpdateBase):
         return u
 
 class Update(_UpdateBase):
-    def __init__(self, table, whereclause, values=None):
+    def __init__(self, table, whereclause, values=None, inline=False):
         self.table = table
         self._whereclause = whereclause
+        self.inline = inline
         self.parameters = self._process_colparams(values)
 
     def get_children(self, **kwargs):

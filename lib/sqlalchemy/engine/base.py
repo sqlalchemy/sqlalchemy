@@ -75,6 +75,10 @@ class Dialect(object):
     supports_sane_rowcount
       Indicate whether the dialect properly implements rowcount for ``UPDATE`` and ``DELETE`` statements.
 
+    supports_sane_multi_rowcount
+      Indicate whether the dialect properly implements rowcount for ``UPDATE`` and ``DELETE`` statements
+      when executed via executemany.
+
     """
 
     def create_connect_args(self, url):
@@ -677,7 +681,7 @@ class Connection(Connectable):
             try:
                 self.__engine.dialect.do_begin(self.connection)
             except Exception, e:
-                raise exceptions.SQLError(None, None, e)
+                raise exceptions.DBAPIError.instance(None, None, e)
 
     def _rollback_impl(self):
         if self.__connection.is_valid:
@@ -686,7 +690,7 @@ class Connection(Connectable):
             try:
                 self.__engine.dialect.do_rollback(self.connection)
             except Exception, e:
-                raise exceptions.SQLError(None, None, e)
+                raise exceptions.DBAPIError.instance(None, None, e)
         self.__transaction = None
 
     def _commit_impl(self):
@@ -696,7 +700,7 @@ class Connection(Connectable):
             try:
                 self.__engine.dialect.do_commit(self.connection)
             except Exception, e:
-                raise exceptions.SQLError(None, None, e)
+                raise exceptions.DBAPIError.instance(None, None, e)
         self.__transaction = None
 
     def _savepoint_impl(self, name=None):
@@ -807,12 +811,13 @@ class Connection(Connectable):
         return self._execute_clauseelement(func.select(), multiparams, params)
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
-        executemany = multiparams is not None and len(multiparams) > 0
-        if executemany:
+        if multiparams:
             param = multiparams[0]
+            executemany = len(multiparams) > 1
         else:
             param = params
-        return self._execute_compiled(elem.compile(dialect=self.dialect, parameters=param), multiparams, params)
+            executemany = False
+        return self._execute_compiled(elem.compile(dialect=self.dialect, parameters=param, inline=executemany), multiparams, params)
 
     def _execute_compiled(self, compiled, multiparams=None, params=None):
         """Execute a sql.Compiled object."""
@@ -856,7 +861,7 @@ class Connection(Connectable):
             self._autorollback()
             if self.__close_with_result:
                 self.close()
-            raise exceptions.SQLError(context.statement, context.parameters, e)
+            raise exceptions.DBAPIError.instance(context.statement, context.parameters, e)
 
     def __executemany(self, context):
         try:
@@ -869,7 +874,7 @@ class Connection(Connectable):
             self._autorollback()
             if self.__close_with_result:
                 self.close()
-            raise exceptions.SQLError(context.statement, context.parameters, e)
+            raise exceptions.DBAPIError.instance(context.statement, context.parameters, e)
 
     # poor man's multimethod/generic function thingy
     executors = {
@@ -1346,12 +1351,16 @@ class ResultProxy(object):
         return self.context.lastrow_has_defaults()
 
     def supports_sane_rowcount(self):
-        """Return ``supports_sane_rowcount()`` from the underlying ExecutionContext.
+        """Return ``supports_sane_rowcount`` from the dialect.
 
-        See ExecutionContext for details.
+        """
+        return self.dialect.supports_sane_rowcount
+
+    def supports_sane_multi_rowcount(self):
+        """Return ``supports_sane_multi_rowcount`` from the dialect.
         """
 
-        return self.context.supports_sane_rowcount()
+        return self.dialect.supports_sane_multi_rowcount
 
     def _get_col(self, row, key):
         rec = self._key_cache[key]

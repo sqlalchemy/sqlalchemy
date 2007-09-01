@@ -236,6 +236,7 @@ class OracleDialect(default.DefaultDialect):
     supports_unicode_statements = False
     max_identifier_length = 30
     supports_sane_rowcount = True
+    supports_sane_multi_rowcount = False
 
     def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, **kwargs):
         default.DefaultDialect.__init__(self, default_paramstyle='named', **kwargs)
@@ -431,8 +432,6 @@ class OracleDialect(default.DefaultDialect):
         # locate the actual name of the table, the real owner, and any dblink clause needed.
         actual_name, owner, dblink = self._resolve_table_owner(connection, self._denormalize_name(table.name), table)
 
-        print "ACTUALNAME:", actual_name
-
         c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':actual_name, 'owner':owner})
 
                 
@@ -529,14 +528,6 @@ class OracleDialect(default.DefaultDialect):
         for name, value in fks.iteritems():
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name))
 
-    def do_executemany(self, c, statement, parameters, context=None):
-        rowcount = 0
-        for param in parameters:
-            c.execute(statement, param)
-            rowcount += c.rowcount
-        if context is not None:
-            context._rowcount = rowcount
-
 
 OracleDialect.logger = logging.class_logger(OracleDialect)
 
@@ -606,6 +597,9 @@ class OracleCompiler(compiler.DefaultCompiler):
     def uses_sequences_for_inserts(self):
         return True
 
+    def visit_sequence(self, seq):
+        return self.dialect.identifier_preparer.format_sequence(seq) + ".nextval"
+        
     def visit_alias(self, alias, asfrom=False, **kwargs):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
         
@@ -613,19 +607,6 @@ class OracleCompiler(compiler.DefaultCompiler):
             return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + self.preparer.format_alias(alias, self._anonymize(alias.name))
         else:
             return self.process(alias.original, **kwargs)
-
-    def visit_insert(self, insert):
-        """``INSERT`` s are required to have the primary keys be explicitly present.
-
-         Mapper will by default not put them in the insert statement
-         to comply with autoincrement fields that require they not be
-         present.  so, put them all in for all primary key columns.
-         """
-
-        for c in insert.table.primary_key:
-            if c.key not in self.parameters:
-                self.parameters[c.key] = None
-        return compiler.DefaultCompiler.visit_insert(self, insert)
 
     def _TODO_visit_compound_select(self, select):
         """Need to determine how to get ``LIMIT``/``OFFSET`` into a ``UNION`` for Oracle."""

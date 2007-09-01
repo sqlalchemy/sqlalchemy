@@ -15,11 +15,11 @@ class CompileTest(AssertMixin):
             Column('c1', Integer, primary_key=True),
             Column('c2', String(30)))
 
-    @profiling.profiled('ctest_insert', call_range=(50, 60), always=True)        
+    @profiling.profiled('ctest_insert', call_range=(40, 50), always=True)        
     def test_insert(self):
         t1.insert().compile()
 
-    @profiling.profiled('ctest_update', call_range=(50, 60), always=True)        
+    @profiling.profiled('ctest_update', call_range=(40, 50), always=True)        
     def test_update(self):
         t1.update().compile()
 

@@ -227,6 +227,7 @@ class PGDialect(default.DefaultDialect):
     supports_unicode_statements = False
     max_identifier_length = 63
     supports_sane_rowcount = True
+    supports_sane_multi_rowcount = False
 
     def __init__(self, use_oids=False, server_side_cursors=False, **kwargs):
         default.DefaultDialect.__init__(self, default_paramstyle='pyformat', **kwargs)
@@ -296,19 +297,6 @@ class PGDialect(default.DefaultDialect):
             return "oid"
         else:
             return None
-
-    def do_executemany(self, c, statement, parameters, context=None):
-        """We need accurate rowcounts for updates, inserts and deletes.
-
-        ``psycopg2`` is not nice enough to produce this correctly for
-        an executemany, so we do our own executemany here.
-        """
-        rowcount = 0
-        for param in parameters:
-            c.execute(statement, param)
-            rowcount += c.rowcount
-        if context is not None:
-            context._rowcount = rowcount
 
     def has_table(self, connection, table_name, schema=None):
         # seems like case gets folded in pg_class...
@@ -473,7 +461,10 @@ class PGDialect(default.DefaultDialect):
         c = connection.execute(t, table=table_oid)
         for row in c.fetchall():
             pk = row[0]
-            table.primary_key.add(table.c[pk])
+            col = table.c[pk]
+            table.primary_key.add(col)
+            if col.default is None:
+                col.autoincrement=False
 
         # Foreign keys
         FK_SQL = """
@@ -555,6 +546,12 @@ class PGCompiler(compiler.DefaultCompiler):
     def uses_sequences_for_inserts(self):
         return True
 
+    def visit_sequence(self, seq):
+        if seq.optional:
+            return None
+        else:
+            return "nextval('%s')" % self.preparer.format_sequence(seq)
+        
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:

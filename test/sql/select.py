@@ -1125,7 +1125,14 @@ class CRUDTest(SQLCompileTest):
             "INSERT INTO mytable (myid, name) VALUES (:userid, :username)"
         )
     
-        
+    def testinlineinsert(self):
+        metadata = MetaData()
+        table = Table('sometable', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('foo', Integer, default=func.foobar()))
+        self.assert_compile(table.insert(values={}, inline=True), "INSERT INTO sometable (foo) VALUES (foobar())")    
+        self.assert_compile(table.insert(inline=True), "INSERT INTO sometable (foo) VALUES (foobar())", params={})    
+            
     def testinsertexpression(self):
         self.assert_compile(insert(table1), "INSERT INTO mytable (myid) VALUES (lala())", params=dict(myid=func.lala()))
         

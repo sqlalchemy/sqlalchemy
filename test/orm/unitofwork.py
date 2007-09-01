@@ -96,7 +96,7 @@ class VersioningTest(ORMTest):
         except exceptions.ConcurrentModificationError, e:
             #print e
             success = True
-        if testbase.db.dialect.supports_sane_rowcount:
+        if testbase.db.dialect.supports_sane_multi_rowcount:
             assert success
         
     @engines.close_open_connections

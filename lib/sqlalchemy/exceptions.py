@@ -81,20 +81,20 @@ class DBAPIError(SQLAlchemyError):
     Its type and properties are DB-API implementation specific.  
     """
 
-    def __new__(cls, statement, params, orig, *args, **kw):
+    def instance(cls, statement, params, orig):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
         if isinstance(orig, (KeyboardInterrupt, SystemExit)):
             return orig
         
         if orig is not None:
-            name, glob = type(orig).__name__, globals()
+            name, glob = orig.__class__.__name__, globals()
             if name in glob and issubclass(glob[name], DBAPIError):
                 cls = glob[name]
             
-        return SQLAlchemyError.__new__(cls, statement, params, orig,
-                                       *args, **kw)
-
+        return cls(statement, params, orig)
+    instance = classmethod(instance)
+    
     def __init__(self, statement, params, orig):
         SQLAlchemyError.__init__(self, "(%s) %s" %
                                  (orig.__class__.__name__, str(orig)))

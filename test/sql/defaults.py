@@ -13,20 +13,19 @@ class DefaultTest(PersistTest):
         db = testbase.db
         metadata = MetaData(db)
         default_generator = {'x':50}
+        
         def mydefault():
             default_generator['x'] += 1
             return default_generator['x']
 
         def myupdate_with_ctx(ctx):
-            return len(ctx.compiled_parameters['col2'])
+            conn = ctx.connection
+            return conn.execute(select([text('13')])).scalar()
         
         def mydefault_using_connection(ctx):
             conn = ctx.connection
             try:
-                if db.engine.name == 'oracle':
-                    return conn.execute("select 12 from dual").scalar()
-                else:
-                    return conn.execute("select 12").scalar()
+                return conn.execute(select([text('12')])).scalar()
             finally:
                 # ensure a "close()" on this connection does nothing,
                 # since its a "branched" connection
@@ -40,23 +39,23 @@ class DefaultTest(PersistTest):
         currenttime = func.current_date(type_=Date, bind=db);
         if is_oracle:
             ts = db.func.trunc(func.sysdate(), literal_column("'DAY'")).scalar()
-            f = select([func.count(1) + 5], bind=db).scalar()
-            f2 = select([func.count(1) + 14], bind=db).scalar()
+            f = select([func.length('abcdef')], bind=db).scalar()
+            f2 = select([func.length('abcdefghijk')], bind=db).scalar()
             # TODO: engine propigation across nested functions not working
             currenttime = func.trunc(currenttime, literal_column("'DAY'"), bind=db)
             def1 = currenttime
             def2 = func.trunc(text("sysdate"), literal_column("'DAY'"))
             deftype = Date
         elif use_function_defaults:
-            f = select([func.count(1) + 5], bind=db).scalar()
-            f2 = select([func.count(1) + 14], bind=db).scalar()
+            f = select([func.length('abcdef')], bind=db).scalar()
+            f2 = select([func.length('abcdefghijk')], bind=db).scalar()
             def1 = currenttime
             def2 = text("current_date")
             deftype = Date
             ts = db.func.current_date().scalar()
         else:
-            f = select([func.count(1) + 5], bind=db).scalar()
-            f2 = select([func.count(1) + 14], bind=db).scalar()
+            f = select([func.length('abcdef')], bind=db).scalar()
+            f2 = select([func.length('abcdefghijk')], bind=db).scalar()
             def1 = def2 = "3"
             ts = 3
             deftype = Integer
@@ -69,7 +68,7 @@ class DefaultTest(PersistTest):
             Column('col2', String(20), default="imthedefault", onupdate="im the update"),
             
             # preexecute expression
-            Column('col3', Integer, default=func.count(1) + 5, onupdate=func.count(1) + 14),
+            Column('col3', Integer, default=func.length('abcdef'), onupdate=func.length('abcdefghijk')),
             
             # SQL-side default from sql expression
             Column('col4', deftype, PassiveDefault(def1)),
@@ -128,19 +127,29 @@ class DefaultTest(PersistTest):
         self.assert_(50 <= x <= 57)
         self.assert_(y == 'imthedefault')
         self.assert_(z == f)
-        # mysql/other db's return 0 or 1 for count(1)
-        self.assert_(5 <= z <= 6)
+        self.assert_(f2==11)
         
     def testinsert(self):
         r = t.insert().execute()
-        self.assert_(r.lastrow_has_defaults())
+        assert r.lastrow_has_defaults()
+        assert util.Set(r.context.postfetch_cols()) == util.Set([t.c.col5, t.c.col4])
+
+        r = t.insert(inline=True).execute()
+        assert r.lastrow_has_defaults()
+        assert util.Set(r.context.postfetch_cols()) == util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6])
+        
         t.insert().execute()
         t.insert().execute()
 
         ctexec = currenttime.scalar()
         l = t.select().execute()
         today = datetime.date.today()
-        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (52, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (53, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today)])
+        self.assert_(l.fetchall() == [
+            (51, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), 
+            (52, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), 
+            (53, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today),
+            (54, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today),
+            ])
 
     def testinsertmany(self):
         r = t.insert().execute({}, {}, {})
@@ -180,12 +189,10 @@ class DefaultTest(PersistTest):
         pk = r.last_inserted_ids()[0]
         t.update(t.c.col1==pk).execute(col4=None, col5=None)
         ctexec = currenttime.scalar()
-        print "Currenttime "+ repr(ctexec)
         l = t.select(t.c.col1==pk).execute()
         l = l.fetchone()
         self.assert_(l == (pk, 'im the update', f2, None, None, ctexec, True, False, 13, datetime.date.today()))
-        # mysql/other db's return 0 or 1 for count(1)
-        self.assert_(14 <= f2 <= 15)
+        self.assert_(f2==11)
             
     def testupdatevalues(self):
         r = t.insert().execute()
@@ -253,6 +260,8 @@ class AutoIncrementTest(PersistTest):
         try:
             table.insert().execute(data='row 1')
             table.insert().execute(data='row 2')
+            table.insert().execute({'data':'row 3'}, {'data':'row 4'})
+            assert table.select().execute().fetchall() == [(1, "row 1"), (2, "row 2"), (3, "row 3"), (4, "row 4")]
         finally:
             table.drop()    
 
@@ -267,7 +276,6 @@ class AutoIncrementTest(PersistTest):
         table.create(checkfirst=True)
 
         try:
-            # simulate working on a table that doesn't already exist
             meta2 = MetaData(testbase.db)
             table2 = Table("aitest", meta2,
                 Column('id', Integer, Sequence('ai_id_seq', optional=True), primary_key=True),
@@ -309,9 +317,15 @@ class SequenceTest(PersistTest):
         """test sequences fire off as defaults on non-pk columns"""
         sometable.insert().execute(name="somename")
         sometable.insert().execute(name="someother")
+        sometable.insert().execute(
+            {'name':'name3'},
+            {'name':'name4'}
+        )
         assert sometable.select().execute().fetchall() == [
             (1, "somename", 1),
             (2, "someother", 2),
+            (3, "name3", 3),
+            (4, "name4", 4),
         ]
         
     @testing.supported('postgres', 'oracle')

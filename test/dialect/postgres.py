@@ -1,10 +1,282 @@
 import testbase
 import datetime
 from sqlalchemy import *
+from sqlalchemy import exceptions
 from sqlalchemy.databases import postgres
 from testlib import *
 
+class InsertTest(AssertMixin):
+    @testing.supported('postgres')
+    def setUpAll(self):
+        global metadata
+        metadata = MetaData(testbase.db)
+        
+    @testing.supported('postgres')
+    def tearDown(self):
+        metadata.drop_all()
+        metadata.tables.clear()
+        
+    @testing.supported('postgres')
+    def test_compiled_insert(self):
+        table = Table('testtable', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+            
+        metadata.create_all()
 
+        ins = table.insert(values={'data':bindparam('x')}).compile()
+        ins.execute({'x':"five"}, {'x':"seven"})
+        assert table.select().execute().fetchall() == [(1, 'five'), (2, 'seven')]
+        
+    @testing.supported('postgres')
+    def test_sequence_insert(self):
+        table = Table('testtable', metadata, 
+            Column('id', Integer, Sequence('my_seq'), primary_key=True),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_with_sequence(table, "my_seq")
+
+    @testing.supported('postgres')
+    def test_opt_sequence_insert(self):
+        table = Table('testtable', metadata, 
+            Column('id', Integer, Sequence('my_seq', optional=True), primary_key=True),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_autoincrement(table)
+
+    @testing.supported('postgres')
+    def test_autoincrement_insert(self):
+        table = Table('testtable', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_autoincrement(table)
+
+    @testing.supported('postgres')
+    def test_noautoincrement_insert(self):
+        table = Table('testtable', metadata, 
+            Column('id', Integer, primary_key=True, autoincrement=False),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_noautoincrement(table)
+    
+    def _assert_data_autoincrement(self, table):
+        def go():
+            # execute with explicit id
+            r = table.insert().execute({'id':30, 'data':'d1'})
+            assert r.last_inserted_ids() == [30]
+            
+            # execute with prefetch id
+            r = table.insert().execute({'data':'d2'})
+            assert r.last_inserted_ids() == [1]
+            
+            # executemany with explicit ids
+            table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
+            
+            # executemany, uses SERIAL
+            table.insert().execute({'data':'d5'}, {'data':'d6'})
+            
+            # single execute, explicit id, inline
+            table.insert(inline=True).execute({'id':33, 'data':'d7'})
+            
+            # single execute, inline, uses SERIAL
+            table.insert(inline=True).execute({'data':'d8'})
+            
+        # note that the test framework doesnt capture the "preexecute" of a seqeuence
+        # or default.  we just see it in the bind params.
+    
+        self.assert_sql(testbase.db, go, [], with_sequences=[
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':30, 'data':'d1'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':1, 'data':'d2'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':31, 'data':'d3'}, {'id':32, 'data':'d4'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d5'}, {'data':'d6'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':33, 'data':'d7'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d8'}]
+            ),
+        ])
+    
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (1, 'd2'),
+            (31, 'd3'),
+            (32, 'd4'),
+            (2, 'd5'),
+            (3, 'd6'),
+            (33, 'd7'),
+            (4, 'd8'),
+        ]
+        table.delete().execute()
+
+        # test the same series of events using a reflected 
+        # version of the table
+        m2 = MetaData(testbase.db)
+        table = Table(table.name, m2, autoload=True)
+
+        def go():
+            table.insert().execute({'id':30, 'data':'d1'})
+            r = table.insert().execute({'data':'d2'})
+            assert r.last_inserted_ids() == [5]
+            table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
+            table.insert().execute({'data':'d5'}, {'data':'d6'})
+            table.insert(inline=True).execute({'id':33, 'data':'d7'})
+            table.insert(inline=True).execute({'data':'d8'})
+    
+        self.assert_sql(testbase.db, go, [], with_sequences=[
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':30, 'data':'d1'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':5, 'data':'d2'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':31, 'data':'d3'}, {'id':32, 'data':'d4'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d5'}, {'data':'d6'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':33, 'data':'d7'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d8'}]
+            ),
+        ])
+    
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (5, 'd2'),
+            (31, 'd3'),
+            (32, 'd4'),
+            (6, 'd5'),
+            (7, 'd6'),
+            (33, 'd7'),
+            (8, 'd8'),
+        ]
+        table.delete().execute()
+        
+    def _assert_data_with_sequence(self, table, seqname):
+        def go():
+            table.insert().execute({'id':30, 'data':'d1'})
+            table.insert().execute({'data':'d2'})
+            table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
+            table.insert().execute({'data':'d5'}, {'data':'d6'})
+            table.insert(inline=True).execute({'id':33, 'data':'d7'})
+            table.insert(inline=True).execute({'data':'d8'})
+
+        self.assert_sql(testbase.db, go, [], with_sequences=[
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':30, 'data':'d1'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':1, 'data':'d2'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':31, 'data':'d3'}, {'id':32, 'data':'d4'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), :data)" % seqname,
+                [{'data':'d5'}, {'data':'d6'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':33, 'data':'d7'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), :data)" % seqname,
+                [{'data':'d8'}]
+            ),
+        ])
+
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (1, 'd2'),
+            (31, 'd3'),
+            (32, 'd4'),
+            (2, 'd5'),
+            (3, 'd6'),
+            (33, 'd7'),
+            (4, 'd8'),
+        ]
+        
+        # cant test reflection here since the Sequence must be 
+        # explicitly specified
+            
+    def _assert_data_noautoincrement(self, table):
+        table.insert().execute({'id':30, 'data':'d1'})
+        try:
+            table.insert().execute({'data':'d2'})
+            assert False
+        except exceptions.IntegrityError, e:
+            assert "violates not-null constraint" in str(e)
+        try:
+            table.insert().execute({'data':'d2'}, {'data':'d3'})
+            assert False
+        except exceptions.IntegrityError, e:
+            assert "violates not-null constraint" in str(e)
+            
+        table.insert().execute({'id':31, 'data':'d2'}, {'id':32, 'data':'d3'})
+        table.insert(inline=True).execute({'id':33, 'data':'d4'})
+    
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (31, 'd2'),
+            (32, 'd3'),
+            (33, 'd4'),
+        ]
+        table.delete().execute()
+
+        # test the same series of events using a reflected 
+        # version of the table
+        m2 = MetaData(testbase.db)
+        table = Table(table.name, m2, autoload=True)
+        table.insert().execute({'id':30, 'data':'d1'})
+        try:
+            table.insert().execute({'data':'d2'})
+            assert False
+        except exceptions.IntegrityError, e:
+            assert "violates not-null constraint" in str(e)
+        try:
+            table.insert().execute({'data':'d2'}, {'data':'d3'})
+            assert False
+        except exceptions.IntegrityError, e:
+            assert "violates not-null constraint" in str(e)
+            
+        table.insert().execute({'id':31, 'data':'d2'}, {'id':32, 'data':'d3'})
+        table.insert(inline=True).execute({'id':33, 'data':'d4'})
+    
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (31, 'd2'),
+            (32, 'd3'),
+            (33, 'd4'),
+        ]
+    
 class DomainReflectionTest(AssertMixin):
     "Test PostgreSQL domains"
 

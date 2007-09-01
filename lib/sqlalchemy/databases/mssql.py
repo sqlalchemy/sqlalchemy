@@ -494,7 +494,7 @@ class MSSQLDialect(default.DefaultDialect):
             self.context.rowcount = c.rowcount
             c.DBPROP_COMMITPRESERVE = "Y"
         except Exception, e:
-            raise exceptions.SQLError(statement, parameters, e)
+            raise exceptions.DBAPIError.instance(statement, parameters, e)
 
     def table_names(self, connection, schema):
         from sqlalchemy.databases import information_schema as ischema

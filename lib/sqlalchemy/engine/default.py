@@ -30,6 +30,7 @@ class DefaultDialect(base.Dialect):
     supports_unicode_statements = False
     max_identifier_length = 9999
     supports_sane_rowcount = True
+    supports_sane_multi_rowcount = True
 
     def __init__(self, convert_unicode=False, encoding='utf-8', default_paramstyle='named', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode
@@ -249,6 +250,9 @@ class DefaultExecutionContext(base.ExecutionContext):
     def supports_sane_rowcount(self):
         return self.dialect.supports_sane_rowcount
 
+    def supports_sane_multi_rowcount(self):
+        return self.dialect.supports_sane_multi_rowcount
+
     def last_inserted_ids(self):
         return self._last_inserted_ids
 
@@ -297,67 +301,45 @@ class DefaultExecutionContext(base.ExecutionContext):
         """generate default values for compiled insert/update statements,
         and generate last_inserted_ids() collection."""
 
-        if self.isinsert:
-            drunner = self.dialect.defaultrunner(self)
+        if self.isinsert or self.isupdate:
             if self.executemany:
-                # executemany doesn't populate last_inserted_ids()
-                firstparam = self.compiled_parameters[0]
-                processors = firstparam.get_processors()
-                for c in self.compiled.statement.table.c:
-                    if c.default is not None:
-                        params = self.compiled_parameters
-                        for param in params:
-                            if not c.key in param or param.get_original(c.key) is None:
-                                self.compiled_parameters = param
-                                newid = drunner.get_column_default(c)
-                                if newid is not None:
-                                    param.set_value(c.key, newid)
-                        self.compiled_parameters = params
+                if len(self.compiled.prefetch):
+                    drunner = self.dialect.defaultrunner(self)
+                    params = self.compiled_parameters
+                    for param in params:
+                        self.compiled_parameters = param
+                        for c in self.compiled.prefetch:
+                            if self.isinsert:
+                                val = drunner.get_column_default(c)
+                            else:
+                                val = drunner.get_column_onupdate(c)
+                            if val is not None:
+                                param.set_value(c.key, val)
+                    self.compiled_parameters = params
+                    
             else:
-                param = self.compiled_parameters
-                processors = param.get_processors()
-                last_inserted_ids = []
-                for c in self.compiled.statement.table.c:
-                    if c in self.compiled.inline_params:
-                        self._postfetch_cols.add(c)
-                        if c.primary_key:
-                            last_inserted_ids.append(None)
-                    elif not c.key in param or param.get_original(c.key) is None:
-                        if isinstance(c.default, schema.PassiveDefault):
-                            self._postfetch_cols.add(c)
-                        newid = drunner.get_column_default(c)
-                        if newid is not None:
-                            param.set_value(c.key, newid)
-                            if c.primary_key:
-                                last_inserted_ids.append(param.get_processed(c.key, processors))
-                        elif c.primary_key:
-                            last_inserted_ids.append(None)
-                    elif c.primary_key:
-                        last_inserted_ids.append(param.get_processed(c.key, processors))
-                self._last_inserted_ids = last_inserted_ids
-                self._last_inserted_params = param
+                drunner = self.dialect.defaultrunner(self)
+                if self.isinsert:
+                    self._last_inserted_ids = []
+                for c in self.compiled.prefetch:
+                    print "PREFETCH COL", c.key
+                    if self.isinsert:
+                        val = drunner.get_column_default(c)
+                    else:
+                        val = drunner.get_column_onupdate(c)
+                    if val is not None:
+                        self.compiled_parameters.set_value(c.key, val)
 
-
-        elif self.isupdate:
-            drunner = self.dialect.defaultrunner(self)
-            if self.executemany:
-                for c in self.compiled.statement.table.c:
-                    if c.onupdate is not None:
-                        params = self.compiled_parameters
-                        for param in params:
-                            if not c.key in param or param.get_original(c.key) is None:
-                                self.compiled_parameters = param
-                                value = drunner.get_column_onupdate(c)
-                                if value is not None:
-                                    param.set_value(c.key, value)
-                        self.compiled_parameters = params
-            else:
-                param = self.compiled_parameters
-                for c in self.compiled.statement.table.c:
-                    if c in self.compiled.inline_params:
-                        self._postfetch_cols.add(c)
-                    elif c.onupdate is not None and (not c.key in param or param.get_original(c.key) is None):
-                        value = drunner.get_column_onupdate(c)
-                        if value is not None:
-                            param.set_value(c.key, value)
-                self._last_updated_params = param
+                if self.isinsert:
+                    processors = self.compiled_parameters.get_processors()
+                    for c in self.compiled.statement.table.primary_key:
+                        if c.key in self.compiled_parameters:
+                            self._last_inserted_ids.append(self.compiled_parameters.get_processed(c.key, processors))
+                        else:
+                            self._last_inserted_ids.append(None)
+                            
+                self._postfetch_cols = self.compiled.postfetch
+                if self.isinsert:
+                    self._last_inserted_params = self.compiled_parameters
+                else:
+                    self._last_updated_params = self.compiled_parameters
