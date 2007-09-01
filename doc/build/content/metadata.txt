@@ -349,13 +349,17 @@ The "default" and "onupdate" keywords may also be passed SQL expressions, includ
         Column('last_modified', DateTime, onupdate=func.current_timestamp())
         )
 
-The above SQL functions are always executed "inline" with the INSERT or UPDATE statement being executed, **unless** several conditions are met:
-  * the column is a primary key column
-  * the database dialect does not support a usable `cursor.lastrowid` accessor (or equivalent); this currently includes Postgres, Oracle, and Firebird.
-  * the statement is a single execution, i.e. only supplies one set of parameters and doesn't use "executemany" behavior
-  * the `inline=True` flag is not set on the `Insert()` or `Update()` construct.
+The above SQL functions are usually executed "inline" with the INSERT or UPDATE statement being executed.  In some cases, the function is "pre-executed" and its result pre-fetched explicitly.  This happens under the following circumstances:
 
-For a statement which executes with `inline=False` and is not an executemany execution, the returned `ResultProxy` will contain a collection accessible via `result.postfetch_cols()`, which contains a list of all `Column` objects which had an inline-executed default.  Similarly, all parameters which were bound to the statement, including all Python and SQL expressions which were pre-executed, are present in the `last_inserted_params()` or `last_updated_params()` collections on `ResultProxy`.  The `last_inserted_ids()` collection contains a list of primary key values for the row inserted.  
+* the column is a primary key column
+
+* the database dialect does not support a usable `cursor.lastrowid` accessor (or equivalent); this currently includes Postgres, Oracle, and Firebird.
+
+* the statement is a single execution, i.e. only supplies one set of parameters and doesn't use "executemany" behavior
+
+* the `inline=True` flag is not set on the `Insert()` or `Update()` construct.
+
+For a statement which executes with `inline=False` and is not an executemany execution, the returned `ResultProxy` will contain a collection accessible via `result.postfetch_cols()` which contains a list of all `Column` objects which had an inline-executed default.  Similarly, all parameters which were bound to the statement, including all Python and SQL expressions which were pre-executed, are present in the `last_inserted_params()` or `last_updated_params()` collections on `ResultProxy`.  The `last_inserted_ids()` collection contains a list of primary key values for the row inserted.  
 
 #### DDL-Level Defaults {@name=passive}    
 
@@ -373,7 +377,7 @@ A create call for the above table will produce:
         mycolumn datetime default sysdate
     )
         
-The behavior of `PassiveDefault` is similar to that of the regular default; if it's placed on a primary key column for a database which doesn't have a way to "postfetch" the ID, and the statement is not "inlined", the SQL expression is pre-executed; otherwise, SQLAlchemy lets the default fire off on the database side normally.
+The behavior of `PassiveDefault` is similar to that of a regular SQL default; if it's placed on a primary key column for a database which doesn't have a way to "postfetch" the ID, and the statement is not "inlined", the SQL expression is pre-executed; otherwise, SQLAlchemy lets the default fire off on the database side normally.
 
 #### Defining Sequences {@name=sequences}    
 
@@ -386,7 +390,7 @@ A table with a sequence looks like:
         Column("createdate", DateTime())
     )
 
-The `Sequence` object works a lot like the `default` keyword on `Column`, except that it only takes effect on a database which supports sequences.  The same rules for pre- and inline execution apply.
+The `Sequence` object works a lot like the `default` keyword on `Column`, except that it only takes effect on a database which supports sequences.  When used with a database that does not support sequences, the `Sequence` object has no effect; therefore it's safe to place on a table which is used against multiple database backends.  The same rules for pre- and inline execution apply.
 
 When the `Sequence` is associated with a table, CREATE and DROP statements issued for that table will also issue CREATE/DROP for the sequence object as well, thus "bundling" the sequence object with its parent table.
 
