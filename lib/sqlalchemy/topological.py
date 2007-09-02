@@ -6,18 +6,6 @@
 
 """Topological sorting algorithms.
 
-The key to the unit of work is to assemble a list of dependencies
-amongst all the different mappers that have been defined for classes.
-
-Related tables with foreign key constraints have a definite insert
-order, deletion order, objects need dependent properties from parent
-objects set up before saved, etc.
-
-These are all encoded as dependencies, in the form *mapper X is
-dependent on mapper Y*, meaning mapper Y's objects must be saved
-before those of mapper X, and mapper X's objects must be deleted
-before those of mapper Y.
-
 The topological sort is an algorithm that receives this list of
 dependencies as a *partial ordering*, that is a list of pairs which
 might say, *X is dependent on Y*, *Q is dependent on Z*, but does not
@@ -28,18 +16,6 @@ then only towards just some of the other elements.  For a particular
 partial ordering, there can be many possible sorts that satisfy the
 conditions.
 
-An intrinsic *gotcha* to this algorithm is that since there are many
-possible outcomes to sorting a partial ordering, the algorithm can
-return any number of different results for the same input; just
-running it on a different machine architecture, or just random
-differences in the ordering of dictionaries, can change the result
-that is returned.  While this result is guaranteed to be true to the
-incoming partial ordering, if the partial ordering itself does not
-properly represent the dependencies, code that works fine will
-suddenly break, then work again, then break, etc.  Most of the bugs
-I've chased down while developing the *unit of work* have been of this
-nature - very tricky to reproduce and track down, particularly before
-I realized this characteristic of the algorithm.
 """
 
 from sqlalchemy import util
@@ -158,8 +134,9 @@ class QueueDependencySorter(object):
     """Topological sort adapted from wikipedia's article on the subject.
 
     It creates a straight-line list of elements, then a second pass
-    groups non-dependent actions together to build more of a tree
-    structure with siblings.
+    batches non-dependent elements as siblings in a tree structure.  Future
+    versions of this algorithm may separate the "convert to a tree" 
+    step.
     """
 
     def __init__(self, tuples, allitems):

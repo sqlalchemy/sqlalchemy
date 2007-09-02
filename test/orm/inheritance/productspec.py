@@ -272,12 +272,6 @@ class InheritTest(ORMTest):
                 )
             )
 
-        detail_mapper = mapper(Detail, inherits=Product,
-            polymorphic_identity='detail')
-
-        raster_document_mapper = mapper(RasterDocument, inherits=Document,
-            polymorphic_identity='raster_document')
-
         product_mapper = mapper(Product, products_table,
             polymorphic_on=products_table.c.product_type,
             polymorphic_identity='product', properties={
@@ -285,8 +279,8 @@ class InheritTest(ORMTest):
                     backref='product', cascade='all, delete-orphan'),
             })
 
-        assembly_mapper = mapper(Assembly, inherits=Product,
-            polymorphic_identity='assembly')
+        detail_mapper = mapper(Detail, inherits=Product,
+            polymorphic_identity='detail')
 
         document_mapper = mapper(Document, documents_table,
             polymorphic_on=documents_table.c.document_type,
@@ -296,6 +290,12 @@ class InheritTest(ORMTest):
                 data=deferred(documents_table.c.data),
                 ),
             )
+
+        raster_document_mapper = mapper(RasterDocument, inherits=Document,
+            polymorphic_identity='raster_document')
+
+        assembly_mapper = mapper(Assembly, inherits=Product,
+            polymorphic_identity='assembly')
 
         session = create_session()
 

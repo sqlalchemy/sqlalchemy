@@ -1,6 +1,17 @@
 =======
 CHANGES
 =======
+0.4.0beta6
+----------
+
+- mapper compilation has been reorganized such that most compilation
+  occurs upon mapper construction.  this allows us to have fewer
+  calls to mapper.compile() and also to allow class-based properties
+  to force a compilation (i.e. User.addresses == 7 will compile all
+  mappers; this is [ticket:758]).  The only caveat here is that 
+  an inheriting mapper now looks for its inherited mapper upon construction;
+  so mappers within inheritance relationships need to be constructed in
+  inheritance order (which should be the normal case anyway).
 
 0.4.0beta5
 ----------

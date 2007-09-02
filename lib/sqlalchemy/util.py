@@ -122,10 +122,11 @@ def hash(string):
 class ArgSingleton(type):
     instances = {}
 
-    def dispose_static(self, *args):
-        hashkey = (self, args)
-        #if hashkey in ArgSingleton.instances:
-        del ArgSingleton.instances[hashkey]
+    def dispose(cls):
+        for key in ArgSingleton.instances:
+            if key[0] is cls:
+                del ArgSingleton.instances[key]
+    dispose = classmethod(dispose)
 
     def __call__(self, *args):
         hashkey = (self, args)

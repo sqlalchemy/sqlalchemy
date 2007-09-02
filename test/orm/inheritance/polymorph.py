@@ -90,7 +90,7 @@ class CompileTest(PolymorphTest):
         session.flush()
         print session.query(Engineer).select()
 
-        print session.query(Person).select()        
+        print session.query(Person).select()
     
     def testcompile2(self):
         """test that a mapper can reference a property whose mapper inherits from this one."""

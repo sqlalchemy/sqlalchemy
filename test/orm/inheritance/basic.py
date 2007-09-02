@@ -170,14 +170,10 @@ class ConstructionTest(ORMTest):
         class Product(Content): pass
 
         content_types = mapper(ContentType, content_type)
-        contents = mapper(Content, content, properties={
-            'content_type':relation(content_types)
-        }, polymorphic_identity='contents')
-
-        products = mapper(Product, product, inherits=contents, polymorphic_identity='products')
-        
         try:
-            compile_mappers()
+            contents = mapper(Content, content, properties={
+                'content_type':relation(content_types)
+            }, polymorphic_identity='contents')
             assert False
         except exceptions.ArgumentError, e:
             assert str(e) == "Mapper 'Mapper|Content|content' specifies a polymorphic_identity of 'contents', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument"
@@ -377,8 +373,8 @@ class DistinctPKTest(ORMTest):
 
     def test_explicit_composite_pk(self):
         person_mapper = mapper(Person, person_table)
-        mapper(Employee, employee_table, inherits=person_mapper, primary_key=[person_table.c.id, employee_table.c.id])
         try:
+            mapper(Employee, employee_table, inherits=person_mapper, primary_key=[person_table.c.id, employee_table.c.id])
             self._do_test(True)
             assert False
         except RuntimeWarning, e:

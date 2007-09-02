@@ -1663,7 +1663,6 @@ class DefaultRunner(schema.SchemaVisitor):
     def visit_sequence(self, seq):
         """Do nothing.
 
-        Sequences are not supported by default.
         """
 
         return None

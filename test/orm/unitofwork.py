@@ -464,7 +464,7 @@ class ForeignPKTest(ORMTest):
                       'sites' : relation(PersonSite), 
               },
             )
-
+        compile_mappers()
         assert list(m2.get_property('sites').foreign_keys) == [peoplesites.c.person]
         p = Person()
         p.person = 'im the key'

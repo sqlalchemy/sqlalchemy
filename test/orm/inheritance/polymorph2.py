@@ -237,7 +237,6 @@ def generate_test(jointype="join1", usedata=False):
         if usedata:
             mapper(Data, data)
     
-        mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager')
         if usedata:
             mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=people.c.type,
                   properties={
@@ -252,6 +251,8 @@ def generate_test(jointype="join1", usedata=False):
                         remote_side=people.c.colleague_id, uselist=True)
                     }        
             )
+
+        mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager')
 
         sess = create_session()
         p = Person(name='person1')

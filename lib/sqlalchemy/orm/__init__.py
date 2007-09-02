@@ -529,18 +529,15 @@ def compile_mappers():
 def clear_mappers():
     """Remove all mappers that have been created thus far.
 
-    When new mappers are created, they will be assigned to their
-    classes as their primary mapper.
+    The mapped classes will return to their initial "unmapped"
+    state and can be re-mapped with new mappers.
     """
-
     mapperlib._COMPILE_MUTEX.acquire()
     try:
         for mapper in mapper_registry.values():
             mapper.dispose()
         mapper_registry.clear()
-        # TODO: either dont use ArgSingleton, or
-        # find a way to clear only ClassKey instances from it
-        sautil.ArgSingleton.instances.clear()
+        mapperlib.ClassKey.dispose()
     finally:
         mapperlib._COMPILE_MUTEX.release()
         
