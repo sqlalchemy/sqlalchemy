@@ -1396,7 +1396,7 @@ class Mapper(object):
         identitykey = self.identity_key_from_row(row)
         populate_existing = context.populate_existing or self.always_refresh
         if identitykey in context.session.identity_map:
-            instance = context.session._get(identitykey)
+            instance = context.session.identity_map[identitykey]
             if self.__should_log_debug:
                 self.__log_debug("_instance(): using existing instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
             isnew = False
@@ -1454,6 +1454,9 @@ class Mapper(object):
         if extension.append_result(self, context, row, instance, result, **flags) is EXT_CONTINUE:
             if result is not None:
                 result.append(instance)
+                
+        instance._instance_key = identitykey
+        
         return instance
 
     def _create_instance(self, session):
@@ -1495,7 +1498,7 @@ class Mapper(object):
                 newrow[c] = row[c2]
         return newrow
 
-    def populate_instance(self, selectcontext, instance, row, ispostselect=None, **flags):
+    def populate_instance(self, selectcontext, instance, row, ispostselect=None, isnew=False, **flags):
         """populate an instance from a result row."""
 
         selectcontext.stack.push_mapper(self)
@@ -1504,17 +1507,21 @@ class Mapper(object):
         # "snapshot" of the stack, which represents a path from the lead mapper in the query to this one,
         # including relation() names.  the key also includes "self", and allows us to distinguish between
         # other mappers within our inheritance hierarchy
-        populators = selectcontext.attributes.get(('instance_populators', self, selectcontext.stack.snapshot(), ispostselect), None)
+        snapshot = selectcontext.stack.snapshot()
+        populators = selectcontext.attributes.get(((isnew or ispostselect) and 'new_populators' or 'existing_populators', self, snapshot, ispostselect), None)
         if populators is None:
             # no populators; therefore this is the first time we are receiving a row for
             # this result set.  issue create_row_processor() on all MapperProperty objects
             # and cache in the select context.
-            populators = []
+            new_populators = []
+            existing_populators = []
             post_processors = []
             for prop in self.__props.values():
-                (pop, post_proc) = prop.create_row_processor(selectcontext, self, row)
-                if pop is not None:
-                    populators.append(pop)
+                (newpop, existingpop, post_proc) = prop.create_row_processor(selectcontext, self, row)
+                if newpop is not None:
+                    new_populators.append(newpop)
+                if existingpop is not None:
+                    existing_populators.append(existingpop)
                 if post_proc is not None:
                     post_processors.append(post_proc)
                     
@@ -1522,11 +1529,16 @@ class Mapper(object):
             if poly_select_loader is not None:
                 post_processors.append(poly_select_loader)
                 
-            selectcontext.attributes[('instance_populators', self, selectcontext.stack.snapshot(), ispostselect)] = populators
+            selectcontext.attributes[('new_populators', self, snapshot, ispostselect)] = new_populators
+            selectcontext.attributes[('existing_populators', self, snapshot, ispostselect)] = existing_populators
             selectcontext.attributes[('post_processors', self, ispostselect)] = post_processors
-
+            if isnew or ispostselect:
+                populators = new_populators
+            else:
+                populators = existing_populators
+                
         for p in populators:
-            p(instance, row, ispostselect=ispostselect, **flags)
+            p(instance, row, ispostselect=ispostselect, isnew=isnew, **flags)
         
         selectcontext.stack.pop()
             
@@ -1570,9 +1582,10 @@ class ClassKey(object):
     def __init__(self, class_, entity_name):
         self.class_ = class_
         self.entity_name = entity_name
-
+        self._hash = hash((self.class_, self.entity_name))
+        
     def __hash__(self):
-        return hash((self.class_, self.entity_name))
+        return self._hash
 
     def __eq__(self, other):
         return self is other
@@ -1615,7 +1628,7 @@ def object_mapper(object, entity_name=None, raiseerror=True):
             raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (object.__class__.__name__, getattr(object, '_entity_name', entity_name)))
         else:
             return None
-    return mapper.compile()
+    return mapper
 
 def class_mapper(class_, entity_name=None, compile=True):
     """Given a class and optional entity_name, return the primary Mapper associated with the key.

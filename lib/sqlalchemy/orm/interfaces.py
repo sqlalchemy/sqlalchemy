@@ -258,20 +258,25 @@ class MapperProperty(object):
         
         callables are of the following form::
         
-            def execute(instance, row, **flags):
-                # process incoming instance and given row.
+            def new_execute(instance, row, **flags):
+                # process incoming instance and given row.  the instance is "new" and
+                # was just created upon receipt of this row.
                 # flags is a dictionary containing at least the following attributes:
                 #   isnew - indicates if the instance was newly created as a result of reading this row
                 #   instancekey - identity key of the instance
                 # optional attribute:
                 #   ispostselect - indicates if this row resulted from a 'post' select of additional tables/columns
+
+            def existing_execute(instance, row, **flags):
+                # process incoming instance and given row.  the instance is "existing" and
+                # was created based on a previous row.
                 
             def post_execute(instance, **flags):
                 # process instance after all result rows have been processed.  this
                 # function should be used to issue additional selections in order to
                 # eagerly load additional properties.
                 
-            return (execute, post_execute)
+            return (new_execute, existing_execute, post_execute)
             
         either tuple value can also be ``None`` in which case no function is called.
         
@@ -528,7 +533,7 @@ class SynonymProperty(MapperProperty):
         pass
 
     def create_row_processor(self, selectcontext, mapper, row):
-        return (None, None)
+        return (None, None, None)
 
     def do_init(self):
         if not self.proxy:

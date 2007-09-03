@@ -933,14 +933,14 @@ class Session(object):
         return object_session(obj)
     object_session = classmethod(object_session)
     
-    def _save_impl(self, object, **kwargs):
-        if hasattr(object, '_instance_key'):
-            if object._instance_key not in self.identity_map:
+    def _save_impl(self, obj, **kwargs):
+        if hasattr(obj, '_instance_key'):
+            if obj._instance_key not in self.identity_map:
                 raise exceptions.InvalidRequestError("Instance '%s' is a detached instance "
                                                      "or is already persistent in a "
-                                                     "different Session" % repr(object))
+                                                     "different Session" % repr(obj))
         else:
-            m = _class_mapper(object.__class__, entity_name=kwargs.get('entity_name', None))
+            m = _class_mapper(obj.__class__, entity_name=kwargs.get('entity_name', None))
 
             # this would be a nice exception to raise...however this is incompatible with a contextual
             # session which puts all objects into the session upon construction.
@@ -949,31 +949,23 @@ class Session(object):
             #                                         "and must be attached to a parent "
             #                                         "object to be saved" % (repr(object)))
 
-            m._assign_entity_name(object)
-            self._register_pending(object)
+            m._assign_entity_name(obj)
+            self._attach(obj)
+            self.uow.register_new(obj)
 
-    def _update_impl(self, object, **kwargs):
-        if self._is_attached(object) and object not in self.deleted:
+    def _update_impl(self, obj, **kwargs):
+        if self._is_attached(obj) and obj not in self.deleted:
             return
-        if not hasattr(object, '_instance_key'):
-            raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % repr(object))
-        self._attach(object)
-
-    def _register_pending(self, obj):
+        if not hasattr(obj, '_instance_key'):
+            raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % repr(obj))
         self._attach(obj)
-        self.uow.register_new(obj)
 
     def _register_persistent(self, obj):
-        self._attach(obj)
-        self.uow.register_clean(obj)
-
-    def _register_deleted(self, obj):
-        self._attach(obj)
-        self.uow.register_deleted(obj)
+        obj._sa_session_id = self.hash_key
+        self.identity_map[obj._instance_key] = obj
+        attribute_manager.commit(obj)
 
     def _attach(self, obj):
-        """Attach the given object to this ``Session``."""
-
         old_id = getattr(obj, '_sa_session_id', None)
         if old_id != self.hash_key:
             if old_id is not None and old_id in _sessions:
@@ -1024,9 +1016,6 @@ class Session(object):
         
         return iter(list(self.uow.new) + self.uow.identity_map.values())
 
-    def _get(self, key):
-        return self.identity_map[key]
-
     dirty = property(lambda s:s.uow.locate_dirty(),
                      doc="A ``Set`` of all objects marked as 'dirty' within this ``Session``")
 
@@ -1036,11 +1025,6 @@ class Session(object):
     new = property(lambda s:s.uow.new,
                    doc="A ``Set`` of all objects marked as 'new' within this ``Session``.")
 
-    def import_instance(self, *args, **kwargs):
-        """A synynom for ``merge()``."""
-
-        return self.merge(*args, **kwargs)
-    import_instance = util.deprecated(import_instance)
 
 # this is the AttributeManager instance used to provide attribute behavior on objects.
 # to all the "global variable police" out there:  its a stateless object.

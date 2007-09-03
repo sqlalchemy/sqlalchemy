@@ -121,8 +121,9 @@ class UnitOfWork(object):
         else:
             return True
 
-    def register_clean(self, obj):
-        """register the given object as 'clean' (i.e. persistent) within this unit of work."""
+    def _register_clean(self, obj):
+        """register the given object as 'clean' (i.e. persistent) within this unit of work, after
+        a save operation has taken place."""
         
         if obj in self.new:
             self.new.remove(obj)
@@ -429,7 +430,7 @@ class UOWTransaction(object):
                 if elem.isdelete:
                     self.uow._remove_deleted(elem.obj)
                 else:
-                    self.uow.register_clean(elem.obj)
+                    self.uow._register_clean(elem.obj)
 
     def _sort_dependencies(self):
         """Create a hierarchical tree of dependent UOWTask instances.

@@ -698,7 +698,7 @@ class Query(object):
         lockmode = lockmode or self._lockmode
         if not reload and not self.mapper.always_refresh and lockmode is None:
             try:
-                return self.session._get(key)
+                return self.session.identity_map[key]
             except KeyError:
                 pass
 
