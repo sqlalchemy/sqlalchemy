@@ -580,8 +580,8 @@ class MSSQLDialect(default.DefaultDialect):
                     warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (type, name)))
                     coltype = sqltypes.NULLTYPE
                     
-                elif coltype == MSNVarchar and charlen == -1:
-                    charlen = None
+                elif coltype in (MSNVarchar, AdoMSNVarchar) and charlen == -1:
+                    args[0] = None
                 coltype = coltype(*args)
             colargs= []
             if default is not None:
@@ -593,7 +593,7 @@ class MSSQLDialect(default.DefaultDialect):
             raise exceptions.NoSuchTableError(table.name)
 
         # We also run an sp_columns to check for identity columns:
-        cursor = connection.execute("sp_columns " + self.identifier_preparer.format_table(table))
+        cursor = connection.execute("sp_columns [%s]" % self.identifier_preparer.format_table(table))
         ic = None
         while True:
             row = cursor.fetchone()
