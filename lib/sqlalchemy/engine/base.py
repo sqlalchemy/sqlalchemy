@@ -790,42 +790,43 @@ class Connection(Connectable):
         return context.result()
 
     def __distill_params(self, multiparams, params):
-        if multiparams is None or len(multiparams) == 0:
-            parameters = params or None
-        elif len(multiparams) == 1 and isinstance(multiparams[0], (list, tuple, dict)):
-            parameters = multiparams[0]
-        else:
-            parameters = list(multiparams)
-        return parameters
-
-    def __distill_params_and_keys(self, multiparams, params):
+        """given arguments from the calling form *multiparams, **params, return a list
+        of bind parameter structures, usually a list of dictionaries.  
+        
+        in the case of 'raw' execution which accepts positional parameters, 
+        it may be a list of tuples or lists."""
+        
         if multiparams is None or len(multiparams) == 0:
             if params:
-                parameters = params
-                keys = params.keys()
+                return [params]
             else:
-                parameters = None
-                keys = []
-            executemany = False
-        elif len(multiparams) == 1 and isinstance(multiparams[0], (list, tuple, dict)):
-            parameters = multiparams[0]
-            if isinstance(parameters, dict):
-                keys = parameters.keys()
+                return [{}]
+        elif len(multiparams) == 1:
+            if isinstance(multiparams[0], (list, tuple)):
+                if isinstance(multiparams[0][0], (list, tuple, dict)):
+                    return multiparams[0]
+                else:
+                    return [multiparams[0]]
+            elif isinstance(multiparams[0], dict):
+                return [multiparams[0]]
             else:
-                keys = parameters[0].keys()
-            executemany = False
+                return [[multiparams[0]]]
         else:
-            parameters = list(multiparams)
-            keys = parameters[0].keys()
-            executemany = True
-        return (parameters, keys, executemany)
+            if isinstance(multiparams[0], (list, tuple, dict)):
+                return multiparams
+            else:
+                return [multiparams]
 
     def _execute_function(self, func, multiparams, params):
         return self._execute_clauseelement(func.select(), multiparams, params)
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
-        (params, keys, executemany) = self.__distill_params_and_keys(multiparams, params)
-        return self._execute_compiled(elem.compile(dialect=self.dialect, column_keys=keys, inline=executemany), distilled_params=params)
+        params = self.__distill_params(multiparams, params)
+        if params:
+            keys = params[0].keys()
+        else:
+            keys = None
+        return self._execute_compiled(elem.compile(dialect=self.dialect, column_keys=keys, inline=len(params) > 1), distilled_params=params)
 
     def _execute_compiled(self, compiled, multiparams=None, params=None, distilled_params=None):
         """Execute a sql.Compiled object."""
@@ -845,17 +846,10 @@ class Connection(Connectable):
         return self.__engine.dialect.create_execution_context(connection=self, **kwargs)
 
     def __execute_raw(self, context):
-        if context.parameters is not None and isinstance(context.parameters, list) and len(context.parameters) > 0 and isinstance(context.parameters[0], (list, tuple, dict)):
+        if context.executemany:
             self._cursor_executemany(context.cursor, context.statement, context.parameters, context=context)
         else:
-            if context.parameters is None:
-                if context.dialect.positional:
-                    parameters = ()
-                else:
-                    parameters = {}
-            else:
-                parameters = context.parameters
-            self._cursor_execute(context.cursor, context.statement, parameters, context=context)
+            self._cursor_execute(context.cursor, context.statement, context.parameters[0], context=context)
         self._autocommit(context)
 
     def _cursor_execute(self, cursor, statement, parameters, context=None):
@@ -1122,6 +1116,10 @@ class Engine(Connectable):
 
     def scalar(self, statement, *multiparams, **params):
         return self.execute(statement, *multiparams, **params).scalar()
+
+    def _execute_clauseelement(self, elem, multiparams=None, params=None):
+        connection = self.contextual_connect(close_with_result=True)
+        return connection._execute_clauseelement(elem, multiparams, params)
 
     def _execute_compiled(self, compiled, multiparams, params):
         connection = self.contextual_connect(close_with_result=True)

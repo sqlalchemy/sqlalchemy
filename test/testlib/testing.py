@@ -160,14 +160,11 @@ class ExecutionContextWrapper(object):
             (query, params) = item
             if callable(params):
                 params = params(ctx)
-            if params is not None and isinstance(params, list) and len(params) == 1:
-                params = params[0]
+            if params is not None and not isinstance(params, list):
+                params = [params]
             
             from sqlalchemy.sql.util import ClauseParameters
-            if isinstance(ctx.compiled_parameters, ClauseParameters):
-                parameters = ctx.compiled_parameters.get_original_dict()
-            elif isinstance(ctx.compiled_parameters, list):
-                parameters = [p.get_original_dict() for p in ctx.compiled_parameters]
+            parameters = [p.get_original_dict() for p in ctx.compiled_parameters]
                     
             query = self.convert_statement(query)
             testdata.unittest.assert_(statement == query and (params is None or params == parameters), "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))

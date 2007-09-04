@@ -272,15 +272,15 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
             if column.table.oid_column is column:
                 n = self.dialect.oid_column_name(column)
                 if n is not None:
-                    return "%s.%s" % (self.preparer.format_table(column.table, use_schema=False, name=self._anonymize(column.table.name)), n)
+                    return "%s.%s" % (self.preparer.format_table(column.table, use_schema=False, name=ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)), n)
                 elif len(column.table.primary_key) != 0:
                     pk = list(column.table.primary_key)[0]
                     pkname = (pk.is_literal and name or self._truncated_identifier("colident", pk.name))
-                    return self.preparer.format_column_with_table(list(column.table.primary_key)[0], column_name=pkname, table_name=self._anonymize(column.table.name))
+                    return self.preparer.format_column_with_table(list(column.table.primary_key)[0], column_name=pkname, table_name=ANONYMOUS_LABEL.sub(self._process_anon, column.table.name))
                 else:
                     return None
             else:
-                return self.preparer.format_column_with_table(column, column_name=name, table_name=self._anonymize(column.table.name))
+                return self.preparer.format_column_with_table(column, column_name=name, table_name=ANONYMOUS_LABEL.sub(self._process_anon, column.table.name))
 
 
     def visit_fromclause(self, fromclause, **kwargs):

@@ -963,17 +963,11 @@ class ClauseElement(object):
 
     def execute(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``."""
-        
-        if len(multiparams) == 0:
-            keys = params.keys()
-        elif isinstance(multiparams[0], dict):
-            keys = multiparams[0].keys()
-        elif isinstance(multiparams[0], (list, tuple)):
-            keys = multiparams[0][0].keys()
-        else:
-            keys = None
 
-        return self.compile(bind=self.bind, column_keys=keys, inline=(len(multiparams) > 1)).execute(*multiparams, **params)
+        e = self.bind
+        if e is None:
+            raise exceptions.InvalidRequestError("This Compiled object is not bound to any Engine or Connection.")
+        return e._execute_clauseelement(self, multiparams, params)
 
     def scalar(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``, returning the result's scalar representation."""
@@ -1516,7 +1510,8 @@ class FromClause(Selectable):
 
     def __init__(self, name=None):
         self.name = name
-
+        self.oid_column = None
+        
     def _get_from_objects(self, **modifiers):
         # this could also be [self], at the moment it doesnt matter to the Select object
         return []
@@ -1546,16 +1541,6 @@ class FromClause(Selectable):
         """
 
         return False
-
-    def _locate_oid_column(self):
-        """Subclasses should override this to return an appropriate OID column."""
-
-        return None
-
-    def _get_oid_column(self):
-        if not hasattr(self, '_oid_column'):
-            self._oid_column = self._locate_oid_column()
-        return self._oid_column
 
     def _get_all_embedded_columns(self):
         ret = []
@@ -1656,7 +1641,6 @@ class FromClause(Selectable):
         """A dictionary mapping an original Table-bound 
         column to a proxied column in this FromClause.
         """)
-    oid_column = property(_get_oid_column)
 
     def _export_columns(self, columns=None):
         """Initialize column collections.
@@ -2012,6 +1996,7 @@ class _Function(_CalculatedClause, FromClause):
 
     def __init__(self, name, *clauses, **kwargs):
         self.packagenames = kwargs.get('packagenames', None) or []
+        self.oid_column = None
         kwargs['operator'] = operators.comma_op
         _CalculatedClause.__init__(self, name, **kwargs)
         for c in clauses:
@@ -2190,6 +2175,7 @@ class Join(FromClause):
     def __init__(self, left, right, onclause=None, isouter = False):
         self.left = _selectable(left)
         self.right = _selectable(right).self_group()
+        self.oid_column = self.left.oid_column
         if onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
         else:
@@ -2238,8 +2224,6 @@ class Join(FromClause):
     def self_group(self, against=None):
         return _FromGrouping(self)
 
-    def _locate_oid_column(self):
-        return self.left.oid_column
 
     def _exportable_columns(self):
         return [c for c in self.left.columns] + [c for c in self.right.columns]
@@ -2393,6 +2377,10 @@ class Alias(FromClause):
             alias = '{ANON %d %s}' % (id(self), alias or 'anon')
         self.name = alias
         self.encodedname = alias.encode('ascii', 'backslashreplace')
+        if self.selectable.oid_column is not None:
+            self.oid_column = self.selectable.oid_column._make_proxy(self)
+        else:
+            self.oid_column = None
 
     def is_derived_from(self, fromclause):
         x = self.selectable
@@ -2410,12 +2398,6 @@ class Alias(FromClause):
 
     def _table_iterator(self):
         return self.original._table_iterator()
-
-    def _locate_oid_column(self):
-        if self.selectable.oid_column is not None:
-            return self.selectable.oid_column._make_proxy(self)
-        else:
-            return None
 
     def named_with_column(self):
         return True
@@ -2655,7 +2637,7 @@ class TableClause(FromClause):
         super(TableClause, self).__init__(name)
         self.name = self.fullname = name
         self.encodedname = self.name.encode('ascii', 'backslashreplace')
-        self._oid_column = _ColumnClause('oid', self, _is_oid=True)
+        self.oid_column = _ColumnClause('oid', self, _is_oid=True)
         self._export_columns(columns)
 
     def _clone(self):
@@ -2668,9 +2650,6 @@ class TableClause(FromClause):
     def append_column(self, c):
         self._columns[c.name] = c
         c.table = self
-
-    def _locate_oid_column(self):
-        return self._oid_column
 
     def _proxy_column(self, c):
         self.append_column(c)
@@ -2844,16 +2823,14 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                 self.selects.append(s)
 
         self._col_map = {}
-
+        self.oid_column = self.selects[0].oid_column
+        
         _SelectBaseMixin.__init__(self, **kwargs)
 
     name = property(lambda s:s.keyword + " statement")
 
     def self_group(self, against=None):
         return _FromGrouping(self)
-
-    def _locate_oid_column(self):
-        return self.selects[0].oid_column
 
     def _exportable_columns(self):
         for s in self.selects:
@@ -3165,6 +3142,7 @@ class Select(_SelectBaseMixin, FromClause):
                 return oid
         else:
             return None
+    oid_column = property(_locate_oid_column)
 
     def union(self, other, **kwargs):
         return union(self, other, **kwargs)
