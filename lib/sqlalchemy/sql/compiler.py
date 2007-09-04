@@ -644,12 +644,6 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         self.postfetch = util.Set()
         self.prefetch = util.Set()
         
-        def to_col(key):
-            if not isinstance(key, sql._ColumnClause):
-                return stmt.table.columns.get(unicode(key), key)
-            else:
-                return key
-
         # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
         if self.column_keys is None and stmt.parameters is None:
