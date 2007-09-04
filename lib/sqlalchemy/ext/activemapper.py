@@ -159,7 +159,8 @@ def process_relationships(klass, was_deferred=False):
         for col in klass.columns:
             if col.foreign_key is not None:
                 found = False
-                table_name = col.foreign_key._colspec.rsplit('.', 1)[0]
+                cn = col.foreign_key._colspec
+                table_name = cn[:cn.rindex('.')]
                 for other_klass in ActiveMapperMeta.classes.values():
                     if other_klass.table.fullname.lower() == table_name.lower():
                         found = True
