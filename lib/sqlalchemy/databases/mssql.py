@@ -662,6 +662,7 @@ class MSSQLDialect(default.DefaultDialect):
 
 class MSSQLDialect_pymssql(MSSQLDialect):
     supports_sane_rowcount = False
+    supports_sane_multi_rowcount = False
 
     def import_dbapi(cls):
         import pymssql as module
@@ -739,6 +740,7 @@ class MSSQLDialect_pymssql(MSSQLDialect):
 
 class MSSQLDialect_pyodbc(MSSQLDialect):
     supports_sane_rowcount = False
+    supports_sane_multi_rowcount = False
     # PyODBC unicode is broken on UCS-4 builds
     supports_unicode_statements = sys.maxunicode == 65535
     
@@ -806,6 +808,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
 
 class MSSQLDialect_adodbapi(MSSQLDialect):
     supports_sane_rowcount = True
+    supports_sane_multi_rowcount = True
     supports_unicode_statements = True
 
     def import_dbapi(cls):
