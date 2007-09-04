@@ -963,19 +963,24 @@ class ClauseElement(object):
 
     def execute(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``."""
-
-        if multiparams:
-            compile_params = multiparams[0]
+        
+        if len(multiparams) == 0:
+            keys = params.keys()
+        elif isinstance(multiparams[0], dict):
+            keys = multiparams[0].keys()
+        elif isinstance(multiparams[0], (list, tuple)):
+            keys = multiparams[0][0].keys()
         else:
-            compile_params = params
-        return self.compile(bind=self.bind, parameters=compile_params, inline=(len(multiparams) > 1)).execute(*multiparams, **params)
+            keys = None
+
+        return self.compile(bind=self.bind, column_keys=keys, inline=(len(multiparams) > 1)).execute(*multiparams, **params)
 
     def scalar(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``, returning the result's scalar representation."""
 
         return self.execute(*multiparams, **params).scalar()
 
-    def compile(self, bind=None, parameters=None, compiler=None, dialect=None, inline=False):
+    def compile(self, bind=None, column_keys=None, compiler=None, dialect=None, inline=False):
         """Compile this SQL expression.
 
         Uses the given ``Compiler``, or the given ``AbstractDialect``
@@ -999,21 +1004,18 @@ class ClauseElement(object):
         ``SET`` and ``VALUES`` clause of those statements.
         """
 
-        if isinstance(parameters, (list, tuple)):
-            parameters = parameters[0]
-
         if compiler is None:
             if dialect is not None:
-                compiler = dialect.statement_compiler(dialect, self, parameters, inline=inline)
+                compiler = dialect.statement_compiler(dialect, self, column_keys=column_keys, inline=inline)
             elif bind is not None:
-                compiler = bind.statement_compiler(self, parameters, inline=inline)
+                compiler = bind.statement_compiler(self, column_keys=column_keys, inline=inline)
             elif self.bind is not None:
-                compiler = self.bind.statement_compiler(self, parameters, inline=inline)
+                compiler = self.bind.statement_compiler(self, column_keys=column_keys, inline=inline)
 
         if compiler is None:
             from sqlalchemy.engine.default import DefaultDialect
             dialect = DefaultDialect()
-            compiler = dialect.statement_compiler(dialect, self, parameters=parameters, inline=inline)
+            compiler = dialect.statement_compiler(dialect, self, column_keys=column_keys, inline=inline)
         compiler.compile()
         return compiler
     

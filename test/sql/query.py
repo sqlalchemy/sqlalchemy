@@ -32,6 +32,14 @@ class QueryTest(PersistTest):
         users.insert().execute(user_id = 7, user_name = 'jack')
         assert users.count().scalar() == 1
     
+    def test_insert_heterogeneous_params(self):
+        users.insert().execute(
+            {'user_id':7, 'user_name':'jack'},
+            {'user_id':8, 'user_name':'ed'},
+            {'user_id':9}
+        )
+        assert users.select().execute().fetchall() == [(7, 'jack'), (8, 'ed'), (9, None)]
+        
     def testupdate(self):
 
         users.insert().execute(user_id = 7, user_name = 'jack')
@@ -353,9 +361,9 @@ class QueryTest(PersistTest):
         )
         meta.create_all()
         try:
-            t.insert().execute(value=func.length("one"))
+            t.insert(values=dict(value=func.length("one"))).execute()
             assert t.select().execute().fetchone()['value'] == 3
-            t.update().execute(value=func.length("asfda"))
+            t.update(values=dict(value=func.length("asfda"))).execute()
             assert t.select().execute().fetchone()['value'] == 5
 
             r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
@@ -363,14 +371,14 @@ class QueryTest(PersistTest):
             assert t.select(t.c.id==id).execute().fetchone()['value'] == 9
             t.update(values={t.c.value:func.length("asdf")}).execute()
             assert t.select().execute().fetchone()['value'] == 4
-
+            print "--------------------------"
             t2.insert().execute()
-            t2.insert().execute(value=func.length("one"))
-            t2.insert().execute(value=func.length("asfda") + -19, stuff="hi")
+            t2.insert(values=dict(value=func.length("one"))).execute()
+            t2.insert(values=dict(value=func.length("asfda") + -19)).execute(stuff="hi")
 
             assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [(7,None), (3,None), (-14,"hi")]
             
-            t2.update().execute(value=func.length("asdsafasd"), stuff="some stuff")
+            t2.update(values=dict(value=func.length("asdsafasd"))).execute(stuff="some stuff")
             assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [(9,"some stuff"), (9,"some stuff"), (9,"some stuff")]
             
             t2.delete().execute()

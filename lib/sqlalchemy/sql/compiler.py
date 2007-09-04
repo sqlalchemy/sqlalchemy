@@ -90,7 +90,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
 
     operators = OPERATORS
     
-    def __init__(self, dialect, statement, parameters=None, inline=False, **kwargs):
+    def __init__(self, dialect, statement, column_keys=None, inline=False, **kwargs):
         """Construct a new ``DefaultCompiler`` object.
 
         dialect
@@ -99,16 +99,12 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         statement
           ClauseElement to be compiled
 
-        parameters
-          optional dictionary indicating a set of bind parameters
-          specified with this Compiled object.  These parameters are
-          the *default* key/value pairs when the Compiled is executed,
-          and also may affect the actual compilation, as in the case
-          of an INSERT where the actual columns inserted will
-          correspond to the keys present in the parameters.
+        column_keys
+          a list of column names to be compiled into an INSERT or UPDATE
+          statement.
         """
         
-        super(DefaultCompiler, self).__init__(dialect, statement, parameters, **kwargs)
+        super(DefaultCompiler, self).__init__(dialect, statement, column_keys, **kwargs)
 
         # if we are insert/update.  set to true when we visit an INSERT or UPDATE
         self.isinsert = self.isupdate = False
@@ -217,12 +213,10 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         to produce a ClauseParameters structure, representing the bind arguments
         for a single statement execution, or one element of an executemany execution.
         """
-        
+
         d = sql_util.ClauseParameters(self.dialect, self.positiontup)
 
-        pd = self.parameters or {}
-        if params is not None:
-            pd.update(params)
+        pd = params or {}
 
         bind_names = self.bind_names
         for key, bind in self.binds.iteritems():
@@ -658,15 +652,15 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
 
         # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
-        if self.parameters is None and stmt.parameters is None:
+        if self.column_keys is None and stmt.parameters is None:
             return [(c, create_bind_param(c, None)) for c in stmt.table.columns]
 
         # if we have statement parameters - set defaults in the
         # compiled params
-        if self.parameters is None:
+        if self.column_keys is None:
             parameters = {}
         else:
-            parameters = dict([(getattr(k, 'key', k), v) for k, v in self.parameters.iteritems()])
+            parameters = dict([(getattr(key, 'key', key), None) for key in self.column_keys])
 
         if stmt.parameters is not None:
             for k, v in stmt.parameters.iteritems():

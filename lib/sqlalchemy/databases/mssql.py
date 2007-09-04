@@ -847,8 +847,8 @@ dialect_mapping = {
 
 
 class MSSQLCompiler(compiler.DefaultCompiler):
-    def __init__(self, dialect, statement, parameters, **kwargs):
-        super(MSSQLCompiler, self).__init__(dialect, statement, parameters, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(MSSQLCompiler, self).__init__(*args, **kwargs)
         self.tablealiases = {}
 
     def get_select_precolumns(self, select):

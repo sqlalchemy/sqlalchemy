@@ -13,6 +13,13 @@ CHANGES
   so mappers within inheritance relationships need to be constructed in
   inheritance order (which should be the normal case anyway).
 
+- removed "parameters" argument from clauseelement.compile(), replaced with
+  "column_keys".  the parameters sent to execute() only interact with the 
+  insert/update statement compilation process in terms of the column names 
+  present but not the values for those columns.
+  produces more consistent execute/executemany behavior, simplifies things a 
+  bit internally.
+  
 0.4.0beta5
 ----------
 

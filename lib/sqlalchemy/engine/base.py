@@ -421,7 +421,7 @@ class Compiled(object):
     defaults.
     """
 
-    def __init__(self, dialect, statement, parameters, bind=None):
+    def __init__(self, dialect, statement, column_keys=None, bind=None):
         """Construct a new ``Compiled`` object.
 
         dialect
@@ -430,26 +430,16 @@ class Compiled(object):
         statement
           ``ClauseElement`` to be compiled.
 
-        parameters
-          Optional dictionary indicating a set of bind parameters
-          specified with this ``Compiled`` object.  These parameters
-          are the *default* values corresponding to the
-          ``ClauseElement``'s ``_BindParamClauses`` when the
-          ``Compiled`` is executed.  In the case of an ``INSERT`` or
-          ``UPDATE`` statement, these parameters will also result in
-          the creation of new ``_BindParamClause`` objects for each
-          key and will also affect the generated column list in an
-          ``INSERT`` statement and the ``SET`` clauses of an
-          ``UPDATE`` statement.  The keys of the parameter dictionary
-          can either be the string names of columns or
-          ``_ColumnClause`` objects.
+        column_keys
+          a list of column names to be compiled into an INSERT or UPDATE
+          statement.
 
         bind
           Optional Engine or Connection to compile this statement against.
         """
         self.dialect = dialect
         self.statement = statement
-        self.parameters = parameters
+        self.column_keys = column_keys
         self.bind = bind
         self.can_execute = statement.supports_execution()
     
@@ -778,8 +768,8 @@ class Connection(Connectable):
 
         return self.execute(object, *multiparams, **params).scalar()
 
-    def statement_compiler(self, statement, parameters, **kwargs):
-        return self.dialect.statement_compiler(self.dialect, statement, parameters, bind=self, **kwargs)
+    def statement_compiler(self, statement, **kwargs):
+        return self.dialect.statement_compiler(self.dialect, statement, bind=self, **kwargs)
 
     def execute(self, object, *multiparams, **params):
         """Executes and returns a ResultProxy."""
@@ -808,25 +798,43 @@ class Connection(Connectable):
             parameters = list(multiparams)
         return parameters
 
+    def __distill_params_and_keys(self, multiparams, params):
+        if multiparams is None or len(multiparams) == 0:
+            if params:
+                parameters = params
+                keys = params.keys()
+            else:
+                parameters = None
+                keys = []
+            executemany = False
+        elif len(multiparams) == 1 and isinstance(multiparams[0], (list, tuple, dict)):
+            parameters = multiparams[0]
+            if isinstance(parameters, dict):
+                keys = parameters.keys()
+            else:
+                keys = parameters[0].keys()
+            executemany = False
+        else:
+            parameters = list(multiparams)
+            keys = parameters[0].keys()
+            executemany = True
+        return (parameters, keys, executemany)
+
     def _execute_function(self, func, multiparams, params):
         return self._execute_clauseelement(func.select(), multiparams, params)
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
-        if multiparams:
-            param = multiparams[0]
-            executemany = len(multiparams) > 1
-        else:
-            param = params
-            executemany = False
-        return self._execute_compiled(elem.compile(dialect=self.dialect, parameters=param, inline=executemany), multiparams, params)
+        (params, keys, executemany) = self.__distill_params_and_keys(multiparams, params)
+        return self._execute_compiled(elem.compile(dialect=self.dialect, column_keys=keys, inline=executemany), distilled_params=params)
 
-    def _execute_compiled(self, compiled, multiparams=None, params=None):
+    def _execute_compiled(self, compiled, multiparams=None, params=None, distilled_params=None):
         """Execute a sql.Compiled object."""
         if not compiled.can_execute:
             raise exceptions.ArgumentError("Not an executeable clause: %s" % (str(compiled)))
 
-        params = self.__distill_params(multiparams, params)
-        context = self.__create_execution_context(compiled=compiled, parameters=params)
+        if distilled_params is None:
+            distilled_params = self.__distill_params(multiparams, params)
+        context = self.__create_execution_context(compiled=compiled, parameters=distilled_params)
 
         context.pre_execution()
         self.__execute_raw(context)
@@ -1119,8 +1127,8 @@ class Engine(Connectable):
         connection = self.contextual_connect(close_with_result=True)
         return connection._execute_compiled(compiled, multiparams, params)
 
-    def statement_compiler(self, statement, parameters, **kwargs):
-        return self.dialect.statement_compiler(self.dialect, statement, parameters, bind=self, **kwargs)
+    def statement_compiler(self, statement, **kwargs):
+        return self.dialect.statement_compiler(self.dialect, statement, bind=self, **kwargs)
 
     def connect(self, **kwargs):
         """Return a newly allocated Connection object."""

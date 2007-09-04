@@ -211,8 +211,13 @@ class SQLCompileTest(PersistTest):
     def assert_compile(self, clause, result, params=None, checkparams=None, dialect=None):
         if dialect is None:
             dialect = getattr(self, '__dialect__', None)
-            
-        c = clause.compile(parameters=params, dialect=dialect)
+        
+        if params is None:
+            keys = None
+        else:
+            keys = params.keys()
+                
+        c = clause.compile(column_keys=keys, dialect=dialect)
 
         print "\nSQL String:\n" + str(c) + repr(c.get_params())
 

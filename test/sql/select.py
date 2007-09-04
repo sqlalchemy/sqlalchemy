@@ -567,10 +567,9 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
 
     def testtextbinds(self):
         self.assert_compile(
-            text("select * from foo where lala=:bar and hoho=:whee"), 
+            text("select * from foo where lala=:bar and hoho=:whee", bindparams=[bindparam('bar', 4), bindparam('whee', 7)]), 
                 "select * from foo where lala=:bar and hoho=:whee", 
                 checkparams={'bar':4, 'whee': 7},
-                params={'bar':4, 'whee': 7, 'hoho':10},
         )
 
         self.assert_compile(
@@ -582,10 +581,9 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
 
         dialect = postgres.dialect()
         self.assert_compile(
-            text("select * from foo where lala=:bar and hoho=:whee"), 
+            text("select * from foo where lala=:bar and hoho=:whee", bindparams=[bindparam('bar',4), bindparam('whee',7)]), 
                 "select * from foo where lala=%(bar)s and hoho=%(whee)s", 
                 checkparams={'bar':4, 'whee': 7},
-                params={'bar':4, 'whee': 7, 'hoho':10},
                 dialect=dialect
         )
         self.assert_compile(
@@ -598,10 +596,9 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
 
         dialect = sqlite.dialect()
         self.assert_compile(
-            text("select * from foo where lala=:bar and hoho=:whee"), 
+            text("select * from foo where lala=:bar and hoho=:whee", bindparams=[bindparam('bar',4), bindparam('whee',7)]), 
                 "select * from foo where lala=? and hoho=?", 
                 checkparams=[4, 7],
-                params={'bar':4, 'whee': 7, 'hoho':10},
                 dialect=dialect
         )
         
@@ -936,11 +933,6 @@ EXISTS (select yay from foo where boo = lar)",
         except exceptions.CompileError, err:
             assert str(err) == "Bind parameter 'mytable_myid_1' conflicts with unique bind parameter of the same name"
             
-        # check that the bind params sent along with a compile() call
-        # get preserved when the params are retreived later
-        s = select([table1], table1.c.myid == bindparam('test'))
-        c = s.compile(parameters = {'test' : 7})
-        self.assert_(c.get_params().get_original_dict() == {'test' : 7})
 
     def testbindascol(self):
         t = table('foo', column('id'))
@@ -1134,7 +1126,7 @@ class CRUDTest(SQLCompileTest):
         self.assert_compile(table.insert(inline=True), "INSERT INTO sometable (foo) VALUES (foobar())", params={})    
             
     def testinsertexpression(self):
-        self.assert_compile(insert(table1), "INSERT INTO mytable (myid) VALUES (lala())", params=dict(myid=func.lala()))
+        self.assert_compile(insert(table1, values=dict(myid=func.lala())), "INSERT INTO mytable (myid) VALUES (lala())")
         
     def testupdate(self):
         self.assert_compile(update(table1, table1.c.myid == 7), "UPDATE mytable SET name=:name WHERE mytable.myid = :mytable_myid", params = {table1.c.name:'fred'})
@@ -1144,7 +1136,7 @@ class CRUDTest(SQLCompileTest):
         self.assert_compile(update(table1, table1.c.myid == 12, values = {table1.c.name : table1.c.myid}), "UPDATE mytable SET name=mytable.myid, description=:description WHERE mytable.myid = :mytable_myid", params = {'description':'test'})
         self.assert_compile(update(table1, table1.c.myid == 12, values = {table1.c.myid : 9}), "UPDATE mytable SET myid=:myid, description=:description WHERE mytable.myid = :mytable_myid", params = {'mytable_myid': 12, 'myid': 9, 'description': 'test'})
         s = table1.update(table1.c.myid == 12, values = {table1.c.name : 'lala'})
-        c = s.compile(parameters = {'mytable_id':9,'name':'h0h0'})
+        c = s.compile(column_keys=['mytable_id', 'name'])
         self.assert_compile(update(table1, table1.c.myid == 12, values = {table1.c.name : table1.c.myid}).values({table1.c.name:table1.c.name + 'foo'}), "UPDATE mytable SET name=(mytable.name || :mytable_name), description=:description WHERE mytable.myid = :mytable_myid", params = {'description':'test'})
         self.assert_(str(s) == str(c))
         
