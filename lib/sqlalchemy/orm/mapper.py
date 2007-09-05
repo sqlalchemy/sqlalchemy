@@ -198,14 +198,9 @@ class Mapper(object):
     def dispose(self):
         # disaable any attribute-based compilation
         self.__props_init = True
-        attribute_manager.reset_class_managed(self.class_)
         if hasattr(self.class_, 'c'):
             del self.class_.c
-        if hasattr(self.class_, '__init__') and hasattr(self.class_.__init__, '_oldinit'):
-            if self.class_.__init__._oldinit is not None:
-                self.class_.__init__ = self.class_.__init__._oldinit
-            else:
-                delattr(self.class_, '__init__')
+        attribute_manager.unregister_class(self.class_)
         
     def compile(self):
         """Compile this mapper into its final internal format.
@@ -664,34 +659,14 @@ class Mapper(object):
         if not self.non_primary and (self.class_key in mapper_registry):
              raise exceptions.ArgumentError("Class '%s' already has a primary mapper defined with entity name '%s'.  Use non_primary=True to create a non primary Mapper, or to create a new primary mapper, remove this mapper first via sqlalchemy.orm.clear_mapper(mapper), or preferably sqlalchemy.orm.clear_mappers() to clear all mappers." % (self.class_, self.entity_name))
 
-        attribute_manager.reset_class_managed(self.class_)
-
-        oldinit = self.class_.__init__
-        doinit = oldinit is not None and oldinit is not object.__init__
-            
-        def init(instance, *args, **kwargs):
+        def extra_init(class_, oldinit, instance, args, kwargs):
             self.compile()
-            self.extension.init_instance(self, self.class_, oldinit, instance, args, kwargs)
+            self.extension.init_instance(self, class_, oldinit, instance, args, kwargs)
+        
+        def on_exception(class_, oldinit, instance, args, kwargs):
+            util.warn_exception(self.extension.init_failed, self, class_, oldinit, instance, args, kwargs)
 
-            if doinit:
-                try:
-                    oldinit(instance, *args, **kwargs)
-                except:
-                    # call init_failed but suppress exceptions into warnings so that original __init__ 
-                    # exception is raised
-                    util.warn_exception(self.extension.init_failed, self, self.class_, oldinit, instance, args, kwargs)
-                    raise
-
-        # override oldinit, ensuring that its not already a Mapper-decorated init method
-        if oldinit is None or not hasattr(oldinit, '_oldinit'):
-            try:
-                init.__name__ = oldinit.__name__
-                init.__doc__ = oldinit.__doc__
-            except:
-                # cant set __name__ in py 2.3 !
-                pass
-            init._oldinit = oldinit
-            self.class_.__init__ = init
+        attribute_manager.register_class(self.class_, extra_init=extra_init, on_exception=on_exception)
 
         _COMPILE_MUTEX.acquire()
         try:
@@ -1436,7 +1411,7 @@ class Mapper(object):
             # plugin point
             instance = extension.create_instance(self, context, row, self.class_)
             if instance is EXT_CONTINUE:
-                instance = self._create_instance(context.session)
+                instance = attribute_manager.new_instance(self.class_)
             instance._entity_name = self.entity_name
             if self.__should_log_debug:
                 self.__log_debug("_instance(): created new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
@@ -1458,12 +1433,6 @@ class Mapper(object):
         instance._instance_key = identitykey
         
         return instance
-
-    def _create_instance(self, session):
-        obj = self.class_.__new__(self.class_)
-        obj._entity_name = self.entity_name
-
-        return obj
 
     def _deferred_inheritance_condition(self, needs_tables):
         cond = self.inherit_condition

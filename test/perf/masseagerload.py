@@ -35,7 +35,7 @@ def load():
         #print l
         subitems.insert().execute(*l)    
 
-@profiling.profiled('masseagerload', always=True)
+@profiling.profiled('masseagerload', always=True, sort=['cumulative'])
 def masseagerload(session):
     query = session.query(Item)
     l = query.select()

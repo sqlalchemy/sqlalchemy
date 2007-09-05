@@ -847,7 +847,7 @@ class Session(object):
         try:
             key = getattr(object, '_instance_key', None)
             if key is None:
-                merged = mapper.class_.__new__(mapper.class_)
+                merged = attribute_manager.new_instance(mapper.class_)
             else:
                 if key in self.identity_map:
                     merged = self.identity_map[key]
@@ -940,16 +940,9 @@ class Session(object):
                                                      "or is already persistent in a "
                                                      "different Session" % repr(obj))
         else:
-            m = _class_mapper(obj.__class__, entity_name=kwargs.get('entity_name', None))
-
-            # this would be a nice exception to raise...however this is incompatible with a contextual
-            # session which puts all objects into the session upon construction.
-            #if m._is_orphan(object):
-            #    raise exceptions.InvalidRequestError("Instance '%s' is an orphan, "
-            #                                         "and must be attached to a parent "
-            #                                         "object to be saved" % (repr(object)))
-
-            m._assign_entity_name(obj)
+            # TODO: consolidate the steps here
+            attribute_manager.manage(obj)
+            obj._entity_name = kwargs.get('entity_name', None)
             self._attach(obj)
             self.uow.register_new(obj)
 

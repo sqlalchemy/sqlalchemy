@@ -34,7 +34,7 @@ class DynamicCollectionAttribute(attributes.InstrumentedAttribute):
         old_collection = self.get(obj).assign(value)
 
         # TODO: emit events ???
-        state['modified'] = True
+        state.modified = True
 
     def delete(self, *args, **kwargs):
         raise NotImplementedError()
