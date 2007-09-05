@@ -4,8 +4,8 @@ CHANGES
 0.4.0beta6
 ----------
 
-- mapper compilation has been reorganized such that most compilation
-  occurs upon mapper construction.  this allows us to have fewer
+- Mapper compilation has been reorganized such that most compilation
+  occurs upon mapper construction.  This allows us to have fewer
   calls to mapper.compile() and also to allow class-based properties
   to force a compilation (i.e. User.addresses == 7 will compile all
   mappers; this is [ticket:758]).  The only caveat here is that 
@@ -13,13 +13,14 @@ CHANGES
   so mappers within inheritance relationships need to be constructed in
   inheritance order (which should be the normal case anyway).
 
-- removed "parameters" argument from clauseelement.compile(), replaced with
-  "column_keys".  the parameters sent to execute() only interact with the 
-  insert/update statement compilation process in terms of the column names 
-  present but not the values for those columns.
-  produces more consistent execute/executemany behavior, simplifies things a 
-  bit internally.
+- Removed "parameters" argument from clauseelement.compile(), replaced with
+  "column_keys".  The parameters sent to execute() only interact with the
+  insert/update statement compilation process in terms of the column names
+  present but not the values for those columns.  Produces more consistent
+  execute/executemany behavior, simplifies things a bit internally.
   
+- Fixed reflection of the empty string for mysql enums.
+
 0.4.0beta5
 ----------
 

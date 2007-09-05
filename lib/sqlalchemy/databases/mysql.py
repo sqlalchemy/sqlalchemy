@@ -1106,7 +1106,7 @@ class MSEnum(MSString):
             
         self.enums = strip_enums
         self.strict = kw.pop('strict', False)
-        length = max([len(v) for v in strip_enums])
+        length = max([len(v) for v in strip_enums] + [0])
         super(MSEnum, self).__init__(length, **kw)
 
     def bind_processor(self, dialect):
@@ -2175,7 +2175,7 @@ class MySQLSchemaReflector(object):
             r'(?:\((\d+)\))?(?=\,|$))+' % quotes)
 
         # 'foo' or 'foo','bar' or 'fo,o','ba''a''r'
-        self._re_csv_str = _re_compile(r'\x27(?:\x27\x27|[^\x27])+\x27')
+        self._re_csv_str = _re_compile(r'\x27(?:\x27\x27|[^\x27])*\x27')
 
         # 123 or 123,456
         self._re_csv_int = _re_compile(r'\d+')
@@ -2192,7 +2192,7 @@ class MySQLSchemaReflector(object):
             r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +'
             r'(?P<coltype>\w+)'
             r'(?:\((?P<arg>(?:\d+|\d+,\d+|'
-              r'(?:\x27(?:\x27\x27|[^\x27])+\x27,?)+))\))?'
+              r'(?:\x27(?:\x27\x27|[^\x27])*\x27,?)+))\))?'
             r'(?: +(?P<unsigned>UNSIGNED))?'
             r'(?: +(?P<zerofill>ZEROFILL))?'
             r'(?: +CHARACTER SET +(?P<charset>\w+))?'

@@ -558,6 +558,30 @@ class TypesTest(AssertMixin):
         enum_table.drop()
 
     @testing.supported('mysql')
+    def test_enum_parse(self):
+        """More exercises for the ENUM type."""
+        
+        db = testbase.db
+        enum_table = Table('mysql_enum', MetaData(testbase.db),
+            Column('e1', mysql.MSEnum("'a'")),
+            Column('e2', mysql.MSEnum("''")),
+            Column('e3', mysql.MSEnum("'a'", "''")),
+            Column('e4', mysql.MSEnum("''", "'a'")),
+            Column('e5', mysql.MSEnum("''", "'''a'''", "'b''b'")))
+        try:
+            enum_table.create()
+            reflected = Table('mysql_enum', MetaData(testbase.db),
+                              autoload=True)
+            for t in enum_table, reflected:
+                assert t.c.e1.type.enums == ['a']
+                assert t.c.e2.type.enums == ['']
+                assert t.c.e3.type.enums == ['a', '']
+                assert t.c.e4.type.enums == ['', 'a']
+                assert t.c.e5.type.enums == ['', "''a''", "b''b"]
+        finally:
+            enum_table.drop()
+
+    @testing.supported('mysql')
     @testing.exclude('mysql', '<', (5, 0, 0))
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
@@ -583,6 +607,7 @@ class TypesTest(AssertMixin):
                  ( mysql.MSBlob(1234), mysql.MSBlob()),
                  ( mysql.MSMediumBlob(),),
                  ( mysql.MSLongBlob(),),
+                 ( mysql.MSEnum("''","'fleem'"), ),
                  ]
 
         columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
