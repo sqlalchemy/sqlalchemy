@@ -702,10 +702,15 @@ class AttributeManager(object):
             return noninherited
 
     def is_modified(self, object):
-        for attr in self.managed_attributes(object.__class__):
-            if attr.check_mutable_modified(object):
-                return True
-        return object._state.modified
+        if object._state.modified:
+            return True
+        else:
+            for attr in self.managed_attributes(object.__class__):
+                if attr.check_mutable_modified(object):
+                    return True
+            else:
+                return False
+
 
     def get_history(self, obj, key, **kwargs):
         """Return a new ``AttributeHistory`` object for the given
