@@ -678,7 +678,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
                         self.prefetch.add(c)
                     elif isinstance(c.default, schema.ColumnDefault):
                         if isinstance(c.default.arg, sql.ClauseElement):
-                            values.append((c, self.process(c.default.arg)))
+                            values.append((c, self.process(c.default.arg.self_group())))
                             self.postfetch.add(c)
                         else:
                             values.append((c, create_bind_param(c, None)))
@@ -693,7 +693,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
                 elif self.isupdate:
                     if isinstance(c.onupdate, schema.ColumnDefault):
                         if isinstance(c.onupdate.arg, sql.ClauseElement):
-                            values.append((c, self.process(c.onupdate.arg)))
+                            values.append((c, self.process(c.onupdate.arg.self_group())))
                             self.postfetch.add(c)
                         else:
                             values.append((c, create_bind_param(c, None)))

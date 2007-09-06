@@ -1187,7 +1187,33 @@ class CRUDTest(SQLCompileTest):
         s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
         u = table1.delete(table1.c.name==s)
         self.assert_compile(u, "DELETE FROM mytable WHERE mytable.name = (SELECT myothertable.othername FROM myothertable WHERE myothertable.otherid = mytable.myid)")
+
+class InlineDefaultTest(SQLCompileTest):
+    def test_insert(self):
+        m = MetaData()
+        foo =  Table('foo', m,
+            Column('id', Integer))
             
+        t = Table('test', m,
+            Column('col1', Integer, default=func.foo(1)),
+            Column('col2', Integer, default=select([func.coalesce(func.max(foo.c.id))])),
+            )
+
+        self.assert_compile(t.insert(inline=True, values={}), "INSERT INTO test (col1, col2) VALUES (foo(:foo), (SELECT coalesce(max(foo.id)) FROM foo))")
+
+    def test_update(self):
+        m = MetaData()
+        foo =  Table('foo', m,
+            Column('id', Integer))
+
+        t = Table('test', m,
+            Column('col1', Integer, onupdate=func.foo(1)),
+            Column('col2', Integer, onupdate=select([func.coalesce(func.max(foo.c.id))])),
+            Column('col3', String(30))
+            )
+
+        self.assert_compile(t.update(inline=True, values={'col3':'foo'}), "UPDATE test SET col1=foo(:foo), col2=(SELECT coalesce(max(foo.id)) FROM foo), col3=:col3")
+        
 class SchemaTest(SQLCompileTest):
     def testselect(self):
         # these tests will fail with the MS-SQL compiler since it will alias schema-qualified tables

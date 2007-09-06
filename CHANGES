@@ -21,6 +21,9 @@ CHANGES
   
 - Fixed reflection of the empty string for mysql enums.
 
+- column defaults and onupdates, executing inline,  will add parenthesis 
+  for subqueries and other parenthesis-requiring expressions
+
 0.4.0beta5
 ----------
 
