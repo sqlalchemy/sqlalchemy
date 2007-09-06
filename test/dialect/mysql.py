@@ -567,17 +567,17 @@ class TypesTest(AssertMixin):
             Column('e2', mysql.MSEnum("''")),
             Column('e3', mysql.MSEnum("'a'", "''")),
             Column('e4', mysql.MSEnum("''", "'a'")),
-            Column('e5', mysql.MSEnum("''", "'''a'''", "'b''b'")))
+            Column('e5', mysql.MSEnum("''", "'''a'''", "'b''b'", "''''")))
         try:
             enum_table.create()
             reflected = Table('mysql_enum', MetaData(testbase.db),
                               autoload=True)
             for t in enum_table, reflected:
-                assert t.c.e1.type.enums == ['a']
-                assert t.c.e2.type.enums == ['']
-                assert t.c.e3.type.enums == ['a', '']
-                assert t.c.e4.type.enums == ['', 'a']
-                assert t.c.e5.type.enums == ['', "''a''", "b''b"]
+                assert t.c.e1.type.enums == ["a"]
+                assert t.c.e2.type.enums == [""]
+                assert t.c.e3.type.enums == ["a", ""]
+                assert t.c.e4.type.enums == ["", "a"]
+                assert t.c.e5.type.enums == ["", "'a'", "b'b", "'"]
         finally:
             enum_table.drop()
 
