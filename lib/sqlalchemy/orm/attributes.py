@@ -834,6 +834,11 @@ class AttributeManager(object):
         """decorate the constructor of the given class to establish attribute
         management on new instances."""
 
+        # do a sweep first, this also helps some attribute extensions
+        # (like associationproxy) become aware of themselves at the 
+        # class level
+        self.unregister_class(class_)
+        
         oldinit = None
         doinit = False
             
