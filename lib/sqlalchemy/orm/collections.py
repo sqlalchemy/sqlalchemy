@@ -402,6 +402,21 @@ def collection_adapter(collection):
 
     return getattr(collection, '_sa_adapter', None)
 
+def collection_iter(collection):
+    """Iterate over an object supporting the @iterator or __iter__ protocols.
+
+    If the collection is an ORM collection, it need not be attached to an
+    object to be iterable.
+    """
+
+    try:
+        return getattr(collection, '_sa_iterator',
+                       getattr(collection, '__iter__'))()
+    except AttributeError:
+        raise TypeError("'%s' object is not iterable" %
+                        type(collection).__name__)
+
+    
 class CollectionAdapter(object):
     """Bridges between the ORM and arbitrary Python collections.
 
