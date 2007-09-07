@@ -403,16 +403,15 @@ class MSFloat(sqltypes.Float, _NumericType):
           underlying database API, which continue to be numeric.
         """
 
-        if length is not None:
-            self.length=length
+        self.length = length
         _NumericType.__init__(self, **kw)
         sqltypes.Float.__init__(self, precision, asdecimal=asdecimal)
 
     def get_col_spec(self):
         if hasattr(self, 'length') and self.length is not None:
-            return self._extend("FLOAT(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
+            return self._extend("FLOAT(%s, %s)" % (self.precision, self.length))
         elif self.precision is not None:
-            return self._extend("FLOAT(%(precision)s)" % {'precision': self.precision})
+            return self._extend("FLOAT(%s)" % (self.precision,))
         else:
             return self._extend("FLOAT")
 

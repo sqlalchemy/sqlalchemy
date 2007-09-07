@@ -161,6 +161,7 @@ class TypesTest(AssertMixin):
             index = int(col.name[1:])
             self.assert_eq(gen.get_column_specification(col),
                            "%s %s" % (col.name, columns[index][3]))
+            self.assert_(repr(col))
 
         try:
             numeric_table.create(checkfirst=True)
@@ -245,6 +246,7 @@ class TypesTest(AssertMixin):
             index = int(col.name[1:])
             self.assert_eq(gen.get_column_specification(col),
                            "%s %s" % (col.name, columns[index][3]))
+            self.assert_(repr(col))
 
         try:
             charset_table.create(checkfirst=True)
@@ -278,6 +280,8 @@ class TypesTest(AssertMixin):
         self.assert_eq(colspec(bit_table.c.b7), 'b7 BIT(63)')
         self.assert_eq(colspec(bit_table.c.b8), 'b8 BIT(64)')
 
+        for col in bit_table.c:
+            self.assert_(repr(col))
         try:
             meta.create_all()
 
@@ -331,6 +335,8 @@ class TypesTest(AssertMixin):
         self.assert_eq(colspec(bool_table.c.b3), 'b3 TINYINT(1)')
         self.assert_eq(colspec(bool_table.c.b4), 'b4 TINYINT')
 
+        for col in bool_table.c:
+            self.assert_(repr(col))
         try:
             meta.create_all()
 
@@ -406,6 +412,7 @@ class TypesTest(AssertMixin):
                           Column('id', Integer, primary_key=True),
                           Column('t', *spec))
                 self.assert_eq(colspec(t.c.t), "t %s" % expected)
+                self.assert_(repr(t.c.t))
                 t.create()
                 r = Table('mysql_ts%s' % idx, MetaData(testbase.db),
                           autoload=True)
@@ -426,6 +433,8 @@ class TypesTest(AssertMixin):
                            Column('y4', mysql.MSYear(2)),
                            Column('y5', mysql.MSYear(4)))
 
+        for col in year_table.c:
+            self.assert_(repr(col))
         try:
             year_table.create()
             reflected = Table('mysql_year', MetaData(testbase.db),
@@ -457,6 +466,8 @@ class TypesTest(AssertMixin):
         self.assert_eq(colspec(set_table.c.s2), "s2 SET('a')")
         self.assert_eq(colspec(set_table.c.s3), "s3 SET('5','7','9')")
 
+        for col in set_table.c:
+            self.assert_(repr(col))
         try:
             set_table.create()
             reflected = Table('mysql_set', MetaData(testbase.db),
@@ -568,6 +579,9 @@ class TypesTest(AssertMixin):
             Column('e3', mysql.MSEnum("'a'", "''")),
             Column('e4', mysql.MSEnum("''", "'a'")),
             Column('e5', mysql.MSEnum("''", "'''a'''", "'b''b'", "''''")))
+
+        for col in enum_table.c:
+            self.assert_(repr(col))
         try:
             enum_table.create()
             reflected = Table('mysql_enum', MetaData(testbase.db),
