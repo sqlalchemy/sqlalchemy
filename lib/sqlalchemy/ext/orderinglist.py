@@ -1,27 +1,80 @@
+"""A custom list that manages index/position information for its children.
+
+``orderinglist`` is a custom list collection implementation for mapped relations
+that keeps an arbitrary "position" attribute on contained objects in sync with
+each object's position in the Python list.
+
+The collection acts just like a normal Python ``list``, with the added
+behavior that as you manipulate the list (via ``insert``, ``pop``, assignment,
+deletion, what have you), each of the objects it contains is updated as needed
+to reflect its position.  This is very useful for managing ordered relations
+which have a user-defined, serialized order::
+
+  from sqlalchemy.ext.orderinglist import ordering_list
+
+  users = Table('users', metadata,
+                Column('id', Integer, primary_key=True))
+  blurbs = Table('user_top_ten_list', metadata,
+                 Column('id', Integer, primary_key=True),
+                 Column('user_id', Integer, ForeignKey('users.id')),
+                 Column('position', Integer),
+                 Column('blurb', String(80)))
+
+  class User(object): pass
+  class Blurb(object):
+      def __init__(self, blurb):
+          self.blurb = blurb
+
+  mapper(User, users, properties={
+    'topten': relation(Blurb, collection_class=ordering_list('position'),
+                       order_by=[blurbs.c.position])
+  })
+  mapper(Blurb, blurbs)
+
+  u = User()
+  u.topten.append(Blurb('Number one!'))
+  u.topten.append(Blurb('Number two!'))
+  
+  # Like magic.
+  assert [blurb.position for blurb in u.topten] == [0, 1]
+
+  # The objects will be renumbered automaticaly after any list-changing
+  # operation, for example an insert:
+  u.topten.insert(1, Blurb('I am the new Number Two.'))
+
+  assert [blurb.position for blurb in u.topten] == [0, 1, 2]
+  assert u.topten[1].blurb == 'I am the new Number Two.'
+  assert u.topten[1].position == 1
+
+Numbering and serialization are both highly configurable.  See the docstrings
+in this module and the main SQLAlchemy documentation for more information and
+examples.
+
+The [sqlalchemy.ext.orderinglist#ordering_list] function is the ORM-compatible
+constructor for OrderingList instances.
 """
-A custom list implementation for mapped relations that syncs position in a
-Python list with a position attribute on the mapped objects.
-"""
+
 
 __all__ = [ 'ordering_list' ]
 
 
 def ordering_list(attr, count_from=None, **kw):
-    """
-    Prepares an OrderingList factory for use as an argument to a
-    Mapper relation's 'collection_class' option.  Arguments are:
+    """Prepares an OrderingList factory for use in mapper definitions.
+    
+    Returns an object suitable for use as an argument to a Mapper relation's
+    ``collection_class`` option.  Arguments are:
 
     attr
       Name of the mapped attribute to use for storage and retrieval of
       ordering information
 
     count_from (optional)
-      Set up an integer-based ordering, starting at 'count_from'.  For example,
-      ordering_list('pos', count_from=1) would create a 1-based list in SQL,
-      storing the value in the 'pos' column.  Ignored if ordering_func is
-      supplied.
+      Set up an integer-based ordering, starting at ``count_from``.  For
+      example, ``ordering_list('pos', count_from=1)`` would create a 1-based
+      list in SQL, storing the value in the 'pos' column.  Ignored if
+      ``ordering_func`` is supplied.
       
-    Passes along any keyword arguments to OrderingList constructor.
+    Passes along any keyword arguments to ``OrderingList`` constructor.
     """
 
     kw = _unsugar_count_from(count_from=count_from, **kw)
@@ -50,8 +103,11 @@ def count_from_n_factory(start):
     return f
 
 def _unsugar_count_from(**kw):
-    """Keyword argument filter, prepares a simple ordering_func from
-    a 'count_from' argument, otherwise passes ordering_func on unchanged."""
+    """Builds counting functions from keywrod arguments.
+
+    Keyword argument filter, prepares a simple ``ordering_func`` from a
+    ``count_from`` argument, otherwise passes ``ordering_func`` on unchanged.
+    """
     
     count_from = kw.pop('count_from', None)
     if kw.get('ordering_func', None) is None and count_from is not None:
@@ -64,36 +120,45 @@ def _unsugar_count_from(**kw):
     return kw
 
 class OrderingList(list):
+    """A custom list that manages position information for its children.
+
+    See the module and __init__ documentation for more details.  The
+    ``ordering_list`` function is used to configure ``OrderingList``
+    collections in ``mapper`` relation definitions.
+    """
+    
     def __init__(self, ordering_attr=None, ordering_func=None,
                  reorder_on_append=False):
-        """
-        A 'collection_class' list implementation that syncs position in a
-        Python list with a position attribute on the mapped objects.
+        """A custom list that manages position information for its children.
+        
+        ``OrderingList`` is a ``collection_class`` list implementation that
+        syncs position in a Python list with a position attribute on the
+        mapped objects.
 
-        This implementation counts on the list starting in the proper
-        order, so be SURE to put an order_by on your relation.
-        Arguments are:
+        This implementation relies on the list starting in the proper order,
+        so be **sure** to put an ``order_by`` on your relation.
 
         ordering_attr
           Name of the attribute that stores the object's order in the relation.
 
         ordering_func
           Optional.  A function that maps the position in the Python list to a
-          value to store in the ordering_attr.  Values returned are usually
+          value to store in the ``ordering_attr``.  Values returned are usually
           (but need not be!) integers.
 
-          ordering_funcs are called with two positional parameters: index of
-          the element in the list, and the list itself.
+          An ``ordering_func`` is called with two positional parameters: the
+          index of the element in the list, and the list itself.
           
-          If omitted, list indexes are used for the attribute values.  Two
-          basic pre-built numbering functions are provided: 'count_from_0' and
-          'count_from_1'.  For more exotic examples like stepped numbering,
-          alphabetical and Fibonacci numbering, see the unit tests.
+          If omitted, Python list indexes are used for the attribute values.
+          Two basic pre-built numbering functions are provided in this module:
+          ``count_from_0`` and ``count_from_1``.  For more exotic examples
+          like stepped numbering, alphabetical and Fibonacci numbering, see
+          the unit tests.
 
         reorder_on_append
-          Default false.  When appending an object with an existing (non-None)
+          Default False.  When appending an object with an existing (non-None)
           ordering value, that value will be left untouched unless
-          reorder_on_append is true.  This is an optimization to avoid a
+          ``reorder_on_append`` is true.  This is an optimization to avoid a
           variety of dangerous unexpected database writes.
 
           SQLAlchemy will add instances to the list via append() when your
@@ -102,13 +167,14 @@ class OrderingList(list):
           '2', '3', and '4'), reorder_on_append=True would immediately
           renumber the items to '1', '2', '3'.  If you have multiple sessions
           making changes, any of whom happen to load this collection even in
-          passing, all of the sessions would try to 'clean up' the numbering
+          passing, all of the sessions would try to "clean up" the numbering
           in their commits, possibly causing all but one to fail with a
           concurrent modification error.  Spooky action at a distance.
 
           Recommend leaving this with the default of False, and just call
-          ._reorder() if you're doing append() operations with previously
-          ordered instances or doing housekeeping after manual sql operations.
+          ``_reorder()`` if you're doing ``append()`` operations with
+          previously ordered instances or when doing some housekeeping after
+          manual sql operations.
         """
 
         self.ordering_attr = ordering_attr
