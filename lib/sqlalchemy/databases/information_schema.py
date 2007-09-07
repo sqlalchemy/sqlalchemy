@@ -76,26 +76,6 @@ ref_constraints = Table("referential_constraints", ischema,
     Column("update_rule", String),
     Column("delete_rule", String),
     schema="information_schema")
-                                   
-class ISchema(object):
-    def __init__(self, engine):
-        self.engine = engine
-        self.cache = {}
-
-    def __getattr__(self, name):
-        if name not in self.cache:
-            # This is a bit of a hack.
-            # It would probably be better to have a dict
-            # with just the information_schema tables at
-            # the module level, so as to avoid returning
-            # unrelated objects that happen to be named
-            # 'gen_*'
-            try:
-                gen_tbl = globals()['gen_'+name]
-            except KeyError:
-                raise exceptions.ArgumentError('information_schema table %s not found' % name)
-            self.cache[name] = gen_tbl.toengine(self.engine)
-        return self.cache[name]
 
 
 def table_names(connection, schema):

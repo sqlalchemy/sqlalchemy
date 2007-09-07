@@ -118,13 +118,6 @@ class DefaultDialect(base.Dialect):
 
     def is_disconnect(self, e):
         return False
-        
-    def _get_ischema(self):
-        if self._ischema is None:
-            import sqlalchemy.databases.information_schema as ischema
-            self._ischema = ischema.ISchema(self)
-        return self._ischema
-    ischema = property(_get_ischema, doc="""returns an ISchema object for this engine, which allows access to information_schema tables (if supported)""")
 
 
 class DefaultExecutionContext(base.ExecutionContext):
