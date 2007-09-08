@@ -507,6 +507,7 @@ class Column(SchemaItem, expression._ColumnClause):
         if getattr(self, 'table', None) is not None:
             raise exceptions.ArgumentError("this Column already has a table!")
         if not self._is_oid:
+            self._pre_existing_column = table._columns.get(self.key)
             table._columns.add(self)
         if self.primary_key:
             table.primary_key.add(self)
@@ -674,7 +675,14 @@ class ForeignKey(SchemaItem):
 
     def _set_parent(self, column):
         self.parent = column
-
+        
+        if self.parent._pre_existing_column is not None:
+            # remove existing FK which matches us
+            for fk in self.parent._pre_existing_column.foreign_keys:
+                if fk._colspec == self._colspec:
+                    self.parent.table.foreign_keys.remove(fk)
+                    self.parent.table.constraints.remove(fk.constraint)
+            
         if self.constraint is None and isinstance(self.parent.table, Table):
             self.constraint = ForeignKeyConstraint([],[], use_alter=self.use_alter, name=self.name, onupdate=self.onupdate, ondelete=self.ondelete)
             self.parent.table.append_constraint(self.constraint)

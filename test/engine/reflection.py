@@ -125,8 +125,10 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
             
-    def testoverridecolumns(self):
-        """test that you can override columns which contain foreign keys to other reflected tables"""
+    def test_override_create_fkcols(self):
+        """test that you can override columns and create new foreign keys to other reflected tables.
+        this is common with MySQL MyISAM tables."""
+        
         meta = MetaData(testbase.db)
         users = Table('users', meta, 
             Column('id', Integer, primary_key=True),
@@ -144,7 +146,10 @@ class ReflectionTest(PersistTest):
                 autoload=True)
             u2 = Table('users', meta2, autoload=True)
             
-            assert len(a2.c.user_id.foreign_keys)>0
+            assert len(a2.c.user_id.foreign_keys) == 1
+            assert len(a2.foreign_keys) == 1
+            assert [c.parent for c in a2.foreign_keys] == [a2.c.user_id]
+            assert [c.parent for c in a2.c.user_id.foreign_keys] == [a2.c.user_id]
             assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
             assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
 
@@ -176,7 +181,7 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
 
-    def testoverridecolumns2(self):
+    def test_override_fkandpkcol(self):
         """test that you can override columns which contain foreign keys to other reflected tables,
         where the foreign key column is also a primary key column"""
         meta = MetaData(testbase.db)
@@ -222,6 +227,40 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
     
+    def test_override_existing_fkcols(self):
+        """test that you can override columns and specify new foreign keys to other reflected tables,
+        on columns which *do* already have that foreign key, and that the FK is not duped.
+        """
+        
+        meta = MetaData(testbase.db)
+        users = Table('users', meta, 
+            Column('id', Integer, primary_key=True),
+            Column('name', String(30)),
+            test_needs_fk=True)
+        addresses = Table('addresses', meta,
+            Column('id', Integer,primary_key=True),
+            Column('user_id', Integer, ForeignKey('users.id')),
+            test_needs_fk=True)
+            
+
+        meta.create_all()            
+        try:
+            meta2 = MetaData(testbase.db)
+            a2 = Table('addresses', meta2, 
+                Column('user_id',Integer, ForeignKey('users.id')),
+                autoload=True)
+            u2 = Table('users', meta2, autoload=True)
+            
+            assert len(a2.foreign_keys) == 1
+            assert len(a2.c.user_id.foreign_keys) == 1
+            assert len(a2.constraints) == 2
+            assert [c.parent for c in a2.foreign_keys] == [a2.c.user_id]
+            assert [c.parent for c in a2.c.user_id.foreign_keys] == [a2.c.user_id]
+            assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
+            assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
+        finally:
+            meta.drop_all()
+        
     def test_pks_not_uniques(self):
         """test that primary key reflection not tripped up by unique indexes"""
         testbase.db.execute("""
