@@ -32,9 +32,10 @@ CHANGES
   take an instance) 
 
 - adjusted operator precedence of NOT to match '==' and others, so that 
-  ~(x <operator> y) produces NOT (x <op> y), which is better compatible with MySQL.
-   [ticket:764].  this doesn't apply to "~(x==y)" as it does in 0.3 since ~(x==y)
-   compiles to "x != y", but still applies to operators like BETWEEN.
+  ~(x <operator> y) produces NOT (x <op> y), which is better compatible
+  with older MySQL versions. [ticket:764].  this doesn't apply to "~(x==y)"
+  as it does in 0.3 since ~(x==y) compiles to "x != y", but still applies
+  to operators like BETWEEN.
 
 - other tickets: [ticket:768]
 
