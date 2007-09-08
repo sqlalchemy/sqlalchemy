@@ -9,11 +9,11 @@ class ShardedSession(Session):
         """construct a ShardedSession.
         
             shard_chooser
-                a callable which, passed a Mapper and a mapped instance, returns a
-                shard ID.  this id may be based off of the attributes present within the
-                object, or on some round-robin scheme.  If the scheme is based on a
-                selection, it should set whatever state on the instance to mark it in
-                the future as participating in that shard.
+                a callable which, passed a Mapper, a mapped instance, and possibly a
+                SQL clause, returns a shard ID. this id may be based off of the
+                attributes present within the object, or on some round-robin scheme. If
+                the scheme is based on a selection, it should set whatever state on the
+                instance to mark it in the future as participating in that shard.
             
             id_chooser
                 a callable, passed a query and a tuple of identity values,
@@ -47,9 +47,9 @@ class ShardedSession(Session):
         else:
             return self.get_bind(mapper, shard_id=shard_id, instance=instance).contextual_connect(**kwargs)
     
-    def get_bind(self, mapper, shard_id=None, instance=None):
+    def get_bind(self, mapper, shard_id=None, instance=None, clause=None):
         if shard_id is None:
-            shard_id = self.shard_chooser(mapper, instance)
+            shard_id = self.shard_chooser(mapper, instance, clause=clause)
         return self.__binds[shard_id]
 
     def bind_shard(self, shard_id, bind):

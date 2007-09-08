@@ -24,6 +24,13 @@ CHANGES
 - column defaults and onupdates, executing inline,  will add parenthesis 
   for subqueries and other parenthesis-requiring expressions
 
+- fixes to ShardedSession to work with deferred columns [ticket:771].
+
+- user-defined shard_chooser() function must accept "clause=None"
+  argument; this is the ClauseElement passed to session.execute(statement)
+  and can be used to determine correct shard id (since execute() doesn't
+  take an instance) 
+
 0.4.0beta5
 ----------
 

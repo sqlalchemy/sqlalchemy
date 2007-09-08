@@ -196,8 +196,9 @@ class DeferredColumnLoader(LoaderStrategy):
                 statement = sql.select([p.columns[0] for p in group], clause, from_obj=[localparent.mapped_table], use_labels=True)
             else:
                 statement, params = create_statement()
-                
-            result = session.execute(statement, params, mapper=localparent)
+            
+            conn = session.connection(mapper=localparent, instance=instance)
+            result = conn.execute(statement, params)
             try:
                 row = result.fetchone()
                 for prop in group:

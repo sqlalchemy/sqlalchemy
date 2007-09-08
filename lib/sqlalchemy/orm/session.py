@@ -488,20 +488,19 @@ class Session(object):
 
         If this ``Session`` is transactional, the connection will be in
         the context of this session's transaction.  Otherwise, the
-        connection is returned by the ``contextual_connect()`` method, which
-        some Engines override to return a thread-local connection, and
-        will have `close_with_result` set to `True`.
-
-        The given `**kwargs` will be sent to the engine's
-        ``contextual_connect()`` method, if no transaction is in
-        progress.
+        connection is returned by the ``contextual_connect()`` method
+        on the engine.
         
         the "mapper" argument is a class or mapper to which a bound engine
         will be located; use this when the Session itself is either bound
         to multiple engines or connections, or is not bound to any connectable.
+        
+        \**kwargs are additional arguments which will be passed to get_bind().
+        See the get_bind() method for details.  Note that the "ShardedSession"
+        subclass takes a different get_bind() argument signature.
         """
 
-        return self.__connection(self.get_bind(mapper))
+        return self.__connection(self.get_bind(mapper, **kwargs))
 
     def __connection(self, engine, **kwargs):
         if self.transaction is not None:
@@ -592,8 +591,23 @@ class Session(object):
 
         self.__binds[table] = bind
 
-    def get_bind(self, mapper, clause=None):
-
+    def get_bind(self, mapper, clause=None, **kwargs):
+        """return an engine corresponding to the given arguments.
+        
+            mapper
+                mapper relative to the desired operation
+            
+            clause
+                a ClauseElement which is to be executed.  if
+                mapper is not present, this may be used to locate
+                Table objects, which are then associated with mappers
+                which have associated binds.
+                
+            \**kwargs
+                Subclasses (i.e. ShardedSession) may add additional arguments 
+                to get_bind() which are passed through here.
+        """
+        
         if mapper is None and clause is None:
             if self.bind is not None:
                 return self.bind

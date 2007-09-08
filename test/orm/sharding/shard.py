@@ -66,7 +66,7 @@ class ShardTest(PersistTest):
             'South America':'south_america'
         }
         
-        def shard_chooser(mapper, instance):
+        def shard_chooser(mapper, instance, clause=None):
             if isinstance(instance, WeatherLocation):
                 return shard_lookup[instance.continent]
             else:
@@ -116,7 +116,8 @@ class ShardTest(PersistTest):
                 self.temperature = temperature
 
         mapper(WeatherLocation, weather_locations, properties={
-            'reports':relation(Report, backref='location')
+            'reports':relation(Report, backref='location'),
+            'city': deferred(weather_locations.c.city),
         })
 
         mapper(Report, weather_reports)    

@@ -22,6 +22,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.shard import ShardedSession
 from sqlalchemy.sql import operators
+from sqlalchemy import sql
 import datetime
 
 # step 2. databases
@@ -107,7 +108,7 @@ shard_lookup = {
 # note that we need to define conditions for 
 # the WeatherLocation class, as well as our secondary Report class which will
 # point back to its WeatherLocation via its 'location' attribute.
-def shard_chooser(mapper, instance):
+def shard_chooser(mapper, instance, clause=None):
     if isinstance(instance, WeatherLocation):
         return shard_lookup[instance.continent]
     else:
