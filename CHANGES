@@ -4,7 +4,10 @@
       `func.count(t.c.col.distinct())`
     - Fixed detection of internal '$' characters in :bind$params [ticket:719]
     - [ticket:768] dont assume join criterion consists only of column objects
-    
+    - adjusted operator precedence of NOT to match '==' and others, so that 
+      ~(x==y) produces NOT (x=y), which is compatible with MySQL (doesn't like
+      "NOT x=y") [ticket:764]
+      
 - orm
     - added a check for joining from A->B using join(), along two
       different m2m tables.  this raises an error in 0.3 but is 

@@ -64,7 +64,7 @@ PRECEDENCE = {
     '<=':5,
     'BETWEEN':5,
     'DISTINCT':5,
-    'NOT':4,
+    'NOT':5,
     'AND':3,
     'OR':2,
     ',':-1,

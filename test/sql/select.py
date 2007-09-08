@@ -271,7 +271,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
     def testoperators(self):
         self.runtest(
             table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')), 
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT mytable.name = :mytable_name"
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT (mytable.name = :mytable_name)"
         )
         
         self.runtest(
@@ -828,6 +828,9 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
         self.runtest(select([table1], table1.c.myid.in_('a')),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid")
 
+        self.runtest(select([table1], ~table1.c.myid.in_('a')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE NOT (mytable.myid = :mytable_myid)")
+
         self.runtest(select([table1], table1.c.myid.in_('a', 'b')),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :mytable_myid_1)")
 
@@ -972,7 +975,7 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
         self.runtest(table.select((5 + table.c.field).in_(5,6)),
             "SELECT op.field FROM op WHERE :op_field + op.field IN (:literal, :literal_1)")
         self.runtest(table.select(not_(table.c.field == 5)),
-            "SELECT op.field FROM op WHERE NOT op.field = :op_field")
+            "SELECT op.field FROM op WHERE NOT (op.field = :op_field)")
         self.runtest(table.select(not_(table.c.field) == 5),
             "SELECT op.field FROM op WHERE (NOT op.field) = :literal")
         self.runtest(table.select((table.c.field == table.c.field).between(False, True)),
