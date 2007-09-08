@@ -2188,6 +2188,7 @@ class Join(FromClause):
     encodedname = property(lambda s: s.name.encode('ascii', 'backslashreplace'))
 
     def _init_primary_key(self):
+        from sqlalchemy import schema
         pkcol = util.Set([c for c in self._flatten_exportable_columns() if c.primary_key])
 
         equivs = {}
@@ -2200,7 +2201,7 @@ class Join(FromClause):
 
         class BinaryVisitor(visitors.ClauseVisitor):
             def visit_binary(self, binary):
-                if binary.operator == operators.eq:
+                if binary.operator == operators.eq and isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column):
                     add_equiv(binary.left, binary.right)
         BinaryVisitor().traverse(self.onclause)
 

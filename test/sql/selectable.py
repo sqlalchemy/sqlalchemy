@@ -221,6 +221,14 @@ class PrimaryKeyTest(AssertMixin):
         j.foreign_keys
         assert list(j.primary_key) == [a.c.id]
 
+    def test_non_column_clause(self):
+        meta = MetaData()
+        a = Table('a', meta, Column('id', Integer, primary_key=True), Column('x', Integer))
+        b = Table('b', meta, Column('id', Integer, ForeignKey('a.id'), primary_key=True), Column('x', Integer, primary_key=True))
+
+        j = a.join(b, and_(a.c.id==b.c.id, b.c.x==5))
+        assert str(j) == "a JOIN b ON a.id = b.id AND b.x = :b_x", str(j)
+        assert list(j.primary_key) == [a.c.id, b.c.x]
 
 if __name__ == "__main__":
     testbase.main()

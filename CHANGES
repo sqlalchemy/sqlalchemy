@@ -31,6 +31,8 @@ CHANGES
   and can be used to determine correct shard id (since execute() doesn't
   take an instance) 
 
+- other tickets: [ticket:768]
+
 0.4.0beta5
 ----------
 
