@@ -1159,7 +1159,7 @@ PRECEDENCE = {
     operators.le:5,
     operators.between_op:5,
     operators.distinct_op:5,
-    operators.inv:4,
+    operators.inv:5,
     operators.and_:3,
     operators.or_:2,
     operators.comma_op:-1,

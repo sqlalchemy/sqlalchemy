@@ -31,6 +31,11 @@ CHANGES
   and can be used to determine correct shard id (since execute() doesn't
   take an instance) 
 
+- adjusted operator precedence of NOT to match '==' and others, so that 
+  ~(x <operator> y) produces NOT (x <op> y), which is better compatible with MySQL.
+   [ticket:764].  this doesn't apply to "~(x==y)" as it does in 0.3 since ~(x==y)
+   compiles to "x != y", but still applies to operators like BETWEEN.
+
 - other tickets: [ticket:768]
 
 0.4.0beta5
@@ -65,7 +70,7 @@ CHANGES
 
 - postgres reflects tables with autoincrement=False for primary key
   columns which have no defaults.
-    
+      
 - postgres no longer wraps executemany() with 
   individual execute() calls, instead favoring performance.  
   "rowcount"/"concurrency" checks with deleted items (which use executemany) 

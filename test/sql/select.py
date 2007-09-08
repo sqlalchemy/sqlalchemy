@@ -339,7 +339,6 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
         
     def testoperators(self):
-
         # exercise arithmetic operators
         for (py_op, sql_op) in ((operator.add, '+'), (operator.mul, '*'),
                                 (operator.sub, '-'), (operator.div, '/'),
@@ -387,6 +386,11 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.assert_compile(
          table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')), 
          "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND mytable.name != :mytable_name"
+        )
+
+        self.assert_compile(
+         table1.select((table1.c.myid != 12) & ~(table1.c.name.between('jack','john'))), 
+         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT (mytable.name BETWEEN :mytable_name AND :mytable_name_1)"
         )
 
         self.assert_compile(
@@ -1083,6 +1087,10 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
             "SELECT op.field FROM op WHERE :op_field + op.field IN (:literal, :literal_1)")
         self.assert_compile(table.select(not_(and_(table.c.field == 5, table.c.field == 7))),
             "SELECT op.field FROM op WHERE NOT (op.field = :op_field AND op.field = :op_field_1)")
+        self.assert_compile(table.select(not_(table.c.field == 5)),
+            "SELECT op.field FROM op WHERE op.field != :op_field")
+        self.assert_compile(table.select(not_(table.c.field.between(5, 6))),
+            "SELECT op.field FROM op WHERE NOT (op.field BETWEEN :op_field AND :op_field_1)")
         self.assert_compile(table.select(not_(table.c.field) == 5),
             "SELECT op.field FROM op WHERE (NOT op.field) = :literal")
         self.assert_compile(table.select((table.c.field == table.c.field).between(False, True)),
