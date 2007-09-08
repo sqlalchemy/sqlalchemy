@@ -945,6 +945,9 @@ EXISTS (select yay from foo where boo = lar)",
         self.assert_compile(select([table1], table1.c.myid.in_('a')),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid")
 
+        self.assert_compile(select([table1], ~table1.c.myid.in_('a')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid")
+
         self.assert_compile(select([table1], table1.c.myid.in_('a', 'b')),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :mytable_myid_1)")
 
