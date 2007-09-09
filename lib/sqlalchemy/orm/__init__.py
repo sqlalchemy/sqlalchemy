@@ -168,14 +168,21 @@ def relation(argument, secondary=None, **kwargs):
           indicates the ordering that should be applied when loading these items.
 
         passive_deletes=False
-          Indicates if lazy-loaders should not be executed during the ``flush()``
-          process, which normally occurs in order to locate all existing child
-          items when a parent item is to be deleted. Setting this flag to True is
-          appropriate when ``ON DELETE CASCADE`` rules have been set up on the
-          actual tables so that the database may handle cascading deletes
-          automatically. This strategy is useful particularly for handling the
-          deletion of objects that have very large (and/or deep) child-object
-          collections. 
+          Indicates the behavior of delete operations. 
+          A value of True indicates that unloaded child items should not be loaded
+          during a delete operation on the parent.  Normally, when a parent
+          item is deleted, all child items are loaded so that they can either be
+          marked as deleted, or have their foreign key to the parent set to NULL.
+          Marking this flag as True usually implies an ON DELETE <CASCADE|SET NULL>
+          rule is in place which will handle updating/deleting child rows on the
+          database side.
+          
+          Additionally, setting the flag to the string value 'all' will disable
+          the "nulling out" of the child foreign keys, when there is no delete or
+          delete-orphan cascade enabled.  This is typically used when a triggering
+          or error raise scenario is in place on the database side.  Note that
+          the foreign key attributes on in-session child objects will not be changed
+          after a flush occurs so this is a very special use-case setting.
 
         post_update
           this indicates that the relationship should be handled by a second

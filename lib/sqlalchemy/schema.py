@@ -509,6 +509,8 @@ class Column(SchemaItem, expression._ColumnClause):
         if not self._is_oid:
             self._pre_existing_column = table._columns.get(self.key)
             table._columns.add(self)
+        else:
+            self._pre_existing_column = None
         if self.primary_key:
             table.primary_key.add(self)
         elif self.key in table.primary_key:
@@ -555,6 +557,7 @@ class Column(SchemaItem, expression._ColumnClause):
         c.orig_set = self.orig_set
         c.__originating_column = self.__originating_column
         c._distance = self._distance + 1
+        c._pre_existing_column = self._pre_existing_column
         if not c._is_oid:
             selectable.columns.add(c)
             if self.primary_key:

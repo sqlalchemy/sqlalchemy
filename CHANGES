@@ -21,6 +21,10 @@ CHANGES
   
 - Fixed reflection of the empty string for mysql enums.
 
+- added 'passive_deletes="all"' flag to relation(), disables all
+  nulling-out of foreign key attributes during a flush where the parent 
+  object is deleted.
+  
 - column defaults and onupdates, executing inline,  will add parenthesis 
   for subqueries and other parenthesis-requiring expressions
 

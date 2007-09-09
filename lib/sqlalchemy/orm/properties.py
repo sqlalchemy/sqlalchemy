@@ -161,6 +161,9 @@ class PropertyLoader(StrategizedProperty):
                 self.cascade = mapperutil.CascadeOptions("all, delete-orphan")
             else:
                 self.cascade = mapperutil.CascadeOptions("save-update, merge")
+        
+        if self.passive_deletes == 'all' and ("delete" in self.cascade or "delete-orphan" in self.cascade):
+            raise exceptions.ArgumentError("Can't set passive_deletes='all' in conjunction with 'delete' or 'delete-orphan' cascade")
 
         self.association = association
         if association:

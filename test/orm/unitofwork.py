@@ -579,6 +579,72 @@ class PassiveDeletesTest(ORMTest):
         sess.commit()
         assert mytable.count().scalar() == 0
         assert myothertable.count().scalar() == 0
+
+class ExtraPassiveDeletesTest(ORMTest):
+    def define_tables(self, metadata):
+        global mytable,myothertable
+
+        mytable = Table('mytable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            test_needs_fk=True,
+            )
+
+        myothertable = Table('myothertable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('parent_id', Integer),
+            Column('data', String(30)),
+            ForeignKeyConstraint(['parent_id'],['mytable.id']),  # no CASCADE, the same as ON DELETE RESTRICT
+            test_needs_fk=True,
+            )
+    
+    def test_assertions(self):
+        class MyClass(object):
+            pass
+        class MyOtherClass(object):
+            pass
+        
+        mapper(MyOtherClass, myothertable)
+        
+        try:
+            mapper(MyClass, mytable, properties={
+                'children':relation(MyOtherClass, passive_deletes='all', cascade="all")
+            })
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Can't set passive_deletes='all' in conjunction with 'delete' or 'delete-orphan' cascade"
+        
+    @testing.unsupported('sqlite')
+    def test_extra_passive(self):
+        class MyClass(object):
+            pass
+        class MyOtherClass(object):
+            pass
+        
+        mapper(MyOtherClass, myothertable)
+
+        mapper(MyClass, mytable, properties={
+            'children':relation(MyOtherClass, passive_deletes='all', cascade="save-update")
+        })
+
+        sess = Session
+        mc = MyClass()
+        mc.children.append(MyOtherClass())
+        mc.children.append(MyOtherClass())
+        mc.children.append(MyOtherClass())
+        mc.children.append(MyOtherClass())
+        sess.save(mc)
+        sess.commit()
+
+        assert myothertable.count().scalar() == 4
+        mc = sess.query(MyClass).get(mc.id)
+        sess.delete(mc)
+        try:
+            sess.commit()
+            assert False
+        except (exceptions.IntegrityError, exceptions.OperationalError):
+            assert True
+
         
 class DefaultTest(ORMTest):
     """tests that when saving objects whose table contains DefaultGenerators, either python-side, preexec or database-side,
