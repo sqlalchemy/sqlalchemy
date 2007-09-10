@@ -1,17 +1,18 @@
 =======
 CHANGES
 =======
+
 0.4.0beta6
 ----------
 
-- Mapper compilation has been reorganized such that most compilation
-  occurs upon mapper construction.  This allows us to have fewer
-  calls to mapper.compile() and also to allow class-based properties
-  to force a compilation (i.e. User.addresses == 7 will compile all
-  mappers; this is [ticket:758]).  The only caveat here is that 
-  an inheriting mapper now looks for its inherited mapper upon construction;
-  so mappers within inheritance relationships need to be constructed in
-  inheritance order (which should be the normal case anyway).
+- Mapper compilation has been reorganized such that most compilation occurs
+  upon mapper construction.  This allows us to have fewer calls to
+  mapper.compile() and also to allow class-based properties to force a
+  compilation (i.e. User.addresses == 7 will compile all mappers; this is
+  [ticket:758]).  The only caveat here is that an inheriting mapper now
+  looks for its inherited mapper upon construction; so mappers within
+  inheritance relationships need to be constructed in inheritance order
+  (which should be the normal case anyway).
 
 - Removed "parameters" argument from clauseelement.compile(), replaced with
   "column_keys".  The parameters sent to execute() only interact with the
@@ -21,27 +22,27 @@ CHANGES
   
 - Fixed reflection of the empty string for mysql enums.
 
-- added 'passive_deletes="all"' flag to relation(), disables all
-  nulling-out of foreign key attributes during a flush where the parent 
-  object is deleted.
+- Added 'passive_deletes="all"' flag to relation(), disables all nulling-out
+  of foreign key attributes during a flush where the parent object is
+  deleted.
   
-- column defaults and onupdates, executing inline,  will add parenthesis 
-  for subqueries and other parenthesis-requiring expressions
+- Column defaults and onupdates, executing inline, will add parenthesis for
+  subqueries and other parenthesis-requiring expressions
 
-- fixes to ShardedSession to work with deferred columns [ticket:771].
+- Fixes to ShardedSession to work with deferred columns [ticket:771].
 
-- user-defined shard_chooser() function must accept "clause=None"
-  argument; this is the ClauseElement passed to session.execute(statement)
-  and can be used to determine correct shard id (since execute() doesn't
-  take an instance) 
+- User-defined shard_chooser() function must accept "clause=None" argument;
+  this is the ClauseElement passed to session.execute(statement) and can be
+  used to determine correct shard id (since execute() doesn't take an
+  instance.)
 
-- adjusted operator precedence of NOT to match '==' and others, so that 
+- Adjusted operator precedence of NOT to match '==' and others, so that 
   ~(x <operator> y) produces NOT (x <op> y), which is better compatible
-  with older MySQL versions. [ticket:764].  this doesn't apply to "~(x==y)"
+  with older MySQL versions. [ticket:764].  This doesn't apply to "~(x==y)"
   as it does in 0.3 since ~(x==y) compiles to "x != y", but still applies
   to operators like BETWEEN.
 
-- other tickets: [ticket:768], [ticket:728]
+- Other tickets: [ticket:768], [ticket:728]
 
 0.4.0beta5
 ----------
