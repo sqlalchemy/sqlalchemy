@@ -34,6 +34,8 @@
       unconditionally quoted, so that schema names which need quoting are fine.
       its slightly unnecessary for schema names which don't need quoting
       but not harmful.
+- sqlite
+   - passthrough for stringified dates
       
 0.3.10
 - general
