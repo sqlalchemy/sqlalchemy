@@ -47,12 +47,12 @@ CHANGES
 0.4.0beta5
 ----------
 
-- connection pool fixes; the better performance of beta4
-  remains but fixes "connection overflow" and other bugs
-  which were present (like [ticket:754])
+- Connection pool fixes; the better performance of beta4 remains but fixes
+  "connection overflow" and other bugs which were present (like
+  [ticket:754]).
   
-- fixed bugs in determining proper sync clauses from custom inherit
-  conditions [ticket:769]
+- Fixed bugs in determining proper sync clauses from custom inherit
+  conditions. [ticket:769]
   
 - Extended 'engine_from_config' coercion for QueuePool size / overflow.
   [ticket:763]
@@ -65,23 +65,22 @@ CHANGES
 
 - Fixed OrderedProperties pickling [ticket:762]
 
-- SQL-expression defaults and sequences now execute "inline" for all non-primary key
-  columns during an INSERT or UPDATE, and for all columns during an executemany()-style 
-  call. inline=True flag on any insert/update statement also forces the same 
-  behavior with a single execute().  result.postfetch_cols() is a collection of columns
-  for which the previous single insert or update statement contained a SQL-side 
-  default expression.
+- SQL-expression defaults and sequences now execute "inline" for all
+  non-primary key columns during an INSERT or UPDATE, and for all columns
+  during an executemany()-style call. inline=True flag on any insert/update
+  statement also forces the same behavior with a single execute().
+  result.postfetch_cols() is a collection of columns for which the previous
+  single insert or update statement contained a SQL-side default expression.
 
-- fixed PG executemany() behavior, [ticket:759]
+- Fixed PG executemany() behavior, [ticket:759]
 
-- postgres reflects tables with autoincrement=False for primary key
-  columns which have no defaults.
+- postgres reflects tables with autoincrement=False for primary key columns
+  which have no defaults.
       
-- postgres no longer wraps executemany() with 
-  individual execute() calls, instead favoring performance.  
-  "rowcount"/"concurrency" checks with deleted items (which use executemany) 
-  are disabled with PG since psycopg2 does not report proper rowcount for 
-  executemany().
+- postgres no longer wraps executemany() with individual execute() calls,
+  instead favoring performance.  "rowcount"/"concurrency" checks with
+  deleted items (which use executemany) are disabled with PG since psycopg2
+  does not report proper rowcount for executemany().
   
 - Tickets fixed:
 
