@@ -387,6 +387,15 @@ class SQLiteSchemaDropper(compiler.SchemaDropper):
     pass
 
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
+    reserved_words = compiler.IdentifierPreparer.reserved_words.union([
+        'abort', 'add', 'after', 'alter', 'attach', 'autoincrement', 'before',
+        'begin','by', 'cascade', 'commit', 'conflict', 'database', 'deferred',
+        'delete', 'detach', 'drop', 'each', 'escape', 'exclusive', 'explain',
+        'fail', 'glob', 'if', 'ignore', 'immediate', 'index', 'insert',
+        'instead', 'key', 'match', 'of', 'plan', 'pragma', 'query', 'raise',
+        'reindex', 'rename', 'replace', 'restrict', 'rollback', 'row', 'temp',
+        'temporary', 'transaction', 'trigger', 'update', 'vacuum', 'values',
+        'view', 'virtual'])
     def __init__(self, dialect):
         super(SQLiteIdentifierPreparer, self).__init__(dialect, omit_schema=True)
 
