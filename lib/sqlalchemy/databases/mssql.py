@@ -742,7 +742,8 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
     # PyODBC unicode is broken on UCS-4 builds
-    supports_unicode_statements = sys.maxunicode == 65535
+    supports_unicode = sys.maxunicode == 65535
+    supports_unicode_statements = supports_unicode
     
     def __init__(self, **params):
         super(MSSQLDialect_pyodbc, self).__init__(**params)
@@ -759,12 +760,14 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
     import_dbapi = classmethod(import_dbapi)
     
     colspecs = MSSQLDialect.colspecs.copy()
-    colspecs[sqltypes.Unicode] = AdoMSNVarchar
+    if supports_unicode:
+        colspecs[sqltypes.Unicode] = AdoMSNVarchar
     colspecs[sqltypes.Date] = MSDate_pyodbc
     colspecs[sqltypes.DateTime] = MSDateTime_pyodbc
 
     ischema_names = MSSQLDialect.ischema_names.copy()
-    ischema_names['nvarchar'] = AdoMSNVarchar
+    if supports_unicode:
+        ischema_names['nvarchar'] = AdoMSNVarchar
     ischema_names['smalldatetime'] = MSDate_pyodbc
     ischema_names['datetime'] = MSDateTime_pyodbc
 
