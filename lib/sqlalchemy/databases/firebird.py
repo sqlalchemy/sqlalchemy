@@ -297,9 +297,9 @@ class FBCompiler(compiler.DefaultCompiler):
     def visit_alias(self, alias, asfrom=False, **kwargs):
         # Override to not use the AS keyword which FB 1.5 does not like
         if asfrom:
-            return self.process(alias.original, asfrom=True) + " " + self.preparer.format_alias(alias)
+            return self.process(alias.original, asfrom=True, **kwargs) + " " + self.preparer.format_alias(alias, self._anonymize(alias.name))
         else:
-            return self.process(alias.original, asfrom=True)
+            return self.process(alias.original, **kwargs)
 
     def visit_function(self, func):
         if func.clauses:

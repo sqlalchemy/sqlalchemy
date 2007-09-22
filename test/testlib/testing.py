@@ -216,7 +216,7 @@ class SQLCompileTest(PersistTest):
                 
         c = clause.compile(column_keys=keys, dialect=dialect)
 
-        print "\nSQL String:\n" + str(c) + repr(c.get_params())
+        print "\nSQL String:\n" + str(c) + repr(c.params)
 
         cc = re.sub(r'\n', '', str(c))
 
@@ -224,9 +224,9 @@ class SQLCompileTest(PersistTest):
 
         if checkparams is not None:
             if isinstance(checkparams, list):
-                self.assert_(c.get_params().get_raw_list({}) == checkparams, "params dont match ")
+                self.assert_(c.params.get_raw_list({}) == checkparams, "params dont match ")
             else:
-                self.assert_(c.get_params().get_original_dict() == checkparams, "params dont match" + repr(c.get_params()))
+                self.assert_(c.params.get_original_dict() == checkparams, "params dont match" + repr(c.params))
 
 class AssertMixin(PersistTest):
     """given a list-based structure of keys/properties which represent information within an object structure, and

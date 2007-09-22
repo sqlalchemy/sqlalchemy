@@ -59,7 +59,7 @@ CHANGES
   as it does in 0.3 since ~(x==y) compiles to "x != y", but still applies
   to operators like BETWEEN.
 
-- Other tickets: [ticket:768], [ticket:728]
+- Other tickets: [ticket:768], [ticket:728], [ticket:779]
 
 0.4.0beta5
 ----------
