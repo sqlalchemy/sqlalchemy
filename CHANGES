@@ -34,6 +34,11 @@ CHANGES
 - Added 'passive_deletes="all"' flag to relation(), disables all nulling-out
   of foreign key attributes during a flush where the parent object is
   deleted.
+
+- the Session identity map is now *weak referencing* by default, use 
+  weak_identity_map=False to use a regular dict.  The weak dict we are using
+  is customized to detect instances which are "dirty" and maintain a temporary
+  strong reference to those instances until changes are flushed.
   
 - Column defaults and onupdates, executing inline, will add parenthesis for
   subqueries and other parenthesis-requiring expressions

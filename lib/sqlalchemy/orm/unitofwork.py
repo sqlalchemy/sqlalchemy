@@ -69,12 +69,12 @@ class UOWAttributeManager(attributes.AttributeManager):
     instance for all ``InstrumentedAttributes``.
     """
 
-    def create_prop(self, class_, key, uselist, callable_, typecallable,
+    def _create_prop(self, class_, key, uselist, callable_, typecallable,
                     cascade=None, extension=None, **kwargs):
         extension = util.to_list(extension or [])
         extension.insert(0, UOWEventHandler(key, class_, cascade=cascade))
 
-        return super(UOWAttributeManager, self).create_prop(
+        return super(UOWAttributeManager, self)._create_prop(
             class_, key, uselist, callable_, typecallable,
             extension=extension, **kwargs)
 
@@ -87,9 +87,9 @@ class UnitOfWork(object):
     operation.
     """
 
-    def __init__(self, session, weak_identity_map=False):
-        if weak_identity_map:
-            self.identity_map = weakref.WeakValueDictionary()
+    def __init__(self, session):
+        if session.weak_identity_map:
+            self.identity_map = attributes.InstanceDict()
         else:
             self.identity_map = {}
 
@@ -215,14 +215,18 @@ class UnitOfWork(object):
             session.extension.after_flush_postexec(session, flush_context)
 
     def prune_identity_map(self):
-        """Removes unreferenced instances cached in the identity map.
+        """Removes unreferenced instances cached in a strong-referencing identity map.
 
+        Note that this method is only meaningful if "weak_identity_map"
+        on the parent Session is set to False and therefore this UnitOfWork's
+        identity map is a regular dictionary
+        
         Removes any object in the identity map that is not referenced
         in user code or scheduled for a unit of work operation.  Returns
         the number of objects pruned.
         """
 
-        if isinstance(self.identity_map, weakref.WeakValueDictionary):
+        if isinstance(self.identity_map, attributes.InstanceDict):
             return 0
         ref_count = len(self.identity_map)
         dirty = self.locate_dirty()

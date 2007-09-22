@@ -397,7 +397,6 @@ class SessionTest(AssertMixin):
     @engines.close_open_connections
     def test_update(self):
         """test that the update() method functions and doesnet blow away changes"""
-        tables.delete()
         s = create_session()
         class User(object):pass
         mapper(User, users)
@@ -426,10 +425,39 @@ class SessionTest(AssertMixin):
         assert user in s
         assert user not in s.dirty
     
-    def test_strong_ref(self):
-        """test that the session is strong-referencing"""
-        tables.delete()
+    def test_weak_ref(self):
+        """test the weak-referencing identity map, which strongly-references modified items."""
+        
         s = create_session()
+        class User(object):pass
+        mapper(User, users)
+        
+        # save user
+        s.save(User())
+        s.flush()
+        user = s.query(User).one()
+        user = None
+        import gc
+        gc.collect()
+        assert len(s.identity_map) == 0
+        assert len(s.identity_map.data) == 0
+        
+        user = s.query(User).one()
+        user.user_name = 'fred'
+        user = None
+        gc.collect()
+        assert len(s.identity_map) == 1
+        assert len(s.identity_map.data) == 1
+        
+        s.flush()
+        gc.collect()
+        assert len(s.identity_map) == 0
+        assert len(s.identity_map.data) == 0
+        
+        assert s.query(User).one().user_name == 'fred'
+        
+    def test_strong_ref(self):
+        s = create_session(weak_identity_map=False)
         class User(object):pass
         mapper(User, users)
         
@@ -444,8 +472,7 @@ class SessionTest(AssertMixin):
         assert len(s.identity_map) == 1
 
     def test_prune(self):
-        tables.delete()
-        s = create_session()
+        s = create_session(weak_identity_map=False)
         class User(object):pass
         mapper(User, users)
 
@@ -456,6 +483,8 @@ class SessionTest(AssertMixin):
         self.assert_(len(s.identity_map) == 0)
         self.assert_(s.prune() == 0)
         s.flush()
+        import gc
+        gc.collect()
         self.assert_(s.prune() == 9)
         self.assert_(len(s.identity_map) == 1)
 

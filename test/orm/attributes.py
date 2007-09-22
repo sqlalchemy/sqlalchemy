@@ -231,13 +231,13 @@ class AttributesTest(PersistTest):
         # create objects as if they'd been freshly loaded from the database (without history)
         b = Blog()
         p1 = Post()
-        Blog.posts.set_callable(b, lambda:[p1])
-        Post.blog.set_callable(p1, lambda:b)
+        manager.init_instance_attribute(b, 'posts', lambda:[p1])
+        manager.init_instance_attribute(p1, 'blog', lambda:b)
         manager.commit(p1, b)
 
         # no orphans (called before the lazy loaders fire off)
-        assert getattr(Blog, 'posts').hasparent(p1, optimistic=True)
-        assert getattr(Post, 'blog').hasparent(b, optimistic=True)
+        assert manager.has_parent(Blog, p1, 'posts', optimistic=True)
+        assert manager.has_parent(Post, b, 'blog', optimistic=True)
 
         # assert connections
         assert p1.blog is b
@@ -247,8 +247,8 @@ class AttributesTest(PersistTest):
         b2 = Blog()
         p2 = Post()
         b2.posts.append(p2)
-        assert getattr(Blog, 'posts').hasparent(p2)
-        assert getattr(Post, 'blog').hasparent(b2)
+        assert manager.has_parent(Blog, p2, 'posts')
+        assert manager.has_parent(Post, b2, 'blog')
         
     def test_inheritance(self):
         """tests that attributes are polymorphic"""
@@ -346,13 +346,13 @@ class AttributesTest(PersistTest):
         f1.element = b1
         b2.element = f2
         
-        assert getattr(Foo, 'element').hasparent(b1)
-        assert not getattr(Foo, 'element').hasparent(b2)
-        assert not getattr(Foo, 'element').hasparent(f2)
-        assert getattr(Bar, 'element').hasparent(f2)
+        assert manager.has_parent(Foo, b1, 'element')
+        assert not manager.has_parent(Foo, b2, 'element')
+        assert not manager.has_parent(Foo, f2, 'element')
+        assert manager.has_parent(Bar, f2, 'element')
         
         b2.element = None
-        assert not getattr(Bar, 'element').hasparent(f2)
+        assert not manager.has_parent(Bar, f2, 'element')
 
     def test_mutablescalars(self):
         """test detection of changes on mutable scalar items"""

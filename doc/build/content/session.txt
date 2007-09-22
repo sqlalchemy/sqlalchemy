@@ -157,8 +157,10 @@ Knowing these states is important, since the `Session` tries to be strict about 
 * Is the Session a cache ? 
 
     Yeee...no.  It's somewhat used as a cache, in that it implements the identity map pattern, and stores objects keyed to their primary key.  However, it doesn't do any kind of query caching.  This means, if you say `session.query(Foo).filter_by(name='bar')`, even if `Foo(name='bar')` is right there, in the identity map, the session has no idea about that.  It has to issue SQL to the database, get the rows back, and then when it sees the primary key in the row, *then* it can look in the local identity map and see that the object is already there.  It's only when you say `query.get({some primary key})` that the `Session` doesn't have to issue a query.
+    
+    Additionally, the Session stores object instances using a weak reference by default.  This also defeats the purpose of using the Session as a cache, unless the `weak_identity_map` flag is set to `False`.
 
-    Also, the `Session` is not designed to be a global object from which everyone consults as a "registry" of objects.  That is the job of a **second level cache**.  A good library for implementing second level caching is [Memcached](http://www.danga.com/memcached/).  It *is* possible to "sort of" use the `Session` in this manner, if you set it to be non-transactional and it never flushes any SQL, but it's not a terrific solution,  since if concurrent threads load the same objects at the same time, you may have multiple copies of the same objects present in collections.
+    The `Session` is not designed to be a global object from which everyone consults as a "registry" of objects.  That is the job of a **second level cache**.  A good library for implementing second level caching is [Memcached](http://www.danga.com/memcached/).  It *is* possible to "sort of" use the `Session` in this manner, if you set it to be non-transactional and it never flushes any SQL, but it's not a terrific solution,  since if concurrent threads load the same objects at the same time, you may have multiple copies of the same objects present in collections.
 
 * How can I get the `Session` for a certain object ?
 
@@ -189,7 +191,9 @@ The **identity map** is accessed by the `identity_map` attribute, which provides
     >>> session.identity_map.values()
     [<__main__.User object at 0x712630>, <__main__.Address object at 0x712a70>]
 
-The identity map is a `dict` by default.  This means that objects stay in the session until they are explicitly removed, or the session is cleared.  Some people prefer objects to be automatically garbage collected instead.  For this,  you can specify the flag `weak_identity_map=True` to the `create_session` or `sessionmaker` functions so that the `Session` will use a `weakref.WeakValueDictionary`.  But note that an object that has changes marked on it (i.e. "dirty"), and is then discarded, will not have its changes saved to the database.  It's because of this misleading behavior that SQLAlchemy's identity map is by default strong-referencing.
+The identity map is a weak-referencing dictionary by default.  This means that objects which are dereferenced on the outside will be removed from the session automatically.  Note that objects which are marked as "dirty" will not fall out of scope until after changes on them have been flushed; special logic kicks in at the point of auto-removal which ensures that no pending changes remain on the object, else a temporary strong reference is created to the object.
+
+Some people prefer objects to stay in the session until explicitly removed in all cases; for this,  you can specify the flag `weak_identity_map=False` to the `create_session` or `sessionmaker` functions so that the `Session` will use a regular dictionary.
 
 While the `identity_map` accessor is currently the actual dictionary used by the `Session` to store instances, you should not add or remove items from this dictionary.  Use the session methods `save_or_update()` and `expunge()` to add or remove items.
 

@@ -318,7 +318,7 @@ class Session(object):
     a thread-managed Session adapter, provided by the [sqlalchemy.orm#scoped_session()] function.
     """
 
-    def __init__(self, bind=None, autoflush=True, transactional=False, twophase=False, echo_uow=False, weak_identity_map=False, binds=None, extension=None):
+    def __init__(self, bind=None, autoflush=True, transactional=False, twophase=False, echo_uow=False, weak_identity_map=True, binds=None, extension=None):
         """Construct a new Session.
 
             autoflush
@@ -383,20 +383,23 @@ class Session(object):
                 committed.
 
             weak_identity_map
-                when ``True``, use a ``WeakValueDictionary`` instead of a regular ``dict``
-                for this ``Session`` object's identity map. This will allow objects which
-                fall out of scope to be automatically removed from the ``Session``. However,
-                objects who have been marked as "dirty" will also be garbage collected, and
-                those changes will not be persisted.
-            
+                When set to the default value of ``False``, a weak-referencing map is used;
+                instances which are not externally referenced will be garbage collected
+                immediately. For dereferenced instances which have pending changes present,
+                the attribute management system will create a temporary strong-reference to
+                the object which lasts until the changes are flushed to the database, at which
+                point it's again dereferenced. Alternatively, when using the value ``True``,
+                the identity map uses a regular Python dictionary to store instances. The
+                session will maintain all instances present until they are removed using
+                expunge(), clear(), or purge().
         """
         self.echo_uow = echo_uow
-        self.uow = unitofwork.UnitOfWork(self, weak_identity_map=weak_identity_map)
+        self.weak_identity_map = weak_identity_map
+        self.uow = unitofwork.UnitOfWork(self)
         self.identity_map = self.uow.identity_map
 
         self.bind = bind
         self.__binds = {}
-        self.weak_identity_map = weak_identity_map
         self.transaction = None
         self.hash_key = id(self)
         self.autoflush = autoflush
@@ -565,7 +568,7 @@ class Session(object):
 
         for instance in self:
             self._unattach(instance)
-        self.uow = unitofwork.UnitOfWork(self, weak_identity_map=self.weak_identity_map)
+        self.uow = unitofwork.UnitOfWork(self)
         self.identity_map = self.uow.identity_map
 
     def bind_mapper(self, mapper, bind, entity_name=None):
@@ -736,11 +739,14 @@ class Session(object):
     def prune(self):
         """Removes unreferenced instances cached in the identity map.
 
-        Removes any object in this Session'sidentity map that is not
+        Note that this method is only meaningful if "weak_identity_map"
+        is set to False.
+        
+        Removes any object in this Session's identity map that is not
         referenced in user code, modified, new or scheduled for deletion.
         Returns the number of objects pruned.
         """
-        
+
         return self.uow.prune_identity_map()
 
     def _expire_impl(self, obj):

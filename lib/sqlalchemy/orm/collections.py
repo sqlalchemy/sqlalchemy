@@ -428,14 +428,12 @@ class CollectionAdapter(object):
     entity collections.
     """
 
-    def __init__(self, attr, owner, data):
+    def __init__(self, attr, owner_state, data):
         self.attr = attr
-        self._owner = weakref.ref(owner)
         self._data = weakref.ref(data)
+        self.owner_state = owner_state
         self.link_to_self(data)
 
-    owner = property(lambda s: s._owner(),
-                     doc="The object that owns the entity collection.")
     data = property(lambda s: s._data(),
                     doc="The entity collection being adapted.")
 
@@ -507,7 +505,7 @@ class CollectionAdapter(object):
         """
         
         if initiator is not False and item is not None:
-            self.attr.fire_append_event(self._owner(), item, initiator)
+            self.attr.fire_append_event(self.owner_state, item, initiator)
 
     def fire_remove_event(self, item, initiator=None):
         """Notify that a entity has entered the collection.
@@ -518,16 +516,16 @@ class CollectionAdapter(object):
         """
 
         if initiator is not False and item is not None:
-            self.attr.fire_remove_event(self._owner(), item, initiator)
+            self.attr.fire_remove_event(self.owner_state, item, initiator)
     
     def __getstate__(self):
         return { 'key': self.attr.key,
-                 'owner': self.owner,
+                 'owner_state': self.owner_state,
                  'data': self.data }
 
     def __setstate__(self, d):
-        self.attr = getattr(d['owner'].__class__, d['key'])
-        self._owner = weakref.ref(d['owner'])
+        self.attr = getattr(d['owner_state'].obj().__class__, d['key']).impl
+        self.owner_state = d['owner_state']
         self._data = weakref.ref(d['data'])
 
 
@@ -787,7 +785,7 @@ def _list_decorators():
             if _sa_initiator is not False and item is not None:
                 executor = getattr(self, '_sa_adapter', None)
                 if executor:
-                    executor.attr.fire_append_event(executor._owner(),
+                    executor.attr.fire_append_event(executor.owner_state,
                                                     item, _sa_initiator)
             fn(self, item)
         _tidy(append)

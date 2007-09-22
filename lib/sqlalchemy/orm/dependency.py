@@ -55,7 +55,8 @@ class DependencyProcessor(object):
         """return True if the given object instance has a parent, 
         according to the ``InstrumentedAttribute`` handled by this ``DependencyProcessor``."""
         
-        return self._get_instrumented_attribute().hasparent(obj)
+        # TODO: use correct API for this
+        return self._get_instrumented_attribute().impl.hasparent(obj._state)
         
     def register_dependencies(self, uowcommit):
         """Tell a ``UOWTransaction`` what mappers are dependent on

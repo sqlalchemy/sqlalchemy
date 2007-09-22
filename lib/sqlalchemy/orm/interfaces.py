@@ -466,9 +466,11 @@ class LoaderStack(object):
         
     def push_property(self, key):
         self.__stack.append(key)
+        return tuple(self.__stack)
         
     def push_mapper(self, mapper):
         self.__stack.append(mapper.base_mapper)
+        return tuple(self.__stack)
         
     def pop(self):
         self.__stack.pop()

@@ -166,7 +166,7 @@ class Mapper(object):
     def _is_orphan(self, obj):
         optimistic = has_identity(obj)
         for (key,klass) in self.delete_orphans:
-            if getattr(klass, key).hasparent(obj, optimistic=optimistic):
+            if attribute_manager.has_parent(klass, obj, key, optimistic=optimistic):
                return False
         else:
             if self.delete_orphans:
@@ -531,7 +531,9 @@ class Mapper(object):
             cls = object.__getattribute__(self, 'class_')
             clskey = object.__getattribute__(self, 'key')
 
-            # get the class' mapper; will compile all mappers
+            if key.startswith('__'):
+                return object.__getattribute__(self, key)
+
             class_mapper(cls)
             
             if cls.__dict__.get(clskey) is self:
@@ -1369,21 +1371,27 @@ class Mapper(object):
         # been exposed to being modified by the application.
 
         identitykey = self.identity_key_from_row(row)
-        populate_existing = context.populate_existing or self.always_refresh
-        if identitykey in context.session.identity_map:
-            instance = context.session.identity_map[identitykey]
+        (session_identity_map, local_identity_map) = (context.session.identity_map, context.identity_map)
+        
+        if identitykey in session_identity_map:
+            instance = session_identity_map[identitykey]
+
             if self.__should_log_debug:
                 self.__log_debug("_instance(): using existing instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
+                
             isnew = False
+
             if context.version_check and self.version_id_col is not None and self.get_attr_by_column(instance, self.version_id_col) != row[self.version_id_col]:
                 raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self.get_attr_by_column(instance, self.version_id_col), row[self.version_id_col]))
 
-            if populate_existing or context.session.is_expired(instance, unexpire=True):
-                if identitykey not in context.identity_map:
-                    context.identity_map[identitykey] = instance
+            if context.populate_existing or self.always_refresh or instance._state.trigger is not None:
+                instance._state.trigger = None
+                if identitykey not in local_identity_map:
+                    local_identity_map[identitykey] = instance
                     isnew = True
                 if extension.populate_instance(self, context, row, instance, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                     self.populate_instance(context, instance, row, instancekey=identitykey, isnew=isnew)
+
             if extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                 if result is not None:
                     result.append(instance)
@@ -1391,9 +1399,9 @@ class Mapper(object):
         else:
             if self.__should_log_debug:
                 self.__log_debug("_instance(): identity key %s not in session" % str(identitykey))
+                
         # look in result-local identitymap for it.
-        exists = identitykey in context.identity_map
-        if not exists:
+        if identitykey not in local_identity_map:
             if self.allow_null_pks:
                 # check if *all* primary key cols in the result are None - this indicates
                 # an instance of the object is not present in the row.
@@ -1415,10 +1423,10 @@ class Mapper(object):
             instance._entity_name = self.entity_name
             if self.__should_log_debug:
                 self.__log_debug("_instance(): created new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
-            context.identity_map[identitykey] = instance
+            local_identity_map[identitykey] = instance
             isnew = True
         else:
-            instance = context.identity_map[identitykey]
+            instance = local_identity_map[identitykey]
             isnew = False
 
         # call further mapper properties on the row, to pull further
@@ -1470,13 +1478,12 @@ class Mapper(object):
     def populate_instance(self, selectcontext, instance, row, ispostselect=None, isnew=False, **flags):
         """populate an instance from a result row."""
 
-        selectcontext.stack.push_mapper(self)
+        snapshot = selectcontext.stack.push_mapper(self)
         # retrieve a set of "row population" functions derived from the MapperProperties attached
         # to this Mapper.  These are keyed in the select context based primarily off the 
         # "snapshot" of the stack, which represents a path from the lead mapper in the query to this one,
         # including relation() names.  the key also includes "self", and allows us to distinguish between
         # other mappers within our inheritance hierarchy
-        snapshot = selectcontext.stack.snapshot()
         populators = selectcontext.attributes.get(((isnew or ispostselect) and 'new_populators' or 'existing_populators', self, snapshot, ispostselect), None)
         if populators is None:
             # no populators; therefore this is the first time we are receiving a row for
