@@ -205,7 +205,7 @@ class SessionTransaction(object):
             return self.__parent
 
         if self.session.extension is not None:
-            self.session.before_commit(self.session)
+            self.session.extension.before_commit(self.session)
             
         if self.autoflush:
             self.session.flush()
@@ -218,7 +218,7 @@ class SessionTransaction(object):
             t[1].commit()
 
         if self.session.extension is not None:
-            self.session.after_commit(self.session)
+            self.session.extension.after_commit(self.session)
 
         self.close()
         return self.__parent
