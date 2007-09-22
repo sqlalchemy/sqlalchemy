@@ -119,6 +119,19 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
             "addresses.address_type_id, addresses.email_address FROM addresses LEFT OUTER JOIN address_types address_types_1 "
             "ON addresses.address_type_id = address_types_1.id WHERE addresses.user_id = :addresses_user_id ORDER BY addresses.rowid, "
             "address_types.rowid")
+
+class SequenceTest(SQLCompileTest):
+    def test_basic(self):
+        seq = Sequence("my_seq_no_schema")
+        dialect = oracle.OracleDialect()
+        assert dialect.identifier_preparer.format_sequence(seq) == "my_seq_no_schema"
+
+        seq = Sequence("my_seq", schema="some_schema")
+        assert dialect.identifier_preparer.format_sequence(seq) == "some_schema.my_seq"
+
+        seq = Sequence("My_Seq", schema="Some_Schema")
+        assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
         
+    
 if __name__ == '__main__':
     testbase.main()

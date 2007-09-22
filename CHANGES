@@ -28,6 +28,9 @@ CHANGES
   But this doesn't work for dictionaries.  Pickled objects which provide an 
   adequate __eq__() implementation can be set up with "PickleType(comparator=operator.eq)"
   [ticket:560]
+
+- added "schema" argument to Sequence; use this with Postgres /Oracle when the sequence is
+  located in an alternate schema.  Implements part of [ticket:584], should fix [ticket:761].
   
 - Fixed reflection of the empty string for mysql enums.
 

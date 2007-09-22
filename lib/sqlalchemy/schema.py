@@ -770,13 +770,14 @@ class ColumnDefault(DefaultGenerator):
 class Sequence(DefaultGenerator):
     """Represent a sequence, which applies to Oracle and Postgres databases."""
 
-    def __init__(self, name, start = None, increment = None, optional=False, quote=False, **kwargs):
+    def __init__(self, name, start = None, increment = None, schema=None, optional=False, quote=False, **kwargs):
         super(Sequence, self).__init__(**kwargs)
         self.name = name
         self.start = start
         self.increment = increment
         self.optional=optional
         self.quote = quote
+        self.schema = schema
 
     def __repr__(self):
         return "Sequence(%s)" % ', '.join(

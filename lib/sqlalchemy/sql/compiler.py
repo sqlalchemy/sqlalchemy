@@ -1000,8 +1000,11 @@ class IdentifierPreparer(object):
     def should_quote(self, object):
         return object.quote or self._requires_quotes(object.name)
 
-    def format_sequence(self, sequence):
-        return self.__generic_obj_format(sequence, sequence.name)
+    def format_sequence(self, sequence, use_schema=True):
+        name = self.__generic_obj_format(sequence, sequence.name)
+        if use_schema and sequence.schema is not None:
+            name = self.__generic_obj_format(sequence, sequence.schema) + "." + name
+        return name
 
     def format_label(self, label, name=None):
         return self.__generic_obj_format(label, name or label.name)

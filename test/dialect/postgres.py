@@ -5,6 +5,18 @@ from sqlalchemy import exceptions
 from sqlalchemy.databases import postgres
 from testlib import *
 
+class SequenceTest(SQLCompileTest):
+    def test_basic(self):
+        seq = Sequence("my_seq_no_schema")
+        dialect = postgres.PGDialect()
+        assert dialect.identifier_preparer.format_sequence(seq) == "my_seq_no_schema"
+
+        seq = Sequence("my_seq", schema="some_schema")
+        assert dialect.identifier_preparer.format_sequence(seq) == "some_schema.my_seq"
+
+        seq = Sequence("My_Seq", schema="Some_Schema")
+        assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
+
 class InsertTest(AssertMixin):
     @testing.supported('postgres')
     def setUpAll(self):
