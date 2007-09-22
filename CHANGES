@@ -22,6 +22,12 @@ CHANGES
   insert/update statement compilation process in terms of the column names
   present but not the values for those columns.  Produces more consistent
   execute/executemany behavior, simplifies things a bit internally.
+ 
+- added 'comparator' keyword argument to PickleType.  By default, "mutable"
+  PickleType does a "deep compare" of objects using their dumps() representation.  
+  But this doesn't work for dictionaries.  Pickled objects which provide an 
+  adequate __eq__() implementation can be set up with "PickleType(comparator=operator.eq)"
+  [ticket:560]
   
 - Fixed reflection of the empty string for mysql enums.
 

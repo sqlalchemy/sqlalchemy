@@ -421,10 +421,11 @@ class Binary(TypeEngine):
 class PickleType(MutableType, TypeDecorator):
     impl = Binary
 
-    def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, mutable=True):
+    def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, mutable=True, comparator=None):
         self.protocol = protocol
         self.pickler = pickler or pickle
         self.mutable = mutable
+        self.comparator = comparator
         super(PickleType, self).__init__()
 
     def bind_processor(self, dialect):
@@ -455,7 +456,9 @@ class PickleType(MutableType, TypeDecorator):
             return value
 
     def compare_values(self, x, y):
-        if self.mutable:
+        if self.comparator:
+            return self.comparator(x, y)
+        elif self.mutable:
             return self.pickler.dumps(x, self.protocol) == self.pickler.dumps(y, self.protocol)
         else:
             return x is y

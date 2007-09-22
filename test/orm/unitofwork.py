@@ -301,7 +301,6 @@ class MutableTypesTest(ORMTest):
             ),
         ])
         
-        
     def test_nocomparison(self):
         """test that types marked as MutableType get changes detected on them when the type has no __eq__ method"""
         class Foo(object):pass
@@ -352,7 +351,49 @@ class MutableTypesTest(ORMTest):
         def go():
             Session.commit()
         self.assert_sql_count(testbase.db, go, 0)
+
+class MutableTypesTest2(ORMTest):
+    def define_tables(self, metadata):
+        global table
+        import operator
+        table = Table('mutabletest', metadata,
+            Column('id', Integer, Sequence('mutableidseq', optional=True), primary_key=True),
+            Column('data', PickleType(comparator=operator.eq)),
+            )
+    
+    def test_dicts(self):
+        """dictionaries dont pickle the same way twice, sigh."""
+
+        class Foo(object):pass
+        mapper(Foo, table)
+        f1 = Foo()
+        f1.data = [{'personne': {'nom': u'Smith', 'pers_id': 1, 'prenom': u'john', 'civilite': u'Mr', \
+                    'int_3': False, 'int_2': False, 'int_1': u'23', 'VenSoir': True, 'str_1': u'Test', \
+                    'SamMidi': False, 'str_2': u'chien', 'DimMidi': False, 'SamSoir': True, 'SamAcc': False}}]
+
+        Session.commit()
+        def go():
+            Session.commit()
+        self.assert_sql_count(testbase.db, go, 0)
+
+        f1.data = [{'personne': {'nom': u'Smith', 'pers_id': 1, 'prenom': u'john', 'civilite': u'Mr', \
+                    'int_3': False, 'int_2': False, 'int_1': u'23', 'VenSoir': True, 'str_1': u'Test', \
+                    'SamMidi': False, 'str_2': u'chien', 'DimMidi': False, 'SamSoir': True, 'SamAcc': False}}]
+
+        def go():
+            Session.commit()
+        self.assert_sql_count(testbase.db, go, 0)
+
+        f1.data[0]['personne']['VenSoir']= False
+        def go():
+            Session.commit()
+        self.assert_sql_count(testbase.db, go, 1)
         
+        Session.clear()
+        f = Session.query(Foo).get(f1.id)
+        assert f.data == [{'personne': {'nom': u'Smith', 'pers_id': 1, 'prenom': u'john', 'civilite': u'Mr', \
+                    'int_3': False, 'int_2': False, 'int_1': u'23', 'VenSoir': False, 'str_1': u'Test', \
+                    'SamMidi': False, 'str_2': u'chien', 'DimMidi': False, 'SamSoir': True, 'SamAcc': False}}]
         
 class PKTest(ORMTest):
     def define_tables(self, metadata):
