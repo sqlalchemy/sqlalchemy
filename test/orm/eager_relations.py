@@ -225,6 +225,25 @@ class EagerTest(QueryTest):
 
             ] == q.all()
         self.assert_sql_count(testbase.db, go, 1)
+
+    def test_no_false_hits(self):
+        """test that eager loaders don't interpret main table columns as part of their eager load."""
+        
+        mapper(User, users, properties={
+            'addresses':relation(Address, lazy=False),
+            'orders':relation(Order, lazy=False)
+        })
+        mapper(Address, addresses)
+        mapper(Order, orders)
+        
+        allusers = create_session().query(User).all()
+        
+        # using a textual select, the columns will be 'id' and 'name'.
+        # the eager loaders have aliases which should not hit on those columns, they should 
+        # be required to locate only their aliased/fully table qualified column name.
+        noeagers = create_session().query(User).from_statement("select * from users").all()
+        assert 'orders' not in noeagers[0].__dict__
+        assert 'addresses' not in noeagers[0].__dict__
         
     def test_limit(self):
         """test limit operations combined with lazy-load relationships."""

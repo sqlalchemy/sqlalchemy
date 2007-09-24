@@ -36,7 +36,12 @@ CHANGES
 
 - added "schema" argument to Sequence; use this with Postgres /Oracle when the sequence is
   located in an alternate schema.  Implements part of [ticket:584], should fix [ticket:761].
-  
+
+- columns from Alias objects, when used to target result-row columns, must match exactly
+  to the label used in the generated statement.  This is so searching for columns in a 
+  result row which match aliases won't accidentally match non-aliased columns.
+  fixes errors which can arise in eager loading scenarios.
+    
 - Fixed reflection of the empty string for mysql enums.
 
 - Added 'passive_deletes="all"' flag to relation(), disables all nulling-out

@@ -615,6 +615,10 @@ class EagerLoader(AbstractRelationLoader):
                 selectcontext.stack.pop()
 
             selectcontext.stack.pop()
+
+            if self._should_log_debug:
+                self.logger.debug("Returning eager instance loader for %s" % str(self))
+
             return (execute, execute, None)
         else:
             if self._should_log_debug:

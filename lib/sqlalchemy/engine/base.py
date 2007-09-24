@@ -1287,10 +1287,19 @@ class ResultProxy(object):
             elif isinstance(key, basestring) and key.lower() in props:
                 rec = props[key.lower()]
             elif isinstance(key, expression.ColumnElement):
-                label = context.column_labels.get(key._label, key.name).lower()
-                if label in props:
-                    rec = props[label]
-
+                try:
+                    if getattr(key, '_exact_match', False):
+                        # exact match flag means the label must be present in the
+                        # generated column_labels
+                        label = context.column_labels[key._label].lower()
+                    else:
+                        # otherwise, fall back to the straight name of the column
+                        # if not in generated labels
+                        label = context.column_labels.get(key._label, key.name).lower()
+                    if label in props:
+                        rec = props[label]
+                except KeyError:
+                    pass
             if not "rec" in locals():
                 raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (str(key)))
 
