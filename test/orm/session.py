@@ -426,6 +426,41 @@ class SessionTest(AssertMixin):
         assert user in s
         assert user not in s.dirty
     
+    def test_is_modified(self):
+        s = create_session()
+        class User(object):pass
+        class Address(object):pass
+        
+        mapper(User, users, properties={'addresses':relation(Address)})
+        mapper(Address, addresses)
+        
+        # save user
+        u = User()
+        u.user_name = 'fred'
+        s.save(u)
+        s.flush()
+        s.clear()
+        
+        user = s.query(User).one()
+        assert user not in s.dirty
+        assert not s.is_modified(user)
+        user.user_name = 'fred'
+        assert user in s.dirty
+        assert not s.is_modified(user)
+        user.user_name = 'ed'
+        assert user in s.dirty
+        assert s.is_modified(user)
+        s.flush()
+        assert user not in s.dirty
+        assert not s.is_modified(user)
+        
+        a = Address()
+        user.addresses.append(a)
+        assert user in s.dirty
+        assert s.is_modified(user)
+        assert not s.is_modified(user, include_collections=False)
+        
+        
     def test_weak_ref(self):
         """test the weak-referencing identity map, which strongly-references modified items."""
         

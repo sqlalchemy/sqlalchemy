@@ -39,6 +39,9 @@ class InstrumentedAttribute(interfaces.PropComparator):
             return self
         return self.impl.get(obj._state)
 
+    def get_history(self, obj, **kwargs):
+        return self.impl.get_history(obj._state, **kwargs)
+        
     def clause_element(self):
         return self.comparator.clause_element()
 

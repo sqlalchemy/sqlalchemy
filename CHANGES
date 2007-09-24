@@ -29,6 +29,11 @@ CHANGES
   adequate __eq__() implementation can be set up with "PickleType(comparator=operator.eq)"
   [ticket:560]
 
+- added session.is_modified(obj) method; performs the same "history" comparison operation
+  as occurs within a flush operation; setting include_collections=False gives the same
+  result as is used when the flush determines whether or not to issue an UPDATE for the
+  instance's row.
+
 - added "schema" argument to Sequence; use this with Postgres /Oracle when the sequence is
   located in an alternate schema.  Implements part of [ticket:584], should fix [ticket:761].
   

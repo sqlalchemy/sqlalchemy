@@ -1029,8 +1029,43 @@ class Session(object):
         
         return iter(list(self.uow.new) + self.uow.identity_map.values())
 
+    def is_modified(self, obj, include_collections=True, passive=False):
+        """return True if the given object has modified attributes.
+        
+        This method retrieves a history instance for each instrumented attribute
+        on the instance and performs a comparison of the current value to its
+        previously committed value.  Note that instances present in the 'dirty'
+        collection may result in a value of ``False`` when tested with this method.
+        
+        'include_collections' indicates if multivalued collections should be included
+        in the operation.  Setting this to False is a way to detect only local-column
+        based properties (i.e. scalar columns or many-to-one foreign keys) that would
+        result in an UPDATE for this instance upon flush.
+        
+        the 'passive' flag indicates if unloaded attributes and collections should
+        not be loaded in the course of performing this test.
+        """
+
+        for attr in attribute_manager.managed_attributes(obj.__class__):
+            if not include_collections and hasattr(attr.impl, 'get_collection'):
+                continue
+            if attr.get_history(obj).is_modified():
+                return True
+        return False
+        
     dirty = property(lambda s:s.uow.locate_dirty(),
-                     doc="A ``Set`` of all objects marked as 'dirty' within this ``Session``")
+                     doc="""A ``Set`` of all objects marked as 'dirty' within this ``Session``.  
+                     
+                     Note that the 'dirty' state here is 'optimistic'; most attribute-setting or collection
+                     modification operations will mark an instance as 'dirty' and place it in this set,
+                     even if there is no net change to the attribute's value.  At flush time, the value 
+                     of each attribute is compared to its previously saved value,
+                     and if there's no net change, no SQL operation will occur (this is a more expensive
+                     operation so it's only done at flush time).
+                     
+                     To check if an instance has actionable net changes to its attributes, use the
+                     is_modified() method.
+                     """)
 
     deleted = property(lambda s:s.uow.deleted,
                        doc="A ``Set`` of all objects marked as 'deleted' within this ``Session``")

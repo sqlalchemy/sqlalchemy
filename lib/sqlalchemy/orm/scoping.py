@@ -69,7 +69,7 @@ def instrument(name):
     def do(self, *args, **kwargs):
         return getattr(self.registry(), name)(*args, **kwargs)
     return do
-for meth in ('get', 'load', 'close', 'save', 'commit', 'update', 'flush', 'query', 'delete', 'merge', 'clear', 'refresh', 'expire', 'expunge', 'rollback', 'begin', 'begin_nested', 'connection', 'execute', 'scalar', 'get_bind'):
+for meth in ('get', 'load', 'close', 'save', 'commit', 'update', 'flush', 'query', 'delete', 'merge', 'clear', 'refresh', 'expire', 'expunge', 'rollback', 'begin', 'begin_nested', 'connection', 'execute', 'scalar', 'get_bind', 'is_modified'):
     setattr(ScopedSession, meth, instrument(meth))
 
 def makeprop(name):
