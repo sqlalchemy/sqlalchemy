@@ -119,6 +119,15 @@ class MapperTest(MapperSuperTest):
         assert len(u.addresses) == 3
         s.expire(u)
         assert len(u.addresses) == 3
+    
+    def testincompletecolumns(self):
+        """test loading from a select which does not contain all columns"""
+        mapper(Address, addresses)
+        s = create_session()
+        a = s.query(Address).from_statement(select([addresses.c.address_id, addresses.c.user_id])).first()
+        assert a.user_id == 7
+        assert a.address_id == 1
+        assert a.email_address is None
         
     def testbadconstructor(self):
         """test that if the construction of a mapped class fails, the instnace does not get placed in the session"""
