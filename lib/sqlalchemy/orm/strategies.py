@@ -83,7 +83,7 @@ class ColumnLoader(LoaderStrategy):
         # row fetcher used by inheritance.
         (hosted_mapper, needs_tables) = selectcontext.attributes.get(('polymorphic_fetch', mapper), (None, None))
         if hosted_mapper is None:
-            return (None, None)
+            return (None, None, None)
         
         if hosted_mapper.polymorphic_fetch == 'deferred':
             # 'deferred' polymorphic row fetcher, put a callable on the property.
