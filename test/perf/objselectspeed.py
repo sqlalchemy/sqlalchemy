@@ -64,34 +64,40 @@ def all():
                 label, t2 - t,
                 now.ru_utime - usage.last.ru_utime,
                 now.ru_stime - usage.last.ru_stime)
-            usage.last = now
-        usage.last = resource.getrusage(resource.RUSAGE_SELF)
+            usage.snap(now)
+        usage.snap = lambda stats=None: setattr(
+            usage, 'last', stats or resource.getrusage(resource.RUSAGE_SELF))
 
         gc.collect()
+        usage.snap()
         t = time.clock()
         sqlite_select(RawPerson)
         t2 = time.clock()
         usage('sqlite select/native')
 
         gc.collect()
+        usage.snap()
         t = time.clock()
         sqlite_select(Person)
         t2 = time.clock()
         usage('sqlite select/instrumented')
 
         gc.collect()
+        usage.snap()
         t = time.clock()
         sql_select(RawPerson)
         t2 = time.clock()
         usage('sqlalchemy.sql select/native')
 
         gc.collect()
+        usage.snap()
         t = time.clock()
         sql_select(Person)
         t2 = time.clock()
         usage('sqlalchemy.sql select/instrumented')
 
         gc.collect()
+        usage.snap()
         t = time.clock()
         orm_select()
         t2 = time.clock()
