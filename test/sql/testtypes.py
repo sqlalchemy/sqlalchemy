@@ -4,7 +4,7 @@ import datetime, os
 from sqlalchemy import *
 from sqlalchemy import types
 import sqlalchemy.engine.url as url
-from sqlalchemy.databases import mssql, oracle, mysql
+from sqlalchemy.databases import mssql, oracle, mysql, postgres
 from testlib import *
 
 
@@ -123,6 +123,33 @@ class AdaptTest(PersistTest):
         t2 = mysql.MSVarBinary()
         assert isinstance(dialect.type_descriptor(t1), mysql.MSVarBinary)
         assert isinstance(dialect.type_descriptor(t2), mysql.MSVarBinary)
+    
+    def teststringadapt(self):
+        """test that String with no size becomes TEXT, *all* others stay as varchar/String"""
+        
+        oracle_dialect = oracle.OracleDialect()
+        mysql_dialect = mysql.MySQLDialect()
+        postgres_dialect = postgres.PGDialect()
+        
+        for dialect, start, test in [
+            (oracle_dialect, String(), oracle.OracleText),
+            (oracle_dialect, VARCHAR(), oracle.OracleString),
+            (oracle_dialect, String(50), oracle.OracleString),
+            (oracle_dialect, Unicode(), oracle.OracleText),
+            (oracle_dialect, NCHAR(), oracle.OracleString),
+            (mysql_dialect, String(), mysql.MSText),
+            (mysql_dialect, VARCHAR(), mysql.MSString),
+            (mysql_dialect, String(50), mysql.MSString),
+            (mysql_dialect, Unicode(), mysql.MSText),
+            (mysql_dialect, NCHAR(), mysql.MSNChar),
+            (postgres_dialect, String(), postgres.PGText),
+            (postgres_dialect, VARCHAR(), postgres.PGString),
+            (postgres_dialect, String(50), postgres.PGString),
+            (postgres_dialect, Unicode(), postgres.PGText),
+            (postgres_dialect, NCHAR(), postgres.PGString),
+        ]:
+            assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
+        
         
         
 class UserDefinedTest(PersistTest):

@@ -1758,9 +1758,11 @@ class _BindParamClause(ClauseElement, _CompareMixin):
             self.type = type_
 
     # TODO: move to types module, obviously
+    # using VARCHAR/NCHAR so that we dont get the genericized "String"
+    # type which usually resolves to TEXT/CLOB
     type_map = {
-        str : sqltypes.String,
-        unicode : sqltypes.Unicode,
+        str : sqltypes.VARCHAR,
+        unicode : sqltypes.NCHAR,
         int : sqltypes.Integer,
         float : sqltypes.Numeric,
         type(None):sqltypes.NullType

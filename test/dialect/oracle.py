@@ -120,6 +120,25 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
             "ON addresses.address_type_id = address_types_1.id WHERE addresses.user_id = :addresses_user_id ORDER BY addresses.rowid, "
             "address_types.rowid")
 
+class TypesTest(SQLCompileTest):
+    def test_no_clobs_for_string_params(self):
+        """test that simple string params get a DBAPI type of VARCHAR, not CLOB.
+        this is to prevent setinputsizes from setting up cx_oracle.CLOBs on 
+        string-based bind params [ticket:793]."""
+        
+        class FakeDBAPI(object):
+            def __getattr__(self, attr):
+                return attr
+
+        dialect = oracle.OracleDialect()
+        dbapi = FakeDBAPI()
+                
+        b = bindparam("foo", "hello world!")
+        assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
+
+        b = bindparam("foo", u"hello world!")
+        assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
+        
 class SequenceTest(SQLCompileTest):
     def test_basic(self):
         seq = Sequence("my_seq_no_schema")

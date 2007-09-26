@@ -304,11 +304,13 @@ class String(TypeEngine, Concatenable):
 
     def get_search_list(self):
         l = super(String, self).get_search_list()
-        if self.length is None:
+        # if we are String or Unicode with no length,
+        # return TEXT as the highest-priority type
+        # to be adapted by the dialect
+        if self.length is None and l[0] in (String, Unicode):
             return (TEXT,) + l
         else:
             return l
-
 
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
