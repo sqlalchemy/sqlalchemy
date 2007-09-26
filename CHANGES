@@ -19,6 +19,9 @@ CHANGES
   inheritance relationships need to be constructed in inheritance order
   (which should be the normal case anyway).
 
+- added "FETCH" to the keywords detected by Postgres to indicate a result-row holding 
+  statement (i.e. in addition to "SELECT").
+
 - Added full list of SQLite reserved keywords so that they get escaped
   properly.
 

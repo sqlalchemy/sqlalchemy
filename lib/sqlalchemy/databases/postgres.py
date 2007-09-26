@@ -189,10 +189,17 @@ def descriptor():
         ('host',"Hostname", None),
     ]}
 
+SELECT_RE = re.compile(
+    r'\s*(?:SELECT|FETCH)',
+    re.I | re.UNICODE)
+
 class PGExecutionContext(default.DefaultExecutionContext):
 
     def _is_server_side(self):
         return self.dialect.server_side_cursors and self.is_select() and not re.search(r'FOR UPDATE(?: NOWAIT)?\s*$', self.statement, re.I)
+
+    def is_select(self):
+        return SELECT_RE.match(self.statement)
         
     def create_cursor(self):
         if self._is_server_side():
