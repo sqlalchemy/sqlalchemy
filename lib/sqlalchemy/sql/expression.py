@@ -2425,14 +2425,6 @@ class Alias(FromClause):
     def _get_from_objects(self, **modifiers):
         return [self]
 
-    def _proxy_column(self, column):
-        c = column._make_proxy(self)
-        # send a note to ResultProxy to not "approximate"
-        # this column based on its name when targeting result columns
-        # see test/sql/query.py QueryTest.test_exact_match
-        c._exact_match = True
-        return c
-
     bind = property(lambda s: s.selectable.bind)
 
 class _ColumnElementAdapter(ColumnElement):

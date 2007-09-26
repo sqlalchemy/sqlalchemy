@@ -429,22 +429,6 @@ class QueryTest(PersistTest):
         self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
     
-    def test_exact_match(self):
-        """test that an Alias object only targets result columns that were generated
-        from that Alias.   This is also part of eager_relations.py/test_no_false_hits.
-        """
-        
-        users.insert().execute(user_id=1, user_name='ed')
-        users_alias = users.alias()
-        result = users.select().execute()
-        row = result.fetchone()
-        assert users_alias.c.user_id not in row
-        
-        result = users_alias.select().execute()
-        row = result.fetchone()
-        assert users_alias.c.user_id in row
-        
-        
     @testing.unsupported('oracle', 'firebird') 
     def test_column_accessor_shadow(self):
         meta = MetaData(testbase.db)

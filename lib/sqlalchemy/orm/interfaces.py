@@ -493,10 +493,10 @@ class OperationContext(object):
     Accept ``MapperOption`` objects which may modify its state before proceeding.
     """
 
-    def __init__(self, mapper, options):
+    def __init__(self, mapper, options, attributes=None):
         self.mapper = mapper
         self.options = options
-        self.attributes = {}
+        self.attributes = attributes or {}
         self.recursion_stack = util.Set()
         for opt in util.flatten_iterator(options):
             self.accept_option(opt)

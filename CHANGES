@@ -22,6 +22,16 @@ strong reference to those instances until changes are flushed.
 - Added full list of SQLite reserved keywords so that they get escaped
 properly.
 
+- tightened up the relationship between the Query's generation
+  of "eager load" aliases, and Query.instances() which actually grabs the
+  eagerly loaded rows.  If the aliases were not specifically generated for
+  that statement by EagerLoader, the EagerLoader will not take effect
+  when the rows are fetched.  This prevents columns from being grabbed accidentally 
+  as being part of an eager load when they were not meant for such, which can happen
+  with textual SQL as well as some inheritance situations.  It's particularly important
+  since the "anonymous aliasing" of columns uses simple integer counts now to generate
+  labels.
+  
 - Removed "parameters" argument from clauseelement.compile(), replaced with
   "column_keys".  The parameters sent to execute() only interact with the
   insert/update statement compilation process in terms of the column names
@@ -42,11 +52,6 @@ properly.
 - added "schema" argument to Sequence; use this with Postgres /Oracle when the sequence is
   located in an alternate schema.  Implements part of [ticket:584], should fix [ticket:761].
 
-- columns from Alias objects, when used to target result-row columns, must match exactly
-  to the label used in the generated statement.  This is so searching for columns in a 
-  result row which match aliases won't accidentally match non-aliased columns.
-  fixes errors which can arise in eager loading scenarios.
-    
 - Fixed reflection of the empty string for mysql enums.
 
 - Added 'passive_deletes="all"' flag to relation(), disables all nulling-out

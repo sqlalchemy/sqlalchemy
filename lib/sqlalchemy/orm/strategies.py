@@ -506,12 +506,17 @@ class EagerLoader(AbstractRelationLoader):
                         break
             else:
                 raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join to, in query '%s' %s" % (str(statement), localparent.mapped_table))
-            
+        
+        # create AliasedClauses object to build up the eager query.  this is cached after 1st creation.    
         try:
             clauses = self.clauses[path]
         except KeyError:
             clauses = mapperutil.PropertyAliasedClauses(self.parent_property, self.parent_property.polymorphic_primaryjoin, self.parent_property.polymorphic_secondaryjoin, parentclauses)
             self.clauses[path] = clauses
+
+        # place the "row_decorator" from the AliasedClauses into the QueryContext, where it will
+        # be picked up in create_row_processor() when results are fetched
+        context.attributes[("eager_row_processor", path)] = clauses.row_decorator
         
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(towrap, clauses.secondary, clauses.primaryjoin).outerjoin(clauses.alias, clauses.secondaryjoin)
@@ -545,19 +550,18 @@ class EagerLoader(AbstractRelationLoader):
             # custom row decoration function, placed in the selectcontext by the 
             # contains_eager() mapper option
             decorator = selectcontext.attributes[("eager_row_processor", self.parent_property)]
+            # key was present, but no decorator; therefore just use the row as is
             if decorator is None:
                 decorator = lambda row: row
+        # check for an AliasedClauses row decorator that was set up by query._compile_context().
+        # a further refactoring (described in [ticket:777]) will simplify this so that the
+        # contains_eager() option generates the same key as this one
+        elif ("eager_row_processor", path) in selectcontext.attributes:
+            decorator = selectcontext.attributes[("eager_row_processor", path)]
         else:
-            try:
-                # decorate the row according to the stored AliasedClauses for this eager load
-                clauses = self.clauses[path]
-                decorator = clauses.row_decorator
-            except KeyError, k:
-                # no stored AliasedClauses: eager loading was not set up in the query and
-                # AliasedClauses never got initialized
-                if self._should_log_debug:
-                    self.logger.debug("Could not locate aliased clauses for key: " + str(path))
-                return None
+            if self._should_log_debug:
+                self.logger.debug("Could not locate aliased clauses for key: " + str(path))
+            return None
 
         try:
             decorated_row = decorator(row)

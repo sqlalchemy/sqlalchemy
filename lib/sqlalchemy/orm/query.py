@@ -612,16 +612,16 @@ class Query(object):
             raise exceptions.InvalidRequestError('Multiple rows returned for one()')
     
     def __iter__(self):
-        statement = self.compile()
-        statement.use_labels = True
+        context = self._compile_context()
+        context.statement.use_labels = True
         if self._autoflush and not self._populate_existing:
             self.session._autoflush()
-        return self._execute_and_instances(statement)
+        return self._execute_and_instances(context)
     
-    def _execute_and_instances(self, statement):
-        result = self.session.execute(statement, params=self._params, mapper=self.mapper)
+    def _execute_and_instances(self, querycontext):
+        result = self.session.execute(querycontext.statement, params=self._params, mapper=self.mapper)
         try:
-            return iter(self.instances(result))
+            return iter(self.instances(result, querycontext=querycontext))
         finally:
             result.close()
 
@@ -784,10 +784,16 @@ class Query(object):
         
     def compile(self):
         """compiles and returns a SQL statement based on the criterion and conditions within this Query."""
+        return self._compile_context().statement
         
+    def _compile_context(self):
+
+        context = QueryContext(self)
+
         if self._statement:
             self._statement.use_labels = True
-            return self._statement
+            context.statement = self._statement
+            return context
         
         whereclause = self._criterion
 
@@ -807,7 +813,6 @@ class Query(object):
         
         # get/create query context.  get the ultimate compile arguments
         # from there
-        context = QueryContext(self)
         order_by = context.order_by
         from_obj = context.from_obj
         lockmode = context.lockmode
@@ -887,7 +892,7 @@ class Query(object):
                     m = clauses.adapt_clause(m)
                 statement.append_column(m)
                 
-        return statement
+        return context
 
     def _get_entity_clauses(self, m):
         """for tuples added via add_entity() or add_column(), attempt to locate
@@ -1209,17 +1214,27 @@ class SelectionContext(OperationContext):
       Indicates if mappers that have version_id columns should verify
       that instances existing already within the Session should have
       this attribute compared to the freshly loaded value.
+      
+    querycontext
+      the QueryContext, if any, used to generate the executed statement.
+      If present, the attribute dictionary from this Context will be used
+      as the basis for this SelectionContext's attribute dictionary.  This
+      allows query-compile-time operations to send messages to the 
+      result-processing-time operations.
     """
 
     def __init__(self, mapper, session, extension, **kwargs):
         self.populate_existing = kwargs.pop('populate_existing', False)
         self.version_check = kwargs.pop('version_check', False)
+        querycontext = kwargs.pop('querycontext', None)
+        if querycontext:
+            kwargs['attributes'] = querycontext.attributes
         self.session = session
         self.extension = extension
         self.identity_map = {}
         self.stack = LoaderStack()
         super(SelectionContext, self).__init__(mapper, kwargs.pop('with_options', []), **kwargs)
-
+            
     def accept_option(self, opt):
         """Accept a MapperOption which will process (modify) the state
         of this SelectionContext.
