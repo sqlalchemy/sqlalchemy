@@ -152,6 +152,11 @@ class DefaultTest(PersistTest):
             ])
 
     def testinsertmany(self):
+        # MySQL-Python 1.2.2 breaks functions in execute_many :(
+        if (testbase.db.name == 'mysql' and
+            testbase.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
+            return
+
         r = t.insert().execute({}, {}, {})
 
         ctexec = currenttime.scalar()
@@ -165,6 +170,11 @@ class DefaultTest(PersistTest):
         self.assert_(l.fetchone()['col3'] == 50)
         
     def testupdatemany(self):
+        # MySQL-Python 1.2.2 breaks functions in execute_many :(
+        if (testbase.db.name == 'mysql' and
+            testbase.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
+            return
+
         t.insert().execute({}, {}, {})
 
         t.update(t.c.col1==bindparam('pkval')).execute(
