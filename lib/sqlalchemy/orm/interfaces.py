@@ -244,16 +244,16 @@ class MapperProperty(object):
         pass
 
     def create_row_processor(self, selectcontext, mapper, row):
-        """return a 2-tuple consiting of a row processing function and an instance post-processing function.
+        """return a 3-tuple consiting of a two row processing functions and an instance post-processing function.
         
         Input arguments are the query.SelectionContext and the *first*
         applicable row of a result set obtained within query.Query.instances(), called
-        only the first time a particular mapper.populate_instance() is invoked for the 
-        overal result.
+        only the first time a particular mapper's populate_instance() method is invoked for the 
+        overall result.
 
         The settings contained within the SelectionContext as well as the columns present
         in the row (which will be the same columns present in all rows) are used to determine
-        the behavior of the returned callables.  The callables will then be used to process
+        the presence and behavior of the returned callables.  The callables will then be used to process
         all rows and to post-process all instances, respectively.
         
         callables are of the following form::
@@ -278,7 +278,7 @@ class MapperProperty(object):
                 
             return (new_execute, existing_execute, post_execute)
             
-        either tuple value can also be ``None`` in which case no function is called.
+        either of the three tuples can be ``None`` in which case no function is called.
         
         """
         
