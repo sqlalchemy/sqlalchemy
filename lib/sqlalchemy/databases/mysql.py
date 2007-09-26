@@ -1812,16 +1812,28 @@ class MySQLCompiler(compiler.DefaultCompiler):
             return super(MySQLCompiler, self).for_update_clause(select)
 
     def limit_clause(self, select):
-        text = ""
-        if select._limit is not None:
-            text +=  " \n LIMIT " + str(select._limit)
-        if select._offset is not None:
-            if select._limit is None:
-                # straight from the MySQL docs, I kid you not
-                text += " \n LIMIT 18446744073709551615"
-            text += " OFFSET " + str(select._offset)
-        return text
-        
+        # MySQL supports:
+        #   LIMIT <limit>
+        #   LIMIT <offset>, <limit>
+        # and in server versions > 3.3:
+        #   LIMIT <limit> OFFSET <offset>
+        # The latter is more readable for offsets but we're stuck with the
+        # former until we can refine dialects by server revision.
+
+        limit, offset = select._limit, select._offset
+
+        if (limit, offset) == (None, None):
+            return ''
+        elif offset is not None:
+            # As suggested by the MySQL docs, need to apply an
+            # artificial limit if one wasn't provided
+            if limit is None:
+                limit = 18446744073709551615
+            return ' \n LIMIT %s, %s' % (offset, limit)
+        else:
+            # No offset provided, so just use the limit
+            return ' \n LIMIT %s' % (limit,)
+
 
 # ug.  "InnoDB needs indexes on foreign keys and referenced keys [...].
 #       Starting with MySQL 4.1.2, these indexes are created automatically.

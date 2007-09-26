@@ -58,6 +58,9 @@ CHANGES
 
 - Fixed reflection of the empty string for mysql enums.
 
+- Changed MySQL dialect to use the older LIMIT <offset>, <limit> syntax
+  instead of LIMIT <l> OFFSET <o> for folks using 3.23. [ticket:794]
+
 - Added 'passive_deletes="all"' flag to relation(), disables all nulling-out
   of foreign key attributes during a flush where the parent object is
   deleted.

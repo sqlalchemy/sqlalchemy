@@ -569,9 +569,12 @@ class TypesTest(AssertMixin):
         enum_table.drop()
 
     @testing.supported('mysql')
+    @testing.exclude('mysql', '>', (3))
     def test_enum_parse(self):
         """More exercises for the ENUM type."""
-        
+
+        # MySQL 3.23 can't handle an ENUM of ''....
+
         db = testbase.db
         enum_table = Table('mysql_enum', MetaData(testbase.db),
             Column('e1', mysql.MSEnum("'a'")),
@@ -727,8 +730,9 @@ class TypesTest(AssertMixin):
         self.assertEqual(got, wanted)
 
 
-class SQLTest(AssertMixin):
+class SQLTest(SQLCompileTest):
     """Tests MySQL-dialect specific compilation."""
+    __dialect__ = testbase.db.dialect
 
     @testing.supported('mysql')
     def test_precolumns(self):
@@ -762,6 +766,22 @@ class SQLTest(AssertMixin):
         self.assertEqual(
             gen(True, ['high_priority', sql.text('sql_cache')]),
             'SELECT high_priority sql_cache DISTINCT q')
+
+    @testing.supported('mysql')
+    def test_limit(self):
+        t = sql.table('t', sql.column('col1'), sql.column('col2'))
+        
+        self.assert_compile(
+            select([t]).limit(10).offset(20),
+            "SELECT t.col1, t.col2 FROM t  LIMIT 20, 10"
+            )
+        self.assert_compile(
+            select([t]).limit(10),
+            "SELECT t.col1, t.col2 FROM t  LIMIT 10")
+        self.assert_compile(
+            select([t]).offset(10),
+            "SELECT t.col1, t.col2 FROM t  LIMIT 10, 18446744073709551615"
+            )
 
 
 def colspec(c):
