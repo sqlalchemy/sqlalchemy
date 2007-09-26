@@ -59,7 +59,7 @@ Next, to tell the `MetaData` we'd actually like to create our selection of table
         fullname VARCHAR(100), 
         PRIMARY KEY (id)
     )
-    None
+    {}
     COMMIT
     CREATE TABLE addresses (
         id INTEGER NOT NULL, 
@@ -68,7 +68,7 @@ Next, to tell the `MetaData` we'd actually like to create our selection of table
         PRIMARY KEY (id), 
          FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    None
+    {}
     COMMIT
 
 ## Insert Expressions

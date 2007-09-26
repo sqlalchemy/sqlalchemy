@@ -3031,31 +3031,47 @@ class Select(_SelectBaseMixin, FromClause):
         self._froms = [f for f in oldfroms.union(newfroms)]
 
     def column(self, column):
+        """return a new select() construct with the given column expression added to its columns clause."""
+        
         s = self._generate()
         s.append_column(column)
         return s
 
     def where(self, whereclause):
+        """return a new select() construct with the given expression added to its WHERE clause, joined
+        to the existing clause via AND, if any."""
+        
         s = self._generate()
         s.append_whereclause(whereclause)
         return s
 
     def having(self, having):
+        """return a new select() construct with the given expression added to its HAVING clause, joined
+        to the existing clause via AND, if any."""
+        
         s = self._generate()
         s.append_having(having)
         return s
 
     def distinct(self):
+        """return a new select() construct which will apply DISTINCT to its columns clause."""
+        
         s = self._generate()
         s._distinct = True
         return s
 
     def prefix_with(self, clause):
+        """return a new select() construct which will apply the given expression to the start of its
+        columns clause, not using any commas."""
+        
         s = self._generate()
         s.append_prefix(clause)
         return s
 
     def select_from(self, fromclause):
+        """return a new select() construct with the given FROM expression applied to its list of 
+        FROM objects."""
+        
         s = self._generate()
         s.append_from(fromclause)
         return s
@@ -3066,6 +3082,19 @@ class Select(_SelectBaseMixin, FromClause):
         return s
 
     def correlate(self, fromclause):
+        """return a new select() construct which will correlate the given FROM clause to that
+        of an enclosing select(), if a match is found.  
+        
+        By "match", the given fromclause must be present in this select's list of FROM objects
+        and also present in an enclosing select's list of FROM objects.
+        
+        Calling this method turns off the select's default behavior of "auto-correlation".  Normally,
+        select() auto-correlates all of its FROM clauses to those of an embedded select when 
+        compiled.
+        
+        If the fromclause is None, the select() will not correlate to anything. 
+        """
+        
         s = self._generate()
         s._should_correlate=False
         if fromclause is None:
@@ -3075,12 +3104,16 @@ class Select(_SelectBaseMixin, FromClause):
         return s
 
     def append_correlation(self, fromclause, copy_collection=True):
+        """append the given correlation expression to this select() construct."""
+        
         if not copy_collection:
             self.__correlate.add(fromclause)
         else:
             self.__correlate = util.Set(list(self.__correlate) + [fromclause])
 
     def append_column(self, column, copy_collection=True):
+        """append the given column expression to the columns clause of this select() construct."""
+        
         column = _literal_as_column(column)
 
         if isinstance(column, _ScalarSelect):
@@ -3092,6 +3125,8 @@ class Select(_SelectBaseMixin, FromClause):
             self._raw_columns = self._raw_columns + [column]
 
     def append_prefix(self, clause, copy_collection=True):
+        """append the given columns clause prefix expression to this select() construct."""
+        
         clause = _literal_as_text(clause)
         if not copy_collection:
             self._prefixes.append(clause)
@@ -3099,12 +3134,22 @@ class Select(_SelectBaseMixin, FromClause):
             self._prefixes = self._prefixes + [clause]
 
     def append_whereclause(self, whereclause):
+        """append the given expression to this select() construct's WHERE criterion.
+        
+        The expression will be joined to existing WHERE criterion via AND.
+        """
+        
         if self._whereclause  is not None:
             self._whereclause = and_(self._whereclause, _literal_as_text(whereclause))
         else:
             self._whereclause = _literal_as_text(whereclause)
 
     def append_having(self, having):
+        """append the given expression to this select() construct's HAVING criterion.
+        
+        The expression will be joined to existing HAVING criterion via AND.
+        """
+        
         if self._having is not None:
             self._having = and_(self._having, _literal_as_text(having))
         else:

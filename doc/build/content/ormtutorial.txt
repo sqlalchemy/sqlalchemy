@@ -54,7 +54,7 @@ Next, to tell the `MetaData` we'd actually like to create our `users_table` for 
         password VARCHAR(15), 
         PRIMARY KEY (id)
     )
-    None
+    {}
     COMMIT
 
 So now our database is created, our initial schema is present, and our SQLAlchemy application knows all about the tables and columns in the database; this information is to be re-used by the Object Relational Mapper, as we'll see now.
@@ -71,7 +71,7 @@ So lets create a rudimental `User` object to be mapped in the database.  This ob
     ...         self.password = password
     ...
     ...     def __repr__(self):
-    ...        return "<User(%r,%r, %r)>" % (self.name, self.fullname, self.password)
+    ...        return "<User('%s','%s', '%s')>" % (self.name, self.fullname, self.password)
 
 ## Setting up the Mapping
 
@@ -127,7 +127,7 @@ So saving our `User` is as easy as issuing `save()`:
     {python}
     >>> session.save(ed_user)
     
-But you'll notice nothing has happened yet.  Well, lets pretend something did, and try to query for our user.  This is done using the `query()` method on `Session`.  We create a new query representing the set of all `User` objects first.  Then we narrow the results by "filtering" down to the user we want; that is, the user whose `name` attribute is `"ed"`.  Finally we call `first()` which tells `Query`, "we'd like the first result in this list".
+But yo'll notice nothing has happened yet.  Well, lets pretend something did, and try to query for our user.  This is done using the `query()` method on `Session`.  We create a new query representing the set of all `User` objects first.  Then we narrow the results by "filtering" down to the user we want; that is, the user whose `name` attribute is `"ed"`.  Finally we call `first()` which tells `Query`, "we'd like the first result in this list".
 
     {python}
     {sql}>>> session.query(User).filter_by(name='ed').first() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
@@ -141,7 +141,7 @@ But you'll notice nothing has happened yet.  Well, lets pretend something did, a
     ['ed']
     {stop}<User('ed','Ed Jones', 'edspassword')>
 
-And we get back our new user.  If you view the generated SQL, you'll see that the `Session` issued an `INSERT` statement before querying.  The `Session` stores whatever you put into it in memory, and at certain points it issues a **flush**, which issues SQL to the database to store all pending new objects and changes to existing objects.  You can manually invoke the flush operation using `flush()`; however when the `Session` is configured to `autoflush`, its usually not needed.
+And we get back our new user.  If you view the generated SQL, yo'll see that the `Session` issued an `INSERT` statement before querying.  The `Session` stores whatever you put into it in memory, and at certain points it issues a **flush**, which issues SQL to the database to store all pending new objects and changes to existing objects.  You can manually invoke the flush operation using `flush()`; however when the `Session` is configured to `autoflush`, its usually not needed.
 
 OK, let's do some more operations.  We'll create and save three more users:
 
@@ -434,7 +434,7 @@ Another call to `create_all()` will skip over our `users` table and build just t
         PRIMARY KEY (id), 
          FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    None
+    {}
     COMMIT
 
 For our ORM setup, we're going to start all over again.  We will first close out our `Session` and clear all `Mapper` objects:
@@ -452,7 +452,7 @@ Our `User` class, still around, reverts to being just a plain old class.  Lets c
     ...         self.email_address = email_address
     ...
     ...     def __repr__(self):
-    ...         return "<Address(%r)>" % self.email_address
+    ...         return "<Address('%s')>" % self.email_address
 
 Now comes the fun part.  We define a mapper for each class, and associate them using a function called `relation()`.  We can define each mapper in any order we want:
 
@@ -521,7 +521,7 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for for Jack's a
     ['jack']
     
     >>> jack
-    <User(u'jack',u'Jack Bean', u'gjffdd')>
+    <User('jack','Jack Bean', 'gjffdd')>
     
 Let's look at the `addresses` collection.  Watch the SQL:
 
@@ -531,7 +531,7 @@ Let's look at the `addresses` collection.  Watch the SQL:
     FROM addresses 
     WHERE ? = addresses.user_id ORDER BY addresses.oid
     [5]
-    {stop}[<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
+    {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
     
 When we accessed the `addresses` collection, SQL was suddenly issued.  This is an example of a **lazy loading relation**.
 
@@ -557,10 +557,10 @@ Then apply an **option** to the query, indicating that we'd like `addresses` to 
     ['jack']
     
     >>> jack
-    <User(u'jack',u'Jack Bean', u'gjffdd')>
+    <User('jack','Jack Bean', 'gjffdd')>
     
     >>> jack.addresses
-    [<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
+    [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
     
 If you think that query is elaborate, it is !  But SQLAlchemy is just getting started.  Note that when using eager loading, *nothing* changes as far as the ultimate results returned.  The "loading strategy", as its called, is designed to be completely transparent in all cases, and is for optimization purposes only.  Any query criterion you use to load objects, including ordering, limiting, other joins, etc., should return identical results regardless of the combination of lazily- and eagerly- loaded relationships present.
 
@@ -577,7 +577,7 @@ One way to join two tables together is just to compose a SQL expression.   Below
     FROM users, addresses 
     WHERE users.id = addresses.user_id AND addresses.email_address = ? ORDER BY users.oid
     ['jack@google.com']
-    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
 Or we can make a real JOIN construct; below we use the `join()` function available on `Table` to create a `Join` object, then tell the `Query` to use it as our FROM clause:
 
@@ -588,7 +588,7 @@ Or we can make a real JOIN construct; below we use the `join()` function availab
     FROM users JOIN addresses ON users.id = addresses.user_id 
     WHERE addresses.email_address = ? ORDER BY users.oid
     ['jack@google.com']
-    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
 Note that the `join()` construct has no problem figuring out the correct join condition between `users_table` and `addresses_table`..the `ForeignKey` we constructed says it all.
 
@@ -601,7 +601,7 @@ The easiest way to join is automatically, using the `join()` method on `Query`. 
     FROM users JOIN addresses ON users.id = addresses.user_id 
     WHERE addresses.email_address = ? ORDER BY users.oid
     ['jack@google.com']
-    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
 By "A to B", we mean a single relation name or a path of relations.  In our case we only have `User->addresses->Address` configured, but if we had a setup like `A->bars->B->bats->C->widgets->D`, a join along all four entities would look like:
 
@@ -618,7 +618,7 @@ Each time `join()` is called on `Query`, the **joinpoint** of the query is moved
     FROM users JOIN addresses ON users.id = addresses.user_id 
     WHERE addresses.email_address = ? AND users.name = ? ORDER BY users.oid
     ['jack@google.com', 'jack']
-    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
 In all cases, we can get the `User` and the matching `Address` objects back at the same time, by telling the session we want both.  This returns the results as a list of tuples:
 
@@ -629,7 +629,7 @@ In all cases, we can get the `User` and the matching `Address` objects back at t
     FROM users JOIN addresses ON users.id = addresses.user_id 
     WHERE addresses.email_address = ? ORDER BY users.oid
     ['jack@google.com']
-    {stop}[(<User(u'jack',u'Jack Bean', u'gjffdd')>, <Address(u'jack@google.com')>)]
+    {stop}[(<User('jack','Jack Bean', 'gjffdd')>, <Address('jack@google.com')>)]
 
 Another common scenario is the need to join on the same table more than once.  For example, if we want to find a `User` who has two distinct email addresses, both `jack@google.com` as well as `j25@yahoo.com`, we need to join to the `Addresses` table twice.  SQLAlchemy does provide `Alias` objects which can accomplish this; but far easier is just to tell `join()` to alias for you:
 
@@ -641,7 +641,7 @@ Another common scenario is the need to join on the same table more than once.  F
     FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id JOIN addresses AS addresses_2 ON users.id = addresses_2.user_id 
     WHERE addresses_1.email_address = ? AND addresses_2.email_address = ? ORDER BY users.oid
     ['jack@google.com', 'j25@yahoo.com']
-    {stop}[<User(u'jack',u'Jack Bean', u'gjffdd')>]
+    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
 The key thing which occured above is that our SQL criterion were **aliased** as appropriate corresponding to the alias generated in the most recent `join()` call.  
 
@@ -802,7 +802,7 @@ First some new tables:
         PRIMARY KEY (id), 
          FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    None
+    {}
     COMMIT
     CREATE TABLE keywords (
         id INTEGER NOT NULL, 
@@ -810,7 +810,7 @@ First some new tables:
         PRIMARY KEY (id), 
          UNIQUE (keyword)
     )
-    None
+    {}
     COMMIT
     CREATE TABLE post_keywords (
         post_id INTEGER, 
@@ -818,7 +818,7 @@ First some new tables:
          FOREIGN KEY(post_id) REFERENCES posts (id), 
          FOREIGN KEY(keyword_id) REFERENCES keywords (id)
     )
-    None
+    {}
     COMMIT
 
 Then some classes:
@@ -852,7 +852,7 @@ And the mappers.  `BlogPost` will reference `User` via its `author` attribute:
     
 There's three new things in the above mapper:
 
-  * the `User` relation has a backref, like we've used before, except this time it references a function called `backref()`.  This function is used when you'd like to specify keyword options for the backwards relationship.
+  * the `User` relation has a backref, like we've used before, except this time it references a function called `backref()`.  This function is used when yo'd like to specify keyword options for the backwards relationship.
   * the keyword option we specified to `backref()` is `lazy="dynamic"`.  This sets a default **loader strategy** on the attribute, in this case a special strategy that allows partial loading of results.
   * The `keywords` relation uses a keyword argument `secondary` to indicate the **association table** for the many to many relationship from `BlogPost` to `Keyword`.
     
@@ -893,7 +893,7 @@ We can now look up all blog posts with the keyword 'firstpost'.   We'll use a sp
     FROM post_keywords, keywords 
     WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?) ORDER BY posts.oid
     ['firstpost']
-    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(u'wendy',u'Wendy Williams', u'foobar')>)]
+    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
     
 If we want to look up just Wendy's posts, we can tell the query to narrow down to her as a parent:
 
@@ -906,7 +906,7 @@ If we want to look up just Wendy's posts, we can tell the query to narrow down t
     FROM post_keywords, keywords 
     WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)) ORDER BY posts.oid
     [2, 'firstpost']
-    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(u'wendy',u'Wendy Williams', u'foobar')>)]
+    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
 Or we can use Wendy's own `posts` relation, which is a "dynamic" relation, to query straight from there:
 
@@ -918,7 +918,7 @@ Or we can use Wendy's own `posts` relation, which is a "dynamic" relation, to qu
     FROM post_keywords, keywords 
     WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)) ORDER BY posts.oid
     [2, 'firstpost']
-    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(u'wendy',u'Wendy Williams', u'foobar')>)]
+    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
 ## Further Reference 
 
