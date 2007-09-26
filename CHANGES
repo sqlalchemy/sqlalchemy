@@ -5,10 +5,10 @@ CHANGES
 0.4.0beta6
 ----------
 
-- the Session identity map is now *weak referencing* by default, use 
-weak_identity_map=False to use a regular dict.  The weak dict we are using
-is customized to detect instances which are "dirty" and maintain a temporary
-strong reference to those instances until changes are flushed.
+- The Session identity map is now *weak referencing* by default, use
+  weak_identity_map=False to use a regular dict.  The weak dict we are using
+  is customized to detect instances which are "dirty" and maintain a
+  temporary strong reference to those instances until changes are flushed.
 
 - Mapper compilation has been reorganized such that most compilation occurs
   upon mapper construction.  This allows us to have fewer calls to
@@ -20,17 +20,17 @@ strong reference to those instances until changes are flushed.
   (which should be the normal case anyway).
 
 - Added full list of SQLite reserved keywords so that they get escaped
-properly.
+  properly.
 
-- tightened up the relationship between the Query's generation
-  of "eager load" aliases, and Query.instances() which actually grabs the
-  eagerly loaded rows.  If the aliases were not specifically generated for
-  that statement by EagerLoader, the EagerLoader will not take effect
-  when the rows are fetched.  This prevents columns from being grabbed accidentally 
-  as being part of an eager load when they were not meant for such, which can happen
-  with textual SQL as well as some inheritance situations.  It's particularly important
-  since the "anonymous aliasing" of columns uses simple integer counts now to generate
-  labels.
+- Tightened up the relationship between the Query's generation of "eager
+  load" aliases, and Query.instances() which actually grabs the eagerly
+  loaded rows.  If the aliases were not specifically generated for that
+  statement by EagerLoader, the EagerLoader will not take effect when the
+  rows are fetched.  This prevents columns from being grabbed accidentally
+  as being part of an eager load when they were not meant for such, which
+  can happen with textual SQL as well as some inheritance situations.  It's
+  particularly important since the "anonymous aliasing" of columns uses
+  simple integer counts now to generate labels.
   
 - Removed "parameters" argument from clauseelement.compile(), replaced with
   "column_keys".  The parameters sent to execute() only interact with the
@@ -38,19 +38,20 @@ properly.
   present but not the values for those columns.  Produces more consistent
   execute/executemany behavior, simplifies things a bit internally.
  
-- added 'comparator' keyword argument to PickleType.  By default, "mutable"
-  PickleType does a "deep compare" of objects using their dumps() representation.  
-  But this doesn't work for dictionaries.  Pickled objects which provide an 
-  adequate __eq__() implementation can be set up with "PickleType(comparator=operator.eq)"
-  [ticket:560]
+- Added 'comparator' keyword argument to PickleType.  By default, "mutable"
+  PickleType does a "deep compare" of objects using their dumps()
+  representation.  But this doesn't work for dictionaries.  Pickled objects
+  which provide an adequate __eq__() implementation can be set up with
+  "PickleType(comparator=operator.eq)" [ticket:560]
 
-- added session.is_modified(obj) method; performs the same "history" comparison operation
-  as occurs within a flush operation; setting include_collections=False gives the same
-  result as is used when the flush determines whether or not to issue an UPDATE for the
-  instance's row.
+- Added session.is_modified(obj) method; performs the same "history"
+  comparison operation as occurs within a flush operation; setting
+  include_collections=False gives the same result as is used when the flush
+  determines whether or not to issue an UPDATE for the instance's row.
 
-- added "schema" argument to Sequence; use this with Postgres /Oracle when the sequence is
-  located in an alternate schema.  Implements part of [ticket:584], should fix [ticket:761].
+- Added "schema" argument to Sequence; use this with Postgres /Oracle when
+  the sequence is located in an alternate schema.  Implements part of
+  [ticket:584], should fix [ticket:761].
 
 - Fixed reflection of the empty string for mysql enums.
 
@@ -61,13 +62,13 @@ properly.
 - Column defaults and onupdates, executing inline, will add parenthesis for
   subqueries and other parenthesis-requiring expressions
 
-- the behavior of String/Unicode types regarding that they auto-convert
-  to TEXT/CLOB when no length is present now occurs *only* for an exact type
-  of String or Unicode with no arguments.  If you use VARCHAR or NCHAR 
-  (subclasses of String/Unicode) with no length, they will be interpreted
-  by the dialect as VARCHAR/NCHAR; no "magic" conversion happens there.
-  This is less surprising behavior and in particular this helps Oracle keep 
-  string-based bind parameters as VARCHARs and not CLOBs [ticket:793].  
+- The behavior of String/Unicode types regarding that they auto-convert to
+  TEXT/CLOB when no length is present now occurs *only* for an exact type of
+  String or Unicode with no arguments.  If you use VARCHAR or NCHAR
+  (subclasses of String/Unicode) with no length, they will be interpreted by
+  the dialect as VARCHAR/NCHAR; no "magic" conversion happens there.  This
+  is less surprising behavior and in particular this helps Oracle keep
+  string-based bind parameters as VARCHARs and not CLOBs [ticket:793].
 
 - Fixes to ShardedSession to work with deferred columns [ticket:771].
 
