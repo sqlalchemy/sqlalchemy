@@ -697,7 +697,7 @@ class Connection(Connectable):
     def _savepoint_impl(self, name=None):
         if name is None:
             self.__savepoint_seq += 1
-            name = '__sa_savepoint_%s' % self.__savepoint_seq
+            name = 'sa_savepoint_%s' % self.__savepoint_seq
         if self.__connection.is_valid:
             self.__engine.dialect.do_savepoint(self, name)
             return name
