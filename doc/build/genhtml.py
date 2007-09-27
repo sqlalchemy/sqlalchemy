@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys,re,os,shutil
+from os import path
 import cPickle as pickle
 
 sys.path = ['../../lib', './lib'] + sys.path
@@ -31,10 +32,14 @@ post_files = [
     'copyright'
 ]
 
+v = open(path.join(path.dirname(__file__), '..', '..', 'VERSION'))
+VERSION = v.readline().strip()
+v.close()
+
 parser = optparse.OptionParser(usage = "usage: %prog [options] [tests...]")
 parser.add_option("--file", action="store", dest="file", help="only generate file <file>")
 parser.add_option("--docstrings", action="store_true", dest="docstrings", help="only generate docstrings")
-parser.add_option("--version", action="store", dest="version", default=sqlalchemy.__version__, help="version string")
+parser.add_option("--version", action="store", dest="version", default=VERSION, help="version string")
 
 (options, args) = parser.parse_args()
 if options.file:
@@ -44,6 +49,7 @@ else:
 
 title='SQLAlchemy 0.4 Documentation'
 version = options.version
+
 
 root = toc.TOCElement('', 'root', '', version=version, doctitle=title)
 

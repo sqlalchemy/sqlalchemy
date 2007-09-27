@@ -3,7 +3,7 @@ import docstring
 import re
 
 from sqlalchemy import schema, types, engine, sql, pool, orm, exceptions, databases, interfaces
-from sqlalchemy.sql import compiler
+from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, strategies, threadlocal
 import sqlalchemy.orm.shard
 import sqlalchemy.ext.sessioncontext as sessioncontext
@@ -22,17 +22,19 @@ def make_all_docs():
     """generate a docstring.AbstractDoc structure."""
     print "generating docstrings"
     objects = [
-        make_doc(obj=sql,include_all_classes=True),
-        make_doc(obj=schema),
-        make_doc(obj=pool),
-        make_doc(obj=types),
         make_doc(obj=engine),
-        make_doc(obj=engine.url),
-        make_doc(obj=strategies),
         make_doc(obj=default),
+        make_doc(obj=engine.url),
         make_doc(obj=threadlocal),
+        make_doc(obj=exceptions),
+        make_doc(obj=schema),
+        #make_doc(obj=sql,include_all_classes=True),
         make_doc(obj=compiler),
+        make_doc(obj=expression,include_all_classes=True),
         make_doc(obj=interfaces),
+        make_doc(obj=pool),
+        make_doc(obj=strategies),
+        make_doc(obj=types),
         make_doc(obj=orm),
         make_doc(obj=orm.collections, classes=[orm.collections.collection,
                                                orm.collections.MappedCollection,
@@ -43,7 +45,6 @@ def make_all_docs():
         make_doc(obj=orm.query, classes=[orm.query.Query]),
         make_doc(obj=orm.session, classes=[orm.session.Session]),
         make_doc(obj=orm.shard),
-        make_doc(obj=exceptions),
         make_doc(obj=associationproxy, classes=[associationproxy.AssociationProxy]),
         make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),
         make_doc(obj=sqlsoup),
