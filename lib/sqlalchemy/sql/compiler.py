@@ -36,10 +36,8 @@ RESERVED_WORDS = util.Set([
     'then', 'to', 'trailing', 'true', 'union', 'unique', 'user',
     'using', 'verbose', 'when', 'where'])
 
-LEGAL_CHARACTERS = util.Set(string.ascii_lowercase +
-                            string.ascii_uppercase +
-                            string.digits + '_$')
-ILLEGAL_INITIAL_CHARACTERS = util.Set(string.digits + '$')
+LEGAL_CHARACTERS = re.compile(r'^[A-Z0-9_$]+$', re.I)
+ILLEGAL_INITIAL_CHARACTERS = re.compile(r'[0-9$]')
 
 BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
 BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
@@ -979,11 +977,11 @@ class IdentifierPreparer(object):
 
     def _requires_quotes(self, value):
         """Return True if the given identifier requires quoting."""
-        return \
-            value in self.reserved_words \
-            or (value[0] in self.illegal_initial_characters) \
-            or bool(len([x for x in unicode(value) if x not in self.legal_characters])) \
-            or (value.lower() != value)
+        lc_value = value.lower()
+        return (lc_value in self.reserved_words
+                or self.illegal_initial_characters.match(value[0])
+                or not self.legal_characters.match(unicode(value))
+                or (lc_value != value))
 
     def __generic_obj_format(self, obj, ident):
         if getattr(obj, 'quote', False):

@@ -2,6 +2,14 @@
 CHANGES
 =======
 
+0.4.0beta7
+----------
+
+- The IdentifierPreprarer's _requires_quotes test is now regex based.  Any
+  out-of-tree dialects that provide custom sets of legal_characters or
+  illegal_initial_characters will need to move to regexes or override
+  _requires_quotes.
+
 0.4.0beta6
 ----------
 

@@ -143,7 +143,7 @@ class ZooMarkTest(testing.AssertMixin):
             ticks = fullobject(Animal.select(Animal.c.Species=='Tick'))
     
     @testing.supported('postgres')
-    @profiling.profiled('expressions', call_range=(13210, 13230), always=True)        
+    @profiling.profiled('expressions', call_range=(12595, 12605), always=True)        
     def test_4_expressions(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -197,7 +197,7 @@ class ZooMarkTest(testing.AssertMixin):
             assert len(fulltable(Animal.select(func.date_part('day', Animal.c.LastEscape) == 21))) == 1
     
     @testing.supported('postgres')
-    @profiling.profiled('aggregates', call_range=(1260, 1270), always=True)        
+    @profiling.profiled('aggregates', call_range=(1220, 1230), always=True)        
     def test_5_aggregates(self):
         Animal = metadata.tables['Animal']
         Zoo = metadata.tables['Zoo']
@@ -268,7 +268,7 @@ class ZooMarkTest(testing.AssertMixin):
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
     
     @testing.supported('postgres')
-    @profiling.profiled('multiview', call_range=(3150, 3160), always=True)        
+    @profiling.profiled('multiview', call_range=(3090, 3100), always=True)        
     def test_7_multiview(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
