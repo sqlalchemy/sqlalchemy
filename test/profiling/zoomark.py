@@ -44,7 +44,7 @@ class ZooMarkTest(testing.AssertMixin):
         metadata.create_all()
         
     @testing.supported('postgres')
-    @profiling.profiled('populate', call_range=(4390, 4420), always=True)        
+    @profiling.profiled('populate', call_range=(4380, 4410), always=True)        
     def test_1a_populate(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -120,7 +120,7 @@ class ZooMarkTest(testing.AssertMixin):
             tick = i.execute(Species='Tick', Name='Tick %d' % x, Legs=8)
     
     @testing.supported('postgres')
-    @profiling.profiled('properties', call_range=(3440, 3450), always=True)        
+    @profiling.profiled('properties', call_range=(3430, 3440), always=True)        
     def test_3_properties(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -143,7 +143,7 @@ class ZooMarkTest(testing.AssertMixin):
             ticks = fullobject(Animal.select(Animal.c.Species=='Tick'))
     
     @testing.supported('postgres')
-    @profiling.profiled('expressions', call_range=(13260, 13270), always=True)        
+    @profiling.profiled('expressions', call_range=(13210, 13230), always=True)        
     def test_4_expressions(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -197,7 +197,7 @@ class ZooMarkTest(testing.AssertMixin):
             assert len(fulltable(Animal.select(func.date_part('day', Animal.c.LastEscape) == 21))) == 1
     
     @testing.supported('postgres')
-    @profiling.profiled('aggregates', call_range=(1270, 1280), always=True)        
+    @profiling.profiled('aggregates', call_range=(1260, 1270), always=True)        
     def test_5_aggregates(self):
         Animal = metadata.tables['Animal']
         Zoo = metadata.tables['Zoo']
@@ -239,7 +239,7 @@ class ZooMarkTest(testing.AssertMixin):
             legs.sort()
     
     @testing.supported('postgres')
-    @profiling.profiled('editing', call_range=(1390, 1400), always=True)        
+    @profiling.profiled('editing', call_range=(1380, 1390), always=True)        
     def test_6_editing(self):
         Zoo = metadata.tables['Zoo']
         
@@ -268,7 +268,7 @@ class ZooMarkTest(testing.AssertMixin):
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
     
     @testing.supported('postgres')
-    @profiling.profiled('multiview', call_range=(3160, 3170), always=True)        
+    @profiling.profiled('multiview', call_range=(3150, 3160), always=True)        
     def test_7_multiview(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']

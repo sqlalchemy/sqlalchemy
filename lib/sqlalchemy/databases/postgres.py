@@ -195,14 +195,18 @@ SELECT_RE = re.compile(
 
 class PGExecutionContext(default.DefaultExecutionContext):
 
-    def _is_server_side(self):
-        return self.dialect.server_side_cursors and self.is_select() and not re.search(r'FOR UPDATE(?: NOWAIT)?\s*$', self.statement, re.I)
-
     def is_select(self):
         return SELECT_RE.match(self.statement)
         
     def create_cursor(self):
-        if self._is_server_side():
+        # executing a default or Sequence standalone creates an execution context without a statement.  
+        # so slightly hacky "if no statement assume we're server side" logic
+        self.__is_server_side = \
+            self.dialect.server_side_cursors and (self.statement is None or \
+            (SELECT_RE.match(self.statement) and not re.search(r'FOR UPDATE(?: NOWAIT)?\s*$', self.statement, re.I))
+        )
+
+        if self.__is_server_side:
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
             ident = "c" + hex(random.randint(0, 65535))[2:]
@@ -211,7 +215,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
             return self._connection.connection.cursor()
 
     def get_result_proxy(self):
-        if self._is_server_side():
+        if self.__is_server_side:
             return base.BufferedRowResultProxy(self)
         else:
             return base.ResultProxy(self)
