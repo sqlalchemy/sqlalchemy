@@ -83,7 +83,6 @@ def sessionmaker(bind=None, class_=None, autoflush=True, transactional=True, **k
         
     return Sess
 
-# TODO: add unit test coverage for SessionExtension in test/orm/session.py
 class SessionExtension(object):
     """an extension hook object for Sessions.  Subclasses may be installed into a Session
     (or sessionmaker) using the ``extension`` keyword argument.
