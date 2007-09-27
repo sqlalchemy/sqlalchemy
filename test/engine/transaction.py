@@ -247,7 +247,7 @@ class TransactionTest(PersistTest):
 
     @testing.supported('postgres', 'mysql')
     @testing.exclude('mysql', '<', (5, 0, 3))
-    def testmixedtransaction(self):
+    def testmixedtwophasetransaction(self):
         connection = testbase.db.connect()
         
         transaction = connection.begin_twophase()
@@ -605,7 +605,6 @@ class ForUpdateTest(PersistTest):
                 trans.rollback()
                 errors.append(e)
                 break
-
         con.close()
 
     @testing.supported('mysql', 'oracle', 'postgres')
@@ -652,6 +651,7 @@ class ForUpdateTest(PersistTest):
         except Exception, e:
             trans.rollback()
             errors.append(e)
+        con.close()
 
     def _threaded_overlap(self, thread_count, groups, update_style=True, pool=5):
         db = testbase.db
@@ -686,5 +686,6 @@ class ForUpdateTest(PersistTest):
                                         update_style='nowait')
         self.assert_(len(errors) != 0)
         
+
 if __name__ == "__main__":
     testbase.main()        
