@@ -99,8 +99,7 @@ def descriptor():
 
 
 class FBExecutionContext(default.DefaultExecutionContext):
-    def supports_sane_rowcount(self):
-        return True
+    pass
 
 
 class FBDialect(ansisql.ANSIDialect):

@@ -36,6 +36,8 @@
       but not harmful.
 - sqlite
    - passthrough for stringified dates
+- firebird
+    - supports_sane_rowcount() set to False due to ticket #370 (right way).
       
 0.3.10
 - general
