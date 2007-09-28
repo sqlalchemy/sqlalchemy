@@ -96,12 +96,12 @@ def descriptor():
 
 
 class FBExecutionContext(default.DefaultExecutionContext):
-    def supports_sane_rowcount(self):
-        return True
+    pass
 
 
 class FBDialect(default.DefaultDialect):
     supports_sane_rowcount = False
+    supports_sane_multi_rowcount = False
     max_identifier_length = 31
     preexecute_sequences = True
 

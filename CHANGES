@@ -10,6 +10,9 @@ CHANGES
   illegal_initial_characters will need to move to regexes or override
   _requires_quotes.
 
+- firebird has supports_sane_rowcount and supports_sane_multi_rowcount set 
+  to False due to ticket #370 (right way).
+
 0.4.0beta6
 ----------
 
