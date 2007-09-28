@@ -1326,21 +1326,6 @@ class _CompareMixin(ColumnOperators):
 
         return obj.type
 
-class Selectable(ClauseElement):
-    """Represent a column list-holding object.
-
-    This is the common base class of [sqlalchemy.sql.expression#ColumnElement]
-    and [sqlalchemy.sql.expression#FromClause].  The reason ``ColumnElement`` is
-    marked as a "list-holding" object is so that it can be treated
-    similarly to ``FromClause`` in column-selection scenarios; it
-    contains a list of columns consisting of itself.
-    """
-
-    columns = util.NotImplProperty("""a [sqlalchemy.sql.expression#ColumnCollection] containing ``ColumnElement`` instances.""")
-
-    def select(self, whereclauses = None, **params):
-        return select([self], whereclauses, **params)
-
 class ColumnElement(ClauseElement, _CompareMixin):
     """Represent an element that is usable within the "column clause" portion of a ``SELECT`` statement.
 
@@ -1503,6 +1488,9 @@ class ColumnSet(util.OrderedSet):
                     l.append(c==local)
         return and_(*l)
 
+class Selectable(ClauseElement):
+    """mark a class as being selectable"""
+    
 class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM`` clause of a ``SELECT`` statement."""
 
@@ -1520,19 +1508,32 @@ class FromClause(Selectable):
         return [self.oid_column]
 
     def count(self, whereclause=None, **params):
+        """return a SELECT COUNT generated against this ``FromClause``."""
+        
         if self.primary_key:
             col = list(self.primary_key)[0]
         else:
             col = list(self.columns)[0]
         return select([func.count(col).label('tbl_row_count')], whereclause, from_obj=[self], **params)
 
+    def select(self, whereclauses = None, **params):
+        """return a SELECT of this ``FromClause``."""
+        
+        return select([self], whereclauses, **params)
+
     def join(self, right, *args, **kwargs):
+        """return a join of this ``FromClause`` against another ``FromClause``."""
+        
         return Join(self, right, *args, **kwargs)
 
     def outerjoin(self, right, *args, **kwargs):
+        """return an outer join of this ``FromClause`` against another ``FromClause``."""
+
         return Join(self, right, isouter=True, *args, **kwargs)
 
     def alias(self, name=None):
+        """return an alias of this ``FromClause`` against another ``FromClause``."""
+
         return Alias(self, name)
 
     def named_with_column(self):
