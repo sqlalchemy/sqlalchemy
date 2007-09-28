@@ -197,6 +197,13 @@ class MapperExtension(object):
 
         This is a good place to set up primary key values and such
         that aren't handled otherwise.
+
+        Column-based attributes can be modified within this method which will 
+        result in the new value being inserted.  However *no* changes to the overall 
+        flush plan can be made; this means any collection modification or
+        save() operations which occur within this method will not take effect
+        until the next flush call.
+        
         """
 
         return EXT_CONTINUE
@@ -207,7 +214,29 @@ class MapperExtension(object):
         return EXT_CONTINUE
 
     def before_update(self, mapper, connection, instance):
-        """Receive an object instance before that instance is UPDATEed."""
+        """Receive an object instance before that instance is UPDATEed.
+        
+        Note that this method is called for all instances that are marked as 
+        "dirty", even those which have no net changes to their column-based 
+        attributes.  An object is marked as dirty when any of its column-based
+        attributes have a "set attribute" operation called or when any of its 
+        collections are modified.  If, at update time, no column-based attributes
+        have any net changes, no UPDATE statement will be issued.  This means
+        that an instance being sent to before_update is *not* a guarantee that
+        an UPDATE statement will be issued (although you can affect the outcome
+        here).
+
+        To detect if the column-based attributes on the object have net changes,
+        and will therefore generate an UPDATE statement, use 
+        ``object_session(instance).is_modified(instance, include_collections=False)``.
+        
+        Column-based attributes can be modified within this method which will 
+        result in their being updated.  However *no* changes to the overall 
+        flush plan can be made; this means any collection modification or
+        save() operations which occur within this method will not take effect
+        until the next flush call.
+        
+        """
 
         return EXT_CONTINUE
 
@@ -217,7 +246,14 @@ class MapperExtension(object):
         return EXT_CONTINUE
 
     def before_delete(self, mapper, connection, instance):
-        """Receive an object instance before that instance is DELETEed."""
+        """Receive an object instance before that instance is DELETEed.
+        
+        Note that *no* changes to the overall 
+        flush plan can be made here; this means any collection modification,
+        save() or delete() operations which occur within this method will 
+        not take effect until the next flush call.
+        
+        """
 
         return EXT_CONTINUE
 

@@ -12,7 +12,7 @@ The SQLAlchemy SQL Toolkit and Object Relational Mapper is a comprehensive set o
                +-----------------------------------------------------------+
                +---------+ +------------------------------------+ +--------+
                |         | |       SQL Expression Language      | |        |
-               |         | |        [[tutorial]](rel:sql)  [[docs]](rel:docstrings_sqlalchemy.sql)          | |        |
+               |         | |        [[tutorial]](rel:sql)  [[docs]](rel:docstrings_sqlalchemy.sql.expression)          | |        |
                |         | +------------------------------------+ |        |
                |         +-----------------------+ +--------------+        |
                |        Dialect/Execution        | |    Schema Management  |

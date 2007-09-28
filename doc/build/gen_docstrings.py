@@ -43,7 +43,7 @@ def make_all_docs():
         make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.Mapper]),
         make_doc(obj=orm.properties),
         make_doc(obj=orm.query, classes=[orm.query.Query]),
-        make_doc(obj=orm.session, classes=[orm.session.Session]),
+        make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionExtension]),
         make_doc(obj=orm.shard),
         make_doc(obj=associationproxy, classes=[associationproxy.AssociationProxy]),
         make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),

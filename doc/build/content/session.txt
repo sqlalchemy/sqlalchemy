@@ -738,3 +738,23 @@ Vertical partitioning places different kinds of objects, or different tables, ac
 Horizontal partitioning partitions the rows of a single table (or a set of tables) across multiple databases.
 
 See the "sharding" example in [attribute_shard.py](http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/sharding/attribute_shard.py)
+
+## Extending Session
+
+Extending the session can be achieved through subclassing as well as through a simple extension class, which resembles the style of [advdatamapping_mapper_extending](rel:advdatamapping_mapper_extending) called [SessionExtension](rel:docstrings_sqlalchemy.orm.session_SessionExtension).  See the docstrings for more information on this class' methods.
+
+Basic usage is similar to `MapperExtension`:
+
+    {python}
+    class MySessionExtension(SessionExtension):
+        def before_commit(self, session):
+            print "before commit!"
+            
+    Session = sessionmaker(extension=MySessionExtension())
+    
+or with `create_session()`:
+
+    {python}
+    sess = create_session(extension=MySessionExtension())
+    
+The same `SessionExtension` instance can be used with any number of sessions.

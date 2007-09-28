@@ -920,7 +920,7 @@ Finally, a delete.  Easy enough:
 
 ## Further Reference {@name=reference}
 
-The best place to get every possible name you can use in constructed SQL is the [Generated Documentation](rel:docstrings_sqlalchemy.sql).
+The best place to get every possible name you can use in constructed SQL is the [Generated Documentation](rel:docstrings_sqlalchemy.sql.expression).
 
 Table Metadata Reference: [metadata](rel:metadata)
 
