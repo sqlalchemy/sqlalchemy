@@ -5,6 +5,9 @@ CHANGES
 0.4.0beta7
 ----------
 
+- Added partial index support for PostgreSQL. Use the postgres_where
+  keyword on the Index.
+
 - The IdentifierPreprarer's _requires_quotes test is now regex based.  Any
   out-of-tree dialects that provide custom sets of legal_characters or
   illegal_initial_characters will need to move to regexes or override

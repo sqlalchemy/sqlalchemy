@@ -3,6 +3,7 @@ import datetime
 from sqlalchemy import *
 from sqlalchemy import exceptions
 from sqlalchemy.databases import postgres
+from sqlalchemy.engine.strategies import MockEngineStrategy
 from testlib import *
 
 class SequenceTest(SQLCompileTest):
@@ -516,6 +517,19 @@ class MiscTest(AssertMixin):
             assert l == [(1, 'user', 'lala')]
         finally:
             testbase.db.execute("drop table speedy_users", None)
+
+    @testing.supported('postgres')
+    def test_create_partial_index(self):
+        tbl = Table('testtbl', MetaData(), Column('data',Integer))
+        idx = Index('test_idx1', tbl.c.data, postgres_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+            
+        executed_sql = []
+        mock_strategy = MockEngineStrategy()
+        mock_conn = mock_strategy.create('postgres://', executed_sql.append)
+        
+        idx.create(mock_conn)
+        
+        assert executed_sql == ['CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10']
 
 class TimezoneTest(AssertMixin):
     """test timezone-aware datetimes.  psycopg will return a datetime with a tzinfo attached to it,

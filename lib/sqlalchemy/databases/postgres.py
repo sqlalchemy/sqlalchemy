@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import re, random, warnings
+import re, random, warnings, string
 
 from sqlalchemy import sql, schema, exceptions, util
 from sqlalchemy.engine import base, default
@@ -612,6 +612,22 @@ class PGSchemaGenerator(compiler.SchemaGenerator):
         if not sequence.optional and (not self.checkfirst or not self.dialect.has_sequence(self.connection, sequence.name)):
             self.append("CREATE SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
+    
+    def visit_index(self, index):
+        preparer = self.preparer
+        self.append("CREATE ")
+        if index.unique:
+            self.append("UNIQUE ")
+        self.append("INDEX %s ON %s (%s)" \
+                    % (preparer.format_index(index),
+                       preparer.format_table(index.table),
+                       string.join([preparer.format_column(c) for c in index.columns], ', ')))
+        if index.postgres_where is not None:
+            compiler = self._compile(index.postgres_where, None)
+            # this might belong to the compiler class
+            inlined_clause = str(compiler) % dict((key,bind.value) for key,bind in compiler.binds.iteritems())
+            self.append(" WHERE " + inlined_clause)
+        self.execute()
 
 class PGSchemaDropper(compiler.SchemaDropper):
     def visit_sequence(self, sequence):

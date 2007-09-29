@@ -947,13 +947,16 @@ class Index(SchemaItem):
 
           unique
             Defaults to False: create a unique index.
-            
+
+          postgres_where
+            Defaults to None: create a partial index when using PostgreSQL
         """
 
         self.name = name
         self.columns = []
         self.table = None
         self.unique = kwargs.pop('unique', False)
+        self.postgres_where = kwargs.pop('postgres_where', None)
         self._init_items(*columns)
 
     def _init_items(self, *args):
