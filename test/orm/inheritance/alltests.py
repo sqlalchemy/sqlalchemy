@@ -10,6 +10,7 @@ def suite():
         'orm.inheritance.polymorph',
         'orm.inheritance.polymorph2',
         'orm.inheritance.poly_linked_list',
+        'orm.inheritance.abc_polymorphic',
         'orm.inheritance.abc_inheritance',
         'orm.inheritance.productspec',
         'orm.inheritance.magazine',

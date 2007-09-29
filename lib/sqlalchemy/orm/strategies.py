@@ -89,7 +89,7 @@ class ColumnLoader(LoaderStrategy):
             # 'deferred' polymorphic row fetcher, put a callable on the property.
             def new_execute(instance, row, isnew, **flags):
                 if isnew:
-                    sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=self._get_deferred_inheritance_loader(instance, mapper, needs_tables))
+                    sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=self._get_deferred_inheritance_loader(instance, mapper, hosted_mapper, needs_tables))
             if self._should_log_debug:
                 self.logger.debug("Returning deferred column fetcher for %s %s" % (mapper, self.key))
             return (new_execute, None, None)
@@ -99,18 +99,30 @@ class ColumnLoader(LoaderStrategy):
                 self.logger.debug("Returning no column fetcher for %s %s" % (mapper, self.key))
             return (None, None, None)
 
-    def _get_deferred_inheritance_loader(self, instance, mapper, needs_tables):
+    def _get_deferred_inheritance_loader(self, instance, mapper, hosted_mapper, needs_tables):
+        # create a deferred column loader which will query the remaining not-yet-loaded tables in an inheritance load.
+        # the mapper for the object creates the WHERE criterion using the mapper who originally 
+        # "hosted" the query and the list of tables which are unloaded between the "hosted" mapper
+        # and this mapper.  (i.e. A->B->C, the query used mapper A.  therefore will need B's and C's tables
+        # in the query).
         def create_statement():
-            cond, param_names = mapper._deferred_inheritance_condition(needs_tables)
+            # TODO: the SELECT statement here should be cached in the selectcontext.  we are somewhat duplicating 
+            # efforts from mapper._get_poly_select_loader as well and should look
+            # for ways to simplify.
+            cond, param_names = mapper._deferred_inheritance_condition(hosted_mapper, needs_tables)
             statement = sql.select(needs_tables, cond, use_labels=True)
             params = {}
             for c in param_names:
                 params[c.name] = mapper.get_attr_by_column(instance, c)
             return (statement, params)
             
+        # install the create_statement() callable using the deferred loading strategy
         strategy = self.parent_property._get_strategy(DeferredColumnLoader)
 
+        # assemble list of all ColumnProperties which will need to be loaded
         props = [p for p in mapper.iterate_properties if isinstance(p.strategy, ColumnLoader) and p.columns[0].table in needs_tables]
+        
+        # set the deferred loader on the instance attribute
         return strategy.setup_loader(instance, props=props, create_statement=create_statement)
 
 

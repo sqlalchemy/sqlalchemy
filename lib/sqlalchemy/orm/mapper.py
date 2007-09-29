@@ -1442,10 +1442,7 @@ class Mapper(object):
         
         return instance
 
-    def _deferred_inheritance_condition(self, needs_tables):
-        cond = self.inherit_condition
-
-        param_names = []
+    def _deferred_inheritance_condition(self, base_mapper, needs_tables):
         def visit_binary(binary):
             leftcol = binary.left
             rightcol = binary.right
@@ -1457,8 +1454,17 @@ class Mapper(object):
             elif rightcol not in needs_tables:
                 binary.right = sql.bindparam(rightcol.name, None, type_=binary.right.type, unique=True)
                 param_names.append(rightcol)
-        cond = mapperutil.BinaryVisitor(visit_binary).traverse(cond, clone=True)
-        return cond, param_names
+
+        allconds = []
+        param_names = []
+
+        visitor = mapperutil.BinaryVisitor(visit_binary)
+        for mapper in self.iterate_to_root():
+            if mapper is base_mapper:
+                break
+            allconds.append(visitor.traverse(mapper.inherit_condition, clone=True))
+        
+        return sql.and_(*allconds), param_names
 
     def translate_row(self, tomapper, row):
         """Translate the column keys of a row into a new or proxied
@@ -1532,7 +1538,7 @@ class Mapper(object):
         if hosted_mapper is None or len(needs_tables)==0 or hosted_mapper.polymorphic_fetch == 'deferred':
             return
         
-        cond, param_names = self._deferred_inheritance_condition(needs_tables)
+        cond, param_names = self._deferred_inheritance_condition(hosted_mapper, needs_tables)
         statement = sql.select(needs_tables, cond, use_labels=True)
         def post_execute(instance, **flags):
             self.__log_debug("Post query loading instance " + mapperutil.instance_str(instance))

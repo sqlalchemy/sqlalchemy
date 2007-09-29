@@ -63,6 +63,7 @@ class O2MTest(ORMTest):
         self.assert_(compare == result)
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
+
 class GetTest(ORMTest):    
     def define_tables(self, metadata):
         global foo, bar, blub

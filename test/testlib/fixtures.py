@@ -10,11 +10,11 @@ class Base(object):
             setattr(self, k, kwargs[k])
     
     # TODO: add recursion checks to this
-    #def __repr__(self):
-    #    return "%s(%s)" % (
-    #        (self.__class__.__name__), 
-    #        ','.join(["%s=%s" % (key, repr(getattr(self, key))) for key in self.__dict__ if not key.startswith('_')])
-    #    )
+    def __repr__(self):
+        return "%s(%s)" % (
+            (self.__class__.__name__), 
+            ','.join(["%s=%s" % (key, repr(getattr(self, key))) for key in self.__dict__ if not key.startswith('_')])
+        )
     
     def __ne__(self, other):
         return not self.__eq__(other)
