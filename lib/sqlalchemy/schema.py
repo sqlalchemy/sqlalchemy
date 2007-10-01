@@ -956,7 +956,9 @@ class Index(SchemaItem):
         self.columns = []
         self.table = None
         self.unique = kwargs.pop('unique', False)
-        self.postgres_where = kwargs.pop('postgres_where', None)
+
+        self.kwargs = kwargs
+
         self._init_items(*columns)
 
     def _init_items(self, *args):

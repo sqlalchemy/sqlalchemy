@@ -4,6 +4,14 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""Support for the PostgreSQL database.
+
+PostgreSQL supports partial indexes. To create them pass a posgres_where
+option to the Index constructor::
+
+  Index('my_index', my_table.c.id, postgres_where=tbl.c.value > 10)
+"""
+
 import re, random, warnings, string
 
 from sqlalchemy import sql, schema, exceptions, util
@@ -622,8 +630,9 @@ class PGSchemaGenerator(compiler.SchemaGenerator):
                     % (preparer.format_index(index),
                        preparer.format_table(index.table),
                        string.join([preparer.format_column(c) for c in index.columns], ', ')))
-        if index.postgres_where is not None:
-            compiler = self._compile(index.postgres_where, None)
+        whereclause = index.kwargs.get('postgres_where', None)
+        if whereclause is not None:
+            compiler = self._compile(whereclause, None)
             # this might belong to the compiler class
             inlined_clause = str(compiler) % dict((key,bind.value) for key,bind in compiler.binds.iteritems())
             self.append(" WHERE " + inlined_clause)
