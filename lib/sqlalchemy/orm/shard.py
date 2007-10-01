@@ -1,6 +1,6 @@
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.query import Query
-from sqlalchemy import exceptions
+from sqlalchemy import exceptions, util
 
 __all__ = ['ShardedSession', 'ShardedQuery']
 
@@ -100,6 +100,7 @@ class ShardedQuery(Query):
         if self._shard_id is not None:
             return super(ShardedQuery, self).get(ident)
         else:
+            ident = util.to_list(ident)
             for shard_id in self.id_chooser(self, ident):
                 o = self.set_shard(shard_id).get(ident, **kwargs)
                 if o is not None:

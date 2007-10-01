@@ -19,6 +19,8 @@ CHANGES
 - fixed three- and multi-level select and deferred inheritance
   loading (i.e. abc inheritance with no select_table), [ticket:795]
 
+- ident passed to id_chooser in shard.py always a list
+
 0.4.0beta6
 ----------
 
