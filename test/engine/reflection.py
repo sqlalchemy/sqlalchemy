@@ -11,7 +11,7 @@ class ReflectionTest(PersistTest):
     @testing.exclude('mysql', '<', (4, 1, 1))
     def testbasic(self):
         use_function_defaults = testbase.db.engine.name == 'postgres' or testbase.db.engine.name == 'oracle'
-        
+
         use_string_defaults = use_function_defaults or testbase.db.engine.__module__.endswith('sqlite')
 
         if use_function_defaults:
@@ -35,9 +35,9 @@ class ReflectionTest(PersistTest):
         else:
             deftype2, deftype3 = Integer, Integer
             defval2, defval3 = "15", "16"
-        
+
         meta = MetaData(testbase.db)
-        
+
         users = Table('engine_users', meta,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20), nullable = False),
@@ -58,7 +58,7 @@ class ReflectionTest(PersistTest):
             Column('test_numeric', Numeric(None, None)),
             test_needs_fk=True,
         )
-        
+
         addresses = Table('engine_email_addresses', meta,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
@@ -75,7 +75,7 @@ class ReflectionTest(PersistTest):
 
         try:
             addresses = Table('engine_email_addresses', meta, autoload = True)
-            # reference the addresses foreign key col, which will require users to be 
+            # reference the addresses foreign key col, which will require users to be
             # reflected at some point
             users = Table('engine_users', meta, autoload = True)
             assert users.c.user_id in users.primary_key
@@ -83,13 +83,13 @@ class ReflectionTest(PersistTest):
         finally:
             addresses.drop()
             users.drop()
-        
+
         # a hack to remove the defaults we got reflecting from postgres
         # SERIAL columns, since they reference sequences that were just dropped.
         # PG 8.1 doesnt want to create them if the underlying sequence doesnt exist
         users.c.user_id.default = None
         addresses.c.address_id.default = None
-        
+
         users.create()
         addresses.create()
         try:
@@ -101,7 +101,7 @@ class ReflectionTest(PersistTest):
         finally:
             addresses.drop()
             users.drop()
-    
+
     def test_autoload_partial(self):
         meta = MetaData(testbase.db)
         foo = Table('foo', meta,
@@ -124,28 +124,28 @@ class ReflectionTest(PersistTest):
                 assert c not in foo2.c
         finally:
             meta.drop_all()
-            
+
     def test_override_create_fkcols(self):
         """test that you can override columns and create new foreign keys to other reflected tables.
         this is common with MySQL MyISAM tables."""
-        
+
         meta = MetaData(testbase.db)
-        users = Table('users', meta, 
+        users = Table('users', meta,
             Column('id', Integer, primary_key=True),
             Column('name', String(30)))
         addresses = Table('addresses', meta,
             Column('id', Integer, primary_key=True),
             Column('street', String(30)),
             Column('user_id', Integer))
-            
-        meta.create_all()            
+
+        meta.create_all()
         try:
             meta2 = MetaData(testbase.db)
-            a2 = Table('addresses', meta2, 
+            a2 = Table('addresses', meta2,
                 Column('user_id', Integer, ForeignKey('users.id')),
                 autoload=True)
             u2 = Table('users', meta2, autoload=True)
-            
+
             assert len(a2.c.user_id.foreign_keys) == 1
             assert len(a2.foreign_keys) == 1
             assert [c.parent for c in a2.foreign_keys] == [a2.c.user_id]
@@ -155,10 +155,10 @@ class ReflectionTest(PersistTest):
 
             meta3 = MetaData(testbase.db)
             u3 = Table('users', meta3, autoload=True)
-            a3 = Table('addresses', meta3, 
+            a3 = Table('addresses', meta3,
                 Column('user_id', Integer, ForeignKey('users.id')),
                 autoload=True)
-            
+
             assert u3.join(a3).onclause == u3.c.id==a3.c.user_id
 
             meta4 = MetaData(testbase.db)
@@ -185,7 +185,7 @@ class ReflectionTest(PersistTest):
         """test that you can override columns which contain foreign keys to other reflected tables,
         where the foreign key column is also a primary key column"""
         meta = MetaData(testbase.db)
-        users = Table('users', meta, 
+        users = Table('users', meta,
             Column('id', Integer, primary_key=True),
             Column('name', String(30)))
         addresses = Table('addresses', meta,
@@ -193,10 +193,10 @@ class ReflectionTest(PersistTest):
             Column('street', String(30)))
 
 
-        meta.create_all()            
+        meta.create_all()
         try:
             meta2 = MetaData(testbase.db)
-            a2 = Table('addresses', meta2, 
+            a2 = Table('addresses', meta2,
                 Column('id', Integer, ForeignKey('users.id'), primary_key=True, ),
                 autoload=True)
             u2 = Table('users', meta2, autoload=True)
@@ -213,10 +213,10 @@ class ReflectionTest(PersistTest):
             #sess = create_session()
             #sess.save(add1)
             #sess.flush()
-            
+
             meta3 = MetaData(testbase.db)
             u3 = Table('users', meta3, autoload=True)
-            a3 = Table('addresses', meta3, 
+            a3 = Table('addresses', meta3,
                 Column('id', Integer, ForeignKey('users.id'), primary_key=True),
                 autoload=True)
 
@@ -226,14 +226,14 @@ class ReflectionTest(PersistTest):
 
         finally:
             meta.drop_all()
-    
+
     def test_override_existing_fkcols(self):
         """test that you can override columns and specify new foreign keys to other reflected tables,
         on columns which *do* already have that foreign key, and that the FK is not duped.
         """
-        
+
         meta = MetaData(testbase.db)
-        users = Table('users', meta, 
+        users = Table('users', meta,
             Column('id', Integer, primary_key=True),
             Column('name', String(30)),
             test_needs_fk=True)
@@ -241,16 +241,16 @@ class ReflectionTest(PersistTest):
             Column('id', Integer,primary_key=True),
             Column('user_id', Integer, ForeignKey('users.id')),
             test_needs_fk=True)
-            
 
-        meta.create_all()            
+
+        meta.create_all()
         try:
             meta2 = MetaData(testbase.db)
-            a2 = Table('addresses', meta2, 
+            a2 = Table('addresses', meta2,
                 Column('user_id',Integer, ForeignKey('users.id')),
                 autoload=True)
             u2 = Table('users', meta2, autoload=True)
-            
+
             assert len(a2.foreign_keys) == 1
             assert len(a2.c.user_id.foreign_keys) == 1
             assert len(a2.constraints) == 2
@@ -260,15 +260,15 @@ class ReflectionTest(PersistTest):
             assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
         finally:
             meta.drop_all()
-        
+
     def test_pks_not_uniques(self):
         """test that primary key reflection not tripped up by unique indexes"""
         testbase.db.execute("""
         CREATE TABLE book (
             id INTEGER NOT NULL,
             title VARCHAR(100) NOT NULL,
-            series INTEGER NULL,
-            series_id INTEGER NULL,
+            series INTEGER,
+            series_id INTEGER,
             UNIQUE(series, series_id),
             PRIMARY KEY(id)
         )""")
@@ -293,7 +293,7 @@ class ReflectionTest(PersistTest):
             assert False
         except exceptions.InvalidRequestError, err:
             assert str(err) == "Could not find table 'pkgs' with which to generate a foreign key"
-            
+
     def test_composite_pks(self):
         """test reflection of a composite primary key"""
         testbase.db.execute("""
@@ -301,8 +301,8 @@ class ReflectionTest(PersistTest):
             id INTEGER NOT NULL,
             isbn VARCHAR(50) NOT NULL,
             title VARCHAR(100) NOT NULL,
-            series INTEGER NULL,
-            series_id INTEGER NULL,
+            series INTEGER,
+            series_id INTEGER,
             UNIQUE(series, series_id),
             PRIMARY KEY(id, isbn)
         )""")
@@ -315,7 +315,7 @@ class ReflectionTest(PersistTest):
             assert len(book.primary_key) == 2
         finally:
             testbase.db.execute("drop table book")
-            
+
     @testing.supported('sqlite')
     def test_goofy_sqlite(self):
         """test autoload of table where quotes were used with all the colnames.  quirky in sqlite."""
@@ -349,7 +349,7 @@ class ReflectionTest(PersistTest):
 
         meta = MetaData(testbase.db)
         table = Table(
-            'multi', meta, 
+            'multi', meta,
             Column('multi_id', Integer, primary_key=True),
             Column('multi_rev', Integer, primary_key=True),
             Column('multi_hoho', Integer, primary_key=True),
@@ -357,7 +357,7 @@ class ReflectionTest(PersistTest):
             Column('val', String(100)),
             test_needs_fk=True,
         )
-        table2 = Table('multi2', meta, 
+        table2 = Table('multi2', meta,
             Column('id', Integer, primary_key=True),
             Column('foo', Integer),
             Column('bar', Integer),
@@ -369,11 +369,11 @@ class ReflectionTest(PersistTest):
         assert table.c.multi_hoho
         meta.create_all()
         meta.clear()
-        
+
         try:
             table = Table('multi', meta, autoload=True)
             table2 = Table('multi2', meta, autoload=True)
-            
+
             print table
             print table2
             j = join(table, table2)
@@ -386,7 +386,7 @@ class ReflectionTest(PersistTest):
     @testing.exclude('mysql', '<', (4, 1, 1))
     def test_to_metadata(self):
         meta = MetaData()
-        
+
         table = Table('mytable', meta,
             Column('myid', Integer, primary_key=True),
             Column('name', String(40), nullable=False),
@@ -394,19 +394,19 @@ class ReflectionTest(PersistTest):
             UniqueConstraint('name'),
             test_needs_fk=True,
         )
-        
+
         table2 = Table('othertable', meta,
             Column('id', Integer, primary_key=True),
             Column('myid', Integer, ForeignKey('mytable.myid')),
             test_needs_fk=True,
             )
-        
+
         def test_to_metadata():
             meta2 = MetaData()
             table_c = table.tometadata(meta2)
             table2_c = table2.tometadata(meta2)
             return (table_c, table2_c)
-            
+
         def test_pickle():
             meta.bind = testbase.db
             meta2 = pickle.loads(pickle.dumps(meta))
@@ -424,8 +424,8 @@ class ReflectionTest(PersistTest):
             assert meta3.bind is None
             assert meta3.tables['mytable'] is not t1
             return (meta3.tables['mytable'], meta3.tables['othertable'])
-            
-        meta.create_all(testbase.db)    
+
+        meta.create_all(testbase.db)
         try:
             for test, has_constraints in ((test_to_metadata, True), (test_pickle, True), (test_pickle_via_reflect, False)):
                 table_c, table2_c = test()
@@ -433,13 +433,13 @@ class ReflectionTest(PersistTest):
                 assert table_c.c.myid.primary_key
                 assert isinstance(table_c.c.myid.type, Integer)
                 assert isinstance(table_c.c.name.type, String)
-                assert not table_c.c.name.nullable 
-                assert table_c.c.description.nullable 
+                assert not table_c.c.name.nullable
+                assert table_c.c.description.nullable
                 assert table.primary_key is not table_c.primary_key
                 assert [x.name for x in table.primary_key] == [x.name for x in table_c.primary_key]
                 assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
                 assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
-                
+
                 # constraints dont get reflected for any dialect right now
                 if has_constraints:
                     for c in table_c.c.description.constraints:
@@ -448,7 +448,7 @@ class ReflectionTest(PersistTest):
                     else:
                         assert False
                     assert c.sqltext=="description='hi'"
-        
+
                     for c in table_c.constraints:
                         if isinstance(c, UniqueConstraint):
                             break
@@ -458,16 +458,16 @@ class ReflectionTest(PersistTest):
                     assert not c.columns.contains_column(table.c.name)
         finally:
             meta.drop_all(testbase.db)
-            
+
     def test_nonexistent(self):
         self.assertRaises(exceptions.NoSuchTableError, Table,
                           'fake_table',
                           MetaData(testbase.db), autoload=True)
-        
+
     def testoverride(self):
         meta = MetaData(testbase.db)
         table = Table(
-            'override_test', meta, 
+            'override_test', meta,
             Column('col1', Integer, primary_key=True),
             Column('col2', String(20)),
             Column('col3', Numeric)
@@ -481,7 +481,7 @@ class ReflectionTest(PersistTest):
                 'override_test', meta2,
                 Column('col2', Unicode()),
                 Column('col4', String(30)), autoload=True)
-        
+
             print repr(table)
             self.assert_(isinstance(table.c.col1.type, Integer))
             self.assert_(isinstance(table.c.col2.type, Unicode))
@@ -493,11 +493,11 @@ class ReflectionTest(PersistTest):
     def testidentity(self):
         meta = MetaData(testbase.db)
         table = Table(
-            'identity_test', meta, 
+            'identity_test', meta,
             Column('col1', Integer, Sequence('fred', 2, 3), primary_key=True)
         )
         table.create()
-        
+
         meta2 = MetaData(testbase.db)
         try:
             table2 = Table('identity_test', meta2, autoload=True)
@@ -509,13 +509,24 @@ class ReflectionTest(PersistTest):
     def testreserved(self):
         # check a table that uses an SQL reserved name doesn't cause an error
         meta = MetaData(testbase.db)
-        table_a = Table('select', meta, 
+        table_a = Table('select', meta,
                        Column('not', Integer, primary_key=True),
                        Column('from', String(12), nullable=False),
                        UniqueConstraint('from', name='when'))
         Index('where', table_a.c['from'])
 
-        quoter = meta.bind.dialect.identifier_preparer.quote_identifier
+        if testbase.db.engine.name == 'firebird':
+            # Firebird doesn't like creating the constraint with 'true' column
+            # quoted, when this column was created without quotes
+            # it will work with one of these 2 syntaxes:
+            #
+            #     CONSTRAINT limit  CHECK (true <> 1)
+            #     CONSTRAINT limit  CHECK ('TRUE' <> 1)
+            #
+            # for now, I'll use the 1st option
+            quoter = lambda x: x
+        else:
+            quoter = meta.bind.dialect.identifier_preparer.quote_identifier
 
         table_b = Table('false', meta,
                         Column('create', Integer, primary_key=True),
@@ -533,7 +544,7 @@ class ReflectionTest(PersistTest):
         meta.create_all()
 
         index_c.drop()
-        
+
         meta2 = MetaData(testbase.db)
         try:
             table_a2 = Table('select', meta2, autoload=True)
@@ -578,7 +589,7 @@ class ReflectionTest(PersistTest):
                 self.assert_(False)
             except exceptions.InvalidRequestError, e:
                 self.assert_(e.args[0].endswith('(rt_f)'))
-        
+
             m5 = MetaData(testbase.db)
             m5.reflect(only=[])
             self.assert_(not m5.tables)
@@ -606,7 +617,7 @@ class ReflectionTest(PersistTest):
             m9 = MetaData(testbase.db)
             m9.reflect()
             self.assert_(not m9.tables)
-        
+
 
 class CreateDropTest(PersistTest):
     def setUpAll(self):
@@ -661,7 +672,7 @@ class CreateDropTest(PersistTest):
         self.assertEqual( testbase.db.has_table('items'), True )
         self.assertEqual( testbase.db.has_table('email_addresses'), True )
         metadata.create_all(bind=testbase.db)
-        self.assertEqual( testbase.db.has_table('items'), True )        
+        self.assertEqual( testbase.db.has_table('items'), True )
 
         metadata.drop_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), False )
@@ -698,24 +709,24 @@ class UnicodeTest(PersistTest):
                 self.assert_(nfc == names)
                 # Yep.  But still ensure that bulk reflection and create/drop
                 # work with either normalization.
-        
+
             r = MetaData(bind, reflect=True)
             r.drop_all()
             r.create_all()
         finally:
             metadata.drop_all()
             bind.dispose()
-        
+
 
 class SchemaTest(PersistTest):
     # this test should really be in the sql tests somewhere, not engine
-    @testing.unsupported('sqlite')
+    @testing.unsupported('sqlite', 'firebird')
     def testiteration(self):
         metadata = MetaData()
-        table1 = Table('table1', metadata, 
+        table1 = Table('table1', metadata,
             Column('col1', Integer, primary_key=True),
             schema='someschema')
-        table2 = Table('table2', metadata, 
+        table2 = Table('table2', metadata,
             Column('col1', Integer, primary_key=True),
             Column('col2', Integer, ForeignKey('someschema.table1.col1')),
             schema='someschema')
@@ -732,8 +743,8 @@ class SchemaTest(PersistTest):
         print buf
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
-   
-    # TODO: figure out why postgres screws up on this test 
+
+    # TODO: figure out why postgres screws up on this test
     #@testing.supported('mysql','postgres')
     @testing.supported('mysql')
     def testcreate(self):
@@ -746,10 +757,10 @@ class SchemaTest(PersistTest):
         else:
             schema = 'public'
         metadata = MetaData(testbase.db)
-        table1 = Table('table1', metadata, 
+        table1 = Table('table1', metadata,
             Column('col1', Integer, primary_key=True),
             schema=schema)
-        table2 = Table('table2', metadata, 
+        table2 = Table('table2', metadata,
             Column('col1', Integer, primary_key=True),
             Column('col2', Integer, ForeignKey('%s.table1.col1' % schema)),
             schema=schema)
@@ -759,7 +770,7 @@ class SchemaTest(PersistTest):
         table1 = Table('table1', metadata, autoload=True, schema=schema)
         table2 = Table('table2', metadata, autoload=True, schema=schema)
         metadata.drop_all()
-        
+
 if __name__ == "__main__":
-    testbase.main()        
-        
+    testbase.main()
+
