@@ -249,7 +249,7 @@ def subquery(alias, *args, **kwargs):
 
     return Select(*args, **kwargs).alias(alias)
 
-def insert(table, values=None, inline=False):
+def insert(table, values=None, inline=False, **kwargs):
     """Return an [sqlalchemy.sql.expression#Insert] clause element.
 
     Similar functionality is available via the ``insert()`` method on
@@ -287,9 +287,9 @@ def insert(table, values=None, inline=False):
     against the ``INSERT`` statement.
     """
 
-    return Insert(table, values, inline=inline)
+    return Insert(table, values, inline=inline, **kwargs)
 
-def update(table, whereclause=None, values=None, inline=False):
+def update(table, whereclause=None, values=None, inline=False, **kwargs):
     """Return an [sqlalchemy.sql.expression#Update] clause element.
 
     Similar functionality is available via the ``update()`` method on
@@ -332,7 +332,7 @@ def update(table, whereclause=None, values=None, inline=False):
     against the ``UPDATE`` statement.
     """
 
-    return Update(table, whereclause=whereclause, values=values, inline=inline)
+    return Update(table, whereclause=whereclause, values=values, inline=inline, **kwargs)
 
 def delete(table, whereclause = None, **kwargs):
     """Return a [sqlalchemy.sql.expression#Delete] clause element.
@@ -2699,11 +2699,11 @@ class TableClause(FromClause):
     def select(self, whereclause = None, **params):
         return select([self], whereclause, **params)
 
-    def insert(self, values=None, inline=False):
-        return insert(self, values=values, inline=inline)
+    def insert(self, values=None, inline=False, **kwargs):
+        return insert(self, values=values, inline=inline, **kwargs)
 
-    def update(self, whereclause=None, values=None, inline=False):
-        return update(self, whereclause=whereclause, values=values, inline=inline)
+    def update(self, whereclause=None, values=None, inline=False, **kwargs):
+        return update(self, whereclause=whereclause, values=values, inline=inline, **kwargs)
 
     def delete(self, whereclause=None):
         return delete(self, whereclause)
@@ -3356,11 +3356,13 @@ class _UpdateBase(ClauseElement):
         return self.table.bind
 
 class Insert(_UpdateBase):
-    def __init__(self, table, values=None, inline=False):
+    def __init__(self, table, values=None, inline=False, **kwargs):
         self.table = table
         self.select = None
         self.inline=inline
         self.parameters = self._process_colparams(values)
+
+        self.kwargs = kwargs
 
     def get_children(self, **kwargs):
         if self.select is not None:
@@ -3383,11 +3385,13 @@ class Insert(_UpdateBase):
         return u
 
 class Update(_UpdateBase):
-    def __init__(self, table, whereclause, values=None, inline=False):
+    def __init__(self, table, whereclause, values=None, inline=False, **kwargs):
         self.table = table
         self._whereclause = whereclause
         self.inline = inline
         self.parameters = self._process_colparams(values)
+
+        self.kwargs = kwargs
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:

@@ -10,13 +10,20 @@ PostgreSQL supports partial indexes. To create them pass a posgres_where
 option to the Index constructor::
 
   Index('my_index', my_table.c.id, postgres_where=tbl.c.value > 10)
+
+PostgreSQL 8.2+ supports returning a result set from inserts and updates.
+To use this pass the column/expression list to the postgres_returning
+parameter when creating the queries::
+    
+  raises = tbl.update(empl.c.sales > 100, values=dict(salary=empl.c.salary * 1.1), 
+    postgres_returning=[empl.c.id, empl.c.salary]).execute().fetchall()
 """
 
 import re, random, warnings, string
 
 from sqlalchemy import sql, schema, exceptions, util
 from sqlalchemy.engine import base, default
-from sqlalchemy.sql import compiler
+from sqlalchemy.sql import compiler, expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
 
@@ -198,13 +205,27 @@ def descriptor():
     ]}
 
 SELECT_RE = re.compile(
-    r'\s*(?:SELECT|FETCH)',
+    r'\s*(?:SELECT|FETCH|(UPDATE|INSERT))',
+    re.I | re.UNICODE)
+
+RETURNING_RE = re.compile(
+    'RETURNING',
+    re.I | re.UNICODE)
+
+# This finds if the RETURNING is not inside a quoted/commented values. Handles string literals,
+# quoted identifiers, dollar quotes, SQL comments and C style multiline comments. This does not
+# handle correctly nested C style quotes, lets hope no one does the following:
+# UPDATE tbl SET x=y /* foo /* bar */ RETURNING */
+RETURNING_QUOTED_RE = re.compile(
+    '\\s*(?:UPDATE|INSERT)\\s(?:[^\'"$/-]|-(?!-)|/(?!\\*)|"(?:[^"]|"")*"|\'(?:[^\']|\'\')*\'|\\$(?P<dquote>[^$]*)\\$.*?\\$(?P=dquote)\\$|--[^\n]*\n|/\\*([^*]|\\*(?!/))*\\*/)*\\sRETURNING',
     re.I | re.UNICODE)
 
 class PGExecutionContext(default.DefaultExecutionContext):
 
     def is_select(self):
-        return SELECT_RE.match(self.statement)
+        m = SELECT_RE.match(self.statement)
+        return m and (not m.group(1) or (RETURNING_RE.search(self.statement)
+           and RETURNING_QUOTED_RE.match(self.statement)))
         
     def create_cursor(self):
         # executing a default or Sequence standalone creates an execution context without a statement.  
@@ -597,6 +618,29 @@ class PGCompiler(compiler.DefaultCompiler):
             return " FOR UPDATE NOWAIT"
         else:
             return super(PGCompiler, self).for_update_clause(select)
+
+    def _append_returning(self, text, stmt):
+        returning_cols = stmt.kwargs.get('postgres_returning', None)
+        if returning_cols:
+            def flatten_columnlist(collist):
+                for c in collist:
+                    if isinstance(c, expression.Selectable):
+                        for co in c.columns:
+                            yield co
+                    else:
+                        yield c
+            columns = [self.process(c) for c in flatten_columnlist(returning_cols)]
+            text += ' RETURNING ' + string.join(columns, ', ')
+        
+        return text
+
+    def visit_update(self, update_stmt):
+        text = super(PGCompiler, self).visit_update(update_stmt)
+        return self._append_returning(text, update_stmt)
+
+    def visit_insert(self, insert_stmt):
+        text = super(PGCompiler, self).visit_insert(insert_stmt)
+        return self._append_returning(text, insert_stmt)
 
 class PGSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):

@@ -1184,7 +1184,35 @@ class CRUDTest(SQLCompileTest):
         s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
         u = table1.update(table1.c.name==s)
         self.assert_compile(u, "UPDATE mytable SET myid=:myid, name=:name, description=:description WHERE mytable.name = (SELECT myothertable.othername FROM myothertable WHERE myothertable.otherid = mytable.myid)")
+    
+    @testing.supported('postgres')
+    def testupdatereturning(self):
+        dialect = postgres.dialect()
         
+        u = update(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
+        
+        u = update(table1, values=dict(name='foo'), postgres_returning=[table1])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s "\
+            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
+        
+        u = update(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING length(mytable.name)", dialect=dialect)
+        
+    @testing.supported('postgres')
+    def testinsertreturning(self):
+        dialect = postgres.dialect()
+        
+        i = insert(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING mytable.myid, mytable.name", dialect=dialect)
+        
+        i = insert(table1, values=dict(name='foo'), postgres_returning=[table1])
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) "\
+            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
+        
+        i = insert(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
+    
     def testdelete(self):
         self.assert_compile(delete(table1, table1.c.myid == 7), "DELETE FROM mytable WHERE mytable.myid = :mytable_myid")
     

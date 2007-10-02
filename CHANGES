@@ -24,6 +24,9 @@ CHANGES
 - The no-arg ResultProxy._row_processor() is now the class attribute
   `_process_row`.
 
+- Added support for returning values from inserts and udpates for
+  PostgreSQL 8.2+. [ticket:797]
+
 0.4.0beta6
 ----------
 
