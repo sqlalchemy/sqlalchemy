@@ -352,45 +352,59 @@ class DateTest(AssertMixin):
         if db.engine.name == 'oracle':
             import sqlalchemy.databases.oracle as oracle
             insert_data =  [
-                    [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.datetime(2005, 11, 10, 0, 0, 0, 29384)],
-                    [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.datetime(2006, 5, 10, 15, 32, 47, 6754)],
-                    [9, 'foo', datetime.datetime(2006, 11, 10, 11, 52, 35), datetime.date(1970,4,1), datetime.datetime(2004, 9, 18, 4, 0, 52, 1043)],
+                    [7, 'jack',
+                     datetime.datetime(2005, 11, 10, 0, 0),
+                     datetime.date(2005,11,10),
+                     datetime.datetime(2005, 11, 10, 0, 0, 0, 29384)],
+                    [8, 'roy',
+                     datetime.datetime(2005, 11, 10, 11, 52, 35),
+                     datetime.date(2005,10,10),
+                     datetime.datetime(2006, 5, 10, 15, 32, 47, 6754)],
+                    [9, 'foo',
+                     datetime.datetime(2006, 11, 10, 11, 52, 35),
+                     datetime.date(1970,4,1),
+                     datetime.datetime(2004, 9, 18, 4, 0, 52, 1043)],
                     [10, 'colber', None, None, None]
              ]
+            fnames = ['user_id', 'user_name', 'user_datetime',
+                      'user_date', 'user_time']
 
-            fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
-
-            collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
-               Column('user_date', Date), Column('user_time', TIMESTAMP)]
-        elif db.engine.name == 'mysql':
-            # these dont really support the TIME type at all
-            insert_data =  [
-                 [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.datetime(2005, 11, 10, 0, 0, 0)],
-                 [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2006, 5, 10, 15, 32, 47)],
-                 [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2004, 9, 18, 4, 0, 52)],
-                 [10, 'colber', None, None]
-            ]
-
-            fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
-
-            collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
-            Column('user_date', DateTime)]
+            collist = [Column('user_id', INT, primary_key=True),
+                       Column('user_name', VARCHAR(20)),
+                       Column('user_datetime', DateTime),
+                       Column('user_date', Date),
+                       Column('user_time', TIMESTAMP)]
         else:
-            insert_data =  [
-                    [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.time(12,20,2)],
-                    [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.time(0,0,0)],
-                    [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.time(23,59,59,999)],
-                    [10, 'colber', None, None, None]
-            ]
+            datetime_micro = 54839
+            time_micro = 999
 
-            if db.engine.name == 'mssql':
-                # MSSQL can't reliably fetch the millisecond part
-                insert_data[2] = [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(1970,4,1), datetime.time(23,59,59)]
+            # Missing or poor microsecond support:
+            if db.engine.name in ('mssql', 'mysql'):
+                datetime_micro, time_micro = 0, 0
             
-            fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+            insert_data =  [
+                [7, 'jack',
+                 datetime.datetime(2005, 11, 10, 0, 0),
+                 datetime.date(2005, 11, 10),
+                 datetime.time(12, 20, 2)],
+                [8, 'roy',
+                 datetime.datetime(2005, 11, 10, 11, 52, 35),
+                 datetime.date(2005, 10, 10),
+                 datetime.time(0, 0, 0)],
+                [9, 'foo',
+                 datetime.datetime(2005, 11, 10, 11, 52, 35, datetime_micro),
+                 datetime.date(1970, 4, 1),
+                 datetime.time(23, 59, 59, time_micro)],
+                [10, 'colber', None, None, None]
+            ]
+            fnames = ['user_id', 'user_name', 'user_datetime',
+                      'user_date', 'user_time']
 
-            collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
-                           Column('user_date', Date), Column('user_time', Time)]
+            collist = [Column('user_id', INT, primary_key=True),
+                       Column('user_name', VARCHAR(20)),
+                       Column('user_datetime', DateTime(timezone=False)),
+                       Column('user_date', Date),
+                       Column('user_time', Time)]
  
         users_with_date = Table('query_users_with_date',
                                 MetaData(testbase.db), *collist)
@@ -398,7 +412,7 @@ class DateTest(AssertMixin):
         insert_dicts = [dict(zip(fnames, d)) for d in insert_data]
 
         for idict in insert_dicts:
-            users_with_date.insert().execute(**idict) # insert the data
+            users_with_date.insert().execute(**idict)
 
     def tearDownAll(self):
         users_with_date.drop()
@@ -407,15 +421,16 @@ class DateTest(AssertMixin):
         global insert_data
 
         l = map(list, users_with_date.select().execute().fetchall())
-        self.assert_(l == insert_data, 'DateTest mismatch: got:%s expected:%s' % (l, insert_data))
+        self.assert_(l == insert_data,
+                     'DateTest mismatch: got:%s expected:%s' % (l, insert_data))
 
     @testing.supported('sqlite')
     def test_sqlite_date(self):
         meta = MetaData(testbase.db)
         t = Table('testdate', meta,
                   Column('id', Integer, primary_key=True),
-                Column('adate', Date), 
-                Column('adatetime', DateTime))
+                  Column('adate', Date), 
+                  Column('adatetime', DateTime))
         t.create(checkfirst=True)
         try:
             d1 = datetime.date(2007, 10, 30)
@@ -423,20 +438,26 @@ class DateTest(AssertMixin):
 
             t.insert().execute(adate=str(d1), adatetime=str(d2))
             
-            assert t.select().execute().fetchall()[0] == (1, datetime.date(2007, 10, 30), datetime.datetime(2007, 10, 30))
+            self.assert_(t.select().execute().fetchall()[0] ==
+                         (1, datetime.date(2007, 10, 30),
+                          datetime.datetime(2007, 10, 30)))
             
         finally:
             t.drop(checkfirst=True)
         
-        
-    def testtextdate(self):     
-        x = testbase.db.text("select user_datetime from query_users_with_date", typemap={'user_datetime':DateTime}).execute().fetchall()
+    def testtextdate(self):
+        x = testbase.db.text(
+            "select user_datetime from query_users_with_date",
+            typemap={'user_datetime':DateTime}).execute().fetchall()
         
         print repr(x)
         self.assert_(isinstance(x[0][0], datetime.datetime))
         
-        #x = db.text("select * from query_users_with_date where user_datetime=:date", bindparams=[bindparam('date', )]).execute(date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
-        #print repr(x)
+        x = testbase.db.text(
+            "select * from query_users_with_date where user_datetime=:date",
+            bindparams=[bindparam('date', )]).execute(
+            date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
+        print repr(x)
 
     def testdate2(self):
         meta = MetaData(testbase.db)
@@ -458,6 +479,7 @@ class DateTest(AssertMixin):
 
         finally:
             t.drop(checkfirst=True)
+
 
 class NumericTest(AssertMixin):
     def setUpAll(self):
