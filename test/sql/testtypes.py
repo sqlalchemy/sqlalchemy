@@ -455,7 +455,7 @@ class DateTest(AssertMixin):
         
         x = testbase.db.text(
             "select * from query_users_with_date where user_datetime=:date",
-            bindparams=[bindparam('date', )]).execute(
+            bindparams=[bindparam('date', type_=types.DateTime)]).execute(
             date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
         print repr(x)
 
