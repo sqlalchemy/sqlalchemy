@@ -1188,6 +1188,89 @@ class Engine(Connectable):
 
         return self.pool.unique_connection()
 
+
+class RowProxy(object):
+    """Proxy a single cursor row for a parent ResultProxy.
+
+    Mostly follows "ordered dictionary" behavior, mapping result
+    values to the string-based column name, the integer position of
+    the result in the row, as well as Column instances which can be
+    mapped to the original Columns that produced this result set (for
+    results that correspond to constructed SQL expressions).
+    """
+
+    def __init__(self, parent, row):
+        """RowProxy objects are constructed by ResultProxy objects."""
+
+        self.__parent = parent
+        self.__row = row
+        if self.__parent._ResultProxy__echo:
+            self.__parent.context.engine.logger.debug("Row " + repr(row))
+
+    def close(self):
+        """Close the parent ResultProxy."""
+
+        self.__parent.close()
+
+    def __contains__(self, key):
+        return self.__parent._has_key(self.__row, key)
+
+    def __len__(self):
+        return len(self.__row)
+        
+    def __iter__(self):
+        for i in xrange(len(self.__row)):
+            yield self.__parent._get_col(self.__row, i)
+
+    def __eq__(self, other):
+        return ((other is self) or
+                (other == tuple([self.__parent._get_col(self.__row, key)
+                                 for key in xrange(len(self.__row))])))
+
+    def __repr__(self):
+        return repr(tuple(self))
+
+    def has_key(self, key):
+        """Return True if this RowProxy contains the given key."""
+
+        return self.__parent._has_key(self.__row, key)
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            indices = key.indices(len(self))
+            return tuple([self.__parent._get_col(self.__row, i)
+                          for i in xrange(*indices)])
+        else:
+            return self.__parent._get_col(self.__row, key)
+
+    def __getattr__(self, name):
+        try:
+            return self.__parent._get_col(self.__row, name)
+        except KeyError, e:
+            raise AttributeError(e.args[0])
+
+    def items(self):
+        """Return a list of tuples, each tuple containing a key/value pair."""
+
+        return [(key, getattr(self, key)) for key in self.keys()]
+
+    def keys(self):
+        """Return the list of keys as strings represented by this RowProxy."""
+
+        return self.__parent.keys
+
+    def values(self):
+        """Return the values represented by this RowProxy as a list."""
+
+        return list(self)
+
+
+class BufferedColumnRow(RowProxy):
+    def __init__(self, parent, row):
+        row = [ResultProxy._get_col(parent, row, i) for i in xrange(len(row))]
+        super(BufferedColumnRow, self).__init__(parent, row)
+
+
 class ResultProxy(object):
     """Wraps a DB-API cursor object to provide easier access to row columns.
 
@@ -1210,10 +1293,7 @@ class ResultProxy(object):
     to obtain information from the underlying ExecutionContext.
     """
 
-    def __ambiguous_processor(self, colname):
-        def process(value):
-            raise exceptions.InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % colname)
-        return process
+    _process_row = RowProxy
 
     def __init__(self, context):
         """ResultProxy objects are constructed via the execute() method on SQLEngine."""
@@ -1222,7 +1302,6 @@ class ResultProxy(object):
         self.closed = False
         self.cursor = context.cursor
         self.__echo = context.engine._should_log_info
-        self._process_row = self._row_processor()
         if context.is_select():
             self._init_metadata()
             self._rowcount = None
@@ -1295,6 +1374,11 @@ class ResultProxy(object):
 
             return rec
         return util.PopulateDict(lookup_key)
+
+    def __ambiguous_processor(self, colname):
+        def process(value):
+            raise exceptions.InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % colname)
+        return process
 
     def close(self):
         """Close this ResultProxy, and the underlying DB-API cursor corresponding to the execution.
@@ -1393,9 +1477,6 @@ class ResultProxy(object):
         return self.cursor.fetchmany(size)
     def _fetchall_impl(self):
         return self.cursor.fetchall()
-
-    def _row_processor(self):
-        return RowProxy
 
     def fetchall(self):
         """Fetch all rows, just like DB-API ``cursor.fetchall()``."""
@@ -1500,13 +1581,11 @@ class BufferedColumnResultProxy(ResultProxy):
     cx_Oracle LOB objects, but this behavior is known to exist in
     other DB-APIs as well (Pygresql, currently unsupported).
     """
+    _process_row = BufferedColumnRow
 
     def _get_col(self, row, key):
         rec = self._key_cache[key]
         return row[rec[2]]
-
-    def _row_processor(self):
-        return BufferedColumnRow
 
     def fetchall(self):
         l = []
@@ -1528,87 +1607,6 @@ class BufferedColumnResultProxy(ResultProxy):
             l.append(row)
         return l
 
-class RowProxy(object):
-    """Proxy a single cursor row for a parent ResultProxy.
-
-    Mostly follows "ordered dictionary" behavior, mapping result
-    values to the string-based column name, the integer position of
-    the result in the row, as well as Column instances which can be
-    mapped to the original Columns that produced this result set (for
-    results that correspond to constructed SQL expressions).
-    """
-
-    def __init__(self, parent, row):
-        """RowProxy objects are constructed by ResultProxy objects."""
-
-        self.__parent = parent
-        self.__row = row
-        if self.__parent._ResultProxy__echo:
-            self.__parent.context.engine.logger.debug("Row " + repr(row))
-
-    def close(self):
-        """Close the parent ResultProxy."""
-
-        self.__parent.close()
-
-    def __contains__(self, key):
-        return self.__parent._has_key(self.__row, key)
-
-    def __len__(self):
-        return len(self.__row)
-        
-    def __iter__(self):
-        for i in range(0, len(self.__row)):
-            yield self.__parent._get_col(self.__row, i)
-
-    def __eq__(self, other):
-        return ((other is self) or
-                (other == tuple([self.__parent._get_col(self.__row, key)
-                                 for key in range(len(self.__row))])))
-
-    def __repr__(self):
-        return repr(tuple([self.__parent._get_col(self.__row, key)
-                           for key in range(len(self.__row))]))
-
-    def has_key(self, key):
-        """Return True if this RowProxy contains the given key."""
-
-        return self.__parent._has_key(self.__row, key)
-
-    def __getitem__(self, key):
-        if isinstance(key, slice):
-            indices = key.indices(len(self))
-            return tuple([self.__parent._get_col(self.__row, i)
-                          for i in range(*indices)])
-        else:
-            return self.__parent._get_col(self.__row, key)
-
-    def __getattr__(self, name):
-        try:
-            return self.__parent._get_col(self.__row, name)
-        except KeyError, e:
-            raise AttributeError(e.args[0])
-
-    def items(self):
-        """Return a list of tuples, each tuple containing a key/value pair."""
-
-        return [(key, getattr(self, key)) for key in self.keys()]
-
-    def keys(self):
-        """Return the list of keys as strings represented by this RowProxy."""
-
-        return self.__parent.keys
-
-    def values(self):
-        """Return the values represented by this RowProxy as a list."""
-
-        return list(self)
-
-
-class BufferedColumnRow(RowProxy):
-    def __init__(self, parent, row):
-        row = [ResultProxy._get_col(parent, row, i) for i in xrange(len(row))]
-        super(BufferedColumnRow, self).__init__(parent, row)
 
 class SchemaIterator(schema.SchemaVisitor):
     """A visitor that can gather text into a buffer and execute the contents of the buffer."""

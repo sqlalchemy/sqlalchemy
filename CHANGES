@@ -5,21 +5,24 @@ CHANGES
 0.4.0beta7
 ----------
 
-- Added partial index support for PostgreSQL. Use the postgres_where
-  keyword on the Index.
+- Added partial index support for PostgreSQL. Use the postgres_where keyword
+  on the Index.
 
 - The IdentifierPreprarer's _requires_quotes test is now regex based.  Any
   out-of-tree dialects that provide custom sets of legal_characters or
   illegal_initial_characters will need to move to regexes or override
   _requires_quotes.
 
-- firebird has supports_sane_rowcount and supports_sane_multi_rowcount set 
+- Firebird has supports_sane_rowcount and supports_sane_multi_rowcount set
   to False due to ticket #370 (right way).
 
-- fixed three- and multi-level select and deferred inheritance
-  loading (i.e. abc inheritance with no select_table), [ticket:795]
+- Fixed three- and multi-level select and deferred inheritance loading
+  (i.e. abc inheritance with no select_table), [ticket:795]
 
-- ident passed to id_chooser in shard.py always a list
+- Ident passed to id_chooser in shard.py always a list.
+
+- The no-arg ResultProxy._row_processor() is now the class attribute
+  `_process_row`.
 
 0.4.0beta6
 ----------
