@@ -1562,10 +1562,13 @@ class RowProxy(object):
             yield self.__parent._get_col(self.__row, i)
 
     def __eq__(self, other):
-        return (other is self) or (other == tuple([self.__parent._get_col(self.__row, key) for key in range(0, len(self.__row))]))
+        return ((other is self) or
+                (other == tuple([self.__parent._get_col(self.__row, key)
+                                 for key in range(len(self.__row))])))
 
     def __repr__(self):
-        return repr(tuple([self.__parent._get_col(self.__row, key) for key in range(0, len(self.__row))]))
+        return repr(tuple([self.__parent._get_col(self.__row, key)
+                           for key in range(len(self.__row))]))
 
     def has_key(self, key):
         """Return True if this RowProxy contains the given key."""
@@ -1575,7 +1578,8 @@ class RowProxy(object):
     def __getitem__(self, key):
         if isinstance(key, slice):
             indices = key.indices(len(self))
-            return tuple([self.__parent._get_col(self.__row, i) for i in range(*indices)])
+            return tuple([self.__parent._get_col(self.__row, i)
+                          for i in range(*indices)])
         else:
             return self.__parent._get_col(self.__row, key)
 
@@ -1600,8 +1604,6 @@ class RowProxy(object):
 
         return list(self)
 
-    def __len__(self):
-        return len(self.__row)
 
 class BufferedColumnRow(RowProxy):
     def __init__(self, parent, row):
