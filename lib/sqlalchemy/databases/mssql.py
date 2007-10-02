@@ -981,10 +981,6 @@ class MSSQLIdentifierPreparer(compiler.IdentifierPreparer):
         #TODO: determin MSSQL's escapeing rules
         return value
 
-    def _fold_identifier_case(self, value):
-        #TODO: determin MSSQL's case folding rules
-        return value
-
 dialect = MSSQLDialect
 dialect.statement_compiler = MSSQLCompiler
 dialect.schemagenerator = MSSQLSchemaGenerator

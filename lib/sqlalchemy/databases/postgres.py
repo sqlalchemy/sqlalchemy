@@ -669,9 +669,6 @@ class PGDefaultRunner(base.DefaultRunner):
             return None
 
 class PGIdentifierPreparer(compiler.IdentifierPreparer):
-    def _fold_identifier_case(self, value):
-        return value.lower()
-
     def _unquote_identifier(self, value):
         if value[0] == self.initial_quote:
             value = value[1:-1].replace('""','"')

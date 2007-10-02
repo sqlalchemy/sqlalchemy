@@ -963,18 +963,6 @@ class IdentifierPreparer(object):
 
         return self.initial_quote + self._escape_identifier(value) + self.final_quote
 
-    def _fold_identifier_case(self, value):
-        """Fold the case of an identifier.
-
-        Subclasses should override this to provide database-dependent
-        case folding behavior.
-        """
-
-        return value
-        # ANSI SQL calls for the case of all unquoted identifiers to be folded to UPPER.
-        # some tests would need to be rewritten if this is done.
-        #return value.upper()
-
     def _requires_quotes(self, value):
         """Return True if the given identifier requires quoting."""
         lc_value = value.lower()

@@ -2477,16 +2477,6 @@ class _MySQLIdentifierPreparer(compiler.IdentifierPreparer):
     def __init__(self, dialect, **kw):
         super(_MySQLIdentifierPreparer, self).__init__(dialect, **kw)
 
-    def _fold_identifier_case(self, value):
-        # TODO: determine MySQL's case folding rules
-        #
-        # For compatability with sql.text() issued statements, maybe it's best
-        # to just leave things as-is.  When lower_case_table_names > 0 it
-        # looks a good idea to lc everything, but more importantly the casing
-        # of all identifiers in an expression must be consistent.  So for now,
-        # just leave everything as-is.
-        return value
-
     def _quote_free_identifiers(self, *ids):
         """Unilaterally identifier-quote any number of strings."""
 

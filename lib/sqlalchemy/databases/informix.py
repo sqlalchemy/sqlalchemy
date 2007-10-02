@@ -498,9 +498,6 @@ class InfoIdentifierPreparer(compiler.IdentifierPreparer):
     def __init__(self, dialect):
         super(InfoIdentifierPreparer, self).__init__(dialect, initial_quote="'")
     
-    def _fold_identifier_case(self, value):
-        return value.lower()
-    
     def _requires_quotes(self, value):
         return False
 
