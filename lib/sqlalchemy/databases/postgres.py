@@ -217,8 +217,19 @@ RETURNING_RE = re.compile(
 # handle correctly nested C style quotes, lets hope no one does the following:
 # UPDATE tbl SET x=y /* foo /* bar */ RETURNING */
 RETURNING_QUOTED_RE = re.compile(
-    '\\s*(?:UPDATE|INSERT)\\s(?:[^\'"$/-]|-(?!-)|/(?!\\*)|"(?:[^"]|"")*"|\'(?:[^\']|\'\')*\'|\\$(?P<dquote>[^$]*)\\$.*?\\$(?P=dquote)\\$|--[^\n]*\n|/\\*([^*]|\\*(?!/))*\\*/)*\\sRETURNING',
-    re.I | re.UNICODE)
+    """\s*(?:UPDATE|INSERT)\s
+        (?: # handle quoted and commented tokens separately
+            [^'"$/-] # non quote/comment character
+            | -(?!-) # a dash that does not begin a comment
+            | /(?!\*) # a slash that does not begin a comment
+            | "(?:[^"]|"")*" # quoted literal
+            | '(?:[^']|'')*' # quoted string
+            | \$(?P<dquote>[^$]*)\$.*?\$(?P=dquote)\$ # dollar quotes
+            | --[^\\n]*(?=\\n) # SQL comment, leave out line ending as that counts as whitespace
+                            # for the returning token
+            | /\*([^*]|\*(?!/))*\*/ # C style comment, doesn't handle nesting
+        )*
+        \sRETURNING\s""", re.I | re.UNICODE | re.VERBOSE)
 
 class PGExecutionContext(default.DefaultExecutionContext):
 
