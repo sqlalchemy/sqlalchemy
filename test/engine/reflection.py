@@ -515,23 +515,19 @@ class ReflectionTest(PersistTest):
                        UniqueConstraint('from', name='when'))
         Index('where', table_a.c['from'])
 
-        if testbase.db.engine.name == 'firebird':
-            # Firebird doesn't like creating the constraint with 'true' column
-            # quoted, when this column was created without quotes
-            # it will work with one of these 2 syntaxes:
-            #
-            #     CONSTRAINT limit  CHECK (true <> 1)
-            #     CONSTRAINT limit  CHECK ('TRUE' <> 1)
-            #
-            # for now, I'll use the 1st option
-            quoter = lambda x: x
+        # There's currently no way to calculate identifier case normalization
+        # in isolation, so...
+        if testbase.db.engine.name in ('firebird', 'oracle'):
+            check_col = 'TRUE'
         else:
-            quoter = meta.bind.dialect.identifier_preparer.quote_identifier
+            check_col = 'true'
+        quoter = meta.bind.dialect.identifier_preparer.quote_identifier
 
         table_b = Table('false', meta,
                         Column('create', Integer, primary_key=True),
                         Column('true', Integer, ForeignKey('select.not')),
-                        CheckConstraint('%s <> 1' % quoter('true'), name='limit'))
+                        CheckConstraint('%s <> 1' % quoter(check_col),
+                                        name='limit'))
 
         table_c = Table('is', meta,
                         Column('or', Integer, nullable=False, primary_key=True),
