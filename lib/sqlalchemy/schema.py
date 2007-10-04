@@ -768,9 +768,10 @@ class ColumnDefault(DefaultGenerator):
         return "ColumnDefault(%s)" % repr(self.arg)
 
 class Sequence(DefaultGenerator):
-    """Represent a sequence, which applies to Oracle and Postgres databases."""
+    """Represents a named sequence."""
 
-    def __init__(self, name, start = None, increment = None, schema=None, optional=False, quote=False, **kwargs):
+    def __init__(self, name, start=None, increment=None, schema=None,
+                 optional=False, quote=False, **kwargs):
         super(Sequence, self).__init__(**kwargs)
         self.name = name
         self.start = start
@@ -778,22 +779,28 @@ class Sequence(DefaultGenerator):
         self.optional=optional
         self.quote = quote
         self.schema = schema
+        self.kwargs = kwargs
 
     def __repr__(self):
         return "Sequence(%s)" % ', '.join(
             [repr(self.name)] +
-            ["%s=%s" % (k, repr(getattr(self, k))) for k in ['start', 'increment', 'optional']])
+            ["%s=%s" % (k, repr(getattr(self, k)))
+             for k in ['start', 'increment', 'optional']])
 
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
         column.sequence = self
 
     def create(self, bind=None, checkfirst=True):
+        """Creates this sequence in the database."""
+        
         if bind is None:
             bind = self._get_bind(raiseerr=True)
         bind.create(self, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=True):
+        """Drops this sequence from the database."""
+
         if bind is None:
             bind = self._get_bind(raiseerr=True)
         bind.drop(self, checkfirst=checkfirst)
