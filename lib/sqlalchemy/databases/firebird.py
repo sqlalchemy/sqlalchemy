@@ -115,7 +115,7 @@ class FBDialect(default.DefaultDialect):
         import kinterbasdb
         return kinterbasdb
     dbapi = classmethod(dbapi)
-    
+
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
         if opts.get('port'):
@@ -137,9 +137,28 @@ class FBDialect(default.DefaultDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
+    def _normalize_name(self, name):
+        # Remove trailing spaces: FB uses a CHAR() type,
+        # that is padded with spaces
+        name = name and name.rstrip()
+        if name is None:
+            return None
+        elif name.upper() == name and not self.identifier_preparer._requires_quotes(name.lower()):
+            return name.lower()
+        else:
+            return name
+
+    def _denormalize_name(self, name):
+        if name is None:
+            return None
+        elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower()):
+            return name.upper()
+        else:
+            return name
+
     def table_names(self, connection, schema):
-        s = "SELECT R.RDB$RELATION_NAME FROM RDB$RELATIONS R"
-        return [row[0] for row in connection.execute(s)]
+        s = "SELECT R.RDB$RELATION_NAME FROM RDB$RELATIONS R WHERE R.RDB$SYSTEM_FLAG=0"
+        return [self._normalize_name(row[0]) for row in connection.execute(s)]
 
     def has_table(self, connection, table_name, schema=None):
         tblqry = """
@@ -147,7 +166,7 @@ class FBDialect(default.DefaultDialect):
         FROM RDB$RELATIONS R
         WHERE R.RDB$RELATION_NAME=?"""
 
-        c = connection.execute(tblqry, [table_name.upper()])
+        c = connection.execute(tblqry, [self._denormalize_name(table_name)])
         row = c.fetchone()
         if row[0] > 0:
             return True
@@ -214,34 +233,23 @@ class FBDialect(default.DefaultDialect):
         ORDER BY SE.RDB$INDEX_NAME, SE.RDB$FIELD_POSITION"""
 
         # get primary key fields
-        c = connection.execute(keyqry, ["PRIMARY KEY", table.name.upper()])
-        pkfields =[r['SENAME'] for r in c.fetchall()]
+        c = connection.execute(keyqry, ["PRIMARY KEY", self._denormalize_name(table.name)])
+        pkfields =[self._normalize_name(r['SENAME']) for r in c.fetchall()]
 
         # get all of the fields for this table
+        c = connection.execute(tblqry, [self._denormalize_name(table.name)])
 
-        def lower_if_possible(name):
-            # Remove trailing spaces: FB uses a CHAR() type,
-            # that is padded with spaces
-            name = name.rstrip()
-            # If its composed only by upper case chars, use
-            # the lowered version, otherwise keep the original
-            # (even if stripped...)
-            lname = name.lower()
-            if lname.upper() == name and not ' ' in name:
-                return lname
-            return name
+        found_table = False
+        while True:
+            row = c.fetchone()
+            if row is None:
+                break
+            found_table = True
 
-        c = connection.execute(tblqry, [table.name.upper()])
-        row = c.fetchone()
-        if not row:
-            raise exceptions.NoSuchTableError(table.name)
-
-        while row:
-            name = row['FNAME']
-            python_name = lower_if_possible(name)
-            if include_columns and python_name not in include_columns:
+            name = self._normalize_name(row['FNAME'])
+            if include_columns and name not in include_columns:
                 continue
-            args = [python_name]
+            args = [name]
 
             kw = {}
             # get the data types and lengths
@@ -256,25 +264,30 @@ class FBDialect(default.DefaultDialect):
             # is it a primary key?
             kw['primary_key'] = name in pkfields
 
+            # is it nullable ?
+            kw['nullable'] = not bool(row['NULL_FLAG'])
+
             table.append_column(schema.Column(*args, **kw))
-            row = c.fetchone()
+
+        if not found_table:
+            raise exceptions.NoSuchTableError(table.name)
 
         # get the foreign keys
-        c = connection.execute(fkqry, ["FOREIGN KEY", table.name.upper()])
+        c = connection.execute(fkqry, ["FOREIGN KEY", self._denormalize_name(table.name)])
         fks = {}
         while True:
             row = c.fetchone()
             if not row: break
 
-            cname = lower_if_possible(row['CNAME'])
+            cname = self._normalize_name(row['CNAME'])
             try:
                 fk = fks[cname]
             except KeyError:
                 fks[cname] = fk = ([], [])
-            rname = lower_if_possible(row['RNAME'])
+            rname = self._normalize_name(row['RNAME'])
             schema.Table(rname, table.metadata, autoload=True, autoload_with=connection)
-            fname = lower_if_possible(row['FNAME'])
-            refspec = rname + '.' + lower_if_possible(row['SENAME'])
+            fname = self._normalize_name(row['FNAME'])
+            refspec = rname + '.' + self._normalize_name(row['SENAME'])
             fk[0].append(fname)
             fk[1].append(refspec)
 
@@ -312,7 +325,7 @@ class FBCompiler(compiler.DefaultCompiler):
 
     def visit_sequence(self, seq):
         return "gen_id(" + seq.name + ", 1)"
-        
+
     def get_select_precolumns(self, select):
         """Called when building a ``SELECT`` statement, position is just
         before column list Firebird puts the limit and offset right
@@ -406,7 +419,7 @@ RESERVED_WORDS = util.Set(
 
 class FBIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS
-    
+
     def __init__(self, dialect):
         super(FBIdentifierPreparer,self).__init__(dialect, omit_schema=True)
 

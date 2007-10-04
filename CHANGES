@@ -16,6 +16,12 @@ CHANGES
 - Firebird has supports_sane_rowcount and supports_sane_multi_rowcount set
   to False due to ticket #370 (right way).
 
+- Improvements and fixes on Firebird reflection:
+  . FBDialect now mimics OracleDialect, regarding case-sensitivity of TABLE and 
+    COLUMN names (see 'case_sensitive remotion' topic on this current file).
+  . FBDialect.table_names() doesn't bring system tables (ticket:796).
+  . FB now reflects Column's nullable property correctly.
+
 - Fixed three- and multi-level select and deferred inheritance loading
   (i.e. abc inheritance with no select_table), [ticket:795]
 
