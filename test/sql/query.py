@@ -564,50 +564,6 @@ class QueryTest(PersistTest):
         r = s.execute().fetchall()
         assert len(r) == 1
 
-    @testing.supported('postgres')
-    def test_update_returning(self):
-        meta = MetaData(testbase.db)
-        table = Table('tables', meta, 
-            Column('id', Integer, primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
-            
-            result = table.update(table.c.persons > 4, dict(full=True), postgres_returning=[table.c.id]).execute()
-            self.assertEqual(result.fetchall(), [(1,)])
-            
-            result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-            self.assertEqual(result2.fetchall(), [(1,True),(2,False)])
-        finally:
-            table.drop()
-
-    @testing.supported('postgres')
-    def test_insert_returning(self):
-        meta = MetaData(testbase.db)
-        table = Table('tables', meta, 
-            Column('id', Integer, primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            result = table.insert(postgres_returning=[table.c.id]).execute({'persons': 1, 'full': False})
-            
-            self.assertEqual(result.fetchall(), [(1,)])
-            
-            # Multiple inserts only return the last row
-            result2 = table.insert(postgres_returning=[table]).execute(
-                 [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
-             
-            self.assertEqual(result2.fetchall(), [(3,3,True)])
-            
-            result3 = table.insert(postgres_returning=[(table.c.id*2).label('double_id')]).execute({'persons': 4, 'full': False})
-            self.assertEqual([dict(row) for row in result3], [{'double_id':8}])
-        finally:
-            table.drop()
 
 class CompoundTest(PersistTest):
     """test compound statements like UNION, INTERSECT, particularly their ability to nest on

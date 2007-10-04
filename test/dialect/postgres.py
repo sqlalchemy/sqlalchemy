@@ -5,6 +5,7 @@ from sqlalchemy import exceptions
 from sqlalchemy.databases import postgres
 from sqlalchemy.engine.strategies import MockEngineStrategy
 from testlib import *
+from sqlalchemy.sql import table, column
 
 class SequenceTest(SQLCompileTest):
     def test_basic(self):
@@ -18,6 +19,92 @@ class SequenceTest(SQLCompileTest):
         seq = Sequence("My_Seq", schema="Some_Schema")
         assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
 
+class CompileTest(SQLCompileTest):
+    def test_update_returning(self):
+        dialect = postgres.dialect()
+        table1 = table('mytable', 
+            column('myid', Integer),
+            column('name', String),
+            column('description', String),
+        )
+        
+        u = update(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
+        
+        u = update(table1, values=dict(name='foo'), postgres_returning=[table1])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s "\
+            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
+        
+        u = update(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING length(mytable.name)", dialect=dialect)
+        
+    def test_insert_returning(self):
+        dialect = postgres.dialect()
+        table1 = table('mytable', 
+            column('myid', Integer),
+            column('name', String),
+            column('description', String),
+        )
+        
+        i = insert(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING mytable.myid, mytable.name", dialect=dialect)
+        
+        i = insert(table1, values=dict(name='foo'), postgres_returning=[table1])
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) "\
+            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
+        
+        i = insert(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
+
+class ReturningTest(AssertMixin):
+    @testing.supported('postgres')
+    @testing.exclude('postgres', '<', (8, 4))
+    def test_update_returning(self):
+        meta = MetaData(testbase.db)
+        table = Table('tables', meta, 
+            Column('id', Integer, primary_key=True),
+            Column('persons', Integer),
+            Column('full', Boolean)
+        )
+        table.create()
+        try:
+            table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
+            
+            result = table.update(table.c.persons > 4, dict(full=True), postgres_returning=[table.c.id]).execute()
+            self.assertEqual(result.fetchall(), [(1,)])
+            
+            result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
+            self.assertEqual(result2.fetchall(), [(1,True),(2,False)])
+        finally:
+            table.drop()
+
+    @testing.supported('postgres')
+    @testing.exclude('postgres', '<', (8, 4))
+    def test_insert_returning(self):
+        meta = MetaData(testbase.db)
+        table = Table('tables', meta, 
+            Column('id', Integer, primary_key=True),
+            Column('persons', Integer),
+            Column('full', Boolean)
+        )
+        table.create()
+        try:
+            result = table.insert(postgres_returning=[table.c.id]).execute({'persons': 1, 'full': False})
+            
+            self.assertEqual(result.fetchall(), [(1,)])
+            
+            # Multiple inserts only return the last row
+            result2 = table.insert(postgres_returning=[table]).execute(
+                 [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
+             
+            self.assertEqual(result2.fetchall(), [(3,3,True)])
+            
+            result3 = table.insert(postgres_returning=[(table.c.id*2).label('double_id')]).execute({'persons': 4, 'full': False})
+            self.assertEqual([dict(row) for row in result3], [{'double_id':8}])
+        finally:
+            table.drop()
+    
+    
 class InsertTest(AssertMixin):
     @testing.supported('postgres')
     def setUpAll(self):

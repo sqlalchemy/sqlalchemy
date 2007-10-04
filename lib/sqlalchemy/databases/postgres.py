@@ -382,6 +382,13 @@ class PGDialect(default.DefaultDialect):
         """ % locals()
         return [row[0].decode(self.encoding) for row in connection.execute(s)]
 
+    def server_version_info(self, connection):
+        v = connection.execute("select version()").scalar()
+        m = re.match('PostgreSQL (\d+)\.(\d+)\.(\d+)', v)
+        if not m:
+            raise exceptions.AssertionError("Could not determine version from string '%s'" % v)
+        return tuple([int(x) for x in m.group(1, 2, 3)])
+
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer
         if table.schema is not None:
