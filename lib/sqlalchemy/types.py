@@ -59,42 +59,54 @@ class AbstractType(object):
         return value
 
     def convert_result_value(self, value, dialect):
-        """legacy convert_result_value() method.
-        
-        this method is only used when called via a user-defined
-        subclass' own convert_result_value() method, and adapts
-        the call to use the result_processor() callable.
+        """Legacy convert_result_value() compatibility method.
 
-        The method is configured at class definition time 
-        by a legacy adapter metaclass, and
-        will not work with a subclass that does not 
-        define a convert_result_value() method of its own.
+        This adapter method is provided for user-defined types that implement
+        the older convert_* interface and need to call their super method.
+        These calls are adapted behind the scenes to use the newer
+        callable-based interface via result_processor().
+
+        Compatibility is configured on a case-by-case basis at class
+        definition time by a legacy adapter metaclass.  This method is only
+        available and functional if the concrete subclass implements the
+        legacy interface.
         """
-        return self.super_result_processor(dialect)(value)
+
+        processor = self.super_result_processor(dialect)
+        if processor:
+            return processor(value)
+        else:
+            return value
     convert_result_value._sa_override = True
     
     def convert_bind_param(self, value, dialect):
-        """legacy convert_bind_param() method.
+        """Legacy convert_bind_param() compatability method.
         
-        this method is only used when called via a user-defined
-        subclass' own convert_bind_param() method, and adapts
-        the call to use the bind_processor() callable.
-        
-        The method is configured at class definition time 
-        by a legacy adapter metaclass, and
-        will not work with a subclass that does not 
-        define a convert_bind_param() method of its own.
+        This adapter method is provided for user-defined types that implement
+        the older convert_* interface and need to call their super method.
+        These calls are adapted behind the scenes to use the newer
+        callable-based interface via bind_processor().
+
+        Compatibility is configured on a case-by-case basis at class
+        definition time by a legacy adapter metaclass.  This method is only
+        available and functional if the concrete subclass implements the
+        legacy interface.
         """
-        return self.super_bind_processor(dialect)(value)
+
+        processor = self.super_bind_processor(dialect)
+        if processor:
+            return processor(value)
+        else:
+            return value
     convert_bind_param._sa_override = True
     
     def bind_processor(self, dialect):
-        """define a bind parameter processing function."""
+        """Defines a bind parameter processing function."""
         
         return None
 
     def result_processor(self, dialect):
-        """define a result-column processing function."""
+        """Defines a result-column processing function."""
         
         return None
 
