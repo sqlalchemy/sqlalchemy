@@ -33,6 +33,8 @@ CHANGES
 - Added support for returning values from inserts and udpates for
   PostgreSQL 8.2+. [ticket:797]
 
+- fixed sqlite reflection of BOOL/BOOLEAN [ticket:808]
+
 0.4.0beta6
 ----------
 

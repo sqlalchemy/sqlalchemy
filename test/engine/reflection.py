@@ -55,6 +55,7 @@ class ReflectionTest(PersistTest):
             Column('test_passivedefault3', deftype2, PassiveDefault(defval2)),
             Column('test_passivedefault4', deftype3, PassiveDefault(defval3)),
             Column('test9', Binary(100)),
+            Column('test10', Boolean),
             Column('test_numeric', Numeric(None, None)),
             test_needs_fk=True,
         )

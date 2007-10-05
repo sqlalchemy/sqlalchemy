@@ -166,6 +166,8 @@ pragma_names = {
     'DATETIME' : SLDateTime,
     'DATE' : SLDate,
     'BLOB' : SLBinary,
+    'BOOL': SLBoolean, 
+    'BOOLEAN': SLBoolean,
 }
 
 def descriptor():
