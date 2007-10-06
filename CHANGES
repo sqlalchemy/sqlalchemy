@@ -38,6 +38,7 @@
    - passthrough for stringified dates
 - firebird
     - supports_sane_rowcount() set to False due to ticket #370 (right way).
+    - fixed reflection of Column's nullable property.
       
 0.3.10
 - general
