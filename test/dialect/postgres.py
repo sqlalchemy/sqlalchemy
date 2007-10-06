@@ -58,7 +58,7 @@ class CompileTest(SQLCompileTest):
 
 class ReturningTest(AssertMixin):
     @testing.supported('postgres')
-    @testing.exclude('postgres', '<', (8, 4))
+    @testing.exclude('postgres', '<', (8, 2))
     def test_update_returning(self):
         meta = MetaData(testbase.db)
         table = Table('tables', meta, 
@@ -79,7 +79,7 @@ class ReturningTest(AssertMixin):
             table.drop()
 
     @testing.supported('postgres')
-    @testing.exclude('postgres', '<', (8, 4))
+    @testing.exclude('postgres', '<', (8, 2))
     def test_insert_returning(self):
         meta = MetaData(testbase.db)
         table = Table('tables', meta, 
