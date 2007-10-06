@@ -719,7 +719,8 @@ class Query(object):
                 q = q.with_lockmode(lockmode)
             q = q.filter(self.select_mapper._get_clause)
             q = q.params(params)._select_context_options(populate_existing=reload, version_check=(lockmode is not None))
-            return q.first()
+            # call using all() to avoid LIMIT compilation complexity
+            return q.all()[0]
         except IndexError:
             return None
 

@@ -130,6 +130,7 @@ class LazyTest(QueryTest):
         assert getattr(User, 'addresses').hasparent(user.addresses[0], optimistic=True)
         assert not class_mapper(Address)._is_orphan(user.addresses[0])
 
+        
     def test_limit(self):
         """test limit operations combined with lazy-load relationships."""
         
@@ -273,6 +274,36 @@ class LazyTest(QueryTest):
         u1 = sess.query(User).get(7)
         
         assert a.user is u1
+
+class M2OGetTest(QueryTest):
+    keep_mappers = False
+    keep_data = False
+
+    def setup_mappers(self):
+        pass
+        
+    def test_m2o_noload(self):
+        """test that a NULL foreign key doesn't trigger a lazy load"""
+        mapper(User, users)
+
+        mapper(Address, addresses, properties={
+            'user':relation(User)
+        })
+
+        sess = create_session()
+        ad1 = Address(email_address='somenewaddress', id=12)
+        sess.save(ad1)
+        sess.flush()
+        sess.clear()
+
+        ad2 = sess.query(Address).get(1)
+        ad3 = sess.query(Address).get(ad1.id)
+        def go():
+            # one lazy load
+            assert ad2.user.name == 'jack'
+            # no lazy load
+            assert ad3.user is None
+        self.assert_sql_count(testbase.db, go, 1)
 
 if __name__ == '__main__':
     testbase.main()

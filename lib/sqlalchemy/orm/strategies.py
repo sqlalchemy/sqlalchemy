@@ -209,6 +209,8 @@ class DeferredColumnLoader(LoaderStrategy):
             else:
                 statement, params = create_statement()
             
+            # TODO: have the "fetch of one row" operation go through the same channels as a query._get()
+            # deferred load of several attributes should be a specialized case of a query refresh operation
             conn = session.connection(mapper=localparent, instance=instance)
             result = conn.execute(statement, params)
             try:
@@ -348,9 +350,15 @@ class LazyLoader(AbstractRelationLoader):
                 for col, bind in self.lazybinds.iteritems():
                     params[bind.key] = self.parent.get_attr_by_column(instance, col)
                 ident = []
+                nonnulls = False
                 for primary_key in self.select_mapper.primary_key: 
                     bind = self.lazyreverse[primary_key]
-                    ident.append(params[bind.key])
+                    v = params[bind.key]
+                    if v is not None:
+                        nonnulls = True
+                    ident.append(v)
+                if not nonnulls:
+                    return None
                 if options:
                     q = q.options(*options)
                 return q.get(ident)

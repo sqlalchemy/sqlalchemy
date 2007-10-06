@@ -35,6 +35,8 @@ CHANGES
 
 - fixed sqlite reflection of BOOL/BOOLEAN [ticket:808]
 
+- null foreign key on a m2o doesn't trigger a lazyload [ticket:803]
+
 0.4.0beta6
 ----------
 

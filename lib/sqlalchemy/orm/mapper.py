@@ -1490,8 +1490,8 @@ class Mapper(object):
         # "snapshot" of the stack, which represents a path from the lead mapper in the query to this one,
         # including relation() names.  the key also includes "self", and allows us to distinguish between
         # other mappers within our inheritance hierarchy
-        populators = selectcontext.attributes.get(((isnew or ispostselect) and 'new_populators' or 'existing_populators', self, snapshot, ispostselect), None)
-        if populators is None:
+        (new_populators, existing_populators) = selectcontext.attributes.get(('populators', self, snapshot, ispostselect), (None, None))
+        if new_populators is None:
             # no populators; therefore this is the first time we are receiving a row for
             # this result set.  issue create_row_processor() on all MapperProperty objects
             # and cache in the select context.
@@ -1511,13 +1511,13 @@ class Mapper(object):
             if poly_select_loader is not None:
                 post_processors.append(poly_select_loader)
                 
-            selectcontext.attributes[('new_populators', self, snapshot, ispostselect)] = new_populators
-            selectcontext.attributes[('existing_populators', self, snapshot, ispostselect)] = existing_populators
+            selectcontext.attributes[('populators', self, snapshot, ispostselect)] = (new_populators, existing_populators)
             selectcontext.attributes[('post_processors', self, ispostselect)] = post_processors
-            if isnew or ispostselect:
-                populators = new_populators
-            else:
-                populators = existing_populators
+
+        if isnew or ispostselect:
+            populators = new_populators
+        else:
+            populators = existing_populators
                 
         for p in populators:
             p(instance, row, ispostselect=ispostselect, isnew=isnew, **flags)
