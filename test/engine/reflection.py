@@ -507,6 +507,7 @@ class ReflectionTest(PersistTest):
         finally:
             table.drop()
 
+    @testing.unsupported('oracle')
     def testreserved(self):
         # check a table that uses an SQL reserved name doesn't cause an error
         meta = MetaData(testbase.db)
@@ -689,7 +690,10 @@ class CreateDropTest(PersistTest):
 class UnicodeTest(PersistTest):
     def test_basic(self):
         try:
-            bind = engines.utf8_engine()
+            # the 'convert_unicode' should not get in the way of the reflection 
+            # process.  reflecttable for oracle, postgres (others?) expect non-unicode
+            # strings in result sets/bind params
+            bind = engines.utf8_engine(options={'convert_unicode':True})
             metadata = MetaData(bind)
 
             names = set([u'plain', u'Unit\u00e9ble', u'\u6e2c\u8a66'])

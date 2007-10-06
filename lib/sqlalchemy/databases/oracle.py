@@ -203,21 +203,21 @@ class OracleExecutionContext(default.DefaultExecutionContext):
         super(OracleExecutionContext, self).pre_exec()
         if self.dialect.auto_setinputsizes:
             self.set_input_sizes()
-        if self.compiled_parameters is not None and not isinstance(self.compiled_parameters, list):
-            for key in self.compiled_parameters:
-                (bindparam, name, value) = self.compiled_parameters.get_parameter(key)
+        if self.compiled_parameters is not None and len(self.compiled_parameters) == 1:
+            for key in self.compiled_parameters[0]:
+                (bindparam, name, value) = self.compiled_parameters[0].get_parameter(key)
                 if bindparam.isoutparam:
                     dbtype = bindparam.type.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                     if not hasattr(self, 'out_parameters'):
                         self.out_parameters = {}
                     self.out_parameters[name] = self.cursor.var(dbtype)
-                    self.parameters[name] = self.out_parameters[name]
+                    self.parameters[0][name] = self.out_parameters[name]
 
     def get_result_proxy(self):
         if hasattr(self, 'out_parameters'):
-            if self.compiled_parameters is not None:
+            if self.compiled_parameters is not None and len(self.compiled_parameters) == 1:
                  for k in self.out_parameters:
-                     type = self.compiled_parameters.get_type(k)
+                     type = self.compiled_parameters[0].get_type(k)
                      self.out_parameters[k] = type.dialect_impl(self.dialect).result_processor(self.dialect)(self.out_parameters[k].getvalue())
             else:
                  for k in self.out_parameters:
@@ -257,14 +257,13 @@ class OracleDialect(default.DefaultDialect):
         if self.dbapi is None or not self.auto_convert_lobs:
             return {}
         else:
+            # only use this for LOB objects.  using it for strings, dates
+            # etc. leads to a little too much magic, reflection doesn't know if it should
+            # expect encoded strings or unicodes, etc.
             return {
-                self.dbapi.NUMBER: OracleInteger(), 
                 self.dbapi.CLOB: OracleText(), 
                 self.dbapi.BLOB: OracleBinary(), 
-                self.dbapi.STRING: OracleString(), 
-                self.dbapi.TIMESTAMP: OracleTimestamp(), 
                 self.dbapi.BINARY: OracleRaw(), 
-                datetime.datetime: OracleDate()
             }
 
     def dbapi(cls):
@@ -408,18 +407,18 @@ class OracleDialect(default.DefaultDialect):
     def _normalize_name(self, name):
         if name is None:
             return None
-        elif name.upper() == name and not self.identifier_preparer._requires_quotes(name.lower()):
-            return name.lower()
+        elif name.upper() == name and not self.identifier_preparer._requires_quotes(name.lower().decode(self.encoding)):
+            return name.lower().decode(self.encoding)
         else:
-            return name
+            return name.decode(self.encoding)
     
     def _denormalize_name(self, name):
         if name is None:
             return None
         elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower()):
-            return name.upper()
+            return name.upper().encode(self.encoding)
         else:
-            return name
+            return name.encode(self.encoding)
     
     def table_names(self, connection, schema):
         # note that table_names() isnt loading DBLINKed or synonym'ed tables

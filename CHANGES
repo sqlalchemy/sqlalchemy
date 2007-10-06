@@ -37,6 +37,11 @@ CHANGES
 
 - null foreign key on a m2o doesn't trigger a lazyload [ticket:803]
 
+- oracle does not implicitly convert to unicode for non-typed result
+  sets (i.e. when no TypeEngine/String/Unicode type is even being used;
+  previously it was detecting DBAPI types and converting regardless).
+  should fix [ticket:800]
+
 0.4.0beta6
 ----------
 

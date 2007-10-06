@@ -264,6 +264,7 @@ class UnicodeTest(AssertMixin):
         else:
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
 
+    @testing.unsupported('oracle')
     def testblanks(self):
         unicode_table.insert().execute(unicode_varchar=u'')
         assert select([unicode_table.c.unicode_varchar]).scalar() == u''
@@ -454,9 +455,9 @@ class DateTest(AssertMixin):
         self.assert_(isinstance(x[0][0], datetime.datetime))
         
         x = testbase.db.text(
-            "select * from query_users_with_date where user_datetime=:date",
-            bindparams=[bindparam('date', type_=types.DateTime)]).execute(
-            date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
+            "select * from query_users_with_date where user_datetime=:somedate",
+            bindparams=[bindparam('somedate', type_=types.DateTime)]).execute(
+            somedate=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
         print repr(x)
 
     def testdate2(self):
