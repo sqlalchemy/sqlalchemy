@@ -369,6 +369,7 @@ class QueryTest(PersistTest):
 
             r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
             id = r.last_inserted_ids()[0]
+
             assert t.select(t.c.id==id).execute().fetchone()['value'] == 9
             t.update(values={t.c.value:func.length("asdf")}).execute()
             assert t.select().execute().fetchone()['value'] == 4
@@ -430,7 +431,7 @@ class QueryTest(PersistTest):
         self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
     
-    @testing.unsupported('oracle', 'firebird') 
+    @testing.unsupported('oracle', 'firebird')
     def test_column_accessor_shadow(self):
         meta = MetaData(testbase.db)
         shadowed = Table('test_shadowed', meta,
@@ -514,7 +515,6 @@ class QueryTest(PersistTest):
         finally:
             table.drop()
 
-    
     def test_in_filtering(self):
         """test the behavior of the in_() function."""
         
@@ -608,24 +608,84 @@ class CompoundTest(PersistTest):
         
     def tearDownAll(self):
         metadata.drop_all()
-        
+
+    def _fetchall_sorted(self, executed):
+        return sorted([tuple(row) for row in executed.fetchall()])
+
     def test_union(self):
         (s1, s2) = (
-                    select([t1.c.col3.label('col3'), t1.c.col4.label('col4')], t1.c.col2.in_("t1col2r1", "t1col2r2")),
-            select([t2.c.col3.label('col3'), t2.c.col4.label('col4')], t2.c.col2.in_("t2col2r2", "t2col2r3"))
+            select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
+                   t1.c.col2.in_("t1col2r1", "t1col2r2")),
+            select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
+                   t2.c.col2.in_("t2col2r2", "t2col2r3"))
+        )        
+        u = union(s1, s2)
+
+        wanted = [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'),
+                  ('ccc', 'aaa')]
+        found1 = self._fetchall_sorted(u.execute())
+        self.assertEquals(found1, wanted)
+
+        found2 = self._fetchall_sorted(u.alias('bar').select().execute())
+        self.assertEquals(found2, wanted)
+        
+    def test_union_ordered(self):
+        (s1, s2) = (
+            select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
+                   t1.c.col2.in_("t1col2r1", "t1col2r2")),
+            select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
+                   t2.c.col2.in_("t2col2r2", "t2col2r3"))
         )        
         u = union(s1, s2, order_by=['col3', 'col4'])
-        assert u.execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
-        assert u.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
-        
+
+        wanted = [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'),
+                  ('ccc', 'aaa')]
+        self.assertEquals(u.execute().fetchall(), wanted)
+
+    def test_union_ordered_alias(self):
+        (s1, s2) = (
+            select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
+                   t1.c.col2.in_("t1col2r1", "t1col2r2")),
+            select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
+                   t2.c.col2.in_("t2col2r2", "t2col2r3"))
+        )        
+        u = union(s1, s2, order_by=['col3', 'col4'])
+
+        wanted = [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'),
+                  ('ccc', 'aaa')]
+        self.assertEquals(u.alias('bar').select().execute().fetchall(), wanted)
+
+    @testing.unsupported('sqlite', 'mysql', 'oracle')
+    def test_union_all(self):
+        e = union_all(
+            select([t1.c.col3]),
+            union(
+                select([t1.c.col3]),
+                select([t1.c.col3]),
+            )
+        )
+
+        wanted = [('aaa',),('aaa',),('bbb',), ('bbb',), ('ccc',),('ccc',)]
+        found1 = self._fetchall_sorted(e.execute())
+        self.assertEquals(found1, wanted)
+
+        found2 = self._fetchall_sorted(e.alias('foo').select().execute())
+        self.assertEquals(found2, wanted)
+
     @testing.unsupported('mysql')
     def test_intersect(self):
         i = intersect(
             select([t2.c.col3, t2.c.col4]),
             select([t2.c.col3, t2.c.col4], t2.c.col4==t3.c.col3)
         )
-        assert i.execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
-        assert i.alias('bar').select().execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+
+        wanted = [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+
+        found1 = self._fetchall_sorted(i.execute())
+        self.assertEquals(found1, wanted)
+
+        found2 = self._fetchall_sorted(i.alias('bar').select().execute())
+        self.assertEquals(found2, wanted)
 
     @testing.unsupported('mysql', 'oracle')
     def test_except_style1(self):
@@ -634,7 +694,12 @@ class CompoundTest(PersistTest):
             select([t2.c.col3, t2.c.col4]),
             select([t3.c.col3, t3.c.col4]),
         ), select([t2.c.col3, t2.c.col4]))
-        assert e.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
+
+        wanted = [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'),
+                  ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
+
+        found = self._fetchall_sorted(e.alias('bar').select().execute())
+        self.assertEquals(found, wanted)
 
     @testing.unsupported('mysql', 'oracle')
     def test_except_style2(self):
@@ -643,8 +708,15 @@ class CompoundTest(PersistTest):
             select([t2.c.col3, t2.c.col4]),
             select([t3.c.col3, t3.c.col4]),
         ).alias('foo').select(), select([t2.c.col3, t2.c.col4]))
-        assert e.execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
-        assert e.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
+
+        wanted = [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'),
+                  ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
+
+        found1 = self._fetchall_sorted(e.execute())
+        self.assertEquals(found1, wanted)
+
+        found2 = self._fetchall_sorted(e.alias('bar').select().execute())
+        self.assertEquals(found2, wanted)
 
     @testing.unsupported('sqlite', 'mysql', 'oracle')
     def test_except_style3(self):
@@ -657,17 +729,8 @@ class CompoundTest(PersistTest):
             )
         )
         self.assertEquals(e.execute().fetchall(), [('ccc',)])
-
-    @testing.unsupported('sqlite', 'mysql', 'oracle')
-    def test_union_union_all(self):
-        e = union_all(
-            select([t1.c.col3]),
-            union(
-                select([t1.c.col3]),
-                select([t1.c.col3]),
-            )
-        )
-        self.assertEquals(e.execute().fetchall(), [('aaa',),('bbb',),('ccc',),('aaa',),('bbb',),('ccc',)])
+        self.assertEquals(e.alias('foo').select().execute().fetchall(),
+                          [('ccc',)])
 
     @testing.unsupported('mysql')
     def test_composite(self):
@@ -679,8 +742,26 @@ class CompoundTest(PersistTest):
                 select([t3.c.col3, t3.c.col4]),
             ).alias('foo').select()
         )
-        assert u.execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
-        assert u.alias('foo').select().execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+        wanted = [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+        found = self._fetchall_sorted(u.execute())
+        
+        self.assertEquals(found, wanted)
+
+    @testing.unsupported('mysql')
+    def test_composite_alias(self):
+        ua = intersect(
+            select([t2.c.col3, t2.c.col4]),
+            union(
+                select([t1.c.col3, t1.c.col4]),
+                select([t2.c.col3, t2.c.col4]),
+                select([t3.c.col3, t3.c.col4]),
+            ).alias('foo').select()
+        ).alias('bar')
+
+        wanted = [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+        found = self._fetchall_sorted(ua.select().execute())
+        self.assertEquals(found, wanted)
+    
 
 class OperatorTest(PersistTest):
     def setUpAll(self):
@@ -700,7 +781,7 @@ class OperatorTest(PersistTest):
 
     def tearDownAll(self):
         metadata.drop_all()
-        
+
     def test_modulo(self):
         self.assertEquals(
             select([flds.c.intcol % 3], order_by=flds.c.idcol).execute().fetchall(),
