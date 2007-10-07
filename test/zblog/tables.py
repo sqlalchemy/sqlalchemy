@@ -7,7 +7,7 @@ from testlib import *
 metadata = MetaData()
 
 users = Table('users', metadata, 
-    Column('user_id', Integer, primary_key=True),
+    Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key=True),
     Column('user_name', String(30), nullable=False),
     Column('fullname', String(100), nullable=False),
     Column('password', String(40), nullable=False),
@@ -15,14 +15,14 @@ users = Table('users', metadata,
     )
 
 blogs = Table('blogs', metadata, 
-    Column('blog_id', Integer, primary_key=True),
+    Column('blog_id', Integer, Sequence('blog_id_seq', optional=True), primary_key=True),
     Column('owner_id', Integer, ForeignKey('users.user_id'), nullable=False),
     Column('name', String(100), nullable=False),
     Column('description', String(500))
     )
     
 posts = Table('posts', metadata,
-    Column('post_id', Integer, primary_key=True),
+    Column('post_id', Integer, Sequence('post_id_seq', optional=True), primary_key=True),
     Column('blog_id', Integer, ForeignKey('blogs.blog_id'), nullable=False),
     Column('user_id', Integer, ForeignKey('users.user_id'), nullable=False),
     Column('datetime', DateTime, nullable=False),

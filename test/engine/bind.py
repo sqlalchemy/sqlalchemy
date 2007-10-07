@@ -167,7 +167,7 @@ class BindTest(PersistTest):
         from sqlalchemy.orm import create_session, mapper
         metadata = MetaData()
         table = Table('test_table', metadata,   
-            Column('foo', Integer, primary_key=True),
+            Column('foo', Integer, Sequence('foo_seq', optional=True), primary_key=True),
             Column('data', String(30)))
         class Foo(object):
             pass

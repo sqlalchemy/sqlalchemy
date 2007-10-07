@@ -17,7 +17,7 @@ CHANGES
   to False due to ticket #370 (right way).
 
 - Improvements and fixes on Firebird reflection:
-  . FBDialect now mimics OracleDialect, regarding case-sensitivity of TABLE and 
+  . FBDialect now mimics OracleDialect, regarding case-sensitivity of TABLE and
     COLUMN names (see 'case_sensitive remotion' topic on this current file).
   . FBDialect.table_names() doesn't bring system tables (ticket:796).
   . FB now reflects Column's nullable property correctly.
@@ -42,6 +42,9 @@ CHANGES
   previously it was detecting DBAPI types and converting regardless).
   should fix [ticket:800]
 
+- Firebird dialect now uses SingletonThreadPool as poolclass.
+
+
 0.4.0beta6
 ----------
 
@@ -59,7 +62,7 @@ CHANGES
   inheritance relationships need to be constructed in inheritance order
   (which should be the normal case anyway).
 
-- added "FETCH" to the keywords detected by Postgres to indicate a 
+- added "FETCH" to the keywords detected by Postgres to indicate a
   result-row holding statement (i.e. in addition to "SELECT").
 
 - Added full list of SQLite reserved keywords so that they get escaped
@@ -74,13 +77,13 @@ CHANGES
   can happen with textual SQL as well as some inheritance situations.  It's
   particularly important since the "anonymous aliasing" of columns uses
   simple integer counts now to generate labels.
-  
+
 - Removed "parameters" argument from clauseelement.compile(), replaced with
   "column_keys".  The parameters sent to execute() only interact with the
   insert/update statement compilation process in terms of the column names
   present but not the values for those columns.  Produces more consistent
   execute/executemany behavior, simplifies things a bit internally.
- 
+
 - Added 'comparator' keyword argument to PickleType.  By default, "mutable"
   PickleType does a "deep compare" of objects using their dumps()
   representation.  But this doesn't work for dictionaries.  Pickled objects
@@ -123,7 +126,7 @@ CHANGES
   used to determine correct shard id (since execute() doesn't take an
   instance.)
 
-- Adjusted operator precedence of NOT to match '==' and others, so that 
+- Adjusted operator precedence of NOT to match '==' and others, so that
   ~(x <operator> y) produces NOT (x <op> y), which is better compatible
   with older MySQL versions. [ticket:764].  This doesn't apply to "~(x==y)"
   as it does in 0.3 since ~(x==y) compiles to "x != y", but still applies
@@ -137,10 +140,10 @@ CHANGES
 - Connection pool fixes; the better performance of beta4 remains but fixes
   "connection overflow" and other bugs which were present (like
   [ticket:754]).
-  
+
 - Fixed bugs in determining proper sync clauses from custom inherit
   conditions. [ticket:769]
-  
+
 - Extended 'engine_from_config' coercion for QueuePool size / overflow.
   [ticket:763]
 
@@ -163,12 +166,12 @@ CHANGES
 
 - postgres reflects tables with autoincrement=False for primary key columns
   which have no defaults.
-      
+
 - postgres no longer wraps executemany() with individual execute() calls,
   instead favoring performance.  "rowcount"/"concurrency" checks with
   deleted items (which use executemany) are disabled with PG since psycopg2
   does not report proper rowcount for executemany().
-  
+
 - Tickets fixed:
 
   - [ticket:742]
@@ -199,23 +202,23 @@ CHANGES
   the same connection already bound to a thread, for "contextual" connections;
   these are the connections used when you do a "connectionless" execution
   like insert().execute().  This is like a "partial" version of the
-  "threadlocal" engine strategy but without the thread-local transaction part 
-  of it.  We're hoping it reduces connection pool overhead as well as 
+  "threadlocal" engine strategy but without the thread-local transaction part
+  of it.  We're hoping it reduces connection pool overhead as well as
   database usage.  However, if it proves to impact stability in a negative way,
   we'll roll it right back.
-  
+
 - Fix to bind param processing such that "False" values (like blank strings)
   still get processed/encoded.
 
 - Fix to select() "generative" behavior, such that calling column(),
   select_from(), correlate(), and with_prefix() does not modify the
   original select object [ticket:752]
-  
+
 - Added a "legacy" adapter to types, such that user-defined TypeEngine
   and TypeDecorator classes which define convert_bind_param() and/or
   convert_result_value() will continue to function.  Also supports
   calling the super() version of those methods.
-  
+
 - Added session.prune(), trims away instances cached in a session that
   are no longer referenced elsewhere. (A utility for strong-ref
   identity maps).
@@ -669,16 +672,16 @@ CHANGES
 0.3.11
 - orm
     - added a check for joining from A->B using join(), along two
-      different m2m tables.  this raises an error in 0.3 but is 
+      different m2m tables.  this raises an error in 0.3 but is
       possible in 0.4 when aliases are used. [ticket:687]
-    - fixed bug where mapper, being linked to a join where one table had 
+    - fixed bug where mapper, being linked to a join where one table had
       no PK columns, would not detect that the joined table had no PK.
 - engine
     - fixed another occasional race condition which could occur
       when using pool with threadlocal setting
 - mssql
     - added support for TIME columns (simulated using DATETIME) [ticket:679]
-    - added support for BIGINT, MONEY, SMALLMONEY, UNIQUEIDENTIFIER and 
+    - added support for BIGINT, MONEY, SMALLMONEY, UNIQUEIDENTIFIER and
       SQL_VARIANT [ticket:721]
     - index names are now quoted when dropping from reflected tables
       [ticket:684]
@@ -689,12 +692,12 @@ CHANGES
       unconditionally quoted, so that schema names which need quoting are
       fine.  its slightly unnecessary for schema names which don't need
       quoting but not harmful.
-      
+
 0.3.10
 - general
     - a new mutex that was added in 0.3.9 causes the pool_timeout
-      feature to fail during a race condition; threads would 
-      raise TimeoutError immediately with no delay if many threads 
+      feature to fail during a race condition; threads would
+      raise TimeoutError immediately with no delay if many threads
       push the pool into overflow at the same time.  this issue has been
       fixed.
 - sql
@@ -708,7 +711,7 @@ CHANGES
 - postgres
   - fixed max identifier length (63) [ticket:571]
 
-  
+
 0.3.9
 - general
     - better error message for NoSuchColumnError [ticket:607]
@@ -717,7 +720,7 @@ CHANGES
     - the various "engine" arguments, such as "engine", "connectable",
       "engine_or_url", "bind_to", etc. are all present, but deprecated.
       they all get replaced by the single term "bind".  you also
-      set the "bind" of MetaData using 
+      set the "bind" of MetaData using
       metadata.bind = <engine or connection>
 - ext
     - iteration over dict association proxies is now dict-like, not
@@ -726,7 +729,7 @@ CHANGES
       [ticket:597], and are constructed with a thunk instead
     - added selectone_by() to assignmapper
 - orm
-    - forwards-compatibility with 0.4: added one(), first(), and 
+    - forwards-compatibility with 0.4: added one(), first(), and
       all() to Query.  almost all Query functionality from 0.4 is
       present in 0.3.9 for forwards-compat purposes.
     - reset_joinpoint() really really works this time, promise ! lets
@@ -735,20 +738,20 @@ CHANGES
       join(['a', 'c']).filter(<some other crit>).all()
       in 0.4 all join() calls start from the "root"
     - added synchronization to the mapper() construction step, to avoid
-      thread collisions when pre-existing mappers are compiling in a 
+      thread collisions when pre-existing mappers are compiling in a
       different thread [ticket:613]
     - a warning is issued by Mapper when two primary key columns of the
       same name are munged into a single attribute.  this happens frequently
-      when mapping to joins (or inheritance). 
+      when mapping to joins (or inheritance).
     - synonym() properties are fully supported by all Query joining/
       with_parent operations [ticket:598]
     - fixed very stupid bug when deleting items with many-to-many
       uselist=False relations
-    - remember all that stuff about polymorphic_union ?  for 
+    - remember all that stuff about polymorphic_union ?  for
       joined table inheritance ?  Funny thing...
-      You sort of don't need it for joined table inheritance, you 
+      You sort of don't need it for joined table inheritance, you
       can just string all the tables together via outerjoin().
-      The UNION still applies if concrete tables are involved, 
+      The UNION still applies if concrete tables are involved,
       though (since nothing to join them on).
     - small fix to eager loading to better work with eager loads
       to polymorphic mappers that are using a straight "outerjoin"
@@ -762,15 +765,15 @@ CHANGES
     - DynamicMetaData has been renamed to ThreadLocalMetaData.  the
       DynamicMetaData name is deprecated and is an alias for ThreadLocalMetaData
       or a regular MetaData if threadlocal=False
-    - composite primary key is represented as a non-keyed set to allow for 
+    - composite primary key is represented as a non-keyed set to allow for
       composite keys consisting of cols with the same name; occurs within a
       Join.  helps inheritance scenarios formulate correct PK.
-    - improved ability to get the "correct" and most minimal set of primary key 
+    - improved ability to get the "correct" and most minimal set of primary key
       columns from a join, equating foreign keys and otherwise equated columns.
-      this is also mostly to help inheritance scenarios formulate the best 
+      this is also mostly to help inheritance scenarios formulate the best
       choice of primary key columns.  [ticket:185]
     - added 'bind' argument to Sequence.create()/drop(), ColumnDefault.execute()
-    - columns can be overridden in a reflected table with a "key" 
+    - columns can be overridden in a reflected table with a "key"
       attribute different than the column's name, including for primary key
       columns [ticket:650]
     - fixed "ambiguous column" result detection, when dupe col names exist
@@ -781,7 +784,7 @@ CHANGES
     - MetaData and all SchemaItems are safe to use with pickle.  slow
       table reflections can be dumped into a pickled file to be reused later.
       Just reconnect the engine to the metadata after unpickling. [ticket:619]
-    - added a mutex to QueuePool's "overflow" calculation to prevent a race 
+    - added a mutex to QueuePool's "overflow" calculation to prevent a race
       condition that can bypass max_overflow
     - fixed grouping of compound selects to give correct results. will break
       on sqlite in some cases, but those cases were producing incorrect
@@ -789,8 +792,8 @@ CHANGES
       [ticket:623]
     - fixed precedence of operators so that parenthesis are correctly applied
       [ticket:620]
-    - calling <column>.in_() (i.e. with no arguments) will return 
-      "CASE WHEN (<column> IS NULL) THEN NULL ELSE 0 END = 1)", so that 
+    - calling <column>.in_() (i.e. with no arguments) will return
+      "CASE WHEN (<column> IS NULL) THEN NULL ELSE 0 END = 1)", so that
       NULL or False is returned in all cases, rather than throwing an error
       [ticket:545]
     - fixed "where"/"from" criterion of select() to accept a unicode string
@@ -798,9 +801,9 @@ CHANGES
     - added standalone distinct() function in addition to column.distinct()
       [ticket:558]
     - result.last_inserted_ids() should return a list that is identically
-      sized to the primary key constraint of the table.  values that were 
+      sized to the primary key constraint of the table.  values that were
       "passively" created and not available via cursor.lastrowid will be None.
-    - long-identifier detection fixed to use > rather than >= for 
+    - long-identifier detection fixed to use > rather than >= for
       max ident length [ticket:589]
     - fixed bug where selectable.corresponding_column(selectable.c.col)
       would not return selectable.c.col, if the selectable is a join
@@ -815,7 +818,7 @@ CHANGES
 - oracle
     - datetime fixes: got subsecond TIMESTAMP to work [ticket:604],
       added OracleDate which supports types.Date with only year/month/day
-    - added dialect flag "auto_convert_lobs", defaults to True; will cause any 
+    - added dialect flag "auto_convert_lobs", defaults to True; will cause any
       LOB objects detected in a result set to be forced into OracleBinary
       so that the LOB is read() automatically, if no typemap was present
       (i.e., if a textual execute() was issued).
@@ -835,12 +838,12 @@ CHANGES
       being too old.
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
-    - string PK column inserts dont get overwritten with OID [ticket:603] 
+    - string PK column inserts dont get overwritten with OID [ticket:603]
 - mssql
     - fix port option handling for pyodbc [ticket:634]
     - now able to reflect start and increment values for identity columns
     - preliminary support for using scope_identity() with pyodbc
-    
+
 0.3.8
 - engines
   - added detach() to Connection, allows underlying DBAPI connection
@@ -853,7 +856,7 @@ CHANGES
     object. meaning, if you say someexpr.label('foo') == 5, it
     produces the correct "someexpr == 5".
   - _Label propigates "_hide_froms()" so that scalar selects
-    behave more properly with regards to FROM clause #574 
+    behave more properly with regards to FROM clause #574
   - fix to long name generation when using oid_column as an order by
     (oids used heavily in mapper queries)
   - significant speed improvement to ResultProxy, pre-caches
@@ -877,7 +880,7 @@ CHANGES
     join(['a', 'b', 'c']).
   - fixed bug in query.instances() that wouldnt handle more than
     on additional mapper or one additional column.
-  - "delete-orphan" no longer implies "delete". ongoing effort to 
+  - "delete-orphan" no longer implies "delete". ongoing effort to
     separate the behavior of these two operations.
   - many-to-many relationships properly set the type of bind params
     for delete operations on the association table
@@ -926,7 +929,7 @@ CHANGES
 0.3.7
 - engines
     - warnings module used for issuing warnings (instead of logging)
-    - cleanup of DBAPI import strategies across all engines 
+    - cleanup of DBAPI import strategies across all engines
       [ticket:480]
     - refactoring of engine internals which reduces complexity,
       number of codepaths; places more state inside of ExecutionContext
@@ -938,8 +941,8 @@ CHANGES
     - improved framework for auto-invalidation of connections that have
       lost their underlying database, via dialect-specific detection
       of exceptions corresponding to that database's disconnect
-      related error messages.  Additionally, when a "connection no 
-      longer open" condition is detected, the entire connection pool 
+      related error messages.  Additionally, when a "connection no
+      longer open" condition is detected, the entire connection pool
       is discarded and replaced with a new instance.  #516
     - the dialects within sqlalchemy.databases become a setuptools
       entry points. loading the built-in database dialects works the
@@ -951,7 +954,7 @@ CHANGES
     - keys() of result set columns are not lowercased, come back
       exactly as they're expressed in cursor.description.  note this
       causes colnames to be all caps in oracle.
-    - preliminary support for unicode table names, column names and 
+    - preliminary support for unicode table names, column names and
       SQL statements added, for databases which can support them.
       Works with sqlite and postgres so far.  Mysql *mostly* works
       except the has_table() function does not work.  Reflection
@@ -961,14 +964,14 @@ CHANGES
       of unicode situations that occur in db's such as MS-SQL to be
       better handled and allows subclassing of the Unicode datatype.
       [ticket:522]
-    - ClauseElements can be used in in_() clauses now, such as bind 
+    - ClauseElements can be used in in_() clauses now, such as bind
       parameters, etc. #476
     - reverse operators implemented for `CompareMixin` elements,
       allows expressions like "5 + somecolumn" etc. #474
     - the "where" criterion of an update() and delete() now correlates
       embedded select() statements against the table being updated or
       deleted.  this works the same as nested select() statement
-      correlation, and can be disabled via the correlate=False flag on 
+      correlation, and can be disabled via the correlate=False flag on
       the embedded select().
     - column labels are now generated in the compilation phase, which
       means their lengths are dialect-dependent.  So on oracle a label
@@ -976,14 +979,14 @@ CHANGES
       on postgres.  Also, the true labelname is always attached as the
       accessor on the parent Selectable so theres no need to be aware
       of the "truncated" label names [ticket:512].
-    - column label and bind param "truncation" also generate 
-      deterministic names now, based on their ordering within the 
+    - column label and bind param "truncation" also generate
+      deterministic names now, based on their ordering within the
       full statement being compiled.  this means the same statement
       will produce the same string across application restarts and
       allowing DB query plan caching to work better.
     - the "mini" column labels generated when using subqueries, which
       are to work around glitchy SQLite behavior that doesnt understand
-      "foo.id" as equivalent to "id", are now only generated in the case 
+      "foo.id" as equivalent to "id", are now only generated in the case
       that those named columns are selected from (part of [ticket:513])
     - the label() method on ColumnElement will properly propigate the
       TypeEngine of the base element out to the label, including a label()
@@ -1012,15 +1015,15 @@ CHANGES
       version. [ticket:541]
     - improved query.XXX_by(someprop=someinstance) querying to use
       similar methodology to with_parent, i.e. using the "lazy" clause
-      which prevents adding the remote instance's table to the SQL, 
+      which prevents adding the remote instance's table to the SQL,
       thereby making more complex conditions possible [ticket:554]
     - added generative versions of aggregates, i.e. sum(), avg(), etc.
-      to query. used via query.apply_max(), apply_sum(), etc. 
+      to query. used via query.apply_max(), apply_sum(), etc.
       #552
-    - fix to using distinct() or distinct=True in combination with 
+    - fix to using distinct() or distinct=True in combination with
       join() and similar
-    - corresponding to label/bindparam name generation, eager loaders 
-      generate deterministic names for the aliases they create using 
+    - corresponding to label/bindparam name generation, eager loaders
+      generate deterministic names for the aliases they create using
       md5 hashes.
     - improved/fixed custom collection classes when giving it "set"/
       "sets.Set" classes or subclasses (was still looking for append()
@@ -1046,7 +1049,7 @@ CHANGES
 - oracle:
     - small fix to allow successive compiles of the same SELECT object
       which features LIMIT/OFFSET.  oracle dialect needs to modify
-      the object to have ROW_NUMBER OVER and wasn't performing 
+      the object to have ROW_NUMBER OVER and wasn't performing
       the full series of steps on successive compiles.
 - mysql
     - support for SSL arguments given as inline within URL query string,
@@ -1057,20 +1060,20 @@ CHANGES
       with MySQL5 but should work with 4.1 series as well. (#557)
 - extensions
     - big fix to AssociationProxy so that multiple AssociationProxy
-      objects can be associated with a single association collection. 
+      objects can be associated with a single association collection.
     - assign_mapper names methods according to their keys (i.e. __name__)
       #551
 - mssql
-    - pyodbc is now the preferred DB-API for MSSQL, and if no module is 
+    - pyodbc is now the preferred DB-API for MSSQL, and if no module is
       specifically requested, will be loaded first on a module probe.
 
-    - The @@SCOPE_IDENTITY is now used instead of @@IDENTITY. This 
+    - The @@SCOPE_IDENTITY is now used instead of @@IDENTITY. This
       behavior may be overridden with the engine_connect
-      "use_scope_identity" keyword parameter, which may also be specified 
+      "use_scope_identity" keyword parameter, which may also be specified
       in the dburi.
 
 
-     
+
 0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two
@@ -1078,9 +1081,9 @@ CHANGES
       and the key will be shared.  proper positional/named args translate
       at compile time.  for the old behavior of "aliasing" bind parameters
       with conflicting names, specify "unique=True" - this option is
-      still used internally for all the auto-genererated (value-based) 
-      bind parameters.    
-    
+      still used internally for all the auto-genererated (value-based)
+      bind parameters.
+
     - slightly better support for bind params as column clauses, either
       via bindparam() or via literal(), i.e. select([literal('foo')])
 
@@ -1089,7 +1092,7 @@ CHANGES
       identical to MetaData except engine_or_url param is required.
       DynamicMetaData is the same and provides thread-local connections be
       default.
-    
+
     - exists() becomes useable as a standalone selectable, not just in a
       WHERE clause, i.e. exists([columns], criterion).select()
 
@@ -1136,7 +1139,7 @@ CHANGES
     - the full featureset of the SelectResults extension has been merged
       into a new set of methods available off of Query.  These methods
       all provide "generative" behavior, whereby the Query is copied
-      and a new one returned with additional criterion added.  
+      and a new one returned with additional criterion added.
       The new methods include:
 
           filter() - applies select criterion to the query
@@ -1145,17 +1148,17 @@ CHANGES
           join() - join to a property (or across a list of properties)
           outerjoin() - like join() but uses LEFT OUTER JOIN
           limit()/offset() - apply LIMIT/OFFSET
-          range-based access which applies limit/offset:  
+          range-based access which applies limit/offset:
              session.query(Foo)[3:5]
           distinct() - apply DISTINCT
           list() - evaluate the criterion and return results
-          
+
       no incompatible changes have been made to Query's API and no methods
       have been deprecated.  Existing methods like select(), select_by(),
       get(), get_by() all execute the query at once and return results
       like they always did.  join_to()/join_via() are still there although
       the generative join()/outerjoin() methods are easier to use.
-      
+
     - the return value for multiple mappers used with instances() now
       returns a cartesian product of the requested list of mappers,
       represented as a list of tuples. this corresponds to the documented
@@ -1184,7 +1187,7 @@ CHANGES
       the columns placed in the "order by" of Query.select(), that you
       have explicitly named them in your criterion (i.e. you cant rely on
       the eager loader adding them in for you)
-      
+
     - added a handy multi-use "identity_key()" method to Session, allowing
       the generation of identity keys for primary key values, instances,
       and rows, courtesy Daniel Miller
@@ -1194,13 +1197,13 @@ CHANGES
 
     - added "refresh-expire" cascade [ticket:492].  allows refresh() and
       expire() calls to propigate along relationships.
-    
+
     - more fixes to polymorphic relations, involving proper lazy-clause
-      generation on many-to-one relationships to polymorphic mappers 
+      generation on many-to-one relationships to polymorphic mappers
       [ticket:493]. also fixes to detection of "direction", more specific
       targeting of columns that belong to the polymorphic union vs. those
       that dont.
-      
+
     - some fixes to relationship calcs when using "viewonly=True" to pull
       in other tables into the join condition which arent parent of the
       relationship's parent/child mappings
@@ -1208,7 +1211,7 @@ CHANGES
     - flush fixes on cyclical-referential relationships that contain
       references to other instances outside of the cyclical chain, when
       some of the objects in the cycle are not actually part of the flush
-      
+
     - put an aggressive check for "flushing object A with a collection of
       B's, but you put a C in the collection" error condition - **even if
       C is a subclass of B**, unless B's mapper loads polymorphically.
@@ -1226,25 +1229,25 @@ CHANGES
       like the rest of the SelectResults methods [ticket:472].  But
       you're going to just use Query now anyway.
 
-    - query() method is added by assignmapper.  this helps with 
+    - query() method is added by assignmapper.  this helps with
       navigating to all the new generative methods on Query.
 
 - ms-sql:
-    - removed seconds input on DATE column types (probably 
+    - removed seconds input on DATE column types (probably
         should remove the time altogether)
 
     - null values in float fields no longer raise errors
 
     - LIMIT with OFFSET now raises an error (MS-SQL has no OFFSET support)
 
-    - added an facility to use the MSSQL type VARCHAR(max) instead of TEXT 
-      for large unsized string fields. Use the new "text_as_varchar" to 
+    - added an facility to use the MSSQL type VARCHAR(max) instead of TEXT
+      for large unsized string fields. Use the new "text_as_varchar" to
       turn it on. [ticket:509]
 
-    - ORDER BY clauses without a LIMIT are now stripped in subqueries, as 
+    - ORDER BY clauses without a LIMIT are now stripped in subqueries, as
       MS-SQL forbids this usage
 
-    - cleanup of module importing code; specifiable DB-API module; more 
+    - cleanup of module importing code; specifiable DB-API module; more
       explicit ordering of module preferences. [ticket:480]
 
 - oracle:
@@ -1258,13 +1261,13 @@ CHANGES
       it improperly propigated bad types.
 
 - mysql:
-    - added a catchall **kwargs to MSString, to help reflection of 
+    - added a catchall **kwargs to MSString, to help reflection of
       obscure types (like "varchar() binary" in MS 4.0)
 
-    - added explicit MSTimeStamp type which takes effect when using 
+    - added explicit MSTimeStamp type which takes effect when using
       types.TIMESTAMP.
 
-    
+
 0.3.5
 - sql:
     - the value of "case_sensitive" defaults to True now, regardless of the
@@ -1300,7 +1303,7 @@ CHANGES
     - issues a log warning when a related table cant be reflected due to
       certain permission errors [ticket:363]
 - mysql:
-    - fix to reflection on older DB's that might return array() type for 
+    - fix to reflection on older DB's that might return array() type for
     "show variables like" statements
 - postgres:
     - better reflection of sequences for alternate-schema Tables [ticket:442]
@@ -1513,8 +1516,8 @@ exception
 errors, will also prevent transactions getting rolled back
 accidentally in all DBs [ticket:387]
 - major speed enhancements vs. 0.3.1, to bring speed
-back to 0.2.8 levels 
-  - made conditional dozens of debug log calls that were 
+back to 0.2.8 levels
+  - made conditional dozens of debug log calls that were
   time-intensive to generate log messages
   - fixed bug in cascade rules whereby the entire object graph
   could be unnecessarily cascaded on the save/update cascade
@@ -1531,13 +1534,13 @@ fixes [ticket:388]
 - assign_mapper in assignmapper extension returns the created mapper
 [changeset:2110]
 - added label() function to Select class, when scalar=True is used
-to create a scalar subquery 
+to create a scalar subquery
 i.e. "select x, y, (select max(foo) from table) AS foomax from table"
 - added onupdate and ondelete keyword arguments to ForeignKey; propigate
 to underlying ForeignKeyConstraint if present.  (dont propigate in the
 other direction, however)
 - fix to session.update() to preserve "dirty" status of incoming object
-- sending a selectable to an IN via the in_() function no longer creates 
+- sending a selectable to an IN via the in_() function no longer creates
 a "union" out of multiple selects; only one selectable to a the in_() function
 is allowed now (make a union yourself if union is needed)
 - improved support for disabling save-update cascade via cascade="none" etc.
@@ -1562,7 +1565,7 @@ invalid kwargs in relation to the selected dialect/pool/engine configuration.
   - fix to postgres sequence quoting when using schemas
 - ORM:
   - the "delete" cascade will load in all child objects, if they were not
-loaded already.  this can be turned off (i.e. the old behavior) by setting 
+loaded already.  this can be turned off (i.e. the old behavior) by setting
 passive_deletes=True on a relation().
   - adjustments to reworked eager query generation to not fail on circular
 eager-loaded relationships (like backrefs)
@@ -1570,7 +1573,7 @@ eager-loaded relationships (like backrefs)
 instruct the Query whether or not to use "nesting" when producing a
 LIMIT query.
   - fixed bug in circular dependency sorting at flush time; if object A
-contained a cyclical many-to-one relationship to object B, and object B 
+contained a cyclical many-to-one relationship to object B, and object B
 was just attached to object A, *but* object B itself wasnt changed,
 the many-to-one synchronize of B's primary key attribute to A's foreign key
 attribute wouldnt occur.  [ticket:360]
@@ -1579,10 +1582,10 @@ on selectresults [ticket:325]
   - added an assertion within the "cascade" step of ORM relationships to check
 that the class of object attached to a parent object is appropriate
 (i.e. if A.items stores B objects, raise an error if a C is appended to A.items)
-  - new extension sqlalchemy.ext.associationproxy, provides transparent 
-"association object" mappings.  new example 
+  - new extension sqlalchemy.ext.associationproxy, provides transparent
+"association object" mappings.  new example
 examples/association/proxied_association.py illustrates.
-  - improvement to single table inheritance to load full hierarchies beneath 
+  - improvement to single table inheritance to load full hierarchies beneath
 the target class
   - fix to subtle condition in topological sort where a node could appear twice,
 for [ticket:362]
@@ -1607,21 +1610,21 @@ the instance is an "orphan" only if its not attached to *any* of those parents
 - Specific Databases:
     - SQLite:
     - sqlite boolean datatype converts False/True to 0/1 by default
-    - fixes to Date/Time (SLDate/SLTime) types; works as good as postgres 
+    - fixes to Date/Time (SLDate/SLTime) types; works as good as postgres
     now [ticket:335]
-    - MS-SQL: 
-    - fixes bug 261 (table reflection broken for MS-SQL case-sensitive 
+    - MS-SQL:
+    - fixes bug 261 (table reflection broken for MS-SQL case-sensitive
     databases)
     - can now specify port for pymssql
-    - introduces new "auto_identity_insert" option for auto-switching 
-    between "SET IDENTITY_INSERT" mode when values specified for IDENTITY columns 
+    - introduces new "auto_identity_insert" option for auto-switching
+    between "SET IDENTITY_INSERT" mode when values specified for IDENTITY columns
     - now supports multi-column foreign keys
     - fix to reflecting date/datetime columns
     - NCHAR and NVARCHAR type support added
     - Oracle:
     - Oracle has experimental support for cx_Oracle.TIMESTAMP, which requires
     a setinputsizes() call on the cursor that is now enabled via the
-    'auto_setinputsizes' flag to the oracle dialect.  
+    'auto_setinputsizes' flag to the oracle dialect.
     - Firebird:
     - aliases do not use "AS"
     - correctly raises NoSuchTableError when reflecting non-existent table
@@ -1631,13 +1634,13 @@ the instance is an "orphan" only if its not attached to *any* of those parents
     useage, greater emphasis on explicitness
     - the "primary_key" attribute of Table and other selectables becomes
     a setlike ColumnCollection object; is ordered but not numerically
-    indexed.  a comparison clause between two pks that are derived from the 
-    same underlying tables (i.e. such as two Alias objects) can be generated 
+    indexed.  a comparison clause between two pks that are derived from the
+    same underlying tables (i.e. such as two Alias objects) can be generated
     via table1.primary_key==table2.primary_key
     - ForeignKey(Constraint) supports "use_alter=True", to create/drop a foreign key
     via ALTER.  this allows circular foreign key relationships to be set up.
     - append_item() methods removed from Table and Column; preferably
-    construct Table/Column/related objects inline, but if needed use 
+    construct Table/Column/related objects inline, but if needed use
     append_column(), append_foreign_key(), append_constraint(), etc.
     - table.create() no longer returns the Table object, instead has no
     return value.  the usual case is that tables are created via metadata,
@@ -1645,7 +1648,7 @@ the instance is an "orphan" only if its not attached to *any* of those parents
     - added UniqueConstraint (goes at Table level), CheckConstraint
     (goes at Table or Column level).
     - index=False/unique=True on Column now creates a UniqueConstraint,
-    index=True/unique=False creates a plain Index, 
+    index=True/unique=False creates a plain Index,
     index=True/unique=True on Column creates a unique Index.  'index'
     and 'unique' keyword arguments to column are now boolean only; for
     explcit names and groupings of indexes or unique constraints, use the
@@ -1660,13 +1663,13 @@ the instance is an "orphan" only if its not attached to *any* of those parents
     get both the reflected and the programmatic column doubled up
     - the "foreign_key" attribute on Column and ColumnElement in general
     is deprecated, in favor of the "foreign_keys" list/set-based attribute,
-    which takes into account multiple foreign keys on one column. 
+    which takes into account multiple foreign keys on one column.
     "foreign_key" will return the first element in the "foreign_keys" list/set
     or None if the list is empty.
 - Connections/Pooling/Execution:
     - connection pool tracks open cursors and automatically closes them
     if connection is returned to pool with cursors still opened.  Can be
-    affected by options which cause it to raise an error instead, or to 
+    affected by options which cause it to raise an error instead, or to
     do nothing.  fixes issues with MySQL, others
     - fixed bug where Connection wouldnt lose its Transaction
     after commit/rollback
@@ -1680,16 +1683,16 @@ the instance is an "orphan" only if its not attached to *any* of those parents
     - changed "for_update" parameter to accept False/True/"nowait"
     and "read", the latter two of which are interpreted only by
     Oracle and Mysql [ticket:292]
-    - added extract() function to sql dialect 
+    - added extract() function to sql dialect
     (SELECT extract(field FROM expr))
     - BooleanExpression includes new "negate" argument to specify
     the appropriate negation operator if one is available.
     - calling a negation on an "IN" or "IS" clause will result in
-    "NOT IN", "IS NOT" (as opposed to NOT (x IN y)). 
+    "NOT IN", "IS NOT" (as opposed to NOT (x IN y)).
     - Function objects know what to do in a FROM clause now.  their
     behavior should be the same, except now you can also do things like
-    select(['*'], from_obj=[func.my_function()]) to get multiple 
-    columns from the result, or even use sql.column() constructs to name the 
+    select(['*'], from_obj=[func.my_function()]) to get multiple
+    columns from the result, or even use sql.column() constructs to name the
     return columns [ticket:172]
 - ORM:
     - attribute tracking modified to be more intelligent about detecting
@@ -1698,27 +1701,27 @@ the instance is an "orphan" only if its not attached to *any* of those parents
     including the addition of a MutableType mixin which is implemented by
     PickleType.  unit-of-work now tracks the "dirty" list as an expression
     of all persistent objects where the attribute manager detects changes.
-    The basic issue thats fixed is detecting changes on PickleType 
+    The basic issue thats fixed is detecting changes on PickleType
     objects, but also generalizes type handling and "modified" object
     checking to be more complete and extensible.
     - a wide refactoring to "attribute loader" and "options" architectures.
     ColumnProperty and PropertyLoader define their loading behaivor via switchable
-    "strategies", and MapperOptions no longer use mapper/property copying 
+    "strategies", and MapperOptions no longer use mapper/property copying
     in order to function; they are instead propigated via QueryContext
     and SelectionContext objects at query/instances time.
     All of the internal copying of mappers and properties that was used to handle
     inheritance as well as options() has been removed; the structure
     of mappers and properties is much simpler than before and is clearly laid out
     in the new 'interfaces' module.
-    - related to the mapper/property overhaul, internal refactoring to 
-    mapper instances() method to use a SelectionContext object to track 
+    - related to the mapper/property overhaul, internal refactoring to
+    mapper instances() method to use a SelectionContext object to track
     state during the operation.
     SLIGHT API BREAKAGE: the append_result() and populate_instances()
     methods on MapperExtension have a slightly different method signature
-    now as a result of the change; hoping that these methods are not 
+    now as a result of the change; hoping that these methods are not
     in widespread use as of yet.
-    - instances() method moved to Query now, backwards-compatible 
-    version remains on Mapper.  
+    - instances() method moved to Query now, backwards-compatible
+    version remains on Mapper.
     - added contains_eager() MapperOption, used in conjunction with
     instances() to specify properties that should be eagerly loaded
     from the result set, using their plain column names by default, or translated
@@ -1730,29 +1733,29 @@ the instance is an "orphan" only if its not attached to *any* of those parents
     statements in order of tables across all inherited classes
     [ticket:321]
     - added an automatic "row switch" feature to mapping, which will
-    detect a pending instance/deleted instance pair with the same 
+    detect a pending instance/deleted instance pair with the same
     identity key and convert the INSERT/DELETE to a single UPDATE
-    - "association" mappings simplified to take advantage of 
+    - "association" mappings simplified to take advantage of
     automatic "row switch" feature
     - "custom list classes" is now implemented via the "collection_class"
     keyword argument to relation().  the old way still works but is
     deprecated [ticket:212]
     - added "viewonly" flag to relation(), allows construction of
     relations that have no effect on the flush() process.
-    - added "lockmode" argument to base Query select/get functions, 
-    including "with_lockmode" function to get a Query copy that has 
-    a default locking mode.  Will translate "read"/"update" 
+    - added "lockmode" argument to base Query select/get functions,
+    including "with_lockmode" function to get a Query copy that has
+    a default locking mode.  Will translate "read"/"update"
     arguments into a for_update argument on the select side.
     [ticket:292]
     - implemented "version check" logic in Query/Mapper, used
     when version_id_col is in effect and query.with_lockmode()
     is used to get() an instance thats already loaded
-    - post_update behavior improved; does a better job at not 
+    - post_update behavior improved; does a better job at not
     updating too many rows, updates only required columns
     [ticket:208]
     - adjustments to eager loading so that its "eager chain" is
     kept separate from the normal mapper setup, thereby
-    preventing conflicts with lazy loader operation, fixes 
+    preventing conflicts with lazy loader operation, fixes
     [ticket:308]
     - fix to deferred group loading
     - session.flush() wont close a connection it opened [ticket:346]
@@ -1768,7 +1771,7 @@ the instance is an "orphan" only if its not attached to *any* of those parents
     outerjoins in queries without the main table getting added twice.
     [ticket:315]
     - eagerloading is adjusted to more thoughtfully attach its LEFT OUTER JOINs
-    to the given query, looking for custom "FROM" clauses that may have 
+    to the given query, looking for custom "FROM" clauses that may have
     already been set up.
     - added join_to and outerjoin_to transformative methods to SelectResults,
     to build up join/outerjoin conditions based on property names. also
@@ -1782,15 +1785,15 @@ to 'create_engine', or custom creation function via 'creator'
 function to 'create_engine'.
 - added "recycle" argument to Pool, is "pool_recycle" on create_engine,
 defaults to 3600 seconds; connections after this age will be closed and
-replaced with a new one, to handle db's that automatically close 
+replaced with a new one, to handle db's that automatically close
 stale connections [ticket:274]
-- changed "invalidate" semantics with pooled connection; will 
-instruct the underlying connection record to reconnect the next 
+- changed "invalidate" semantics with pooled connection; will
+instruct the underlying connection record to reconnect the next
 time its called.  "invalidate" will also automatically be called
 if any error is thrown in the underlying call to connection.cursor().
 this will hopefully allow the connection pool to reconnect to a
 database that had been stopped and started without restarting
-the connecting application [ticket:121] 
+the connecting application [ticket:121]
 - eesh !  the tutorial doctest was broken for quite some time.
 - add_property() method on mapper does a "compile all mappers"
 step in case the given property references a non-compiled mapper
@@ -1798,17 +1801,17 @@ step in case the given property references a non-compiled mapper
 - [ticket:277] check for pg sequence already existing before create
 - if a contextual session is established via MapperExtension.get_session
 (as it is using the sessioncontext plugin, etc), a lazy load operation
-will use that session by default if the parent object is not 
+will use that session by default if the parent object is not
 persistent with a session already.
-- lazy loads will not fire off for an object that does not have a 
-database identity (why?  
+- lazy loads will not fire off for an object that does not have a
+database identity (why?
 see http://www.sqlalchemy.org/trac/wiki/WhyDontForeignKeysLoadData)
 - unit-of-work does a better check for "orphaned" objects that are
-part of a "delete-orphan" cascade, for certain conditions where the 
+part of a "delete-orphan" cascade, for certain conditions where the
 parent isnt available to cascade from.
 - mappers can tell if one of their objects is an "orphan" based
 on interactions with the attribute package. this check is based
-on a status flag maintained for each relationship 
+on a status flag maintained for each relationship
 when objects are attached and detached from each other.
 - it is now invalid to declare a self-referential relationship with
 "delete-orphan" (as the abovementioned check would make them impossible
@@ -1824,12 +1827,12 @@ with use_information_schema=True argument to create_engine
 - added case_sensitive argument to MetaData, Table, Column, determines
 itself automatically based on if a parent schemaitem has a non-None
 setting for the flag, or if not, then whether the identifier name is all lower
-case or not.  when set to True, quoting is applied to identifiers with mixed or 
-uppercase identifiers.  quoting is also applied automatically in all cases to 
-identifiers that are known to be reserved words or contain other non-standard 
-characters. various database dialects can override all of this behavior, but 
-currently they are all using the default behavior.  tested with postgres, mysql, 
-sqlite, oracle.  needs more testing with firebird, ms-sql. part of the ongoing 
+case or not.  when set to True, quoting is applied to identifiers with mixed or
+uppercase identifiers.  quoting is also applied automatically in all cases to
+identifiers that are known to be reserved words or contain other non-standard
+characters. various database dialects can override all of this behavior, but
+currently they are all using the default behavior.  tested with postgres, mysql,
+sqlite, oracle.  needs more testing with firebird, ms-sql. part of the ongoing
 work with [ticket:155]
 - unit tests updated to run without any pysqlite installed; pool
 test uses a mock DBAPI
@@ -1849,7 +1852,7 @@ count() [ticket:287]
 0.2.7
 - quoting facilities set up so that database-specific quoting can be
 turned on for individual table, schema, and column identifiers when
-used in all queries/creates/drops.  Enabled via "quote=True" in 
+used in all queries/creates/drops.  Enabled via "quote=True" in
 Table or Column, as well as "quote_schema=True" in Table.  Thanks to
 Aaron Spike for his excellent efforts.
 - assignmapper was setting is_primary=True, causing all sorts of mayhem
@@ -1859,10 +1862,10 @@ primary key columns are null (i.e. when mapping to outer joins etc)
 - modifcation to unitofwork to not maintain ordering within the
 "new" list or within the UOWTask "objects" list; instead, new objects
 are tagged with an ordering identifier as they are registered as new
-with the session, and the INSERT statements are then sorted within the 
+with the session, and the INSERT statements are then sorted within the
 mapper save_obj.  the INSERT ordering has basically been pushed all
-the way to the end of the flush cycle. that way the various sorts and 
-organizations occuring within UOWTask (particularly the circular task 
+the way to the end of the flush cycle. that way the various sorts and
+organizations occuring within UOWTask (particularly the circular task
 sort) dont have to worry about maintaining order (which they werent anyway)
 - fixed reflection of foreign keys to autoload the referenced table
 if it was not loaded already
@@ -1873,15 +1876,15 @@ to backrefs by default.  specifying a backref() will override this behavior.
 - better check for ambiguous join conditions in sql.Join; propigates to a
 better error message in PropertyLoader (i.e. relation()/backref()) for when
 the join condition can't be reasonably determined.
-- sqlite creates ForeignKeyConstraint objects properly upon table 
+- sqlite creates ForeignKeyConstraint objects properly upon table
 reflection.
-- adjustments to pool stemming from changes made for [ticket:224]. 
+- adjustments to pool stemming from changes made for [ticket:224].
 overflow counter should only be decremented if the connection actually
 succeeded.  added a test script to attempt testing this.
 - fixed mysql reflection of default values to be PassiveDefault
-- added reflected 'tinyint', 'mediumint' type to MS-SQL [ticket:263], 
+- added reflected 'tinyint', 'mediumint' type to MS-SQL [ticket:263],
 [ticket:264]
-- SingletonThreadPool has a size and does a cleanup pass, so that 
+- SingletonThreadPool has a size and does a cleanup pass, so that
 only a given number of thread-local connections stay around (needed
 for sqlite applications that dispose of threads en masse)
 - fixed small pickle bug(s) with lazy loaders [ticket:265] [ticket:267]
@@ -1893,14 +1896,14 @@ return an array instead of string for SHOW CREATE TABLE call
 - fixed ms-sql connect() to work with adodbapi
 - added "nowait" flag to Select()
 - inheritance check uses issubclass() instead of direct __mro__ check
-to make sure class A inherits from B, allowing mapper inheritance to more 
+to make sure class A inherits from B, allowing mapper inheritance to more
 flexibly correspond to class inheritance [ticket:271]
 - SelectResults will use a subselect, when calling an aggregate (i.e.
 max, min, etc.) on a SelectResults that has an ORDER BY clause
 [ticket:252]
 - fixes to types so that database-specific types more easily used;
 fixes to mysql text types to work with this methodology
-[ticket:269] 
+[ticket:269]
 - some fixes to sqlite date type organization
 - added MSTinyInteger to MS-SQL [ticket:263]
 
@@ -1912,7 +1915,7 @@ Existing methods of primary/foreign key creation have not been changed
 but use these new objects behind the scenes.  table creation
 and reflection is now more table oriented rather than column oriented.
 [ticket:76]
-- overhaul to MapperExtension calling scheme, wasnt working very well 
+- overhaul to MapperExtension calling scheme, wasnt working very well
 previously
 - tweaks to ActiveMapper, supports self-referential relationships
 - slight rearrangement to objectstore (in activemapper/threadlocal)
@@ -1929,28 +1932,28 @@ this also adds them to activemapper
 - connection exceptions wrapped in DBAPIError
 - ActiveMapper now supports autoloading column definitions from the
 database if you supply a __autoload__ = True attribute in your
-mapping inner-class.  Currently this does not support reflecting 
+mapping inner-class.  Currently this does not support reflecting
 any relationships.
-- deferred column load could screw up the connection status in 
+- deferred column load could screw up the connection status in
 a flush() under some circumstances, this was fixed
 - expunge() was not working with cascade, fixed.
 - potential endless loop in cascading operations fixed.
-- added "synonym()" function, applied to properties to have a 
+- added "synonym()" function, applied to properties to have a
 propname the same as another, for the purposes of overriding props
 and allowing the original propname to be accessible in select_by().
 - fix to typing in clause construction which specifically helps
 type issues with polymorphic_union (CAST/ColumnClause propigates
 its type to proxy columns)
-- mapper compilation work ongoing, someday it'll work....moved 
+- mapper compilation work ongoing, someday it'll work....moved
 around the initialization of MapperProperty objects to be after
 all mappers are created to better handle circular compilations.
-do_init() method is called on all properties now which are more 
+do_init() method is called on all properties now which are more
 aware of their "inherited" status if so.
 - eager loads explicitly disallowed on self-referential relationships, or
 relationships to an inheriting mapper (which is also self-referential)
-- reduced bind param size in query._get to appease the picky oracle 
+- reduced bind param size in query._get to appease the picky oracle
 [ticket:244]
-- added 'checkfirst' argument to table.create()/table.drop(), as 
+- added 'checkfirst' argument to table.create()/table.drop(), as
 well as table.exists() [ticket:234]
 - some other ongoing fixes to inheritance [ticket:245]
 - attribute/backref/orphan/history-tracking tweaks as usual...
@@ -1958,16 +1961,16 @@ well as table.exists() [ticket:234]
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit
 two mappers that referenced each other
-- upgraded all unittests to insert './lib/' into sys.path, 
+- upgraded all unittests to insert './lib/' into sys.path,
 working around new setuptools PYTHONPATH-killing behavior
 - further fixes with attributes/dependencies/etc....
 - improved error handling for when DynamicMetaData is not connected
 - MS-SQL support largely working (tested with pymssql)
-- ordering of UPDATE and DELETE statements within groups is now 
+- ordering of UPDATE and DELETE statements within groups is now
 in order of primary key values, for more deterministic ordering
 - after_insert/delete/update mapper extensions now called per object,
 not per-object-per-table
-- further fixes/refactorings to mapper compilation 
+- further fixes/refactorings to mapper compilation
 
 0.2.4
 - try/except when the mapper sets init.__name__ on a mapped class,
@@ -1979,7 +1982,7 @@ to be in a Session to do the operation; whereas before the operation
 would just return a blank list or None, it now raises an exception.
 - Session.update() is slightly more lenient if the session to which
 the given object was formerly attached to was garbage collected;
-otherwise still requires you explicitly remove the instance from 
+otherwise still requires you explicitly remove the instance from
 the previous Session.
 - fixes to mapper compilation, checking for more error conditions
 - small fix to eager loading combined with ordering/limit/offset
@@ -1992,10 +1995,10 @@ properly saving
 - when QueuePool times out it raises a TimeoutError instead of
 erroneously making another connection
 - Queue.Queue usage in pool has been replaced with a locally
-modified version (works in py2.3/2.4!) that uses a threading.RLock 
-for a mutex.  this is to fix a reported case where a ConnectionFairy's 
-__del__() method got called within the Queue's get() method, which 
-then returns its connection to the Queue via the the put() method, 
+modified version (works in py2.3/2.4!) that uses a threading.RLock
+for a mutex.  this is to fix a reported case where a ConnectionFairy's
+__del__() method got called within the Queue's get() method, which
+then returns its connection to the Queue via the the put() method,
 causing a reentrant hang unless threading.RLock is used.
 - postgres will not place SERIAL keyword on a primary key column
 if it has a foreign key constraint
@@ -2016,13 +2019,13 @@ when backrefs were in use
 - the attribute instrumentation module has been completely rewritten; its
 now a large degree simpler and clearer, slightly faster.  the "history"
 of an attribute is no longer micromanaged with each change and is
-instead part of a "CommittedState" object created when the 
+instead part of a "CommittedState" object created when the
 instance is first loaded.  HistoryArraySet is gone, the behavior of
 list attributes is now more open ended (i.e. theyre not sets anymore).
 - py2.4 "set" construct used internally, falls back to sets.Set when
 "set" not available/ordering is needed.
-- fix to transaction control, so that repeated rollback() calls 
-dont fail (was failing pretty badly when flush() would raise 
+- fix to transaction control, so that repeated rollback() calls
+dont fail (was failing pretty badly when flush() would raise
 an exception in a larger try/except transaction block)
 - "foreignkey" argument to relation() can also be a list.  fixed
 auto-foreignkey detection [ticket:151]
@@ -2043,16 +2046,16 @@ refactorings
 __doc__ from the original class
 - fixed small bug in selectresult.py regarding mapper extension
 [ticket:200]
-- small tweak to cascade_mappers, not very strongly supported 
+- small tweak to cascade_mappers, not very strongly supported
 function at the moment
 - some fixes to between(), column.between() to propigate typing
 information better [ticket:202]
-- if an object fails to be constructed, is not added to the 
+- if an object fails to be constructed, is not added to the
 session [ticket:203]
 - CAST function has been made into its own clause object with
 its own compilation function in ansicompiler; allows MySQL
 to silently ignore most CAST calls since MySQL
-seems to only support the standard CAST syntax with Date types.  
+seems to only support the standard CAST syntax with Date types.
 MySQL-compatible CAST support for strings, ints, etc. a TODO
 
 0.2.2
@@ -2064,16 +2067,16 @@ more unit tests
 - fix to docs, removed incorrect info that close() is unsafe to use
 with threadlocal strategy (its totally safe !)
 - create_engine() can take URLs as string or unicode [ticket:188]
-- firebird support partially completed; 
+- firebird support partially completed;
 thanks to James Ralston and Brad Clements for their efforts.
 - Oracle url translation was broken, fixed, will feed host/port/sid
-into cx_oracle makedsn() if 'database' field is present, else uses 
+into cx_oracle makedsn() if 'database' field is present, else uses
 straight TNS name from the 'host' field
 - fix to using unicode criterion for query.get()/query.load()
-- count() function on selectables now uses table primary key or 
+- count() function on selectables now uses table primary key or
 first column instead of "1" for criterion, also uses label "rowcount"
-instead of "count".  
-- got rudimental "mapping to multiple tables" functionality cleaned up, 
+instead of "count".
+- got rudimental "mapping to multiple tables" functionality cleaned up,
 more correctly documented
 - restored global_connect() function, attaches to a DynamicMetaData
 instance called "default_metadata".  leaving MetaData arg to Table
@@ -2085,11 +2088,11 @@ out will use the default metadata.
 0.2.1
 - "pool" argument to create_engine() properly propigates
 - fixes to URL, raises exception if not parsed, does not pass blank
-fields along to the DB connect string (a string such as 
+fields along to the DB connect string (a string such as
 user:host@/db was breaking on postgres)
 - small fixes to Mapper when it inserts and tries to get
 new primary key values back
-- rewrote half of TLEngine, the ComposedSQLEngine used with 
+- rewrote half of TLEngine, the ComposedSQLEngine used with
 'strategy="threadlocal"'.  it now properly implements engine.begin()/
 engine.commit(), which nest fully with connection.begin()/trans.commit().
 added about six unittests.
@@ -2097,7 +2100,7 @@ added about six unittests.
 unittest which was supposed to check for this was also silently missing
 it.  fixed unittest to ensure that ConnectionFairy properly falls out
 of scope.
-- placeholder dispose() method added to SingletonThreadPool, doesnt 
+- placeholder dispose() method added to SingletonThreadPool, doesnt
 do anything yet
 - rollback() is automatically called when an exception is raised,
 but only if theres no transaction in process (i.e. works more like
@@ -2116,28 +2119,28 @@ driver://user:password@host:port/database
 - total rewrite of connection-scoping methodology, Connection objects
 can now execute clause elements directly, added explicit "close" as
 well as support throughout Engine/ORM to handle closing properly,
-no longer relying upon __del__ internally to return connections 
+no longer relying upon __del__ internally to return connections
 to the pool [ticket:152].
 - overhaul to Session interface and scoping.  uses hibernate-style
 methods, including query(class), save(), save_or_update(), etc.
 no threadlocal scope is installed by default.  Provides a binding
 interface to specific Engines and/or Connections so that underlying
 Schema objects do not need to be bound to an Engine.  Added a basic
-SessionTransaction object that can simplistically aggregate transactions 
+SessionTransaction object that can simplistically aggregate transactions
 across multiple engines.
 - overhaul to mapper's dependency and "cascade" behavior; dependency logic
 factored out of properties.py into a separate module "dependency.py".
-"cascade" behavior is now explicitly controllable, proper implementation 
-of "delete", "delete-orphan", etc.  dependency system can now determine at 
-flush time if a child object has a parent or not so that it makes better 
+"cascade" behavior is now explicitly controllable, proper implementation
+of "delete", "delete-orphan", etc.  dependency system can now determine at
+flush time if a child object has a parent or not so that it makes better
 decisions on how that child should be updated in the DB with regards to deletes.
 - overhaul to Schema to build upon MetaData object instead of an Engine.
 Entire SQL/Schema system can be used with no Engines whatsoever, executed
-solely by an explicit Connection object.  the "bound" methodlogy exists via the 
+solely by an explicit Connection object.  the "bound" methodlogy exists via the
 BoundMetaData for schema objects.  ProxyEngine is generally not needed
 anymore and is replaced by DynamicMetaData.
 - true polymorphic behavior implemented, fixes [ticket:167]
-- "oid" system has been totally moved into compile-time behavior; 
+- "oid" system has been totally moved into compile-time behavior;
 if they are used in an order_by where they are not available, the order_by
 doesnt get compiled, fixes [ticket:147]
 - overhaul to packaging; "mapping" is now "orm", "objectstore" is now
@@ -2145,7 +2148,7 @@ doesnt get compiled, fixes [ticket:147]
 "threadlocal" mod if used
 - mods now called in via "import <modname>".  extensions favored over
 mods as mods are globally-monkeypatching
-- fix to add_property so that it propigates properties to inheriting 
+- fix to add_property so that it propigates properties to inheriting
 mappers [ticket:154]
 - backrefs create themselves against primary mapper of its originating
 property, priamry/secondary join arguments can be specified to override.
@@ -2155,10 +2158,10 @@ helps their usage with polymorphic mappers
 - improvements and fixes to topological sort algorithm, as well as more
 unit tests
 - tutorial page added to docs which also can be run with a custom doctest
-runner to ensure its properly working.  docs generally overhauled to 
+runner to ensure its properly working.  docs generally overhauled to
 deal with new code patterns
 - many more fixes, refactorings.
-- migration guide is available on the Wiki at 
+- migration guide is available on the Wiki at
 http://www.sqlalchemy.org/trac/wiki/02Migration
 
 0.1.7
@@ -2177,7 +2180,7 @@ http://www.sqlalchemy.org/trac/wiki/02Migration
 - fix for parenthesis to work correctly with subqueries in INSERT/UPDATE
 - HistoryArraySet gets extend() method
 - fixed lazyload support for other comparison operators besides =
-- lazyload fix where two comparisons in the join condition point to the 
+- lazyload fix where two comparisons in the join condition point to the
 samem column
 - added "construct_new" flag to mapper, will use __new__ to create instances
 instead of __init__ (standard in 0.2)
@@ -2200,7 +2203,7 @@ core functionality, using the function "install_mods(*modnames)".
 return generators that turn ranges into LIMIT/OFFSET queries (Jonas Borgstr?- factored out querying capabilities of Mapper into a separate Query object
 which is Session-centric.  this improves the performance of mapper.using(session)
 and makes other things possible.
-- objectstore/Session refactored, the official way to save objects is now 
+- objectstore/Session refactored, the official way to save objects is now
 via the flush() method.  The begin/commit functionality of Session is factored
 into LegacySession which is still established as the default behavior, until
 the 0.2 series.
@@ -2246,7 +2249,7 @@ modify the population of object attributes. this method can call the
 populate_instance() method on another mapper to proxy the attribute population
 from one mapper to another; some row translation logic is also built in to help
 with this.
-- fixed Oracle8-compatibility "use_ansi" flag which converts JOINs to 
+- fixed Oracle8-compatibility "use_ansi" flag which converts JOINs to
 comparisons with the = and (+) operators, passes basic unittests
 - tweaks to Oracle LIMIT/OFFSET support
 - Oracle reflection uses ALL_** views instead of USER_** to get larger
@@ -2255,14 +2258,14 @@ list of stuff to reflect from
 - objectstore.commit(obj1, obj2,...) adds an extra step to seek out private
 relations on properties and delete child objects, even though its not a global
 commit
-- lots and lots of fixes to mappers which use inheritance, strengthened the 
+- lots and lots of fixes to mappers which use inheritance, strengthened the
 concept of relations on a mapper being made towards the "local" table for that
 mapper, not the tables it inherits.  allows more complex compositional patterns
 to work with lazy/eager loading.
-- added support for mappers to inherit from others based on the same table, 
+- added support for mappers to inherit from others based on the same table,
 just specify the same table as that of both parent/child mapper.
-- some minor speed improvements to the attributes system with regards to 
-instantiating and populating new objects. 
+- some minor speed improvements to the attributes system with regards to
+instantiating and populating new objects.
 - fixed MySQL binary unit test
 - INSERTs can receive clause elements as VALUES arguments, not just literal
 values
@@ -2290,7 +2293,7 @@ keynames they are now generated from a column "label" in all relevant cases to
 take advantage of excess-name-length rules, and checks for a peculiar collision
 against a column named the same as "tablename_colname" added
 - major overhaul to unit of work documentation, other documentation sections.
-- fixed attributes bug where if an object is committed, its lazy-loaded list got 
+- fixed attributes bug where if an object is committed, its lazy-loaded list got
 blown away if it hadnt been loaded
 - added unique_connection() method to engine, connection pool to return a
 connection that is not part of the thread-local context or any current
@@ -2316,16 +2319,16 @@ correctly, also relations set up against a mapper with inherited mappers will
 create joins against the table that is specific to the mapper itself (i.e. and
 not any tables that are inherited/are further down the inheritance chain),
 this can be overridden by using custom primary/secondary joins.
-- added J.Ellis patch to mapper.py so that selectone() throws an exception 
-if query returns more than one object row, selectfirst() to not throw the 
+- added J.Ellis patch to mapper.py so that selectone() throws an exception
+if query returns more than one object row, selectfirst() to not throw the
 exception. also adds selectfirst_by (synonymous with get_by) and selectone_by
 - added onupdate parameter to Column, will exec SQL/python upon an update
 statement.Also adds "for_update=True" to all DefaultGenerator subclasses
-- added support for Oracle table reflection contributed by Andrija Zaric; 
+- added support for Oracle table reflection contributed by Andrija Zaric;
 still some bugs to work out regarding composite primary keys/dictionary selection
 - checked in an initial Firebird module, awaiting testing.
-- added sql.ClauseParameters dictionary object as the result for 
-compiled.get_params(), does late-typeprocessing of bind parameters so 
+- added sql.ClauseParameters dictionary object as the result for
+compiled.get_params(), does late-typeprocessing of bind parameters so
 that the original values are easier to access
 - more docs for indexes, column defaults, connection pooling, engine construction
 - overhaul to the construction of the types system. uses a simpler inheritance
@@ -2333,8 +2336,8 @@ pattern so that any of the generic types can be easily subclassed, with no need
 for TypeDecorator.
 - added "convert_unicode=False" parameter to SQLEngine, will cause all String
 types to perform unicode encoding/decoding (makes Strings act like Unicodes)
-- added 'encoding="utf8"' parameter to engine.  the given encoding will be 
-used for all encode/decode calls within Unicode types as well as Strings 
+- added 'encoding="utf8"' parameter to engine.  the given encoding will be
+used for all encode/decode calls within Unicode types as well as Strings
 when convert_unicode=True.
 - improved support for mapping against UNIONs, added polymorph.py example
 to illustrate multi-class mapping against a UNION
@@ -2346,7 +2349,7 @@ that will be passed to the backref.
 - SQL functions (i.e. func.foo()) can do execute()/scalar() standalone
 - fix to SQL functions so that the ANSI-standard functions, i.e. current_timestamp
 etc., do not specify parenthesis.  all other functions do.
-- added settattr_clean and append_clean to SmartProperty, which set 
+- added settattr_clean and append_clean to SmartProperty, which set
 attributes without triggering a "dirty" event or any history. used as:
 myclass.prop1.setattr_clean(myobject, 'hi')
 - improved support to column defaults when used by mappers; mappers will pull
@@ -2381,10 +2384,10 @@ such as in an inheritance relationship, this is fixed.
 producing selects, inserts, etc. without any engine dependencies.  builds upon
 new TableClause/ColumnClause lexical objects.  Schema's Table/Column objects
 are the "physical" subclasses of them.  simplifies schema/sql relationship,
-extensions (like proxyengine), and speeds overall performance by a large margin. 
+extensions (like proxyengine), and speeds overall performance by a large margin.
 removes the entire getattr() behavior that plagued 0.1.1.
 - refactoring of how the mapper "synchronizes" data between two objects into a
-separate module, works better with properties attached to a mapper that has an 
+separate module, works better with properties attached to a mapper that has an
 additional inheritance relationship to one of the related tables, also the same
 methodology used to synchronize parent/child objects now used by mapper to
 synchronize between inherited and inheriting mappers.
@@ -2393,12 +2396,12 @@ check when object attributes are modified or the object is deleted
 - Index object fully implemented, can be constructed standalone, or via
 "index" and "unique" arguments on Columns.
 - added "convert_unicode" flag to SQLEngine, will treat all String/CHAR types
-as Unicode types, with raw-byte/utf-8 translation on the bind parameter and 
+as Unicode types, with raw-byte/utf-8 translation on the bind parameter and
 result set side.
 - postgres maintains a list of ANSI functions that must have no parenthesis so
 function calls with no arguments work consistently
 - tables can be created with no engine specified.  this will default their engine
-to a module-scoped "default engine" which is a ProxyEngine.  this engine can 
+to a module-scoped "default engine" which is a ProxyEngine.  this engine can
 be connected via the function "global_connect".
 - added "refresh(*obj)" method to objectstore / Session to reload the attributes of
 any set of objects from the database unconditionally
@@ -2409,7 +2412,7 @@ normally.  broke nothing, slowed down everything.  thanks to jpellerin for findi
 
 0.1.1
 - small fix to Function class so that expressions with a func.foo() use the type of the
-Function object (i.e. the left side) as the type of the boolean expression, not the 
+Function object (i.e. the left side) as the type of the boolean expression, not the
 other side which is more of a moving target (changeset 1020).
 - creating self-referring mappers with backrefs slightly easier (but still not that easy -
 changeset 1019)
@@ -2417,37 +2420,37 @@ changeset 1019)
 - psycopg1 date/time issue with None fixed (changeset 1005)
 - two issues related to postgres, which doesnt want to give you the "lastrowid"
 since oids are deprecated:
-   * postgres database-side defaults that are on primary key cols *do* execute 
+   * postgres database-side defaults that are on primary key cols *do* execute
 explicitly beforehand, even though thats not the idea of a PassiveDefault.  this is
 because sequences on columns get reflected as PassiveDefaults, but need to be explicitly
-executed on a primary key col so we know what we just inserted.  
-   * if you did add a row that has a bunch of database-side defaults on it, 
-and the PassiveDefault thing was working the old way, i.e. they just execute on 
+executed on a primary key col so we know what we just inserted.
+   * if you did add a row that has a bunch of database-side defaults on it,
+and the PassiveDefault thing was working the old way, i.e. they just execute on
 the DB side, the "cant get the row back without an OID" exception that occurred
 also will not happen unless someone (usually the ORM) explicitly asks for it.
-- fixed a glitch with engine.execute_compiled where it was making a second 
+- fixed a glitch with engine.execute_compiled where it was making a second
 ResultProxy that just got thrown away.
 - began to implement newer logic in object properities.  you can now say
 myclass.attr.property, which will give you the PropertyLoader corresponding to that
 attribute, i.e. myclass.mapper.props['attr']
-- eager loading has been internally overhauled to use aliases at all times.  more 
+- eager loading has been internally overhauled to use aliases at all times.  more
 complicated chains of eager loads can now be created without any need for explicit
 "use aliases"-type instructions.  EagerLoader code is also much simpler now.
-- a new somewhat experimental flag "use_update" added to relations, indicates that 
-this relationship should be handled by a second UPDATE statement, either after a 
+- a new somewhat experimental flag "use_update" added to relations, indicates that
+this relationship should be handled by a second UPDATE statement, either after a
 primary INSERT or before a primary DELETE.  handles circular row dependencies.
-- added exceptions module, all raised exceptions (except for some 
+- added exceptions module, all raised exceptions (except for some
 KeyError/AttributeError exceptions) descend from these classes.
 - fix to date types with MySQL, returned timedelta converted to datetime.time
-- two-phase objectstore.commit operations (i.e. begin/commit) now return a 
+- two-phase objectstore.commit operations (i.e. begin/commit) now return a
 transactional object (SessionTrans), to more clearly indicate transaction boundaries.
 - Index object with create/drop support added to schema
 - fix to postgres, where it will explicitly pre-execute a PassiveDefault on a table
-if it is a primary key column, pursuant to the ongoing "we cant get inserted rows 
+if it is a primary key column, pursuant to the ongoing "we cant get inserted rows
 back from postgres" issue
 - change to information_schema query that gets back postgres table defs, now
 uses explicit JOIN keyword, since one user had faster performance with 8.1
-- fix to engine.process_defaults so it works correctly with a table that has 
+- fix to engine.process_defaults so it works correctly with a table that has
 different column name/column keys (changset 982)
 - a column can only be attached to one table - this is now asserted
 - postgres time types descend from Time type

@@ -7,7 +7,7 @@
 
 import warnings
 
-from sqlalchemy import util, sql, schema, exceptions
+from sqlalchemy import util, sql, schema, exceptions, pool
 from sqlalchemy.sql import compiler
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
@@ -425,6 +425,7 @@ class FBIdentifierPreparer(compiler.IdentifierPreparer):
 
 
 dialect = FBDialect
+dialect.poolclass = pool.SingletonThreadPool
 dialect.statement_compiler = FBCompiler
 dialect.schemagenerator = FBSchemaGenerator
 dialect.schemadropper = FBSchemaDropper

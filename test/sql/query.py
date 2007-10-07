@@ -296,7 +296,8 @@ class QueryTest(PersistTest):
             print r['user_id']
             assert False
         except exceptions.InvalidRequestError, e:
-            assert str(e) == "Ambiguous column name 'user_id' in result set! try 'use_labels' option on select statement."
+            assert str(e) == "Ambiguous column name 'user_id' in result set! try 'use_labels' option on select statement." or \
+                   str(e) == "Ambiguous column name 'USER_ID' in result set! try 'use_labels' option on select statement."
             
     def test_keys(self):
         users.insert().execute(user_id=1, user_name='foo')
