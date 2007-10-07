@@ -14,21 +14,29 @@ class EntityTest(AssertMixin):
         ctx = SessionContext(create_session)
         
         user1 = Table('user1', metadata, 
-            Column('user_id', Integer, Sequence('user1_id_seq'), primary_key=True),
+            Column('user_id', Integer, Sequence('user1_id_seq', optional=True),
+                   primary_key=True),
             Column('name', String(60), nullable=False)
             )
         user2 = Table('user2', metadata, 
-            Column('user_id', Integer, Sequence('user2_id_seq'), primary_key=True),
+            Column('user_id', Integer, Sequence('user2_id_seq', optional=True),
+                   primary_key=True),
             Column('name', String(60), nullable=False)
             )
         address1 = Table('address1', metadata,
-            Column('address_id', Integer, Sequence('address1_id_seq'), primary_key=True),
-            Column('user_id', Integer, ForeignKey(user1.c.user_id), nullable=False),
+            Column('address_id', Integer,
+                   Sequence('address1_id_seq', optional=True),
+                   primary_key=True),
+            Column('user_id', Integer, ForeignKey(user1.c.user_id),
+                   nullable=False),
             Column('email', String(100), nullable=False)
             )
         address2 = Table('address2', metadata,
-            Column('address_id', Integer, Sequence('address2_id_seq'), primary_key=True),
-            Column('user_id', Integer, ForeignKey(user2.c.user_id), nullable=False),
+            Column('address_id', Integer,
+                   Sequence('address2_id_seq', optional=True),
+                   primary_key=True),
+            Column('user_id', Integer, ForeignKey(user2.c.user_id),
+                   nullable=False),
             Column('email', String(100), nullable=False)
             )
         metadata.create_all()
@@ -70,8 +78,8 @@ class EntityTest(AssertMixin):
         ctx.current.flush()
         assert user1.select().execute().fetchall() == [(u1.user_id, u1.name)]
         assert user2.select().execute().fetchall() == [(u2.user_id, u2.name)]
-        assert address1.select().execute().fetchall() == [(u1.user_id, a1.user_id, 'a1@foo.com')]
-        assert address2.select().execute().fetchall() == [(u2.user_id, a2.user_id, 'a2@foo.com')]
+        assert address1.select().execute().fetchall() == [(a1.address_id, u1.user_id, 'a1@foo.com')]
+        assert address2.select().execute().fetchall() == [(a1.address_id, u2.user_id, 'a2@foo.com')]
 
         ctx.current.clear()
         u1list = ctx.current.query(User, entity_name='user1').select()
