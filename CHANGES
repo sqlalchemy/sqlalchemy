@@ -42,8 +42,9 @@ CHANGES
   previously it was detecting DBAPI types and converting regardless).
   should fix [ticket:800]
 
-- Firebird dialect now uses SingletonThreadPool as poolclass.
+- fix to anonymous label generation of long table/column names [ticket:806]
 
+- Firebird dialect now uses SingletonThreadPool as poolclass.
 
 0.4.0beta6
 ----------

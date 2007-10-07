@@ -1,10 +1,12 @@
 import testbase
 from sqlalchemy import *
 from testlib import *
-
+from sqlalchemy.engine import default
 
 # TODO: either create a mock dialect with named paramstyle and a short identifier length,
 # or find a way to just use sqlite dialect and make those changes
+
+IDENT_LENGTH = 29
 
 class LabelTypeTest(PersistTest):
     def test_type(self):
@@ -15,7 +17,7 @@ class LabelTypeTest(PersistTest):
         assert isinstance(t.c.col1.label('hi').type, Integer)
         assert isinstance(select([t.c.col2], scalar=True).label('lala').type, Float)
 
-class LongLabelsTest(PersistTest):
+class LongLabelsTest(SQLCompileTest):
     def setUpAll(self):
         global metadata, table1, maxlen
         metadata = MetaData(testbase.db)
@@ -27,7 +29,7 @@ class LongLabelsTest(PersistTest):
         metadata.create_all()
         
         maxlen = testbase.db.dialect.max_identifier_length
-        testbase.db.dialect.max_identifier_length = 29
+        testbase.db.dialect.max_identifier_length = IDENT_LENGTH
         
     def tearDown(self):
         table1.delete().execute()
@@ -83,6 +85,20 @@ class LongLabelsTest(PersistTest):
       # still "physical"
       q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias('foo')
       x = select([q])
+      print x.execute().fetchall()
+
+    def test_anon_alias(self):
+      compile_dialect = default.DefaultDialect()
+      compile_dialect.max_identifier_length = IDENT_LENGTH
+
+      q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias()
+      x = select([q], use_labels=True)
+
+      self.assert_compile(x, "SELECT anon_1.this_is_the_primarykey_column AS anon_1_this_is_the_prim_1, anon_1.this_is_the_data_column AS anon_1_this_is_the_data_2 " 
+            "FROM (SELECT some_large_named_table.this_is_the_primarykey_column AS this_is_the_primarykey_column, some_large_named_table.this_is_the_data_column AS this_is_the_data_column "
+            "FROM some_large_named_table "
+            "WHERE some_large_named_table.this_is_the_primarykey_column = :some_large_named_table__1) AS anon_1", dialect=compile_dialect)
+            
       print x.execute().fetchall()
     
     def test_oid(self):

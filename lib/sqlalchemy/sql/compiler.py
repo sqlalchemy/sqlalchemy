@@ -415,7 +415,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
 
         if len(anonname) > self.dialect.max_identifier_length:
             counter = self.generated_ids.get(ident_class, 1)
-            truncname = name[0:self.dialect.max_identifier_length - 6] + "_" + hex(counter)[2:]
+            truncname = anonname[0:self.dialect.max_identifier_length - 6] + "_" + hex(counter)[2:]
             self.generated_ids[ident_class] = counter + 1
         else:
             truncname = anonname
