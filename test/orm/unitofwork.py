@@ -254,7 +254,7 @@ class MutableTypesTest(ORMTest):
         table = Table('mutabletest', metadata,
             Column('id', Integer, Sequence('mutableidseq', optional=True), primary_key=True),
             Column('data', PickleType),
-            Column('value', Unicode(30)))
+            Column('val', Unicode(30)))
 
     def test_basic(self):
         """test that types marked as MutableType get changes detected on them"""
@@ -280,24 +280,24 @@ class MutableTypesTest(ORMTest):
         mapper(Foo, table)
         f1 = Foo()
         f1.data = pickleable.Bar(4,5)
-        f1.value = unicode('hi')
+        f1.val = unicode('hi')
         Session.commit()
         def go():
             Session.commit()
         self.assert_sql_count(testbase.db, go, 0)
-        f1.value = unicode('someothervalue')
+        f1.val = unicode('someothervalue')
         self.assert_sql(testbase.db, lambda: Session.commit(), [
             (
-                "UPDATE mutabletest SET value=:value WHERE mutabletest.id = :mutabletest_id",
-                {'mutabletest_id': f1.id, 'value': u'someothervalue'}
+                "UPDATE mutabletest SET val=:val WHERE mutabletest.id = :mutabletest_id",
+                {'mutabletest_id': f1.id, 'val': u'someothervalue'}
             ),
         ])
-        f1.value = unicode('hi')
+        f1.val = unicode('hi')
         f1.data.x = 9
         self.assert_sql(testbase.db, lambda: Session.commit(), [
             (
-                "UPDATE mutabletest SET data=:data, value=:value WHERE mutabletest.id = :mutabletest_id",
-                {'mutabletest_id': f1.id, 'value': u'hi', 'data':f1.data}
+                "UPDATE mutabletest SET data=:data, val=:val WHERE mutabletest.id = :mutabletest_id",
+                {'mutabletest_id': f1.id, 'val': u'hi', 'data':f1.data}
             ),
         ])
         
@@ -343,11 +343,11 @@ class MutableTypesTest(ORMTest):
         class Foo(object):pass
         mapper(Foo, table)
         f1 = Foo()
-        f1.value = u'hi'
+        f1.val = u'hi'
         Session.commit()
         Session.close()
         f1 = Session.get(Foo, f1.id)
-        f1.value = u'hi'
+        f1.val = u'hi'
         def go():
             Session.commit()
         self.assert_sql_count(testbase.db, go, 0)
