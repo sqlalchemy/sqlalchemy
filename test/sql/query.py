@@ -357,7 +357,7 @@ class QueryTest(PersistTest):
         )
         t2 = Table('t2', meta,
             Column('id', Integer, Sequence('t2idseq', optional=True), primary_key=True),
-            Column('value', Integer, default="7"),
+            Column('value', Integer, default=7),
             Column('stuff', String(20), onupdate="thisisstuff")
         )
         meta.create_all()
