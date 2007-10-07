@@ -240,10 +240,24 @@ class DefaultTest(PersistTest):
             testbase.db.execute("drop table speedy_users", None)
 
 class AutoIncrementTest(PersistTest):
+    def setUp(self):
+        global aitable, aimeta
+        
+        aimeta = MetaData(testbase.db)
+        aitable = Table("aitest", aimeta, 
+            Column('id', Integer, Sequence('ai_id_seq', optional=True),
+                   primary_key=True),
+            Column('int1', Integer),
+            Column('str1', String(20)))
+        aimeta.create_all()
+
+    def tearDown(self):
+        aimeta.drop_all()
+
     @testing.supported('postgres', 'mysql')
     def testnonautoincrement(self):
         meta = MetaData(testbase.db)
-        nonai_table = Table("aitest", meta, 
+        nonai_table = Table("nonaitest", meta, 
             Column('id', Integer, autoincrement=False, primary_key=True),
             Column('data', String(20)))
         nonai_table.create(checkfirst=True)
@@ -256,53 +270,62 @@ class AutoIncrementTest(PersistTest):
             except exceptions.SQLError, e:
                 print "Got exception", str(e)
                 assert True
-                
+
             nonai_table.insert().execute(id=1, data='row 1')
         finally:
             nonai_table.drop()    
 
-    def testwithautoincrement(self):
-        meta = MetaData(testbase.db)
-        table = Table("aitest", meta, 
-            Column('id', Integer, Sequence('ai_id_seq', optional=True), primary_key=True),
-            Column('data', String(20)))
-        table.create(checkfirst=True)
-        try:
-            table.insert().execute(data='row 1')
-            table.insert().execute(data='row 2')
-            table.insert().execute({'data':'row 3'}, {'data':'row 4'})
-            assert table.select().execute().fetchall() == [(1, "row 1"), (2, "row 2"), (3, "row 3"), (4, "row 4")]
-        finally:
-            table.drop()    
+    # TODO: add coverage for increment on a secondary column in a key
+    def _test_autoincrement(self, bind):
+        ids = set()
+        rs = bind.execute(aitable.insert(), int1=1)
+        last = rs.last_inserted_ids()[0]
+        self.assert_(last)
+        self.assert_(last not in ids)
+        ids.add(last)
 
-    def testfetchid(self):
-        
-        # TODO: what does this test do that all the various ORM tests dont ?
-        
-        meta = MetaData(testbase.db)
-        table = Table("aitest", meta, 
-            Column('id', Integer, Sequence('ai_id_seq', optional=True), primary_key=True),
-            Column('data', String(20)))
-        table.create(checkfirst=True)
+        rs = bind.execute(aitable.insert(), str1='row 2')
+        last = rs.last_inserted_ids()[0]
+        self.assert_(last)
+        self.assert_(last not in ids)
+        ids.add(last)
 
+        rs = bind.execute(aitable.insert(), int1=3, str1='row 3')
+        last = rs.last_inserted_ids()[0]
+        self.assert_(last)
+        self.assert_(last not in ids)
+        ids.add(last)
+
+        rs = bind.execute(aitable.insert(values={'int1':func.length('four')}))
+        last = rs.last_inserted_ids()[0]
+        self.assert_(last)
+        self.assert_(last not in ids)
+        ids.add(last)
+
+        self.assert_(
+            list(bind.execute(aitable.select().order_by(aitable.c.id))) ==
+            [(1, 1, None), (2, None, 'row 2'), (3, 3, 'row 3'), (4, 4, None)])
+
+    def test_autoincrement_autocommit(self):
+        self._test_autoincrement(testbase.db)
+
+    def test_autoincrement_transaction(self):
+        con = testbase.db.connect()
+        tx = con.begin()
         try:
-            meta2 = MetaData(testbase.db)
-            table2 = Table("aitest", meta2,
-                Column('id', Integer, Sequence('ai_id_seq', optional=True), primary_key=True),
-                Column('data', String(20)))
-            class AiTest(object):
-                pass
-            mapper(AiTest, table2)
-        
-            s = create_session()
-            u = AiTest()
-            s.save(u)
-            s.flush()
-            assert u.id is not None
-            s.clear()
+            try:
+                self._test_autoincrement(con)
+            except:
+                try:
+                    tx.rollback()
+                except:
+                    pass
+                raise
+            else:
+                tx.commit()
         finally:
-            table.drop()
-        
+            con.close()
+
 
 class SequenceTest(PersistTest):
     @testing.supported('postgres', 'oracle')
