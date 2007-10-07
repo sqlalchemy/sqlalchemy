@@ -121,8 +121,8 @@ class EntityTest(AssertMixin):
         sess.flush()
         assert user1.select().execute().fetchall() == [(u1.user_id, u1.name)]
         assert user2.select().execute().fetchall() == [(u2.user_id, u2.name)]
-        assert address1.select().execute().fetchall() == [(u1.user_id, a1.user_id, 'a1@foo.com')]
-        assert address2.select().execute().fetchall() == [(u2.user_id, a2.user_id, 'a2@foo.com')]
+        assert address1.select().execute().fetchall() == [(a1.address_id, u1.user_id, 'a1@foo.com')]
+        assert address2.select().execute().fetchall() == [(a1.address_id, u2.user_id, 'a2@foo.com')]
 
         sess.clear()
         u1list = sess.query(User, entity_name='user1').select()
@@ -161,8 +161,8 @@ class EntityTest(AssertMixin):
         ctx.current.flush()
         assert user1.select().execute().fetchall() == [(u1.user_id, u1.name)]
         assert user2.select().execute().fetchall() == [(u2.user_id, u2.name)]
-        assert address1.select().execute().fetchall() == [(u1.user_id, a1.user_id, 'a1@foo.com')]
-        assert address2.select().execute().fetchall() == [(u2.user_id, a2.user_id, 'a2@foo.com')]
+        assert address1.select().execute().fetchall() == [(a1.address_id, u1.user_id, 'a1@foo.com')]
+        assert address2.select().execute().fetchall() == [(a1.address_id, u2.user_id, 'a2@foo.com')]
 
         ctx.current.clear()
         u1list = ctx.current.query(User, entity_name='user1').select()
