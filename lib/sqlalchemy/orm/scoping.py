@@ -1,4 +1,4 @@
-from sqlalchemy.util import ScopedRegistry, to_list
+from sqlalchemy.util import ScopedRegistry, to_list, get_cls_kwargs
 from sqlalchemy.orm import MapperExtension, EXT_CONTINUE, object_session
 from sqlalchemy.orm.session import Session
 from sqlalchemy import exceptions
@@ -52,10 +52,12 @@ class ScopedSession(object):
         """return a mapper() function which associates this ScopedSession with the Mapper."""
         
         from sqlalchemy.orm import mapper
-        validate = kwargs.pop('validate', False)
+        
+        extension_args = dict((arg,kwargs.pop(arg)) for arg in get_cls_kwargs(_ScopedExt) if arg in kwargs)
+        
         kwargs['extension'] = extension = to_list(kwargs.get('extension', []))
-        if validate:
-            extension.append(self.extension.validating())
+        if extension_args:
+            extension.append(self.extension.configure(**extension_args))
         else:
             extension.append(self.extension)
         return mapper(*args, **kwargs)
@@ -89,13 +91,17 @@ for prop in ('close_all','object_session', 'identity_key'):
     setattr(ScopedSession, prop, clslevel(prop))
     
 class _ScopedExt(MapperExtension):
-    def __init__(self, context, validate=False):
+    def __init__(self, context, validate=False, save_on_init=True):
         self.context = context
         self.validate = validate
+        self.save_on_init = save_on_init
     
     def validating(self):
         return _ScopedExt(self.context, validate=True)
-        
+    
+    def configure(self, **kwargs):
+        return _ScopedExt(self.context, **kwargs)
+    
     def get_session(self):
         return self.context.registry()
 
@@ -117,7 +123,8 @@ class _ScopedExt(MapperExtension):
                     if not mapper.get_property(key, resolve_synonyms=False, raiseerr=False):
                         raise exceptions.ArgumentError("Invalid __init__ argument: '%s'" % key)
                 setattr(instance, key, value)
-        session._save_impl(instance, entity_name=kwargs.pop('_sa_entity_name', None))
+        if self.save_on_init:
+            session._save_impl(instance, entity_name=kwargs.pop('_sa_entity_name', None))
         return EXT_CONTINUE
 
     def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):

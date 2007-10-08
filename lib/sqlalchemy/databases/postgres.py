@@ -306,6 +306,9 @@ class PGDialect(default.DefaultDialect):
         return sqltypes.adapt_type(typeobj, colspecs)
 
     def do_begin_twophase(self, connection, xid):
+        # Two phase transactions seem to require that the transaction is explicitly started.
+        # The implicit transactions that usually work aren't enough.
+        connection.execute(sql.text("BEGIN"))
         self.do_begin(connection.connection)
 
     def do_prepare_twophase(self, connection, xid):

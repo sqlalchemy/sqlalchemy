@@ -310,7 +310,36 @@ class TransactionTest(PersistTest):
             [(1,)]
         )
         connection2.close()
-
+        
+    @testing.supported('postgres', 'mysql')
+    @testing.exclude('mysql', '<', (5, 0, 3))
+    def testmultipletwophase(self):
+        conn = testbase.db.connect()
+        
+        xa = conn.begin_twophase()
+        conn.execute(users.insert(), user_id=1, user_name='user1')
+        xa.prepare()
+        xa.commit()
+        
+        xa = conn.begin_twophase()
+        conn.execute(users.insert(), user_id=2, user_name='user2')
+        xa.prepare()
+        xa.rollback()
+        
+        xa = conn.begin_twophase()
+        conn.execute(users.insert(), user_id=3, user_name='user3')
+        xa.rollback()
+        
+        xa = conn.begin_twophase()
+        conn.execute(users.insert(), user_id=4, user_name='user4')
+        xa.prepare()
+        xa.commit()
+        
+        result = conn.execute(select([users.c.user_name]).order_by(users.c.user_id))
+        self.assertEqual(result.fetchall(), [('user1',),('user4',)])
+        
+        conn.close()
+        
 class AutoRollbackTest(PersistTest):
     def setUpAll(self):
         global metadata
