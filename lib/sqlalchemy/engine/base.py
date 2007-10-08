@@ -778,7 +778,7 @@ class Connection(Connectable):
             if c in Connection.executors:
                 return Connection.executors[c](self, object, multiparams, params)
         else:
-            raise exceptions.InvalidRequestError("Unexecuteable object type: " + str(type(object)))
+            raise exceptions.InvalidRequestError("Unexecutable object type: " + str(type(object)))
 
     def _execute_default(self, default, multiparams=None, params=None):
         return self.__engine.dialect.defaultrunner(self.__create_execution_context()).traverse_single(default)
@@ -831,7 +831,7 @@ class Connection(Connectable):
     def _execute_compiled(self, compiled, multiparams=None, params=None, distilled_params=None):
         """Execute a sql.Compiled object."""
         if not compiled.can_execute:
-            raise exceptions.ArgumentError("Not an executeable clause: %s" % (str(compiled)))
+            raise exceptions.ArgumentError("Not an executable clause: %s" % (str(compiled)))
 
         if distilled_params is None:
             distilled_params = self.__distill_params(multiparams, params)

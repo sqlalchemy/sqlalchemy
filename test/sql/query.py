@@ -41,7 +41,6 @@ class QueryTest(PersistTest):
         assert users.select().execute().fetchall() == [(7, 'jack'), (8, 'ed'), (9, None)]
         
     def testupdate(self):
-
         users.insert().execute(user_id = 7, user_name = 'jack')
         assert users.count().scalar() == 1
 
@@ -49,12 +48,12 @@ class QueryTest(PersistTest):
         assert users.select(users.c.user_id==7).execute().fetchone()['user_name'] == 'fred'
 
     def test_lastrow_accessor(self):
-        """test the last_inserted_ids() and lastrow_has_id() functions"""
+        """Tests the last_inserted_ids() and lastrow_has_id() functions."""
 
         def insert_values(table, values):
-            """insert a row into a table, return the full list of values INSERTed including defaults
-            that fired off on the DB side.  
-            
+            """
+            Inserts a row into a table, returns the full list of values
+            INSERTed including defaults that fired off on the DB side and
             detects rows that had defaults and post-fetches.
             """
             
@@ -161,8 +160,11 @@ class QueryTest(PersistTest):
         assert c.execute(s, id=7).fetchall()[0]['user_id'] == 7
 
     def test_repeated_bindparams(self):
-        """test that a BindParam can be used more than once.  
-        this should be run for dbs with both positional and named paramstyles."""
+        """Tests that a BindParam can be used more than once.
+        
+        This should be run for DB-APIs with both positional and named
+        paramstyles.
+        """
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
 
@@ -325,7 +327,7 @@ class QueryTest(PersistTest):
         try:
             users.join(addresses).execute()
         except exceptions.ArgumentError, e:
-            assert str(e) == """Not an executeable clause: query_users JOIN query_addresses ON query_users.user_id = query_addresses.user_id"""
+            assert str(e).startswith('Not an executable clause: ')
             
     def test_functions(self):
         x = testbase.db.func.current_date().execute().scalar()
