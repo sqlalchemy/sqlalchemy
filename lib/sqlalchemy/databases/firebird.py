@@ -324,7 +324,7 @@ class FBCompiler(compiler.DefaultCompiler):
         return " FROM rdb$database"
 
     def visit_sequence(self, seq):
-        return "gen_id(" + seq.name + ", 1)"
+        return "gen_id(%s, 1)" % self.preparer.format_sequence(seq)
 
     def get_select_precolumns(self, select):
         """Called when building a ``SELECT`` statement, position is just
@@ -361,19 +361,20 @@ class FBSchemaGenerator(compiler.SchemaGenerator):
         return colspec
 
     def visit_sequence(self, sequence):
-        self.append("CREATE GENERATOR %s" % sequence.name)
+        self.append("CREATE GENERATOR %s" % self.preparer.format_sequence(sequence))
         self.execute()
 
 
 class FBSchemaDropper(compiler.SchemaDropper):
     def visit_sequence(self, sequence):
-        self.append("DROP GENERATOR %s" % sequence.name)
+        self.append("DROP GENERATOR %s" % self.preparer.format_sequence(sequence))
         self.execute()
 
 
 class FBDefaultRunner(base.DefaultRunner):
     def visit_sequence(self, seq):
-        return self.execute_string("SELECT gen_id(" + seq.name + ", 1) FROM rdb$database")
+        return self.execute_string("SELECT gen_id(%s, 1) FROM rdb$database" % \
+            self.dialect.identifier_preparer.format_sequence(seq))
 
 
 RESERVED_WORDS = util.Set(

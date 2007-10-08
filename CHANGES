@@ -46,6 +46,9 @@ CHANGES
 
 - Firebird dialect now uses SingletonThreadPool as poolclass.
 
+- Firebird now uses dialect.preparer to format sequences names
+
+
 0.4.0beta6
 ----------
 
