@@ -606,13 +606,16 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         return None
 
     def visit_insert(self, insert_stmt):
-
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt)
+        preparer = self.preparer
 
-        return ("INSERT INTO " + self.preparer.format_table(insert_stmt.table) + " (" + string.join([self.preparer.format_column(c[0]) for c in colparams], ', ') + ")" +
-         " VALUES (" + string.join([c[1] for c in colparams], ', ') + ")")
-
+        return ("INSERT INTO %s (%s) VALUES (%s)" %
+                (preparer.format_table(insert_stmt.table),
+                 ', '.join([preparer.format_column(c[0])
+                            for c in colparams]),
+                 ', '.join([c[1] for c in colparams])))
+    
     def visit_update(self, update_stmt):
         self.stack.append({'from':util.Set([update_stmt.table])})
         
