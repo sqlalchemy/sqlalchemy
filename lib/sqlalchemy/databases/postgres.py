@@ -306,9 +306,6 @@ class PGDialect(default.DefaultDialect):
         return sqltypes.adapt_type(typeobj, colspecs)
 
     def do_begin_twophase(self, connection, xid):
-        # Two phase transactions seem to require that the transaction is explicitly started.
-        # The implicit transactions that usually work aren't enough.
-        connection.execute(sql.text("BEGIN"))
         self.do_begin(connection.connection)
 
     def do_prepare_twophase(self, connection, xid):
@@ -321,6 +318,7 @@ class PGDialect(default.DefaultDialect):
                 # Must find out a way how to make the dbapi not open a transaction.
                 connection.execute(sql.text("ROLLBACK"))
             connection.execute(sql.text("ROLLBACK PREPARED %(tid)s", bindparams=[sql.bindparam('tid', xid)]))
+            connection.execute(sql.text("BEGIN"))
         else:
             self.do_rollback(connection.connection)
 
@@ -329,6 +327,7 @@ class PGDialect(default.DefaultDialect):
             if recover:
                 connection.execute(sql.text("ROLLBACK"))
             connection.execute(sql.text("COMMIT PREPARED %(tid)s", bindparams=[sql.bindparam('tid', xid)]))
+            connection.execute(sql.text("BEGIN"))
         else:
             self.do_commit(connection.connection)
 

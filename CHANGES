@@ -48,8 +48,9 @@ CHANGES
 
 - Firebird now uses dialect.preparer to format sequences names
 
-- Fixed breakage with postgres and multiple two phase transactions. For some
-  reason the implicitly started transaction is not enough. [ticket:810]
+- Fixed breakage with postgres and multiple two-phase transactions. Two-phase
+  commits and and rollbacks didn't automatically end up with a new transaction
+  as the usual dbapi commits/rollbacks do. [ticket:810]
 
 - Added an option to the _ScopedExt mapper extension to not automatically
   save new objects to session on object initialization.
