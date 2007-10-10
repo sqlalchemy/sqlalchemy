@@ -577,12 +577,18 @@ class OracleCompiler(compiler.DefaultCompiler):
                         binary.left = _OuterJoinColumn(binary.left)
                     elif binary.right.table is join.right:
                         binary.right = _OuterJoinColumn(binary.right)
-                        
-        if where is not None:
-            self.__wheres[join.left] = self.__wheres[parentjoin] = (sql.and_(VisitOn().traverse(join.onclause, clone=True), where), parentjoin)
+        
+        if join.isouter:
+            if where is not None:
+                self.__wheres[join.left] = self.__wheres[parentjoin] = (sql.and_(VisitOn().traverse(join.onclause, clone=True), where), parentjoin)
+            else:
+                self.__wheres[join.left] = self.__wheres[join] = (VisitOn().traverse(join.onclause, clone=True), join)
         else:
-            self.__wheres[join.left] = self.__wheres[join] = (VisitOn().traverse(join.onclause, clone=True), join)
-
+            if where is not None:
+                self.__wheres[join.left] = self.__wheres[parentjoin] = (sql.and_(join.onclause, where), parentjoin)
+            else:
+                self.__wheres[join.left] = self.__wheres[join] = (join.onclause, join)
+            
         return self.process(join.left, asfrom=True) + ", " + self.process(join.right, asfrom=True)
     
     def get_whereclause(self, f):

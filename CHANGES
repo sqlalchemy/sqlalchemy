@@ -55,6 +55,8 @@ CHANGES
 - Added an option to the _ScopedExt mapper extension to not automatically
   save new objects to session on object initialization.
 
+- fixed Oracle non-ansi join syntax
+
 0.4.0beta6
 ----------
 
