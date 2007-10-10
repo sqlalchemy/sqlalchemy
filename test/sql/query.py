@@ -674,7 +674,7 @@ class CompoundTest(PersistTest):
         found2 = self._fetchall_sorted(e.alias('foo').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.unsupported('mysql')
+    @testing.unsupported('mysql', 'sybase')
     def test_intersect(self):
         i = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -689,7 +689,7 @@ class CompoundTest(PersistTest):
         found2 = self._fetchall_sorted(i.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.unsupported('mysql', 'oracle')
+    @testing.unsupported('mysql', 'oracle', 'sybase')
     def test_except_style1(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -703,7 +703,7 @@ class CompoundTest(PersistTest):
         found = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found, wanted)
 
-    @testing.unsupported('mysql', 'oracle')
+    @testing.unsupported('mysql', 'oracle', 'sybase')
     def test_except_style2(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -720,7 +720,7 @@ class CompoundTest(PersistTest):
         found2 = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.unsupported('sqlite', 'mysql', 'oracle')
+    @testing.unsupported('sqlite', 'mysql', 'oracle', 'sybase')
     def test_except_style3(self):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
         e = except_(

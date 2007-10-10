@@ -688,6 +688,7 @@ class CreateDropTest(PersistTest):
         metadata.drop_all(bind=testbase.db)
 
 class UnicodeTest(PersistTest):
+    @testing.unsupported('sybase')
     def test_basic(self):
         try:
             # the 'convert_unicode' should not get in the way of the reflection 

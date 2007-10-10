@@ -136,6 +136,7 @@ class EagerTest(AssertMixin):
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
 
+    @testing.unsupported('sybase')
     def test_withoutouterjoin_literal(self):
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
