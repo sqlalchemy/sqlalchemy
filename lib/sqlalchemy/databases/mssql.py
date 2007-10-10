@@ -593,7 +593,7 @@ class MSSQLDialect(default.DefaultDialect):
             raise exceptions.NoSuchTableError(table.name)
 
         # We also run an sp_columns to check for identity columns:
-        cursor = connection.execute("sp_columns [%s]" % self.identifier_preparer.format_table(table))
+        cursor = connection.execute("sp_columns %s" % self.identifier_preparer.format_table(table))
         ic = None
         while True:
             row = cursor.fetchone()
@@ -662,7 +662,7 @@ class MSSQLDialect(default.DefaultDialect):
 
 class MSSQLDialect_pymssql(MSSQLDialect):
     supports_sane_rowcount = False
-    supports_sane_multi_rowcount = False
+    max_identifier_length = 30
 
     def import_dbapi(cls):
         import pymssql as module
@@ -987,6 +987,7 @@ dialect.schemagenerator = MSSQLSchemaGenerator
 dialect.schemadropper = MSSQLSchemaDropper
 dialect.preparer = MSSQLIdentifierPreparer
 dialect.defaultrunner = MSSQLDefaultRunner
+
 
 
 
