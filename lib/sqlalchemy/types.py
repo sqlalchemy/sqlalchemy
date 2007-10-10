@@ -535,14 +535,17 @@ class Interval(TypeDecorator):
         if self.__hasNativeImpl(dialect):
             return impl_processor
         else:
-            def process(value):
-                if value is None:
-                    return None
-                tmpval = dt.datetime.utcfromtimestamp(0) + value
-                if impl_processor is not None:
-                    return impl_processor(tmpval)
-                else:
-                    return tmpval
+            zero_timestamp = dt.datetime.utcfromtimestamp(0)
+            if impl_processor is None:
+                def process(value):
+                    if value is None:
+                        return None
+                    return zero_timestamp + value
+            else:
+                def process(value):
+                    if value is None:
+                        return None
+                    return impl_processor(zero_timestamp + value)
             return process
             
     def result_processor(self, dialect):
@@ -550,12 +553,17 @@ class Interval(TypeDecorator):
         if self.__hasNativeImpl(dialect):
             return impl_processor
         else:
-            def process(value):
-                if value is None:
-                    return None
-                if impl_processor is not None:
-                    value = impl_processor(value)
-                return value - dt.datetime.utcfromtimestamp(0)
+            zero_timestamp = dt.datetime.utcfromtimestamp(0)
+            if impl_processor is None:
+                def process(value):
+                    if value is None:
+                        return None
+                    return value - zero_timestamp
+            else:
+                def process(value):
+                    if value is None:
+                        return None
+                    return impl_processor(value) - zero_timestamp
             return process
             
 class FLOAT(Float):pass
