@@ -419,9 +419,10 @@ class Binary(TypeEngine):
         self.length = length
 
     def bind_processor(self, dialect):
+        DBAPIBinary = dialect.dbapi.Binary
         def process(value):
             if value is not None:
-                return dialect.dbapi.Binary(value)
+                return DBAPIBinary(value)
             else:
                 return None
         return process
@@ -444,23 +445,33 @@ class PickleType(MutableType, TypeDecorator):
 
     def bind_processor(self, dialect):
         impl_process = self.impl.bind_processor(dialect)
-        def process(value):
-            if value is None:
-                return None
-            if impl_process is None:
-                return self.pickler.dumps(value, self.protocol)
-            else:
-                return impl_process(self.pickler.dumps(value, self.protocol))
+        dumps = self.pickler.dumps
+        protocol = self.protocol
+        if impl_process is None:
+            def process(value):
+                if value is None:
+                    return None
+                return dumps(value, protocol)
+        else:
+            def process(value):
+                if value is None:
+                    return None
+                return impl_process(dumps(value, protocol))
         return process
     
     def result_processor(self, dialect):
         impl_process = self.impl.result_processor(dialect)
-        def process(value):
-            if value is None:
-                return None
-            if impl_process is not None:
-                value = impl_process(value)
-            return self.pickler.loads(str(value))
+        loads = self.pickler.loads
+        if impl_process is None:
+            def process(value):
+                if value is None:
+                    return None
+                return loads(str(value))
+        else:
+            def process(value):
+                if value is None:
+                    return None
+                return loads(str(impl_process(value)))
         return process
         
     def copy_value(self, value):

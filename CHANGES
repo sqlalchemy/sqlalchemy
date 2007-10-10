@@ -58,6 +58,8 @@ CHANGES
 
 - fixed Oracle non-ansi join syntax
 
+- The PickleType is now slightly faster.
+
 0.4.0beta6
 ----------
 
