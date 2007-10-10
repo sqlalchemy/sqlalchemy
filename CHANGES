@@ -4,6 +4,7 @@ CHANGES
 
 0.4.0beta7
 ----------
+- Added initial Sybase support (mxODBC so far) [ticket:785]
 
 - Added partial index support for PostgreSQL. Use the postgres_where keyword
   on the Index.
