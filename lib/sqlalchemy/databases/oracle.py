@@ -272,6 +272,13 @@ class OracleDialect(default.DefaultDialect):
     dbapi = classmethod(dbapi)
     
     def create_connect_args(self, url):
+        dialect_opts = dict(url.query)
+        for opt in ('use_ansi', 'auto_setinputsizes', 'auto_convert_lobs',
+                    'threaded', 'allow_twophase'):
+            if opt in dialect_opts:
+                util.coerce_kw_type(dialect_opts, opt, bool)
+                setattr(self, opt, dialect_opts[opt])
+
         if url.database:
             # if we have a database, then we have a remote host
             port = url.port
@@ -279,19 +286,30 @@ class OracleDialect(default.DefaultDialect):
                 port = int(port)
             else:
                 port = 1521
-            dsn = self.dbapi.makedsn(url.host,port,url.database)
+            dsn = self.dbapi.makedsn(url.host, port, url.database)
         else:
             # we have a local tnsname
             dsn = url.host
+
         opts = dict(
             user=url.username,
             password=url.password,
-            dsn = dsn,
-            threaded = self.threaded,
-            twophase = self.allow_twophase,
+            dsn=dsn,
+            threaded=self.threaded,
+            twophase=self.allow_twophase,
             )
-        opts.update(url.query)
-        util.coerce_kw_type(opts, 'use_ansi', bool)
+        if 'mode' in url.query:
+            opts['mode'] = url.query['mode']
+            if isinstance(opts['mode'], basestring):
+                mode = opts['mode'].upper()
+                if mode == 'SYSDBA':
+                    opts['mode'] = self.dbapi.SYSDBA
+                elif mode == 'SYSOPER':
+                    opts['mode'] = self.dbapi.SYSOPER
+                else:
+                    util.coerce_kw_type(opts, 'mode', int)
+        # Can't set 'handle' or 'pool' via URL query args, use connect_args
+
         return ([], opts)
 
     def type_descriptor(self, typeobj):
