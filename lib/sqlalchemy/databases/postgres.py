@@ -319,6 +319,7 @@ class PGDialect(default.DefaultDialect):
                 connection.execute(sql.text("ROLLBACK"))
             connection.execute(sql.text("ROLLBACK PREPARED %(tid)s", bindparams=[sql.bindparam('tid', xid)]))
             connection.execute(sql.text("BEGIN"))
+            self.do_rollback(connection.connection)
         else:
             self.do_rollback(connection.connection)
 
@@ -328,6 +329,7 @@ class PGDialect(default.DefaultDialect):
                 connection.execute(sql.text("ROLLBACK"))
             connection.execute(sql.text("COMMIT PREPARED %(tid)s", bindparams=[sql.bindparam('tid', xid)]))
             connection.execute(sql.text("BEGIN"))
+            self.do_rollback(connection.connection)
         else:
             self.do_commit(connection.connection)
 
