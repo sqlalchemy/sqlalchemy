@@ -271,7 +271,43 @@ class QueryTest(PersistTest):
             assert isinstance(s2.execute().fetchone()['somelabel'], datetime.datetime)
         finally:
             datetable.drop()
-            
+
+    def test_order_by(self):
+        users.insert().execute(user_id=1, user_name='c')
+        users.insert().execute(user_id=2, user_name='b')
+        users.insert().execute(user_id=3, user_name='a')
+
+        def a_eq(executable, wanted):
+            got = list(executable.execute())
+            self.assertEquals(got, wanted)
+
+        a_eq(users.select(order_by=[users.c.user_id]),
+             [(1, 'c'), (2, 'b'), (3, 'a')])
+        
+        a_eq(users.select(order_by=[users.c.user_name, users.c.user_id]),
+             [(3, 'a'), (2, 'b'), (1, 'c')])
+
+        a_eq(select([users.c.user_id.label('foo')], order_by=[users.c.user_id]),
+             [(1,), (2,), (3,)])
+             
+        a_eq(select([users.c.user_id.label('foo'), users.c.user_name],
+                    order_by=[users.c.user_name, users.c.user_id]),
+             [(3, 'a'), (2, 'b'), (1, 'c')])
+
+        a_eq(users.select(distinct=True, order_by=[users.c.user_id]),
+             [(1, 'c'), (2, 'b'), (3, 'a')])
+
+        a_eq(select([users.c.user_id.label('foo')],
+                    distinct=True,
+                    order_by=[users.c.user_id]),
+             [(1,), (2,), (3,)])
+
+        a_eq(select([users.c.user_id.label('a'),
+                     users.c.user_id.label('b'),                     
+                     users.c.user_name],
+                    order_by=[users.c.user_id]),
+             [(1, 1, 'c'), (2, 2, 'b'), (3, 3, 'a')])
+
     def test_column_accessor(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
