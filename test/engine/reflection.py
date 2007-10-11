@@ -317,33 +317,6 @@ class ReflectionTest(PersistTest):
         finally:
             testbase.db.execute("drop table book")
 
-    @testing.supported('sqlite')
-    def test_goofy_sqlite(self):
-        """test autoload of table where quotes were used with all the colnames.  quirky in sqlite."""
-        testbase.db.execute("""CREATE TABLE "django_content_type" (
-            "id" integer NOT NULL PRIMARY KEY,
-            "django_stuff" text NULL
-        )
-        """)
-        testbase.db.execute("""
-        CREATE TABLE "django_admin_log" (
-            "id" integer NOT NULL PRIMARY KEY,
-            "action_time" datetime NOT NULL,
-            "content_type_id" integer NULL REFERENCES "django_content_type" ("id"),
-            "object_id" text NULL,
-            "change_message" text NOT NULL
-        )
-        """)
-        try:
-            meta = MetaData(testbase.db)
-            table1 = Table("django_admin_log", meta, autoload=True)
-            table2 = Table("django_content_type", meta, autoload=True)
-            j = table1.join(table2)
-            assert j.onclause == table1.c.content_type_id==table2.c.id
-        finally:
-            testbase.db.execute("drop table django_admin_log")
-            testbase.db.execute("drop table django_content_type")
-
     @testing.exclude('mysql', '<', (4, 1, 1))
     def test_composite_fk(self):
         """test reflection of composite foreign keys"""

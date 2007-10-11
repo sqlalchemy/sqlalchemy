@@ -389,15 +389,26 @@ class SQLiteSchemaDropper(compiler.SchemaDropper):
     pass
 
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
-    reserved_words = compiler.IdentifierPreparer.reserved_words.union([
-        'abort', 'add', 'after', 'alter', 'attach', 'autoincrement', 'before',
-        'begin','by', 'cascade', 'commit', 'conflict', 'database', 'deferred',
-        'delete', 'detach', 'drop', 'each', 'escape', 'exclusive', 'explain',
-        'fail', 'glob', 'if', 'ignore', 'immediate', 'index', 'insert',
-        'instead', 'key', 'match', 'of', 'plan', 'pragma', 'query', 'raise',
-        'reindex', 'rename', 'replace', 'restrict', 'rollback', 'row', 'temp',
-        'temporary', 'transaction', 'trigger', 'update', 'vacuum', 'values',
-        'view', 'virtual'])
+    reserved_words = util.Set([
+        'add', 'after', 'all', 'alter', 'analyze', 'and', 'as', 'asc',
+        'attach', 'autoincrement', 'before', 'begin', 'between', 'by',
+        'cascade', 'case', 'cast', 'check', 'collate', 'column', 'commit',
+        'conflict', 'constraint', 'create', 'cross', 'current_date',
+        'current_time', 'current_timestamp', 'database', 'default',
+        'deferrable', 'deferred', 'delete', 'desc', 'detach', 'distinct',
+        'drop', 'each', 'else', 'end', 'escape', 'except', 'exclusive',
+        'explain', 'false', 'fail', 'for', 'foreign', 'from', 'full', 'glob',
+        'group', 'having', 'if', 'ignore', 'immediate', 'in', 'index',
+        'initially', 'inner', 'insert', 'instead', 'intersect', 'into', 'is',
+        'isnull', 'join', 'key', 'left', 'like', 'limit', 'match', 'natural',
+        'not', 'notnull', 'null', 'of', 'offset', 'on', 'or', 'order', 'outer',
+        'plan', 'pragma', 'primary', 'query', 'raise', 'references',
+        'reindex', 'rename', 'replace', 'restrict', 'right', 'rollback',
+        'row', 'select', 'set', 'table', 'temp', 'temporary', 'then', 'to',
+        'transaction', 'trigger', 'true', 'union', 'unique', 'update', 'using',
+        'vacuum', 'values', 'view', 'virtual', 'when', 'where',
+        ])
+
     def __init__(self, dialect):
         super(SQLiteIdentifierPreparer, self).__init__(dialect, omit_schema=True)
 

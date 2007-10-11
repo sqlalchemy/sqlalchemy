@@ -3,13 +3,14 @@ import unittest
 
 def suite():
     modules_to_test = (
-        'dialect.mysql',
-        'dialect.postgres',
-        'dialect.oracle',
-        'dialect.mssql',
         'dialect.access',
-        'dialect.informix',
         'dialect.firebird',
+        'dialect.informix',
+        'dialect.mssql',
+        'dialect.mysql',
+        'dialect.oracle',
+        'dialect.postgres',
+        'dialect.sqlite',
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:
