@@ -273,6 +273,11 @@ class QueryTest(PersistTest):
             datetable.drop()
 
     def test_order_by(self):
+        """Exercises ORDER BY clause generation.
+
+        Tests simple, compound, aliased and DESC clauses.
+        """
+        
         users.insert().execute(user_id=1, user_name='c')
         users.insert().execute(user_id=2, user_name='b')
         users.insert().execute(user_id=3, user_name='a')
@@ -307,6 +312,15 @@ class QueryTest(PersistTest):
                      users.c.user_name],
                     order_by=[users.c.user_id]),
              [(1, 1, 'c'), (2, 2, 'b'), (3, 3, 'a')])
+
+        a_eq(users.select(distinct=True, order_by=[desc(users.c.user_id)]),
+             [(3, 'a'), (2, 'b'), (1, 'c')])
+
+        a_eq(select([users.c.user_id.label('foo')],
+                    distinct=True,
+                    order_by=[users.c.user_id.desc()]),
+             [(3,), (2,), (1,)])
+
 
     def test_column_accessor(self):
         users.insert().execute(user_id=1, user_name='john')
