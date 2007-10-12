@@ -104,8 +104,8 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         
         super(DefaultCompiler, self).__init__(dialect, statement, column_keys, **kwargs)
 
-        # if we are insert/update.  set to true when we visit an INSERT or UPDATE
-        self.isinsert = self.isupdate = False
+        # if we are insert/update/delete.  set to true when we visit an INSERT, UPDATE or DELETE
+        self.isdelete = self.isinsert = self.isupdate = False
         
         # compile INSERT/UPDATE defaults/sequences inlined (no pre-execute)
         self.inline = inline or getattr(statement, 'inline', False)
@@ -705,6 +705,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
 
     def visit_delete(self, delete_stmt):
         self.stack.append({'from':util.Set([delete_stmt.table])})
+        self.isdelete = True
 
         text = "DELETE FROM " + self.preparer.format_table(delete_stmt.table)
 

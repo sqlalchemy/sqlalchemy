@@ -896,7 +896,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
 
     def visit_column(self, column):
-        if column.table is not None:
+        if column.table is not None and not self.isupdate and not self.isdelete:
             # translate for schema-qualified table aliases
             t = self._schema_aliased_table(column.table)
             if t is not None:
