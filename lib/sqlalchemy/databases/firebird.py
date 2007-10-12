@@ -223,7 +223,7 @@ class FBDialect(default.DefaultDialect):
         column_func = {
             14 : lambda r: sqltypes.String(r['FLEN']), # TEXT
             7  : lambda r: sqltypes.Integer(), # SHORT
-            8  : lambda r: sqltypes.Integer(), # LONG
+            8  : lambda r: r['FPREC']==0 and sqltypes.Integer() or sqltypes.Numeric(precision=r['FPREC'], length=r['FSCALE'] * -1),  #INT or NUMERIC
             9  : lambda r: sqltypes.Float(), # QUAD
             10 : lambda r: sqltypes.Float(), # FLOAT
             27 : lambda r: sqltypes.Float(), # DOUBLE
