@@ -60,6 +60,10 @@ CHANGES
 
 - PickleType and Interval types (on db not supporting it natively) are now 
   slightly faster.
+  
+- Added Float and Time types to Firebird (FBFloat and FBTime). Fixed
+  BLOB SUB_TYPE for TEXT and Binary types.
+
 
 0.4.0beta6
 ----------

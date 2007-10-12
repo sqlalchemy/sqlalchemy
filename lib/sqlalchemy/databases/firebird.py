@@ -5,6 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
+import datetime
 import warnings
 
 from sqlalchemy import util, sql, schema, exceptions, pool
@@ -24,6 +25,29 @@ class FBNumeric(sqltypes.Numeric):
             return "NUMERIC(%(precision)s, %(length)s)" % { 'precision': self.precision,
                                                             'length' : self.length }
 
+    def bind_processor(self, dialect):
+        return None
+
+    def result_processor(self, dialect):
+        if self.asdecimal:
+            return None
+        else:
+            def process(value):
+                if isinstance(value, util.decimal_type):
+                    return float(value)
+                else:
+                    return value
+            return process
+
+
+class FBFloat(sqltypes.Float):
+    def get_col_spec(self):
+        if not self.precision:
+            return "FLOAT"
+        else:
+            return "FLOAT(%(precision)s)" % {'precision': self.precision}
+
+
 class FBInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -38,15 +62,29 @@ class FBDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
 
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is None or isinstance(value, datetime.datetime):
+                return value
+            else:
+                return datetime.datetime(year=value.year, month=value.month, 
+                    day=value.day)
+        return process
+
 
 class FBDate(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATE"
 
 
+class FBTime(sqltypes.Time):
+    def get_col_spec(self):
+        return "TIME"
+
+
 class FBText(sqltypes.TEXT):
     def get_col_spec(self):
-        return "BLOB SUB_TYPE 2"
+        return "BLOB SUB_TYPE 1"
 
 
 class FBString(sqltypes.String):
@@ -61,7 +99,7 @@ class FBChar(sqltypes.CHAR):
 
 class FBBinary(sqltypes.Binary):
     def get_col_spec(self):
-        return "BLOB SUB_TYPE 1"
+        return "BLOB SUB_TYPE 0"
 
 
 class FBBoolean(sqltypes.Boolean):
@@ -73,9 +111,10 @@ colspecs = {
     sqltypes.Integer : FBInteger,
     sqltypes.Smallinteger : FBSmallInteger,
     sqltypes.Numeric : FBNumeric,
-    sqltypes.Float : FBNumeric,
+    sqltypes.Float : FBFloat,
     sqltypes.DateTime : FBDateTime,
     sqltypes.Date : FBDate,
+    sqltypes.Time : FBTime,
     sqltypes.String : FBString,
     sqltypes.Binary : FBBinary,
     sqltypes.Boolean : FBBoolean,
