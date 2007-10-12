@@ -1,9 +1,8 @@
 from sqlalchemy             import ThreadLocalMetaData, util, Integer
 from sqlalchemy             import Table, Column, ForeignKey
-from sqlalchemy.orm         import class_mapper, relation, create_session
+from sqlalchemy.orm         import class_mapper, relation, scoped_session
+from sqlalchemy.orm         import sessionmaker
                                    
-from sqlalchemy.ext.sessioncontext import SessionContext
-from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy.orm import backref as create_backref
 import sqlalchemy
 
@@ -14,20 +13,8 @@ import sys
 # the "proxy" to the database engine... this can be swapped out at runtime
 #
 metadata = ThreadLocalMetaData()
-
-try:
-    objectstore = sqlalchemy.objectstore
-except AttributeError:
-    # thread local SessionContext
-    class Objectstore(object):
-        def __init__(self, *args, **kwargs):
-            self.context = SessionContext(*args, **kwargs)
-        def __getattr__(self, name):
-            return getattr(self.context.current, name)
-        session = property(lambda s:s.context.current)
-    
-    objectstore = Objectstore(create_session)
-
+Objectstore = scoped_session
+objectstore = scoped_session(sessionmaker(autoflush=True))
 
 #
 # declarative column declaration - this is so that we can infer the colname
@@ -279,10 +266,10 @@ class ActiveMapperMeta(type):
             # check for inheritence
             if hasattr(bases[0], "mapping"):
                 cls._base_mapper= bases[0].mapper
-                assign_mapper(objectstore.context, cls, cls.table, 
+                cls.mapper = objectstore.mapper(cls, cls.table, 
                               inherits=cls._base_mapper, version_id_col=version_id_col_object)
             else:
-                assign_mapper(objectstore.context, cls, cls.table, version_id_col=version_id_col_object)
+                cls.mapper = objectstore.mapper(cls, cls.table, version_id_col=version_id_col_object)
             cls.relations = relations
             ActiveMapperMeta.classes[clsname] = cls
             
