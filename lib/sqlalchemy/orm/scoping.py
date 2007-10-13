@@ -53,7 +53,9 @@ class ScopedSession(object):
         
         from sqlalchemy.orm import mapper
         
-        extension_args = dict((arg,kwargs.pop(arg)) for arg in get_cls_kwargs(_ScopedExt) if arg in kwargs)
+        extension_args = dict([(arg,kwargs.pop(arg))
+                               for arg in get_cls_kwargs(_ScopedExt)
+                               if arg in kwargs])
         
         kwargs['extension'] = extension = to_list(kwargs.get('extension', []))
         if extension_args:
