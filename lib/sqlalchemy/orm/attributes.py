@@ -7,9 +7,9 @@
 import weakref, threading
 import UserDict
 from sqlalchemy import util
-from sqlalchemy.orm import util as orm_util, interfaces, collections
+from sqlalchemy.orm import interfaces, collections
 from sqlalchemy.orm.mapper import class_mapper
-from sqlalchemy import logging, exceptions
+from sqlalchemy import exceptions
 
 
 PASSIVE_NORESULT = object()

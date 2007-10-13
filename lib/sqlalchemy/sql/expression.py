@@ -6,10 +6,9 @@
 
 """Defines the base components of SQL expression trees.
 
-
 All components are derived from a common base class
-[sqlalchemy.sql.expression#ClauseElement].  Common behaviors are organized based
-on class hierarchies, in some cases via mixins.
+[sqlalchemy.sql.expression#ClauseElement].  Common behaviors are organized
+based on class hierarchies, in some cases via mixins.
 
 All object construction from this package occurs via functions which
 in some cases will construct composite ``ClauseElement`` structures
@@ -26,10 +25,11 @@ classes usually have few or no public methods and are less guaranteed
 to stay the same in future releases.
 """
 
+import re
 from sqlalchemy import util, exceptions
 from sqlalchemy.sql import operators, visitors
 from sqlalchemy import types as sqltypes
-import re
+
 
 __all__ = [
     'Alias', 'ClauseElement', 
@@ -42,6 +42,7 @@ __all__ = [
     'insert', 'intersect', 'intersect_all', 'join', 'literal',
     'literal_column', 'not_', 'null', 'or_', 'outparam', 'outerjoin', 'select',
     'subquery', 'table', 'text', 'union', 'union_all', 'update', ]
+
 
 BIND_PARAMS = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
 

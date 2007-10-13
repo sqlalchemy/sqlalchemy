@@ -10,27 +10,29 @@ the schema and sql packages and tying operations to class properties and
 constructors.
 """
 
-from sqlalchemy import exceptions
 from sqlalchemy import util as sautil
 from sqlalchemy.orm.mapper import Mapper, object_mapper, class_mapper, mapper_registry
 from sqlalchemy.orm.interfaces import SynonymProperty, MapperExtension, EXT_CONTINUE, EXT_STOP, EXT_PASS, ExtensionOption, PropComparator
 from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty, CompositeProperty, BackRef
 from sqlalchemy.orm import mapper as mapperlib
-from sqlalchemy.orm import collections, strategies
+from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.orm.session import Session as _Session
 from sqlalchemy.orm.session import object_session, attribute_manager, sessionmaker
 from sqlalchemy.orm.scoping import ScopedSession
 
+
 __all__ = [ 'relation', 'column_property', 'composite', 'backref', 'eagerload',
             'eagerload_all', 'lazyload', 'noload', 'deferred', 'defer',
             'undefer', 'undefer_group', 'extension', 'mapper', 'clear_mappers',
             'compile_mappers', 'class_mapper', 'object_mapper', 'sessionmaker',
-            'scoped_session', 'dynamic_loader', 'MapperExtension', 'polymorphic_union',
+            'scoped_session', 'dynamic_loader', 'MapperExtension',
+            'polymorphic_union',
             'create_session', 'synonym', 'contains_alias', 'Query',
             'contains_eager', 'EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS',
             'object_session', 'PropComparator' ]
+
 
 def scoped_session(session_factory, scopefunc=None):
   """Provides thread-local management of Sessions.

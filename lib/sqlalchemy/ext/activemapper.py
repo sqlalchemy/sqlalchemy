@@ -4,7 +4,6 @@ from sqlalchemy.orm         import class_mapper, relation, scoped_session
 from sqlalchemy.orm         import sessionmaker
                                    
 from sqlalchemy.orm import backref as create_backref
-import sqlalchemy
 
 import inspect
 import sys

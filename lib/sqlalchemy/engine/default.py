@@ -7,8 +7,8 @@
 """Default implementations of per-dialect sqlalchemy.engine classes."""
 
 
-from sqlalchemy import schema, exceptions, util
 import re, random
+from sqlalchemy import util
 from sqlalchemy.engine import base
 from sqlalchemy.sql import compiler, expression
 

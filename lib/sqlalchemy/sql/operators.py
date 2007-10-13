@@ -1,6 +1,10 @@
-"""define opeators used in SQL expressions"""
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from operator import and_, or_, inv, add, mul, sub, div, mod, truediv, lt, le, ne, gt, ge, eq
+"""Defines operators used in SQL expressions."""
+
+from operator import and_, or_, inv, add, mul, sub, div, mod, truediv, \
+     lt, le, ne, gt, ge, eq
 
 def from_():
     raise NotImplementedError()
@@ -58,4 +62,3 @@ def desc_op(a):
 
 def asc_op(a):
     return a.asc()
-
