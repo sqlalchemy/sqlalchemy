@@ -6,92 +6,104 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Sybase database backend, supported through the mxodbc or pyodbc DBAPI2.0 interfaces.
+Sybase database backend.
 
 Known issues / TODO:
   
  * Uses the mx.ODBC driver from egenix (version 2.1.0)
- * The current version of sqlalchemy.databases.sybase only supports mx.ODBC.Windows (other platforms such as mx.ODBC.unixODBC still need some development)
- * Support for pyodbc has been built in but is not yet complete (needs further development)
+ * The current version of sqlalchemy.databases.sybase only supports
+   mx.ODBC.Windows (other platforms such as mx.ODBC.unixODBC still need
+   some development)
+ * Support for pyodbc has been built in but is not yet complete (needs
+   further development)
  * Results of running tests/alltests.py:
-Ran 934 tests in 287.032s
-
-FAILED (failures=3, errors=1)
- * Some tests had to be marked @testing.unsupported('sybase'), see patch for details
+     Ran 934 tests in 287.032s
+     FAILED (failures=3, errors=1)
  * Tested on 'Adaptive Server Anywhere 9' (version 9.0.1.1751)
 """
 
-import datetime, random, warnings, re, sys, operator
+import datetime, random, warnings, operator
 
 from sqlalchemy import util, sql, schema, exceptions
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql import operators as sql_operators
-from sqlalchemy import select, MetaData, Table, Column, String, Integer, SMALLINT, CHAR, ForeignKey
-from sqlalchemy.schema import PassiveDefault, ForeignKeyConstraint
+from sqlalchemy import MetaData, Table, Column
+from sqlalchemy import String, Integer, SMALLINT, CHAR, ForeignKey
 
 
-import logging
+__all__ = [
+    'SybaseTypeError'
+    'SybaseNumeric', 'SybaseFloat', 'SybaseInteger', 'SybaseBigInteger',
+    'SybaseTinyInteger', 'SybaseSmallInteger',
+    'SybaseDateTime_mxodbc', 'SybaseDateTime_pyodbc',
+    'SybaseDate_mxodbc', 'SybaseDate_pyodbc', 
+    'SybaseTime_mxodbc', 'SybaseTime_pyodbc', 
+    'SybaseText', 'SybaseString', 'SybaseChar', 'SybaseBinary',
+    'SybaseBoolean', 'SybaseTimeStamp', 'SybaseMoney', 'SybaseSmallMoney', 
+    'SybaseUniqueIdentifier', 
+    ]
+
 
 RESERVED_WORDS = util.Set([
-"add",  "all",  "alter",  "and",  
-"any",  "as",  "asc",  "backup",  
-"begin",  "between",  "bigint",  "binary",  
-"bit",  "bottom",  "break",  "by",  
-"call",  "capability",  "cascade",  "case",  
-"cast",  "char",  "char_convert",  "character",  
-"check",  "checkpoint",  "close",  "comment",  
-"commit",  "connect",  "constraint",  "contains",  
-"continue",  "convert",  "create",  "cross",  
-"cube",  "current",  "current_timestamp",  "current_user",  
-"cursor",  "date",  "dbspace",  "deallocate",  
-"dec",  "decimal",  "declare",  "default",  
-"delete",  "deleting",  "desc",  "distinct",  
-"do",  "double",  "drop",  "dynamic",  
-"else",  "elseif",  "encrypted",  "end",  
-"endif",  "escape",  "except",  "exception",  
-"exec",  "execute",  "existing",  "exists",  
-"externlogin",  "fetch",  "first",  "float",  
-"for",  "force",  "foreign",  "forward",  
-"from",  "full",  "goto",  "grant",  
-"group",  "having",  "holdlock",  "identified",  
-"if",  "in",  "index",  "index_lparen",  
-"inner",  "inout",  "insensitive",  "insert",  
-"inserting",  "install",  "instead",  "int",  
-"integer",  "integrated",  "intersect",  "into",  
-"iq",  "is",  "isolation",  "join",  
-"key",  "lateral",  "left",  "like",  
-"lock",  "login",  "long",  "match",  
-"membership",  "message",  "mode",  "modify",  
-"natural",  "new",  "no",  "noholdlock",  
-"not",  "notify",  "null",  "numeric",  
-"of",  "off",  "on",  "open",  
-"option",  "options",  "or",  "order",  
-"others",  "out",  "outer",  "over",  
-"passthrough",  "precision",  "prepare",  "primary",  
-"print",  "privileges",  "proc",  "procedure",  
-"publication",  "raiserror",  "readtext",  "real",  
-"reference",  "references",  "release",  "remote",  
-"remove",  "rename",  "reorganize",  "resource",  
-"restore",  "restrict",  "return",  "revoke",  
-"right",  "rollback",  "rollup",  "save",  
-"savepoint",  "scroll",  "select",  "sensitive",  
-"session",  "set",  "setuser",  "share",  
-"smallint",  "some",  "sqlcode",  "sqlstate",  
-"start",  "stop",  "subtrans",  "subtransaction",  
-"synchronize",  "syntax_error",  "table",  "temporary",  
-"then",  "time",  "timestamp",  "tinyint",  
-"to",  "top",  "tran",  "trigger",  
-"truncate",  "tsequal",  "unbounded",  "union",  
-"unique",  "unknown",  "unsigned",  "update",  
-"updating",  "user",  "using",  "validate",  
-"values",  "varbinary",  "varchar",  "variable",  
-"varying",  "view",  "wait",  "waitfor",  
-"when",  "where",  "while",  "window",  
-"with",  "with_cube",  "with_lparen",  "with_rollup",  
-"within",  "work",  "writetext",
-])
+    "add", "all", "alter", "and",
+    "any", "as", "asc", "backup",
+    "begin", "between", "bigint", "binary",
+    "bit", "bottom", "break", "by",
+    "call", "capability", "cascade", "case",
+    "cast", "char", "char_convert", "character",
+    "check", "checkpoint", "close", "comment",
+    "commit", "connect", "constraint", "contains",
+    "continue", "convert", "create", "cross",
+    "cube", "current", "current_timestamp", "current_user",
+    "cursor", "date", "dbspace", "deallocate",
+    "dec", "decimal", "declare", "default",
+    "delete", "deleting", "desc", "distinct",
+    "do", "double", "drop", "dynamic",
+    "else", "elseif", "encrypted", "end",
+    "endif", "escape", "except", "exception",
+    "exec", "execute", "existing", "exists",
+    "externlogin", "fetch", "first", "float",
+    "for", "force", "foreign", "forward",
+    "from", "full", "goto", "grant",
+    "group", "having", "holdlock", "identified",
+    "if", "in", "index", "index_lparen",
+    "inner", "inout", "insensitive", "insert",
+    "inserting", "install", "instead", "int",
+    "integer", "integrated", "intersect", "into",
+    "iq", "is", "isolation", "join",
+    "key", "lateral", "left", "like",
+    "lock", "login", "long", "match",
+    "membership", "message", "mode", "modify",
+    "natural", "new", "no", "noholdlock",
+    "not", "notify", "null", "numeric",
+    "of", "off", "on", "open",
+    "option", "options", "or", "order",
+    "others", "out", "outer", "over",
+    "passthrough", "precision", "prepare", "primary",
+    "print", "privileges", "proc", "procedure",
+    "publication", "raiserror", "readtext", "real",
+    "reference", "references", "release", "remote",
+    "remove", "rename", "reorganize", "resource",
+    "restore", "restrict", "return", "revoke",
+    "right", "rollback", "rollup", "save",
+    "savepoint", "scroll", "select", "sensitive",
+    "session", "set", "setuser", "share",
+    "smallint", "some", "sqlcode", "sqlstate",
+    "start", "stop", "subtrans", "subtransaction",
+    "synchronize", "syntax_error", "table", "temporary",
+    "then", "time", "timestamp", "tinyint",
+    "to", "top", "tran", "trigger",
+    "truncate", "tsequal", "unbounded", "union",
+    "unique", "unknown", "unsigned", "update",
+    "updating", "user", "using", "validate",
+    "values", "varbinary", "varchar", "variable",
+    "varying", "view", "wait", "waitfor",
+    "when", "where", "while", "window",
+    "with", "with_cube", "with_lparen", "with_rollup",
+    "within", "work", "writetext",
+    ])
 
 ischema = MetaData()
 
@@ -110,12 +122,12 @@ domains = Table("SYSDOMAIN", ischema,
     Column("type_id", SMALLINT),
     Column("precision", SMALLINT, quote=True),
     #schema="information_schema"
-    )    
+    )
 
 columns = Table("SYSCOLUMN", ischema,
     Column("column_id", Integer, primary_key=True),
     Column("table_id", Integer, ForeignKey(tables.c.table_id)),
-    Column("pkey", CHAR(1)),    
+    Column("pkey", CHAR(1)),
     Column("column_name", CHAR(128)),
     Column("nulls", CHAR(1)),
     Column("width", SMALLINT),
@@ -127,7 +139,7 @@ columns = Table("SYSCOLUMN", ischema,
     Column("scale", Integer),
     #schema="information_schema"
     )
-    
+
 foreignkeys = Table("SYSFOREIGNKEY", ischema,
     Column("foreign_table_id", Integer, ForeignKey(tables.c.table_id), primary_key=True),
     Column("foreign_key_id", SMALLINT, primary_key=True),
@@ -145,7 +157,7 @@ fkcols = Table("SYSFKCOL", ischema,
 class SybaseTypeError(sqltypes.TypeEngine):
     def result_processor(self, dialect):
         return None
-    
+
     def bind_processor(self, dialect):
         def process(value):
             raise exceptions.NotSupportedError("Data type not supported", [value])
@@ -224,14 +236,14 @@ class SybaseDateTime_pyodbc(sqltypes.DateTime):
             # Convert the datetime.datetime back to datetime.time
             return value
         return process
-    
+
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
                 return None
             return value
         return process    
-    
+
 class SybaseDate_mxodbc(sqltypes.Date):
     def __init__(self, *a, **kw):
         super(SybaseDate_mxodbc, self).__init__(False)
@@ -378,7 +390,6 @@ class SybaseSQLExecutionContext_mxodbc(SybaseSQLExecutionContext):
         super(SybaseSQLExecutionContext_mxodbc, self).post_exec()
 
 class SybaseSQLExecutionContext_pyodbc(SybaseSQLExecutionContext):
-    
     def __init__(self, dialect, connection, compiled=None, statement=None, parameters=None):
         super(SybaseSQLExecutionContext_pyodbc, self).__init__(dialect, connection, compiled, statement, parameters)
     
@@ -444,16 +455,16 @@ class SybaseSQLDialect(default.DefaultDialect):
         'money': SybaseMoney,
         'smallmoney': SybaseSmallMoney,
         'uniqueidentifier': SybaseUniqueIdentifier,
-        
+
         'java.lang.Object' : SybaseTypeError,
         'java serialization' : SybaseTypeError,
     }
-    
+
     # Sybase backend peculiarities
     supports_unicode_statements = False
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
-    
+
     def __new__(cls, dbapi=None, *args, **kwargs):
         if cls != SybaseSQLDialect:
             return super(SybaseSQLDialect, cls).__new__(cls, *args, **kwargs)
@@ -502,12 +513,12 @@ class SybaseSQLDialect(default.DefaultDialect):
 
     def set_default_schema_name(self, schema_name):
         self.schema_name = schema_name
-            
+
     def do_execute(self, cursor, statement, params, **kwargs):
         params = tuple(params)
         super(SybaseSQLDialect, self).do_execute(cursor, statement, params, **kwargs)
 
-        # FIXME: remove ?
+    # FIXME: remove ?
     def _execute(self, c, statement, parameters):
         try:
             if parameters == {}:
@@ -517,7 +528,7 @@ class SybaseSQLDialect(default.DefaultDialect):
             c.DBPROP_COMMITPRESERVE = "Y"
         except Exception, e:
             raise exceptions.DBAPIError.instance(statement, parameters, e)
-    
+
     def table_names(self, connection, schema):
         """Ignore the schema and the charset for now."""
         s = sql.select([tables.c.table_name], 
@@ -526,7 +537,7 @@ class SybaseSQLDialect(default.DefaultDialect):
                        )
         rp = connection.execute(s)
         return [row[0] for row in rp.fetchall()]
-    
+
     def has_table(self, connection, tablename, schema=None):
         # FIXME: ignore schemas for sybase
         s = sql.select([tables.c.table_name], tables.c.table_name == tablename)
@@ -535,7 +546,7 @@ class SybaseSQLDialect(default.DefaultDialect):
         row = c.fetchone()
         print "has_table: " + tablename + ": " + str(bool(row is not None))
         return row is not None
-        
+
     def reflecttable(self, connection, table, include_columns):
         # Get base columns
         if table.schema is not None:
@@ -568,7 +579,7 @@ class SybaseSQLDialect(default.DefaultDialect):
             )
             if include_columns and name not in include_columns:
                 continue
-            
+
             # FIXME: else problems with SybaseBinary(size)
             if numericscale == 0:
                 numericscale = None
@@ -579,26 +590,26 @@ class SybaseSQLDialect(default.DefaultDialect):
                     args.append(a)
             coltype = self.ischema_names.get(type, None)
             if coltype == SybaseString and charlen == -1:
-                coltype = SybaseText()                
+                coltype = SybaseText()
             else:
                 if coltype is None:
                     warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (type, name)))
-                    coltype = sqltypes.NULLTYPE                    
+                    coltype = sqltypes.NULLTYPE
                 coltype = coltype(*args)
             colargs= []
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
-            
+
             # any sequences ?
             col = schema.Column(name, coltype, nullable=nullable, primary_key=primary_key, *colargs)
             if int(max_identity) > 0:
                 col.sequence = schema.Sequence(name + '_identity')
                 col.sequence.start = int(max_identity)
                 col.sequence.increment = 1
-            
+
             # append the column
             table.append_column(col)
-                 
+
         # any foreign key constraint for this table ?
         # note: no multi-column foreign keys are considered
         s = "select st1.table_name, sc1.column_name, st2.table_name, sc2.column_name from systable as st1 join sysfkcol on st1.table_id=sysfkcol.foreign_table_id join sysforeignkey join systable as st2 on sysforeignkey.primary_table_id = st2.table_id join syscolumn as sc1 on sysfkcol.foreign_column_id=sc1.column_id and sc1.table_id=st1.table_id join syscolumn as sc2 on sysfkcol.primary_column_id=sc2.column_id and sc2.table_id=st2.table_id where st1.table_name='%(table_name)s';" % { 'table_name' : table.name }
@@ -623,12 +634,6 @@ class SybaseSQLDialect(default.DefaultDialect):
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
 
-    def _get_ischema(self):
-        if self._ischema is None:
-            # ??? didnt see an ISchema class in the 'sybase_information_schema' module
-            self._ischema = ISchema(self)
-        return self._ischema
-    ischema = property(_get_ischema, doc="""returns an ISchema object for this engine, which allows access to information_schema tables (if supported)""")
 
 class SybaseSQLDialect_mxodbc(SybaseSQLDialect):    
     def __init__(self, **params):
@@ -653,7 +658,7 @@ class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
     ischema_names['date'] = SybaseDate_mxodbc    
     ischema_names['datetime'] = SybaseDateTime_mxodbc    
     ischema_names['smalldatetime'] = SybaseDateTime_mxodbc    
- 
+
     def is_disconnect(self, e):
         # FIXME: optimize
         #return isinstance(e, self.dbapi.Error) and '[08S01]' in str(e)
@@ -665,7 +670,7 @@ class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
 
     def do_execute(self, cursor, statement, parameters, context=None, **kwargs):
         super(SybaseSQLDialect_mxodbc, self).do_execute(cursor, statement, parameters, context=context, **kwargs)
-        
+
     def create_connect_args(self, url):
         '''Return a tuple of *args,**kwargs'''
         # FIXME: handle mx.odbc.Windows proprietary args
@@ -675,16 +680,16 @@ class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
         argsDict['user'] = opts['user']
         argsDict['password'] = opts['password']
         connArgs = [[opts['dsn']], argsDict]
-        logging.info("Creating connection args: " + repr(connArgs))
         return connArgs
 
-class SybaseSQLDialect_pyodbc(SybaseSQLDialect):    
+
+class SybaseSQLDialect_pyodbc(SybaseSQLDialect):
     def __init__(self, **params):
         super(SybaseSQLDialect_pyodbc, self).__init__(**params)
 
     def dbapi_type_map(self):
         return {'getdate' : SybaseDate_pyodbc()}
-        
+
     def import_dbapi(cls):
         import mypyodbc as module
         return module
@@ -698,9 +703,9 @@ class SybaseSQLDialect_pyodbc(SybaseSQLDialect):
     ischema_names = SybaseSQLDialect.ischema_names.copy()
     ischema_names['time'] = SybaseTime_pyodbc
     ischema_names['date'] = SybaseDate_pyodbc
-    ischema_names['datetime'] = SybaseDateTime_pyodbc    
-    ischema_names['smalldatetime'] = SybaseDateTime_pyodbc    
-    
+    ischema_names['datetime'] = SybaseDateTime_pyodbc
+    ischema_names['smalldatetime'] = SybaseDateTime_pyodbc
+
     def is_disconnect(self, e):
         # FIXME: optimize
         #return isinstance(e, self.dbapi.Error) and '[08S01]' in str(e)
@@ -712,32 +717,32 @@ class SybaseSQLDialect_pyodbc(SybaseSQLDialect):
 
     def do_execute(self, cursor, statement, parameters, context=None, **kwargs):
         super(SybaseSQLDialect_pyodbc, self).do_execute(cursor, statement, parameters, context=context, **kwargs)
-        
+
     def create_connect_args(self, url):
         '''Return a tuple of *args,**kwargs'''
         # FIXME: handle pyodbc proprietary args
         opts = url.translate_connect_args(username='user')
         opts.update(url.query)
-        
+
         self.autocommit = False
         if 'autocommit' in opts:
             self.autocommit = bool(int(opts.pop('autocommit')))
-            
+
         argsDict = {}
         argsDict['UID'] = opts['user']
         argsDict['PWD'] = opts['password']
         argsDict['DSN'] = opts['dsn']
         connArgs = [[';'.join(["%s=%s"%(key, argsDict[key]) for key in argsDict])], {'autocommit' : self.autocommit}]
-        logging.info("Creating connection args: " + repr(connArgs))
         return connArgs
+
 
 dialect_mapping = {
     'sqlalchemy.databases.mxODBC' : SybaseSQLDialect_mxodbc,
 #    'pyodbc' : SybaseSQLDialect_pyodbc,
     }
 
-class SybaseSQLCompiler(compiler.DefaultCompiler):
 
+class SybaseSQLCompiler(compiler.DefaultCompiler):
     operators = compiler.DefaultCompiler.operators.copy()
     operators.update({
         sql_operators.mod: lambda x, y: "MOD(%s, %s)" % (x, y),
@@ -815,6 +820,7 @@ class SybaseSQLCompiler(compiler.DefaultCompiler):
         else:
             return ""
 
+
 class SybaseSQLSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
 
@@ -841,6 +847,7 @@ class SybaseSQLSchemaGenerator(compiler.SchemaGenerator):
 
         return colspec
 
+
 class SybaseSQLSchemaDropper(compiler.SchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX %s.%s" % (
@@ -849,13 +856,14 @@ class SybaseSQLSchemaDropper(compiler.SchemaDropper):
             ))
         self.execute()
 
+
 class SybaseSQLDefaultRunner(base.DefaultRunner):
     pass
 
+
 class SybaseSQLIdentifierPreparer(compiler.IdentifierPreparer):
-    
     reserved_words = RESERVED_WORDS
-    
+
     def __init__(self, dialect):
         super(SybaseSQLIdentifierPreparer, self).__init__(dialect)
 
@@ -866,6 +874,7 @@ class SybaseSQLIdentifierPreparer(compiler.IdentifierPreparer):
     def _fold_identifier_case(self, value):
         #TODO: determin SybaseSQL's case folding rules
         return value
+
 
 dialect = SybaseSQLDialect
 dialect.statement_compiler = SybaseSQLCompiler
