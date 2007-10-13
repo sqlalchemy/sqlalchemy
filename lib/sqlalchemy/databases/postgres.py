@@ -700,7 +700,8 @@ class PGSchemaGenerator(compiler.SchemaGenerator):
         if whereclause is not None:
             compiler = self._compile(whereclause, None)
             # this might belong to the compiler class
-            inlined_clause = str(compiler) % dict((key,bind.value) for key,bind in compiler.binds.iteritems())
+            inlined_clause = str(compiler) % dict(
+                [(key,bind.value) for key,bind in compiler.binds.iteritems()])
             self.append(" WHERE " + inlined_clause)
         self.execute()
 
