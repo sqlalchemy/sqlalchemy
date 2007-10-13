@@ -164,15 +164,15 @@ class testcase(PersistTest):
 
         #TODO: check that a concurrent modification raises exception
         p1 = Person.query.select()[0]
-        s1 = objectstore.session
+        s1 = objectstore()
         s2 = create_session()
-        objectstore.context.current = s2
+        objectstore.registry.set(s2)
         p2 = Person.query.select()[0]
         p1.first_name = "jack"
         p2.first_name = "ed"
         objectstore.flush()
         try:
-            objectstore.context.current = s1
+            objectstore.registry.set(s1)
             objectstore.flush()
             # Only dialects with a sane rowcount can detect the ConcurrentModificationError
             if testbase.db.dialect.supports_sane_rowcount:
@@ -190,7 +190,7 @@ class testcase(PersistTest):
         results = Person.query.select()
         self.assertEquals(len(results), 1)
         
-        results[0].delete()
+        objectstore.delete(results[0])
         objectstore.flush()
         objectstore.clear()
         
@@ -237,7 +237,7 @@ class testcase(PersistTest):
         # uses a function which I dont think existed when you first wrote ActiveMapper.
         p1 = self.create_person_one()
         self.assertEquals(p1.preferences.person, p1)
-        p1.delete()
+        objectstore.delete(p1)
         
         objectstore.flush()
         objectstore.clear()
