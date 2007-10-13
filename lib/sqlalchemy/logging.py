@@ -100,4 +100,3 @@ class echo_property(object):
 
     def __set__(self, instance, value):
         instance_logger(instance, echoflag=value)
-    
