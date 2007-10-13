@@ -8,7 +8,7 @@
 import datetime
 import warnings
 
-from sqlalchemy import util, sql, schema, exceptions, pool
+from sqlalchemy import util, schema, exceptions, pool
 from sqlalchemy.sql import compiler
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes

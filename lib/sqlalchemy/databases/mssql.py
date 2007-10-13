@@ -39,7 +39,7 @@ Known issues / TODO:
 
 import datetime, random, warnings, re, sys, operator
 
-from sqlalchemy import util, sql, schema, exceptions
+from sqlalchemy import sql, schema, exceptions
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
