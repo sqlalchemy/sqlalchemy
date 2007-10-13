@@ -51,9 +51,23 @@ url.py
 """
 
 import sqlalchemy.databases
-from sqlalchemy.engine.base import *
+from sqlalchemy.engine.base import Dialect, ExecutionContext, Compiled, \
+     Connectable, Connection, Transaction, RootTransaction, \
+     NestedTransaction, TwoPhaseTransaction, Engine, RowProxy, \
+     BufferedColumnRow, ResultProxy, BufferedRowResultProxy, \
+     BufferedColumnResultProxy, SchemaIterator, DefaultRunner
 from sqlalchemy.engine import strategies
 from sqlalchemy import util
+
+
+__all__ = [
+    'engine_descriptors', 'create_engine', 'engine_from_config',
+    'Dialect', 'ExecutionContext', 'Compiled', 'Connectable',
+    'Connection', 'Transaction', 'RootTransaction', 'NestedTransaction',
+    'TwoPhaseTransaction', 'Engine', 'RowProxy', 'BufferedColumnRow',
+    'ResultProxy', 'BufferedRowResultProxy', 'BufferedColumnResultProxy',
+    'SchemaIterator', 'DefaultRunner',
+    ]
 
 def engine_descriptors():
     """Provide a listing of all the database implementations supported.
