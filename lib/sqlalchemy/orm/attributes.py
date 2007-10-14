@@ -520,7 +520,13 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
         if oldchild is child:
             return
         if oldchild is not None:
-            getattr(oldchild.__class__, self.key).impl.remove(oldchild._state, obj, initiator)
+            # With lazy=None, there's no guarantee that the full collection is
+            # present when updating via a backref.
+            impl = getattr(oldchild.__class__, self.key).impl
+            try:                
+                impl.remove(oldchild._state, obj, initiator)
+            except (ValueError, KeyError, IndexError):
+                pass
         if child is not None:
             getattr(child.__class__, self.key).impl.append(child._state, obj, initiator)
 

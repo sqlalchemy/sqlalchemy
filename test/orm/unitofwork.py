@@ -1334,6 +1334,31 @@ class ManyToOneTest(ORMTest):
         u1 = Session.query(User).get(u1.user_id)
         u2 = Session.query(User).get(u2.user_id)
         assert a1.user is u2
+
+    def test_bidirectional_noload(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref='user', lazy=None)
+        })
+        mapper(Address, addresses)
+
+        sess = Session()
+
+        # try it on unsaved objects
+        u1 = User()
+        a1 = Address()
+        a1.user = u1
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        a1 = sess.query(Address).get(a1.address_id)
+
+        a1.user = None
+        sess.flush()
+        sess.clear()
+        assert sess.query(Address).get(a1.address_id).user is None
+        assert sess.query(User).get(u1.user_id).addresses == []
+
         
 class ManyToManyTest(ORMTest):
     metadata = tables.metadata

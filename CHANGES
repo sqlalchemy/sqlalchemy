@@ -9,6 +9,10 @@ CHANGES
 - Added partial index support for PostgreSQL. Use the postgres_where keyword
   on the Index.
 
+- backref remove object operation doesn't fail if the other-side
+  collection doesn't contain the item, supports noload collections
+  [ticket:813]
+
 - The IdentifierPreprarer's _requires_quotes test is now regex based.  Any
   out-of-tree dialects that provide custom sets of legal_characters or
   illegal_initial_characters will need to move to regexes or override
