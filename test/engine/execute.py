@@ -1,5 +1,6 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy import exceptions
 from testlib import *
 
 class ExecuteTest(PersistTest):
@@ -61,6 +62,14 @@ class ExecuteTest(PersistTest):
             res = conn.execute("select * from users")
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
             conn.execute("delete from users")
-        
+
+    def test_exception_wrapping(self):
+        for conn in (testbase.db, testbase.db.connect()):
+            try:
+                conn.execute("osdjafioajwoejoasfjdoifjowejfoawejqoijwef")
+                assert False
+            except exceptions.DBAPIError:
+                assert True
+
 if __name__ == "__main__":
     testbase.main()        
