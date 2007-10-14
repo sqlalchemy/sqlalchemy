@@ -643,7 +643,11 @@ class GenericBackrefExtension(AttributeExtension):
         if oldchild is child:
             return
         if oldchild is not None:
-            getattr(oldchild.__class__, self.key).remove(event, oldchild, obj)
+            try:
+                getattr(oldchild.__class__, self.key).remove(event, oldchild, obj)
+            except ValueError:
+                # supports 'noload' collections
+                pass
         if child is not None:
             getattr(child.__class__, self.key).append(event, child, obj)
 

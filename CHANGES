@@ -17,6 +17,10 @@
       no PK columns, would not detect that the joined table had no PK.
     - fixed bugs in determining proper sync clauses from custom inherit
       conditions [ticket:769]
+    - backref remove object operation doesn't fail if the other-side 
+      collection doesn't contain the item, supports noload collections
+      [ticket:813]
+      
 - engine
     - fixed another occasional race condition which could occur
       when using pool with threadlocal setting
