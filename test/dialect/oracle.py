@@ -142,6 +142,22 @@ class TypesTest(SQLCompileTest):
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
         
+    def test_longstring(self):
+        metadata = MetaData(testbase.db)
+        testbase.db.execute("""
+        CREATE TABLE Z_TEST
+        (
+          ID        NUMERIC(22) PRIMARY KEY,
+          ADD_USER  VARCHAR2(20)  NOT NULL
+        )        
+        """)
+        try:
+            t = Table("z_test", metadata, autoload=True)
+            t.insert().execute(id=1.0, add_user='foobar')
+            assert t.select().execute().fetchall() == [(1, 'foobar')]
+        finally:
+            testbase.db.execute("DROP TABLE Z_TEST")
+        
 class SequenceTest(SQLCompileTest):
     def test_basic(self):
         seq = Sequence("my_seq_no_schema")

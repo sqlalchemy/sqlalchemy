@@ -663,7 +663,7 @@ class MSSQLDialect(default.DefaultDialect):
 class MSSQLDialect_pymssql(MSSQLDialect):
     supports_sane_rowcount = False
     max_identifier_length = 30
-
+    
     def import_dbapi(cls):
         import pymssql as module
         # pymmsql doesn't have a Binary method.  we use string

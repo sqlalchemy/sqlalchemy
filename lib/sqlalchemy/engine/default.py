@@ -270,7 +270,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                     typeengine = params.get_type(key)
                     dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                     if dbtype is not None:
-                        inputsizes[key] = dbtype
+                        inputsizes[key.encode(self.dialect.encoding)] = dbtype
             self.cursor.setinputsizes(**inputsizes)
 
     def _process_defaults(self):
