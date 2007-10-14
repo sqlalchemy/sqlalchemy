@@ -142,6 +142,7 @@ class TypesTest(SQLCompileTest):
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
         
+    @testing.supported('oracle')
     def test_longstring(self):
         metadata = MetaData(testbase.db)
         testbase.db.execute("""
