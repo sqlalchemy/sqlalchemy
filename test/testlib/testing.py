@@ -17,7 +17,9 @@ _ops = { '<': operator.lt,
          '!=': operator.ne,
          '<=': operator.le,
          '>=': operator.ge,
-         'in': operator.contains }
+         'in': operator.contains,
+         'between': lambda val, pair: val >= pair[0] and val <= pair[1],
+         }
 
 def unsupported(*dbs):
     """Mark a test as unsupported by one or more database implementations"""
@@ -91,7 +93,37 @@ def exclude(db, op, spec):
             pass
         return maybe
     return decorate
-        
+
+def against(*queries):
+    """Boolean predicate, compares to testing database configuration.
+
+    Given one or more dialect names, returns True if one is the configured
+    database engine.
+
+    Also supports comparison to database version when provided with one or
+    more 3-tuples of dialect name, operator, and version specification::
+
+      testing.against('mysql', 'postgres')
+      testing.against(('mysql', '>=', (5, 0, 0))
+    """
+
+    for query in queries:
+        if isinstance(query, basestring):
+            if config.db.name == query:
+                return True
+        else:
+            name, op, spec = query
+            if config.db.name != name:
+                continue
+
+            have = config.db.dialect.server_version_info(
+                config.db.contextual_connect())
+
+            oper = hasattr(op, '__call__') and op or _ops[op]
+            if oper(have, spec):
+                return True
+    return False
+
 class TestData(object):
     """Tracks SQL expressions as they are executed via an instrumented ExecutionContext."""
     
