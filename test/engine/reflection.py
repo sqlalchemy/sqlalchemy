@@ -696,7 +696,7 @@ class UnicodeTest(PersistTest):
 class SchemaTest(PersistTest):
     # this test should really be in the sql tests somewhere, not engine
     @testing.unsupported('sqlite', 'firebird')
-    def testiteration(self):
+    def test_iteration(self):
         metadata = MetaData()
         table1 = Table('table1', metadata,
             Column('col1', Integer, primary_key=True),
@@ -719,10 +719,8 @@ class SchemaTest(PersistTest):
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
 
-    # TODO: figure out why postgres screws up on this test
-    #@testing.supported('mysql','postgres')
-    @testing.supported('mysql')
-    def testcreate(self):
+    @testing.supported('mysql','postgres')
+    def test_explicit_default_schema(self):
         engine = testbase.db
         schema = engine.dialect.get_default_schema_name(engine)
         #engine.echo = True

@@ -545,6 +545,11 @@ class PGDialect(default.DefaultDialect):
             constrained_columns = [preparer._unquote_identifier(x) for x in re.split(r'\s*,\s*', constrained_columns)]
             if referred_schema:
                 referred_schema = preparer._unquote_identifier(referred_schema)
+            elif table.schema is not None and table.schema == self.get_default_schema_name(connection):
+                # no schema (i.e. its the default schema), and the table we're 
+                # reflecting has the default schema explicit, then use that.
+                # i.e. try to use the user's conventions
+                referred_schema = table.schema
             referred_table = preparer._unquote_identifier(referred_table)
             referred_columns = [preparer._unquote_identifier(x) for x in re.split(r'\s*,\s', referred_columns)]
 

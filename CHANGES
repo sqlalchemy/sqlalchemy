@@ -38,6 +38,14 @@ CHANGES
 - Added support for returning values from inserts and udpates for
   PostgreSQL 8.2+. [ticket:797]
 
+- PG reflection, upon seeing the default schema name being used explicitly
+  as the "schema" argument in a Table, will assume that this is the the 
+  user's desired convention, and will explicitly set the "schema" argument
+  in foreign-key-related reflected tables, thus making them match only
+  with Table constructors that also use the explicit "schema" argument
+  (even though its the default schema).  
+  In other words, SA assumes the user is being consistent in this usage.
+  
 - fixed sqlite reflection of BOOL/BOOLEAN [ticket:808]
 
 - null foreign key on a m2o doesn't trigger a lazyload [ticket:803]
