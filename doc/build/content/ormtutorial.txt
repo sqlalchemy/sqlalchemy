@@ -645,6 +645,95 @@ Another common scenario is the need to join on the same table more than once.  F
 
 The key thing which occured above is that our SQL criterion were **aliased** as appropriate corresponding to the alias generated in the most recent `join()` call.  
 
+### Query Operators
+
+The total set of comparisons possible between relations are as follows:
+
+* Join and filter on column criterion
+
+    {python}
+    {sql}>>> session.query(User).join('addresses').filter(Address.email_address=='jack@google.com').all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users JOIN addresses ON users.id = addresses.user_id 
+    WHERE addresses.email_address = ? ORDER BY users.oid
+    ['jack@google.com']
+    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
+
+* Join and filter_by on key=value criterion
+
+    {python}
+    {sql}>>> session.query(User).join('addresses').filter_by(email_address='jack@google.com').all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users JOIN addresses ON users.id = addresses.user_id 
+    WHERE addresses.email_address = ? ORDER BY users.oid
+    ['jack@google.com']
+    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
+
+* Join and filter_by on identity criterion.  This is when you compare to a related instance. This uses an equality comparison for all relationship types, using the appropriate joins.  For many-to-one and one-to-one, this represents all objects which reference the given child object:
+
+    {python}
+    {sql}>>> user = session.query(User).filter(User.name=='jack').one() #doctest: +NORMALIZE_WHITESPACE
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name = ? ORDER BY users.oid 
+    LIMIT 2 OFFSET 0
+    ['jack']
+    {sql}>>> session.query(Address).filter_by(user=user).all()
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM addresses 
+    WHERE ? = addresses.user_id ORDER BY addresses.oid
+    [5]
+    {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
+
+For one-to-many it represents all objects which contain the given child object in the related collection:
+
+    {python}
+    {sql}>>> address = session.query(Address).filter(Address.email_address=='jack@google.com').one() #doctest: +NORMALIZE_WHITESPACE
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM addresses 
+    WHERE addresses.email_address = ? ORDER BY addresses.oid 
+    LIMIT 2 OFFSET 0
+    {stop}['jack@google.com']
+    
+    {sql}>>> session.query(User).filter_by(addresses=address).all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.id = ? ORDER BY users.oid
+    [5]
+    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
+
+* Join and filter() on identity criterion.  The class-level `==` operator will act the same as `filter_by()` for a scalar relation:
+
+    {sql}>>> session.query(Address).filter(Address.user==user).all()
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM addresses 
+    WHERE ? = addresses.user_id ORDER BY addresses.oid
+    [5]
+    {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
+
+and will additionally generate an EXISTS clause for the "not equals" operator:
+
+    {sql}>>> session.query(Address).filter(Address.user!=user).all()
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM addresses 
+    WHERE NOT (EXISTS (SELECT 1 
+    FROM users 
+    WHERE users.id = addresses.user_id AND users.id = ?)) ORDER BY addresses.oid
+    [5]
+    {stop}[]
+
+as well as a comparison to `None`:
+
+    {sql}>>> session.query(Address).filter(Address.user==None).all()
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM addresses 
+    WHERE NOT (EXISTS (SELECT 1 
+    FROM users 
+    WHERE users.id = addresses.user_id)) ORDER BY addresses.oid
+    []
+    {stop}[]
+
+
 ## Deleting
 
 Let's try to delete `jack` and see how that goes.  We'll mark as deleted in the session, then we'll issue a `count` query to see that no rows remain:
@@ -707,7 +796,6 @@ Now when we load Jack, removing an address from his `addresses` collection will 
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
     WHERE users.id = ? ORDER BY users.oid 
-    LIMIT 1 OFFSET 0
     [5]
     {stop}
     
