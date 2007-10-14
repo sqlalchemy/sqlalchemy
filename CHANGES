@@ -39,6 +39,9 @@
 - firebird
     - supports_sane_rowcount() set to False due to ticket #370 (right way).
     - fixed reflection of Column's nullable property.
+- oracle
+    - removed LONG_STRING, LONG_BINARY from "binary" types, so type objects
+      don't try to read their values as LOB [ticket:622], [ticket:751]
       
 0.3.10
 - general
