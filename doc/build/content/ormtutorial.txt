@@ -643,96 +643,200 @@ Another common scenario is the need to join on the same table more than once.  F
     ['jack@google.com', 'j25@yahoo.com']
     {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
-The key thing which occured above is that our SQL criterion were **aliased** as appropriate corresponding to the alias generated in the most recent `join()` call.  
+The key thing which occured above is that our SQL criterion were **aliased** as appropriate corresponding to the alias generated in the most recent `join()` call.
 
-### Query Operators
+The next section describes some "higher level" operators, including `any()` and `has()`, which make patterns like joining to multiple aliases unnecessary in most cases.
 
-The total set of comparisons possible between relations are as follows:
+### Relation Operators
 
-* Join and filter on column criterion
+A summary of all operators usable on relations:
 
-    {python}
-    {sql}>>> session.query(User).join('addresses').filter(Address.email_address=='jack@google.com').all()
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users JOIN addresses ON users.id = addresses.user_id 
-    WHERE addresses.email_address = ? ORDER BY users.oid
-    ['jack@google.com']
-    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
+* Filter on explicit column criterion, combined with a join.  Column criterion can make usage of all supported SQL operators and expression constructs:
 
-* Join and filter_by on key=value criterion
+        {python}
+        {sql}>>> session.query(User).join('addresses').\
+        ...    filter(Address.email_address=='jack@google.com').all()
+        SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+        FROM users JOIN addresses ON users.id = addresses.user_id 
+        WHERE addresses.email_address = ? ORDER BY users.oid
+        ['jack@google.com']
+        {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
-    {python}
-    {sql}>>> session.query(User).join('addresses').filter_by(email_address='jack@google.com').all()
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users JOIN addresses ON users.id = addresses.user_id 
-    WHERE addresses.email_address = ? ORDER BY users.oid
-    ['jack@google.com']
-    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
+    Criterion placed in `filter()` usually correspond to the last `join()` call; if the join was specified with `aliased=True`, class-level criterion against the join's target (or targets) will be appropriately aliased as well.  
 
-* Join and filter_by on identity criterion.  This is when you compare to a related instance. This uses an equality comparison for all relationship types, using the appropriate joins.  For many-to-one and one-to-one, this represents all objects which reference the given child object:
+        {python}
+        {sql}>>> session.query(User).join('addresses', aliased=True).\
+        ...    filter(Address.email_address=='jack@google.com').all()
+        SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+        FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id 
+        WHERE addresses_1.email_address = ? ORDER BY users.oid
+        ['jack@google.com']
+        {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
-    {python}
-    {sql}>>> user = session.query(User).filter(User.name=='jack').one() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.name = ? ORDER BY users.oid 
-    LIMIT 2 OFFSET 0
-    ['jack']
-    {sql}>>> session.query(Address).filter_by(user=user).all()
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses 
-    WHERE ? = addresses.user_id ORDER BY addresses.oid
-    [5]
-    {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
+* Filter_by on key=value criterion, combined with a join.  Same as `filter()` on column criterion except keyword arguments are used.
 
-For one-to-many it represents all objects which contain the given child object in the related collection:
-
-    {python}
-    {sql}>>> address = session.query(Address).filter(Address.email_address=='jack@google.com').one() #doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses 
-    WHERE addresses.email_address = ? ORDER BY addresses.oid 
-    LIMIT 2 OFFSET 0
-    {stop}['jack@google.com']
+        {python}
+        {sql}>>> session.query(User).join('addresses').\
+        ...    filter_by(email_address='jack@google.com').all()
+        SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+        FROM users JOIN addresses ON users.id = addresses.user_id 
+        WHERE addresses.email_address = ? ORDER BY users.oid
+        ['jack@google.com']
+        {stop}[<User('jack','Jack Bean', 'gjffdd')>]
     
-    {sql}>>> session.query(User).filter_by(addresses=address).all()
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.id = ? ORDER BY users.oid
-    [5]
-    {stop}[<User('jack','Jack Bean', 'gjffdd')>]
+* Filter on explicit column criterion using `any()` (for collections) or `has()` (for scalar relations).  This is a more succinct method than joining, as an `EXISTS` subquery is generated automatically.  `any()` means, "find all parent items where any child item of its collection meets this criterion":
 
-* Join and filter() on identity criterion.  The class-level `==` operator will act the same as `filter_by()` for a scalar relation:
+        {python}
+        {sql}>>> session.query(User).\
+        ...    filter(User.addresses.any(Address.email_address=='jack@google.com')).all()
+        SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+        FROM users 
+        WHERE EXISTS (SELECT 1 
+        FROM addresses 
+        WHERE users.id = addresses.user_id AND addresses.email_address = ?) ORDER BY users.oid
+        ['jack@google.com']
+        {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
-    {sql}>>> session.query(Address).filter(Address.user==user).all()
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses 
-    WHERE ? = addresses.user_id ORDER BY addresses.oid
-    [5]
-    {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
+    `has()` means, "find all parent items where the child item meets this criterion":
 
-and will additionally generate an EXISTS clause for the "not equals" operator:
+        {python}
+        {sql}>>> session.query(Address).\
+        ...    filter(Address.user.has(User.name=='jack')).all()
+        SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+        FROM addresses 
+        WHERE EXISTS (SELECT 1 
+        FROM users 
+        WHERE users.id = addresses.user_id AND users.name = ?) ORDER BY addresses.oid
+        ['jack']
+        {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
 
-    {sql}>>> session.query(Address).filter(Address.user!=user).all()
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses 
-    WHERE NOT (EXISTS (SELECT 1 
-    FROM users 
-    WHERE users.id = addresses.user_id AND users.id = ?)) ORDER BY addresses.oid
-    [5]
-    {stop}[]
+    Both `has()` and `any()` also accept keyword arguments which are interpreted against the child classes' attributes:
 
-as well as a comparison to `None`:
+        {python}
+        {sql}>>> session.query(User).\
+        ...    filter(User.addresses.any(email_address='jack@google.com')).all()
+        SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+        FROM users 
+        WHERE EXISTS (SELECT 1 
+        FROM addresses 
+        WHERE users.id = addresses.user_id AND addresses.email_address = ?) ORDER BY users.oid
+        ['jack@google.com']
+        {stop}[<User('jack','Jack Bean', 'gjffdd')>]
+    
+* Filter_by on instance identity criterion.  When comparing to a related instance, `filter_by()` will in most cases not need to reference the child table, since a child instance already contains enough information with which to generate criterion against the parent table.  `filter_by()` uses an equality comparison for all relationship types.  For many-to-one and one-to-one, this represents all objects which reference the given child object:
 
-    {sql}>>> session.query(Address).filter(Address.user==None).all()
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses 
-    WHERE NOT (EXISTS (SELECT 1 
-    FROM users 
-    WHERE users.id = addresses.user_id)) ORDER BY addresses.oid
-    []
-    {stop}[]
+        {python}
+        # locate a user
+        {sql}>>> user = session.query(User).filter(User.name=='jack').one() #doctest: +NORMALIZE_WHITESPACE
+        SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+        FROM users 
+        WHERE users.name = ? ORDER BY users.oid 
+        LIMIT 2 OFFSET 0
+        ['jack']
+        {stop}
+        
+        # use the user in a filter_by() expression
+        {sql}>>> session.query(Address).filter_by(user=user).all()
+        SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+        FROM addresses 
+        WHERE ? = addresses.user_id ORDER BY addresses.oid
+        [5]
+        {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
 
+    For one-to-many and many-to-many, it represents all objects which contain the given child object in the related collection:
+
+        {python}
+        # locate an address
+        {sql}>>> address = session.query(Address).\
+        ...    filter(Address.email_address=='jack@google.com').one() #doctest: +NORMALIZE_WHITESPACE
+        SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+        FROM addresses 
+        WHERE addresses.email_address = ? ORDER BY addresses.oid 
+        LIMIT 2 OFFSET 0
+        {stop}['jack@google.com']
+    
+        # use the address in a filter_by expression
+        {sql}>>> session.query(User).filter_by(addresses=address).all()
+        SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+        FROM users 
+        WHERE users.id = ? ORDER BY users.oid
+        [5]
+        {stop}[<User('jack','Jack Bean', 'gjffdd')>]
+
+* Select instances with a particular parent.  This is the "reverse" operation of filtering by instance identity criterion; the criterion is against a relation pointing *to* the desired class, instead of one pointing *from* it.  This will utilize the same "optimized" query criterion, usually not requiring any joins:
+
+        {python}
+        {sql}>>> session.query(Address).with_parent(user, property='addresses').all()
+        SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+        FROM addresses 
+        WHERE ? = addresses.user_id ORDER BY addresses.oid
+        [5]
+        {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
+        
+* Filter on a many-to-one/one-to-one instance identity criterion.  The class-level `==` operator will act the same as `filter_by()` for a scalar relation:
+
+        {python}
+        {sql}>>> session.query(Address).filter(Address.user==user).all()
+        SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+        FROM addresses 
+        WHERE ? = addresses.user_id ORDER BY addresses.oid
+        [5]
+        {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
+
+    whereas the `!=` operator will generate a negated EXISTS clause:
+
+        {python}
+        {sql}>>> session.query(Address).filter(Address.user!=user).all()
+        SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+        FROM addresses 
+        WHERE NOT (EXISTS (SELECT 1 
+        FROM users 
+        WHERE users.id = addresses.user_id AND users.id = ?)) ORDER BY addresses.oid
+        [5]
+        {stop}[]
+
+    a comparison to `None` also generates a negated EXISTS clause:
+
+        {python}
+        {sql}>>> session.query(Address).filter(Address.user==None).all()
+        SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+        FROM addresses 
+        WHERE NOT (EXISTS (SELECT 1 
+        FROM users 
+        WHERE users.id = addresses.user_id)) ORDER BY addresses.oid
+        []
+        {stop}[]
+
+* Filter on a one-to-many instance identity criterion.  The `contains()` operator returns all parent objects which contain the given object as one of its collection members:
+
+        {python}
+        {sql}>>> session.query(User).filter(User.addresses.contains(address)).all()
+        SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+        FROM users 
+        WHERE users.id = ? ORDER BY users.oid
+        [5]
+        {stop}[<User('jack','Jack Bean', 'gjffdd')>]
+
+* Filter on a multiple one-to-many instance identity criterion.  The `==` operator can be used with a collection-based attribute against a list of items, which will generate multiple `EXISTS` clauses:
+
+        {python}
+        {sql}>>> addresses = session.query(Address).filter(Address.user==user).all()
+        SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+        FROM addresses 
+        WHERE ? = addresses.user_id ORDER BY addresses.oid
+        [5]
+        {stop}
+        
+        {sql}>>> session.query(User).filter(User.addresses == addresses).all()
+        SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+        FROM users 
+        WHERE (EXISTS (SELECT 1 
+        FROM addresses 
+        WHERE users.id = addresses.user_id AND addresses.id = ?)) AND (EXISTS (SELECT 1 
+        FROM addresses 
+        WHERE users.id = addresses.user_id AND addresses.id = ?)) ORDER BY users.oid
+        [1, 2]
+        {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
 ## Deleting
 

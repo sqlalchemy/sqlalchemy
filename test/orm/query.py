@@ -286,6 +286,9 @@ class FilterTest(QueryTest):
 
         assert [User(id=8)] == sess.query(User).filter(User.addresses.any(Address.email_address.like('%ed%'), id=4)).all()
 
+        assert [User(id=8)] == sess.query(User).filter(User.addresses.any(Address.email_address.like('%ed%'))).\
+            filter(User.addresses.any(id=4)).all()
+
         assert [User(id=9)] == sess.query(User).filter(User.addresses.any(email_address='fred@fred.com')).all()
     
     def test_has(self):
