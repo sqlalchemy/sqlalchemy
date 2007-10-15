@@ -122,7 +122,7 @@ And an entire "deferred group", i.e. which uses the `group` keyword argument to 
 To add a SQL clause composed of local or external columns as a read-only, mapped column attribute, use the `column_property()` function.  Any scalar-returning `ClauseElement` may be used, as long as it has a `name` attribute; usually, you'll want to call `label()` to give it a specific name:
 
     {python}
-    mapper(User, users, properties={
+    mapper(User, users_table, properties={
         'fullname' : column_property(
             (users_table.c.firstname + " " + users_table.c.lastname).label('fullname')
         )
@@ -131,7 +131,7 @@ To add a SQL clause composed of local or external columns as a read-only, mapped
 Correlated subqueries may be used as well:
     
     {python}
-    mapper(User, users, properties={
+    mapper(User, users_table, properties={
         'address_count' : column_property(
                 select(
                     [func.count(addresses_table.c.address_id)], 
