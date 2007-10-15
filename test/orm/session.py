@@ -660,9 +660,13 @@ class SessionTest(AssertMixin):
         assert log == ['before_flush', 'after_flush', 'after_flush_postexec']
 
         log = []
+        u.user_name = 'ed'
         sess.commit()
         assert log == ['before_commit', 'before_flush', 'after_flush', 'after_flush_postexec', 'after_commit']
-        
+
+        log = []
+        sess.commit()
+        assert log == ['before_commit', 'after_commit']
         
 class ScopedSessionTest(ORMTest):
 

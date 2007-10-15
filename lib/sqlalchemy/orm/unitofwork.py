@@ -156,7 +156,14 @@ class UnitOfWork(object):
         either contain changes or are marked as deleted.
         """
         
-        return util.Set([x for x in self.identity_map.values() if x not in self.deleted and attribute_manager.is_modified(x)])
+        # a little bit of inlining for speed
+        return util.Set([x for x in self.identity_map.values() 
+            if x not in self.deleted 
+            and (
+                x._state.modified
+                or (getattr(x.__class__, '_sa_has_mutable_scalars', False) and attribute_manager._is_modified(x._state))
+            )
+            ])
 
     def flush(self, session, objects=None):
         """create a dependency tree of all pending SQL operations within this unit of work and execute."""
@@ -165,6 +172,12 @@ class UnitOfWork(object):
         # and organize a hierarchical dependency structure.  it also handles
         # communication with the mappers and relationships to fire off SQL
         # and synchronize attributes between related objects.
+
+        # detect persistent objects that have changes
+        dirty = self.locate_dirty()
+
+        if len(dirty) == 0 and len(self.deleted) == 0 and len(self.new) == 0:
+            return
 
         flush_context = UOWTransaction(self, session)
 
@@ -178,10 +191,7 @@ class UnitOfWork(object):
         else:
             # or just everything
             objset = util.Set(self.identity_map.values()).union(self.new)
-
-        # detect persistent objects that have changes
-        dirty = self.locate_dirty()
-
+            
         # store objects whose fate has been decided
         processed = util.Set()
 
@@ -197,6 +207,9 @@ class UnitOfWork(object):
         for obj in self.deleted.intersection(objset).difference(processed):
             flush_context.register_object(obj, isdelete=True)
 
+        if len(flush_context.tasks) == 0:
+            return
+            
         session.create_transaction(autoflush=False)
         flush_context.transaction = session.transaction
         try:

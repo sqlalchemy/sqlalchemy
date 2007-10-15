@@ -13,6 +13,9 @@ CHANGES
   collection doesn't contain the item, supports noload collections
   [ticket:813]
 
+- inline optimizations added to locate_dirty() which can greatly speed up
+  repeated calls to flush(), as occurs with autoflush=True [ticket:816]
+  
 - The IdentifierPreprarer's _requires_quotes test is now regex based.  Any
   out-of-tree dialects that provide custom sets of legal_characters or
   illegal_initial_characters will need to move to regexes or override

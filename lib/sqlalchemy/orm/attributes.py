@@ -106,6 +106,8 @@ class AttributeImpl(object):
         self.callable_ = callable_
         self.trackparent = trackparent
         self.mutable_scalars = mutable_scalars
+        if mutable_scalars:
+            class_._sa_has_mutable_scalars = True
         self.copy = None
         if compare_function is None:
             self.is_equal = lambda x,y: x == y
@@ -314,8 +316,7 @@ class ScalarAttributeImpl(AttributeImpl):
     def __init__(self, class_, manager, key, callable_, trackparent=False, extension=None, copy_function=None, compare_function=None, mutable_scalars=False, **kwargs):
         super(ScalarAttributeImpl, self).__init__(class_, manager, key,
           callable_, trackparent=trackparent, extension=extension,
-          compare_function=compare_function, **kwargs)
-        self.mutable_scalars = mutable_scalars
+          compare_function=compare_function, mutable_scalars=mutable_scalars, **kwargs)
 
         if copy_function is None:
             copy_function = self.__copy
@@ -876,13 +877,15 @@ class AttributeManager(object):
     def _is_modified(self, state):
         if state.modified:
             return True
-        else:
+        elif getattr(state.class_, '_sa_has_mutable_scalars', False):
             for attr in self.managed_attributes(state.class_):
-                if attr.impl.check_mutable_modified(state):
+                if getattr(attr.impl, 'mutable_scalars', False) and attr.impl.check_mutable_modified(state):
                     return True
             else:
                 return False
-        
+        else:
+            return False
+            
     def get_history(self, obj, key, **kwargs):
         """Return a new ``AttributeHistory`` object for the given
         attribute on the given object.
