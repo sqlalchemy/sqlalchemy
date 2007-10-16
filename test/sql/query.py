@@ -856,15 +856,15 @@ class JoinTest(PersistTest):
         metadata.drop_all()
         metadata.create_all()
 
-        # t1.1 -> t2.1 -> t3.1
-        # t1.2 -> t2.2
-        # t1.3
-        t1.insert().execute([{'t1_id': i, 'name': 't1 #%s' % i}
-                             for i in (1, 2, 3)])
-        t2.insert().execute([{'t2_id': i, 't1_id': i, 'name': 't2 #%s' % i}
-                             for i in (1, 2)])
-        t3.insert().execute([{'t3_id': i, 't2_id': i, 'name': 't3 #%s' % i}
-                             for i in (1,)])
+        # t1.10 -> t2.20 -> t3.30
+        # t1.11 -> t2.21
+        # t1.12
+        t1.insert().execute({'t1_id': 10, 'name': 't1 #10'},
+                            {'t1_id': 11, 'name': 't1 #11'},
+                            {'t1_id': 12, 'name': 't1 #12'})
+        t2.insert().execute({'t2_id': 20, 't1_id': 10, 'name': 't2 #20'},
+                            {'t2_id': 21, 't1_id': 11, 'name': 't2 #21'})
+        t3.insert().execute({'t3_id': 30, 't2_id': 20, 'name': 't3 #30'})
 
     def tearDownAll(self):
         metadata.drop_all()
@@ -882,7 +882,7 @@ class JoinTest(PersistTest):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id],
                 from_obj=[t1.join(t2, criteria)])
-            self.assertRows(expr, [(1, 1), (2, 2)])
+            self.assertRows(expr, [(10, 20), (11, 21)])
 
     def test_join_x2(self):
         """Joins t1->t2->t3."""
@@ -891,7 +891,7 @@ class JoinTest(PersistTest):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id],
                 from_obj=[t1.join(t2, criteria)])
-            self.assertRows(expr, [(1, 1), (2, 2)])
+            self.assertRows(expr, [(10, 20), (11, 21)])
 
     def test_outerjoin_x1(self):
         """Outer joins t1->t2."""
@@ -900,17 +900,17 @@ class JoinTest(PersistTest):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id],
                 from_obj=[t1.join(t2).join(t3, criteria)])
-            self.assertRows(expr, [(1, 1)])
+            self.assertRows(expr, [(10, 20)])
 
     def test_outerjoin_x2(self):
         """Outer joins t1->t2,t3."""
 
-        for criteria in (t2.c.t2_id==t3.c.t3_id, t3.c.t2_id==t2.c.t2_id):
+        for criteria in (t2.c.t2_id==t3.c.t2_id, t3.c.t2_id==t2.c.t2_id):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
                 from_obj=[t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id). \
                           outerjoin(t3, criteria)])
-            self.assertRows(expr, [(1, 1, 1), (2, 2, None), (3, None, None)])
+            self.assertRows(expr, [(10, 20, 30), (11, 21, None), (12, None, None)])
 
     def test_outerjoin_where_x2_t1(self):
         """Outer joins t1->t2,t3, where on t1."""
@@ -918,17 +918,17 @@ class JoinTest(PersistTest):
         for criteria in (t2.c.t2_id==t3.c.t2_id, t3.c.t2_id==t2.c.t2_id):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t1.c.name == 't1 #1',
+                t1.c.name == 't1 #10',
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t1.c.t1_id < 3,
+                t1.c.t1_id < 12,
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1), (2, 2, None)])
+            self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
 
     def test_outerjoin_where_x2_t2(self):
         """Outer joins t1->t2,t3, where on t2."""
@@ -936,17 +936,17 @@ class JoinTest(PersistTest):
         for criteria in (t2.c.t2_id==t3.c.t2_id, t3.c.t2_id==t2.c.t2_id):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t2.c.name == 't2 #1',
+                t2.c.name == 't2 #20',
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t2.c.t2_id < 3,
+                t2.c.t2_id < 29,
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1), (2, 2, None)])
+            self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
 
     def test_outerjoin_where_x2_t1t2(self):
         """Outer joins t1->t2,t3, where on t1 and t2."""
@@ -954,17 +954,17 @@ class JoinTest(PersistTest):
         for criteria in (t2.c.t2_id==t3.c.t2_id, t3.c.t2_id==t2.c.t2_id):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.name == 't1 #1', t2.c.name == 't2 #1'),
+                and_(t1.c.name == 't1 #10', t2.c.name == 't2 #20'),
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.t1_id < 3, 3 > t2.c.t2_id),
+                and_(t1.c.t1_id < 19, 29 > t2.c.t2_id),
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1), (2, 2, None)])
+            self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
 
     def test_outerjoin_where_x2_t3(self):
         """Outer joins t1->t2,t3, where on t3."""
@@ -972,17 +972,17 @@ class JoinTest(PersistTest):
         for criteria in (t2.c.t2_id==t3.c.t2_id, t3.c.t2_id==t2.c.t2_id):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t3.c.name == 't3 #1',
+                t3.c.name == 't3 #30',
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t3.c.t3_id < 3,
+                t3.c.t3_id < 39,
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
     def test_outerjoin_where_x2_t1t3(self):
         """Outer joins t1->t2,t3, where on t1 and t3."""
@@ -990,35 +990,35 @@ class JoinTest(PersistTest):
         for criteria in (t2.c.t2_id==t3.c.t2_id, t3.c.t2_id==t2.c.t2_id):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.name == 't1 #1', t3.c.name == 't3 #1'),
+                and_(t1.c.name == 't1 #10', t3.c.name == 't3 #30'),
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.t1_id < 3, t3.c.t3_id < 3),
+                and_(t1.c.t1_id < 19, t3.c.t3_id < 39),
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
-    def test_outerjoin_where_x2_t1t3(self):
+    def test_outerjoin_where_x2_t1t2(self):
         """Outer joins t1->t2,t3, where on t1 and t2."""
 
         for criteria in (t2.c.t2_id==t3.c.t2_id, t3.c.t2_id==t2.c.t2_id):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.name == 't1 #1', t2.c.name == 't2 #1'),
+                and_(t1.c.name == 't1 #10', t2.c.name == 't2 #20'),
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.t1_id < 3, t2.c.t2_id < 3),
+                and_(t1.c.t1_id < 12, t2.c.t2_id < 39),
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1), (2, 2, None)])
+            self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
 
     def test_outerjoin_where_x2_t1t2t3(self):
         """Outer joins t1->t2,t3, where on t1, t2 and t3."""
@@ -1026,21 +1026,21 @@ class JoinTest(PersistTest):
         for criteria in (t2.c.t2_id==t3.c.t2_id, t3.c.t2_id==t2.c.t2_id):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.name == 't1 #1',
-                     t2.c.name == 't2 #1',
-                     t3.c.name == 't3 #1'),
+                and_(t1.c.name == 't1 #10',
+                     t2.c.name == 't2 #20',
+                     t3.c.name == 't3 #30'),
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.t1_id < 3,
-                     t2.c.t2_id < 3,
-                     t3.c.t3_id < 3),
+                and_(t1.c.t1_id < 19,
+                     t2.c.t2_id < 29,
+                     t3.c.t3_id < 39),
                 from_obj=[(t1.outerjoin(t2, t1.c.t1_id==t2.c.t1_id).
                            outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
     def test_mixed(self):
         """Joins t1->t2, outer t2->t3."""
@@ -1050,7 +1050,7 @@ class JoinTest(PersistTest):
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
             print expr
-            self.assertRows(expr, [(1, 1, 1), (2, 2, None)])
+            self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
         
     def test_mixed_where(self):
         """Joins t1->t2, outer t2->t3, plus a where on each table in turn."""
@@ -1058,41 +1058,41 @@ class JoinTest(PersistTest):
         for criteria in (t2.c.t2_id==t3.c.t2_id, t3.c.t2_id==t2.c.t2_id):
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t1.c.name == 't1 #1',
+                t1.c.name == 't1 #10',
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t2.c.name == 't2 #1',
+                t2.c.name == 't2 #20',
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t3.c.name == 't3 #1',
+                t3.c.name == 't3 #30',
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.name == 't1 #1', t2.c.name == 't2 #1'),
+                and_(t1.c.name == 't1 #10', t2.c.name == 't2 #20'),
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t2.c.name == 't2 #1', t3.c.name == 't3 #1'),
+                and_(t2.c.name == 't2 #20', t3.c.name == 't3 #30'),
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
             expr = select(
                 [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.name == 't1 #1',
-                     t2.c.name == 't2 #1',
-                     t3.c.name == 't3 #1'),
+                and_(t1.c.name == 't1 #10',
+                     t2.c.name == 't2 #20',
+                     t3.c.name == 't3 #30'),
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
-            self.assertRows(expr, [(1, 1, 1)])
+            self.assertRows(expr, [(10, 20, 30)])
 
 
 class OperatorTest(PersistTest):
