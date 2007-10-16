@@ -496,6 +496,17 @@ class TypesTest(AssertMixin):
                 roundtrip([1, 1, 1],
                           [set(['dq']), set(['a']), set(['5'])])
                 roundtrip([set(['dq', 'sq']), None, set(['9', '5', '7'])])
+
+            set_table.insert().execute({'s3':set(['5'])},
+                                       {'s3':set(['5', '7'])},
+                                       {'s3':set(['5', '7', '9'])},
+                                       {'s3':set(['7', '9'])})
+            rows = list(select(
+                [set_table.c.s3],
+                set_table.c.s3.in_([set(['5']), set(['5', '7'])])).execute())
+            found = set([frozenset(row[0]) for row in rows])
+            self.assertEquals(found,
+                              set([frozenset(['5']), frozenset(['5', '7'])]))
         finally:
             meta.drop_all()
 
@@ -783,6 +794,26 @@ class SQLTest(SQLCompileTest):
             "SELECT t.col1, t.col2 FROM t  LIMIT 10, 18446744073709551615"
             )
 
+    @testing.supported('mysql')
+    def test_update_limit(self):
+        t = sql.table('t', sql.column('col1'), sql.column('col2'))
+
+        self.assert_compile(
+            t.update(values={'col1':123}),
+            "UPDATE t SET col1=%s"
+            )
+        self.assert_compile(
+            t.update(values={'col1':123}, mysql_limit=5),
+            "UPDATE t SET col1=%s LIMIT 5"
+            )
+        self.assert_compile(
+            t.update(values={'col1':123}, mysql_limit=None),
+            "UPDATE t SET col1=%s"
+            )
+        self.assert_compile(
+            t.update(t.c.col2==456, values={'col1':123}, mysql_limit=1),
+            "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1"
+            )
 
 def colspec(c):
     return testbase.db.dialect.schemagenerator(testbase.db.dialect, 

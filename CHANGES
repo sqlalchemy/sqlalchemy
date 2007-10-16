@@ -63,6 +63,8 @@ CHANGES
   
 - fixed sqlite reflection of BOOL/BOOLEAN [ticket:808]
 
+- Added support for UPDATE with LIMIT on mysql.
+
 - null foreign key on a m2o doesn't trigger a lazyload [ticket:803]
 
 - oracle does not implicitly convert to unicode for non-typed result

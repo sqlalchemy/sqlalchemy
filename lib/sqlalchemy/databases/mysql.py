@@ -117,10 +117,30 @@ mapping to Python classes.  If you're using these types and have opinions
 about how OpenGIS can be smartly integrated into SQLAlchemy please join
 the mailing list!
 
+Many of the MySQL SQL extensions are handled through SQLAlchemy's generic
+function and operator support::
+
+  table.select(table.c.password==func.md5('plaintext'))
+  table.select(table.c.username.op('regexp')('^[a-d]'))
+
+And of course any valid statement can be executed as a string rather than
+through the SQL expression language.
+
+Some limited support for MySQL extensions to SQL expressions is currently
+available.
+
+  * SELECT pragma::
+
+      select(..., prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
+
+  * UPDATE with LIMIT::
+
+      update(..., mysql_limit=10)
+
 If you have problems that seem server related, first check that you are
 using the most recent stable MySQL-Python package available.  The Database
-Notes page on the wiki at http://sqlalchemy.org is a good resource for timely
-information affecting MySQL in SQLAlchemy.
+Notes page on the wiki at http://www.sqlalchemy.org is a good resource for
+timely information affecting MySQL in SQLAlchemy.
 """
 
 import re, datetime, inspect, warnings, sys
@@ -1834,6 +1854,24 @@ class MySQLCompiler(compiler.DefaultCompiler):
             # No offset provided, so just use the limit
             return ' \n LIMIT %s' % (limit,)
 
+    def visit_update(self, update_stmt):
+        self.stack.append({'from':util.Set([update_stmt.table])})
+        
+        self.isupdate = True
+        colparams = self._get_colparams(update_stmt)
+
+        text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + ', '.join(["%s=%s" % (self.preparer.format_column(c[0]), c[1]) for c in colparams])
+
+        if update_stmt._whereclause:
+            text += " WHERE " + self.process(update_stmt._whereclause)
+
+        limit = update_stmt.kwargs.get('mysql_limit', None)
+        if limit:
+            text += " LIMIT %s" % limit
+        
+        self.stack.pop(-1)
+        
+        return text
 
 # ug.  "InnoDB needs indexes on foreign keys and referenced keys [...].
 #       Starting with MySQL 4.1.2, these indexes are created automatically.
