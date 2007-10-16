@@ -1162,13 +1162,13 @@ There is no requirement to be list-, or set-like at all.  Collection classes can
 A `dict` can be used as a collection, but a keying strategy is needed to map entities loaded by the ORM to key, value pairs.  The [collections](rel:docstrings_sqlalchemy.orm.collections) package provides several built-in types for dictionary-based collections:
 
     {python}
-    from sqlalchemy.orm.collections import column_mapped_collection, attr_mapped_collection, mapped_collection
+    from sqlalchemy.orm.collections import column_mapped_collection, attribute_mapped_collection, mapped_collection
 
     mapper(Item, items_table, properties={
         # key by column
         notes = relation(Note, collection_class=column_mapped_collection(notes_table.c.keyword))
         # or named attribute 
-        notes2 = relation(Note, collection_class=attr_mapped_collection('keyword'))
+        notes2 = relation(Note, collection_class=attribute_mapped_collection('keyword'))
         # or any callable
         notes3 = relation(Note, collection_class=mapped_collection(lambda entity: entity.a + entity.b))
     })
