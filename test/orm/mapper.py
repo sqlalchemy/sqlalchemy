@@ -35,6 +35,13 @@ class MapperTest(MapperSuperTest):
         u2 = s.get(User, 7)
         self.assert_(u is not u2)
 
+    def testgetparamnames(self):
+        s = users.select(users.c.user_id!=12).alias('users')
+        mapper(User, s)
+        sess = create_session()
+        assert sess.query(User).get(7).user_name == 'jack'
+        
+        
     def testunicodeget(self):
         """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail 
         on postgres, mysql and oracle unless it is converted to an encoded string"""

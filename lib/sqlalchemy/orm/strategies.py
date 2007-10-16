@@ -167,7 +167,7 @@ class LazyLoader(AbstractRelationLoader):
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
-        self.use_get = not self.uselist and query.Query(self.mapper)._get_clause.compare(self.lazywhere)
+        self.use_get = not self.uselist and query.Query(self.mapper)._get_clause[0].compare(self.lazywhere)
         if self.use_get:
             self.logger.info(str(self.parent_property) + " will use query.get() to optimize instance loads")
 

@@ -35,10 +35,17 @@ class Query(object):
         self.is_polymorphic = self.mapper is not self.select_mapper
         self._session = session
         if not hasattr(self.mapper, '_get_clause'):
+            def bind_label():
+                # this generation should be deterministic
+                # in 0.4
+                return "get_" + hex(random.randint(0, 65535))[2:]
             _get_clause = sql.and_()
+            _get_binds = {}
             for primary_key in self.primary_key_columns:
-                _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type, unique=True))
-            self.mapper._get_clause = _get_clause
+                bind = sql.bindparam(bind_label(), type=primary_key.type)
+                _get_binds[primary_key] = bind
+                _get_clause.clauses.append(primary_key == bind)
+            self.mapper._get_clause = (_get_clause, _get_binds)
             
         self._entities = []
         self._get_clause = self.mapper._get_clause
@@ -1062,13 +1069,14 @@ class Query(object):
         else:
             ident = util.to_list(ident)
         params = {}
+        (_get_clause, _get_binds) = self._get_clause
         try:
             for i, primary_key in enumerate(self.primary_key_columns):
-                params[primary_key._label] = ident[i]
+                params[_get_binds[primary_key].key] = ident[i]
         except IndexError:
             raise exceptions.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join(["'%s'" % str(c) for c in self.primary_key_columns]))
         try:
-            statement = self.compile(self._get_clause, lockmode=lockmode)
+            statement = self.compile(_get_clause, lockmode=lockmode)
             return self._select_statement(statement, params=params, populate_existing=reload, version_check=(lockmode is not None))[0]
         except IndexError:
             return None

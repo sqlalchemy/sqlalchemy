@@ -1,3 +1,10 @@
+0.3.12
+- orm
+    - query.get() and related functions (like many-to-one lazyloading)
+      generate randomly-generated bind parameter names, to prevent
+      name conflicts with bind parameters that already exist in the 
+      mapped selectable.
+      
 0.3.11
 - sql
     - tweak DISTINCT precedence for clauses like
