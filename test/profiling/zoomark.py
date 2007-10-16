@@ -176,13 +176,13 @@ class ZooMarkTest(testing.AssertMixin):
             
             # In operator (containedby)
             assert len(fulltable(Animal.select(Animal.c.Species.like('%pede%')))) == 2
-            assert len(fulltable(Animal.select(Animal.c.Species.in_('Lion', 'Tiger', 'Bear')))) == 3
+            assert len(fulltable(Animal.select(Animal.c.Species.in_(['Lion', 'Tiger', 'Bear'])))) == 3
             
             # Try In with cell references
             class thing(object): pass
             pet, pet2 = thing(), thing()
             pet.Name, pet2.Name = 'Slug', 'Ostrich'
-            assert len(fulltable(Animal.select(Animal.c.Species.in_(pet.Name, pet2.Name)))) == 2
+            assert len(fulltable(Animal.select(Animal.c.Species.in_([pet.Name, pet2.Name])))) == 2
             
             # logic and other functions
             assert len(fulltable(Animal.select(Animal.c.Species.like('Slug')))) == 1

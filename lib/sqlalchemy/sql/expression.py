@@ -1222,24 +1222,30 @@ class _CompareMixin(ColumnOperators):
         return self._in_impl(operators.in_op, operators.notin_op, *other)
 
     def _in_impl(self, op, negate_op, *other):
-        if len(other) == 0:
-            return _Grouping(case([(self.__eq__(None), text('NULL'))], else_=text('0')).__eq__(text('1')))
-        elif len(other) == 1:
-            o = other[0]
-            if _is_literal(o) or isinstance( o, _CompareMixin):
-                return self.__eq__( o)    #single item -> ==
-            else:
-                assert isinstance(o, Selectable)
-                return self.__compare( op, o, negate=negate_op)   #single selectable
-
+        # Handle old style *args argument passing
+        if len(other) != 1 or not isinstance(other[0], Selectable) and (not hasattr(other[0], '__iter__') or isinstance(other[0], basestring)):
+            util.warn_deprecated('passing in_ arguments as varargs is deprecated, in_ takes a single argument that is a sequence or a selectable')
+            seq_or_selectable = other
+        else:
+            seq_or_selectable = other[0]
+        
+        if isinstance(seq_or_selectable, Selectable):
+            return self.__compare( op, seq_or_selectable, negate=negate_op)
+        
+        # Handle non selectable arguments as sequences
         args = []
-        for o in other:
+        for o in seq_or_selectable:
             if not _is_literal(o):
                 if not isinstance( o, _CompareMixin):
-                    raise exceptions.InvalidRequestError( "in() function accepts either non-selectable values, or a single selectable: "+repr(o) )
+                    raise exceptions.InvalidRequestError( "in() function accepts either a list of non-selectable values, or a selectable: "+repr(o) )
             else:
                 o = self._bind_param(o)
             args.append(o)
+        
+        if len(args) == 0:
+            # Special case handling for empty IN's
+            return _Grouping(case([(self.__eq__(None), text('NULL'))], else_=text('0')).__eq__(text('1')))
+        
         return self.__compare(op, ClauseList(*args).self_group(against=op), negate=negate_op)
 
     def startswith(self, other):

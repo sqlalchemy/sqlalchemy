@@ -152,7 +152,7 @@ class ShardTest(PersistTest):
         north_american_cities = sess.query(WeatherLocation).filter(WeatherLocation.continent == 'North America')
         assert set([c.city for c in north_american_cities]) == set(['New York', 'Toronto'])
 
-        asia_and_europe = sess.query(WeatherLocation).filter(WeatherLocation.continent.in_('Europe', 'Asia'))
+        asia_and_europe = sess.query(WeatherLocation).filter(WeatherLocation.continent.in_(['Europe', 'Asia']))
         assert set([c.city for c in asia_and_europe]) == set(['Tokyo', 'London', 'Dublin'])
 
 

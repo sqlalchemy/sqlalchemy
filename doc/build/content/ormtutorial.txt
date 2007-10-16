@@ -861,7 +861,7 @@ So far, so good.  How about Jack's `Address` objects ?
 
     {python}
     {sql}>>> session.query(Address).filter(
-    ...     Address.email_address.in_('jack@google.com', 'j25@yahoo.com')
+    ...     Address.email_address.in_(['jack@google.com', 'j25@yahoo.com'])
     ...  ).count()
     SELECT count(addresses.id) 
     FROM addresses 
@@ -913,7 +913,7 @@ Now when we load Jack, removing an address from his `addresses` collection will 
     
     # only one address remains
     {sql}>>> session.query(Address).filter(
-    ...     Address.email_address.in_('jack@google.com', 'j25@yahoo.com')
+    ...     Address.email_address.in_(['jack@google.com', 'j25@yahoo.com'])
     ... ).count()
     DELETE FROM addresses WHERE addresses.id = ?
     [2]
@@ -945,7 +945,7 @@ Deleting Jack will delete both Jack and his remaining `Address`:
     {stop}0
     
     {sql}>>> session.query(Address).filter(
-    ...    Address.email_address.in_('jack@google.com', 'j25@yahoo.com')
+    ...    Address.email_address.in_(['jack@google.com', 'j25@yahoo.com'])
     ... ).count()
     SELECT count(addresses.id) 
     FROM addresses 

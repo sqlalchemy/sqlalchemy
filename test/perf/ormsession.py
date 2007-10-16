@@ -174,7 +174,7 @@ def run_queries():
                       order_by=[desc(func.count(_item_id)), _item_id],
                       limit=20)
     ids = [r.id for r in top_20_q.execute().fetchall()]
-    q2 = session.query(Item).filter(Item.id.in_(*ids))
+    q2 = session.query(Item).filter(Item.id.in_(ids))
 
     for num, item in enumerate(q2):
         report.append("number %s: %s" % (num + 1, item.name))
@@ -189,7 +189,7 @@ def create_purchase():
     session.begin()
 
     customer = session.query(Customer).get(customer_id)
-    items = session.query(Item).filter(Item.id.in_(*item_ids))
+    items = session.query(Item).filter(Item.id.in_(item_ids))
 
     purchase = Purchase()
     purchase.customer = customer

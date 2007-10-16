@@ -442,7 +442,7 @@ class EagerTest(QueryTest):
             Order(id=4, user=User(id=9))
         ] == q.all()
         
-        q = q.select_from(s.join(order_items).join(items)).filter(~Item.id.in_(1, 2, 5))
+        q = q.select_from(s.join(order_items).join(items)).filter(~Item.id.in_([1, 2, 5]))
         assert [
             Order(id=3, user=User(id=7)),
         ] == q.all()

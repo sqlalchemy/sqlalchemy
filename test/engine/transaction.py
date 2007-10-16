@@ -670,7 +670,7 @@ class ForUpdateTest(PersistTest):
 
     def overlap(self, ids, errors, update_style):
         sel = counters.select(for_update=update_style,
-                              whereclause=counters.c.counter_id.in_(*ids))
+                              whereclause=counters.c.counter_id.in_(ids))
         con = testbase.db.connect()
         trans = con.begin()
         try:

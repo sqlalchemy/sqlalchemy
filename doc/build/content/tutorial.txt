@@ -505,7 +505,7 @@ Below, we create a session with `autoflush=True`, which implies that it's transa
     >>> metadata.bind.echo = False
     >>> session = create_session(autoflush=True)
     >>> (ed, harry, mary) = session.query(User).filter(
-    ...         User.c.user_name.in_('Ed', 'Harry', 'Mary')
+    ...         User.c.user_name.in_(['Ed', 'Harry', 'Mary'])
     ...     ).order_by(User.c.user_name).all()  # doctest: +NORMALIZE_WHITESPACE
     >>> del mary.addresses[1]
     >>> harry_address = Address('harry2@gmail.com')

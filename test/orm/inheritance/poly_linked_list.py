@@ -33,7 +33,7 @@ class PolymorphicCircularTest(ORMTest):
         #    {
         #    'table3' : table1.join(table3),
         #    'table2' : table1.join(table2),
-        #    'table1' : table1.select(table1.c.type.in_('table1', 'table1b')),
+        #    'table1' : table1.select(table1.c.type.in_(['table1', 'table1b'])),
         #    }, None, 'pjoin')
         
         join = table1.outerjoin(table2).outerjoin(table3).alias('pjoin')

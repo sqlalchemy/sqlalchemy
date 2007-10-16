@@ -424,7 +424,7 @@ class MapperTest(MapperSuperTest):
         mapper(User, users)
         q = create_session().query(User)
         self.assert_(q.count()==3)
-        self.assert_(q.count(users.c.user_id.in_(8,9))==2)
+        self.assert_(q.count(users.c.user_id.in_([8,9]))==2)
         self.assert_(q.count_by(user_name='fred')==1)
 
     def testmanytomany_count(self):

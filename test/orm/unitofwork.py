@@ -804,9 +804,9 @@ class OneToManyTest(ORMTest):
         print repr(u.addresses)
         Session.commit()
 
-        usertable = users.select(users.c.user_id.in_(u.user_id)).execute().fetchall()
+        usertable = users.select(users.c.user_id.in_([u.user_id])).execute().fetchall()
         self.assertEqual(usertable[0].values(), [u.user_id, 'one2manytester'])
-        addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id), order_by=[addresses.c.email_address]).execute().fetchall()
+        addresstable = addresses.select(addresses.c.address_id.in_([a.address_id, a2.address_id]), order_by=[addresses.c.email_address]).execute().fetchall()
         self.assertEqual(addresstable[0].values(), [a2.address_id, u.user_id, 'lala@test.org'])
         self.assertEqual(addresstable[1].values(), [a.address_id, u.user_id, 'one2many@test.org'])
 
@@ -1034,7 +1034,7 @@ class SaveTest(ORMTest):
 
         # select both
         #Session.close()
-        userlist = User.query.filter(users.c.user_id.in_(u.user_id, u2.user_id)).order_by([users.c.user_name]).all()
+        userlist = User.query.filter(users.c.user_id.in_([u.user_id, u2.user_id])).order_by([users.c.user_name]).all()
         print repr(u.user_id), repr(userlist[0].user_id), repr(userlist[0].user_name)
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
@@ -1126,18 +1126,18 @@ class SaveTest(ORMTest):
         u = Session.get(User, id)
         assert u.user_name == 'multitester'
         
-        usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
+        usertable = users.select(users.c.user_id.in_([u.foo_id])).execute().fetchall()
         self.assertEqual(usertable[0].values(), [u.foo_id, 'multitester'])
-        addresstable = addresses.select(addresses.c.address_id.in_(u.address_id)).execute().fetchall()
+        addresstable = addresses.select(addresses.c.address_id.in_([u.address_id])).execute().fetchall()
         self.assertEqual(addresstable[0].values(), [u.address_id, u.foo_id, 'multi@test.org'])
 
         u.email = 'lala@hey.com'
         u.user_name = 'imnew'
         Session.commit()
 
-        usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
+        usertable = users.select(users.c.user_id.in_([u.foo_id])).execute().fetchall()
         self.assertEqual(usertable[0].values(), [u.foo_id, 'imnew'])
-        addresstable = addresses.select(addresses.c.address_id.in_(u.address_id)).execute().fetchall()
+        addresstable = addresses.select(addresses.c.address_id.in_([u.address_id])).execute().fetchall()
         self.assertEqual(addresstable[0].values(), [u.address_id, u.foo_id, 'lala@hey.com'])
 
         Session.close()
@@ -1390,7 +1390,7 @@ class ManyToManyTest(ORMTest):
             item.item_name = elem['item_name']
             item.keywords = []
             if elem['keywords'][1]:
-                klist = Session.query(keywordmapper).select(keywords.c.name.in_(*[e['name'] for e in elem['keywords'][1]]))
+                klist = Session.query(keywordmapper).select(keywords.c.name.in_([e['name'] for e in elem['keywords'][1]]))
             else:
                 klist = []
             khash = {}
@@ -1406,7 +1406,7 @@ class ManyToManyTest(ORMTest):
 
         Session.commit()
         
-        l = Session.query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
+        l = Session.query(m).select(items.c.item_name.in_([e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
         self.assert_result(l, *data)
 
         objects[4].item_name = 'item4updated'
@@ -1588,7 +1588,7 @@ class ManyToManyTest(ORMTest):
 
         Session.commit()
         Session.close()
-        l = Item.query.filter(items.c.item_name.in_(*[e['item_name'] for e in data[1:]])).order_by(items.c.item_name).all()
+        l = Item.query.filter(items.c.item_name.in_([e['item_name'] for e in data[1:]])).order_by(items.c.item_name).all()
         self.assert_result(l, *data)
     
 class SaveTest2(ORMTest):

@@ -123,10 +123,10 @@ class O2MCascadeTest(AssertMixin):
         sess.delete(l[2])
 
         sess.flush()
-        assert tables.orders.count(tables.orders.c.user_id.in_(*ids)).scalar() == 0
-        assert tables.orderitems.count(tables.orders.c.user_id.in_(*ids)  &(tables.orderitems.c.order_id==tables.orders.c.order_id)).scalar() == 0
-        assert tables.addresses.count(tables.addresses.c.user_id.in_(*ids)).scalar() == 0
-        assert tables.users.count(tables.users.c.user_id.in_(*ids)).scalar() == 0
+        assert tables.orders.count(tables.orders.c.user_id.in_(ids)).scalar() == 0
+        assert tables.orderitems.count(tables.orders.c.user_id.in_(ids)  &(tables.orderitems.c.order_id==tables.orders.c.order_id)).scalar() == 0
+        assert tables.addresses.count(tables.addresses.c.user_id.in_(ids)).scalar() == 0
+        assert tables.users.count(tables.users.c.user_id.in_(ids)).scalar() == 0
 
     def testdelete2(self):
         """test that unloaded collections are still included in a delete-cascade by default."""
@@ -166,13 +166,13 @@ class O2MCascadeTest(AssertMixin):
         jack.orders[:] = []
 
         ids = [jack.user_id]
-        self.assert_(tables.orders.count(tables.orders.c.user_id.in_(*ids)).scalar() == 1)
-        self.assert_(tables.orderitems.count(tables.orders.c.user_id.in_(*ids)  &(tables.orderitems.c.order_id==tables.orders.c.order_id)).scalar() == 2)
+        self.assert_(tables.orders.count(tables.orders.c.user_id.in_(ids)).scalar() == 1)
+        self.assert_(tables.orderitems.count(tables.orders.c.user_id.in_(ids)  &(tables.orderitems.c.order_id==tables.orders.c.order_id)).scalar() == 2)
 
         sess.flush()
 
-        self.assert_(tables.orders.count(tables.orders.c.user_id.in_(*ids)).scalar() == 0)
-        self.assert_(tables.orderitems.count(tables.orders.c.user_id.in_(*ids)  &(tables.orderitems.c.order_id==tables.orders.c.order_id)).scalar() == 0)
+        self.assert_(tables.orders.count(tables.orders.c.user_id.in_(ids)).scalar() == 0)
+        self.assert_(tables.orderitems.count(tables.orders.c.user_id.in_(ids)  &(tables.orderitems.c.order_id==tables.orders.c.order_id)).scalar() == 0)
 
 
 class M2OCascadeTest(AssertMixin):

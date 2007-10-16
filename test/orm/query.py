@@ -208,7 +208,7 @@ class OperatorTest(QueryTest):
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
     
     def test_in(self):
-         self._test(User.id.in_('a', 'b'),
+         self._test(User.id.in_(['a', 'b']),
                     "users.id IN (:users_id, :users_id_1)")
 
     def test_between(self):
@@ -333,12 +333,12 @@ class FilterTest(QueryTest):
 class AggregateTest(QueryTest):
     def test_sum(self):
         sess = create_session()
-        orders = sess.query(Order).filter(Order.id.in_(2, 3, 4))
+        orders = sess.query(Order).filter(Order.id.in_([2, 3, 4]))
         assert orders.sum(Order.user_id * Order.address_id) == 79
 
     def test_apply(self):
         sess = create_session()
-        assert sess.query(Order).apply_sum(Order.user_id * Order.address_id).filter(Order.id.in_(2, 3, 4)).one() == 79
+        assert sess.query(Order).apply_sum(Order.user_id * Order.address_id).filter(Order.id.in_([2, 3, 4])).one() == 79
         
                 
 class CountTest(QueryTest):
@@ -428,10 +428,10 @@ class JoinTest(QueryTest):
     def test_overlap_with_aliases(self):
         oalias = orders.alias('oalias')
 
-        result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_("order 1", "order 2", "order 3")).join(['orders', 'items']).all()
+        result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_(["order 1", "order 2", "order 3"])).join(['orders', 'items']).all()
         assert [User(id=7, name='jack'), User(id=9, name='fred')] == result
         
-        result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_("order 1", "order 2", "order 3")).join(['orders', 'items']).filter_by(id=4).all()
+        result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_(["order 1", "order 2", "order 3"])).join(['orders', 'items']).filter_by(id=4).all()
         assert [User(id=7, name='jack')] == result
 
     def test_aliased(self):

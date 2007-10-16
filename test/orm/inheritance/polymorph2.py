@@ -730,7 +730,7 @@ class GenerativeTest(AssertMixin):
         for x in range(0, 2):
             r = session.query(Person).filter(people.c.name.like('%2')).join('status').filter_by(name="active")
             assert str(list(r)) == "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]"
-            r = session.query(Engineer).join('status').filter(people.c.name.in_('E2', 'E3', 'E4', 'M4', 'M2', 'M1') & (status.c.name=="active"))
+            r = session.query(Engineer).join('status').filter(people.c.name.in_(['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) & (status.c.name=="active"))
             assert str(list(r)) == "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]"
             # this test embeds the original polymorphic union (employee_join) fully 
             # into the WHERE criterion, using a correlated select. ticket #577 tracks 

@@ -102,7 +102,7 @@ class FlushTest(FixtureTest):
         except TypeError, e:
             assert "doesn't support item deletion" in str(e), str(e)
         
-        for a in u.addresses.filter(Address.email_address.in_('c', 'e', 'f')):
+        for a in u.addresses.filter(Address.email_address.in_(['c', 'e', 'f'])):
             u.addresses.remove(a)
             
         assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)

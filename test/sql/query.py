@@ -597,46 +597,46 @@ class QueryTest(PersistTest):
         users.insert().execute(user_id = 8, user_name = 'fred')
         users.insert().execute(user_id = 9, user_name = None)
         
-        s = users.select(users.c.user_name.in_())
+        s = users.select(users.c.user_name.in_([]))
         r = s.execute().fetchall()
         # No username is in empty set
         assert len(r) == 0
         
-        s = users.select(not_(users.c.user_name.in_()))
+        s = users.select(not_(users.c.user_name.in_([])))
         r = s.execute().fetchall()
         # All usernames with a value are outside an empty set
         assert len(r) == 2
         
-        s = users.select(users.c.user_name.in_('jack','fred'))
+        s = users.select(users.c.user_name.in_(['jack','fred']))
         r = s.execute().fetchall()
         assert len(r) == 2
         
-        s = users.select(not_(users.c.user_name.in_('jack','fred')))
+        s = users.select(not_(users.c.user_name.in_(['jack','fred'])))
         r = s.execute().fetchall()
         # Null values are not outside any set
         assert len(r) == 0
         
         u = bindparam('search_key')
         
-        s = users.select(u.in_())
+        s = users.select(u.in_([]))
         r = s.execute(search_key='john').fetchall()
         assert len(r) == 0
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
         
-        s = users.select(not_(u.in_()))
+        s = users.select(not_(u.in_([])))
         r = s.execute(search_key='john').fetchall()
         assert len(r) == 3
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
         
-        s = users.select(users.c.user_name.in_() == True)
+        s = users.select(users.c.user_name.in_([]) == True)
         r = s.execute().fetchall()
         assert len(r) == 0
-        s = users.select(users.c.user_name.in_() == False)
+        s = users.select(users.c.user_name.in_([]) == False)
         r = s.execute().fetchall()
         assert len(r) == 2
-        s = users.select(users.c.user_name.in_() == None)
+        s = users.select(users.c.user_name.in_([]) == None)
         r = s.execute().fetchall()
         assert len(r) == 1
 
@@ -690,9 +690,9 @@ class CompoundTest(PersistTest):
     def test_union(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
-                   t1.c.col2.in_("t1col2r1", "t1col2r2")),
+                   t1.c.col2.in_(["t1col2r1", "t1col2r2"])),
             select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
-                   t2.c.col2.in_("t2col2r2", "t2col2r3"))
+                   t2.c.col2.in_(["t2col2r2", "t2col2r3"]))
         )        
         u = union(s1, s2)
 
@@ -707,9 +707,9 @@ class CompoundTest(PersistTest):
     def test_union_ordered(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
-                   t1.c.col2.in_("t1col2r1", "t1col2r2")),
+                   t1.c.col2.in_(["t1col2r1", "t1col2r2"])),
             select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
-                   t2.c.col2.in_("t2col2r2", "t2col2r3"))
+                   t2.c.col2.in_(["t2col2r2", "t2col2r3"]))
         )        
         u = union(s1, s2, order_by=['col3', 'col4'])
 
@@ -720,9 +720,9 @@ class CompoundTest(PersistTest):
     def test_union_ordered_alias(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
-                   t1.c.col2.in_("t1col2r1", "t1col2r2")),
+                   t1.c.col2.in_(["t1col2r1", "t1col2r2"])),
             select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
-                   t2.c.col2.in_("t2col2r2", "t2col2r3"))
+                   t2.c.col2.in_(["t2col2r2", "t2col2r3"]))
         )        
         u = union(s1, s2, order_by=['col3', 'col4'])
 

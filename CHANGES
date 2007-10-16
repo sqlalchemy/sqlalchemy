@@ -91,6 +91,10 @@ CHANGES
 - Added Float and Time types to Firebird (FBFloat and FBTime). Fixed
   BLOB SUB_TYPE for TEXT and Binary types.
 
+- Changed the API for the in_ operator. in_() now accepts a single argument
+  that is a sequence of values or a selectable. The old API of passing in
+  values as varargs still works but is deprecated.
+
 
 0.4.0beta6
 ----------
