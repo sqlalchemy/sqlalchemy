@@ -708,16 +708,17 @@ class Query(object):
             ident = util.to_list(ident)
         params = {}
         
+        (_get_clause, _get_params) = self.select_mapper._get_clause
         for i, primary_key in enumerate(self.primary_key_columns):
             try:
-                params[primary_key._label] = ident[i]
+                params[_get_params[primary_key].key] = ident[i]
             except IndexError:
                 raise exceptions.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join(["'%s'" % str(c) for c in self.primary_key_columns]))
         try:
             q = self
             if lockmode is not None:
                 q = q.with_lockmode(lockmode)
-            q = q.filter(self.select_mapper._get_clause)
+            q = q.filter(_get_clause)
             q = q.params(params)._select_context_options(populate_existing=reload, version_check=(lockmode is not None))
             # call using all() to avoid LIMIT compilation complexity
             return q.all()[0]

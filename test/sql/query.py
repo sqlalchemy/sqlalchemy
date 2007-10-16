@@ -362,7 +362,18 @@ class QueryTest(PersistTest):
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Ambiguous column name 'user_id' in result set! try 'use_labels' option on select statement." or \
                    str(e) == "Ambiguous column name 'USER_ID' in result set! try 'use_labels' option on select statement."
-            
+    
+    def test_column_label_targeting(self):
+        users.insert().execute(user_id=7, user_name='ed')
+
+        for s in (
+            users.select().alias('foo'),
+            users.select().alias(users.name),
+        ):
+            row = s.select(use_labels=True).execute().fetchone()
+            assert row[s.c.user_id] == 7
+            assert row[s.c.user_name] == 'ed'
+        
     def test_keys(self):
         users.insert().execute(user_id=1, user_name='foo')
         r = users.select().execute().fetchone()

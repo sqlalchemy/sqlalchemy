@@ -200,11 +200,11 @@ class DeferredColumnLoader(LoaderStrategy):
                 raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session; deferred load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
 
             if create_statement is None:
-                clause = localparent._get_clause
+                (clause, param_map) = localparent._get_clause
                 ident = instance._instance_key[1]
                 params = {}
                 for i, primary_key in enumerate(localparent.primary_key):
-                    params[primary_key._label] = ident[i]
+                    params[param_map[primary_key].key] = ident[i]
                 statement = sql.select([p.columns[0] for p in group], clause, from_obj=[localparent.mapped_table], use_labels=True)
             else:
                 statement, params = create_statement()
@@ -294,7 +294,7 @@ class LazyLoader(AbstractRelationLoader):
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
         #from sqlalchemy.orm import query
-        self.use_get = not self.uselist and self.mapper._get_clause.compare(self.lazywhere)
+        self.use_get = not self.uselist and self.mapper._get_clause[0].compare(self.lazywhere)
         if self.use_get:
             self.logger.info(str(self.parent_property) + " will use query.get() to optimize instance loads")
 

@@ -65,6 +65,21 @@ class GetTest(QueryTest):
         u2 = s.query(User).get(7)
         assert u is not u2
 
+    def test_unique_param_names(self):
+        class SomeUser(object):
+            pass
+        s = users.select(users.c.id!=12).alias('users')
+        m = mapper(SomeUser, s)
+        print s.primary_key
+        print m.primary_key
+        assert s.primary_key == m.primary_key
+        
+        row = s.select(use_labels=True).execute().fetchone()
+        print row[s.primary_key[0]]
+         
+        sess = create_session()
+        assert sess.query(SomeUser).get(7).name == 'jack'
+
     def test_load(self):
         s = create_session()
         

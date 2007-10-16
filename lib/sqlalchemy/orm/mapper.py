@@ -464,9 +464,12 @@ class Mapper(object):
             self.__log("Identified primary key columns: " + str(primary_key))
         
             _get_clause = sql.and_()
+            _get_params = {}
             for primary_key in self.primary_key:
-                _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type_=primary_key.type, unique=True))
-            self._get_clause = _get_clause
+                bind = sql.bindparam(None, type_=primary_key.type)
+                _get_params[primary_key] = bind
+                _get_clause.clauses.append(primary_key == bind)
+            self._get_clause = (_get_clause, _get_params)
 
     def _get_equivalent_columns(self):
         """Create a map of all *equivalent* columns, based on

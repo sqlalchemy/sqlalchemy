@@ -30,6 +30,15 @@ CHANGES
   . FBDialect.table_names() doesn't bring system tables (ticket:796).
   . FB now reflects Column's nullable property correctly.
 
+- Fixed SQL compiler's awareness of top-level column labels as used
+  in result-set processing; nested selects which contain the same column 
+  names don't affect the result or conflict with result-column metadata.
+
+- query.get() and related functions (like many-to-one lazyloading)
+  use compile-time-aliased bind parameter names, to prevent
+  name conflicts with bind parameters that already exist in the 
+  mapped selectable.
+
 - Fixed three- and multi-level select and deferred inheritance loading
   (i.e. abc inheritance with no select_table), [ticket:795]
 

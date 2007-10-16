@@ -240,7 +240,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
     def visit_label(self, label):
         labelname = self._truncated_identifier("colident", label.name)
         
-        if self.stack and self.stack[-1].get('select'):
+        if len(self.stack) == 1 and self.stack[-1].get('select'):
             self.typemap.setdefault(labelname.lower(), label.obj.type)
             if isinstance(label.obj, sql._ColumnClause):
                 self.column_labels[label.obj._label] = labelname
@@ -258,7 +258,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         else:
             name = column.name
 
-        if self.stack and self.stack[-1].get('select'):
+        if len(self.stack) == 1 and self.stack[-1].get('select'):
             # if we are within a visit to a Select, set up the "typemap"
             # for this column which is used to translate result set values
             self.typemap.setdefault(name.lower(), column.type)
