@@ -9,6 +9,9 @@ CHANGES
 - Added partial index support for PostgreSQL. Use the postgres_where keyword
   on the Index.
 
+- string-based query param parsing/config file parser understands
+  wider range of string values for booleans [ticket:817]
+  
 - backref remove object operation doesn't fail if the other-side
   collection doesn't contain the item, supports noload collections
   [ticket:813]

@@ -58,7 +58,7 @@ class CreateEngineTest(PersistTest):
 [prefixed]
 sqlalchemy.url=postgres://scott:tiger@somehost/test?fooz=somevalue
 sqlalchemy.convert_unicode=0
-sqlalchemy.echo=0
+sqlalchemy.echo=false
 sqlalchemy.echo_pool=1
 sqlalchemy.max_overflow=2
 sqlalchemy.pool_recycle=50
@@ -102,12 +102,14 @@ pool_timeout=10
 
         config = {
             'sqlalchemy.url':'postgres://scott:tiger@somehost/test?fooz=somevalue',
-            'sqlalchemy.pool_recycle':'50'
+            'sqlalchemy.pool_recycle':'50',
+            'sqlalchemy.echo':'true'
         }
 
         e = engine_from_config(config, module=dbapi)
         assert e.pool._recycle == 50
         assert e.url == url.make_url('postgres://scott:tiger@somehost/test?fooz=somevalue')
+        assert e.echo is True
         
     def test_custom(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
