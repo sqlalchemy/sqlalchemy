@@ -359,7 +359,7 @@ The above SQL functions are usually executed "inline" with the INSERT or UPDATE 
 
 * the `inline=True` flag is not set on the `Insert()` or `Update()` construct.
 
-For a statement which executes with `inline=False` and is not an executemany execution, the returned `ResultProxy` will contain a collection accessible via `result.postfetch_cols()` which contains a list of all `Column` objects which had an inline-executed default.  Similarly, all parameters which were bound to the statement, including all Python and SQL expressions which were pre-executed, are present in the `last_inserted_params()` or `last_updated_params()` collections on `ResultProxy`.  The `last_inserted_ids()` collection contains a list of primary key values for the row inserted.  
+For a statement execution which is not an executemany, the returned `ResultProxy` will contain a collection accessible via `result.postfetch_cols()` which contains a list of all `Column` objects which had an inline-executed default.  Similarly, all parameters which were bound to the statement, including all Python and SQL expressions which were pre-executed, are present in the `last_inserted_params()` or `last_updated_params()` collections on `ResultProxy`.  The `last_inserted_ids()` collection contains a list of primary key values for the row inserted.  
 
 #### DDL-Level Defaults {@name=passive}    
 
@@ -367,7 +367,7 @@ A variant on a SQL expression default is the `PassiveDefault`, which gets placed
 
     {python}
     t = Table('test', meta, 
-        Column('mycolumn', DateTime, PassiveDefault("sysdate"))
+        Column('mycolumn', DateTime, PassiveDefault(text("sysdate")))
     )
         
 A create call for the above table will produce:
