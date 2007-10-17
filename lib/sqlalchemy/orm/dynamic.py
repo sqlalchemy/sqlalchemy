@@ -71,13 +71,6 @@ class AppenderQuery(Query):
         else:
             return sess
             
-    def __len__(self):
-        sess = self.__session()
-        if sess is None:
-            return len(self.attr.get_history(self.state)._added_items)
-        else:
-            return self._clone(sess).count()
-        
     def __iter__(self):
         sess = self.__session()
         if sess is None:

@@ -26,6 +26,19 @@ class DynamicTest(QueryTest):
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
         assert fixtures.user_address_result == q.all()
 
+    def test_no_count(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        sess = create_session()
+        q = sess.query(User)
+
+        # dynamic collection cannot implement __len__() (at least one that returns a live database
+        # result), else additional count() queries are issued when evaluating in a list context
+        def go():
+            assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
+        self.assert_sql_count(testbase.db, go, 2)
+        
 class FlushTest(FixtureTest):
     def test_basic(self):
         class Fixture(Base):

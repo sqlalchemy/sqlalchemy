@@ -42,10 +42,13 @@ class Base(object):
                     except AttributeError:
                         #print "Other class does not have attribute named '%s'" % attr
                         return False
-                    if len(value) != len(getattr(other, attr)):
+                    if not hasattr(value, '__len__'):
+                        value = list(iter(value))
+                        otherattr = list(iter(otherattr))
+                    if len(value) != len(otherattr):
                         #print "Length of collection '%s' does not match that of other" % attr
                         return False
-                    for (us, them) in zip(value, getattr(other, attr)):
+                    for (us, them) in zip(value, otherattr):
                         if us != them:
                             #print "1. Attribute named '%s' does not match other" % attr
                             return False

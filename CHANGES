@@ -17,6 +17,10 @@ CHANGES
   collection doesn't contain the item, supports noload collections
   [ticket:813]
 
+- removed __len__ from "dynamic" collection as it would require issuing
+  a SQL "count()" operation, thus forcing all list evaluations to issue
+  redundant SQL [ticket:818]
+  
 - inline optimizations added to locate_dirty() which can greatly speed up
   repeated calls to flush(), as occurs with autoflush=True [ticket:816]
   
