@@ -2,8 +2,8 @@
 CHANGES
 =======
 
-0.4.0beta7
-----------
+0.4.0
+-----
 
 - Added initial Sybase support (mxODBC so far) [ticket:785]
 
