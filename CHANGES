@@ -4,6 +4,7 @@ CHANGES
 
 0.4.0beta7
 ----------
+
 - Added initial Sybase support (mxODBC so far) [ticket:785]
 
 - Added partial index support for PostgreSQL. Use the postgres_where keyword
@@ -723,28 +724,77 @@ CHANGES
     values are avaiable via result.out_parameters dictionary. [ticket:507]
 
 0.3.11
+------
+
+- sql
+
+    - tweak DISTINCT precedence for clauses like
+      `func.count(t.c.col.distinct())`
+
+    - Fixed detection of internal '$' characters in :bind$params [ticket:719]
+
+    - [ticket:768] dont assume join criterion consists only of column objects
+
+    - adjusted operator precedence of NOT to match '==' and others, so that 
+      ~(x==y) produces NOT (x=y), which is compatible with MySQL < 5.0
+      (doesn't like "NOT x=y") [ticket:764]
+      
 - orm
+
     - added a check for joining from A->B using join(), along two
-      different m2m tables.  this raises an error in 0.3 but is
+      different m2m tables.  this raises an error in 0.3 but is 
       possible in 0.4 when aliases are used. [ticket:687]
-    - fixed bug where mapper, being linked to a join where one table had
+
+    - fixed small exception throw bug in Session.merge()
+
+    - fixed bug where mapper, being linked to a join where one table had 
       no PK columns, would not detect that the joined table had no PK.
+
+    - fixed bugs in determining proper sync clauses from custom inherit
+      conditions [ticket:769]
+
+    - backref remove object operation doesn't fail if the other-side 
+      collection doesn't contain the item, supports noload collections
+      [ticket:813]
+      
 - engine
+
     - fixed another occasional race condition which could occur
       when using pool with threadlocal setting
+
+- mysql
+    - fixed specification of YEAR columns when generating schema
+
 - mssql
+
     - added support for TIME columns (simulated using DATETIME) [ticket:679]
-    - added support for BIGINT, MONEY, SMALLMONEY, UNIQUEIDENTIFIER and
+
+    - added support for BIGINT, MONEY, SMALLMONEY, UNIQUEIDENTIFIER and 
       SQL_VARIANT [ticket:721]
+
     - index names are now quoted when dropping from reflected tables
       [ticket:684]
+
     - can now specify a DSN for PyODBC, using a URI like mssql:///?dsn=bob
+
 - postgres
+
     - when reflecting tables from alternate schemas, the "default" placed upon
       the primary key, i.e. usually a sequence name, has the "schema" name
-      unconditionally quoted, so that schema names which need quoting are
-      fine.  its slightly unnecessary for schema names which don't need
-      quoting but not harmful.
+      unconditionally quoted, so that schema names which need quoting are fine.
+      its slightly unnecessary for schema names which don't need quoting
+      but not harmful.
+
+- sqlite
+   - passthrough for stringified dates
+
+- firebird
+    - supports_sane_rowcount() set to False due to ticket #370 (right way).
+    - fixed reflection of Column's nullable property.
+
+- oracle
+    - removed LONG_STRING, LONG_BINARY from "binary" types, so type objects
+      don't try to read their values as LOB [ticket:622], [ticket:751]
 
 0.3.10
 - general
