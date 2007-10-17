@@ -4,6 +4,8 @@ CHANGES
 
 0.4.0
 -----
+- (see 0.4.0beta1 for the start of major changes against 0.3, 
+  as well as http://www.sqlalchemy.org/trac/wiki/WhatsNewIn04 )
 
 - Added initial Sybase support (mxODBC so far) [ticket:785]
 
