@@ -36,7 +36,7 @@ class column(object):
 #
 class relationship(object):
     def __init__(self, classname, colname=None, backref=None, private=False,
-                 lazy=True, uselist=True, secondary=None, order_by=False):
+                 lazy=True, uselist=True, secondary=None, order_by=False, viewonly=False):
         self.classname = classname
         self.colname   = colname
         self.backref   = backref
@@ -45,6 +45,7 @@ class relationship(object):
         self.uselist   = uselist
         self.secondary = secondary
         self.order_by  = order_by
+        self.viewonly  = viewonly
     
     def process(self, klass, propname, relations):
         relclass = ActiveMapperMeta.classes[self.classname]
@@ -65,7 +66,8 @@ class relationship(object):
                                        private=self.private, 
                                        lazy=self.lazy, 
                                        uselist=self.uselist,
-                                       order_by=self.order_by)
+                                       order_by=self.order_by, 
+                                       viewonly=self.viewonly)
     
     def create_backref(self, klass):
         if self.backref is None:
@@ -83,17 +85,14 @@ class relationship(object):
 
 
 class one_to_many(relationship):
-    def __init__(self, classname, colname=None, backref=None, private=False,
-                 lazy=True, order_by=False):
-        relationship.__init__(self, classname, colname, backref, private, 
-                              lazy, uselist=True, order_by=order_by)
-
+    def __init__(self, *args, **kwargs):
+        kwargs['uselist'] = True
+        relationship.__init__(self, *args, **kwargs)
 
 class one_to_one(relationship):
-    def __init__(self, classname, colname=None, backref=None, private=False,
-                 lazy=True, order_by=False):
-        relationship.__init__(self, classname, colname, backref, private, 
-                              lazy, uselist=False, order_by=order_by)
+    def __init__(self, *args, **kwargs):
+        kwargs['uselist'] = False
+        relationship.__init__(self, *args, **kwargs)
     
     def create_backref(self, klass):
         if self.backref is None:
