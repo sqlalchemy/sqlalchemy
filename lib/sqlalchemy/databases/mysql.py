@@ -2046,7 +2046,7 @@ class MySQLSchemaReflector(object):
             warnings.warn(RuntimeWarning(
                 "Did not recognize type '%s' of column '%s'" %
                 (type_, name)))
-            col_type = sqltypes.NULLTYPE
+            col_type = sqltypes.NullType
         
         # Column type positional arguments eg. varchar(32)
         if args is None or args == '':

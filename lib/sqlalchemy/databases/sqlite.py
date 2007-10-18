@@ -153,7 +153,7 @@ colspecs = {
     sqltypes.CHAR: SLChar,
 }
 
-pragma_names = {
+ischema_names = {
     'INTEGER' : SLInteger,
     'INT' : SLInteger,
     'SMALLINT' : SLSmallInteger,
@@ -271,10 +271,10 @@ class SQLiteDialect(default.DefaultDialect):
                 args = ''
 
             try:
-                coltype = pragma_names[coltype]
+                coltype = ischema_names[coltype]
             except KeyError:
                 warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
-                coltype = sqltypes.NULLTYPE
+                coltype = sqltypes.NullType
                 
             if args is not None:
                 args = re.findall(r'(\d+)', args)

@@ -3,6 +3,7 @@ import pickle, StringIO, unicodedata
 
 from sqlalchemy import *
 from sqlalchemy import exceptions
+from sqlalchemy import types as sqltypes
 from testlib import *
 from testlib import engines
 
@@ -181,7 +182,34 @@ class ReflectionTest(PersistTest):
             assert len(a4.constraints) == 2
         finally:
             meta.drop_all()
-
+    
+    def test_unknown_types(self):
+        meta = MetaData(testbase.db)
+        t = Table("test", meta, 
+            Column('foo', String(30)))
+            
+        import sys
+        dialect_module = sys.modules[testbase.db.dialect.__module__]
+        
+        # we're relying on the presence of "ischema_names" in the 
+        # dialect module, else we can't test this.  we need to be able
+        # to get the dialect to not be aware of some type so we temporarily
+        # monkeypatch.  not sure what a better way for this could be,
+        # except for an established dialect hook or dialect-specific tests
+        if not hasattr(dialect_module, 'ischema_names'):
+            return
+        
+        ischema_names = dialect_module.ischema_names
+        t.create()
+        dialect_module.ischema_names = {}
+        try:
+            m2 = MetaData(testbase.db)
+            t2 = Table("test", m2, autoload=True)
+            assert t2.c.foo.type.__class__ == sqltypes.NullType
+        finally:
+            dialect_module.ischema_names = ischema_names
+            t.drop()
+            
     def test_override_fkandpkcol(self):
         """test that you can override columns which contain foreign keys to other reflected tables,
         where the foreign key column is also a primary key column"""
