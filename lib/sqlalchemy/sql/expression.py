@@ -1088,6 +1088,9 @@ class ColumnOperators(Operators):
     def endswith(self, other):
         return self.operate(operators.endswith_op, other)
 
+    def contains(self, other):
+        return self.operate(operators.contains_op, other)
+
     def desc(self):
         return self.operate(operators.desc_op)
 
@@ -1195,6 +1198,9 @@ class _CompareMixin(ColumnOperators):
         if op == operators.add and isinstance(type_, (sqltypes.Concatenable)):
             op = operators.concat_op
         return _BinaryExpression(self.expression_element(), obj, op, type_=type_)
+
+    # a mapping of operators with the method they use, along with their negated
+    # operator for comparison operators
     operators = {
         operators.add : (__operate,),
         operators.mul : (__operate,),
@@ -1251,15 +1257,27 @@ class _CompareMixin(ColumnOperators):
     def startswith(self, other):
         """Produce the clause ``LIKE '<other>%'``"""
 
-        perc = isinstance(other,(str,unicode)) and '%' or literal('%',type_= sqltypes.String)
+        perc = isinstance(other, basestring) and '%' or literal('%', type_=sqltypes.String)
         return self.__compare(operators.like_op, other + perc)
 
     def endswith(self, other):
         """Produce the clause ``LIKE '%<other>'``"""
 
-        if isinstance(other,(str,unicode)): po = '%' + other
+        if isinstance(other, basestring): 
+            po = '%' + other
         else:
             po = literal('%', type_=sqltypes.String) + other
+            po.type = sqltypes.to_instance(sqltypes.String)     #force!
+        return self.__compare(operators.like_op, po)
+
+    def contains(self, other):
+        """Produce the clause ``LIKE '%<other>%'``"""
+
+        if isinstance(other, basestring): 
+            po = '%' + other + '%'
+        else:
+            perc = literal('%', type_=sqltypes.String)
+            po = perc + other + perc
             po.type = sqltypes.to_instance(sqltypes.String)     #force!
         return self.__compare(operators.like_op, po)
 

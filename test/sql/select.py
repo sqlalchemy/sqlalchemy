@@ -417,6 +417,18 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         clause = (table1.c.myid == 12) & table1.c.myid.between(15, 20) & table1.c.myid.like('hoho')
         assert str(clause) == str(util.pickle.loads(util.pickle.dumps(clause)))
 
+    def testextracomparisonoperators(self):
+        self.assert_compile(
+            table1.select(table1.c.name.contains('jo')),
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name LIKE :mytable_name",
+            checkparams = {'mytable_name': u'%jo%'},
+        )
+        self.assert_compile(
+            table1.select(table1.c.name.endswith('hn')),
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name LIKE :mytable_name",
+            checkparams = {'mytable_name': u'%hn'},
+        )
+
     def testunicodestartswith(self):
         string = u"hi \xf6 \xf5"
         self.assert_compile(

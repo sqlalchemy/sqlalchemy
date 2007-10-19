@@ -10,6 +10,9 @@ CHANGES
 
 - Fixed empty (zero column) sqlite inserts, allowing inserts on
   autoincrementing single column tables.
+
+- Added contains operator (which generate a "LIKE %<other>%" clause).
+
   
 0.4.0
 -----
