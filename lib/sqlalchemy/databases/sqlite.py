@@ -362,6 +362,21 @@ class SQLiteCompiler(compiler.DefaultCompiler):
         # sqlite has no "FOR UPDATE" AFAICT
         return ''
 
+    def visit_insert(self, insert_stmt):
+        self.isinsert = True
+        colparams = self._get_colparams(insert_stmt)
+        preparer = self.preparer
+
+        if not colparams:
+            return "INSERT INTO %s DEFAULT VALUES" % (
+                (preparer.format_table(insert_stmt.table),))
+        else:
+            return ("INSERT INTO %s (%s) VALUES (%s)" %
+                    (preparer.format_table(insert_stmt.table),
+                     ', '.join([preparer.format_column(c[0])
+                                for c in colparams]),
+                     ', '.join([c[1] for c in colparams])))
+
 
 class SQLiteSchemaGenerator(compiler.SchemaGenerator):
 
