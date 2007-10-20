@@ -103,12 +103,14 @@ class InsertTest(AssertMixin):
             table.drop()
 
     @testing.supported('sqlite')
+    @testing.exclude('sqlite', '<', (3, 3))
     def test_empty_insert_pk1(self):
         self._test_empty_insert(
             Table('a', MetaData(testbase.db),
                   Column('id', Integer, primary_key=True)))
 
     @testing.supported('sqlite')
+    @testing.exclude('sqlite', '<', (3, 3))
     def test_empty_insert_pk2(self):
         self.assertRaises(
             exceptions.DBAPIError,
@@ -118,6 +120,7 @@ class InsertTest(AssertMixin):
                   Column('y', Integer, primary_key=True)))
 
     @testing.supported('sqlite')
+    @testing.exclude('sqlite', '<', (3, 3))
     def test_empty_insert_pk3(self):
         self.assertRaises(
             exceptions.DBAPIError,
@@ -128,6 +131,7 @@ class InsertTest(AssertMixin):
                          primary_key=True)))
 
     @testing.supported('sqlite')
+    @testing.exclude('sqlite', '<', (3, 3))
     def test_empty_insert_pk4(self):
         self._test_empty_insert(
             Table('d', MetaData(testbase.db),
@@ -135,12 +139,14 @@ class InsertTest(AssertMixin):
                   Column('y', Integer, PassiveDefault('123'))))
 
     @testing.supported('sqlite')
+    @testing.exclude('sqlite', '<', (3, 3))
     def test_empty_insert_nopk1(self):
         self._test_empty_insert(
             Table('e', MetaData(testbase.db),
                   Column('id', Integer)))
     
     @testing.supported('sqlite')
+    @testing.exclude('sqlite', '<', (3, 3))
     def test_empty_insert_nopk2(self):
         self._test_empty_insert(
             Table('f', MetaData(testbase.db),
