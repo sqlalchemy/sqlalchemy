@@ -89,6 +89,10 @@ class DialectTest(AssertMixin):
 class InsertTest(AssertMixin):
     """Tests inserts and autoincrement."""
 
+    # empty insert (i.e. INSERT INTO table DEFAULT VALUES)
+    # fails as recently as sqlite 3.3.6.  passes on 3.4.1.  this syntax
+    # is nowhere to be found in the sqlite3 documentation or changelog, so can't
+    # determine what versions in between it's legal for.
     def _test_empty_insert(self, table, expect=1):
         try:
             table.create()
@@ -103,14 +107,14 @@ class InsertTest(AssertMixin):
             table.drop()
 
     @testing.supported('sqlite')
-    @testing.exclude('sqlite', '<', (3, 3))
+    @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk1(self):
         self._test_empty_insert(
             Table('a', MetaData(testbase.db),
                   Column('id', Integer, primary_key=True)))
 
     @testing.supported('sqlite')
-    @testing.exclude('sqlite', '<', (3, 3))
+    @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk2(self):
         self.assertRaises(
             exceptions.DBAPIError,
@@ -120,7 +124,7 @@ class InsertTest(AssertMixin):
                   Column('y', Integer, primary_key=True)))
 
     @testing.supported('sqlite')
-    @testing.exclude('sqlite', '<', (3, 3))
+    @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk3(self):
         self.assertRaises(
             exceptions.DBAPIError,
@@ -131,7 +135,7 @@ class InsertTest(AssertMixin):
                          primary_key=True)))
 
     @testing.supported('sqlite')
-    @testing.exclude('sqlite', '<', (3, 3))
+    @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk4(self):
         self._test_empty_insert(
             Table('d', MetaData(testbase.db),
@@ -139,14 +143,14 @@ class InsertTest(AssertMixin):
                   Column('y', Integer, PassiveDefault('123'))))
 
     @testing.supported('sqlite')
-    @testing.exclude('sqlite', '<', (3, 3))
+    @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_nopk1(self):
         self._test_empty_insert(
             Table('e', MetaData(testbase.db),
                   Column('id', Integer)))
     
     @testing.supported('sqlite')
-    @testing.exclude('sqlite', '<', (3, 3))
+    @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_nopk2(self):
         self._test_empty_insert(
             Table('f', MetaData(testbase.db),
