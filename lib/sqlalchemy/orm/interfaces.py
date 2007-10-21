@@ -10,7 +10,7 @@ from sqlalchemy.sql import expression
 
 __all__ = ['EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS', 'MapperExtension',
            'MapperProperty', 'PropComparator', 'StrategizedProperty', 
-           'LoaderStack', 'OperationContext', 'MapperOption', 
+           'LoaderStack', 'build_path', 'MapperOption', 
            'ExtensionOption', 'SynonymProperty', 'PropertyOption', 
            'AttributeExtension', 'StrategizedOption', 'LoaderStrategy' ]
 
@@ -493,6 +493,12 @@ class StrategizedProperty(MapperProperty):
         if self.is_primary():
             self.strategy.init_class_attribute()
 
+def build_path(mapper, key, prev=None):
+    if prev:
+        return prev + (mapper.base_mapper, key)
+    else:
+        return (mapper.base_mapper, key)
+        
 class LoaderStack(object):
     """a stack object used during load operations to track the 
     current position among a chain of mappers to eager loaders."""
@@ -521,33 +527,10 @@ class LoaderStack(object):
         
     def __str__(self):
         return "->".join([str(s) for s in self.__stack])
-        
-class OperationContext(object):
-    """Serve as a context during a query construction or instance
-    loading operation.
 
-    Accept ``MapperOption`` objects which may modify its state before proceeding.
-    """
-
-    def __init__(self, mapper, options, attributes=None):
-        self.mapper = mapper
-        self.options = options
-        self.attributes = attributes or {}
-        self.recursion_stack = util.Set()
-        for opt in util.flatten_iterator(options):
-            self.accept_option(opt)
-
-    def accept_option(self, opt):
-        pass
 
 class MapperOption(object):
-    """Describe a modification to an OperationContext or Query."""
-
-    def process_query_context(self, context):
-        pass
-
-    def process_selection_context(self, context):
-        pass
+    """Describe a modification to a Query."""
 
     def process_query(self, query):
         pass
@@ -598,24 +581,18 @@ class PropertyOption(MapperOption):
     def __init__(self, key):
         self.key = key
 
-    def process_query_property(self, context, properties):
+    def process_query(self, query):
+        self.process_query_property(query, self._get_properties(query))
+
+    def process_query_property(self, query, properties):
         pass
 
-    def process_selection_property(self, context, properties):
-        pass
-
-    def process_query_context(self, context):
-        self.process_query_property(context, self._get_properties(context))
-
-    def process_selection_context(self, context):
-        self.process_selection_property(context, self._get_properties(context))
-
-    def _get_properties(self, context):
+    def _get_properties(self, query):
         try:
             l = self.__prop
         except AttributeError:
             l = []
-            mapper = context.mapper
+            mapper = query.mapper
             for token in self.key.split('.'):
                 prop = mapper.get_property(token, resolve_synonyms=True)
                 l.append(prop)
@@ -649,21 +626,13 @@ class StrategizedOption(PropertyOption):
     def is_chained(self):
         return False
         
-    def process_query_property(self, context, properties):
-        self.logger.debug("applying option to QueryContext, property key '%s'" % self.key)
+    def process_query_property(self, query, properties):
+        self.logger.debug("applying option to Query, property key '%s'" % self.key)
         if self.is_chained():
             for prop in properties:
-                context.attributes[("loaderstrategy", prop)] = self.get_strategy_class()
+                query._attributes[("loaderstrategy", prop)] = self.get_strategy_class()
         else:
-            context.attributes[("loaderstrategy", properties[-1])] = self.get_strategy_class()
-
-    def process_selection_property(self, context, properties):
-        self.logger.debug("applying option to SelectionContext, property key '%s'" % self.key)
-        if self.is_chained():
-            for prop in properties:
-                context.attributes[("loaderstrategy", prop)] = self.get_strategy_class()
-        else:     
-            context.attributes[("loaderstrategy", properties[-1])] = self.get_strategy_class()
+            query._attributes[("loaderstrategy", properties[-1])] = self.get_strategy_class()
 
     def get_strategy_class(self):
         raise NotImplementedError()

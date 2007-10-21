@@ -666,7 +666,8 @@ class Mapper(object):
 
         def extra_init(class_, oldinit, instance, args, kwargs):
             self.compile()
-            self.extension.init_instance(self, class_, oldinit, instance, args, kwargs)
+            if 'init_instance' in self.extension.methods:
+                self.extension.init_instance(self, class_, oldinit, instance, args, kwargs)
         
         def on_exception(class_, oldinit, instance, args, kwargs):
             util.warn_exception(self.extension.init_failed, self, class_, oldinit, instance, args, kwargs)
@@ -843,12 +844,14 @@ class Mapper(object):
         Raise ``InvalidRequestError`` if a session cannot be retrieved
         from the extension chain.
         """
+        
+        if 'get_session' in self.extension.methods:
+            s = self.extension.get_session()
+            if s is not EXT_CONTINUE:
+                return s
 
-        s = self.extension.get_session()
-        if s is EXT_CONTINUE:
-            raise exceptions.InvalidRequestError("No contextual Session is established.  Use a MapperExtension that implements get_session or use 'import sqlalchemy.mods.threadlocal' to establish a default thread-local contextual session.")
-        return s
-
+        raise exceptions.InvalidRequestError("No contextual Session is established.  Use a MapperExtension that implements get_session or use 'import sqlalchemy.mods.threadlocal' to establish a default thread-local contextual session.")
+            
     def has_eager(self):
         """Return True if one of the properties attached to this
         Mapper is eager loading.
@@ -969,10 +972,12 @@ class Mapper(object):
             for obj, connection in tups:
                 if not has_identity(obj):
                     for mapper in object_mapper(obj).iterate_to_root():
-                        mapper.extension.before_insert(mapper, connection, obj)
+                        if 'before_insert' in mapper.extension.methods:
+                            mapper.extension.before_insert(mapper, connection, obj)
                 else:
                     for mapper in object_mapper(obj).iterate_to_root():
-                        mapper.extension.before_update(mapper, connection, obj)
+                        if 'before_update' in mapper.extension.methods:
+                            mapper.extension.before_update(mapper, connection, obj)
 
         for obj, connection in tups:
             # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
@@ -1157,10 +1162,12 @@ class Mapper(object):
         if not postupdate:
             for obj, connection in inserted_objects:
                 for mapper in object_mapper(obj).iterate_to_root():
-                    mapper.extension.after_insert(mapper, connection, obj)
+                    if 'after_insert' in mapper.extension.methods:
+                        mapper.extension.after_insert(mapper, connection, obj)
             for obj, connection in updated_objects:
                 for mapper in object_mapper(obj).iterate_to_root():
-                    mapper.extension.after_update(mapper, connection, obj)
+                    if 'after_update' in mapper.extension.methods:
+                        mapper.extension.after_update(mapper, connection, obj)
 
     def _postfetch(self, connection, table, obj, resultproxy, params, value_params):
         """After an ``INSERT`` or ``UPDATE``, assemble newly generated
@@ -1209,7 +1216,8 @@ class Mapper(object):
 
         for (obj, connection) in tups:
             for mapper in object_mapper(obj).iterate_to_root():
-                mapper.extension.before_delete(mapper, connection, obj)
+                if 'before_delete' in mapper.extension.methods:
+                    mapper.extension.before_delete(mapper, connection, obj)
         
         deleted_objects = util.Set()
         table_to_mapper = {}
@@ -1255,7 +1263,8 @@ class Mapper(object):
 
         for obj, connection in deleted_objects:
             for mapper in object_mapper(obj).iterate_to_root():
-                mapper.extension.after_delete(mapper, connection, obj)
+                if 'after_delete' in mapper.extension.methods:
+                    mapper.extension.after_delete(mapper, connection, obj)
 
     def _has_pks(self, table):
         try:
@@ -1355,9 +1364,10 @@ class Mapper(object):
         else:
             extension = self.extension
 
-        ret = extension.translate_row(self, context, row)
-        if ret is not EXT_CONTINUE:
-            row = ret
+        if 'translate_row' in extension.methods:
+            ret = extension.translate_row(self, context, row)
+            if ret is not EXT_CONTINUE:
+                row = ret
 
         if not skip_polymorphic and self.polymorphic_on is not None:
             discriminator = row[self.polymorphic_on]
@@ -1392,10 +1402,10 @@ class Mapper(object):
                 if identitykey not in local_identity_map:
                     local_identity_map[identitykey] = instance
                     isnew = True
-                if extension.populate_instance(self, context, row, instance, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+                if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                     self.populate_instance(context, instance, row, instancekey=identitykey, isnew=isnew)
 
-            if extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+            if 'append_result' not in extension.methods or extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                 if result is not None:
                     result.append(instance)
             return instance
@@ -1420,9 +1430,13 @@ class Mapper(object):
                     return None
 
             # plugin point
-            instance = extension.create_instance(self, context, row, self.class_)
-            if instance is EXT_CONTINUE:
+            if 'create_instance' in extension.methods:
+                instance = extension.create_instance(self, context, row, self.class_)
+                if instance is EXT_CONTINUE:
+                    instance = attribute_manager.new_instance(self.class_)
+            else:
                 instance = attribute_manager.new_instance(self.class_)
+                
             instance._entity_name = self.entity_name
             if self.__should_log_debug:
                 self.__log_debug("_instance(): created new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
@@ -1435,9 +1449,9 @@ class Mapper(object):
         # call further mapper properties on the row, to pull further
         # instances from the row and possibly populate this item.
         flags = {'instancekey':identitykey, 'isnew':isnew}
-        if extension.populate_instance(self, context, row, instance, **flags) is EXT_CONTINUE:
+        if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, **flags) is EXT_CONTINUE:
             self.populate_instance(context, instance, row, **flags)
-        if extension.append_result(self, context, row, instance, result, **flags) is EXT_CONTINUE:
+        if 'append_result' not in extension.methods or extension.append_result(self, context, row, instance, result, **flags) is EXT_CONTINUE:
             if result is not None:
                 result.append(instance)
                 

@@ -239,11 +239,8 @@ class DeferredOption(StrategizedOption):
 class UndeferGroupOption(MapperOption):
     def __init__(self, group):
         self.group = group
-    def process_query_context(self, context):
-        context.attributes[('undefer', self.group)] = True
-
-    def process_selection_context(self, context):
-        context.attributes[('undefer', self.group)] = True
+    def process_query(self, query):
+        query._attributes[('undefer', self.group)] = True
 
 class AbstractRelationLoader(LoaderStrategy):
     def init(self):
@@ -665,14 +662,13 @@ class EagerLazyOption(StrategizedOption):
     def is_chained(self):
         return not self.lazy and self.chained
         
-    def process_query_property(self, context, properties):
+    def process_query_property(self, query, properties):
         if self.lazy:
-            if properties[-1] in context.eager_loaders:
-                context.eager_loaders.remove(properties[-1])
+            if properties[-1] in query._eager_loaders:
+                query._eager_loaders = query._eager_loaders.difference(util.Set([properties[-1]]))
         else:
-            for prop in properties:
-                context.eager_loaders.add(prop)
-        super(EagerLazyOption, self).process_query_property(context, properties)
+            query._eager_loaders = query._eager_loaders.union(util.Set(properties))
+        super(EagerLazyOption, self).process_query_property(query, properties)
 
     def get_strategy_class(self):
         if self.lazy:
@@ -697,8 +693,8 @@ class FetchModeOption(PropertyOption):
             raise exceptions.ArgumentError("Fetchmode must be one of 'join' or 'select'")
         self.type = type
         
-    def process_selection_property(self, context, properties):
-        context.attributes[('fetchmode', properties[-1])] = self.type
+    def process_query_property(self, query, properties):
+        query.attributes[('fetchmode', properties[-1])] = self.type
         
 class RowDecorateOption(PropertyOption):
     def __init__(self, key, decorator=None, alias=None):
@@ -706,7 +702,7 @@ class RowDecorateOption(PropertyOption):
         self.decorator = decorator
         self.alias = alias
 
-    def process_selection_property(self, context, properties):
+    def process_query_property(self, query, properties):
         if self.alias is not None and self.decorator is None:
             if isinstance(self.alias, basestring):
                 self.alias = properties[-1].target.alias(self.alias)
@@ -716,7 +712,7 @@ class RowDecorateOption(PropertyOption):
                     d[c] = row[self.alias.corresponding_column(c)]
                 return d
             self.decorator = decorate
-        context.attributes[("eager_row_processor", properties[-1])] = self.decorator
+        query._attributes[("eager_row_processor", properties[-1])] = self.decorator
 
 RowDecorateOption.logger = logging.class_logger(RowDecorateOption)
         

@@ -9,10 +9,10 @@ from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import expression, visitors
 from sqlalchemy.orm import mapper, object_mapper
 from sqlalchemy.orm import util as mapperutil
-from sqlalchemy.orm.interfaces import OperationContext, LoaderStack
+from sqlalchemy.orm.interfaces import LoaderStack
 import operator
 
-__all__ = ['Query', 'QueryContext', 'SelectionContext']
+__all__ = ['Query', 'QueryContext']
 
 class Query(object):
     """Encapsulates the object-fetching operations provided by Mappers."""
@@ -46,6 +46,8 @@ class Query(object):
         self._populate_existing = False
         self._version_check = False
         self._autoflush = True
+        self._eager_loaders = util.Set([x for x in self.mapper._eager_loaders])
+        self._attributes = {}
         
     def _clone(self):
         q = Query.__new__(Query)
@@ -245,6 +247,9 @@ class Query(object):
         """
         
         q = self._clone()
+        # most MapperOptions write to the '_attributes' dictionary,
+        # so copy that as well
+        q._attributes = q._attributes.copy()
         opts = [o for o in util.flatten_iterator(args)]
         q._with_options = q._with_options + opts
         for opt in opts:
@@ -638,10 +643,9 @@ class Query(object):
 
         session = self.session
 
-        kwargs.setdefault('populate_existing', self._populate_existing)
-        kwargs.setdefault('version_check', self._version_check)
-        
-        context = SelectionContext(self.select_mapper, session, self._extension, with_options=self._with_options, **kwargs)
+        context = kwargs.pop('querycontext', None)
+        if context is None:
+            context = QueryContext(self)
 
         process = []
         mappers_or_columns = tuple(self._entities) + mappers_or_columns
@@ -725,18 +729,6 @@ class Query(object):
         except IndexError:
             return None
 
-    def _should_nest(self, querycontext):
-        """Return True if the given statement options indicate that we
-        should *nest* the generated query as a subquery inside of a
-        larger eager-loading query.  This is used with keywords like
-        distinct, limit and offset and the mapper defines eager loads.
-        """
-
-        return (
-            len(querycontext.eager_loaders) > 0
-            and self._nestable(**querycontext.select_args())
-        )
-
     def _nestable(self, **kwargs):
         """Return true if the given statement options imply it should be nested."""
 
@@ -767,7 +759,7 @@ class Query(object):
         whereclause = self._criterion
 
         context = QueryContext(self)
-        from_obj = context.from_obj
+        from_obj = self._from_obj
 
         alltables = []
         for l in [sql_util.TableFinder(x) for x in from_obj]:
@@ -775,11 +767,11 @@ class Query(object):
 
         if self.table not in alltables:
             from_obj.append(self.table)
-        if self._nestable(**context.select_args()):
-            s = sql.select([self.table], whereclause, from_obj=from_obj, **context.select_args()).alias('getcount').count()
+        if self._nestable(**self._select_args()):
+            s = sql.select([self.table], whereclause, from_obj=from_obj, **self._select_args()).alias('getcount').count()
         else:
             primary_key = self.primary_key_columns
-            s = sql.select([sql.func.count(list(primary_key)[0])], whereclause, from_obj=from_obj, **context.select_args())
+            s = sql.select([sql.func.count(list(primary_key)[0])], whereclause, from_obj=from_obj, **self._select_args())
         if self._autoflush and not self._populate_existing:
             self.session._autoflush()
         return self.session.scalar(s, params=self._params, mapper=self.mapper)
@@ -812,12 +804,10 @@ class Query(object):
                 if isinstance(m, mapper.Mapper):
                     table = m.select_table
                     sql_util.ClauseAdapter(m.select_table).traverse(whereclause, stop_on=util.Set([m.select_table]))
+
+        from_obj = self._from_obj
         
-        # get/create query context.  get the ultimate compile arguments
-        # from there
-        order_by = context.order_by
-        from_obj = context.from_obj
-        lockmode = context.lockmode
+        order_by = self._order_by
         if order_by is False:
             order_by = self.mapper.order_by
         if order_by is False:
@@ -825,9 +815,9 @@ class Query(object):
                 order_by = self.table.default_order_by()
 
         try:
-            for_update = {'read':'read','update':True,'update_nowait':'nowait',None:False}[lockmode]
+            for_update = {'read':'read','update':True,'update_nowait':'nowait',None:False}[self._lockmode]
         except KeyError:
-            raise exceptions.ArgumentError("Unknown lockmode '%s'" % lockmode)
+            raise exceptions.ArgumentError("Unknown lockmode '%s'" % self._lockmode)
 
         # if single-table inheritance mapper, add "typecol IN (polymorphic)" criterion so
         # that we only load the appropriate types
@@ -841,7 +831,7 @@ class Query(object):
         if self.table not in alltables:
             from_obj.append(self.table)
 
-        if self._should_nest(context):
+        if self._eager_loaders and self._nestable(**self._select_args()):
             # if theres an order by, add those columns to the column list
             # of the "rowcount" query we're going to make
             if order_by:
@@ -852,7 +842,7 @@ class Query(object):
             else:
                 cf = []
 
-            s2 = sql.select(self.primary_key_columns + list(cf), whereclause, use_labels=True, from_obj=from_obj, correlate=False, **context.select_args())
+            s2 = sql.select(self.primary_key_columns + list(cf), whereclause, use_labels=True, from_obj=from_obj, correlate=False, **self._select_args())
             if order_by:
                 s2 = s2.order_by(*util.to_list(order_by))
             s3 = s2.alias('tbl_row_count')
@@ -863,7 +853,7 @@ class Query(object):
             if order_by:
                 statement.append_order_by(*sql_util.ClauseAdapter(s3).copy_and_process(order_by))
         else:
-            statement = sql.select([], whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, **context.select_args())
+            statement = sql.select([], whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, **self._select_args())
             if order_by:
                 statement.append_order_by(*util.to_list(order_by))
                 
@@ -871,7 +861,7 @@ class Query(object):
             # to use it in "order_by".  ensure they are in the column criterion (particularly oid).
             # TODO: this should be done at the SQL level not the mapper level
             # TODO: need test coverage for this 
-            if context.distinct and order_by:
+            if self._distinct and order_by:
                 [statement.append_column(c) for c in util.to_list(order_by)]
 
         context.statement = statement
@@ -896,10 +886,17 @@ class Query(object):
                 
         return context
 
+    def _select_args(self):
+        """Return a dictionary of attributes that can be applied to a ``sql.Select`` statement.
+        """
+        return {'limit':self._limit, 'offset':self._offset, 'distinct':self._distinct, 'group_by':self._group_by or None}
+
+
     def _get_entity_clauses(self, m):
         """for tuples added via add_entity() or add_column(), attempt to locate
         an AliasedClauses object which should be used to formulate the query as well
         as to process result rows."""
+        
         (m, alias, alias_id) = m
         if alias is not None:
             return alias
@@ -1151,95 +1148,19 @@ for deprecated_method in ['list', 'scalar', 'count_by',
 
 Query.logger = logging.class_logger(Query)
 
-class QueryContext(OperationContext):
-    """Created within the ``Query.compile()`` method to store and
-    share state among all the Mappers and MapperProperty objects used
-    in a query construction.
-    """
-
+class QueryContext(object):
     def __init__(self, query):
         self.query = query
-        self.order_by = query._order_by
-        self.group_by = query._group_by
-        self.from_obj = query._from_obj
-        self.lockmode = query._lockmode
-        self.distinct = query._distinct
-        self.limit = query._limit
-        self.offset = query._offset
-        self.eager_loaders = util.Set([x for x in query.mapper._eager_loaders])
+        self.mapper = query.mapper
+        self.session = query.session
+        self.extension = query._extension
         self.statement = None
-        super(QueryContext, self).__init__(query.mapper, query._with_options)
-
-    def select_args(self):
-        """Return a dictionary of attributes from this
-        ``QueryContext`` that can be applied to a ``sql.Select``
-        statement.
-        """
-        return {'limit':self.limit, 'offset':self.offset, 'distinct':self.distinct, 'group_by':self.group_by or None}
-
-    def accept_option(self, opt):
-        """Accept a ``MapperOption`` which will process (modify) the
-        state of this ``QueryContext``.
-        """
-
-        opt.process_query_context(self)
-
-
-class SelectionContext(OperationContext):
-    """Created within the ``query.instances()`` method to store and share
-    state among all the Mappers and MapperProperty objects used in a
-    load operation.
-
-    SelectionContext contains these attributes:
-
-    mapper
-      The Mapper which originated the instances() call.
-
-    session
-      The Session that is relevant to the instances call.
-
-    identity_map
-      A dictionary which stores newly created instances that have not
-      yet been added as persistent to the Session.
-
-    attributes
-      A dictionary to store arbitrary data; mappers, strategies, and
-      options all store various state information here in order
-      to communicate with each other and to themselves.
-      
-
-    populate_existing
-      Indicates if its OK to overwrite the attributes of instances
-      that were already in the Session.
-
-    version_check
-      Indicates if mappers that have version_id columns should verify
-      that instances existing already within the Session should have
-      this attribute compared to the freshly loaded value.
-      
-    querycontext
-      the QueryContext, if any, used to generate the executed statement.
-      If present, the attribute dictionary from this Context will be used
-      as the basis for this SelectionContext's attribute dictionary.  This
-      allows query-compile-time operations to send messages to the 
-      result-processing-time operations.
-    """
-
-    def __init__(self, mapper, session, extension, **kwargs):
-        self.populate_existing = kwargs.pop('populate_existing', False)
-        self.version_check = kwargs.pop('version_check', False)
-        querycontext = kwargs.pop('querycontext', None)
-        if querycontext:
-            kwargs['attributes'] = querycontext.attributes
-        self.session = session
-        self.extension = extension
+        self.populate_existing = query._populate_existing
+        self.version_check = query._version_check
         self.identity_map = {}
         self.stack = LoaderStack()
-        super(SelectionContext, self).__init__(mapper, kwargs.pop('with_options', []), **kwargs)
-            
-    def accept_option(self, opt):
-        """Accept a MapperOption which will process (modify) the state
-        of this SelectionContext.
-        """
 
-        opt.process_selection_context(self)
+        self.options = query._with_options
+        self.attributes = query._attributes.copy()
+        
+

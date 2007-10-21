@@ -7,7 +7,7 @@
 from sqlalchemy import sql, util, exceptions
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
-from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE
+from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, build_path
 
 all_cascades = util.Set(["delete", "delete-orphan", "all", "merge",
                          "expunge", "save-update", "refresh-expire", "none"])
@@ -112,10 +112,19 @@ class TranslatingDict(dict):
     def setdefault(self, col, value):
         return super(TranslatingDict, self).setdefault(self.__translate_col(col), value)
 
-class ExtensionCarrier(MapperExtension):
+class ExtensionCarrier(object):
+    """stores a collection of MapperExtension objects.
+    
+    allows an extension methods to be called on contained MapperExtensions
+    in the order they were added to this object.  Also includes a 'methods' dictionary
+    accessor which allows for a quick check if a particular method
+    is overridden on any contained MapperExtensions.
+    """
+    
     def __init__(self, _elements=None):
         self.__elements = _elements or []
-
+        self.methods = {}
+        
     def copy(self):
         return ExtensionCarrier(list(self.__elements))
         
@@ -125,43 +134,40 @@ class ExtensionCarrier(MapperExtension):
     def insert(self, extension):
         """Insert a MapperExtension at the beginning of this ExtensionCarrier's list."""
 
-        self.__elements.insert(0, extension)
+        self.__elements.insert(0, self.__inspect(extension))
 
     def append(self, extension):
         """Append a MapperExtension at the end of this ExtensionCarrier's list."""
 
-        self.__elements.append(extension)
+        self.__elements.append(self.__inspect(extension))
 
-    def _create_do(funcname):
-        def _do(self, *args, **kwargs):
+    def __inspect(self, extension):
+        for meth in MapperExtension.__dict__.keys():
+            if meth not in self.methods and hasattr(extension, meth) and getattr(extension, meth) is not getattr(MapperExtension, meth):
+                self.methods[meth] = self.__create_do(meth)
+        return extension
+           
+    def __create_do(self, funcname):
+        def _do(*args, **kwargs):
             for elem in self.__elements:
                 ret = getattr(elem, funcname)(*args, **kwargs)
                 if ret is not EXT_CONTINUE:
                     return ret
             else:
                 return EXT_CONTINUE
-        return _do
 
-    instrument_class = _create_do('instrument_class')
-    init_instance = _create_do('init_instance')
-    init_failed = _create_do('init_failed')
-    dispose_class = _create_do('dispose_class')
-    get_session = _create_do('get_session')
-    load = _create_do('load')
-    get = _create_do('get')
-    get_by = _create_do('get_by')
-    select_by = _create_do('select_by')
-    select = _create_do('select')
-    translate_row = _create_do('translate_row')
-    create_instance = _create_do('create_instance')
-    append_result = _create_do('append_result')
-    populate_instance = _create_do('populate_instance')
-    before_insert = _create_do('before_insert')
-    before_update = _create_do('before_update')
-    after_update = _create_do('after_update')
-    after_insert = _create_do('after_insert')
-    before_delete = _create_do('before_delete')
-    after_delete = _create_do('after_delete')
+        try:
+            _do.__name__ = funcname
+        except:
+            # cant set __name__ in py 2.3 
+            pass
+        return _do
+    
+    def _pass(self, *args, **kwargs):
+        return EXT_CONTINUE
+        
+    def __getattr__(self, key):
+        return self.methods.get(key, self._pass)
 
 class BinaryVisitor(visitors.ClauseVisitor):
     def __init__(self, func):
@@ -262,9 +268,9 @@ class PropertyAliasedClauses(AliasedClauses):
             
         self.parentclauses = parentclauses
         if parentclauses is not None:
-            self.path = parentclauses.path + (prop.parent, prop.key)
+            self.path = build_path(prop.parent, prop.key, parentclauses.path)
         else:
-            self.path = (prop.parent, prop.key)
+            self.path = build_path(prop.parent, prop.key)
 
         self.prop = prop
         
