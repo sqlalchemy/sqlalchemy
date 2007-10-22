@@ -96,8 +96,14 @@ class DBAPIError(SQLAlchemyError):
     instance = classmethod(instance)
     
     def __init__(self, statement, params, orig):
-        SQLAlchemyError.__init__(self, "(%s) %s" %
-                                 (orig.__class__.__name__, str(orig)))
+        try:
+            text = str(orig)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception, e:
+            text = 'Error in str() of DB-API-generated exception: ' + str(e)
+        SQLAlchemyError.__init__(
+            self, "(%s) %s" % (orig.__class__.__name__, text))
         self.statement = statement
         self.params = params
         self.orig = orig

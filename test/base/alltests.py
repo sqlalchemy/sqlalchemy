@@ -6,6 +6,7 @@ def suite():
         # core utilities
         'base.dependency',
         'base.utils',
+        'base.except',
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:
