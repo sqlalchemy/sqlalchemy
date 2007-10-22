@@ -49,7 +49,7 @@ class testcase(PersistTest):
         class Preferences(ActiveMapper):
             class mapping:
                 __table__        = 'preferences'
-                favorite_color   = column(String)
+                favorite_color   = column(String(128))
                 personality_type = column(String)
 
         class Address(ActiveMapper):
@@ -63,7 +63,7 @@ class testcase(PersistTest):
                 address_1   = column(String)
                 city        = column(String)
                 state       = column(String)
-                postal_code = column(String)
+                postal_code = column(String(128))
                 person_id   = column(Integer, foreign_key=ForeignKey('person.id'))
 
         activemapper.metadata.connect(testbase.db)
