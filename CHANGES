@@ -13,6 +13,7 @@ CHANGES
 
 - Added contains operator (which generate a "LIKE %<other>%" clause).
 
+- sqlite will reflect "DECIMAL" as a numeric column
   
 0.4.0
 -----
