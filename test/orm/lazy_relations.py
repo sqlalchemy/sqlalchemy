@@ -146,7 +146,7 @@ class LazyTest(QueryTest):
         sess = create_session()
         q = sess.query(User)
 
-        if testbase.db.engine.name == 'mssql':
+        if testing.against('maxdb', 'mssql'):
             l = q.limit(2).all()
             assert fixtures.user_all_result[:2] == l
         else:        

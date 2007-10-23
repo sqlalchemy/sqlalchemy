@@ -13,10 +13,14 @@ class EagerTest(AssertMixin):
         dbmeta = MetaData(testbase.db)
         
         # determine a literal value for "false" based on the dialect
-        false = False
+        # FIXME: this PassiveDefault setup is bogus.
         bp = Boolean().dialect_impl(testbase.db.dialect).bind_processor(testbase.db.dialect)
         if bp:
-            false = bp(false)
+            false = str(bp(False))
+        elif testing.against('maxdb'):
+            false = text('FALSE')
+        else:
+            false = str(False)
         
         owners = Table ( 'owners', dbmeta ,
             Column ( 'id', Integer, primary_key=True, nullable=False ),
@@ -31,7 +35,7 @@ class EagerTest(AssertMixin):
         options = Table ( 'options', dbmeta ,
             Column ( 'test_id', Integer, ForeignKey ( 'tests.id' ), primary_key=True, nullable=False ),
             Column ( 'owner_id', Integer, ForeignKey ( 'owners.id' ), primary_key=True, nullable=False ),
-            Column ( 'someoption', Boolean, PassiveDefault(str(false)), nullable=False ) )
+            Column ( 'someoption', Boolean, PassiveDefault(false), nullable=False ) )
 
         dbmeta.create_all()
 

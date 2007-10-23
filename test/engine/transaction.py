@@ -160,7 +160,7 @@ class TransactionTest(PersistTest):
         connection.close()
 
     
-    @testing.supported('postgres', 'mysql', 'oracle')
+    @testing.supported('postgres', 'mysql', 'oracle', 'maxdb')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactionrollback(self):
         connection = testbase.db.connect()
@@ -178,7 +178,7 @@ class TransactionTest(PersistTest):
         )
         connection.close()
 
-    @testing.supported('postgres', 'mysql', 'oracle')
+    @testing.supported('postgres', 'mysql', 'oracle', 'maxdb')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactioncommit(self):
         connection = testbase.db.connect()
@@ -196,7 +196,7 @@ class TransactionTest(PersistTest):
         )
         connection.close()
 
-    @testing.supported('postgres', 'mysql', 'oracle')
+    @testing.supported('postgres', 'mysql', 'oracle', 'maxdb')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testrollbacktosubtransaction(self):
         connection = testbase.db.connect()
@@ -636,7 +636,7 @@ class ForUpdateTest(PersistTest):
                 break
         con.close()
 
-    @testing.supported('mysql', 'oracle', 'postgres')
+    @testing.supported('mysql', 'oracle', 'postgres', 'maxdb')
     def testqueued_update(self):
         """Test SELECT FOR UPDATE with concurrent modifications.
 
@@ -698,7 +698,7 @@ class ForUpdateTest(PersistTest):
 
         return errors
         
-    @testing.supported('mysql', 'oracle', 'postgres')
+    @testing.supported('mysql', 'oracle', 'postgres', 'maxdb')
     def testqueued_select(self):
         """Simple SELECT FOR UPDATE conflict test"""
 
@@ -707,7 +707,7 @@ class ForUpdateTest(PersistTest):
             sys.stderr.write("Failure: %s\n" % e)
         self.assert_(len(errors) == 0)
 
-    @testing.supported('oracle', 'postgres')
+    @testing.supported('oracle', 'postgres', 'maxdb')
     def testnowait_select(self):
         """Simple SELECT FOR UPDATE NOWAIT conflict test"""
 

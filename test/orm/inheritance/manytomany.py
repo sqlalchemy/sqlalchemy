@@ -12,35 +12,28 @@ class InheritTest(ORMTest):
         global groups
         global user_group_map
 
-        principals = Table(
-            'principals',
-            metadata,
-            Column('principal_id', Integer, Sequence('principal_id_seq', optional=False), primary_key=True),
-            Column('name', String(50), nullable=False),    
-            )
+        principals = Table('principals', metadata,
+            Column('principal_id', Integer,
+                   Sequence('principal_id_seq', optional=False),
+                   primary_key=True),
+            Column('name', String(50), nullable=False))
 
-        users = Table(
-            'prin_users',
-            metadata, 
-            Column('principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
+        users = Table('prin_users', metadata, 
+            Column('principal_id', Integer,
+                   ForeignKey('principals.principal_id'), primary_key=True),
             Column('password', String(50), nullable=False),
             Column('email', String(50), nullable=False),
-            Column('login_id', String(50), nullable=False),
+            Column('login_id', String(50), nullable=False))
 
-            )
+        groups = Table('prin_groups', metadata,
+            Column('principal_id', Integer,
+                   ForeignKey('principals.principal_id'), primary_key=True))
 
-        groups = Table(
-            'prin_groups',
-            metadata,
-            Column( 'principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
-
-            )
-
-        user_group_map = Table(
-            'prin_user_group_map',
-            metadata,
-            Column('user_id', Integer, ForeignKey( "prin_users.principal_id"), primary_key=True ),
-            Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"), primary_key=True ),
+        user_group_map = Table('prin_user_group_map', metadata,
+            Column('user_id', Integer, ForeignKey( "prin_users.principal_id"),
+                   primary_key=True ),
+            Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"),
+                   primary_key=True ),
             )
 
     def testbasic(self):
@@ -56,18 +49,12 @@ class InheritTest(ORMTest):
             pass
 
         mapper(Principal, principals)
-        mapper( 
-            User, 
-            users,
-            inherits=Principal
-            )
+        mapper(User, users, inherits=Principal)
 
-        mapper( 
-            Group,
-            groups,
-            inherits=Principal,
-            properties=dict( users = relation(User, secondary=user_group_map, lazy=True, backref="groups") )
-            )
+        mapper(Group, groups, inherits=Principal, properties={
+            'users': relation(User, secondary=user_group_map,
+                              lazy=True, backref="groups") 
+            })
 
         g = Group(name="group1")
         g.users.append(User(name="user1", password="pw", email="foo@bar.com", login_id="lg1"))
@@ -81,7 +68,8 @@ class InheritTest2(ORMTest):
     def define_tables(self, metadata):
         global foo, bar, foo_bar
         foo = Table('foo', metadata,
-            Column('id', Integer, Sequence('foo_id_seq'), primary_key=True),
+            Column('id', Integer, Sequence('foo_id_seq', optional=True),
+                   primary_key=True),
             Column('data', String(20)),
             )
 
@@ -155,7 +143,8 @@ class InheritTest3(ORMTest):
 
         # the 'data' columns are to appease SQLite which cant handle a blank INSERT
         foo = Table('foo', metadata,
-            Column('id', Integer, Sequence('foo_seq'), primary_key=True),
+            Column('id', Integer, Sequence('foo_seq', optional=True),
+                   primary_key=True),
             Column('data', String(20)))
 
         bar = Table('bar', metadata,

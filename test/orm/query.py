@@ -6,6 +6,7 @@ from sqlalchemy.sql import compiler
 from sqlalchemy.engine import default
 from sqlalchemy.orm import *
 from testlib import *
+from testlib import engines
 from testlib.fixtures import *
 
 class QueryTest(FixtureTest):
@@ -107,20 +108,26 @@ class GetTest(QueryTest):
         assert u2.name =='jack'
         assert a not in u2.addresses
         
-    @testing.exclude('mysql', '<', (5, 0))  # fixme
+    @testing.exclude('mysql', '<', (4, 1))
     def test_unicode(self):
         """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail 
         on postgres, mysql and oracle unless it is converted to an encoded string"""
         
-        table = Table('unicode_data', users.metadata, 
+        metadata = MetaData(engines.utf8_engine())
+        table = Table('unicode_data', metadata,
             Column('id', Unicode(40), primary_key=True),
             Column('data', Unicode(40)))
-        table.create()
-        ustring = 'petit voix m\xe2\x80\x99a '.decode('utf-8')
-        table.insert().execute(id=ustring, data=ustring)
-        class LocalFoo(Base):pass
-        mapper(LocalFoo, table)
-        assert create_session().query(LocalFoo).get(ustring) == LocalFoo(id=ustring, data=ustring)
+        try:
+            metadata.create_all()
+            ustring = 'petit voix m\xe2\x80\x99a'.decode('utf-8')
+            table.insert().execute(id=ustring, data=ustring)
+            class LocalFoo(Base):
+                pass
+            mapper(LocalFoo, table)
+            self.assertEquals(create_session().query(LocalFoo).get(ustring),
+                              LocalFoo(id=ustring, data=ustring))
+        finally:
+            metadata.drop_all()
 
     def test_populate_existing(self):
         s = create_session()
@@ -261,6 +268,7 @@ class FilterTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
 
+    @testing.unsupported('maxdb')
     def test_limit(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).limit(2).offset(1).all()
 
@@ -305,7 +313,9 @@ class FilterTest(QueryTest):
             filter(User.addresses.any(id=4)).all()
 
         assert [User(id=9)] == sess.query(User).filter(User.addresses.any(email_address='fred@fred.com')).all()
-    
+
+    # THIS ONE
+    @testing.unsupported('maxdb')
     def test_has(self):
         sess = create_session()
         assert [Address(id=5)] == sess.query(Address).filter(Address.user.has(name='fred')).all()

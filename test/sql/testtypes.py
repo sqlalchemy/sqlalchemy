@@ -41,13 +41,14 @@ class MyUnicodeType(types.TypeDecorator):
     impl = Unicode
 
     def bind_processor(self, dialect):
-        impl_processor = super(MyUnicodeType, self).bind_processor(dialect)
+        impl_processor = super(MyUnicodeType, self).bind_processor(dialect) or (lambda value:value)
+        
         def process(value):
             return "UNI_BIND_IN"+ impl_processor(value)
         return process
 
     def result_processor(self, dialect):
-        impl_processor = super(MyUnicodeType, self).result_processor(dialect)
+        impl_processor = super(MyUnicodeType, self).result_processor(dialect) or (lambda value:value)
         def process(value):
             return impl_processor(value) + "UNI_BIND_OUT"
         return process
@@ -264,9 +265,10 @@ class UnicodeTest(AssertMixin):
                                        unicode_text=unicodedata,
                                        plain_varchar=rawdata)
         x = unicode_table.select().execute().fetchone()
-        print repr(x['unicode_varchar'])
-        print repr(x['unicode_text'])
-        print repr(x['plain_varchar'])
+        print 0, repr(unicodedata)
+        print 1, repr(x['unicode_varchar'])
+        print 2, repr(x['unicode_text'])
+        print 3, repr(x['plain_varchar'])
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
         if isinstance(x['plain_varchar'], unicode):
@@ -293,9 +295,10 @@ class UnicodeTest(AssertMixin):
                                            unicode_text=unicodedata,
                                            plain_varchar=rawdata)
             x = unicode_table.select().execute().fetchone()
-            print repr(x['unicode_varchar'])
-            print repr(x['unicode_text'])
-            print repr(x['plain_varchar'])
+            print 0, repr(unicodedata)
+            print 1, repr(x['unicode_varchar'])
+            print 2, repr(x['unicode_text'])
+            print 3, repr(x['plain_varchar'])
             self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
             self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
             self.assert_(isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == unicodedata)
@@ -363,7 +366,7 @@ class DateTest(AssertMixin):
         global users_with_date, insert_data
 
         db = testbase.db
-        if db.engine.name == 'oracle':
+        if testing.against('oracle'):
             import sqlalchemy.databases.oracle as oracle
             insert_data =  [
                     [7, 'jack',
@@ -393,8 +396,11 @@ class DateTest(AssertMixin):
             time_micro = 999
 
             # Missing or poor microsecond support:
-            if db.engine.name in ('mssql', 'mysql', 'firebird'):
+            if testing.against('mssql', 'mysql', 'firebird'):
                 datetime_micro, time_micro = 0, 0
+            # No microseconds for TIME
+            elif testing.against('maxdb'):
+                time_micro = 0
 
             insert_data =  [
                 [7, 'jack',

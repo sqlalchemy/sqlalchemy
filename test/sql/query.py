@@ -221,7 +221,7 @@ class QueryTest(PersistTest):
         users.delete(users.c.user_name == 'fred').execute()
         
         print repr(users.select().execute().fetchall())
-        
+
     def testselectlimit(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
@@ -233,7 +233,7 @@ class QueryTest(PersistTest):
         r = users.select(limit=3, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
         
-    @testing.unsupported('mssql')
+    @testing.unsupported('mssql', 'maxdb')
     def testselectlimitoffset(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
@@ -247,8 +247,8 @@ class QueryTest(PersistTest):
         r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
         
-    @testing.supported('mssql')
-    def testselectlimitoffset_mssql(self):
+    @testing.supported('mssql', 'maxdb')
+    def test_select_limit_nooffset(self):
         try:
             r = users.select(limit=3, offset=2, order_by=[users.c.user_id]).execute().fetchall()
             assert False # InvalidRequestError should have been raised
@@ -423,8 +423,12 @@ class QueryTest(PersistTest):
         assert (x == y == z) is True
          
     def test_update_functions(self):
-        """test sending functions and SQL expressions to the VALUES and SET clauses of INSERT/UPDATE instances,
-        and that column-level defaults get overridden"""
+        """
+        Tests sending functions and SQL expressions to the VALUES and SET
+        clauses of INSERT/UPDATE instances, and that column-level defaults
+        get overridden.
+        """
+
         meta = MetaData(testbase.db)
         t = Table('t1', meta,
             Column('id', Integer, Sequence('t1idseq', optional=True), primary_key=True),
@@ -444,7 +448,6 @@ class QueryTest(PersistTest):
 
             r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
             id = r.last_inserted_ids()[0]
-
             assert t.select(t.c.id==id).execute().fetchone()['value'] == 9
             t.update(values={t.c.value:func.length("asdf")}).execute()
             assert t.select().execute().fetchone()['value'] == 4
@@ -453,7 +456,8 @@ class QueryTest(PersistTest):
             t2.insert(values=dict(value=func.length("one"))).execute()
             t2.insert(values=dict(value=func.length("asfda") + -19)).execute(stuff="hi")
 
-            assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [(7,None), (3,None), (-14,"hi")]
+            res = exec_sorted(select([t2.c.value, t2.c.stuff]))
+            self.assertEquals(res, [(-14, 'hi'), (3, None), (7, None)])
             
             t2.update(values=dict(value=func.length("asdsafasd"))).execute(stuff="some stuff")
             assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [(9,"some stuff"), (9,"some stuff"), (9,"some stuff")]
@@ -506,7 +510,7 @@ class QueryTest(PersistTest):
         self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
     
-    @testing.unsupported('oracle', 'firebird')
+    @testing.unsupported('oracle', 'firebird', 'maxdb')
     def test_column_accessor_shadow(self):
         meta = MetaData(testbase.db)
         shadowed = Table('test_shadowed', meta,
@@ -590,6 +594,7 @@ class QueryTest(PersistTest):
         finally:
             table.drop()
 
+    @testing.unsupported('maxdb')
     def test_in_filtering(self):
         """test the behavior of the in_() function."""
         
@@ -717,6 +722,7 @@ class CompoundTest(PersistTest):
                   ('ccc', 'aaa')]
         self.assertEquals(u.execute().fetchall(), wanted)
 
+    @testing.unsupported('maxdb')
     def test_union_ordered_alias(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
@@ -1125,9 +1131,11 @@ class OperatorTest(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
 
+    @testing.unsupported('maxdb')
     def test_modulo(self):
         self.assertEquals(
-            select([flds.c.intcol % 3], order_by=flds.c.idcol).execute().fetchall(),
+            select([flds.c.intcol % 3],
+                   order_by=flds.c.idcol).execute().fetchall(),
             [(2,),(1,)]
         )
 

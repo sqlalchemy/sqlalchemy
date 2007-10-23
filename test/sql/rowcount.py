@@ -47,6 +47,7 @@ class FoundRowsTest(AssertMixin):
         # WHERE matches 3, 3 rows changed
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='Z')
+        print "expecting 3, dialect reports %s" % r.rowcount
         if testbase.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
@@ -54,6 +55,7 @@ class FoundRowsTest(AssertMixin):
         # WHERE matches 3, 0 rows changed
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='C')
+        print "expecting 3, dialect reports %s" % r.rowcount
         if testbase.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
@@ -61,6 +63,7 @@ class FoundRowsTest(AssertMixin):
         # WHERE matches 3, 3 rows deleted
         department = employees_table.c.department
         r = employees_table.delete(department=='C').execute()
+        print "expecting 3, dialect reports %s" % r.rowcount
         if testbase.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 

@@ -244,7 +244,7 @@ class EagerTest(QueryTest):
         noeagers = create_session().query(User).from_statement("select * from users").all()
         assert 'orders' not in noeagers[0].__dict__
         assert 'addresses' not in noeagers[0].__dict__
-        
+
     def test_limit(self):
         """test limit operations combined with lazy-load relationships."""
 
@@ -260,7 +260,7 @@ class EagerTest(QueryTest):
         sess = create_session()
         q = sess.query(User)
 
-        if testbase.db.engine.name == 'mssql':
+        if testing.against('mysql'):
             l = q.limit(2).all()
             assert fixtures.user_all_result[:2] == l
         else:        
@@ -317,7 +317,7 @@ class EagerTest(QueryTest):
         
         q = sess.query(User)
 
-        if testbase.db.engine.name != 'mssql':
+        if not testing.against('maxdb', 'mssql'):
             l = q.join('orders').order_by(Order.user_id.desc()).limit(2).offset(1)
             assert [
                 User(id=9, 

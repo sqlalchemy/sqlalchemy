@@ -18,7 +18,7 @@ class ExecuteTest(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
         
-    @testing.supported('sqlite')
+    @testing.supported('sqlite', 'maxdb')
     def test_raw_qmark(self):
         for conn in (testbase.db, testbase.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (?, ?)", (1,"jack"))

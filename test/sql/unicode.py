@@ -8,7 +8,7 @@ from testlib.engines import utf8_engine
 
 
 class UnicodeSchemaTest(PersistTest):
-    @testing.unsupported('oracle', 'sybase')
+    @testing.unsupported('maxdb', 'oracle', 'sybase')
     def setUpAll(self):
         global unicode_bind, metadata, t1, t2, t3
 
@@ -55,20 +55,20 @@ class UnicodeSchemaTest(PersistTest):
                        )
         metadata.create_all()
 
-    @testing.unsupported('oracle', 'sybase')
+    @testing.unsupported('maxdb', 'oracle', 'sybase')
     def tearDown(self):
         if metadata.tables:
             t3.delete().execute()
             t2.delete().execute()
             t1.delete().execute()
         
-    @testing.unsupported('oracle', 'sybase')
+    @testing.unsupported('maxdb', 'oracle', 'sybase')
     def tearDownAll(self):
         global unicode_bind
         metadata.drop_all()
         del unicode_bind
         
-    @testing.unsupported('oracle', 'sybase')
+    @testing.unsupported('maxdb', 'oracle', 'sybase')
     def test_insert(self):
         t1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})
         t2.insert().execute({'a':1, 'b':1})
@@ -81,7 +81,7 @@ class UnicodeSchemaTest(PersistTest):
         assert t2.select().execute().fetchall() == [(1, 1)]
         assert t3.select().execute().fetchall() == [(1, 5, 1, 1)]
     
-    @testing.unsupported('oracle', 'sybase')
+    @testing.unsupported('maxdb', 'oracle', 'sybase')
     def test_reflect(self):
         t1.insert().execute({u'méil':2, u'\u6e2c\u8a66':7})
         t2.insert().execute({'a':2, 'b':2})

@@ -5,5 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-__all__ = ['sqlite', 'postgres', 'mysql', 'oracle', 'mssql', 'firebird',
-           'sybase', 'access']
+__all__ = [
+    'sqlite', 'postgres', 'mysql', 'oracle', 'mssql', 'firebird',
+    'sybase', 'access', 'maxdb',
+    ]

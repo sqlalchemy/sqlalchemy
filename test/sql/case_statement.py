@@ -25,6 +25,7 @@ class CaseTest(PersistTest):
     def tearDownAll(self):
         info_table.drop()
     
+    @testing.unsupported('maxdb')
     def testcase(self):
         inner = select([case([
 		[info_table.c.pk < 3, 

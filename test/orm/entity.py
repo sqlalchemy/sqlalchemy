@@ -117,8 +117,8 @@ class EntityTest(AssertMixin):
         u2.addresses.append(a2)
         sess.save(u2, entity_name='user2')
         print u2.__dict__
-        
-        sess.flush()
+
+        sess.flush()        
         assert user1.select().execute().fetchall() == [(u1.user_id, u1.name)]
         assert user2.select().execute().fetchall() == [(u2.user_id, u2.name)]
         assert address1.select().execute().fetchall() == [(a1.address_id, u1.user_id, 'a1@foo.com')]

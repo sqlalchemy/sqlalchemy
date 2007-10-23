@@ -46,7 +46,8 @@ class VersioningTest(ORMTest):
     def define_tables(self, metadata):
         global version_table
         version_table = Table('version_test', metadata,
-        Column('id', Integer, Sequence('version_test_seq'), primary_key=True ),
+        Column('id', Integer, Sequence('version_test_seq', optional=True),
+               primary_key=True ),
         Column('version_id', Integer, nullable=False),
         Column('value', String(40), nullable=False)
         )
@@ -56,7 +57,7 @@ class VersioningTest(ORMTest):
         s = Session(scope=None)
         class Foo(object):pass
         mapper(Foo, version_table, version_id_col=version_table.c.version_id)
-        f1 =Foo(value='f1', _sa_session=s)
+        f1 = Foo(value='f1', _sa_session=s)
         f2 = Foo(value='f2', _sa_session=s)
         s.commit()
         
@@ -523,7 +524,7 @@ class ClauseAttributesTest(ORMTest):
             Column('id', Integer, Sequence('users_id_seq', optional=True), primary_key=True),
             Column('name', String(30)),
             Column('counter', Integer, default=1))
-    
+
     def test_update(self):
         class User(object):
             pass
@@ -571,9 +572,8 @@ class ClauseAttributesTest(ORMTest):
         sess.save(u)
         sess.flush()
         assert u.counter == 5
-        
 
-        
+
 class PassiveDeletesTest(ORMTest):
     def define_tables(self, metadata):
         global mytable,myothertable
@@ -683,7 +683,7 @@ class ExtraPassiveDeletesTest(ORMTest):
         try:
             sess.commit()
             assert False
-        except (exceptions.IntegrityError, exceptions.OperationalError):
+        except exceptions.DBAPIError:
             assert True
 
         

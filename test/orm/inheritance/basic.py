@@ -11,7 +11,8 @@ class O2MTest(ORMTest):
         global foo, bar, blub
         # the 'data' columns are to appease SQLite which cant handle a blank INSERT
         foo = Table('foo', metadata,
-            Column('id', Integer, Sequence('foo_seq'), primary_key=True),
+            Column('id', Integer, Sequence('foo_seq', optional=True),
+                   primary_key=True),
             Column('data', String(20)))
 
         bar = Table('bar', metadata,
@@ -68,7 +69,8 @@ class GetTest(ORMTest):
     def define_tables(self, metadata):
         global foo, bar, blub
         foo = Table('foo', metadata,
-            Column('id', Integer, Sequence('foo_seq'), primary_key=True),
+            Column('id', Integer, Sequence('foo_seq', optional=True),
+                   primary_key=True),
             Column('type', String(30)),
             Column('data', String(20)))
 
@@ -199,14 +201,17 @@ class EagerLazyTest(ORMTest):
     LazyLoader constructs the right query condition."""
     def define_tables(self, metadata):
         global foo, bar, bar_foo
-        foo = Table('foo', metadata, Column('id', Integer, Sequence('foo_seq'), primary_key=True),
-        Column('data', String(30)))
-        bar = Table('bar', metadata, Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
-     Column('data', String(30)))
+        foo = Table('foo', metadata,
+                    Column('id', Integer, Sequence('foo_seq', optional=True),
+                           primary_key=True),
+                    Column('data', String(30)))
+        bar = Table('bar', metadata,
+                    Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
+                    Column('data', String(30)))
 
         bar_foo = Table('bar_foo', metadata,
-        Column('bar_id', Integer, ForeignKey('bar.id')),
-        Column('foo_id', Integer, ForeignKey('foo.id'))
+                        Column('bar_id', Integer, ForeignKey('bar.id')),
+                        Column('foo_id', Integer, ForeignKey('foo.id'))
         )
 
     def testbasic(self):
