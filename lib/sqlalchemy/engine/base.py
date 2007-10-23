@@ -787,6 +787,7 @@ class Connection(Connectable):
         parameters = self.__distill_params(multiparams, params)
         context = self.__create_execution_context(statement=statement, parameters=parameters)
         self.__execute_raw(context)
+        self._autocommit(context)
         return context.result()
 
     def __distill_params(self, multiparams, params):
@@ -840,6 +841,7 @@ class Connection(Connectable):
         context.pre_execution()
         self.__execute_raw(context)
         context.post_execution()
+        self._autocommit(context)
         return context.result()
 
     def __create_execution_context(self, **kwargs):
@@ -850,8 +852,7 @@ class Connection(Connectable):
             self._cursor_executemany(context.cursor, context.statement, context.parameters, context=context)
         else:
             self._cursor_execute(context.cursor, context.statement, context.parameters[0], context=context)
-        self._autocommit(context)
-
+        
     def _cursor_execute(self, cursor, statement, parameters, context=None):
         if self.__engine._should_log_info:
             self.__engine.logger.info(statement)
