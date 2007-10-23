@@ -306,12 +306,10 @@ class AssertMixin(PersistTest):
     def assert_sql_count(self, db, callable_, count):
         global testdata
         testdata = TestData()
-        try:
-            callable_()
-        finally:
-            self.assert_(testdata.sql_count == count,
-                         "desired statement count %d does not match %d" % (
-                         count, testdata.sql_count))
+        callable_()
+        self.assert_(testdata.sql_count == count,
+                     "desired statement count %d does not match %d" % (
+                       count, testdata.sql_count))
 
     def capture_sql(self, db, callable_):
         global testdata
