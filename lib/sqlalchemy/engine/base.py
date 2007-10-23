@@ -12,9 +12,9 @@ higher-level statement-construction, connection-management, execution
 and result contexts.
 """
 
+import StringIO, sys
 from sqlalchemy import exceptions, schema, util, types, logging
 from sqlalchemy.sql import expression, visitors
-import StringIO, sys
 
 
 class Dialect(object):
@@ -79,9 +79,14 @@ class Dialect(object):
       Indicate whether the dialect properly implements rowcount for ``UPDATE`` and ``DELETE`` statements
       when executed via executemany.
 
-    preexecute_sequences
-      Indicate if the dialect should pre-execute sequences on primary key columns during an INSERT,
-      if it's desired that the new row's primary key be available after execution.
+    preexecute_pk_sequences
+      Indicate if the dialect should pre-execute sequences on primary key
+      columns during an INSERT, if it's desired that the new row's primary key
+      be available after execution.
+
+    supports_pk_autoincrement
+      Indicates if the dialect should allow the database to passively assign
+      a primary key column value.
     """
 
     def create_connect_args(self, url):

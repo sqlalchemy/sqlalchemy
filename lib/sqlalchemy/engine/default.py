@@ -31,7 +31,8 @@ class DefaultDialect(base.Dialect):
     max_identifier_length = 9999
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
-    preexecute_sequences = False
+    preexecute_pk_sequences = False
+    supports_pk_autoincrement = True
 
     def __init__(self, convert_unicode=False, encoding='utf-8', default_paramstyle='named', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode
@@ -47,7 +48,17 @@ class DefaultDialect(base.Dialect):
             self.paramstyle = default_paramstyle
         self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
         self.identifier_preparer = self.preparer(self)
-    
+
+        # preexecute_sequences was renamed preexecute_pk_sequences.  If a
+        # subclass has the older property, proxy the new name to the subclass's
+        # property.
+        # TODO: remove @ 0.5.0
+        if (hasattr(self, 'preexecute_sequences') and
+            isinstance(getattr(type(self), 'preexecute_pk_sequences'), bool)):
+            setattr(type(self), 'preexecute_pk_sequences',
+                    property(lambda s: s.preexecute_sequences, doc=(
+                      "Proxy to deprecated preexecute_sequences attribute.")))
+
     def dbapi_type_map(self):
         # most DB-APIs have problems with this (such as, psycocpg2 types 
         # are unhashable).  So far Oracle can return it.

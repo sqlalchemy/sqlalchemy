@@ -279,7 +279,8 @@ class PGDialect(default.DefaultDialect):
     max_identifier_length = 63
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
-    preexecute_sequences = True
+    preexecute_pk_sequences = True
+    supports_pk_autoincrement = False
 
     def __init__(self, use_oids=False, server_side_cursors=False, **kwargs):
         default.DefaultDialect.__init__(self, default_paramstyle='pyformat', **kwargs)

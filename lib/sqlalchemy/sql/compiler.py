@@ -674,9 +674,15 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
                 values.append((c, value))
             elif isinstance(c, schema.Column):
                 if self.isinsert:
-                    if c.primary_key and self.dialect.preexecute_sequences and not self.inline:
-                        values.append((c, create_bind_param(c, None)))
-                        self.prefetch.add(c)
+                    if (c.primary_key and self.dialect.preexecute_pk_sequences
+                        and not self.inline):
+                        if (((isinstance(c.default, schema.Sequence) and
+                              not c.default.optional) or
+                             not self.dialect.supports_pk_autoincrement) or
+                            (c.default is not None and 
+                             not isinstance(c.default, schema.Sequence))):
+                            values.append((c, create_bind_param(c, None)))
+                            self.prefetch.add(c)
                     elif isinstance(c.default, schema.ColumnDefault):
                         if isinstance(c.default.arg, sql.ClauseElement):
                             values.append((c, self.process(c.default.arg.self_group())))

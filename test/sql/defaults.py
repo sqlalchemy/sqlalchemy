@@ -1,9 +1,9 @@
 import testbase
+import datetime
 from sqlalchemy import *
 from sqlalchemy import exceptions, schema, util
 from sqlalchemy.orm import mapper, create_session
 from testlib import *
-import datetime
 
 class DefaultTest(PersistTest):
 
@@ -31,12 +31,13 @@ class DefaultTest(PersistTest):
                 # since its a "branched" connection
                 conn.close()
             
-        use_function_defaults = db.engine.name == 'postgres' or db.engine.name == 'oracle'
-        is_oracle = db.engine.name == 'oracle'
+        use_function_defaults = testing.against('postgres', 'oracle')
+        is_oracle = testing.against('oracle')
  
         # select "count(1)" returns different results on different DBs
         # also correct for "current_date" compatible as column default, value differences
-        currenttime = func.current_date(type_=Date, bind=db);
+        currenttime = func.current_date(type_=Date, bind=db)
+
         if is_oracle:
             ts = db.func.trunc(func.sysdate(), literal_column("'DAY'")).scalar()
             f = select([func.length('abcdef')], bind=db).scalar()
@@ -50,7 +51,10 @@ class DefaultTest(PersistTest):
             f = select([func.length('abcdef')], bind=db).scalar()
             f2 = select([func.length('abcdefghijk')], bind=db).scalar()
             def1 = currenttime
-            def2 = text("current_date")
+            if testing.against('maxdb'):
+                def2 = text("curdate")
+            else:
+                def2 = text("current_date")
             deftype = Date
             ts = db.func.current_date().scalar()
         else:
@@ -153,7 +157,7 @@ class DefaultTest(PersistTest):
 
     def testinsertmany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testbase.db.name == 'mysql' and
+        if (testing.against('mysql') and
             testbase.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 
@@ -171,7 +175,7 @@ class DefaultTest(PersistTest):
         
     def testupdatemany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testbase.db.name == 'mysql' and
+        if (testing.against('mysql') and
             testbase.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 
@@ -254,7 +258,7 @@ class AutoIncrementTest(PersistTest):
     def tearDown(self):
         aimeta.drop_all()
 
-    @testing.supported('postgres', 'mysql')
+    @testing.supported('postgres', 'mysql', 'maxdb')
     def testnonautoincrement(self):
         meta = MetaData(testbase.db)
         nonai_table = Table("nonaitest", meta, 
@@ -326,9 +330,29 @@ class AutoIncrementTest(PersistTest):
         finally:
             con.close()
 
+    def test_autoincrement_fk(self):
+        if not testbase.db.dialect.supports_pk_autoincrement:
+            return True
+        
+        metadata = MetaData(testbase.db)
+
+        # No optional sequence here.
+        nodes = Table('nodes', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')),
+            Column('data', String(30)))
+        metadata.create_all()
+        try:
+            r = nodes.insert().execute(data='foo')
+            id_ = r.last_inserted_ids()[0]
+            nodes.insert().execute(data='bar', parent_id=id_)
+        finally:
+            metadata.drop_all()
+
+
 
 class SequenceTest(PersistTest):
-    @testing.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle', 'maxdb')
     def setUpAll(self):
         global cartitems, sometable, metadata
         metadata = MetaData(testbase.db)
@@ -338,16 +362,17 @@ class SequenceTest(PersistTest):
             Column("createdate", DateTime())
         )
         sometable = Table( 'Manager', metadata,
-               Column( 'obj_id', Integer, Sequence('obj_id_seq'), ),
-               Column( 'name', String, ),
-               Column( 'id', Integer, Sequence('Manager_id_seq', optional=True), primary_key=True),
+               Column('obj_id', Integer, Sequence('obj_id_seq'), ),
+               Column('name', String, ),
+               Column('id', Integer, Sequence('Manager_id_seq', optional=True), primary_key=True),
            )
         
         metadata.create_all()
     
-    @testing.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle', 'maxdb')
     def testseqnonpk(self):
         """test sequences fire off as defaults on non-pk columns"""
+
         sometable.insert().execute(name="somename")
         sometable.insert().execute(name="someother")
         sometable.insert().execute(
@@ -360,17 +385,26 @@ class SequenceTest(PersistTest):
             (3, "name3", 3),
             (4, "name4", 4),
         ]
-        
-    @testing.supported('postgres', 'oracle')
+
+    @testing.supported('postgres', 'oracle', 'maxdb')
     def testsequence(self):
         cartitems.insert().execute(description='hi')
         cartitems.insert().execute(description='there')
-        cartitems.insert().execute(description='lala')
+        r = cartitems.insert().execute(description='lala')
+
+        assert r.last_inserted_ids() and r.last_inserted_ids()[0] is not None
+        id_ = r.last_inserted_ids()[0]
+
+        assert select([func.count(cartitems.c.cart_id)],
+                      and_(cartitems.c.description == 'lala',
+                           cartitems.c.cart_id == id_)).scalar() == 1
         
         cartitems.select().execute().fetchall()
-   
+
    
     @testing.supported('postgres', 'oracle')
+    # maxdb db-api seems to double-execute NEXTVAL internally somewhere,
+    # throwing off the numbers for these tests...
     def test_implicit_sequence_exec(self):
         s = Sequence("my_sequence", metadata=MetaData(testbase.db))
         s.create()
@@ -390,7 +424,7 @@ class SequenceTest(PersistTest):
         finally:
             s.drop(testbase.db)
     
-    @testing.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle', 'maxdb')
     def test_checkfirst(self):
         s = Sequence("my_sequence")
         s.create(testbase.db, checkfirst=False)
@@ -403,7 +437,7 @@ class SequenceTest(PersistTest):
         x = cartitems.c.cart_id.sequence.execute()
         self.assert_(1 <= x <= 4)
         
-    @testing.supported('postgres', 'oracle')
+    @testing.supported('postgres', 'oracle', 'maxdb')
     def tearDownAll(self): 
         metadata.drop_all()
 
