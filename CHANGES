@@ -13,7 +13,11 @@ CHANGES
 
 - Added contains operator (which generate a "LIKE %<other>%" clause).
 
-- sqlite will reflect "DECIMAL" as a numeric column
+- sqlite will reflect "DECIMAL" as a numeric column.
+
+- Renamed the Dialect attribute 'preexecute_sequences' to
+  'preexecute_pk_sequences'.  An attribute proxy is in place for out-of-tree
+  dialects using the old name.
   
 0.4.0
 -----
