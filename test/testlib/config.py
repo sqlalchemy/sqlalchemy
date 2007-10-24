@@ -21,6 +21,7 @@ oracle=oracle://scott:tiger@127.0.0.1:1521
 oracle8=oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0
 mssql=mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test
 firebird=firebird://sysdba:s@localhost/tmp/test.fdb
+maxdb=maxdb://MONA:RED@/maxdb1
 """
 
 parser = optparse.OptionParser(usage = "usage: %prog [options] [tests...]")
