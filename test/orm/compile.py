@@ -7,7 +7,7 @@ from testlib import *
 
 class CompileTest(AssertMixin):
     """test various mapper compilation scenarios"""
-    def tearDownAll(self):
+    def tearDown(self):
         clear_mappers()
         
     def testone(self):
@@ -119,7 +119,7 @@ class CompileTest(AssertMixin):
             class_mapper(Product).compile()
             assert False
         except exceptions.ArgumentError, e:
-            assert str(e).index("Backrefs do not match") > -1
+            assert str(e).index("Error creating backref ") > -1
 
     def testthree(self):
         metadata = MetaData(testbase.db)
@@ -157,6 +157,28 @@ class CompileTest(AssertMixin):
             assert sess.query(Node).get(1).names == []
         finally:
             metadata.drop_all()
+
+    def testfour(self):
+        meta = MetaData()
+        
+        a = Table('a', meta, Column('id', Integer, primary_key=True))
+        b = Table('b', meta, Column('id', Integer, primary_key=True), Column('a_id', Integer, ForeignKey('a.id')))
+
+        class A(object):pass
+        class B(object):pass
+
+        mapper(A, a, properties={
+            'b':relation(B, backref='a')
+        })
+        mapper(B, b, properties={
+            'a':relation(A, backref='b')
+        })
+        
+        try:
+            compile_mappers()
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e).index("Error creating backref") > -1
 
 if __name__ == '__main__':
     testbase.main()

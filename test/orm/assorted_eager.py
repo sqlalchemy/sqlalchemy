@@ -457,7 +457,6 @@ class EagerTest6(ORMTest):
         ))
 
         mapper(Design, design, properties=dict(
-            parts=relation(Part, private=True, backref="design"),
             inheritedParts=relation(InheritedPart, private=True, backref="design"),
         ))
 
@@ -466,7 +465,9 @@ class EagerTest6(ORMTest):
         ))
 
         class_mapper(Design).add_property("type", relation(DesignType, lazy=False, backref="designs"))
-        class_mapper(Part).add_property("design", relation(Design, lazy=False, backref="parts"))
+        
+        class_mapper(Part).add_property("design", relation(Design, lazy=False, backref=backref("parts", cascade="all, delete-orphan")))
+        
         #Part.mapper.add_property("designType", relation(DesignType))
 
         d = Design()

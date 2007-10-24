@@ -152,7 +152,7 @@ class PropertyLoader(StrategizedProperty):
         self.comparator = PropertyLoader.Comparator(self)
         self.join_depth = join_depth
         self.strategy_class = strategy_class
-        
+
         if cascade is not None:
             self.cascade = mapperutil.CascadeOptions(cascade)
         else:
@@ -661,52 +661,42 @@ class PropertyLoader(StrategizedProperty):
 PropertyLoader.logger = logging.class_logger(PropertyLoader)
 
 class BackRef(object):
-    """Stores the name of a backreference property as well as options
-    to be used on the resulting PropertyLoader.
-    """
+    """Attached to a PropertyLoader to indicate a complementary reverse relationship.
+    
+    Can optionally create the complementing PropertyLoader if one does not exist already."""
 
-    def __init__(self, key, **kwargs):
+    def __init__(self, key, _prop=None, **kwargs):
         self.key = key
         self.kwargs = kwargs
+        self.prop = _prop
 
     def compile(self, prop):
-        """Called by the owning PropertyLoader to set up a
-        backreference on the PropertyLoader's mapper.
-        """
-
-        # try to set a LazyLoader on our mapper referencing the parent mapper
+        if self.prop:
+            return
+        
+        self.prop = prop
+        
         mapper = prop.mapper.primary_mapper()
-        if not mapper.get_property(self.key, raiseerr=False) is not None:
+        if mapper.get_property(self.key, raiseerr=False) is None:
             pj = self.kwargs.pop('primaryjoin', None)
             sj = self.kwargs.pop('secondaryjoin', None)
-            # the backref property is set on the primary mapper
+
             parent = prop.parent.primary_mapper()
             self.kwargs.setdefault('viewonly', prop.viewonly)
             self.kwargs.setdefault('post_update', prop.post_update)
+                
             relation = PropertyLoader(parent, prop.secondary, pj, sj,
-                                      backref=prop.key, is_backref=True,
+                                      backref=BackRef(prop.key, _prop=prop), 
+                                      is_backref=True,
                                       **self.kwargs)
+                                      
             mapper._compile_property(self.key, relation);
-        elif not isinstance(mapper.get_property(self.key), PropertyLoader):
-            raise exceptions.ArgumentError(
-                "Can't create backref '%s' on mapper '%s'; an incompatible "
-                "property of that name already exists" % (self.key, str(mapper)))
+
+            prop.reverse_property = mapper.get_property(self.key)
+            mapper.get_property(self.key).reverse_property = prop
+
         else:
-            # else set one of us as the "backreference"
-            parent = prop.parent.primary_mapper()
-            if parent.class_ is not mapper.get_property(self.key)._get_target_class():
-                raise exceptions.ArgumentError(
-                    "Backrefs do not match:  backref '%s' expects to connect to %s, "
-                    "but found a backref already connected to %s" %
-                    (self.key, str(parent.class_), str(mapper.get_property(self.key).mapper.class_)))
-            if not mapper.get_property(self.key).is_backref:
-                prop.is_backref=True
-                if not prop.viewonly:
-                    prop._dependency_processor.is_backref=True
-                    # reverse_property used by dependencies.ManyToManyDP to check
-                    # association table operations
-                    prop.reverse_property = mapper.get_property(self.key)
-                    mapper.get_property(self.key).reverse_property = prop
+            raise exceptions.ArgumentError("Error creating backref '%s' on relation '%s': property of that name exists on mapper '%s'" % (self.key, prop, mapper))
 
     def get_extension(self):
         """Return an attribute extension to use with this backreference."""

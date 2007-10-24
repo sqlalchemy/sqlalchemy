@@ -18,6 +18,9 @@ CHANGES
 - Renamed the Dialect attribute 'preexecute_sequences' to
   'preexecute_pk_sequences'.  An attribute proxy is in place for out-of-tree
   dialects using the old name.
+
+- de-cruftified backref configuration code, backrefs which step on existing
+  properties now raise an error [ticket:832]
   
 0.4.0
 -----
