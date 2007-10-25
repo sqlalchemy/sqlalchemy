@@ -782,19 +782,6 @@ class Mapper(object):
         self.properties[key] = prop
         self._compile_property(key, prop, init=self.__props_init)
 
-    def _create_prop_from_column(self, column):
-        column = util.to_list(column)
-        if not expression.is_column(column[0]):
-            return None
-        mapped_column = []
-        for c in column:
-            mc = self.mapped_table.corresponding_column(c, raiseerr=False)
-            if not mc:
-                raise exceptions.ArgumentError("Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(c))
-            mapped_column.append(mc)
-        return ColumnProperty(*mapped_column)
-
-
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.encodedname or str(self.local_table)) + (not self._is_primary_mapper() and "|non-primary" or "")
 
