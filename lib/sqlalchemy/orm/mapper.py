@@ -562,68 +562,111 @@ class Mapper(object):
         # table columns mapped to lists of MapperProperty objects
         # using a list allows a single column to be defined as
         # populating multiple object attributes
-        self.columntoproperty = mapperutil.TranslatingDict(self.mapped_table)
+        self._columntoproperty = mapperutil.TranslatingDict(self.mapped_table)
 
         # load custom properties
         if self.properties is not None:
             for key, prop in self.properties.iteritems():
                 self._compile_property(key, prop, False)
 
+        # pull properties from the inherited mapper if any.
         if self.inherits is not None:
             for key, prop in self.inherits.__props.iteritems():
                 if key not in self.__props:
                     self._adapt_inherited_property(key, prop)
 
-        # load properties from the main table object,
-        # not overriding those set up in the 'properties' argument
+        # create properties for each column in the mapped table,
+        # for those columns which don't already map to a property
         for column in self.mapped_table.columns:
-            if column in self.columntoproperty:
+            if column in self._columntoproperty:
                 continue
-            if column.key not in self.columns:
-                self.columns[column.key] = self.select_table.corresponding_column(column, keys_ok=True, raiseerr=True)
+
+            if (self.include_properties is not None and
+                column.key not in self.include_properties):
+                self.__log("not including property %s" % (column.key))
+                continue
+            
+            if (self.exclude_properties is not None and
+                column.key in self.exclude_properties):
+                self.__log("excluding property %s" % (column.key))
+                continue
 
             column_key = (self.column_prefix or '') + column.key
-            prop = self.__props.get(column_key, None)
+                
+            self._compile_property(column_key, column, init=False, setparent=True)
 
-            if prop is None:
-                if (self.include_properties is not None and
-                    column.key not in self.include_properties):
-                    self.__log("not including property %s" % (column.key))
-                    continue
-                
-                if (self.exclude_properties is not None and
-                    column.key in self.exclude_properties):
-                    self.__log("excluding property %s" % (column.key))
-                    continue
-                
-                prop = ColumnProperty(column)
-                self.__props[column_key] = prop
+            continue
 
-                # TODO: centralize _CompileOnAttr logic, move into MapperProperty classes
-                if not hasattr(self.class_, column_key) and not self.non_primary:
-                    setattr(self.class_, column_key, Mapper._CompileOnAttr(self.class_, column_key))
+    def _adapt_inherited_property(self, key, prop):
+        if not self.concrete:
+            self._compile_property(key, prop, init=False, setparent=False)
+        # TODO: concrete properties dont adapt at all right now....will require copies of relations() etc.
+
+    def _compile_property(self, key, prop, init=True, setparent=True):
+        self.__log("_compile_property(%s, %s)" % (key, prop.__class__.__name__))
+
+        if not isinstance(prop, MapperProperty):
+            # we were passed a Column or a list of Columns; generate a ColumnProperty
+            columns = util.to_list(prop)
+            column = columns[0]
+            if not expression.is_column(column):
+                raise exceptions.ArgumentError("%s=%r is not an instance of MapperProperty or Column" % (key, prop))
+            
+            prop = self.__props.get(key, None)
+
+            if isinstance(prop, ColumnProperty):
+                # TODO: the "property already exists" case is still not well defined here.  
+                # assuming single-column, etc.
                 
-                prop.set_parent(self)
-                self.__log("adding ColumnProperty %s" % (column_key))
-            elif isinstance(prop, ColumnProperty):
-                if prop.parent is not self:
-                    prop = prop.copy()
-                    prop.set_parent(self)
-                    self.__props[column_key] = prop
                 if column in self.primary_key and prop.columns[-1] in self.primary_key:
-                    warnings.warn(RuntimeWarning("On mapper %s, primary key column '%s' is being combined with distinct primary key column '%s' in attribute '%s'.  Use explicit properties to give each column its own mapped attribute name." % (str(self), str(column), str(prop.columns[-1]), column_key)))
+                    warnings.warn(RuntimeWarning("On mapper %s, primary key column '%s' is being combined with distinct primary key column '%s' in attribute '%s'.  Use explicit properties to give each column its own mapped attribute name." % (str(self), str(column), str(prop.columns[-1]), key)))
+
+                if prop.parent is not self:
+                    # existing ColumnProperty from an inheriting mapper.
+                    # make a copy and append our column to it
+                    prop = prop.copy()
                 prop.columns.append(column)
-                self.__log("appending to existing ColumnProperty %s" % (column_key))
+                self.__log("appending to existing ColumnProperty %s" % (key))
+            elif prop is None:
+                mapped_column = []
+                for c in columns:
+                    mc = self.mapped_table.corresponding_column(c, raiseerr=False)
+                    if not mc:
+                        raise exceptions.ArgumentError("Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(c))
+                    mapped_column.append(mc)
+                prop = ColumnProperty(*mapped_column)
             else:
                 if not self.allow_column_override:
                     raise exceptions.ArgumentError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))
                 else:
-                    continue
+                    return
 
-            # its a ColumnProperty - match the ultimate table columns
-            # back to the property
-            self.columntoproperty.setdefault(column, []).append(prop)
+        if isinstance(prop, ColumnProperty):
+            # relate the mapper's "select table" to the given ColumnProperty
+            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=False)
+            # col might not be present! the selectable given to the mapper need not include "deferred"
+            # columns (included in zblog tests)
+            if col is None:
+                col = prop.columns[0]
 
+            self.columns[key] = col
+            for col in prop.columns:
+                self._columntoproperty[col] = prop
+            
+        self.__props[key] = prop
+
+        if setparent:
+            prop.set_parent(self)
+
+            # TODO: centralize _CompileOnAttr logic, move into MapperProperty classes
+            if (not isinstance(prop, SynonymProperty) or prop.proxy) and not self.non_primary and not hasattr(self.class_, key):
+                setattr(self.class_, key, Mapper._CompileOnAttr(self.class_, key))
+
+        if init:
+            prop.init(key, self)
+
+        for mapper in self._inheriting_mappers:
+            mapper._adapt_inherited_property(key, prop)
 
     def _compile_selectable(self):
         """If the 'select_table' keyword argument was specified, set
@@ -753,58 +796,6 @@ class Mapper(object):
             mapped_column.append(mc)
         return ColumnProperty(*mapped_column)
 
-    def _adapt_inherited_property(self, key, prop):
-        if not self.concrete:
-            self._compile_property(key, prop, init=False, setparent=False)
-        # TODO: concrete properties dont adapt at all right now....will require copies of relations() etc.
-
-    def _compile_property(self, key, prop, init=True, setparent=True):
-        """Add a ``MapperProperty`` to this or another ``Mapper``,
-        including configuration of the property.
-
-        The properties' parent attribute will be set, and the property
-        will also be copied amongst the mappers which inherit from
-        this one.
-
-        If the given `prop` is a ``Column`` or list of Columns, a
-        ``ColumnProperty`` will be created.
-        """
-
-        self.__log("_compile_property(%s, %s)" % (key, prop.__class__.__name__))
-
-        if not isinstance(prop, MapperProperty):
-            col = self._create_prop_from_column(prop)
-            if col is None:
-                raise exceptions.ArgumentError("%s=%r is not an instance of MapperProperty or Column" % (key, prop))
-            prop = col
-
-        self.__props[key] = prop
-        
-
-        if setparent:
-            prop.set_parent(self)
-
-            # TODO: centralize _CompileOnAttr logic, move into MapperProperty classes
-            if (not isinstance(prop, SynonymProperty) or prop.proxy) and not self.non_primary and not hasattr(self.class_, key):
-                setattr(self.class_, key, Mapper._CompileOnAttr(self.class_, key))
-
-        if isinstance(prop, ColumnProperty):
-            # relate the mapper's "select table" to the given ColumnProperty
-            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=False)
-            # col might not be present! the selectable given to the mapper need not include "deferred"
-            # columns (included in zblog tests)
-            if col is None:
-                col = prop.columns[0]
-            self.columns[key] = col
-            for col in prop.columns:
-                proplist = self.columntoproperty.setdefault(col, [])
-                proplist.append(prop)
-
-        if init:
-            prop.init(key, self)
-
-        for mapper in self._inheriting_mappers:
-            mapper._adapt_inherited_property(key, prop)
 
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.encodedname or str(self.local_table)) + (not self._is_primary_mapper() and "|non-primary" or "")
@@ -912,7 +903,7 @@ class Mapper(object):
         
     def _getpropbycolumn(self, column, raiseerror=True):
         try:
-            prop = self.columntoproperty[column]
+            prop = self._columntoproperty[column]
         except KeyError:
             try:
                 prop = self.__props[column.key]
@@ -923,7 +914,7 @@ class Mapper(object):
                 if not raiseerror:
                     return None
                 raise exceptions.InvalidRequestError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
-        return prop[0]
+        return prop
 
     def get_attr_by_column(self, obj, column, raiseerror=True):
         """Return an instance attribute using a Column as the key."""
@@ -936,7 +927,7 @@ class Mapper(object):
     def set_attr_by_column(self, obj, column, value):
         """Set the value of an instance attribute using a Column as the key."""
 
-        self.columntoproperty[column][0].setattr(obj, value, column)
+        self._columntoproperty[column].setattr(obj, value, column)
 
     def save_obj(self, objects, uowtransaction, postupdate=False, post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
@@ -1272,7 +1263,7 @@ class Mapper(object):
             if not pk:
                 return False
             for k in pk:
-                if k not in self.columntoproperty:
+                if k not in self._columntoproperty:
                     return False
             else:
                 return True

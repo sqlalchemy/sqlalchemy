@@ -21,6 +21,9 @@ CHANGES
 
 - de-cruftified backref configuration code, backrefs which step on existing
   properties now raise an error [ticket:832]
+
+- improved behavior of add_property() etc., fixed [ticket:831] involving
+  synonym/deferred
   
 0.4.0
 -----

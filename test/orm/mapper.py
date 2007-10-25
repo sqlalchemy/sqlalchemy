@@ -266,6 +266,30 @@ class MapperTest(MapperSuperTest):
         mapper(User, users)
         mapper(Foo, addresses, inherits=User)
         assert getattr(Foo().__class__, 'user_name').impl is not None
+    
+    def testaddproperty(self):
+        m = mapper(User, users)
+        mapper(Address, addresses)
+        m.add_property('user_name', deferred(users.c.user_name))
+        m.add_property('name', synonym('user_name'))
+        m.add_property('addresses', relation(Address))
+        
+        sess = create_session(transactional=True)
+        assert sess.query(User).get(7)
+
+        u = sess.query(User).filter_by(name='jack').one()
+        
+        def go():
+            self.assert_result([u], User, user_address_result[0])
+            assert u.user_name == 'jack'
+        
+        self.assert_sql_count(testbase.db, go, 2)
+        
+        u3 = User()
+        u3.user_name = 'some user'
+        sess.save(u3)
+        sess.flush()
+        sess.rollback()
         
     def testpropfilters(self):
         t = Table('person', MetaData(),
