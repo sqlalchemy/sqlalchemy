@@ -595,8 +595,6 @@ class Mapper(object):
                 
             self._compile_property(column_key, column, init=False, setparent=True)
 
-            continue
-
     def _adapt_inherited_property(self, key, prop):
         if not self.concrete:
             self._compile_property(key, prop, init=False, setparent=False)
