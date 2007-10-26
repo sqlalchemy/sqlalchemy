@@ -25,6 +25,9 @@ CHANGES
 - improved behavior of add_property() etc., fixed [ticket:831] involving
   synonym/deferred
   
+- Made access dao dection more reliable [ticket:828]
+  
+  
 0.4.0
 -----
 

@@ -190,13 +190,19 @@ class AccessDialect(default.DefaultDialect):
         self._dtbs = None
 
     def dbapi(cls):
-        import win32com.client
-        win32com.client.gencache.EnsureModule('{00025E01-0000-0000-C000-000000000046}', 0, 5, 0)
+        import win32com.client, pythoncom
 
         global const, daoEngine
         if const is None:
             const = win32com.client.constants
-            daoEngine = win32com.client.Dispatch('DAO.DBEngine.36')
+            for suffix in (".36", ".35", ".30"):
+                try:
+                    daoEngine = win32com.client.gencache.EnsureDispatch("DAO.DBEngine" + suffix)
+                    break
+                except pythoncom.com_error:
+                    pass
+            else:
+                raise exceptions.InvalidRequestError("Can't find a DB engine. Check http://support.microsoft.com/kb/239114 for details.")
 
         import pyodbc as module
         return module
