@@ -13,7 +13,7 @@ profile_config = { 'targets': set(),
                    'sort': ('time', 'calls'),
                    'limit': None }
 
-def profiled(target, **target_opts):
+def profiled(target=None, **target_opts):
     """Optional function profiling.
 
     @profiled('label')
@@ -28,7 +28,9 @@ def profiled(target, **target_opts):
     import time, hotshot, hotshot.stats
 
     # manual or automatic namespacing by module would remove conflict issues
-    if target in all_targets:
+    if target is None:
+        target = 'anonymous_target'
+    elif target in all_targets:
         print "Warning: redefining profile target '%s'" % target
     all_targets.add(target)
 
@@ -70,6 +72,8 @@ def profiled(target, **target_opts):
 
             assert_range = target_opts.get('call_range')
             if assert_range:
+                if isinstance(assert_range, dict):
+                    assert_range = assert_range.get(testlib.config.db, 'default')
                 stats = hotshot.stats.load(filename)
                 assert stats.total_calls >= assert_range[0] and stats.total_calls <= assert_range[1], stats.total_calls
             

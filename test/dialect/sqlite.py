@@ -157,6 +157,21 @@ class InsertTest(AssertMixin):
                   Column('x', Integer),
                   Column('y', Integer)))
 
+    @testing.supported('sqlite')
+    def test_inserts_with_spaces(self):
+        tbl = Table('tbl', MetaData('sqlite:///'),
+                  Column('with space', Integer),
+                  Column('without', Integer))
+        tbl.create()
+        try:
+            tbl.insert().execute({'without':123})
+            assert list(tbl.select().execute()) == [(None, 123)]
 
+            tbl.insert().execute({'with space':456})
+            assert list(tbl.select().execute()) == [(None, 123), (456, None)]
+
+        finally:
+            tbl.drop()
+          
 if __name__ == "__main__":
     testbase.main()

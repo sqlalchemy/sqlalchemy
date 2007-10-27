@@ -648,27 +648,31 @@ class PGCompiler(compiler.DefaultCompiler):
             return super(PGCompiler, self).for_update_clause(select)
 
     def _append_returning(self, text, stmt):
-        returning_cols = stmt.kwargs.get('postgres_returning', None)
-        if returning_cols:
-            def flatten_columnlist(collist):
-                for c in collist:
-                    if isinstance(c, expression.Selectable):
-                        for co in c.columns:
-                            yield co
-                    else:
-                        yield c
-            columns = [self.process(c) for c in flatten_columnlist(returning_cols)]
-            text += ' RETURNING ' + string.join(columns, ', ')
-        
+        returning_cols = stmt.kwargs['postgres_returning']
+        def flatten_columnlist(collist):
+            for c in collist:
+                if isinstance(c, expression.Selectable):
+                    for co in c.columns:
+                        yield co
+                else:
+                    yield c
+        columns = [self.process(c) for c in flatten_columnlist(returning_cols)]
+        text += ' RETURNING ' + string.join(columns, ', ')
         return text
 
     def visit_update(self, update_stmt):
         text = super(PGCompiler, self).visit_update(update_stmt)
-        return self._append_returning(text, update_stmt)
+        if 'postgres_returning' in update_stmt.kwargs:
+            return self._append_returning(text, update_stmt)
+        else:
+            return text
 
     def visit_insert(self, insert_stmt):
         text = super(PGCompiler, self).visit_insert(insert_stmt)
-        return self._append_returning(text, insert_stmt)
+        if 'postgres_returning' in insert_stmt.kwargs:
+            return self._append_returning(text, insert_stmt)
+        else:
+            return text
 
 class PGSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):

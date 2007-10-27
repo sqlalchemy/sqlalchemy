@@ -4,6 +4,8 @@ CHANGES
 
 0.4.1
 -----
+- removed regular expression step from most statement compilations.
+  also fixes [ticket:833]
 
 - Added test coverage for unknown type reflection, fixed sqlite/mysql
   handling of type reflection for unknown types.

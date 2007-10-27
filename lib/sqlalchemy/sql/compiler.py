@@ -43,6 +43,15 @@ BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
 BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
 ANONYMOUS_LABEL = re.compile(r'{ANON (-?\d+) (.*)}')
 
+BIND_TEMPLATES = {
+    'pyformat':"%%(%(name)s)s",
+    'qmark':"?",
+    'format':"%%s",
+    'numeric':"%(position)s",
+    'named':":%(name)s"
+}
+    
+
 OPERATORS =  {
     operators.and_ : 'AND',
     operators.or_ : 'OR',
@@ -132,15 +141,14 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         # for aliases
         self.generated_ids = {}
         
-        # default formatting style for bind parameters
-        self.bindtemplate = ":%s"
-
         # paramstyle from the dialect (comes from DB-API)
         self.paramstyle = self.dialect.paramstyle
 
         # true if the paramstyle is positional
         self.positional = self.dialect.positional
 
+        self.bindtemplate = BIND_TEMPLATES[self.paramstyle]
+        
         # a list of the compiled's bind parameter names, used to help
         # formulate a positional argument list
         self.positiontup = []
@@ -148,38 +156,8 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         # an IdentifierPreparer that formats the quoting of identifiers
         self.preparer = self.dialect.identifier_preparer
         
-        
-    def after_compile(self):
-        # this re will search for params like :param
-        # it has a negative lookbehind for an extra ':' so that it doesnt match
-        # postgres '::text' tokens
-        text = self.string
-        if ':' not in text:
-            return
-        
-        if self.paramstyle=='pyformat':
-            text = BIND_PARAMS.sub(lambda m:'%(' + m.group(1) +')s', text)
-        elif self.positional:
-            params = BIND_PARAMS.finditer(text)
-            for p in params:
-                self.positiontup.append(p.group(1))
-            if self.paramstyle=='qmark':
-                text = BIND_PARAMS.sub('?', text)
-            elif self.paramstyle=='format':
-                text = BIND_PARAMS.sub('%s', text)
-            elif self.paramstyle=='numeric':
-                i = [0]
-                def getnum(x):
-                    i[0] += 1
-                    return str(i[0])
-                text = BIND_PARAMS.sub(getnum, text)
-        # un-escape any \:params
-        text = BIND_PARAMS_ESC.sub(lambda m: m.group(1), text)
-        self.string = text
-
     def compile(self):
         self.string = self.process(self.statement)
-        self.after_compile()
     
     def process(self, obj, stack=None, **kwargs):
         if stack:
@@ -291,11 +269,20 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         return typeclause.type.dialect_impl(self.dialect).get_col_spec()
 
     def visit_textclause(self, textclause, **kwargs):
-        for bind in textclause.bindparams.values():
-            self.process(bind)
         if textclause.typemap is not None:
             self.typemap.update(textclause.typemap)
-        return textclause.text
+            
+        def do_bindparam(m):
+            name = m.group(1)
+            if name in textclause.bindparams:
+                return self.process(textclause.bindparams[name])
+            else:
+                return self.bindparam_string(name)
+
+        # un-escape any \:params
+        return BIND_PARAMS_ESC.sub(lambda m: m.group(1), 
+            BIND_PARAMS.sub(do_bindparam, textclause.text)
+        )
 
     def visit_null(self, null, **kwargs):
         return 'NULL'
@@ -437,7 +424,10 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         return ANONYMOUS_LABEL.sub(self._process_anon, name)
             
     def bindparam_string(self, name):
-        return self.bindtemplate % name
+        if self.positional:
+            self.positiontup.append(name)
+            
+        return self.bindtemplate % {'name':name, 'position':len(self.positiontup)}
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
         if asfrom:
