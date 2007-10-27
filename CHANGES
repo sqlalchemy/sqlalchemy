@@ -24,6 +24,8 @@ CHANGES
 
 - improved behavior of add_property() etc., fixed [ticket:831] involving
   synonym/deferred
+
+- fixed clear_mappers() behavior to better clean up after itself
   
 - Made access dao dection more reliable [ticket:828]
   
