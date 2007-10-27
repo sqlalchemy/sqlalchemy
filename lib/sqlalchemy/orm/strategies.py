@@ -492,9 +492,9 @@ class EagerLoader(AbstractRelationLoader):
             if len(path) / 2 > self.join_depth:
                 return
         else:
-            if self.mapper in path:
+            if self.mapper.base_mapper in path:
                 return
-        
+
         #print "CREATING EAGER PATH FOR", "->".join([str(s) for s in path])
         
         if parentmapper is None:

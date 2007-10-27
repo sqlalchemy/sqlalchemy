@@ -566,6 +566,45 @@ class SelfReferentialM2MEagerTest(ORMTest):
 #        l = sess.query(Widget).filter(Widget.name=='w1').all()
 #        print l
         assert [Widget(name='w1', children=[Widget(name='w2')])] == sess.query(Widget).filter(Widget.name=='w1').all()
+    
+class CyclicalInheritingEagerTest(ORMTest):
+    def define_tables(self, metadata):
+        global t1, t2
+        t1 = Table('t1', metadata, 
+            Column('c1', Integer, primary_key=True),
+            Column('c2', String(30)),
+            Column('type', String(30))
+            )
+
+        t2 = Table('t2', metadata, 
+            Column('c1', Integer, primary_key=True),
+            Column('c2', String(30)),
+            Column('type', String(30)),
+            Column('t1.id', Integer, ForeignKey('t1.c1')))
+    
+    def test_basic(self):
+        class T(object):
+            pass
+        
+        class SubT(T):
+            pass
+        
+        class T2(object):
+            pass
+
+        class SubT2(T2):
+            pass
+            
+        mapper(T, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1')
+        mapper(SubT, None, inherits=T, polymorphic_identity='subt1', properties={
+            't2s':relation(SubT2, lazy=False, backref=backref('subt', lazy=False))
+        })
+        mapper(T2, t2, polymorphic_on=t2.c.type, polymorphic_identity='t2')
+        mapper(SubT2, None, inherits=T2, polymorphic_identity='subt2')
+        
+        # testing a particular endless loop condition in eager join setup
+        create_session().query(SubT).all()
+        
         
 if __name__ == '__main__':
     testbase.main()
