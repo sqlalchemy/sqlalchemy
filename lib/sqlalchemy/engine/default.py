@@ -134,7 +134,7 @@ class DefaultDialect(base.Dialect):
 class DefaultExecutionContext(base.ExecutionContext):
     def __init__(self, dialect, connection, compiled=None, statement=None, parameters=None):
         self.dialect = dialect
-        self._connection = connection
+        self._connection = self.root_connection = connection
         self.compiled = compiled
         self._postfetch_cols = util.Set()
         self.engine = connection.engine
@@ -168,8 +168,6 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.cursor = self.create_cursor()
     
     connection = property(lambda s:s._connection._branch())
-    
-    root_connection = property(lambda s:s._connection)
     
     def __encode_param_keys(self, params):
         """apply string encoding to the keys of dictionary-based bind parameters.

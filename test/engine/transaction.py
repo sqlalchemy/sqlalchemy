@@ -249,36 +249,36 @@ class TransactionTest(PersistTest):
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testmixedtwophasetransaction(self):
         connection = testbase.db.connect()
-        
+    
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=1, user_name='user1')
-        
+    
         transaction2 = connection.begin()
         connection.execute(users.insert(), user_id=2, user_name='user2')
-        
+    
         transaction3 = connection.begin_nested()
         connection.execute(users.insert(), user_id=3, user_name='user3')
-        
+    
         transaction4 = connection.begin()
         connection.execute(users.insert(), user_id=4, user_name='user4')
         transaction4.commit()
-        
+    
         transaction3.rollback()
-        
+    
         connection.execute(users.insert(), user_id=5, user_name='user5')
-        
+    
         transaction2.commit()
-        
+    
         transaction.prepare()
-        
+    
         transaction.commit()
-        
+    
         self.assertEquals(
             connection.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
             [(1,),(2,),(5,)]
         )
         connection.close()
-        
+            
     @testing.supported('postgres')
     def testtwophaserecover(self):
         # MySQL recovery doesn't currently seem to work correctly

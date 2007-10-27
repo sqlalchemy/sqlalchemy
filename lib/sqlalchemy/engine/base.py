@@ -671,32 +671,30 @@ class Connection(Connectable):
         return self.__transaction is not None
 
     def _begin_impl(self):
-        if self.__connection.is_valid:
-            if self.__engine._should_log_info:
-                self.__engine.logger.info("BEGIN")
-            try:
-                self.__engine.dialect.do_begin(self.connection)
-            except Exception, e:
-                raise exceptions.DBAPIError.instance(None, None, e)
+        if self.__engine._should_log_info:
+            self.__engine.logger.info("BEGIN")
+        try:
+            self.__engine.dialect.do_begin(self.__connection)
+        except Exception, e:
+            raise exceptions.DBAPIError.instance(None, None, e)
 
     def _rollback_impl(self):
         if self.__connection.is_valid:
             if self.__engine._should_log_info:
                 self.__engine.logger.info("ROLLBACK")
             try:
-                self.__engine.dialect.do_rollback(self.connection)
+                self.__engine.dialect.do_rollback(self.__connection)
             except Exception, e:
                 raise exceptions.DBAPIError.instance(None, None, e)
         self.__transaction = None
 
     def _commit_impl(self):
-        if self.__connection.is_valid:
-            if self.__engine._should_log_info:
-                self.__engine.logger.info("COMMIT")
-            try:
-                self.__engine.dialect.do_commit(self.connection)
-            except Exception, e:
-                raise exceptions.DBAPIError.instance(None, None, e)
+        if self.__engine._should_log_info:
+            self.__engine.logger.info("COMMIT")
+        try:
+            self.__engine.dialect.do_commit(self.__connection)
+        except Exception, e:
+            raise exceptions.DBAPIError.instance(None, None, e)
         self.__transaction = None
 
     def _savepoint_impl(self, name=None):
@@ -1307,6 +1305,7 @@ class ResultProxy(object):
         self.dialect = context.dialect
         self.closed = False
         self.cursor = context.cursor
+        self.connection = context.root_connection
         self.__echo = context.engine._should_log_info
         if context.is_select():
             self._init_metadata()
@@ -1314,8 +1313,6 @@ class ResultProxy(object):
         else:
             self._rowcount = context.get_rowcount()
             self.close()
-
-    connection = property(lambda self:self.context.root_connection)
 
     def _get_rowcount(self):
         if self._rowcount is not None:

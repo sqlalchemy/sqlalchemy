@@ -301,7 +301,7 @@ class _ConnectionFairy(object):
     _logger = property(lambda self: self._pool.logger)
     
     is_valid = property(lambda self:self.connection is not None)
-
+    
     def _get_properties(self):
         """A property collection unique to this DB-API connection."""
         
