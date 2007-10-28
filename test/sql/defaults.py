@@ -243,6 +243,34 @@ class DefaultTest(PersistTest):
         finally:
             testbase.db.execute("drop table speedy_users", None)
 
+class PKDefaultTest(PersistTest):
+    def setUpAll(self):
+        global metadata, t1, t2
+        
+        metadata = MetaData(testbase.db)
+        
+        t2 = Table('t2', metadata, 
+            Column('nextid', Integer))
+            
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True, default=select([func.max(t2.c.nextid)]).as_scalar()),
+            Column('data', String(30)))
+    
+        metadata.create_all()
+    
+    def tearDownAll(self):
+        metadata.drop_all()
+        
+    def test_basic(self):
+        t2.insert().execute(nextid=1)
+        r = t1.insert().execute(data='hi')
+        assert r.last_inserted_ids() == [1]
+
+        t2.insert().execute(nextid=2)
+        r = t1.insert().execute(data='there')
+        assert r.last_inserted_ids() == [2]
+        
+        
 class AutoIncrementTest(PersistTest):
     def setUp(self):
         global aitable, aimeta

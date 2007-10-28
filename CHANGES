@@ -20,6 +20,11 @@ CHANGES
   
 - sqlite will reflect "DECIMAL" as a numeric column.
 
+- fixed INSERT statements w.r.t. primary key columns that have SQL-expression
+  based default generators on them; SQL expression executes inline as normal
+  but will not trigger a "postfetch" condition for the column, for those DB's
+  who provide it via cursor.lastrowid
+  
 - Renamed the Dialect attribute 'preexecute_sequences' to
   'preexecute_pk_sequences'.  An attribute proxy is in place for out-of-tree
   dialects using the old name.

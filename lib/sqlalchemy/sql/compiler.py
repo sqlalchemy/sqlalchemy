@@ -664,8 +664,7 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
                 values.append((c, value))
             elif isinstance(c, schema.Column):
                 if self.isinsert:
-                    if (c.primary_key and self.dialect.preexecute_pk_sequences
-                        and not self.inline):
+                    if (c.primary_key and self.dialect.preexecute_pk_sequences and not self.inline):
                         if (((isinstance(c.default, schema.Sequence) and
                               not c.default.optional) or
                              not self.dialect.supports_pk_autoincrement) or
@@ -676,17 +675,21 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
                     elif isinstance(c.default, schema.ColumnDefault):
                         if isinstance(c.default.arg, sql.ClauseElement):
                             values.append((c, self.process(c.default.arg.self_group())))
-                            self.postfetch.add(c)
+                            if not c.primary_key:
+                                # dont add primary key column to postfetch
+                                self.postfetch.add(c)
                         else:
                             values.append((c, create_bind_param(c, None)))
                             self.prefetch.add(c)
                     elif isinstance(c.default, schema.PassiveDefault):
-                        self.postfetch.add(c)
+                        if not c.primary_key:
+                            self.postfetch.add(c)
                     elif isinstance(c.default, schema.Sequence):
                         proc = self.process(c.default)
                         if proc is not None:
                             values.append((c, proc))
-                            self.postfetch.add(c)
+                            if not c.primary_key:
+                                self.postfetch.add(c)
                 elif self.isupdate:
                     if isinstance(c.onupdate, schema.ColumnDefault):
                         if isinstance(c.onupdate.arg, sql.ClauseElement):
