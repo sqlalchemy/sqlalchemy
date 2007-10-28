@@ -497,6 +497,52 @@ class SelfReferentialEagerTest(ORMTest):
             ]) == d
         self.assert_sql_count(testbase.db, go, 1)
 
+    def test_options(self):
+        class Node(Base):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relation(Node, lazy=True)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
+        sess.save(n1)
+        sess.flush()
+        sess.clear()
+        def go():
+            d = sess.query(Node).filter_by(data='n1').options(eagerload('children.children')).first()
+            assert Node(data='n1', children=[
+                Node(data='n11'),
+                Node(data='n12', children=[
+                    Node(data='n121'),
+                    Node(data='n122'),
+                    Node(data='n123')
+                ]),
+                Node(data='n13')
+            ]) == d
+        self.assert_sql_count(testbase.db, go, 2)
+
+        def go():
+            d = sess.query(Node).filter_by(data='n1').options(eagerload('children.children')).first()
+
+        # test that the query isn't wrapping the initial query for eager loading.
+        # testing only sqlite for now since the query text is slightly different on other
+        # dialects
+        if testing.against('sqlite'):
+            self.assert_sql(testbase.db, go, [
+                (
+                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data FROM nodes WHERE nodes.data = :nodes_data ORDER BY nodes.oid  LIMIT 1 OFFSET 0",
+                    {'nodes_data': 'n1'}
+                ),
+            ])
+
     def test_no_depth(self):
         class Node(Base):
             def append(self, node):

@@ -1423,15 +1423,6 @@ class MySQLDialect(default.DefaultDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def compiler(self, statement, bindparams, **kwargs):
-        return MySQLCompiler(statement, bindparams, dialect=self, **kwargs)
-
-    def schemagenerator(self, *args, **kwargs):
-        return MySQLSchemaGenerator(self, *args, **kwargs)
-
-    def schemadropper(self, *args, **kwargs):
-        return MySQLSchemaDropper(self, *args, **kwargs)
-
     def do_executemany(self, cursor, statement, parameters, context=None):
         rowcount = cursor.executemany(statement, parameters)
         if context is not None:

@@ -28,10 +28,14 @@ CHANGES
   synonym/deferred
 
 - fixed clear_mappers() behavior to better clean up after itself
-  
+
+- behavior of query.options() is now fully based on paths, i.e. an option
+  such as eagerload_all('x.y.z.y.x') will apply eagerloading to only
+  those paths, i.e. and not 'x.y.x'; eagerload('children.children') applies
+  only to exactly two-levels deep, etc. [ticket:777]
+
 - Made access dao dection more reliable [ticket:828]
-  
-  
+
 0.4.0
 -----
 

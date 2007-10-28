@@ -1477,7 +1477,7 @@ class Mapper(object):
     def populate_instance(self, selectcontext, instance, row, ispostselect=None, isnew=False, **flags):
         """populate an instance from a result row."""
 
-        snapshot = selectcontext.stack.push_mapper(self)
+        snapshot = selectcontext.path + (self,)
         # retrieve a set of "row population" functions derived from the MapperProperties attached
         # to this Mapper.  These are keyed in the select context based primarily off the 
         # "snapshot" of the stack, which represents a path from the lead mapper in the query to this one,
@@ -1492,14 +1492,14 @@ class Mapper(object):
             existing_populators = []
             post_processors = []
             for prop in self.__props.values():
-                (newpop, existingpop, post_proc) = prop.create_row_processor(selectcontext, self, row)
+                (newpop, existingpop, post_proc) = selectcontext.exec_with_path(self, prop.key, prop.create_row_processor, selectcontext, self, row)
                 if newpop is not None:
-                    new_populators.append(newpop)
+                    new_populators.append((prop.key, newpop))
                 if existingpop is not None:
-                    existing_populators.append(existingpop)
+                    existing_populators.append((prop.key, existingpop))
                 if post_proc is not None:
                     post_processors.append(post_proc)
-                    
+                
             poly_select_loader = self._get_poly_select_loader(selectcontext, row)
             if poly_select_loader is not None:
                 post_processors.append(poly_select_loader)
@@ -1512,10 +1512,8 @@ class Mapper(object):
         else:
             populators = existing_populators
                 
-        for p in populators:
-            p(instance, row, ispostselect=ispostselect, isnew=isnew, **flags)
-        
-        selectcontext.stack.pop()
+        for (key, populator) in populators:
+            selectcontext.exec_with_path(self, key, populator, instance, row, ispostselect=ispostselect, isnew=isnew, **flags)
             
         if self.non_primary:
             selectcontext.attributes[('populating_mapper', instance)] = self

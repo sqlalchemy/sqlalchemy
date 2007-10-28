@@ -6,6 +6,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
 from testlib import *
+from testlib import fixtures
 
 class EagerTest(AssertMixin):
     def setUpAll(self):
@@ -777,6 +778,83 @@ class EagerTest8(ORMTest):
 
         for t in session.query(cls.mapper).limit(10).offset(0).list():
             print t.id, t.title, t.props_cnt        
+
+class EagerTest9(ORMTest):
+    """test the usage of query options to eagerly load specific paths.  
+    
+    this relies upon the 'path' construct used by PropertyOption to relate 
+    LoaderStrategies to specific paths, as well as the path state maintained 
+    throughout the query setup/mapper instances process.
+    """
+    
+    def define_tables(self, metadata):
+        global accounts_table, transactions_table, entries_table
+        accounts_table = Table('accounts', metadata,
+            Column('account_id', Integer, primary_key=True),
+            Column('name', String(40)),
+        )
+        transactions_table = Table('transactions', metadata,
+            Column('transaction_id', Integer, primary_key=True),
+            Column('name', String(40)),
+        )
+        entries_table = Table('entries', metadata,
+            Column('entry_id', Integer, primary_key=True),
+            Column('name', String(40)),
+            Column('account_id', Integer, ForeignKey(accounts_table.c.account_id)),
+            Column('transaction_id', Integer, ForeignKey(transactions_table.c.transaction_id)),
+        )
+
+    def test_eagerload_on_path(self):
+        class Account(fixtures.Base):
+            pass
+
+        class Transaction(fixtures.Base):
+            pass
+
+        class Entry(fixtures.Base):
+            pass
+
+        mapper(Account, accounts_table)
+        mapper(Transaction, transactions_table)
+        mapper(Entry, entries_table, properties = dict(
+            account = relation(Account, uselist=False, backref=backref('entries', lazy=True)),
+            transaction = relation(Transaction, uselist=False, backref=backref('entries', lazy=False)),
+        ))
+
+        session = create_session()
+
+        tx1 = Transaction(name='tx1')
+        tx2 = Transaction(name='tx2')
+
+        acc1 = Account(name='acc1')
+        ent11 = Entry(name='ent11', account=acc1, transaction=tx1)
+        ent12 = Entry(name='ent12', account=acc1, transaction=tx2)
+
+        acc2 = Account(name='acc2')
+        ent21 = Entry(name='ent21', account=acc2, transaction=tx1)
+        ent22 = Entry(name='ent22', account=acc2, transaction=tx2)
+
+        session.save(acc1)
+        session.flush()
+        session.clear()
+
+        def go():
+            # load just the first Account.  eager loading will actually load all objects saved thus far,
+            # but will not eagerly load the "accounts" off the immediate "entries"; only the 
+            # "accounts" off the entries->transaction->entries
+            acc = session.query(Account).options(eagerload_all('entries.transaction.entries.account')).first()
+            
+            # no sql occurs
+            assert acc.name == 'acc1'
+            assert acc.entries[0].transaction.entries[0].account.name == 'acc1'
+            assert acc.entries[0].transaction.entries[1].account.name == 'acc2'
+
+            # lazyload triggers but no sql occurs because many-to-one uses cached query.get()
+            for e in acc.entries:
+                assert e.account is acc
+                
+        self.assert_sql_count(testbase.db, go, 1)
+        
         
     
 if __name__ == "__main__":    
