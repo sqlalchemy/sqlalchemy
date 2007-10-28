@@ -15,6 +15,9 @@ CHANGES
 
 - Added contains operator (which generate a "LIKE %<other>%" clause).
 
+- fixed expression translation of text() clauses; this repairs various
+  ORM scenarios where literal text is used for SQL expressions
+  
 - sqlite will reflect "DECIMAL" as a numeric column.
 
 - Renamed the Dialect attribute 'preexecute_sequences' to

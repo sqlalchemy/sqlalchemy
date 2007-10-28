@@ -3,6 +3,7 @@ from sqlalchemy import *
 from sqlalchemy.sql import table, column, ClauseElement
 from testlib import *
 from sqlalchemy.sql.visitors import *
+from sqlalchemy import util
 
 class TraversalTest(AssertMixin):
     """test ClauseVisitor's traversal, particularly its ability to copy and modify
@@ -165,7 +166,21 @@ class ClauseTest(SQLCompileTest):
         clause2 = Vis().traverse(clause, clone=True)
         assert c1 == str(clause)
         assert str(clause2) == str(t1.join(t2, t1.c.col2==t2.c.col3))
-    
+        
+    def test_text(self):
+        clause = text("select * from table where foo=:bar", bindparams=[bindparam('bar')])
+        c1 = str(clause)
+        class Vis(ClauseVisitor):
+            def visit_textclause(self, text):
+                text.text = text.text + " SOME MODIFIER=:lala"
+                text.bindparams['lala'] = bindparam('lala')
+                
+        clause2 = Vis().traverse(clause, clone=True)
+        assert c1 == str(clause)
+        assert str(clause2) == c1 + " SOME MODIFIER=:lala"
+        assert clause.bindparams.keys() == ['bar']
+        assert util.Set(clause2.bindparams.keys()) == util.Set(['bar', 'lala'])
+                
     def test_select(self):
         s2 = select([t1])
         s2_assert = str(s2)

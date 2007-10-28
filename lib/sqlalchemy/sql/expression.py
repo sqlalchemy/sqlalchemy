@@ -1870,7 +1870,7 @@ class _TextClause(ClauseElement):
     columns = property(lambda s:[])
 
     def _copy_internals(self):
-        self.bindparams = [b._clone() for b in self.bindparams]
+        self.bindparams = dict([(b.key, b._clone()) for b in self.bindparams.values()])
 
     def get_children(self, **kwargs):
         return self.bindparams.values()
