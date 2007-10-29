@@ -122,8 +122,11 @@ class ExtensionCarrier(object):
     """
     
     def __init__(self, _elements=None):
-        self.__elements = _elements or []
         self.methods = {}
+        if _elements is not None:
+            self.__elements = [self.__inspect(e) for e in _elements]
+        else:
+            self.__elements = []
         
     def copy(self):
         return ExtensionCarrier(list(self.__elements))
