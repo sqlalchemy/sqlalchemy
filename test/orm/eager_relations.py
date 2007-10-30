@@ -250,10 +250,10 @@ class EagerTest(QueryTest):
 
         mapper(Item, items)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, lazy=False)
+            'items':relation(Item, secondary=order_items, lazy=False, order_by=items.c.id)
         })
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), lazy=False),
+            'addresses':relation(mapper(Address, addresses), lazy=False, order_by=addresses.c.id),
             'orders':relation(Order, lazy=True)
         })
 
@@ -264,7 +264,9 @@ class EagerTest(QueryTest):
             l = q.limit(2).all()
             assert fixtures.user_all_result[:2] == l
         else:        
-            l = q.limit(2).offset(1).all()
+            l = q.limit(2).offset(1).order_by(User.id).all()
+            print fixtures.user_all_result[1:3]
+            print l
             assert fixtures.user_all_result[1:3] == l
     
     def test_distinct(self):

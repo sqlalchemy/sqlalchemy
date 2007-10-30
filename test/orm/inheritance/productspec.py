@@ -247,7 +247,6 @@ class InheritTest(ORMTest):
         assert orig == new  == '<Assembly a1> specification=None documents=[<RasterDocument doc2>]'
 
         del a1.documents[0]
-        session.save(a1)
         session.flush()
         session.clear()
 

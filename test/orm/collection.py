@@ -1155,7 +1155,6 @@ class DictHelpersTest(ORMTest):
         collections.collection_adapter(p.children).append_with_event(
             Child('foo', 'newvalue'))
         
-        session.save(p)
         session.flush()
         session.clear()
         
@@ -1215,7 +1214,6 @@ class DictHelpersTest(ORMTest):
         collections.collection_adapter(p.children).append_with_event(
             Child('foo', '1', 'newvalue'))
         
-        session.save(p)
         session.flush()
         session.clear()
         

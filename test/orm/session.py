@@ -396,14 +396,22 @@ class SessionTest(AssertMixin):
         
         
     @engines.close_open_connections
-    def test_update(self):
-        """test that the update() method functions and doesnet blow away changes"""
+    def test_save_update(self):
+        
         s = create_session()
-        class User(object):pass
+        class User(object):
+            pass
         mapper(User, users)
         
-        # save user
-        s.save(User())
+        user = User()
+
+        try:
+            s.update(user)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Instance 'User@%s' is not persisted" % hex(id(user))
+            
+        s.save(user)
         s.flush()
         user = s.query(User).selectone()
         s.expunge(user)
@@ -425,6 +433,12 @@ class SessionTest(AssertMixin):
         s.update(user)
         assert user in s
         assert user not in s.dirty
+        
+        try:
+            s.save(user)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Instance 'User@%s' is already persistent" % hex(id(user))
     
     def test_is_modified(self):
         s = create_session()

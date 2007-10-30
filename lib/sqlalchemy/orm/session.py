@@ -631,6 +631,8 @@ class Session(object):
                         
         if self.bind is not None:
             return self.bind
+        elif mapper is None:
+            raise exceptions.InvalidRequestError("Could not locate any mapper associated with SQL expression")
         else:
             if isinstance(mapper, type):
                 mapper = _class_mapper(mapper)
@@ -721,7 +723,7 @@ class Session(object):
 
         self._validate_persistent(obj)
         if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
-            raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % repr(obj))
+            raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(obj))
 
     def expire(self, obj):
         """Mark the given object as expired.
@@ -753,7 +755,7 @@ class Session(object):
 
         def exp():
             if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
-                raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % repr(obj))
+                raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(obj))
 
         attribute_manager.trigger_history(obj, exp)
 
@@ -954,10 +956,7 @@ class Session(object):
     
     def _save_impl(self, obj, **kwargs):
         if hasattr(obj, '_instance_key'):
-            if obj._instance_key not in self.identity_map:
-                raise exceptions.InvalidRequestError("Instance '%s' is a detached instance "
-                                                     "or is already persistent in a "
-                                                     "different Session" % repr(obj))
+            raise exceptions.InvalidRequestError("Instance '%s' is already persistent" % mapperutil.instance_str(obj))
         else:
             # TODO: consolidate the steps here
             attribute_manager.manage(obj)
@@ -969,7 +968,7 @@ class Session(object):
         if self._is_attached(obj) and obj not in self.deleted:
             return
         if not hasattr(obj, '_instance_key'):
-            raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % repr(obj))
+            raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % mapperutil.instance_str(obj))
         self._attach(obj)
 
     def _register_persistent(self, obj):
@@ -983,7 +982,7 @@ class Session(object):
             if old_id is not None and old_id in _sessions:
                 raise exceptions.InvalidRequestError("Object '%s' is already attached "
                                                      "to session '%s' (this is '%s')" %
-                                                     (repr(obj), old_id, id(self)))
+                                                     (mapperutil.instance_str(obj), old_id, id(self)))
 
                 # auto-removal from the old session is disabled.  but if we decide to
                 # turn it back on, do it as below: gingerly since _sessions is a WeakValueDict
@@ -1001,7 +1000,7 @@ class Session(object):
 
     def _unattach(self, obj):
         if not self._is_attached(obj):
-            raise exceptions.InvalidRequestError("Instance '%s' not attached to this Session" % repr(obj))
+            raise exceptions.InvalidRequestError("Instance '%s' not attached to this Session" % mapperutil.instance_str(obj))
         del obj._sa_session_id
 
     def _validate_persistent(self, obj):

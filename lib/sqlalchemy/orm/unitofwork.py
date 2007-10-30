@@ -304,6 +304,17 @@ class UOWTransaction(object):
 
         task.append(obj, listonly, isdelete=isdelete, **kwargs)
 
+    def set_row_switch(self, obj):
+        """mark a deleted object as a 'row switch'.
+        
+        this indicates that an INSERT statement elsewhere corresponds to this DELETE;
+        the INSERT is converted to an UPDATE and the DELETE does not occur.
+        """
+        mapper = object_mapper(obj)
+        task = self.get_task_by_mapper(mapper)
+        taskelement = task._objects[obj]
+        taskelement.isdelete = "rowswitch"
+        
     def unregister_object(self, obj):
         """remove an object from its parent UOWTask.
         
@@ -902,7 +913,7 @@ class UOWTaskElement(object):
         self.childtasks = []
         self.__isdelete = False
         self.__preprocessed = {}
-
+        
     def _get_listonly(self):
         return self.__listonly
 

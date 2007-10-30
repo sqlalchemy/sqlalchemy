@@ -37,6 +37,13 @@ CHANGES
 
 - fixed clear_mappers() behavior to better clean up after itself
 
+- fix to "row switch" behavior, i.e. when an INSERT/DELETE is combined into a
+  single UPDATE; many-to-many relations on the parent object update properly. 
+  [ticket:841]
+
+- it's an error to session.save() an object which is already persistent
+  [ticket:840]
+  
 - behavior of query.options() is now fully based on paths, i.e. an option
   such as eagerload_all('x.y.z.y.x') will apply eagerloading to only
   those paths, i.e. and not 'x.y.x'; eagerload('children.children') applies

@@ -1703,6 +1703,138 @@ class SaveTest3(ORMTest):
         Session.commit()
         assert t2.count().scalar() == 0
 
+class RowSwitchTest(ORMTest):
+    def define_tables(self, metadata):
+        global t1, t2, t3, t1t3
+        
+        global T1, T2, T3
+        
+        Session.remove()
+        
+        # parent
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30), nullable=False))
 
+        # onetomany
+        t2 = Table('t2', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30), nullable=False),
+            Column('t1id', Integer, ForeignKey('t1.id'),nullable=False),
+            )
+
+        # associated
+        t3 = Table('t3', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30), nullable=False),
+            )
+
+        #manytomany
+        t1t3 = Table('t1t3', metadata,
+            Column('t1id', Integer, ForeignKey('t1.id'),nullable=False),
+            Column('t3id', Integer, ForeignKey('t3.id'),nullable=False),
+        )
+        
+        class T1(fixtures.Base):
+            pass
+
+        class T2(fixtures.Base):
+            pass
+
+        class T3(fixtures.Base):
+            pass
+    
+    def tearDown(self):
+        Session.remove()
+        super(RowSwitchTest, self).tearDown()
+        
+    def test_onetomany(self):
+        mapper(T1, t1, properties={
+            't2s':relation(T2, cascade="all, delete-orphan")
+        })
+        mapper(T2, t2)
+        
+        sess = Session(autoflush=False)
+        
+        o1 = T1(data='some t1', id=1)
+        o1.t2s.append(T2(data='some t2', id=1))
+        o1.t2s.append(T2(data='some other t2', id=2))
+        
+        sess.save(o1)
+        sess.flush()
+        
+        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
+        assert list(sess.execute(t2.select(), mapper=T1)) == [(1, 'some t2', 1), (2, 'some other t2', 1)]
+        
+        o2 = T1(data='some other t1', id=o1.id, t2s=[
+            T2(data='third t2', id=3),
+            T2(data='fourth t2', id=4),
+            ])
+        sess.delete(o1)
+        sess.save(o2)
+        sess.flush()
+
+        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some other t1')]
+        assert list(sess.execute(t2.select(), mapper=T1)) == [(3, 'third t2', 1), (4, 'fourth t2', 1)]
+
+    def test_manytomany(self):
+        mapper(T1, t1, properties={
+            't3s':relation(T3, secondary=t1t3, cascade="all, delete-orphan")
+        })
+        mapper(T3, t3)
+
+        sess = Session(autoflush=False)
+
+        o1 = T1(data='some t1', id=1)
+        o1.t3s.append(T3(data='some t3', id=1))
+        o1.t3s.append(T3(data='some other t3', id=2))
+
+        sess.save(o1)
+        sess.flush()
+
+        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
+        assert list(sess.execute(t1t3.select(), mapper=T1)) == [(1,1), (1, 2)]
+        assert list(sess.execute(t3.select(), mapper=T1)) == [(1, 'some t3'), (2, 'some other t3')]
+
+        o2 = T1(data='some other t1', id=1, t3s=[
+            T3(data='third t3', id=3),
+            T3(data='fourth t3', id=4),
+            ])
+        sess.delete(o1)
+        sess.save(o2)
+        sess.flush()
+
+        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some other t1')]
+        assert list(sess.execute(t3.select(), mapper=T1)) == [(3, 'third t3'), (4, 'fourth t3')]
+
+    def test_manytoone(self):
+        
+        mapper(T2, t2, properties={
+            't1':relation(T1)
+        })
+        mapper(T1, t1)
+
+        sess = Session(autoflush=False)
+
+        o1 = T2(data='some t2', id=1)
+        o1.t1 = T1(data='some t1', id=1)
+
+        sess.save(o1)
+        sess.flush()
+
+        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
+        assert list(sess.execute(t2.select(), mapper=T1)) == [(1, 'some t2', 1)]
+
+        o2 = T2(data='some other t2', id=1, t1=T1(data='some other t1', id=2))
+        sess.delete(o1)
+        sess.delete(o1.t1)
+        sess.save(o2)
+        sess.flush()
+
+        assert list(sess.execute(t1.select(), mapper=T1)) == [(2, 'some other t1')]
+        assert list(sess.execute(t2.select(), mapper=T1)) == [(1, 'some other t2', 2)]
+        
+        
+        
 if __name__ == "__main__":
     testbase.main()        
