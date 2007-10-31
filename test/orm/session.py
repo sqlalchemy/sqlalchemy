@@ -681,7 +681,43 @@ class SessionTest(AssertMixin):
         log = []
         sess.commit()
         assert log == ['before_commit', 'after_commit']
+
+    def test_duplicate_update(self):
+        mapper(User, users)
+        Session = sessionmaker()
+        sess = Session()        
+
+        u1 = User()
+        sess.save(u1)
+        sess.flush()
+        assert u1.user_id is not None
         
+        sess.expunge(u1)
+        
+        assert u1 not in sess
+        
+        u2 = sess.query(User).get(u1.user_id)
+        assert u2 is not None and u2 is not u1
+        assert u2 in sess
+        
+        self.assertRaises(Exception, lambda: sess.update(u1))
+
+        sess.expunge(u2)
+        assert u2 not in sess
+        
+        u1.user_name = "John"
+        u2.user_name = "Doe"
+
+        sess.update(u1)
+        assert u1 in sess
+        
+        sess.flush()
+        
+        sess.clear()
+
+        u3 = sess.query(User).get(u1.user_id)
+        assert u3 is not u1 and u3 is not u2 and u3.user_name == u1.user_name
+
 class ScopedSessionTest(ORMTest):
 
     def define_tables(self, metadata):

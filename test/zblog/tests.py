@@ -79,6 +79,7 @@ class SavePostTest(ZBlogTest):
             s.flush()
             s.clear()
 
+            user = s.query(User).get(user_id)
             blog = s.query(Blog).get(blog_id)
             post = blog.posts[0]
             comment = Comment(subject="some subject", body="some body")

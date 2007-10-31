@@ -800,8 +800,9 @@ class Session(object):
         """Bring the given detached (saved) instance into this
         ``Session``.
 
-        If there is a persistent instance with the same identifier
-        already associated with this ``Session``, an exception is thrown.
+        If there is a persistent instance with the same instance key, but 
+        different identity already associated with this ``Session``, an
+        InvalidRequestError exception is thrown.
 
         This operation cascades the `save_or_update` method to
         associated instances if the relation is mapped with
@@ -969,6 +970,8 @@ class Session(object):
             return
         if not hasattr(obj, '_instance_key'):
             raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % mapperutil.instance_str(obj))
+        elif self.identity_map.get(obj._instance_key, obj) is not obj:
+            raise exceptions.InvalidRequestError("Instance '%s' is with key %s already persisted with a different identity" % (mapperutil.instance_str(obj), obj._instance_key))
         self._attach(obj)
 
     def _register_persistent(self, obj):

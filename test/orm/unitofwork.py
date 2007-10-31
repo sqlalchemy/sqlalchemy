@@ -1025,7 +1025,8 @@ class SaveTest(ORMTest):
         # check it again, identity should be different but ids the same
         nu = Session.get(m, u.user_id)
         self.assert_(u is not nu and u.user_id == nu.user_id and nu.user_name == 'savetester')
-
+        Session.close()
+        
         # change first users name and save
         Session.update(u)
         u.user_name = 'modifiedname'

@@ -652,7 +652,7 @@ class EagerTest7(ORMTest):
         # set up an invoice
         i1 = Invoice()
         i1.date = datetime.datetime.now()
-        i1.company = c1
+        i1.company = a
 
         item1 = Item()
         item1.code = 'aaaa'

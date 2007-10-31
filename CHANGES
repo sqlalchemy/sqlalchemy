@@ -59,7 +59,11 @@ CHANGES
 - Fixed a truncation error when re-assigning a subset of a collection
   (obj.relation = obj.relation[1:]) [ticket:834]
 
-- Added proxying of __contains__ and __iter__ methods for scoped sessions.
+- Added proxying of save_or_update, __contains__ and __iter__ methods for
+  scoped sessions.
+
+- session.update() raises an error when updating an instance that is already
+  in the session with a different identity.
 
 0.4.0
 -----
