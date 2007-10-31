@@ -17,14 +17,14 @@ CHANGES
 
 - fixed expression translation of text() clauses; this repairs various
   ORM scenarios where literal text is used for SQL expressions
-  
+
 - sqlite will reflect "DECIMAL" as a numeric column.
 
 - fixed INSERT statements w.r.t. primary key columns that have SQL-expression
   based default generators on them; SQL expression executes inline as normal
   but will not trigger a "postfetch" condition for the column, for those DB's
   who provide it via cursor.lastrowid
-  
+
 - Renamed the Dialect attribute 'preexecute_sequences' to
   'preexecute_pk_sequences'.  An attribute proxy is in place for out-of-tree
   dialects using the old name.
@@ -43,13 +43,18 @@ CHANGES
 
 - it's an error to session.save() an object which is already persistent
   [ticket:840]
-  
+
 - behavior of query.options() is now fully based on paths, i.e. an option
   such as eagerload_all('x.y.z.y.x') will apply eagerloading to only
   those paths, i.e. and not 'x.y.x'; eagerload('children.children') applies
   only to exactly two-levels deep, etc. [ticket:777]
 
-- Made access dao dection more reliable [ticket:828]
+- Made access dao detection more reliable [ticket:828]
+
+- Removed unused util.hash().
+
+- Fixed __hash__ for association proxy- these collections are unhashable,
+  just like their mutable Python counterparts.
 
 0.4.0
 -----

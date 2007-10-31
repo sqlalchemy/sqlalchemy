@@ -112,13 +112,6 @@ def flatten_iterator(x):
         else:
             yield elem
 
-def hash(string):
-    """return an md5 hash of the given string."""
-    h = md5.new()
-    h.update(string)
-    return h.hexdigest()
-    
-
 class ArgSingleton(type):
     instances = {}
 
@@ -529,6 +522,7 @@ class OrderedSet(Set):
       return self
 
     __isub__ = difference_update
+
 
 class UniqueAppender(object):
     """appends items to a collection such that only unique items
