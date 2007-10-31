@@ -5,9 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 __all__ = [ 'TypeEngine', 'TypeDecorator',
-            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'FLOAT', 'DECIMAL',
-            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN',
-            'SMALLINT', 'DATE', 'TIME',
+            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'FLOAT',
+            'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB',
+            'BOOLEAN', 'SMALLINT', 'DATE', 'TIME',
             'String', 'Integer', 'SmallInteger','Smallinteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
             'Boolean', 'Unicode', 'PickleType', 'Interval',
@@ -346,7 +346,7 @@ class SmallInteger(Integer):
 Smallinteger = SmallInteger
 
 class Numeric(TypeEngine):
-    def __init__(self, precision = 10, length = 2, asdecimal=True):
+    def __init__(self, precision=10, length=2, asdecimal=True):
         self.precision = precision
         self.length = length
         self.asdecimal = asdecimal
@@ -566,20 +566,21 @@ class Interval(TypeDecorator):
                     return impl_processor(value) - zero_timestamp
             return process
             
-class FLOAT(Float):pass
-class TEXT(String):pass
-class DECIMAL(Numeric):pass
-class INT(Integer):pass
+class FLOAT(Float): pass
+class TEXT(String): pass
+class NUMERIC(Numeric): pass
+class DECIMAL(Numeric): pass
+class INT(Integer): pass
 INTEGER = INT
-class SMALLINT(Smallinteger):pass
+class SMALLINT(Smallinteger): pass
 class TIMESTAMP(DateTime): pass
 class DATETIME(DateTime): pass
 class DATE(Date): pass
 class TIME(Time): pass
 class CLOB(TEXT): pass
 class VARCHAR(String): pass
-class CHAR(String):pass
-class NCHAR(Unicode):pass
+class CHAR(String): pass
+class NCHAR(Unicode): pass
 class BLOB(Binary): pass
 class BOOLEAN(Boolean): pass
 
