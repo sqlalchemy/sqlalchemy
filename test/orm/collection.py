@@ -58,7 +58,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         manager.register_class(Foo)
         manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -96,7 +96,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         manager.register_class(Foo)
         manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -238,7 +238,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         manager.register_class(Foo)
         manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         direct = obj.attr
@@ -362,7 +362,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         manager.register_class(Foo)
         manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -495,7 +495,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         manager.register_class(Foo)
         manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         direct = obj.attr
@@ -600,7 +600,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         manager.register_class(Foo)
         manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -718,7 +718,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         manager.register_class(Foo)
         manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         direct = obj.attr
@@ -893,7 +893,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         manager.register_class(Foo)
         manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -1027,7 +1027,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         manager.register_class(Foo)
         manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=Custom)
+                                   typecallable=Custom, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -1096,7 +1096,7 @@ class CollectionsTest(PersistTest):
         canary = Canary()
         creator = entity_maker
         manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary)
+        manager.register_attribute(Foo, 'attr', True, extension=canary, useobject=True)
 
         obj = Foo()
         col1 = obj.attr

@@ -1081,14 +1081,40 @@ class SaveTest(ORMTest):
         self.assert_(l.user_id == au.user_id and l.address_id == au.address_id)
     
     def test_deferred(self):
-        """test that a deferred load within a commit() doesnt screw up the connection"""
+        """test deferred column operations"""
+        
         mapper(User, users, properties={
             'user_name':deferred(users.c.user_name)
         })
+        
+        # dont set deferred attribute, commit session
         u = User()
         u.user_id=42
         Session.commit()
-  
+
+        #  assert that changes get picked up
+        u.user_name = 'some name'
+        Session.commit()
+        assert list(Session.execute(users.select(), mapper=User)) == [(42, 'some name')]
+        Session.clear()
+        
+        # assert that a set operation doesn't trigger a load operation
+        u = Session.query(User).filter(User.user_name=='some name').one()
+        def go():
+            u.user_name = 'some other name'
+        self.assert_sql_count(testbase.db, go, 0)
+        Session.flush()
+        assert list(Session.execute(users.select(), mapper=User)) == [(42, 'some other name')]
+        
+        Session.clear()
+        
+        # test assigning None to an unloaded deferred also works
+        u = Session.query(User).filter(User.user_name=='some other name').one()
+        u.user_name = None
+        Session.flush()
+        assert list(Session.execute(users.select(), mapper=User)) == [(42, None)]
+        
+        
     # why no support on oracle ?  because oracle doesn't save
     # "blank" strings; it saves a single space character. 
     @testing.unsupported('oracle') 

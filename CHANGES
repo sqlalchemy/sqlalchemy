@@ -20,6 +20,10 @@ CHANGES
 
 - sqlite will reflect "DECIMAL" as a numeric column.
 
+- Made access dao detection more reliable [ticket:828]
+
+- Removed unused util.hash().
+
 - fixed INSERT statements w.r.t. primary key columns that have SQL-expression
   based default generators on them; SQL expression executes inline as normal
   but will not trigger a "postfetch" condition for the column, for those DB's
@@ -29,41 +33,42 @@ CHANGES
   'preexecute_pk_sequences'.  An attribute proxy is in place for out-of-tree
   dialects using the old name.
 
-- de-cruftified backref configuration code, backrefs which step on existing
-  properties now raise an error [ticket:832]
+- orm:
+    - deferred column attributes no longer trigger a load operation when the
+      attribute is assigned to.  in those cases, the newly assigned
+      value will be present in the flushes' UPDATE statement unconditionally.
+      
+    - de-cruftified backref configuration code, backrefs which step on existing
+      properties now raise an error [ticket:832]
 
-- improved behavior of add_property() etc., fixed [ticket:831] involving
-  synonym/deferred
+    - improved behavior of add_property() etc., fixed [ticket:831] involving
+      synonym/deferred
 
-- fixed clear_mappers() behavior to better clean up after itself
+    - fixed clear_mappers() behavior to better clean up after itself
 
-- fix to "row switch" behavior, i.e. when an INSERT/DELETE is combined into a
-  single UPDATE; many-to-many relations on the parent object update properly. 
-  [ticket:841]
+    - fix to "row switch" behavior, i.e. when an INSERT/DELETE is combined into a
+      single UPDATE; many-to-many relations on the parent object update properly. 
+      [ticket:841]
 
-- it's an error to session.save() an object which is already persistent
-  [ticket:840]
+    - it's an error to session.save() an object which is already persistent
+      [ticket:840]
 
-- behavior of query.options() is now fully based on paths, i.e. an option
-  such as eagerload_all('x.y.z.y.x') will apply eagerloading to only
-  those paths, i.e. and not 'x.y.x'; eagerload('children.children') applies
-  only to exactly two-levels deep, etc. [ticket:777]
+    - behavior of query.options() is now fully based on paths, i.e. an option
+      such as eagerload_all('x.y.z.y.x') will apply eagerloading to only
+      those paths, i.e. and not 'x.y.x'; eagerload('children.children') applies
+      only to exactly two-levels deep, etc. [ticket:777]
 
-- Made access dao detection more reliable [ticket:828]
+    - Fixed __hash__ for association proxy- these collections are unhashable,
+      just like their mutable Python counterparts.
 
-- Removed unused util.hash().
+    - Fixed a truncation error when re-assigning a subset of a collection
+      (obj.relation = obj.relation[1:]) [ticket:834]
 
-- Fixed __hash__ for association proxy- these collections are unhashable,
-  just like their mutable Python counterparts.
+    - Added proxying of save_or_update, __contains__ and __iter__ methods for
+      scoped sessions.
 
-- Fixed a truncation error when re-assigning a subset of a collection
-  (obj.relation = obj.relation[1:]) [ticket:834]
-
-- Added proxying of save_or_update, __contains__ and __iter__ methods for
-  scoped sessions.
-
-- session.update() raises an error when updating an instance that is already
-  in the session with a different identity.
+    - session.update() raises an error when updating an instance that is already
+      in the session with a different identity.
 
 0.4.0
 -----
