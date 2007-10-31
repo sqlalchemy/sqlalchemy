@@ -157,13 +157,21 @@ class MaxSmallInteger(MaxInteger):
 
 
 class MaxNumeric(sqltypes.Numeric):
-    """The NUMERIC (also FIXED, DECIMAL) data type."""
+    """The FIXED (also NUMERIC, DECIMAL) data type."""
+
+    def __init__(self, precision=None, length=None, **kw):
+        kw.setdefault('asdecimal', True)
+        super(MaxNumeric, self).__init__(length=length, precision=precision,
+                                         **kw)
+
+    def bind_processor(self, dialect):
+        return None
 
     def get_col_spec(self):
         if self.length and self.precision:
-            return 'NUMERIC(%s, %s)' % (self.precision, self.length)
-        elif self.length:
-            return 'NUMERIC(%s)' % self.length
+            return 'FIXED(%s, %s)' % (self.precision, self.length)
+        elif self.precision:
+            return 'FIXED(%s)' % self.precision
         else:
             return 'INTEGER'
 
@@ -344,20 +352,21 @@ colspecs = {
 
 ischema_names = { 
     'boolean': MaxBoolean,
-    'int': MaxInteger,
-    'integer': MaxInteger,
-    'varchar': MaxString,
     'char': MaxChar,
     'character': MaxChar,
+    'date': MaxDate,
     'fixed': MaxNumeric,
     'float': MaxFloat,
-    'long': MaxText,
+    'int': MaxInteger,
+    'integer': MaxInteger,
     'long binary': MaxBlob,
     'long unicode': MaxText,
     'long': MaxText,
+    'long': MaxText,
+    'smallint': MaxSmallInteger,
+    'time': MaxTime,
     'timestamp': MaxTimestamp,
-    'date': MaxDate,
-    'time': MaxTime
+    'varchar': MaxString,
     }
 
 
@@ -586,7 +595,7 @@ class MaxDBDialect(default.DefaultDialect):
         include_columns = util.Set(include_columns or [])
         
         for row in rows:
-            (name, mode, col_type, encoding, length, precision,
+            (name, mode, col_type, encoding, length, scale,
              nullable, constant_def, func_def) = row
 
             name = normalize(name)
@@ -596,7 +605,12 @@ class MaxDBDialect(default.DefaultDialect):
 
             type_args, type_kw = [], {}
             if col_type == 'FIXED':
-                type_args = length, precision
+                type_args = length, scale
+                # Convert FIXED(10) DEFAULT SERIAL to our Integer
+                if (scale == 0 and
+                    func_def is not None and func_def.startswith('SERIAL')):
+                    col_type = 'INTEGER'
+                    type_args = length,
             elif col_type in 'FLOAT':
                 type_args = length,
             elif col_type in ('CHAR', 'VARCHAR'):
@@ -620,10 +634,15 @@ class MaxDBDialect(default.DefaultDialect):
 
             if func_def is not None:
                 if func_def.startswith('SERIAL'):
-                    # strip current numbering
-                    col_kw['default'] = schema.PassiveDefault(
-                        sql.text('SERIAL'))
-                    col_kw['autoincrement'] = True
+                    if col_kw['primary_key']:
+                        # No special default- let the standard autoincrement
+                        # support handle SERIAL pk columns.
+                        col_kw['autoincrement'] = True
+                    else:
+                        # strip current numbering
+                        col_kw['default'] = schema.PassiveDefault(
+                            sql.text('SERIAL'))
+                        col_kw['autoincrement'] = True
                 else:
                     col_kw['default'] = schema.PassiveDefault(
                         sql.text(func_def))
@@ -705,8 +724,9 @@ class MaxDBCompiler(compiler.DefaultCompiler):
     # These functions must be written without parens when called with no
     # parameters.  e.g. 'SELECT DATE FROM DUAL' not 'SELECT DATE() FROM DUAL'
     bare_functions = util.Set([
-        'CURRENT_SCHEMA', 'DATE', 'TIME', 'TIMESTAMP', 'TIMEZONE',
-        'TRANSACTION', 'USER', 'UID', 'USERGROUP', 'UTCDATE'])
+        'CURRENT_SCHEMA', 'DATE', 'FALSE', 'SYSDBA', 'TIME', 'TIMESTAMP',
+        'TIMEZONE', 'TRANSACTION', 'TRUE', 'USER', 'UID', 'USERGROUP',
+        'UTCDATE', 'UTCDIFF'])
     
     def default_from(self):
         return ' FROM DUAL'

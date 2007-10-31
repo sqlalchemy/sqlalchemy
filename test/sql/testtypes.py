@@ -220,12 +220,16 @@ class ColumnsTest(AssertMixin):
                             'smallint_column': 'smallint_column SMALLINT',
                             'varchar_column': 'varchar_column VARCHAR(20)',
                             'numeric_column': 'numeric_column NUMERIC(12, 3)',
-                            'float_column': 'float_column NUMERIC(25, 2)'
+                            'float_column': 'float_column FLOAT(25)',
                           }
 
         db = testbase.db
-        if not db.name=='sqlite' and not db.name=='oracle':
-            expectedResults['float_column'] = 'float_column FLOAT(25)'
+        if testing.against('sqlite', 'oracle'):
+            expectedResults['float_column'] = 'float_column NUMERIC(25, 2)'
+
+        if testing.against('maxdb'):
+            expectedResults['numeric_column'] = (
+                expectedResults['numeric_column'].replace('NUMERIC', 'FIXED'))
 
         print db.engine.__module__
         testTable = Table('testColumns', MetaData(db),
@@ -237,7 +241,10 @@ class ColumnsTest(AssertMixin):
         )
 
         for aCol in testTable.c:
-            self.assertEquals(expectedResults[aCol.name], db.dialect.schemagenerator(db.dialect, db, None, None).get_column_specification(aCol))
+            self.assertEquals(
+                expectedResults[aCol.name],
+                db.dialect.schemagenerator(db.dialect, db, None, None).\
+                  get_column_specification(aCol))
 
 class UnicodeTest(AssertMixin):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
