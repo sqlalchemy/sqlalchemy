@@ -79,7 +79,8 @@ class _CollectionOperations(PersistTest):
         self.metadata.drop_all()
 
     def roundtrip(self, obj):
-        self.session.save(obj)
+        if obj not in self.session:
+            self.session.save(obj)
         self.session.flush()
         id, type_ = obj.id, type(obj)
         self.session.clear()
@@ -185,6 +186,7 @@ class _CollectionOperations(PersistTest):
         after = ['a', 'b', 'O', 'z', 'O', 'z', 'O', 'h', 'O', 'j']
         self.assert_(p1.children == after)
         self.assert_([c.name for c in p1._children] == after)
+
         
 class DefaultTest(_CollectionOperations):
     def __init__(self, *args, **kw):
@@ -545,7 +547,8 @@ class ScalarTest(PersistTest):
         session = create_session()
 
         def roundtrip(obj):
-            session.save(obj)
+            if obj not in session:
+                session.save(obj)
             session.flush()
             id, type_ = obj.id, type(obj)
             session.clear()
