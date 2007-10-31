@@ -871,7 +871,7 @@ class ExternalColumnsTest(QueryTest):
         })    
 
         sess = create_session()
-        l = sess.query(User).select()
+        l = sess.query(User).all()
         assert [
             User(id=7, concat=14, count=1),
             User(id=8, concat=16, count=3),

@@ -113,7 +113,7 @@ class O2MCascadeTest(AssertMixin):
         
     def testdelete(self):
         sess = create_session()
-        l = sess.query(tables.User).select()
+        l = sess.query(tables.User).all()
         for u in l:
             print repr(u.orders)
         self.assert_result(l, data[0], *data[1:])
@@ -161,7 +161,7 @@ class O2MCascadeTest(AssertMixin):
 
     def testorphan(self):
         sess = create_session()
-        l = sess.query(tables.User).select()
+        l = sess.query(tables.User).all()
         jack = l[1]
         jack.orders[:] = []
 
@@ -525,6 +525,60 @@ class DoubleParentOrphanTest(AssertMixin):
         except exceptions.FlushError, e:
             assert True
 
+class CollectionAssignmentOrphanTest(AssertMixin):
+    def setUpAll(self):
+        global metadata, table_a, table_b
+
+        metadata = MetaData(testbase.db)
+        table_a = Table('a', metadata,
+                        Column('id', Integer, primary_key=True),
+                        Column('foo', String(30)))
+        table_b = Table('b', metadata,
+                        Column('id', Integer, primary_key=True),
+                        Column('foo', String(30)),
+                        Column('a_id', Integer, ForeignKey('a.id')))
+        metadata.create_all()
+
+    def tearDown(self):
+        clear_mappers()
+    def tearDownAll(self):
+        metadata.drop_all()
+
+    def test_basic(self):
+        class A(object):
+            def __init__(self, foo):
+                self.foo = foo
+        class B(object):
+            def __init__(self, foo):
+                self.foo = foo
+
+        mapper(A, table_a, properties={
+            'bs':relation(B, cascade="all, delete-orphan")
+            })
+        mapper(B, table_b)
+
+        a1 = A('a1')
+        a1.bs.append(B('b1'))
+        a1.bs.append(B('b2'))
+        a1.bs.append(B('b3'))
+
+        sess = create_session()
+        sess.save(a1)
+        sess.flush()
+
+        assert table_b.count(table_b.c.a_id == None).scalar() == 0
+
+        assert table_b.count().scalar() == 3
+
+        a1 = sess.query(A).get(a1.id)
+        assert len(a1.bs) == 3
+        a1.bs = list(a1.bs)
+        assert not class_mapper(B)._is_orphan(a1.bs[0])
+        a1.bs[0].foo='b2modified'
+        a1.bs[1].foo='b3modified'
+        sess.flush()
+
+        assert table_b.count().scalar() == 3
 
 if __name__ == "__main__":
-    testbase.main()        
+    testbase.main()

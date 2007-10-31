@@ -257,7 +257,7 @@ class CollectionsTest(PersistTest):
         self.assert_(set(obj.attr) == set([e2]))
         self.assert_(e1 in canary.removed)
         self.assert_(e2 in canary.added)
- 
+
         e3 = creator()
         real_list = [e3]
         obj.attr = real_list
@@ -265,7 +265,7 @@ class CollectionsTest(PersistTest):
         self.assert_(set(obj.attr) == set([e3]))
         self.assert_(e2 in canary.removed)
         self.assert_(e3 in canary.added)
-       
+
         e4 = creator()
         try:
             obj.attr = set([e4])
@@ -273,6 +273,21 @@ class CollectionsTest(PersistTest):
         except exceptions.ArgumentError:
             self.assert_(e4 not in canary.data)
             self.assert_(e3 in canary.data)
+
+        e5 = creator()
+        e6 = creator()
+        e7 = creator()
+        obj.attr = [e5, e6, e7]
+        self.assert_(e5 in canary.added)
+        self.assert_(e6 in canary.added)
+        self.assert_(e7 in canary.added)
+
+        obj.attr = [e6, e7]
+        self.assert_(e5 in canary.removed)
+        self.assert_(e6 in canary.added)
+        self.assert_(e7 in canary.added)
+        self.assert_(e6 not in canary.removed)
+        self.assert_(e7 not in canary.removed)
 
     def test_list(self):
         self._test_adapter(list)

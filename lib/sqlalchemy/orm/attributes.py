@@ -453,15 +453,25 @@ class CollectionAttributeImpl(AttributeImpl):
         old_collection = self.get_collection(state, old)
 
         new_collection, user_data = self._build_collection(state)
-        self._load_collection(state, value or [], emit_events=True,
-                              collection=new_collection)
+
+        idset = util.IdentitySet
+        constants = idset(old_collection or []).intersection(value or [])
+        additions = idset(value or []).difference(constants)
+        removals  = idset(old_collection or []).difference(constants)
+
+        for member in value or []:
+            if member in additions:
+                new_collection.append_with_event(member)
+            elif member in constants:
+                new_collection.append_without_event(member)
 
         state.dict[self.key] = user_data
         state.modified = True
 
-        # mark all the old elements as detached from the parent
+        # mark all the orphaned elements as detached from the parent
         if old_collection:
-            old_collection.clear_with_event()
+            for member in removals:
+                old_collection.remove_with_event(member)
             old_collection.unlink(old)
 
     def set_committed_value(self, state, value):
@@ -494,7 +504,7 @@ class CollectionAttributeImpl(AttributeImpl):
         else:
             for item in values:
                 collection.append_without_event(item)
-            
+
     def get_collection(self, state, user_data=None):
         if user_data is None:
             user_data = self.get(state)

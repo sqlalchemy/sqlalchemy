@@ -56,6 +56,9 @@ CHANGES
 - Fixed __hash__ for association proxy- these collections are unhashable,
   just like their mutable Python counterparts.
 
+- Fixed a truncation error when re-assigning a subset of a collection
+  (obj.relation = obj.relation[1:]) [ticket:834]
+
 0.4.0
 -----
 
