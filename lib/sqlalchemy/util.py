@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import md5, sys, warnings, sets
+import sys, warnings, sets
 import __builtin__
 
 from sqlalchemy import exceptions, logging
@@ -62,10 +62,10 @@ except:
 if sys.version_info >= (2, 5):
     class PopulateDict(dict):
         """a dict which populates missing values via a creation function.
-        
+
         note the creation function takes a key, unlike collections.defaultdict.
         """
-        
+
         def __init__(self, creator):
             self.creator = creator
         def __missing__(self, key):
@@ -157,7 +157,7 @@ def asbool(obj):
         else:
             raise ValueError("String is not true/false: %r" % obj)
     return bool(obj)
-    
+
 def coerce_kw_type(kw, key, type_, flexi_bool=True):
     """If 'key' is present in dict 'kw', coerce its value to type 'type_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
@@ -175,7 +175,7 @@ def duck_type_collection(specimen, default=None):
     the basic collection types: list, set and dict.  If the __emulates__
     property is present, return that preferentially.
     """
-    
+
     if hasattr(specimen, '__emulates__'):
         return specimen.__emulates__
 
@@ -208,7 +208,7 @@ def warn_exception(func, *args, **kwargs):
         return func(*args, **kwargs)
     except:
         warnings.warn(RuntimeWarning("%s('%s') ignored" % sys.exc_info()[0:2]))
-    
+
 class SimpleProperty(object):
     """A *default* property accessor."""
 
@@ -229,10 +229,10 @@ class SimpleProperty(object):
 
 class NotImplProperty(object):
   """a property that raises ``NotImplementedError``."""
-  
+
   def __init__(self, doc):
       self.__doc__ = doc
-      
+
   def __set__(self, obj, value):
       raise NotImplementedError()
 
@@ -244,7 +244,7 @@ class NotImplProperty(object):
           return self
       else:
           raise NotImplementedError()
-  
+
 class OrderedProperties(object):
     """An object that maintains the order in which attributes are set upon it.
 
@@ -282,7 +282,7 @@ class OrderedProperties(object):
 
     def __getstate__(self):
         return {'_data': self.__dict__['_data']}
-    
+
     def __setstate__(self, state):
         self.__dict__['_data'] = state['_data']
 
@@ -420,13 +420,13 @@ class DictDecorator(dict):
             return dict.__getitem__(self, key)
         except KeyError:
             return self.decorate[key]
-            
+
     def __contains__(self, key):
         return dict.__contains__(self, key) or key in self.decorate
-    
+
     def has_key(self, key):
         return key in self
-            
+
     def __repr__(self):
         return dict.__repr__(self) + repr(self.decorate)
 
@@ -464,16 +464,18 @@ class OrderedSet(Set):
     def __iter__(self):
         return iter(self._list)
 
+    def __repr__(self):
+      return '%s(%r)' % (self.__class__.__name__, self._list)
+
+    __str__ = __repr__
+
     def update(self, iterable):
       add = self.add
       for i in iterable:
           add(i)
       return self
 
-    def __repr__(self):
-      return '%s(%r)' % (self.__class__.__name__, self._list)
-
-    __str__ = __repr__
+    __ior__ = update
 
     def union(self, other):
       result = self.__class__(self)
@@ -498,8 +500,6 @@ class OrderedSet(Set):
       return self.__class__([a for a in self if a not in other])
 
     __sub__ = difference
-
-    __ior__ = update
 
     def intersection_update(self, other):
       Set.intersection_update(self, other)
@@ -527,7 +527,7 @@ class OrderedSet(Set):
 class UniqueAppender(object):
     """appends items to a collection such that only unique items
     are added."""
-    
+
     def __init__(self, data, via=None):
         self.data = data
         self._unique = Set()
@@ -538,15 +538,15 @@ class UniqueAppender(object):
         elif hasattr(data, 'add'):
             # TODO: we think its a set here.  bypass unneeded uniquing logic ?
             self._data_appender = data.add
-        
+
     def append(self, item):
         if item not in self._unique:
             self._data_appender(item)
             self._unique.add(item)
-    
+
     def __iter__(self):
         return iter(self.data)
-        
+
 class ScopedRegistry(object):
     """A Registry that can store one or multiple instances of a single
     class on a per-thread scoped basis, or on a customized scope.
@@ -574,10 +574,10 @@ class ScopedRegistry(object):
             return self.registry[key]
         except KeyError:
             return self.registry.setdefault(key, self.createfunc())
-    
+
     def has(self):
         return self._get_key() in self.registry
-        
+
     def set(self, obj):
         self.registry[self._get_key()] = obj
 
