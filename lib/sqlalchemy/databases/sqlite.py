@@ -163,6 +163,7 @@ ischema_names = {
     'NUMERIC' : SLNumeric,
     'DECIMAL' : SLNumeric,
     'FLOAT' : SLNumeric,
+    'REAL': SLNumeric,
     'TIMESTAMP' : SLDateTime,
     'DATETIME' : SLDateTime,
     'DATE' : SLDate,
