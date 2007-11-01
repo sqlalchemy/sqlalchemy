@@ -7,6 +7,7 @@ from sqlalchemy.orm.session import Session as SessionCls
 from testlib import *
 from testlib.tables import *
 from testlib import fixtures, tables
+import pickle
 
 class SessionTest(AssertMixin):
     def setUpAll(self):
@@ -396,7 +397,7 @@ class SessionTest(AssertMixin):
         
         
     @engines.close_open_connections
-    def test_save_update(self):
+    def test_save_update_delete(self):
         
         s = create_session()
         class User(object):
@@ -410,10 +411,16 @@ class SessionTest(AssertMixin):
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Instance 'User@%s' is not persisted" % hex(id(user))
+
+        try:
+            s.delete(user)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Instance 'User@%s' is not persisted" % hex(id(user))
             
         s.save(user)
         s.flush()
-        user = s.query(User).selectone()
+        user = s.query(User).one()
         s.expunge(user)
         assert user not in s
         
@@ -424,7 +431,8 @@ class SessionTest(AssertMixin):
         assert user in s.dirty
         s.flush()
         s.clear()
-        user = s.query(User).selectone()
+        assert s.query(User).count() == 1
+        user = s.query(User).one()
         assert user.user_name == 'fred'
         
         # ensure its not dirty if no changes occur
@@ -440,6 +448,25 @@ class SessionTest(AssertMixin):
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Instance 'User@%s' is already persistent" % hex(id(user))
     
+        s2 = create_session()
+        try:
+            s2.delete(user)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert "is already attached to session" in str(e)
+            
+        u2 = s2.query(User).get(user.user_id)
+        try:
+            s.delete(u2)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert "already persisted with a different identity" in str(e)
+    
+        s.delete(user)
+        s.flush()
+        assert user not in s
+        assert s.query(User).count() == 0
+        
     def test_is_modified(self):
         s = create_session()
         class User(object):pass
@@ -514,7 +541,7 @@ class SessionTest(AssertMixin):
         # save user
         s.save(User())
         s.flush()
-        user = s.query(User).selectone()
+        user = s.query(User).one()
         user = None
         print s.identity_map
         import gc
@@ -585,8 +612,8 @@ class SessionTest(AssertMixin):
         assert a not in s
         s.flush()
         s.clear()
-        assert s.query(User).selectone().user_id == u.user_id
-        assert s.query(Address).selectfirst() is None
+        assert s.query(User).one().user_id == u.user_id
+        assert s.query(Address).first() is None
         
         clear_mappers()
         
@@ -605,8 +632,8 @@ class SessionTest(AssertMixin):
         assert a in s
         s.flush()
         s.clear()
-        assert s.query(Address).selectone().address_id == a.address_id
-        assert s.query(User).selectfirst() is None
+        assert s.query(Address).one().address_id == a.address_id
+        assert s.query(User).first() is None
 
     def _assert_key(self, got, expect):
         assert got == expect, "expected %r got %r" % (expect, got)
@@ -681,7 +708,25 @@ class SessionTest(AssertMixin):
         log = []
         sess.commit()
         assert log == ['before_commit', 'after_commit']
-
+    
+    def test_pickled_update(self):
+        mapper(User, users)
+        sess1 = create_session()
+        sess2 = create_session()
+        
+        u1 = User()
+        sess1.save(u1)
+        
+        try:
+            sess2.save(u1)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert "already attached to session" in str(e)
+            
+        u2 = pickle.loads(pickle.dumps(u1))
+        
+        sess2.save(u2)
+        
     def test_duplicate_update(self):
         mapper(User, users)
         Session = sessionmaker()

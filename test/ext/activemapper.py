@@ -237,6 +237,7 @@ class testcase(PersistTest):
         # uses a function which I dont think existed when you first wrote ActiveMapper.
         p1 = self.create_person_one()
         self.assertEquals(p1.preferences.person, p1)
+        objectstore.flush()
         objectstore.delete(p1)
         
         objectstore.flush()

@@ -53,9 +53,6 @@ CHANGES
       single UPDATE; many-to-many relations on the parent object update properly. 
       [ticket:841]
 
-    - it's an error to session.save() an object which is already persistent
-      [ticket:840]
-
     - behavior of query.options() is now fully based on paths, i.e. an option
       such as eagerload_all('x.y.z.y.x') will apply eagerloading to only
       those paths, i.e. and not 'x.y.x'; eagerload('children.children') applies
@@ -70,8 +67,19 @@ CHANGES
     - Added proxying of save_or_update, __contains__ and __iter__ methods for
       scoped sessions.
 
-    - session.update() raises an error when updating an instance that is already
-      in the session with a different identity.
+  - session API has been solidified:
+  
+    - it's an error to session.save() an object which is already persistent
+      [ticket:840]
+
+    - it's an error to session.delete() an object which is *not* persistent
+
+    - session.update() and session.delete() raise an error when updating/deleting
+      an instance that is already in the session with a different identity.
+      
+    - session checks more carefully when determining "object X already in another session";
+      e.g. if you pickle a series of objects and unpickle (i.e. as in a Pylons HTTP session
+      or similar), they can go into a new session without any conflict
 
 0.4.0
 -----

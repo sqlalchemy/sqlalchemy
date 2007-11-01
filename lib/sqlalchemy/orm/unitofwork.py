@@ -109,11 +109,6 @@ class UnitOfWork(object):
         except KeyError:
             pass
 
-    def _validate_obj(self, obj):
-        if (hasattr(obj, '_instance_key') and obj._instance_key not in self.identity_map) or \
-            (not hasattr(obj, '_instance_key') and obj not in self.new):
-            raise exceptions.InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj))
-
     def _is_valid(self, obj):
         if (hasattr(obj, '_instance_key') and obj._instance_key not in self.identity_map) or \
             (not hasattr(obj, '_instance_key') and obj not in self.new):
@@ -147,9 +142,7 @@ class UnitOfWork(object):
     def register_deleted(self, obj):
         """register the given persistent object as 'to be deleted' within this unit of work."""
         
-        if obj not in self.deleted:
-            self._validate_obj(obj)
-            self.deleted.add(obj)
+        self.deleted.add(obj)
 
     def locate_dirty(self):
         """return a set of all persistent instances within this unit of work which 

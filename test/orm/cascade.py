@@ -384,6 +384,7 @@ class UnsavedOrphansTest(ORMTest):
 
         u = User()
         s.save(u)
+        s.flush()
         a = Address()
         assert a not in s.new
         u.addresses.append(a)
@@ -394,7 +395,6 @@ class UnsavedOrphansTest(ORMTest):
             assert False
         except exceptions.FlushError:
             assert True
-        assert u.user_id is None, "Error: user should not be persistent"
         assert a.address_id is None, "Error: address should not be persistent"
 
 
