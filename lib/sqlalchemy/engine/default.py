@@ -136,15 +136,32 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.dialect = dialect
         self._connection = self.root_connection = connection
         self.compiled = compiled
-        self._postfetch_cols = util.Set()
         self.engine = connection.engine
         
         if compiled is not None:
+            # compiled clauseelement.  process bind params, process table defaults,
+            # track collections used by ResultProxy to target and process results
+            
+            self.processors = dict([
+                (key, value) for key, value in 
+                [(
+                    compiled.bind_names[bindparam],
+                    bindparam.bind_processor(self.dialect)
+                ) for bindparam in compiled.bind_names]
+                if value is not None
+            ])
+            
             self.typemap = compiled.typemap
             self.column_labels = compiled.column_labels
-            self.statement = unicode(compiled)
+
+            if not dialect.supports_unicode_statements:
+                self.statement = unicode(compiled).encode(self.dialect.encoding)
+            else:
+                self.statement = unicode(compiled)
+                
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
+            
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]
                 self.executemany = False
@@ -152,20 +169,26 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.compiled_parameters = [compiled.construct_params(m) for m in parameters]
                 self.executemany = len(parameters) > 1
 
+            self.cursor = self.create_cursor()
+            self.__process_defaults()
+            self.parameters = self.__convert_compiled_params(self.compiled_parameters)
+
         elif statement is not None:
+            # plain text statement.  
             self.typemap = self.column_labels = None
             self.parameters = self.__encode_param_keys(parameters)
             self.executemany = len(parameters) > 1
-            self.statement = statement
+            if not dialect.supports_unicode_statements:
+                self.statement = statement.encode(self.dialect.encoding)
+            else:
+                self.statement = statement
             self.isinsert = self.isupdate = False
+            self.cursor = self.create_cursor()
         else:
+            # no statement. used for standalone ColumnDefault execution.
             self.statement = None
             self.isinsert = self.isupdate = self.executemany = False
-            
-        if self.statement is not None and not dialect.supports_unicode_statements:
-            self.statement = self.statement.encode(self.dialect.encoding)
-            
-        self.cursor = self.create_cursor()
+            self.cursor = self.create_cursor()
     
     connection = property(lambda s:s._connection._branch())
     
@@ -190,13 +213,40 @@ class DefaultExecutionContext(base.ExecutionContext):
                 return dict([(k.encode(self.dialect.encoding), d[k]) for k in d])
             return [proc(d) for d in params] or [{}]
 
-    def __convert_compiled_params(self, parameters):
-        processors = parameters[0].get_processors()
+    def __convert_compiled_params(self, compiled_parameters):
+        """convert the dictionary of bind parameter values into a dict or list
+        to be sent to the DBAPI's execute() or executemany() method.
+        """
+        
+        processors = self.processors
+        parameters = []
         if self.dialect.positional:
-            parameters = [p.get_raw_list(processors) for p in parameters]
+            for compiled_params in compiled_parameters:
+                param = []
+                for key in self.compiled.positiontup:
+                    if key in processors:
+                        param.append(processors[key](compiled_params[key]))
+                    else:
+                        param.append(compiled_params[key])
+                parameters.append(param)
         else:
             encode = not self.dialect.supports_unicode_statements
-            parameters = [p.get_raw_dict(processors, encode_keys=encode) for p in parameters]
+            for compiled_params in compiled_parameters:
+                param = {}
+                if encode:
+                    encoding = self.dialect.encoding
+                    for key in compiled_params:
+                        if key in processors:
+                            param[key.encode(encoding)] = processors[key](compiled_params[key])
+                        else:
+                            param[key.encode(encoding)] = compiled_params[key]
+                else:
+                    for key in compiled_params:
+                        if key in processors:
+                            param[key] = processors[key](compiled_params[key])
+                        else:
+                            param[key] = compiled_params[key]
+                parameters.append(param)
         return parameters
                 
     def is_select(self):
@@ -220,8 +270,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         return AUTOCOMMIT_REGEXP.match(self.statement)
             
     def pre_exec(self):
-        self._process_defaults()
-        self.parameters = self.__convert_compiled_params(self.compiled_parameters)
+        pass
 
     def post_exec(self):
         pass
@@ -251,7 +300,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self._last_updated_params
 
     def lastrow_has_defaults(self):
-        return len(self._postfetch_cols)
+        return hasattr(self, '_postfetch_cols') and len(self._postfetch_cols)
 
     def postfetch_cols(self):
         return self._postfetch_cols
@@ -282,7 +331,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                         inputsizes[key.encode(self.dialect.encoding)] = dbtype
             self.cursor.setinputsizes(**inputsizes)
 
-    def _process_defaults(self):
+    def __process_defaults(self):
         """generate default values for compiled insert/update statements,
         and generate last_inserted_ids() collection."""
 
@@ -292,6 +341,9 @@ class DefaultExecutionContext(base.ExecutionContext):
                     drunner = self.dialect.defaultrunner(self)
                     params = self.compiled_parameters
                     for param in params:
+                        # assign each dict of params to self.compiled_parameters; 
+                        # this allows user-defined default generators to access the full
+                        # set of bind params for the row
                         self.compiled_parameters = param
                         for c in self.compiled.prefetch:
                             if self.isinsert:
@@ -299,32 +351,26 @@ class DefaultExecutionContext(base.ExecutionContext):
                             else:
                                 val = drunner.get_column_onupdate(c)
                             if val is not None:
-                                param.set_value(c.key, val)
+                                param[c.key] = val
                     self.compiled_parameters = params
                     
             else:
                 compiled_parameters = self.compiled_parameters[0]
                 drunner = self.dialect.defaultrunner(self)
-                if self.isinsert:
-                    self._last_inserted_ids = []
+                    
                 for c in self.compiled.prefetch:
                     if self.isinsert:
                         val = drunner.get_column_default(c)
                     else:
                         val = drunner.get_column_onupdate(c)
+                        
                     if val is not None:
-                        compiled_parameters.set_value(c.key, val)
+                        compiled_parameters[c.key] = val
 
                 if self.isinsert:
-                    processors = compiled_parameters.get_processors()
-                    for c in self.compiled.statement.table.primary_key:
-                        if c.key in compiled_parameters:
-                            self._last_inserted_ids.append(compiled_parameters.get_processed(c.key, processors))
-                        else:
-                            self._last_inserted_ids.append(None)
-                            
-                self._postfetch_cols = self.compiled.postfetch
-                if self.isinsert:
+                    self._last_inserted_ids = [compiled_parameters.get(c.key, None) for c in self.compiled.statement.table.primary_key]
                     self._last_inserted_params = compiled_parameters
                 else:
                     self._last_updated_params = compiled_parameters
+
+                self._postfetch_cols = self.compiled.postfetch

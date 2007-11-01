@@ -614,7 +614,7 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
         self.assert_compile(
             text("select * from foo where lala=:bar and hoho=:whee", bindparams=[bindparam('bar',4), bindparam('whee',7)]), 
                 "select * from foo where lala=? and hoho=?", 
-                checkparams=[4, 7],
+                checkparams={'bar':4, 'whee':7},
                 dialect=dialect
         )
         
@@ -921,17 +921,19 @@ EXISTS (select yay from foo where boo = lar)",
                 self.assert_compile(stmt, expected_positional_stmt, dialect=sqlite.dialect())
                 nonpositional = stmt.compile()
                 positional = stmt.compile(dialect=sqlite.dialect())
-                assert positional.get_params().get_raw_list({}) == expected_default_params_list
-                assert nonpositional.get_params(**test_param_dict).get_raw_dict({}) == expected_test_params_dict, "expected :%s got %s" % (str(expected_test_params_dict), str(nonpositional.get_params(**test_param_dict).get_raw_dict()))
-                assert positional.get_params(**test_param_dict).get_raw_list({}) == expected_test_params_list
+                pp = positional.get_params()
+                assert [pp[k] for k in positional.positiontup] == expected_default_params_list
+                assert nonpositional.get_params(**test_param_dict) == expected_test_params_dict, "expected :%s got %s" % (str(expected_test_params_dict), str(nonpositional.get_params(**test_param_dict).get_raw_dict()))
+                pp = positional.get_params(**test_param_dict)
+                assert [pp[k] for k in positional.positiontup] == expected_test_params_list
         
         # check that params() doesnt modify original statement
         s = select([table1], or_(table1.c.myid==bindparam('myid'), table2.c.otherid==bindparam('myotherid')))
         s2 = s.params({'myid':8, 'myotherid':7})
         s3 = s2.params({'myid':9})
-        assert s.compile().params.get_original_dict() == {'myid':None, 'myotherid':None}
-        assert s2.compile().params.get_original_dict() == {'myid':8, 'myotherid':7}
-        assert s3.compile().params.get_original_dict() == {'myid':9, 'myotherid':7}
+        assert s.compile().params == {'myid':None, 'myotherid':None}
+        assert s2.compile().params == {'myid':8, 'myotherid':7}
+        assert s3.compile().params == {'myid':9, 'myotherid':7}
         
         
         # check that conflicts with "unique" params are caught

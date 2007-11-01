@@ -95,7 +95,7 @@ Above, while the `values` keyword limited the VALUES clause to just two columns,
 
     {python}
     >>> ins.compile().params #doctest: +NORMALIZE_WHITESPACE
-    ClauseParameters:{'fullname': 'Jack Jones', 'name': 'jack'}    
+    {'fullname': 'Jack Jones', 'name': 'jack'}    
 
 ## Executing {@name=executing}
 
@@ -334,7 +334,7 @@ The `7` literal is embedded in `ClauseElement`; we can use the same trick we did
 
     {python}
     >>> (users.c.id==7).compile().params
-    ClauseParameters:{'users_id': 7}
+    {'users_id': 7}
     
 Most Python operators, as it turns out, produce a SQL expression here, like equals, not equals, etc.:
 
@@ -740,7 +740,7 @@ If we wanted to use our `calculate` statement twice with different bind paramete
     WHERE users.id BETWEEN c1.z AND c2.z
 
     >>> s.compile().params
-    ClauseParameters:{'y': 45, 'x': 17, 'y_1': 12, 'x_1': 5}
+    {'y': 45, 'x': 17, 'y_1': 12, 'x_1': 5}
     
 ### Unions and Other Set Operations {@name=unions}
 

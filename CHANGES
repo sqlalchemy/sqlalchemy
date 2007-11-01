@@ -24,6 +24,9 @@ CHANGES
 
 - Removed unused util.hash().
 
+- removed ClauseParameters object; compiled.params returns a regular dictionary
+  now, as well as result.last_inserted_params()/last_updated_params().
+  
 - fixed INSERT statements w.r.t. primary key columns that have SQL-expression
   based default generators on them; SQL expression executes inline as normal
   but will not trigger a "postfetch" condition for the column, for those DB's

@@ -1167,8 +1167,8 @@ class Mapper(object):
             v = self.get_attr_by_column(obj, c, False)
             if v is NO_ATTRIBUTE:
                 continue
-            elif v != params.get_original(c.key):
-                self.set_attr_by_column(obj, c, params.get_original(c.key))
+            elif v != params[c.key]:
+                self.set_attr_by_column(obj, c, params[c.key])
         
         if deferred_props:
             deferred_load(obj, props=deferred_props)

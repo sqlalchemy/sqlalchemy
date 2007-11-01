@@ -123,7 +123,8 @@ class QueryTest(PersistTest):
                 continue
             try:
                 table.create()
-                assert insert_values(table, values) == assertvalues, repr(values) + " " + repr(assertvalues)
+                i = insert_values(table, values)
+                assert i == assertvalues, repr(i) + " " + repr(assertvalues)
             finally:
                 table.drop()
 

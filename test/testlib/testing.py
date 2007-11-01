@@ -195,8 +195,7 @@ class ExecutionContextWrapper(object):
             if params is not None and not isinstance(params, list):
                 params = [params]
             
-            from sqlalchemy.sql.util import ClauseParameters
-            parameters = [p.get_original_dict() for p in ctx.compiled_parameters]
+            parameters = ctx.compiled_parameters
                     
             query = self.convert_statement(query)
             testdata.unittest.assert_(statement == query and (params is None or params == parameters), "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
@@ -255,10 +254,7 @@ class SQLCompileTest(PersistTest):
         self.assert_(cc == result, "\n'" + cc + "'\n does not match \n'" + result + "'")
 
         if checkparams is not None:
-            if isinstance(checkparams, list):
-                self.assert_(c.params.get_raw_list({}) == checkparams, "params dont match ")
-            else:
-                self.assert_(c.params.get_original_dict() == checkparams, "params dont match" + repr(c.params))
+            self.assert_(c.params == checkparams, "params dont match" + repr(c.params))
 
 class AssertMixin(PersistTest):
     """given a list-based structure of keys/properties which represent information within an object structure, and
