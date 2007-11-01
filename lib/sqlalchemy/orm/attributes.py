@@ -689,7 +689,9 @@ class InstanceDict(UserDict.UserDict):
         
     def __getitem__(self, key):
         state = self.data[key]
-        o = state.obj() or state._check_resurrect(self)
+        o = state.obj()
+        if o is None:
+            o = state._check_resurrect(self)
         if o is None:
             raise KeyError, key
         return o
@@ -697,7 +699,9 @@ class InstanceDict(UserDict.UserDict):
     def __contains__(self, key):
         try:
             state = self.data[key]
-            o = state.obj() or state._check_resurrect(self)
+            o = state.obj()
+            if o is None:
+                o = state._check_resurrect(self)
         except KeyError:
             return False
         return o is not None
