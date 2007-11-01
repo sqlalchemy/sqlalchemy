@@ -124,6 +124,14 @@ def against(*queries):
                 return True
     return False
 
+def rowset(results):
+    """Converts the results of sql execution into a plain set of column tuples.
+
+    Useful for asserting the results of an unordered query.
+    """
+
+    return set([tuple(row) for row in results])
+
 class TestData(object):
     """Tracks SQL expressions as they are executed via an instrumented ExecutionContext."""
     
