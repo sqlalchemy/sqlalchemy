@@ -316,12 +316,18 @@ class AssertMixin(PersistTest):
             self.fail('Unexpected type "%s", expected "%s"' % (
                 type(wrong).__name__, cls.__name__))
 
+        if len(found) != len(expected):
+            self.fail('Unexpected object count "%s", expected "%s"' % (
+                len(found), len(expected)))
+
         NOVALUE = object()
         def _compare_item(obj, spec):
             for key, value in spec.iteritems():
                 if isinstance(value, tuple):
-                    if (not self.assert_unordered_result(
-                          getattr(obj, key), value[0], *value[1])):
+                    try:
+                        self.assert_unordered_result(
+                            getattr(obj, key), value[0], *value[1])
+                    except AssertionError:
                         return False
                 else:
                     if getattr(obj, key, NOVALUE) != value:
