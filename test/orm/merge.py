@@ -117,6 +117,17 @@ class MergeTest(AssertMixin):
         # no changes; therefore flush should do nothing
         self.assert_sql_count(testbase.db, go, 0)
 
+        # pre merge change
+        u.user_name='fred3'
+        sess4 = create_session()
+        u = sess4.merge(u, dont_load=True)
+        # post merge change
+        u.addresses[1].email_address='afafds'
+        def go():
+            sess4.flush()
+        # changes still flush
+        self.assert_sql_count(testbase.db, go, 2)
+
     def test_saved_cascade_2(self):
         """tests a more involved merge"""
         mapper(Order, orders, properties={

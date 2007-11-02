@@ -292,7 +292,6 @@ class PropertyLoader(StrategizedProperty):
             for current in list(childlist):
                 obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
-                    #dest_list.append_without_event(obj)
                     dest_list.append_with_event(obj)
         else:
             current = list(childlist)[0]
