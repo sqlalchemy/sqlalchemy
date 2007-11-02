@@ -293,6 +293,8 @@ This method is useful for bringing in objects which may have been restored from 
     # identity map, then you get back the one from the current session.
     myobj = session.merge(myobj)
 
+`merge()` includes an important option called `dont_load`.  When this boolean flag is set to `True`, the merge of a detached object will not force a `get()` of that object from the database.  Normally, `merge()` issues a `get()` for every existing object so that it can load the most recent state of the object, which is then modified according to the state of the given object.  With `dont_load=True`, the `get()` is skipped and `merge()` places an exact copy of the given object in the session.  This allows objects which were retrieved from a caching system to be copied back into a session without any SQL overhead being added.
+
 ### Deleting
 
 The `delete` method places an instance into the Session's list of objects to be marked as deleted:
@@ -702,15 +704,38 @@ When we use the contextual `mapper()` function, our `User` and `Address` now gai
 
     {python}
     wendy = User.query.filter_by(name='wendy').one()
-    
-Additionally, new instances are saved into the contextual session automatically upon construction; there is no longer a need to call `save()`:
+
+#### Auto-Save Behavior with Contextual Session's Mapper {@name=autosave}
+
+By default, when using Session.mapper, **new instances are saved into the contextual session automatically upon construction;** there is no longer a need to call `save()`:
 
     {python}
     >>> newuser = User(name='ed')
     >>> assert newuser in Session.new
     True
 
-This functionality is an updated version of what used to be accomplished by the `assignmapper()` SQLAlchemy extension.
+The auto-save functionality can cause problems, namely that any `flush()` which occurs before a newly constructed object is fully populated will result in that object being INSERTed without all of its attributes completed.  As a `flush()` is more frequent when using sessions with `autoflush=True`, **the auto-save behavior can be disabled**, using the `save_on_init=False` flag:
+
+    {python}
+    # "contextual" mapper function
+    mapper = Session.mapper
+
+    # use normally, specify no save on init:
+    mapper(User, users_table, properties={
+        relation(Address)
+    }, save_on_init=False)
+    mapper(Address, addresses_table, save_on_init=False)
+
+    # objects now again require expicit "save"
+    >>> newuser = User(name='ed')
+    >>> assert newuser in Session.new
+    False
+    
+    >>> Session.save(newuser)
+    >>> assert newuser in Session.new
+    True
+
+The functionality of `Session.mapper` is an updated version of what used to be accomplished by the `assignmapper()` SQLAlchemy extension.
     
 [Generated docstrings for scoped_session()](rel:docstrings_sqlalchemy.orm_modfunc_scoped_session)
 
