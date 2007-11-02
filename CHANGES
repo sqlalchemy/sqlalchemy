@@ -81,6 +81,12 @@ CHANGES
       e.g. if you pickle a series of objects and unpickle (i.e. as in a Pylons HTTP session
       or similar), they can go into a new session without any conflict
 
+    - merge() includes a keyword argument "dont_load=True".  setting this flag will cause
+      the merge operation to not load any data from the database in response to incoming
+      detached objects, and will accept the incoming detached object as though it were 
+      already present in that session.  Use this to merge detached objects from external 
+      caching systems into the session.
+      
 0.4.0
 -----
 

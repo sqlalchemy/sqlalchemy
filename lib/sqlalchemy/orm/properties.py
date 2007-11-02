@@ -61,7 +61,7 @@ class ColumnProperty(StrategizedProperty):
     def get_history(self, obj, passive=False):
         return sessionlib.attribute_manager.get_history(obj, self.key, passive=passive)
 
-    def merge(self, session, source, dest, _recursive):
+    def merge(self, session, source, dest, dont_load, _recursive):
         setattr(dest, self.key, getattr(source, self.key, None))
 
     def get_col_value(self, column, value):
@@ -280,7 +280,7 @@ class PropertyLoader(StrategizedProperty):
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key + " (" + str(self.mapper.class_.__name__)  + ")"
 
-    def merge(self, session, source, dest, _recursive):
+    def merge(self, session, source, dest, dont_load, _recursive):
         if not "merge" in self.cascade or self.mapper in _recursive:
             return
         childlist = sessionlib.attribute_manager.get_history(source, self.key, passive=True)
@@ -290,14 +290,14 @@ class PropertyLoader(StrategizedProperty):
             # sets a blank collection according to the correct list class
             dest_list = sessionlib.attribute_manager.init_collection(dest, self.key)
             for current in list(childlist):
-                obj = session.merge(current, entity_name=self.mapper.entity_name, _recursive=_recursive)
+                obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     #dest_list.append_without_event(obj)
                     dest_list.append_with_event(obj)
         else:
             current = list(childlist)[0]
             if current is not None:
-                obj = session.merge(current, entity_name=self.mapper.entity_name, _recursive=_recursive)
+                obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     setattr(dest, self.key, obj)
 

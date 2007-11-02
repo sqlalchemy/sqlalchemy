@@ -837,7 +837,7 @@ class Session(object):
             self._delete_impl(c, ignore_transient=True)
 
 
-    def merge(self, object, entity_name=None, _recursive=None):
+    def merge(self, object, entity_name=None, dont_load=False, _recursive=None):
         """Copy the state of the given `object` onto the persistent
         object with the same identifier.
 
@@ -868,12 +868,17 @@ class Session(object):
             else:
                 if key in self.identity_map:
                     merged = self.identity_map[key]
+                elif dont_load:
+                    merged = attribute_manager.new_instance(mapper.class_)
+                    merged._instance_key = key
+                    self.update(merged, entity_name=mapper.entity_name)
+                    merged._state.committed_state = object._state.committed_state.copy()
                 else:
                     merged = self.get(mapper.class_, key[1])
                     if merged is None:
                         raise exceptions.AssertionError("Instance %s has an instance key but is not persisted" % mapperutil.instance_str(object))
             for prop in mapper.iterate_properties:
-                prop.merge(self, object, merged, _recursive)
+                prop.merge(self, object, merged, dont_load, _recursive)
             if key is None:
                 self.save(merged, entity_name=mapper.entity_name)
             return merged

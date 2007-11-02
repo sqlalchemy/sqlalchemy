@@ -101,6 +101,22 @@ class MergeTest(AssertMixin):
         u = sess.query(User).get(7)
         self.assert_result([u], User, {'user_id':7, 'user_name':'fred2', 'addresses':(Address, [{'email_address':'foo@bar.com'}, {'email_address':'hoho@lalala.com'}])})
 
+        # merge persistent object into another session
+        sess4 = create_session()
+        u = sess4.merge(u)
+        def go():
+            sess4.flush()
+        # no changes; therefore flush should do nothing
+        self.assert_sql_count(testbase.db, go, 0)
+        
+        # test with "dontload" merge
+        sess5 = create_session()
+        u = sess5.merge(u, dont_load=True)
+        def go():
+            sess5.flush()
+        # no changes; therefore flush should do nothing
+        self.assert_sql_count(testbase.db, go, 0)
+
     def test_saved_cascade_2(self):
         """tests a more involved merge"""
         mapper(Order, orders, properties={
@@ -141,27 +157,28 @@ class MergeTest(AssertMixin):
         assert o2.customer.user_name == 'also fred'
         
     def test_saved_cascade_3(self):
-            """test merge of a persistent entity with one_to_one relationship"""
-            mapper(User, users, properties={
-                'address':relation(mapper(Address, addresses),uselist = False)
-            })
-            sess = create_session()
-            u = User()
-            u.user_id = 7
-            u.user_name = "fred"
-            a1 = Address()
-            a1.email_address='foo@bar.com'
-            u.address = a1
+        """test merge of a persistent entity with one_to_one relationship"""
 
-            sess.save(u)
-            sess.flush()
+        mapper(User, users, properties={
+            'address':relation(mapper(Address, addresses),uselist = False)
+        })
+        sess = create_session()
+        u = User()
+        u.user_id = 7
+        u.user_name = "fred"
+        a1 = Address()
+        a1.email_address='foo@bar.com'
+        u.address = a1
 
-            sess2 = create_session()
-            u2 = sess2.query(User).get(7)
-            u2.user_name = 'fred2'
-            u2.address.email_address = 'hoho@lalala.com'
+        sess.save(u)
+        sess.flush()
 
-            u3 = sess.merge(u2)
+        sess2 = create_session()
+        u2 = sess2.query(User).get(7)
+        u2.user_name = 'fred2'
+        u2.address.email_address = 'hoho@lalala.com'
+
+        u3 = sess.merge(u2)
         
 if __name__ == "__main__":    
     testbase.main()
