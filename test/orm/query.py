@@ -902,6 +902,8 @@ class ExternalColumnsTest(QueryTest):
 
         assert tuple_address_result == sess.query(Address).join('user', aliased=True, id='ualias').add_entity(User, id='ualias').all()
 
+
+
 if __name__ == '__main__':
     testbase.main()
 

@@ -1521,8 +1521,7 @@ class FromClause(Selectable):
 
     __visit_name__ = 'fromclause'
 
-    def __init__(self, name=None):
-        self.name = name
+    def __init__(self):
         self.oid_column = None
         
     def _get_from_objects(self, **modifiers):
@@ -1723,6 +1722,12 @@ class FromClause(Selectable):
     def _proxy_column(self, column):
         return column._make_proxy(self)
 
+class _TextFromClause(FromClause):
+    __visit_name__ = 'fromclause'
+    
+    def __init__(self, text):
+        self.name = text
+        
 class _BindParamClause(ClauseElement, _CompareMixin):
     """Represent a bind parameter.
 
@@ -2212,9 +2217,6 @@ class Join(FromClause):
         self.__folded_equivalents = None
         self._init_primary_key()
 
-    name = property(lambda s: "Join object on " + s.left.name + " " + s.right.name)
-    encodedname = property(lambda s: s.name.encode('ascii', 'backslashreplace'))
-
     def _init_primary_key(self):
         from sqlalchemy import schema
         pkcol = util.Set([c for c in self._flatten_exportable_columns() if c.primary_key])
@@ -2663,7 +2665,7 @@ class TableClause(FromClause):
     """
 
     def __init__(self, name, *columns):
-        super(TableClause, self).__init__(name)
+        super(TableClause, self).__init__()
         self.name = self.fullname = name
         self.encodedname = self.name.encode('ascii', 'backslashreplace')
         self.oid_column = _ColumnClause('oid', self, _is_oid=True)
@@ -2910,7 +2912,6 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         
         _SelectBaseMixin.__init__(self, **kwargs)
 
-    name = property(lambda s:s.keyword + " statement")
 
     def self_group(self, against=None):
         return _FromGrouping(self)
@@ -3057,8 +3058,6 @@ class Select(_SelectBaseMixin, FromClause):
             return froms
 
     froms = property(_get_display_froms, doc="""Return a list of all FromClause elements which will be applied to the FROM clause of the resulting statement.""")
-
-    name = property(lambda self:"Select statement", doc="""Placeholder 'name' attribute to meet the FromClause interface.""")
 
     def locate_all_froms(self):
         """return a Set of all FromClause elements referenced by this Select.  
@@ -3250,7 +3249,7 @@ class Select(_SelectBaseMixin, FromClause):
         """append the given FromClause expression to this select() construct's FROM clause."""
         
         if _is_literal(fromclause):
-            fromclause = FromClause(fromclause)
+            fromclause = _TextFromClause(fromclause)
             
         if not _copy_collection:
             self._froms.add(fromclause)

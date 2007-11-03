@@ -189,7 +189,6 @@ class AliasedClauses(object):
         else:
             self.alias = mapped_table.alias()
         self.mapped_table = mapped_table
-        self.extra_cols = {}
         self.row_decorator = self._create_row_adapter()
         
     def aliased_column(self, column):
@@ -199,9 +198,6 @@ class AliasedClauses(object):
         conv = self.alias.corresponding_column(column, raiseerr=False)
         if conv:
             return conv
-
-        if column in self.extra_cols:
-            return self.extra_cols[column]
 
         aliased_column = column
         # for column-level subqueries, swap out its selectable with our
@@ -214,11 +210,6 @@ class AliasedClauses(object):
         aliased_column = sql_util.ClauseAdapter(self.alias).chain(ModifySubquery()).traverse(aliased_column, clone=True)
         aliased_column = aliased_column.label(None)
         self.row_decorator.map[column] = aliased_column
-        # TODO: this is a little hacky
-        for attr in ('name', '_label'):
-            if hasattr(column, attr):
-                self.row_decorator.map[getattr(column, attr)] = aliased_column
-        self.extra_cols[column] = aliased_column
         return aliased_column
 
     def adapt_clause(self, clause):
@@ -246,18 +237,9 @@ class AliasedClauses(object):
                 return self.row[key]
             def keys(self):
                 return map.keys()
-        map = {}        
-        for c in self.alias.c:
-            parent = self.mapped_table.corresponding_column(c)
-            map[parent] = c
-            map[parent._label] = c
-            map[parent.name] = c
-        for c in self.extra_cols:
-            map[c] = self.extra_cols[c]
-            # TODO: this is a little hacky
-            for attr in ('name', '_label'):
-                if hasattr(c, attr):
-                    map[getattr(c, attr)] = self.extra_cols[c]
+        map = {}
+        for c in self.mapped_table.c:
+            map[c] = self.alias.corresponding_column(c)
                 
         AliasedRowAdapter.map = map
         return AliasedRowAdapter
