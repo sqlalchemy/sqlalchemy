@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import weakref, threading
+import operator, weakref, threading
 import UserDict
 from sqlalchemy import util
 from sqlalchemy.orm import interfaces, collections
@@ -59,47 +59,48 @@ class InstrumentedAttribute(interfaces.PropComparator):
 
     property = property(lambda s: class_mapper(s.impl.class_).get_property(s.impl.key),
                         doc="the MapperProperty object associated with this attribute")
-        
+
+
 class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
-    
+
     def __init__(self, class_, manager, key, callable_, trackparent=False, extension=None, compare_function=None, mutable_scalars=False, **kwargs):
         """Construct an AttributeImpl.
-        
-            class_
-              the class to be instrumented.
-                
-            manager
-              AttributeManager managing this class
-              
-            key
-              string name of the attribute
-              
-            callable_
-              optional function which generates a callable based on a parent 
-              instance, which produces the "default" values for a scalar or 
-              collection attribute when it's first accessed, if not present already.
-              
-            trackparent
-              if True, attempt to track if an instance has a parent attached to it 
-              via this attribute
-              
-            extension
-              an AttributeExtension object which will receive 
-              set/delete/append/remove/etc. events 
-              
-            compare_function
-              a function that compares two values which are normally assignable to this 
-              attribute
-              
-            mutable_scalars
-              if True, the values which are normally assignable to this attribute can mutate, 
-              and need to be compared against a copy of their original contents in order to 
-              detect changes on the parent instance
-              
-              
+
+        class_
+          the class to be instrumented.
+
+        manager
+          AttributeManager managing this class
+
+        key
+          string name of the attribute
+
+        callable_
+          optional function which generates a callable based on a parent
+          instance, which produces the "default" values for a scalar or
+          collection attribute when it's first accessed, if not present
+          already.
+
+        trackparent
+          if True, attempt to track if an instance has a parent attached
+          to it via this attribute.
+
+        extension
+          an AttributeExtension object which will receive
+          set/delete/append/remove/etc. events.
+
+        compare_function
+          a function that compares two values which are normally
+          assignable to this attribute.
+
+        mutable_scalars
+          if True, the values which are normally assignable to this
+          attribute can mutate, and need to be compared against a copy of
+          their original contents in order to detect changes on the parent
+          instance.
         """
-        
+
         self.class_ = class_
         self.manager = manager
         self.key = key
@@ -110,14 +111,14 @@ class AttributeImpl(object):
             class_._sa_has_mutable_scalars = True
         self.copy = None
         if compare_function is None:
-            self.is_equal = lambda x,y: x == y
+            self.is_equal = operator.eq
         else:
             self.is_equal = compare_function
         self.extensions = util.to_list(extension or [])
-        
+
     def commit_to_state(self, state, value=NO_VALUE):
-        """commit the object's current state to its 'committed' state."""
-        
+        """Commits the object's current state to its 'committed' state."""
+
         if value is NO_VALUE:
             if self.key in state.dict:
                 value = state.dict[self.key]
