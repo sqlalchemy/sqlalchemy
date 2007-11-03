@@ -29,6 +29,14 @@ class ClauseVisitor(object):
         if meth:
             return meth(obj, **kwargs)
 
+    def traverse_chained(self, obj, **kwargs):
+        v = self
+        while v is not None:
+            meth = getattr(self, "visit_%s" % obj.__visit_name__, None)
+            if meth:
+                meth(obj, **kwargs)
+            v = getattr(v, '_next', None)
+        
     def iterate(self, obj, stop_on=None):
         stack = [obj]
         traversal = []

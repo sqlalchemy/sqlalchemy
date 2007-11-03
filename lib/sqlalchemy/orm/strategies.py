@@ -27,9 +27,9 @@ class ColumnLoader(LoaderStrategy):
     def setup_query(self, context, parentclauses=None, **kwargs):
         for c in self.columns:
             if parentclauses is not None:
-                context.statement.append_column(parentclauses.aliased_column(c))
+                context.secondary_columns.append(parentclauses.aliased_column(c))
             else:
-                context.statement.append_column(c)
+                context.primary_columns.append(c)
         
     def init_class_attribute(self):
         self.is_class_level = True
@@ -498,10 +498,8 @@ class EagerLoader(AbstractRelationLoader):
         else:
             localparent = parentmapper
         
-        statement = context.statement
-        
-        if hasattr(statement, '_outerjoin'):
-            towrap = statement._outerjoin
+        if context.eager_joins:
+            towrap = context.eager_joins
         elif isinstance(localparent.mapped_table, sql.Join):
             towrap = localparent.mapped_table
         else:
@@ -509,7 +507,8 @@ class EagerLoader(AbstractRelationLoader):
             # this will locate the selectable inside of any containers it may be a part of (such
             # as a join).  if its inside of a join, we want to outer join on that join, not the 
             # selectable.
-            for fromclause in statement.froms:
+            # TODO: slightly hacky way to get at all the froms
+            for fromclause in sql.select(from_obj=context.from_clauses).froms:
                 if fromclause is localparent.mapped_table:
                     towrap = fromclause
                     break
@@ -518,7 +517,7 @@ class EagerLoader(AbstractRelationLoader):
                         towrap = fromclause
                         break
             else:
-                raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join to, in query '%s' %s" % (str(statement), localparent.mapped_table))
+                raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join onto, for mapped table %s" % (localparent.mapped_table))
         
         # create AliasedClauses object to build up the eager query.  this is cached after 1st creation.    
         try:
@@ -532,19 +531,17 @@ class EagerLoader(AbstractRelationLoader):
         context.attributes[("eager_row_processor", path)] = clauses.row_decorator
         
         if self.secondaryjoin is not None:
-            statement._outerjoin = sql.outerjoin(towrap, clauses.secondary, clauses.primaryjoin).outerjoin(clauses.alias, clauses.secondaryjoin)
+            context.eager_joins = sql.outerjoin(towrap, clauses.secondary, clauses.primaryjoin).outerjoin(clauses.alias, clauses.secondaryjoin)
             if self.order_by is False and self.secondary.default_order_by() is not None:
-                statement.append_order_by(*clauses.secondary.default_order_by())
+                context.eager_order_by.append(*clauses.secondary.default_order_by())
         else:
-            statement._outerjoin = towrap.outerjoin(clauses.alias, clauses.primaryjoin)
+            context.eager_joins = towrap.outerjoin(clauses.alias, clauses.primaryjoin)
             if self.order_by is False and clauses.alias.default_order_by() is not None:
-                statement.append_order_by(*clauses.alias.default_order_by())
+                context.eager_order_by.append(*clauses.alias.default_order_by())
 
         if clauses.order_by:
-            statement.append_order_by(*util.to_list(clauses.order_by))
+            context.eager_order_by.append(*util.to_list(clauses.order_by))
         
-        statement.append_from(statement._outerjoin)
-
         for value in self.select_mapper.iterate_properties:
             context.exec_with_path(self.select_mapper, value.key, value.setup, context, parentclauses=clauses, parentmapper=self.select_mapper)
         

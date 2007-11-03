@@ -166,7 +166,27 @@ class SelectableTest(AssertMixin):
         print str(criterion)
         print str(j.onclause)
         self.assert_(criterion.compare(j.onclause))
-        
+    
+    def testtablejoinedtoselectoftable(self):
+        metadata = MetaData()
+        a = Table('a', metadata,
+            Column('id', Integer, primary_key=True))
+        b = Table('b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', Integer, ForeignKey('a.id')),
+            )
+
+        j1 = a.outerjoin(b)
+        j2 = select([a.c.id.label('aid')]).alias('bar')
+
+        j3 = a.join(j2, j2.c.aid==a.c.id)
+
+        j4 = select([j3]).alias('foo')
+        print j4
+        print j4.corresponding_column(j2.c.aid)
+        print j4.c.aid
+        # TODO: this is the assertion case which fails
+#        assert j4.corresponding_column(j2.c.aid) is j4.c.aid
 
 class PrimaryKeyTest(AssertMixin):
     def test_join_pk_collapse_implicit(self):

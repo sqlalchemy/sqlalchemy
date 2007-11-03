@@ -28,6 +28,11 @@ CHANGES
     for the column, for those DB's who provide it via cursor.lastrowid
 
 - orm
+  - eager loading with LIMIT/OFFSET applied no longer adds the primary 
+    table joined to a limited subquery of itself; the eager loads now
+    join directly to the subquery which also provides the primary table's
+    columns to the result set.  This eliminates a JOIN from all eager loads
+    with LIMIT/OFFSET.  [ticket:843]
 
   - Mapped classes may now define __eq__, __hash__, and __nonzero__ methods
     with arbitrary sementics.  The orm now handles all mapped instances on

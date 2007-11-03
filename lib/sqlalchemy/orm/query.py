@@ -48,6 +48,7 @@ class Query(object):
         self._eager_loaders = util.Set([x for x in self.mapper._eager_loaders])
         self._attributes = {}
         self._current_path = ()
+        self._primary_adapter=None
         
     def _clone(self):
         q = Query.__new__(Query)
@@ -686,7 +687,10 @@ class Query(object):
             result = util.UniqueAppender([])
                     
         for row in cursor.fetchall():
-            self.select_mapper._instance(context, row, result)
+            if self._primary_adapter:
+                self.select_mapper._instance(context, self._primary_adapter(row), result)
+            else:
+                self.select_mapper._instance(context, row, result)
             for proc in process:
                 proc[0](context, row)
 
@@ -836,47 +840,14 @@ class Query(object):
         if self.table not in alltables:
             from_obj.append(self.table)
 
-        if self._eager_loaders and self._nestable(**self._select_args()):
-            # if theres an order by, add those columns to the column list
-            # of the "rowcount" query we're going to make
-            if order_by:
-                order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
-                cf = sql_util.ColumnFinder()
-                for o in order_by:
-                    cf.traverse(o)
-            else:
-                cf = []
-
-            s2 = sql.select(self.primary_key_columns + list(cf), whereclause, use_labels=True, from_obj=from_obj, correlate=False, **self._select_args())
-            if order_by:
-                s2 = s2.order_by(*util.to_list(order_by))
-            s3 = s2.alias('tbl_row_count')
-            crit = s3.primary_key==self.primary_key_columns
-            statement = sql.select([], crit, use_labels=True, for_update=for_update)
-            # now for the order by, convert the columns to their corresponding columns
-            # in the "rowcount" query, and tack that new order by onto the "rowcount" query
-            if order_by:
-                statement.append_order_by(*sql_util.ClauseAdapter(s3).copy_and_process(order_by))
-        else:
-            statement = sql.select([], whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, **self._select_args())
-            if order_by:
-                statement.append_order_by(*util.to_list(order_by))
-                
-            # for a DISTINCT query, you need the columns explicitly specified in order
-            # to use it in "order_by".  ensure they are in the column criterion (particularly oid).
-            # TODO: this should be done at the SQL level not the mapper level
-            # TODO: need test coverage for this 
-            if self._distinct and order_by:
-                [statement.append_column(c) for c in util.to_list(order_by)]
-
-        context.statement = statement
+        context.from_clauses = from_obj
         
         # give all the attached properties a chance to modify the query
         # TODO: doing this off the select_mapper.  if its the polymorphic mapper, then
         # it has no relations() on it.  should we compile those too into the query ?  (i.e. eagerloads)
         for value in self.select_mapper.iterate_properties:
             context.exec_with_path(self.select_mapper, value.key, value.setup, context)
-        
+
         # additional entities/columns, add those to selection criterion
         for tup in self._entities:
             (m, alias, alias_id) = tup
@@ -887,7 +858,63 @@ class Query(object):
             elif isinstance(m, sql.ColumnElement):
                 if clauses is not None:
                     m = clauses.adapt_clause(m)
-                statement.append_column(m)
+                context.secondary_columns.append(m)
+            
+        if self._eager_loaders and self._nestable(**self._select_args()):
+            # eager loaders are present, and the SELECT has limiting criterion
+            # produce a "wrapped" selectable.
+            
+            # ensure all 'order by' elements are ClauseElement instances
+            # (since they will potentially be aliased)
+            # locate all embedded Column clauses so they can be added to the
+            # "inner" select statement where they'll be available to the enclosing
+            # statement's "order by"
+            if order_by:
+                order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
+                cf = sql_util.ColumnFinder()
+                for o in order_by:
+                    cf.traverse(o)
+            else:
+                cf = []
+
+            s2 = sql.select(context.primary_columns + list(cf), whereclause, from_obj=context.from_clauses, use_labels=True, correlate=False, **self._select_args())
+
+            if order_by:
+                s2.append_order_by(*util.to_list(order_by))
+            
+            s3 = s2.alias('primary_tbl_limited')
+                
+            self._primary_adapter = mapperutil.create_row_adapter(s3, self.table)
+
+            statement = sql.select([s3] + context.secondary_columns, for_update=for_update, use_labels=True)
+
+            if context.eager_joins:
+                statement.append_from(sql_util.ClauseAdapter(s3).traverse(context.eager_joins), _copy_collection=False)
+
+            if order_by:
+                statement.append_order_by(*sql_util.ClauseAdapter(s3).copy_and_process(util.to_list(order_by)))
+
+            statement.append_order_by(*context.eager_order_by)
+        else:
+            statement = sql.select(context.primary_columns + context.secondary_columns, whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, **self._select_args())
+
+            if context.eager_joins:
+                statement.append_from(context.eager_joins, _copy_collection=False)
+
+            if order_by:
+                statement.append_order_by(*util.to_list(order_by))
+
+            if context.eager_order_by:
+                statement.append_order_by(*context.eager_order_by)
+                
+            # for a DISTINCT query, you need the columns explicitly specified in order
+            # to use it in "order_by".  ensure they are in the column criterion (particularly oid).
+            # TODO: this should be done at the SQL level not the mapper level
+            # TODO: need test coverage for this 
+            if self._distinct and order_by:
+                [statement.append_column(c) for c in util.to_list(order_by)]
+
+        context.statement = statement
                 
         return context
 
@@ -1164,7 +1191,10 @@ class QueryContext(object):
         self.version_check = query._version_check
         self.identity_map = {}
         self.path = ()
-
+        self.primary_columns = []
+        self.secondary_columns = []
+        self.eager_order_by = []
+        self.eager_joins = None
         self.options = query._with_options
         self.attributes = query._attributes.copy()
     
