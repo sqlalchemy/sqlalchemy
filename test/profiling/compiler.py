@@ -24,7 +24,7 @@ class CompileTest(AssertMixin):
         t1.update().compile()
 
     # TODO: this is alittle high
-    @profiling.profiled('ctest_select', call_range=(190, 210), always=True)        
+    @profiling.profiled('ctest_select', call_range=(170, 200), always=True)        
     def test_select(self):
         s = select([t1], t1.c.c2==t2.c.c1)
         s.compile()

@@ -891,7 +891,7 @@ class Connection(Connectable):
     executors = {
         expression._Function : _execute_function,
         expression.ClauseElement : _execute_clauseelement,
-        visitors.ClauseVisitor : _execute_compiled,
+        Compiled : _execute_compiled,
         schema.SchemaItem:_execute_default,
         str.__mro__[-2] : _execute_text
     }

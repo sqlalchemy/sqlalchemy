@@ -775,7 +775,9 @@ func = _FunctionGenerator()
 # TODO: use UnaryExpression for this instead ?
 modifier = _FunctionGenerator(group=False)
 
-
+def _clone(element):
+    return element._clone()
+    
 def _compound_select(keyword, *selects, **kwargs):
     return CompoundSelect(keyword, *selects, **kwargs)
 
@@ -908,7 +910,7 @@ class ClauseElement(object):
 
         return self is other
 
-    def _copy_internals(self):
+    def _copy_internals(self, clone=_clone):
         """Reassign internal elements to be clones of themselves.
 
         Called during a copy-and-traverse operation on newly
@@ -1580,8 +1582,7 @@ class FromClause(Selectable):
 
         An example would be an Alias of a Table is derived from that Table.
         """
-
-        return False
+        return fromclause is self
 
     def replace_selectable(self, old, alias):
       """replace all occurences of FromClause 'old' with the given Alias object, returning a copy of this ``FromClause``."""
@@ -1874,8 +1875,8 @@ class _TextClause(ClauseElement):
 
     columns = property(lambda s:[])
 
-    def _copy_internals(self):
-        self.bindparams = dict([(b.key, b._clone()) for b in self.bindparams.values()])
+    def _copy_internals(self, clone=_clone):
+        self.bindparams = dict([(b.key, clone(b)) for b in self.bindparams.values()])
 
     def get_children(self, **kwargs):
         return self.bindparams.values()
@@ -1933,8 +1934,8 @@ class ClauseList(ClauseElement):
         else:
             self.clauses.append(_literal_as_text(clause))
 
-    def _copy_internals(self):
-        self.clauses = [clause._clone() for clause in self.clauses]
+    def _copy_internals(self, clone=_clone):
+        self.clauses = [clone(clause) for clause in self.clauses]
 
     def get_children(self, **kwargs):
         return self.clauses
@@ -1989,8 +1990,8 @@ class _CalculatedClause(ColumnElement):
 
     key = property(lambda self:self.name or "_calc_")
 
-    def _copy_internals(self):
-        self.clause_expr = self.clause_expr._clone()
+    def _copy_internals(self, clone=_clone):
+        self.clause_expr = clone(self.clause_expr)
 
     def clauses(self):
         if isinstance(self.clause_expr, _Grouping):
@@ -2038,8 +2039,8 @@ class _Function(_CalculatedClause, FromClause):
     key = property(lambda self:self.name)
     columns = property(lambda self:[self])
 
-    def _copy_internals(self):
-        _CalculatedClause._copy_internals(self)
+    def _copy_internals(self, clone=_clone):
+        _CalculatedClause._copy_internals(self, clone=clone)
         self._clone_from_clause()
 
     def get_children(self, **kwargs):
@@ -2059,9 +2060,9 @@ class _Cast(ColumnElement):
         self.typeclause = _TypeClause(self.type)
         self._distance = 0
 
-    def _copy_internals(self):
-        self.clause = self.clause._clone()
-        self.typeclause = self.typeclause._clone()
+    def _copy_internals(self, clone=_clone):
+        self.clause = clone(self.clause)
+        self.typeclause = clone(self.typeclause)
 
     def get_children(self, **kwargs):
         return self.clause, self.typeclause
@@ -2092,8 +2093,8 @@ class _UnaryExpression(ColumnElement):
     def _get_from_objects(self, **modifiers):
         return self.element._get_from_objects(**modifiers)
 
-    def _copy_internals(self):
-        self.element = self.element._clone()
+    def _copy_internals(self, clone=_clone):
+        self.element = clone(self.element)
 
     def get_children(self, **kwargs):
         return self.element,
@@ -2134,9 +2135,9 @@ class _BinaryExpression(ColumnElement):
     def _get_from_objects(self, **modifiers):
         return self.left._get_from_objects(**modifiers) + self.right._get_from_objects(**modifiers)
 
-    def _copy_internals(self):
-        self.left = self.left._clone()
-        self.right = self.right._clone()
+    def _copy_internals(self, clone=_clone):
+        self.left = clone(self.left)
+        self.right = clone(self.right)
 
     def get_children(self, **kwargs):
         return self.left, self.right
@@ -2265,11 +2266,11 @@ class Join(FromClause):
             self._foreign_keys.add(f)
         return column
 
-    def _copy_internals(self):
+    def _copy_internals(self, clone=_clone):
         self._clone_from_clause()
-        self.left = self.left._clone()
-        self.right = self.right._clone()
-        self.onclause = self.onclause._clone()
+        self.left = clone(self.left)
+        self.right = clone(self.right)
+        self.onclause = clone(self.onclause)
         self.__folded_equivalents = None
         self._init_primary_key()
 
@@ -2414,15 +2415,7 @@ class Alias(FromClause):
             self.oid_column = None
 
     def is_derived_from(self, fromclause):
-        x = self.selectable
-        while True:
-            if x is fromclause:
-                return True
-            if isinstance(x, Alias):
-                x = x.selectable
-            else:
-                break
-        return False
+        return self.selectable.is_derived_from(fromclause)
 
     def supports_execution(self):
         return self.original.supports_execution()
@@ -2437,13 +2430,12 @@ class Alias(FromClause):
         #return self.selectable._exportable_columns()
         return self.selectable.columns
 
-    def _copy_internals(self):
-        self._clone_from_clause()
-        self.selectable = self.selectable._clone()
-        baseselectable = self.selectable
-        while isinstance(baseselectable, Alias):
-            baseselectable = baseselectable.selectable
-        self.original = baseselectable
+    def _clone(self):
+        # Alias is immutable
+        return self
+
+    def _copy_internals(self, clone=_clone):
+        pass
 
     def get_children(self, **kwargs):
         for c in self.c:
@@ -2469,8 +2461,8 @@ class _ColumnElementAdapter(ColumnElement):
     key = property(lambda s: s.elem.key)
     _label = property(lambda s: s.elem._label)
 
-    def _copy_internals(self):
-        self.elem = self.elem._clone()
+    def _copy_internals(self, clone=_clone):
+        self.elem = clone(self.elem)
 
     def get_children(self, **kwargs):
         return self.elem,
@@ -2503,8 +2495,8 @@ class _FromGrouping(FromClause):
     def _hide_froms(self, **modifiers):
         return self.elem._hide_froms(**modifiers)
 
-    def _copy_internals(self):
-        self.elem = self.elem._clone()
+    def _copy_internals(self, clone=_clone):
+        self.elem = clone(self.elem)
 
     def _get_from_objects(self, **modifiers):
         return self.elem._get_from_objects(**modifiers)
@@ -2538,8 +2530,8 @@ class _Label(ColumnElement):
     def expression_element(self):
         return self.obj
 
-    def _copy_internals(self):
-        self.obj = self.obj._clone()
+    def _copy_internals(self, clone=_clone):
+        self.obj = clone(self.obj)
 
     def get_children(self, **kwargs):
         return self.obj,
@@ -2935,13 +2927,13 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         col.orig_set = colset
         return col
 
-    def _copy_internals(self):
+    def _copy_internals(self, clone=_clone):
         self._clone_from_clause()
         self._col_map = {}
-        self.selects = [s._clone() for s in self.selects]
+        self.selects = [clone(s) for s in self.selects]
         for attr in ('_order_by_clause', '_group_by_clause'):
             if getattr(self, attr) is not None:
-                setattr(self, attr, getattr(self, attr)._clone())
+                setattr(self, attr, clone(getattr(self, attr)))
 
     def get_children(self, column_collections=True, **kwargs):
         return (column_collections and list(self.c) or []) + \
@@ -3091,13 +3083,19 @@ class Select(_SelectBaseMixin, FromClause):
 
     inner_columns = property(_get_inner_columns, doc="""a collection of all ColumnElement expressions which would be rendered into the columns clause of the resulting SELECT statement.""")
 
-    def _copy_internals(self):
+    def is_derived_from(self, fromclause):
+        for f in self.locate_all_froms():
+            if f.is_derived_from(fromclause):
+                return True
+        return False
+
+    def _copy_internals(self, clone=_clone):
         self._clone_from_clause()
-        self._raw_columns = [c._clone() for c in self._raw_columns]
-        self._recorrelate_froms([(f, f._clone()) for f in self._froms])
+        self._raw_columns = [clone(c) for c in self._raw_columns]
+        self._recorrelate_froms([(f, clone(f)) for f in self._froms])
         for attr in ('_whereclause', '_having', '_order_by_clause', '_group_by_clause'):
             if getattr(self, attr) is not None:
-                setattr(self, attr, getattr(self, attr)._clone())
+                setattr(self, attr, clone(getattr(self, attr)))
 
     def get_children(self, column_collections=True, **kwargs):
         """return child elements as per the ClauseElement specification."""
@@ -3394,7 +3392,7 @@ class Insert(_UpdateBase):
         else:
             return ()
 
-    def _copy_internals(self):
+    def _copy_internals(self, clone=_clone):
         self.parameters = self.parameters.copy()
 
     def values(self, v):
@@ -3423,8 +3421,8 @@ class Update(_UpdateBase):
         else:
             return ()
 
-    def _copy_internals(self):
-        self._whereclause = self._whereclause._clone()
+    def _copy_internals(self, clone=_clone):
+        self._whereclause = clone(self._whereclause)
         self.parameters = self.parameters.copy()
 
     def values(self, v):
@@ -3449,8 +3447,8 @@ class Delete(_UpdateBase):
         else:
             return ()
 
-    def _copy_internals(self):
-        self._whereclause = self._whereclause._clone()
+    def _copy_internals(self, clone=_clone):
+        self._whereclause = clone(self._whereclause)
 
 class _IdentifiedClause(ClauseElement):
     def __init__(self, ident):

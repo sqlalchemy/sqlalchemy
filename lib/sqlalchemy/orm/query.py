@@ -800,7 +800,7 @@ class Query(object):
             # adapt the given WHERECLAUSE to adjust instances of this query's mapped 
             # table to be that of our select_table,
             # which may be the "polymorphic" selectable used by our mapper.
-            sql_util.ClauseAdapter(self.table).traverse(whereclause, stop_on=util.Set([self.table]))
+            whereclause = sql_util.ClauseAdapter(self.table).traverse(whereclause, stop_on=util.Set([self.table]))
 
             # if extra entities, adapt the criterion to those as well
             for m in self._entities:

@@ -87,10 +87,11 @@ OPERATORS =  {
     operators.isnot : 'IS NOT'
 }
 
-class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
+class DefaultCompiler(engine.Compiled):
     """Default implementation of Compiled.
 
-    Compiles ClauseElements into SQL strings.
+    Compiles ClauseElements into SQL strings.   Uses a similar visit
+    paradigm as visitors.ClauseVisitor but implements its own traversal.
     """
 
     __traverse_options__ = {'column_collections':False, 'entry':True}
@@ -163,7 +164,9 @@ class DefaultCompiler(engine.Compiled, visitors.ClauseVisitor):
         if stack:
             self.stack.append(stack)
         try:
-            return self.traverse_single(obj, **kwargs)
+            meth = getattr(self, "visit_%s" % obj.__visit_name__, None)
+            if meth:
+                return meth(obj, **kwargs)
         finally:
             if stack:
                 self.stack.pop(-1)

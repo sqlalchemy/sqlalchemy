@@ -644,7 +644,6 @@ class OracleCompiler(compiler.DefaultCompiler):
             orderby = self.process(select._order_by_clause)
             if not orderby:
                 orderby = select.oid_column
-                self.traverse(orderby)
                 orderby = self.process(orderby)
                 
             oldselect = select

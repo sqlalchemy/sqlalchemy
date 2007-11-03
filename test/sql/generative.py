@@ -4,6 +4,8 @@ from sqlalchemy.sql import table, column, ClauseElement
 from testlib import *
 from sqlalchemy.sql.visitors import *
 from sqlalchemy import util
+from sqlalchemy.sql import util as sql_util
+
 
 class TraversalTest(AssertMixin):
     """test ClauseVisitor's traversal, particularly its ability to copy and modify
@@ -133,7 +135,8 @@ class TraversalTest(AssertMixin):
         s3 = vis2.traverse(struct, clone=True)
         assert struct != s3
         assert struct3 == s3
-
+    
+        
 class ClauseTest(SQLCompileTest):
     """test copy-in-place behavior of various ClauseElements."""
     
@@ -230,7 +233,6 @@ class ClauseTest(SQLCompileTest):
         self.assert_compile(Vis().traverse(s, clone=True), "SELECT * FROM table1 WHERE table1.col1 = table2.col1 AND table1.col2 = :table1_col2")
 
     def test_clause_adapter(self):
-        from sqlalchemy.sql import util as sql_util
         
         t1alias = t1.alias('t1alias')
         
@@ -257,7 +259,47 @@ class ClauseTest(SQLCompileTest):
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]), clone=True), "SELECT * FROM table1 AS t1alias, table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t1), clone=True), "SELECT * FROM table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t2), clone=True), "SELECT * FROM table1 AS t1alias WHERE t1alias.col1 = t2alias.col2")
+
+    def test_joins(self):
+        """test that ClauseAdapter can target a Join object, replace it, and not dig into the sub-joins after
+        replacing."""
         
+        metadata = MetaData()
+        a = Table('a', metadata,
+            Column('id', Integer, primary_key=True))
+        b = Table('b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', Integer, ForeignKey('a.id')),
+            )
+        c = Table('c', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('bid', Integer, ForeignKey('b.id')),
+            )
+
+        d = Table('d', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', Integer, ForeignKey('a.id')),
+            )
+
+        j1 = a.outerjoin(b)
+        j2 = select([j1], use_labels=True)
+
+        j3 = c.join(j2, j2.c.b_id==c.c.bid)
+
+        j4 = j3.outerjoin(d)
+        self.assert_compile(j4,  "c JOIN (SELECT a.id AS a_id, b.id AS b_id, b.aid AS b_aid FROM a LEFT OUTER JOIN b ON a.id = b.aid) "
+                                 "ON b_id = c.bid"
+                                 " LEFT OUTER JOIN d ON a_id = d.aid")
+        j5 = j3.alias('foo')
+        j6 = sql_util.ClauseAdapter(j5).copy_and_process([j4])[0]
+        
+        # this statement takes c join(a join b), wraps it inside an aliased "select * from c join(a join b) AS foo".
+        # the outermost right side "left outer join d" stays the same, except "d" joins against foo.a_id instead
+        # of plain "a_id"
+        self.assert_compile(j6, "(SELECT c.id AS c_id, c.bid AS c_bid, a_id AS a_id, b_id AS b_id, b_aid AS b_aid FROM "
+                                "c JOIN (SELECT a.id AS a_id, b.id AS b_id, b.aid AS b_aid FROM a LEFT OUTER JOIN b ON a.id = b.aid) "
+                                "ON b_id = c.bid) AS foo"
+                                " LEFT OUTER JOIN d ON foo.a_id = d.aid")
         
         
 class SelectTest(SQLCompileTest):

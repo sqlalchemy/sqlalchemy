@@ -230,6 +230,39 @@ class PrimaryKeyTest(AssertMixin):
         assert str(j) == "a JOIN b ON a.id = b.id AND b.x = :b_x", str(j)
         assert list(j.primary_key) == [a.c.id, b.c.x]
 
+class DerivedTest(AssertMixin):
+    def test_table(self):
+        meta = MetaData()
+        t1 = Table('t1', meta, Column('c1', Integer, primary_key=True), Column('c2', String(30)))
+        t2 = Table('t2', meta, Column('c1', Integer, primary_key=True), Column('c2', String(30)))
+        
+        assert t1.is_derived_from(t1)
+        assert not t2.is_derived_from(t1)
+        
+    def test_alias(self):    
+        meta = MetaData()
+        t1 = Table('t1', meta, Column('c1', Integer, primary_key=True), Column('c2', String(30)))
+        t2 = Table('t2', meta, Column('c1', Integer, primary_key=True), Column('c2', String(30)))
+        
+        assert t1.alias().is_derived_from(t1)
+        assert not t2.alias().is_derived_from(t1)
+        assert not t1.is_derived_from(t1.alias())
+        assert not t1.is_derived_from(t2.alias())
+    
+    def test_select(self):
+        meta = MetaData()
+        t1 = Table('t1', meta, Column('c1', Integer, primary_key=True), Column('c2', String(30)))
+        t2 = Table('t2', meta, Column('c1', Integer, primary_key=True), Column('c2', String(30)))
+
+        assert t1.select().is_derived_from(t1)
+        assert not t2.select().is_derived_from(t1)
+
+        assert select([t1, t2]).is_derived_from(t1)
+
+        assert t1.select().alias('foo').is_derived_from(t1)
+        assert select([t1, t2]).alias('foo').is_derived_from(t1)
+        assert not t2.select().alias('foo').is_derived_from(t1)
+
 if __name__ == "__main__":
     testbase.main()
 
