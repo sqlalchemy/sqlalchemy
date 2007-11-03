@@ -5,7 +5,7 @@
 
 """Support for the MaxDB database.
 
-TODO: module docs!
+TODO: More module docs!  MaxDB support is currently experimental.
 
 Overview
 --------
@@ -18,10 +18,20 @@ incorrect results from even very simple ORM queries.
 Only the native Python DB-API is currently supported.  ODBC driver support
 is a future enhancement.
 
+Connecting
+----------
+
+The username is case-sensitive.  If you usually connect to the
+database with sqlcli and other tools in lower case, you likely need to
+use upper case for DB-API.
+
 Implementation Notes
 --------------------
 
 Also check the DatabaseNotes page on the wiki for detailed information.
+
+With the 7.6.00.37 driver and Python 2.5, it seems that all DB-API
+generated exceptions are broken and can cause Python to crash.
 
 For 'somecol.in_([])' to work, the IN operator's generation must be changed
 to cast 'NULL' to a numeric, i.e. NUM(NULL).  The DB-API doesn't accept a
@@ -57,8 +67,8 @@ from sqlalchemy import types as sqltypes
 
 __all__ = [
     'MaxString', 'MaxUnicode', 'MaxChar', 'MaxText', 'MaxInteger',
-    'MaxSmallInteger', 'MaxNumeric', 'MaxFloat', 'MaxTimestamp', 
-    'MaxDate', 'MaxTime', 'MaxBoolean', 'MaxBlob', 
+    'MaxSmallInteger', 'MaxNumeric', 'MaxFloat', 'MaxTimestamp',
+    'MaxDate', 'MaxTime', 'MaxBoolean', 'MaxBlob',
     ]
 
 
@@ -178,7 +188,7 @@ class MaxNumeric(sqltypes.Numeric):
 
 class MaxFloat(sqltypes.Float):
     """The FLOAT data type."""
-    
+
     def get_col_spec(self):
         if self.precision is None:
             return 'FLOAT'
@@ -229,7 +239,7 @@ class MaxTimestamp(sqltypes.DateTime):
                     "datetimeformat '%s' is not supported." % (
                     dialect.datetimeformat,))
         return process
-            
+
 
 class MaxDate(sqltypes.Date):
     def get_col_spec(self):
@@ -350,7 +360,7 @@ colspecs = {
     sqltypes.Unicode: MaxUnicode,
     }
 
-ischema_names = { 
+ischema_names = {
     'boolean': MaxBoolean,
     'char': MaxChar,
     'character': MaxChar,
@@ -401,7 +411,7 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
                     self._last_inserted_ids = \
                       [None] * len(table.primary_key.columns)
                 self._last_inserted_ids[index] = id
-                
+
         super(MaxDBExecutionContext, self).post_exec()
 
     def get_result_proxy(self):
@@ -414,7 +424,7 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
 
 class MaxDBCachedColumnRow(engine_base.RowProxy):
     """A RowProxy that only runs result_processors once per column."""
-    
+
     def __init__(self, parent, row):
         super(MaxDBCachedColumnRow, self).__init__(parent, row)
         self.columns = {}
@@ -578,7 +588,7 @@ class MaxDBDialect(default.DefaultDialect):
               'FROM FOREIGNKEYCOLUMNS '
               'WHERE TABLENAME=? AND SCHEMANAME=%s '
               'ORDER BY FKEYNAME ')
-        
+
         params = [denormalize(table.name)]
         if not table.schema:
             st = st % 'CURRENT_SCHEMA'
@@ -593,13 +603,13 @@ class MaxDBDialect(default.DefaultDialect):
             raise exceptions.NoSuchTableError(table.fullname)
 
         include_columns = util.Set(include_columns or [])
-        
+
         for row in rows:
             (name, mode, col_type, encoding, length, scale,
              nullable, constant_def, func_def) = row
 
             name = normalize(name)
-            
+
             if include_columns and name not in include_columns:
                 continue
 
@@ -651,7 +661,7 @@ class MaxDBDialect(default.DefaultDialect):
                     "'%s'" % constant_def.replace("'", "''")))
 
             table.append_column(schema.Column(name, type_instance, **col_kw))
-        
+
         fk_sets = itertools.groupby(connection.execute(fk, params),
                                     lambda row: row.FKEYNAME)
         for fkeyname, fkey in fk_sets:
@@ -675,7 +685,7 @@ class MaxDBDialect(default.DefaultDialect):
                     referants.append('.'.join(
                         [quote(normalize(row[c]))
                          for c in ('REFTABLENAME', 'REFCOLUMNNAME')]))
-                    
+
             constraint_kw = {'name': fkeyname.lower()}
             if fkey[0].RULE is not None:
                 rule = fkey[0].RULE
@@ -727,7 +737,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
         'CURRENT_SCHEMA', 'DATE', 'FALSE', 'SYSDBA', 'TIME', 'TIMESTAMP',
         'TIMEZONE', 'TRANSACTION', 'TRUE', 'USER', 'UID', 'USERGROUP',
         'UTCDATE', 'UTCDIFF'])
-    
+
     def default_from(self):
         return ' FROM DUAL'
 
@@ -787,7 +797,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
         def visit_column(self, column):
             self.column = column
             self.count += 1
-            
+
     def _find_labeled_columns(self, columns, use_labels=False):
         labels = {}
         for column in columns:
@@ -800,9 +810,9 @@ class MaxDBCompiler(compiler.DefaultCompiler):
                     labels[unicode(snagger.column)] = column.name
                 elif use_labels:
                     labels[unicode(snagger.column)] = column._label
-                
+
         return labels
-                           
+
     def order_by_clause(self, select):
         order_by = self.process(select._order_by_clause)
 
@@ -811,7 +821,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
         if order_by and getattr(select, '_distinct', False):
             labels = self._find_labeled_columns(select.inner_columns,
                                                 select.use_labels)
-            if labels: 
+            if labels:
                 for needs_alias in labels.keys():
                     r = re.compile(r'(^| )(%s)(,| |$)' %
                                    re.escape(needs_alias))
@@ -839,7 +849,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
         if self.is_subquery(select) and select._limit:
             if select._offset:
                 raise exceptions.InvalidRequestError(
-                    'MaxDB does not support LIMIT with an offset.')            
+                    'MaxDB does not support LIMIT with an offset.')
             sql += 'TOP %s ' % select._limit
         return sql
 
@@ -854,7 +864,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
                 'MaxDB does not support LIMIT with an offset.')
         else:
             return ' \n LIMIT %s' % (select._limit,)
-        
+
     def visit_insert(self, insert):
         self.isinsert = True
         self._safeserial = True
@@ -863,7 +873,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
         for value in (insert.parameters or {}).itervalues():
             if isinstance(value, sql_expr._Function):
                 self._safeserial = False
-                break        
+                break
 
         return ''.join(('INSERT INTO ',
                          self.preparer.format_table(insert.table),
@@ -885,35 +895,35 @@ class MaxDBDefaultRunner(engine_base.DefaultRunner):
 
 class MaxDBIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = util.Set([
-        'abs', 'absolute', 'acos', 'adddate', 'addtime', 'all', 'alpha', 
-        'alter', 'any', 'ascii', 'asin', 'atan', 'atan2', 'avg', 'binary', 
-        'bit', 'boolean', 'byte', 'case', 'ceil', 'ceiling', 'char', 
-        'character', 'check', 'chr', 'column', 'concat', 'constraint', 'cos', 
-        'cosh', 'cot', 'count', 'cross', 'curdate', 'current', 'curtime', 
-        'database', 'date', 'datediff', 'day', 'dayname', 'dayofmonth', 
-        'dayofweek', 'dayofyear', 'dec', 'decimal', 'decode', 'default', 
-        'degrees', 'delete', 'digits', 'distinct', 'double', 'except', 
-        'exists', 'exp', 'expand', 'first', 'fixed', 'float', 'floor', 'for', 
-        'from', 'full', 'get_objectname', 'get_schema', 'graphic', 'greatest', 
-        'group', 'having', 'hex', 'hextoraw', 'hour', 'ifnull', 'ignore', 
-        'index', 'initcap', 'inner', 'insert', 'int', 'integer', 'internal', 
-        'intersect', 'into', 'join', 'key', 'last', 'lcase', 'least', 'left', 
-        'length', 'lfill', 'list', 'ln', 'locate', 'log', 'log10', 'long', 
-        'longfile', 'lower', 'lpad', 'ltrim', 'makedate', 'maketime', 
-        'mapchar', 'max', 'mbcs', 'microsecond', 'min', 'minute', 'mod', 
-        'month', 'monthname', 'natural', 'nchar', 'next', 'no', 'noround', 
-        'not', 'now', 'null', 'num', 'numeric', 'object', 'of', 'on', 
-        'order', 'packed', 'pi', 'power', 'prev', 'primary', 'radians', 
-        'real', 'reject', 'relative', 'replace', 'rfill', 'right', 'round', 
-        'rowid', 'rowno', 'rpad', 'rtrim', 'second', 'select', 'selupd', 
-        'serial', 'set', 'show', 'sign', 'sin', 'sinh', 'smallint', 'some', 
-        'soundex', 'space', 'sqrt', 'stamp', 'statistics', 'stddev', 
-        'subdate', 'substr', 'substring', 'subtime', 'sum', 'sysdba', 
-        'table', 'tan', 'tanh', 'time', 'timediff', 'timestamp', 'timezone', 
-        'to', 'toidentifier', 'transaction', 'translate', 'trim', 'trunc', 
-        'truncate', 'ucase', 'uid', 'unicode', 'union', 'update', 'upper', 
-        'user', 'usergroup', 'using', 'utcdate', 'utcdiff', 'value', 'values', 
-        'varchar', 'vargraphic', 'variance', 'week', 'weekofyear', 'when', 
+        'abs', 'absolute', 'acos', 'adddate', 'addtime', 'all', 'alpha',
+        'alter', 'any', 'ascii', 'asin', 'atan', 'atan2', 'avg', 'binary',
+        'bit', 'boolean', 'byte', 'case', 'ceil', 'ceiling', 'char',
+        'character', 'check', 'chr', 'column', 'concat', 'constraint', 'cos',
+        'cosh', 'cot', 'count', 'cross', 'curdate', 'current', 'curtime',
+        'database', 'date', 'datediff', 'day', 'dayname', 'dayofmonth',
+        'dayofweek', 'dayofyear', 'dec', 'decimal', 'decode', 'default',
+        'degrees', 'delete', 'digits', 'distinct', 'double', 'except',
+        'exists', 'exp', 'expand', 'first', 'fixed', 'float', 'floor', 'for',
+        'from', 'full', 'get_objectname', 'get_schema', 'graphic', 'greatest',
+        'group', 'having', 'hex', 'hextoraw', 'hour', 'ifnull', 'ignore',
+        'index', 'initcap', 'inner', 'insert', 'int', 'integer', 'internal',
+        'intersect', 'into', 'join', 'key', 'last', 'lcase', 'least', 'left',
+        'length', 'lfill', 'list', 'ln', 'locate', 'log', 'log10', 'long',
+        'longfile', 'lower', 'lpad', 'ltrim', 'makedate', 'maketime',
+        'mapchar', 'max', 'mbcs', 'microsecond', 'min', 'minute', 'mod',
+        'month', 'monthname', 'natural', 'nchar', 'next', 'no', 'noround',
+        'not', 'now', 'null', 'num', 'numeric', 'object', 'of', 'on',
+        'order', 'packed', 'pi', 'power', 'prev', 'primary', 'radians',
+        'real', 'reject', 'relative', 'replace', 'rfill', 'right', 'round',
+        'rowid', 'rowno', 'rpad', 'rtrim', 'second', 'select', 'selupd',
+        'serial', 'set', 'show', 'sign', 'sin', 'sinh', 'smallint', 'some',
+        'soundex', 'space', 'sqrt', 'stamp', 'statistics', 'stddev',
+        'subdate', 'substr', 'substring', 'subtime', 'sum', 'sysdba',
+        'table', 'tan', 'tanh', 'time', 'timediff', 'timestamp', 'timezone',
+        'to', 'toidentifier', 'transaction', 'translate', 'trim', 'trunc',
+        'truncate', 'ucase', 'uid', 'unicode', 'union', 'update', 'upper',
+        'user', 'usergroup', 'using', 'utcdate', 'utcdiff', 'value', 'values',
+        'varchar', 'vargraphic', 'variance', 'week', 'weekofyear', 'when',
         'where', 'with', 'year', 'zoned' ])
 
     def _normalize_name(self, name):
@@ -924,7 +934,7 @@ class MaxDBIdentifierPreparer(compiler.IdentifierPreparer):
             if not self._requires_quotes(lc_name):
                 return lc_name
         return name
-    
+
     def _denormalize_name(self, name):
         if name is None:
             return None
@@ -976,7 +986,6 @@ class MaxDBSchemaGenerator(compiler.SchemaGenerator):
                     colspec.append('DEFAULT SERIAL')
             except IndexError:
                 pass
-            
         return ' '.join(colspec)
 
     def get_column_default_string(self, column):
@@ -1005,7 +1014,7 @@ class MaxDBSchemaGenerator(compiler.SchemaGenerator):
         maxdb_minvalue
         maxdb_maxvalue
           With an integer value, sets the corresponding sequence option.
-          
+
         maxdb_no_minvalue
         maxdb_no_maxvalue
           Defaults to False.  If true, sets the corresponding sequence option.
@@ -1015,11 +1024,11 @@ class MaxDBSchemaGenerator(compiler.SchemaGenerator):
 
         maxdb_cache
           With an integer value, sets the CACHE option.
-          
+
         maxdb_no_cache
           Defaults to False.  If true, sets NOCACHE.
         """
-        
+
         if (not sequence.optional and
             (not self.checkfirst or
              not self.dialect.has_sequence(self.connection, sequence.name))):
@@ -1034,7 +1043,7 @@ class MaxDBSchemaGenerator(compiler.SchemaGenerator):
 
             if sequence.start is not None:
                 ddl.extend(('START WITH', str(sequence.start)))
-                      
+
             opts = dict([(pair[0][6:].lower(), pair[1])
                          for pair in sequence.kwargs.items()
                          if pair[0].startswith('maxdb_')])
@@ -1099,5 +1108,4 @@ dialect.preparer = MaxDBIdentifierPreparer
 dialect.statement_compiler = MaxDBCompiler
 dialect.schemagenerator = MaxDBSchemaGenerator
 dialect.schemadropper = MaxDBSchemaDropper
-dialect.defaultrunner = MaxDBDefaultRunner    
-
+dialect.defaultrunner = MaxDBDefaultRunner

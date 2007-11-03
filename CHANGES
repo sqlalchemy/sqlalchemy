@@ -21,6 +21,8 @@ CHANGES
 
 - sqlite will reflect "DECIMAL" as a numeric column.
 
+- Added experimental support for MaxDB (versions >= 7.6.03.007 only).
+
 - Made access dao detection more reliable [ticket:828]
 
 - Removed unused util.hash().
