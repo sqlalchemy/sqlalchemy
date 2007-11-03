@@ -4,6 +4,7 @@ CHANGES
 
 0.4.1
 -----
+
 - removed regular expression step from most statement compilations.
   also fixes [ticket:833]
 
@@ -37,6 +38,10 @@ CHANGES
   dialects using the old name.
 
 - orm:
+    - Mapped classes may now define __eq__, __hash__, and __nonzero__ methods
+      with arbitrary sementics.  The orm now handles all mapped instances on
+      an identity-only basis. (e.g. 'is' vs '==') [ticket:676]
+
     - deferred column attributes no longer trigger a load operation when the
       attribute is assigned to.  in those cases, the newly assigned
       value will be present in the flushes' UPDATE statement unconditionally.
@@ -68,7 +73,7 @@ CHANGES
       scoped sessions.
 
   - session API has been solidified:
-  
+
     - it's an error to session.save() an object which is already persistent
       [ticket:840]
 
@@ -76,7 +81,7 @@ CHANGES
 
     - session.update() and session.delete() raise an error when updating/deleting
       an instance that is already in the session with a different identity.
-      
+
     - session checks more carefully when determining "object X already in another session";
       e.g. if you pickle a series of objects and unpickle (i.e. as in a Pylons HTTP session
       or similar), they can go into a new session without any conflict

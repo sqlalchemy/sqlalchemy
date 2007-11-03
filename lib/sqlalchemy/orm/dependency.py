@@ -345,29 +345,29 @@ class ManyToManyDP(DependencyProcessor):
                 childlist = self.get_object_dependencies(obj, uowcommit, passive=self.passive_deletes)
                 if childlist is not None:
                     for child in childlist.deleted_items() + childlist.unchanged_items():
-                        if child is None or (reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes):
+                        if child is None or (reverse_dep and (reverse_dep, "manytomany", id(child), id(obj)) in uowcommit.attributes):
                             continue
                         associationrow = {}
                         self._synchronize(obj, child, associationrow, False, uowcommit)
                         secondary_delete.append(associationrow)
-                        uowcommit.attributes[(self, "manytomany", obj, child)] = True
+                        uowcommit.attributes[(self, "manytomany", id(obj), id(child))] = True
         else:
             for obj in deplist:
                 childlist = self.get_object_dependencies(obj, uowcommit)
                 if childlist is None: continue
                 for child in childlist.added_items():
-                    if child is None or (reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes):
+                    if child is None or (reverse_dep and (reverse_dep, "manytomany", id(child), id(obj)) in uowcommit.attributes):
                         continue
                     associationrow = {}
                     self._synchronize(obj, child, associationrow, False, uowcommit)
-                    uowcommit.attributes[(self, "manytomany", obj, child)] = True
+                    uowcommit.attributes[(self, "manytomany", id(obj), id(child))] = True
                     secondary_insert.append(associationrow)
                 for child in childlist.deleted_items():
-                    if child is None or (reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes):
+                    if child is None or (reverse_dep and (reverse_dep, "manytomany", id(child), id(obj)) in uowcommit.attributes):
                         continue
                     associationrow = {}
                     self._synchronize(obj, child, associationrow, False, uowcommit)
-                    uowcommit.attributes[(self, "manytomany", obj, child)] = True
+                    uowcommit.attributes[(self, "manytomany", id(obj), id(child))] = True
                     secondary_delete.append(associationrow)
 
         if secondary_delete:

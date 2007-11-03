@@ -326,6 +326,7 @@ class _AssociationList(object):
 
     def __contains__(self, value):
         for member in self.col:
+            # testlib.pragma exempt:__eq__
             if self._get(member) == value:
                 return True
         return False
@@ -473,6 +474,7 @@ class _AssociationDict(object):
         del self.col[key]
 
     def __contains__(self, key):
+        # testlib.pragma exempt:__hash__
         return key in self.col
     has_key = __contains__
 
@@ -609,6 +611,7 @@ class _AssociationSet(object):
 
     def __contains__(self, value):
         for member in self.col:
+            # testlib.pragma exempt:__eq__
             if self._get(member) == value:
                 return True
         return False

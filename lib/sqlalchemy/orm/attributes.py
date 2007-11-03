@@ -8,7 +8,7 @@ import weakref, threading
 import UserDict
 from sqlalchemy import util
 from sqlalchemy.orm import interfaces, collections
-from sqlalchemy.orm.mapper import class_mapper
+from sqlalchemy.orm.mapper import class_mapper, identity_equal
 from sqlalchemy import exceptions
 
 
@@ -369,6 +369,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         super(ScalarObjectAttributeImpl, self).__init__(class_, manager, key,
           callable_, trackparent=trackparent, extension=extension,
           compare_function=compare_function, mutable_scalars=mutable_scalars, **kwargs)
+        if compare_function is None:
+            self.is_equal = identity_equal
 
     def delete(self, state):
         old = self.get(state)
@@ -815,23 +817,26 @@ class AttributeHistory(object):
 
         if hasattr(attr, 'get_collection'):
             self._current = current
+
             if original is NO_VALUE:
-                s = util.Set([])
+                s = util.IdentitySet([])
             else:
-                s = util.Set(original)
-            self._added_items = []
-            self._unchanged_items = []
-            self._deleted_items = []
+                s = util.IdentitySet(original)
+
+            # FIXME: the tests have an assumption on the collection's ordering
+            self._added_items = util.OrderedIdentitySet()
+            self._unchanged_items = util.OrderedIdentitySet()
+            self._deleted_items = util.OrderedIdentitySet()
             if current:
                 collection = attr.get_collection(state, current)
                 for a in collection:
                     if a in s:
-                        self._unchanged_items.append(a)
+                        self._unchanged_items.add(a)
                     else:
-                        self._added_items.append(a)
+                        self._added_items.add(a)
             for a in s:
                 if a not in self._unchanged_items:
-                    self._deleted_items.append(a)
+                    self._deleted_items.add(a)
         else:
             self._current = [current]
             if attr.is_equal(current, original) is True:
@@ -853,13 +858,13 @@ class AttributeHistory(object):
         return len(self._deleted_items) > 0 or len(self._added_items) > 0
 
     def added_items(self):
-        return self._added_items
+        return list(self._added_items)
 
     def unchanged_items(self):
-        return self._unchanged_items
+        return list(self._unchanged_items)
 
     def deleted_items(self):
-        return self._deleted_items
+        return list(self._deleted_items)
 
 class AttributeManager(object):
     """Allow the instrumentation of object attributes."""

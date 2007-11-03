@@ -153,20 +153,20 @@ class QueueDependencySorter(object):
         nodes = {}
         edges = _EdgeCollection()
         for item in allitems + [t[0] for t in tuples] + [t[1] for t in tuples]:
-            if item not in nodes:
+            if id(item) not in nodes:
                 node = _Node(item)
-                nodes[item] = node
+                nodes[id(item)] = node
 
         for t in tuples:
             if t[0] is t[1]:
                 if allow_self_cycles:
-                    n = nodes[t[0]]
+                    n = nodes[id(t[0])]
                     n.cycles = util.Set([n])
                     continue
                 else:
                     raise CircularDependencyError("Self-referential dependency detected " + repr(t))
-            childnode = nodes[t[1]]
-            parentnode = nodes[t[0]]
+            childnode = nodes[id(t[1])]
+            parentnode = nodes[id(t[0])]
             edges.add((parentnode, childnode))
 
         queue = []
@@ -202,7 +202,7 @@ class QueueDependencySorter(object):
             node = queue.pop()
             if not hasattr(node, '_cyclical'):
                 output.append(node)
-            del nodes[node.item]
+            del nodes[id(node.item)]
             for childnode in edges.pop_node(node):
                 queue.append(childnode)
         return self._create_batched_tree(output)

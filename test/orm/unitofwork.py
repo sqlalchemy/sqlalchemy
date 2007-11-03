@@ -1820,7 +1820,7 @@ class RowSwitchTest(ORMTest):
         sess.flush()
 
         assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
-        assert list(sess.execute(t1t3.select(), mapper=T1)) == [(1,1), (1, 2)]
+        assert rowset(sess.execute(t1t3.select(), mapper=T1)) == set([(1,1), (1, 2)])
         assert list(sess.execute(t3.select(), mapper=T1)) == [(1, 'some t3'), (2, 'some other t3')]
 
         o2 = T1(data='some other t1', id=1, t3s=[

@@ -611,8 +611,8 @@ class EagerLoader(AbstractRelationLoader):
                         appender = util.UniqueAppender(collection, 'append_without_event')
 
                         # store it in the "scratch" area, which is local to this load operation.
-                        selectcontext.attributes[(instance, self.key)] = appender
-                    result_list = selectcontext.attributes[(instance, self.key)]
+                        selectcontext.attributes[('appender', id(instance), self.key)] = appender
+                    result_list = selectcontext.attributes[('appender', id(instance), self.key)]
                     if self._should_log_debug:
                         self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
                         

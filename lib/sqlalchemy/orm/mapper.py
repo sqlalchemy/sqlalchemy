@@ -1099,7 +1099,8 @@ class Mapper(object):
                     c = connection.execute(statement.values(value_params), params)
                     mapper._postfetch(connection, table, obj, c, c.last_updated_params(), value_params)
 
-                    updated_objects.add((obj, connection))
+                    # testlib.pragma exempt:__hash__
+                    updated_objects.add((id(obj), obj, connection))
                     rows += c.rowcount
 
                 if c.supports_sane_rowcount() and rows != len(update):
@@ -1134,13 +1135,14 @@ class Mapper(object):
                             mapper._synchronizer.execute(obj, obj)
                     sync(mapper)
 
-                    inserted_objects.add((obj, connection))
+                    # testlib.pragma exempt:__hash__
+                    inserted_objects.add((id(obj), obj, connection))
         if not postupdate:
-            for obj, connection in inserted_objects:
+            for id_, obj, connection in inserted_objects:
                 for mapper in object_mapper(obj).iterate_to_root():
                     if 'after_insert' in mapper.extension.methods:
                         mapper.extension.after_insert(mapper, connection, obj)
-            for obj, connection in updated_objects:
+            for id_, obj, connection in updated_objects:
                 for mapper in object_mapper(obj).iterate_to_root():
                     if 'after_update' in mapper.extension.methods:
                         mapper.extension.after_update(mapper, connection, obj)
@@ -1194,7 +1196,7 @@ class Mapper(object):
             for mapper in object_mapper(obj).iterate_to_root():
                 if 'before_delete' in mapper.extension.methods:
                     mapper.extension.before_delete(mapper, connection, obj)
-        
+
         deleted_objects = util.Set()
         table_to_mapper = {}
         for mapper in self.base_mapper.polymorphic_iterator():
@@ -1217,7 +1219,8 @@ class Mapper(object):
                     params[col.key] = mapper.get_attr_by_column(obj, col)
                 if mapper.version_id_col is not None:
                     params[mapper.version_id_col.key] = mapper.get_attr_by_column(obj, mapper.version_id_col)
-                deleted_objects.add((obj, connection))
+                # testlib.pragma exempt:__hash__
+                deleted_objects.add((id(obj), obj, connection))
             for connection, del_objects in delete.iteritems():
                 mapper = table_to_mapper[table]
                 def comparator(a, b):
@@ -1237,7 +1240,7 @@ class Mapper(object):
                 if c.supports_sane_multi_rowcount() and c.rowcount != len(del_objects):
                     raise exceptions.ConcurrentModificationError("Deleted rowcount %d does not match number of objects deleted %d" % (c.rowcount, len(del_objects)))
 
-        for obj, connection in deleted_objects:
+        for id_, obj, connection in deleted_objects:
             for mapper in object_mapper(obj).iterate_to_root():
                 if 'after_delete' in mapper.extension.methods:
                     mapper.extension.after_delete(mapper, connection, obj)
@@ -1284,7 +1287,7 @@ class Mapper(object):
         """
 
         if recursive is None:
-            recursive=util.Set()
+            recursive=util.IdentitySet()
         for prop in self.__props.values():
             for c in prop.cascade_iterator(type, object, recursive, halt_on=halt_on):
                 yield c
@@ -1310,7 +1313,7 @@ class Mapper(object):
         """
 
         if recursive is None:
-            recursive=util.Set()
+            recursive=util.IdentitySet()
         for prop in self.__props.values():
             prop.cascade_callable(type, object, callable_, recursive, halt_on=halt_on)
 
@@ -1516,7 +1519,7 @@ class Mapper(object):
             selectcontext.exec_with_path(self, key, populator, instance, row, ispostselect=ispostselect, isnew=isnew, **flags)
             
         if self.non_primary:
-            selectcontext.attributes[('populating_mapper', instance)] = self
+            selectcontext.attributes[('populating_mapper', id(instance))] = self
         
     def _post_instance(self, selectcontext, instance):
         post_processors = selectcontext.attributes[('post_processors', self, None)]
@@ -1576,6 +1579,15 @@ def has_mapper(object):
     """
 
     return hasattr(object, '_entity_name')
+
+def identity_equal(a, b):
+    if a is b:
+        return True
+    id_a = getattr(a, '_instance_key', None)
+    id_b = getattr(b, '_instance_key', None)
+    if id_a is None or id_b is None:
+        return False
+    return id_a == id_b
 
 def object_mapper(object, entity_name=None, raiseerror=True):
     """Given an object, return the primary Mapper associated with the object instance.

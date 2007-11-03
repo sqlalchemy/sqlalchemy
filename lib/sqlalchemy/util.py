@@ -620,6 +620,7 @@ class IdentitySet(object):
 
     def union(self, iterable):
         result = type(self)()
+        # testlib.pragma exempt:__hash__
         result._members.update(
             Set(self._members.iteritems()).union(_iter_id(iterable)))
         return result
@@ -641,6 +642,7 @@ class IdentitySet(object):
 
     def difference(self, iterable):
         result = type(self)()
+        # testlib.pragma exempt:__hash__
         result._members.update(
             Set(self._members.iteritems()).difference(_iter_id(iterable)))
         return result
@@ -662,6 +664,7 @@ class IdentitySet(object):
 
     def intersection(self, iterable):
         result = type(self)()
+        # testlib.pragma exempt:__hash__
         result._members.update(
             Set(self._members.iteritems()).intersection(_iter_id(iterable)))
         return result
@@ -683,6 +686,7 @@ class IdentitySet(object):
 
     def symmetric_difference(self, iterable):
         result = type(self)()
+        # testlib.pragma exempt:__hash__
         result._members.update(
             Set(self._members.iteritems()).symmetric_difference(_iter_id(iterable)))
         return result
@@ -725,13 +729,25 @@ def _iter_id(iterable):
         yield id(item), item
 
 
+class OrderedIdentitySet(IdentitySet):
+    def __init__(self, iterable=None):
+        IdentitySet.__init__(self)
+        self._members = OrderedDict()
+        if iterable:
+            for o in iterable:
+                self.add(o)
+
+
 class UniqueAppender(object):
-    """appends items to a collection such that only unique items
-    are added."""
+    """Only adds items to a collection once.
+
+    Additional appends() of the same object are ignored.  Membership is
+    determined by identity (``is a``) not equality (``==``).
+    """
 
     def __init__(self, data, via=None):
         self.data = data
-        self._unique = Set()
+        self._unique = IdentitySet()
         if via:
             self._data_appender = getattr(data, via)
         elif hasattr(data, 'append'):

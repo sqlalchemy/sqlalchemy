@@ -691,7 +691,7 @@ class Query(object):
                 proc[0](context, row)
 
         for instance in context.identity_map.values():
-            context.attributes.get(('populating_mapper', instance), object_mapper(instance))._post_instance(context, instance)
+            context.attributes.get(('populating_mapper', id(instance)), object_mapper(instance))._post_instance(context, instance)
         
         # store new stuff in the identity map
         for instance in context.identity_map.values():

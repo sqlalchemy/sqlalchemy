@@ -793,6 +793,7 @@ def _list_decorators():
 
     def remove(fn):
         def remove(self, value, _sa_initiator=None):
+            # testlib.pragma exempt:__eq__
             fn(self, value)
             __del(self, value, _sa_initiator)
         _tidy(remove)
@@ -1002,22 +1003,27 @@ def _set_decorators():
     def add(fn):
         def add(self, value, _sa_initiator=None):
             __set(self, value, _sa_initiator)
+            # testlib.pragma exempt:__hash__
             fn(self, value)
         _tidy(add)
         return add
 
     def discard(fn):
         def discard(self, value, _sa_initiator=None):
+            # testlib.pragma exempt:__hash__
             if value in self:
                 __del(self, value, _sa_initiator)
+            # testlib.pragma exempt:__hash__
             fn(self, value)
         _tidy(discard)
         return discard
 
     def remove(fn):
         def remove(self, value, _sa_initiator=None):
+            # testlib.pragma exempt:__hash__
             if value in self:
                 __del(self, value, _sa_initiator)
+            # testlib.pragma exempt:__hash__
             fn(self, value)
         _tidy(remove)
         return remove

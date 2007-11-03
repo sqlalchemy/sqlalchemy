@@ -1176,5 +1176,175 @@ class MapperExtensionTest(MapperSuperTest):
                 'after_delete', 'after_insert', 'before_update', 'before_insert', 'after_update', 'populate_instance'])
         
 
-if __name__ == "__main__":    
+class RequirementsTest(AssertMixin):
+    """Tests the contract for user classes."""
+
+    def setUpAll(self):
+        global metadata, t1, t2, t3, t4, t5, t6
+
+        metadata = MetaData(testbase.db)
+        t1 = Table('ht1', metadata,
+                   Column('id', Integer, primary_key=True),
+                   Column('value', String(10)))
+        t2 = Table('ht2', metadata,
+                   Column('id', Integer, primary_key=True),
+                   Column('ht1_id', Integer, ForeignKey('ht1.id')),
+                   Column('value', String(10)))
+        t3 = Table('ht3', metadata,
+                   Column('id', Integer, primary_key=True),
+                   Column('value', String(10)))
+        t4 = Table('ht4', metadata,
+                   Column('ht1_id', Integer, ForeignKey('ht1.id'),
+                          primary_key=True),
+                   Column('ht3_id', Integer, ForeignKey('ht3.id'),
+                          primary_key=True))
+        t5 = Table('ht5', metadata,
+                   Column('ht1_id', Integer, ForeignKey('ht1.id'),
+                          primary_key=True),
+                   Column('ht1_id', Integer, ForeignKey('ht1.id'),
+                          primary_key=True))
+        t6 = Table('ht6', metadata,
+                   Column('ht1a_id', Integer, ForeignKey('ht1.id'),
+                          primary_key=True),
+                   Column('ht1b_id', Integer, ForeignKey('ht1.id'),
+                          primary_key=True),
+                   Column('value', String(10)))
+        metadata.create_all()
+
+    def setUp(self):
+        clear_mappers()
+
+    def tearDownAll(self):
+        metadata.drop_all()
+
+    def test_baseclass(self):
+        class OldStyle:
+            pass
+
+        self.assertRaises(exceptions.ArgumentError, mapper, OldStyle, t1)
+
+        class NoWeakrefSupport(str):
+            pass
+
+        # TODO: is weakref support detectable without an instance?
+        #self.assertRaises(exceptions.ArgumentError, mapper, NoWeakrefSupport, t2)
+
+    def test_comparison_overrides(self):
+        """Simple tests to ensure users can supply comparison __methods__.
+
+        The suite-level test --options are better suited to detect
+        problems- they add selected __methods__ across the board on all
+        ORM tests.  This test simply shoves a variety of operations
+        through the ORM to catch basic regressions early in a standard
+        test run.
+        """
+
+        # adding these methods directly to each class to avoid decoration
+        # by the testlib decorators.
+        class H1(object):
+            def __init__(self, value='abc'):
+                self.value = value
+            def __nonzero__(self):
+                return False
+            def __hash__(self):
+                return hash(self.value)
+            def __eq__(self, other):
+                if isinstance(other, type(self)):
+                    return self.value == other.value
+                return False
+        class H2(object):
+            def __init__(self, value='abc'):
+                self.value = value
+            def __nonzero__(self):
+                return False
+            def __hash__(self):
+                return hash(self.value)
+            def __eq__(self, other):
+                if isinstance(other, type(self)):
+                    return self.value == other.value
+                return False
+        class H3(object):
+            def __init__(self, value='abc'):
+                self.value = value
+            def __nonzero__(self):
+                return False
+            def __hash__(self):
+                return hash(self.value)
+            def __eq__(self, other):
+                if isinstance(other, type(self)):
+                    return self.value == other.value
+                return False
+        class H6(object):
+            def __init__(self, value='abc'):
+                self.value = value
+            def __nonzero__(self):
+                return False
+            def __hash__(self):
+                return hash(self.value)
+            def __eq__(self, other):
+                if isinstance(other, type(self)):
+                    return self.value == other.value
+                return False
+
+        mapper(H1, t1, properties={
+            'h2s': relation(H2, backref='h1'),
+            'h3s': relation(H3, secondary=t4, backref='h1s'),
+            'h1s': relation(H1, secondary=t5, backref='parent_h1'),
+            't6a': relation(H6, backref='h1a',
+                            primaryjoin=t1.c.id==t6.c.ht1a_id),
+            't6b': relation(H6, backref='h1b',
+                            primaryjoin=t1.c.id==t6.c.ht1b_id),
+            })
+        mapper(H2, t2)
+        mapper(H3, t3)
+        mapper(H6, t6)
+
+        s = create_session()
+        for i in range(3):
+            h1 = H1()
+            s.save(h1)
+
+        h1.h2s.append(H2())
+        h1.h3s.extend([H3(), H3()])
+        h1.h1s.append(H1())
+
+        s.flush()
+
+        h6 = H6()
+        h6.h1a = h1
+        h6.h1b = h1
+
+        h6 = H6()
+        h6.h1a = h1
+        h6.h1b = H1()
+
+        h6.h1b.h2s.append(H2())
+
+        s.flush()
+
+        h1.h2s.extend([H2(), H2()])
+        s.flush()
+
+        h1s = s.query(H1).options(eagerload('h2s')).all()
+        self.assertEqual(len(h1s), 5)
+
+        self.assert_unordered_result(h1s, H1,
+                                     {'h2s': []},
+                                     {'h2s': []},
+                                     {'h2s': (H2, [{'value': 'abc'},
+                                                   {'value': 'abc'},
+                                                   {'value': 'abc'}])},
+                                     {'h2s': []},
+                                     {'h2s': (H2, [{'value': 'abc'}])})
+
+        h1s = s.query(H1).options(eagerload('h3s')).all()
+
+        self.assertEqual(len(h1s), 5)
+        h1s = s.query(H1).options(eagerload_all('t6a.h1b'),
+                                  eagerload('h2s'),
+                                  eagerload_all('h3s.h1s')).all()
+        self.assertEqual(len(h1s), 5)
+
+
+if __name__ == "__main__":
     testbase.main()
