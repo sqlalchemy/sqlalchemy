@@ -5,95 +5,108 @@ CHANGES
 0.4.1
 -----
 
-- removed regular expression step from most statement compilations.
-  also fixes [ticket:833]
+- sql
 
-- Added test coverage for unknown type reflection, fixed sqlite/mysql
-  handling of type reflection for unknown types.
+  - Added contains operator (generates a "LIKE %<other>%" clause).
 
-- Fixed empty (zero column) sqlite inserts, allowing inserts on
-  autoincrementing single column tables.
+  - Removed regular expression step from most statement compilations.
+    Also fixes [ticket:833]
 
-- Added contains operator (which generate a "LIKE %<other>%" clause).
+  - Fixed empty (zero column) sqlite inserts, allowing inserts on
+    autoincrementing single column tables.
 
-- fixed expression translation of text() clauses; this repairs various
-  ORM scenarios where literal text is used for SQL expressions
+  - Fixed expression translation of text() clauses; this repairs various
+    ORM scenarios where literal text is used for SQL expressions
 
-- sqlite will reflect "DECIMAL" as a numeric column.
+  - Removed ClauseParameters object; compiled.params returns a regular
+    dictionary now, as well as result.last_inserted_params() /
+    last_updated_params().
 
-- Added experimental support for MaxDB (versions >= 7.6.03.007 only).
+  - Fixed INSERT statements w.r.t. primary key columns that have
+    SQL-expression based default generators on them; SQL expression
+    executes inline as normal but will not trigger a "postfetch" condition
+    for the column, for those DB's who provide it via cursor.lastrowid
 
-- Made access dao detection more reliable [ticket:828]
+- orm
 
-- Removed unused util.hash().
+  - Mapped classes may now define __eq__, __hash__, and __nonzero__ methods
+    with arbitrary sementics.  The orm now handles all mapped instances on
+    an identity-only basis. (e.g. 'is' vs '==') [ticket:676]
 
-- removed ClauseParameters object; compiled.params returns a regular dictionary
-  now, as well as result.last_inserted_params()/last_updated_params().
-  
-- fixed INSERT statements w.r.t. primary key columns that have SQL-expression
-  based default generators on them; SQL expression executes inline as normal
-  but will not trigger a "postfetch" condition for the column, for those DB's
-  who provide it via cursor.lastrowid
+  - The behavior of query.options() is now fully based on paths, i.e. an
+    option such as eagerload_all('x.y.z.y.x') will apply eagerloading to
+    only those paths, i.e. and not 'x.y.x'; eagerload('children.children')
+    applies only to exactly two-levels deep, etc. [ticket:777]
 
-- Renamed the Dialect attribute 'preexecute_sequences' to
-  'preexecute_pk_sequences'.  An attribute proxy is in place for out-of-tree
-  dialects using the old name.
+  - The session API has been solidified:
 
-- orm:
-    - Mapped classes may now define __eq__, __hash__, and __nonzero__ methods
-      with arbitrary sementics.  The orm now handles all mapped instances on
-      an identity-only basis. (e.g. 'is' vs '==') [ticket:676]
+    - It's an error to session.save() an object which is already
+      persistent [ticket:840]
 
-    - deferred column attributes no longer trigger a load operation when the
-      attribute is assigned to.  in those cases, the newly assigned
-      value will be present in the flushes' UPDATE statement unconditionally.
-      
-    - de-cruftified backref configuration code, backrefs which step on existing
-      properties now raise an error [ticket:832]
+    - It's an error to session.delete() an object which is *not*
+      persistent.
 
-    - improved behavior of add_property() etc., fixed [ticket:831] involving
-      synonym/deferred
+    - session.update() and session.delete() raise an error when updating
+      or deleting an instance that is already in the session with a
+      different identity.
 
-    - fixed clear_mappers() behavior to better clean up after itself
+    - The session checks more carefully when determining "object X already
+      in another session"; e.g. if you pickle a series of objects and
+      unpickle (i.e. as in a Pylons HTTP session or similar), they can go
+      into a new session without any conflict
 
-    - fix to "row switch" behavior, i.e. when an INSERT/DELETE is combined into a
-      single UPDATE; many-to-many relations on the parent object update properly. 
-      [ticket:841]
-
-    - behavior of query.options() is now fully based on paths, i.e. an option
-      such as eagerload_all('x.y.z.y.x') will apply eagerloading to only
-      those paths, i.e. and not 'x.y.x'; eagerload('children.children') applies
-      only to exactly two-levels deep, etc. [ticket:777]
-
-    - Fixed __hash__ for association proxy- these collections are unhashable,
-      just like their mutable Python counterparts.
-
-    - Fixed a truncation error when re-assigning a subset of a collection
-      (obj.relation = obj.relation[1:]) [ticket:834]
-
-    - Added proxying of save_or_update, __contains__ and __iter__ methods for
-      scoped sessions.
-
-  - session API has been solidified:
-
-    - it's an error to session.save() an object which is already persistent
-      [ticket:840]
-
-    - it's an error to session.delete() an object which is *not* persistent
-
-    - session.update() and session.delete() raise an error when updating/deleting
-      an instance that is already in the session with a different identity.
-
-    - session checks more carefully when determining "object X already in another session";
-      e.g. if you pickle a series of objects and unpickle (i.e. as in a Pylons HTTP session
-      or similar), they can go into a new session without any conflict
-
-    - merge() includes a keyword argument "dont_load=True".  setting this flag will cause
-      the merge operation to not load any data from the database in response to incoming
-      detached objects, and will accept the incoming detached object as though it were 
-      already present in that session.  Use this to merge detached objects from external 
+    - merge() includes a keyword argument "dont_load=True".  setting this
+      flag will cause the merge operation to not load any data from the
+      database in response to incoming detached objects, and will accept
+      the incoming detached object as though it were already present in
+      that session.  Use this to merge detached objects from external
       caching systems into the session.
-      
+
+  - Deferred column attributes no longer trigger a load operation when the
+    attribute is assigned to.  In those cases, the newly assigned value
+    will be present in the flushes' UPDATE statement unconditionally.
+
+  - Fixed a truncation error when re-assigning a subset of a collection
+    (obj.relation = obj.relation[1:]) [ticket:834]
+
+  - De-cruftified backref configuration code, backrefs which step on
+    existing properties now raise an error [ticket:832]
+
+  - Improved behavior of add_property() etc., fixed [ticket:831] involving
+    synonym/deferred.
+
+  - Fixed clear_mappers() behavior to better clean up after itself.
+
+  - Fix to "row switch" behavior, i.e. when an INSERT/DELETE is combined
+    into a single UPDATE; many-to-many relations on the parent object
+    update properly.  [ticket:841]
+
+  - Fixed __hash__ for association proxy- these collections are unhashable,
+    just like their mutable Python counterparts.
+
+  - Added proxying of save_or_update, __contains__ and __iter__ methods for
+    scoped sessions.
+
+- dialects
+
+  - Added experimental support for MaxDB (versions >= 7.6.03.007 only).
+
+  - sqlite will reflect "DECIMAL" as a numeric column.
+
+  - Made access dao detection more reliable [ticket:828]
+
+  - Renamed the Dialect attribute 'preexecute_sequences' to
+    'preexecute_pk_sequences'.  An attribute porxy is in place for
+    out-of-tree dialects using the old name.
+
+  - Added test coverage for unknown type reflection. Fixed sqlite/mysql
+    handling of type reflection for unknown types.
+
+- misc
+
+  - Removed unused util.hash().
+
+
 0.4.0
 -----
 
