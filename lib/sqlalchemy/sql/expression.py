@@ -2476,6 +2476,14 @@ class _ColumnElementAdapter(ColumnElement):
     def __getattr__(self, attr):
         return getattr(self.elem, attr)
 
+    def __getstate__(self):
+        return {'elem':self.elem, 'type':self.type, 'orig_set':self.orig_set} 
+
+    def __setstate__(self, state):
+        self.elem = state['elem']
+        self.type = state['type']
+        self.orig_set = state['orig_set']
+
 class _Grouping(_ColumnElementAdapter):
     """Represent a grouping within a column expression"""
     pass

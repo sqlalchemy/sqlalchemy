@@ -27,6 +27,8 @@ CHANGES
     executes inline as normal but will not trigger a "postfetch" condition
     for the column, for those DB's who provide it via cursor.lastrowid
 
+  - func. objects can be pickled/unpickled [ticket:844]
+
 - orm
   - eager loading with LIMIT/OFFSET applied no longer adds the primary 
     table joined to a limited subquery of itself; the eager loads now

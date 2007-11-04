@@ -691,6 +691,9 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         # test None becomes NULL
         self.assert_compile(func.my_func(1,2,None,3), "my_func(:my_func, :my_func_1, NULL, :my_func_2)")
         
+        # test pickling
+        self.assert_compile(util.pickle.loads(util.pickle.dumps(func.my_func(1, 2, None, 3))), "my_func(:my_func, :my_func_1, NULL, :my_func_2)")
+        
         # assert func raises AttributeError for __bases__ attribute, since its not a class
         # fixes pydoc
         try:
