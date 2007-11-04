@@ -3,7 +3,7 @@ import testbase
 from sqlalchemy import *
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird, mssql
 import unittest, re, operator
-
+import pickle
 
 # the select test now tests almost completely with TableClause/ColumnClause objects,
 # which are free-roaming table/column objects not attached to any database.  
@@ -567,6 +567,9 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         
         # test None becomes NULL
         self.runtest(func.my_func(1,2,None,3), "my_func(:my_func, :my_func_1, NULL, :my_func_2)")
+        
+        # test pickling
+        self.runtest(pickle.loads(pickle.dumps(func.my_func(1, 2, None, 3))), "my_func(:my_func, :my_func_1, NULL, :my_func_2)")
         
     def testextract(self):
         """test the EXTRACT function"""

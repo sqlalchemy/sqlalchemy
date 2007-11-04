@@ -2507,8 +2507,16 @@ class _Grouping(ColumnElement):
         return self.elem._hide_froms()
     def _get_from_objects(self):
         return self.elem._get_from_objects()
+        
     def __getattr__(self, attr):
         return getattr(self.elem, attr)
+    
+    def __getstate__(self):
+        return {'elem':self.elem, 'type':self.type} 
+        
+    def __setstate__(self, state):
+        self.elem = state['elem']
+        self.type = state['type']
         
 class _Label(ColumnElement):
     """represent a label, as typically applied to any column-level element
