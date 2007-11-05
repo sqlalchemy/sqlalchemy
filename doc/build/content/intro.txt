@@ -157,4 +157,6 @@ This mostly applies to SQL constructs where you pass a type in:
     
     func.now(type_=DateTime)
     
-    
+### Mapper Extensions must return EXT_CONTINUE to continue execution to the next mapper
+
+If you extend the mapper, the methods in your mapper extension must return EXT_CONTINUE to continue executing additional mappers.
