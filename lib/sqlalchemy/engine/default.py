@@ -311,24 +311,26 @@ class DefaultExecutionContext(base.ExecutionContext):
         from the bind parameter's ``TypeEngine`` objects.
         """
 
-        plist = self.compiled_parameters
+        types = dict([
+                (self.compiled.bind_names[bindparam], bindparam.type)
+                 for bindparam in self.compiled.bind_names
+            ])
+
         if self.dialect.positional:
             inputsizes = []
-            for params in plist[0:1]:
-                for key in params.positional:
-                    typeengine = params.get_type(key)
-                    dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
-                    if dbtype is not None:
-                        inputsizes.append(dbtype)
+            for key in self.compiled.positiontup:
+               typeengine = types[key] 
+               dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
+               if dbtype is not None:
+                    inputsizes.append(dbtype)
             self.cursor.setinputsizes(*inputsizes)
         else:
             inputsizes = {}
-            for params in plist[0:1]:
-                for key in params.keys():
-                    typeengine = params.get_type(key)
-                    dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
-                    if dbtype is not None:
-                        inputsizes[key.encode(self.dialect.encoding)] = dbtype
+            for key in self.compiled.bind_names.values():
+                typeengine = types[key]
+                dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
+                if dbtype is not None:
+                    inputsizes[key.encode(self.dialect.encoding)] = dbtype
             self.cursor.setinputsizes(**inputsizes)
 
     def __process_defaults(self):

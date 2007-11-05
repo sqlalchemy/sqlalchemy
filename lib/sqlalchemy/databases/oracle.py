@@ -204,8 +204,10 @@ class OracleExecutionContext(default.DefaultExecutionContext):
         if self.dialect.auto_setinputsizes:
             self.set_input_sizes()
         if self.compiled_parameters is not None and len(self.compiled_parameters) == 1:
-            for key in self.compiled_parameters[0]:
-                (bindparam, name, value) = self.compiled_parameters[0].get_parameter(key)
+            for key in self.compiled.binds:
+                bindparam = self.compiled.binds[key]
+                name = self.compiled.bind_names[bindparam]
+                value = self.compiled_parameters[0][name]
                 if bindparam.isoutparam:
                     dbtype = bindparam.type.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                     if not hasattr(self, 'out_parameters'):
@@ -216,9 +218,10 @@ class OracleExecutionContext(default.DefaultExecutionContext):
     def get_result_proxy(self):
         if hasattr(self, 'out_parameters'):
             if self.compiled_parameters is not None and len(self.compiled_parameters) == 1:
-                 for k in self.out_parameters:
-                     type = self.compiled_parameters[0].get_type(k)
-                     self.out_parameters[k] = type.dialect_impl(self.dialect).result_processor(self.dialect)(self.out_parameters[k].getvalue())
+                 for bind, name in self.compiled.bind_names.iteritems():
+                     if name in self.out_parameters:
+                         type = bind.type
+                         self.out_parameters[name] = type.dialect_impl(self.dialect).result_processor(self.dialect)(self.out_parameters[name].getvalue())
             else:
                  for k in self.out_parameters:
                      self.out_parameters[k] = self.out_parameters[k].getvalue()

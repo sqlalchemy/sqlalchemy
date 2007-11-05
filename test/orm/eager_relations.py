@@ -463,7 +463,7 @@ class SelfReferentialEagerTest(ORMTest):
     def define_tables(self, metadata):
         global nodes
         nodes = Table('nodes', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('node_id_seq', optional=True), primary_key=True),
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
     

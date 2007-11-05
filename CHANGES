@@ -121,6 +121,10 @@ CHANGES
   - Added test coverage for unknown type reflection. Fixed sqlite/mysql
     handling of type reflection for unknown types.
 
+  - oracle uses plain "rowid" name when limiting against subqueries,
+    since this is the "rowid" of the enclosing query.  if this raises
+    issues in the wild please file tickets !
+
 - misc
 
   - Removed unused util.hash().
