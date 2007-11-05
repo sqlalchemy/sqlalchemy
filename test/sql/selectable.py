@@ -188,6 +188,23 @@ class SelectableTest(AssertMixin):
         assert j4.corresponding_column(j2.c.aid) is j4.c.aid
         assert j4.corresponding_column(a.c.id) is j4.c.id
 
+    def test_oid(self):
+        # the oid column of a selectable currently proxies all
+        # oid columns found within.  
+        s = table.select()
+        s2 = table2.select()
+        s3 = select([s, s2])
+        assert s3.corresponding_column(table.oid_column) is s3.oid_column
+        assert s3.corresponding_column(table2.oid_column) is s3.oid_column
+        assert s3.corresponding_column(s.oid_column) is s3.oid_column
+        assert s3.corresponding_column(s2.oid_column) is s3.oid_column
+        
+        u = s.union(s2)
+        assert u.corresponding_column(table.oid_column) is u.oid_column
+        assert u.corresponding_column(table2.oid_column) is u.oid_column
+        assert u.corresponding_column(s.oid_column) is u.oid_column
+        assert u.corresponding_column(s2.oid_column) is u.oid_column
+        
 class PrimaryKeyTest(AssertMixin):
     def test_join_pk_collapse_implicit(self):
         """test that redundant columns in a join get 'collapsed' into a minimal primary key, 

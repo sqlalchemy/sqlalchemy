@@ -1631,7 +1631,7 @@ class FromClause(Selectable):
         # from the item.  this is because FromClause subclasses, when
         # cloned, need to reestablish new "proxied" columns that are
         # linked to the new item
-        for attr in ('_columns', '_primary_key' '_foreign_keys', '_oid_column', '_embedded_columns'):
+        for attr in ('_columns', '_primary_key' '_foreign_keys', '_oid_column', '_embedded_columns', '_all_froms'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -2788,6 +2788,11 @@ class _SelectBaseMixin(object):
         """Append the given ORDER BY criterion applied to this selectable.
         
         The criterion will be appended to any pre-existing ORDER BY criterion.
+
+        Note that this mutates the Select construct such that derived attributes,
+        such as the "primary_key", "oid_column", and child "froms" collection may
+        be invalid if they have already been initialized.  Consider the generative
+        form of this method instead to prevent this issue.
         """
         
         if clauses == [None]:
@@ -2801,6 +2806,11 @@ class _SelectBaseMixin(object):
         """Append the given GROUP BY criterion applied to this selectable.
         
         The criterion will be appended to any pre-existing GROUP BY criterion.
+
+        Note that this mutates the Select construct such that derived attributes,
+        such as the "primary_key", "oid_column", and child "froms" collection may
+        be invalid if they have already been initialized.  Consider the generative
+        form of this method instead to prevent this issue.
         """
         
         if clauses == [None]:
@@ -2862,9 +2872,11 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                 self.selects.append(s)
 
         self._col_map = {}
-        self.oid_column = self.selects[0].oid_column
         
         _SelectBaseMixin.__init__(self, **kwargs)
+
+        for s in self.selects:
+            self.oid_column = self._proxy_column(s.oid_column)
 
 
     def self_group(self, against=None):
@@ -3018,7 +3030,9 @@ class Select(_SelectBaseMixin, FromClause):
         This set is a superset of that returned by the ``froms`` property, which
         is specifically for those FromClause elements that would actually be rendered.
         """
-        
+        if hasattr(self, '_all_froms'):
+            return self._all_froms
+            
         froms = util.Set()
         for col in self._raw_columns:
             for f in col._get_from_objects():
@@ -3032,6 +3046,7 @@ class Select(_SelectBaseMixin, FromClause):
             froms.add(elem)
             for f in elem._get_from_objects():
                 froms.add(f)
+        self._all_froms = froms
         return froms
 
     def _get_inner_columns(self):
@@ -3153,7 +3168,13 @@ class Select(_SelectBaseMixin, FromClause):
         return s
 
     def append_correlation(self, fromclause, _copy_collection=True):
-        """append the given correlation expression to this select() construct."""
+        """append the given correlation expression to this select() construct.
+        
+        Note that this mutates the Select construct such that derived attributes,
+        such as the "primary_key", "oid_column", and child "froms" collection may
+        be invalid if they have already been initialized.  Consider the generative
+        form of this method instead to prevent this issue.
+        """
         
         if not _copy_collection:
             self.__correlate.add(fromclause)
@@ -3161,7 +3182,13 @@ class Select(_SelectBaseMixin, FromClause):
             self.__correlate = util.Set(list(self.__correlate) + [fromclause])
 
     def append_column(self, column, _copy_collection=True):
-        """append the given column expression to the columns clause of this select() construct."""
+        """append the given column expression to the columns clause of this select() construct.
+        
+        Note that this mutates the Select construct such that derived attributes,
+        such as the "primary_key", "oid_column", and child "froms" collection may
+        be invalid if they have already been initialized.  Consider the generative
+        form of this method instead to prevent this issue.
+        """
         
         column = _literal_as_column(column)
 
@@ -3174,7 +3201,13 @@ class Select(_SelectBaseMixin, FromClause):
             self._raw_columns = self._raw_columns + [column]
 
     def append_prefix(self, clause, _copy_collection=True):
-        """append the given columns clause prefix expression to this select() construct."""
+        """append the given columns clause prefix expression to this select() construct.
+
+        Note that this mutates the Select construct such that derived attributes,
+        such as the "primary_key", "oid_column", and child "froms" collection may
+        be invalid if they have already been initialized.  Consider the generative
+        form of this method instead to prevent this issue.
+        """
         
         clause = _literal_as_text(clause)
         if not _copy_collection:
@@ -3186,6 +3219,11 @@ class Select(_SelectBaseMixin, FromClause):
         """append the given expression to this select() construct's WHERE criterion.
         
         The expression will be joined to existing WHERE criterion via AND.
+        
+        Note that this mutates the Select construct such that derived attributes,
+        such as the "primary_key", "oid_column", and child "froms" collection may
+        be invalid if they have already been initialized.  Consider the generative
+        form of this method instead to prevent this issue.
         """
         
         if self._whereclause  is not None:
@@ -3197,6 +3235,11 @@ class Select(_SelectBaseMixin, FromClause):
         """append the given expression to this select() construct's HAVING criterion.
         
         The expression will be joined to existing HAVING criterion via AND.
+
+        Note that this mutates the Select construct such that derived attributes,
+        such as the "primary_key", "oid_column", and child "froms" collection may
+        be invalid if they have already been initialized.  Consider the generative
+        form of this method instead to prevent this issue.
         """
         
         if self._having is not None:
@@ -3205,7 +3248,13 @@ class Select(_SelectBaseMixin, FromClause):
             self._having = _literal_as_text(having)
 
     def append_from(self, fromclause, _copy_collection=True):
-        """append the given FromClause expression to this select() construct's FROM clause."""
+        """append the given FromClause expression to this select() construct's FROM clause.
+
+        Note that this mutates the Select construct such that derived attributes,
+        such as the "primary_key", "oid_column", and child "froms" collection may
+        be invalid if they have already been initialized.  Consider the generative
+        form of this method instead to prevent this issue.
+        """
         
         if _is_literal(fromclause):
             fromclause = _TextFromClause(fromclause)
@@ -3235,23 +3284,29 @@ class Select(_SelectBaseMixin, FromClause):
             return self
         return _FromGrouping(self)
 
-    def _locate_oid_column(self):
+    def oid_column(self):
+        if hasattr(self, '_oid_column'):
+            return self._oid_column
+            
+        proxies = []
         for f in self.locate_all_froms():
             if f is self:
-                # we might be in our own _froms list if a column with
-                # us as the parent is attached, which includes textual
-                # columns.
                 continue
             oid = f.oid_column
             if oid is not None:
-                return oid
+                proxies.append(oid)
+        
+        if proxies:
+            # create a proxied column which will act as a proxy
+            # for every OID we've located...
+            col = self._proxy_column(proxies[0])
+            col.proxies = proxies
+            self._oid_column = col
+            return col
         else:
-            return None
-    oid_column = property(_locate_oid_column, doc="""return the 'oid' column, if any, for this select statement.
-    
-    This is part of the FromClause contract.  The column will usually be the 'oid' column of the first ``Table``
-    located within the from clause of this select().
-    """)
+            self._oid_column = None
+            return self._oid_column
+    oid_column = property(oid_column)
 
     def union(self, other, **kwargs):
         """return a SQL UNION of this select() construct against the given selectable."""
