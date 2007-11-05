@@ -646,7 +646,7 @@ class OracleCompiler(compiler.DefaultCompiler):
             # to use ROW_NUMBER(), an ORDER BY is required.
             orderby = self.process(select._order_by_clause)
             if not orderby:
-                orderby = select.oid_column
+                orderby = list(select.oid_column.proxies)[0]
                 orderby = self.process(orderby)
                 
             oldselect = select
