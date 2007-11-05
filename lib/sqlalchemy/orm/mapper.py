@@ -9,7 +9,7 @@ from sqlalchemy import sql, util, exceptions, logging
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import util as sqlutil
 from sqlalchemy.orm import util as mapperutil
-from sqlalchemy.orm.util import ExtensionCarrier
+from sqlalchemy.orm.util import ExtensionCarrier, create_row_adapter
 from sqlalchemy.orm import sync
 from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, SynonymProperty, PropComparator
 deferred_load = None
@@ -102,7 +102,7 @@ class Mapper(object):
         self.inherit_condition = inherit_condition
         self.inherit_foreign_keys = inherit_foreign_keys
         self.extension = extension
-        self.properties = properties or {}
+        self._init_properties = properties or {}
         self.allow_column_override = allow_column_override
         self.allow_null_pks = allow_null_pks
         self.delete_orphans = []
@@ -110,7 +110,8 @@ class Mapper(object):
         self.column_prefix = column_prefix
         self.polymorphic_on = polymorphic_on
         self._eager_loaders = util.Set()
-
+        self._row_translators = {}
+        
         # our 'polymorphic identity', a string name that when located in a result set row
         # indicates this Mapper should be used to construct the object instance for that row.
         self.polymorphic_identity = polymorphic_identity
@@ -194,6 +195,10 @@ class Mapper(object):
     def iterate_properties(self):
         return self.__props.itervalues()
     iterate_properties = property(iterate_properties, doc="returns an iterator of all MapperProperty objects.")
+    
+    def properties(self):
+        raise NotImplementedError("Public collection of MapperProperty objects is provided by the get_property() and iterate_properties accessors.")
+    properties = property(properties)
     
     def dispose(self):
         # disaable any attribute-based compilation
@@ -324,7 +329,7 @@ class Mapper(object):
                 self.inherits._add_polymorphic_mapping(self.polymorphic_identity, self)
                 if self.polymorphic_on is None:
                     if self.inherits.polymorphic_on is not None:
-                        self.polymorphic_on = self.mapped_table.corresponding_column(self.inherits.polymorphic_on, keys_ok=True, raiseerr=False)
+                        self.polymorphic_on = self.mapped_table.corresponding_column(self.inherits.polymorphic_on, raiseerr=False)
                     else:
                         raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
 
@@ -416,19 +421,20 @@ class Mapper(object):
         if self.inherits is not None and not self.concrete and not self.primary_key_argument:
             self.primary_key = self.inherits.primary_key
             self._get_clause = self.inherits._get_clause
+            self._equivalent_columns = {}
         else:
             # create the "primary_key" for this mapper.  this will flatten "equivalent" primary key columns
             # into one column, where "equivalent" means that one column references the other via foreign key, or
             # multiple columns that all reference a common parent column.  it will also resolve the column
             # against the "mapped_table" of this mapper.
-            equivalent_columns = self._get_equivalent_columns()
+            self._equivalent_columns = self._get_equivalent_columns()
         
             primary_key = expression.ColumnSet()
 
             for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
                 c = self.mapped_table.corresponding_column(col, raiseerr=False)
                 if c is None:
-                    for cc in equivalent_columns[col]:
+                    for cc in self._equivalent_columns[col]:
                         c = self.mapped_table.corresponding_column(cc, raiseerr=False)
                         if c is not None:
                             break
@@ -494,9 +500,6 @@ class Mapper(object):
                 set([tabled.col2])
         }
         
-        this method is called repeatedly during the compilation process as 
-        the resulting dictionary contains more equivalents as more inheriting 
-        mappers are compiled.  the repetition process may be open to some optimization.
         """
 
         result = {}
@@ -565,8 +568,8 @@ class Mapper(object):
         self._columntoproperty = mapperutil.TranslatingDict(self.mapped_table)
 
         # load custom properties
-        if self.properties is not None:
-            for key, prop in self.properties.iteritems():
+        if self._init_properties is not None:
+            for key, prop in self._init_properties.iteritems():
                 self._compile_property(key, prop, False)
 
         # pull properties from the inherited mapper if any.
@@ -641,7 +644,7 @@ class Mapper(object):
 
         if isinstance(prop, ColumnProperty):
             # relate the mapper's "select table" to the given ColumnProperty
-            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=False)
+            col = self.select_table.corresponding_column(prop.columns[0], raiseerr=False)
             # col might not be present! the selectable given to the mapper need not include "deferred"
             # columns (included in zblog tests)
             if col is None:
@@ -680,8 +683,8 @@ class Mapper(object):
 
         if self.select_table is not self.mapped_table:
             props = {}
-            if self.properties is not None:
-                for key, prop in self.properties.iteritems():
+            if self._init_properties is not None:
+                for key, prop in self._init_properties.iteritems():
                     if expression.is_column(prop):
                         props[key] = self.select_table.corresponding_column(prop)
                     elif (isinstance(prop, list) and expression.is_column(prop[0])):
@@ -779,7 +782,7 @@ class Mapper(object):
         the given MapperProperty is compiled immediately.
         """
 
-        self.properties[key] = prop
+        self._init_properties[key] = prop
         self._compile_property(key, prop, init=self.__props_init)
 
     def __str__(self):
@@ -1469,13 +1472,13 @@ class Mapper(object):
         This can be used in conjunction with populate_instance to
         populate an instance using an alternate mapper.
         """
-
-        newrow = util.DictDecorator(row)
-        for c in tomapper.mapped_table.c:
-            c2 = self.mapped_table.corresponding_column(c, keys_ok=True, raiseerr=False)
-            if c2 and c2 in row:
-                newrow[c] = row[c2]
-        return newrow
+        
+        if tomapper in self._row_translators:
+            return self._row_translators[tomapper](row)
+        else:
+            translator = create_row_adapter(self.mapped_table, tomapper.mapped_table, equivalent_columns=self._equivalent_columns)
+            self._row_translators[tomapper] = translator
+            return translator(row)
 
     def populate_instance(self, selectcontext, instance, row, ispostselect=None, isnew=False, **flags):
         """populate an instance from a result row."""

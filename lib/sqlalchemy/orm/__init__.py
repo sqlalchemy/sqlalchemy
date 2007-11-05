@@ -17,7 +17,7 @@ from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty, CompositeP
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import Query
-from sqlalchemy.orm.util import polymorphic_union
+from sqlalchemy.orm.util import polymorphic_union, create_row_adapter
 from sqlalchemy.orm.session import Session as _Session
 from sqlalchemy.orm.session import object_session, attribute_manager, sessionmaker
 from sqlalchemy.orm.scoping import ScopedSession
@@ -621,18 +621,18 @@ def contains_alias(alias):
                 self.selectable = None
             else:
                 self.selectable = alias
+            self._row_translators = {}
         def get_selectable(self, mapper):
             if self.selectable is None:
                 self.selectable = mapper.mapped_table.alias(self.alias)
             return self.selectable
         def translate_row(self, mapper, context, row):
-            newrow = sautil.DictDecorator(row)
-            selectable = self.get_selectable(mapper)
-            for c in mapper.mapped_table.c:
-                c2 = selectable.corresponding_column(c, keys_ok=True, raiseerr=False)
-                if c2 and c2 in row:
-                    newrow[c] = row[c2]
-            return newrow
+            if mapper in self._row_translators:
+                return self._row_translators[mapper](row)
+            else:
+                translator = create_row_adapter(self.get_selectable(mapper), mapper.mapped_table)
+                self._row_translators[mapper] = translator
+                return translator(row)
 
     return ExtensionOption(AliasedRow(alias))
 

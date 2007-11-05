@@ -91,7 +91,7 @@ class TranslatingDict(dict):
         self.selectable = selectable
 
     def __translate_col(self, col):
-        ourcol = self.selectable.corresponding_column(col, keys_ok=False, raiseerr=False)
+        ourcol = self.selectable.corresponding_column(col, raiseerr=False)
         if ourcol is None:
             return col
         else:
@@ -226,10 +226,27 @@ class AliasedClauses(object):
         """
         return create_row_adapter(self.alias, self.mapped_table)
 
-def create_row_adapter(from_, to):
-    map = {}        
+def create_row_adapter(from_, to, equivalent_columns=None):
+    """create a row adapter between two selectables.
+    
+    The returned adapter is a class that can be instantiated repeatedly for any number
+    of rows; this is an inexpensive process.  However, the creation of the row
+    adapter class itself *is* fairly expensive so caching should be used to prevent
+    repeated calls to this function.
+    """
+    
+    map = {}
     for c in to.c:
-        map[c] = from_.corresponding_column(c)
+        corr = from_.corresponding_column(c, raiseerr=False)
+        if corr:
+            map[c] = corr
+        elif equivalent_columns:
+            if c in equivalent_columns:
+                for c2 in equivalent_columns[c]:
+                    corr = from_.corresponding_column(c2, raiseerr=False)
+                    if corr:
+                        map[c] = corr
+                        break
 
     class AliasedRow(object):
         def __init__(self, row):

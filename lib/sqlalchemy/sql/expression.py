@@ -1393,15 +1393,13 @@ class ColumnElement(ClauseElement, _CompareMixin):
 
     foreign_key = property(_one_fkey)
     
-    def base_column(self):
-        if hasattr(self, '_base_column'):
-            return self._base_column
-        p = self
-        while hasattr(p, 'proxies'):
-            p = p.proxies[0]
-        self._base_column = p
-        return p
-    base_column = property(base_column)
+    def base_columns(self):
+        if hasattr(self, '_base_columns'):
+            return self._base_columns
+        self._base_columns = util.Set([c for c in self.proxy_set if not hasattr(c, 'proxies')])
+        return self._base_columns
+
+    base_columns = property(base_columns)
     
     def proxy_set(self):
         if hasattr(self, '_proxy_set'):
@@ -1578,7 +1576,7 @@ class FromClause(Selectable):
       from sqlalchemy.sql import util
       return util.ClauseAdapter(alias).traverse(self, clone=True)
 
-    def corresponding_column(self, column, raiseerr=True, keys_ok=False, require_embedded=False):
+    def corresponding_column(self, column, raiseerr=True, require_embedded=False):
         """Given a ``ColumnElement``, return the exported ``ColumnElement``
         object from this ``Selectable`` which corresponds to that
         original ``Column`` via a common anscestor column.
@@ -1589,11 +1587,6 @@ class FromClause(Selectable):
         raiseerr
           if True, raise an error if the given ``ColumnElement`` could
           not be matched. if False, non-matches will return None.
-
-        keys_ok
-          if the ``ColumnElement`` cannot be matched, attempt to match
-          based on the string "key" property of the column alone. This
-          makes the search much more liberal.
 
         require_embedded
           only return corresponding columns for the given
@@ -1618,18 +1611,17 @@ class FromClause(Selectable):
                 col, intersect = c, i
         if col:
             return col
+
+        if not raiseerr:
+            return None
         else:
-            if keys_ok:
-                try:
-                    return self.c[column.name]
-                except KeyError:
-                    pass
-            if not raiseerr:
-                return None
-            else:
-                raise exceptions.InvalidRequestError("Given column '%s', attached to table '%s', failed to locate a corresponding column from table '%s'" % (str(column), str(getattr(column, 'table', None)), self.description))
+            raise exceptions.InvalidRequestError("Given column '%s', attached to table '%s', failed to locate a corresponding column from table '%s'" % (str(column), str(getattr(column, 'table', None)), self.description))
 
     def description(self):
+        """a brief description of this FromClause.
+        
+        Used primarily for error message formatting.
+        """
         return getattr(self, 'name', self.__class__.__name__ + " object")
     description = property(description)
     
@@ -1669,21 +1661,19 @@ class FromClause(Selectable):
     foreign_keys = property(_expr_attr_func('_foreign_keys'))
 
     def _export_columns(self, columns=None):
-        """Initialize column collections.
-
-        """
+        """Initialize column collections."""
 
         if hasattr(self, '_columns') and columns is None:
             return
         self._columns = ColumnCollection()
         self._primary_key = ColumnSet()
         self._foreign_keys = util.Set()
-
+        
         if columns is None:
             columns = self._flatten_exportable_columns()
         for co in columns:
             cp = self._proxy_column(co)
-
+            
     def _flatten_exportable_columns(self):
         """Return the list of ColumnElements represented within this FromClause's _exportable_columns"""
         export = self._exportable_columns()
@@ -2512,7 +2502,7 @@ class _Label(ColumnElement):
     key = property(lambda s: s.name)
     _label = property(lambda s: s.name)
     proxies = property(lambda s:s.obj.proxies)
-    base_column = property(lambda s:s.obj.base_column)
+    base_columns = property(lambda s:s.obj.base_columns)
     proxy_set = property(lambda s:s.obj.proxy_set)
     
     def expression_element(self):

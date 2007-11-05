@@ -409,27 +409,6 @@ except ImportError:
             def __setattr__(self, key, value):
                 self._tdict[(thread.get_ident(), key)] = value
 
-class DictDecorator(dict):
-    """A Dictionary that delegates items not found to a second wrapped dictionary."""
-
-    def __init__(self, decorate):
-        self.decorate = decorate
-
-    def __getitem__(self, key):
-        try:
-            return dict.__getitem__(self, key)
-        except KeyError:
-            return self.decorate[key]
-
-    def __contains__(self, key):
-        return dict.__contains__(self, key) or key in self.decorate
-
-    def has_key(self, key):
-        return key in self
-
-    def __repr__(self):
-        return dict.__repr__(self) + repr(self.decorate)
-
 class OrderedSet(Set):
     def __init__(self, d=None):
         Set.__init__(self)

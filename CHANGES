@@ -48,6 +48,10 @@ CHANGES
     with arbitrary sementics.  The orm now handles all mapped instances on
     an identity-only basis. (e.g. 'is' vs '==') [ticket:676]
 
+  - the "properties" accessor on Mapper is removed; it now throws an informative
+    exception explaining the usage of mapper.get_property() and 
+    mapper.iterate_properties
+    
   - The behavior of query.options() is now fully based on paths, i.e. an
     option such as eagerload_all('x.y.z.y.x') will apply eagerloading to
     only those paths, i.e. and not 'x.y.x'; eagerload('children.children')

@@ -37,7 +37,15 @@ class MapperTest(MapperSuperTest):
             assert False
         except exceptions.ArgumentError:
             pass
-
+    
+    def test_prop_accessor(self):
+        mapper(User, users)
+        try:
+            class_mapper(User).properties
+            assert False
+        except NotImplementedError, uoe:
+            assert str(uoe) == "Public collection of MapperProperty objects is provided by the get_property() and iterate_properties accessors."
+            
     def test_badcascade(self):
         mapper(Address, addresses)
         try:
