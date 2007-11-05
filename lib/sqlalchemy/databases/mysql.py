@@ -1971,8 +1971,12 @@ class MySQLSchemaReflector(object):
         for line in re.split(r'\r?\n', show_create):
             if line.startswith('  ' + self.preparer.initial_quote):
                 self._add_column(table, line, charset, only)
+            # a regular table options line
             elif line.startswith(') '):
                 self._set_options(table, line)
+            # an ANSI-mode table options line
+            elif line == ')':
+                pass
             elif line.startswith('CREATE '):
                 self._set_name(table, line)
             # Not present in real reflection, but may be if loading from a file.
@@ -2038,7 +2042,7 @@ class MySQLSchemaReflector(object):
                 "Did not recognize type '%s' of column '%s'" %
                 (type_, name)))
             col_type = sqltypes.NullType
-        
+
         # Column type positional arguments eg. varchar(32)
         if args is None or args == '':
             type_args = []
@@ -2063,7 +2067,7 @@ class MySQLSchemaReflector(object):
         # NOT NULL
         if spec.get('notnull', False):
             col_kw['nullable'] = False
-            
+
         # AUTO_INCREMENT
         if spec.get('autoincr', False):
             col_kw['autoincrement'] = True
@@ -2102,7 +2106,7 @@ class MySQLSchemaReflector(object):
           Optional `set` of column names.  If provided, keys covering
           columns not in this set will be omitted.
         """
-        
+
         for spec in keys:
             flavor = spec['type']
             col_names = [s[0] for s in spec['columns']]
@@ -2141,7 +2145,7 @@ class MySQLSchemaReflector(object):
             # only FOREIGN KEYs
             ref_name = spec['table'][-1]
             ref_schema = len(spec['table']) > 1 and spec['table'][-2] or None
-        
+
             loc_names = spec['local']
             if only and not util.Set(loc_names).issubset(only):
                 self.logger.info(
@@ -2170,12 +2174,12 @@ class MySQLSchemaReflector(object):
             for opt in ('name', 'onupdate', 'ondelete'):
                 if spec.get(opt, False):
                     con_kw[opt] = spec[opt]
-                    
+
             key = schema.ForeignKeyConstraint([], [], **con_kw)
             table.append_constraint(key)
             for pair in zip(loc_names, ref_columns):
                 key.append_element(*pair)
-            
+
     def _set_options(self, table, line):
         """Apply safe reflected table options to a ``Table``.
 
@@ -2201,7 +2205,7 @@ class MySQLSchemaReflector(object):
         self._re_options_util = {}
 
         _final = self.preparer.final_quote
-        
+
         quotes = dict(zip(('iq', 'fq', 'esc_fq'),
                           [re.escape(s) for s in
                            (self.preparer.initial_quote,
