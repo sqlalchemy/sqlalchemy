@@ -23,34 +23,34 @@ class O2MCascadeTest(AssertMixin):
             orders = relation(
                 mapper(tables.Order, tables.orders, properties = dict (
                     items = relation(mapper(tables.Item, tables.orderitems), lazy=True, uselist =True, cascade="all, delete-orphan")
-                )), 
+                )),
                 lazy = True, uselist = True, cascade="all, delete-orphan")
         ))
 
     def setUp(self):
         global data
         data = [tables.User,
-            {'user_name' : 'ed', 
+            {'user_name' : 'ed',
                 'address' : (tables.Address, {'email_address' : 'foo@bar.com'}),
                 'orders' : (tables.Order, [
-                    {'description' : 'eds 1st order', 'items' : (tables.Item, [{'item_name' : 'eds o1 item'}, {'item_name' : 'eds other o1 item'}])}, 
+                    {'description' : 'eds 1st order', 'items' : (tables.Item, [{'item_name' : 'eds o1 item'}, {'item_name' : 'eds other o1 item'}])},
                     {'description' : 'eds 2nd order', 'items' : (tables.Item, [{'item_name' : 'eds o2 item'}, {'item_name' : 'eds other o2 item'}])}
                  ])
             },
-            {'user_name' : 'jack', 
+            {'user_name' : 'jack',
                 'address' : (tables.Address, {'email_address' : 'jack@jack.com'}),
                 'orders' : (tables.Order, [
                     {'description' : 'jacks 1st order', 'items' : (tables.Item, [{'item_name' : 'im a lumberjack'}, {'item_name' : 'and im ok'}])}
                  ])
             },
-            {'user_name' : 'foo', 
+            {'user_name' : 'foo',
                 'address' : (tables.Address, {'email_address': 'hi@lala.com'}),
                 'orders' : (tables.Order, [
-                    {'description' : 'foo order', 'items' : (tables.Item, [])}, 
-                    {'description' : 'foo order 2', 'items' : (tables.Item, [{'item_name' : 'hi'}])}, 
+                    {'description' : 'foo order', 'items' : (tables.Item, [])},
+                    {'description' : 'foo order 2', 'items' : (tables.Item, [{'item_name' : 'hi'}])},
                     {'description' : 'foo order three', 'items' : (tables.Item, [{'item_name' : 'there'}])}
                 ])
-            }        
+            }
         ]
 
         sess = create_session()
@@ -90,7 +90,7 @@ class O2MCascadeTest(AssertMixin):
         assert o2 in sess
         sess.flush()
         sess.clear()
-        
+
         u = sess.query(tables.User).get(u.user_id)
         o3 = tables.Order()
         o3.description='order3'
@@ -100,7 +100,7 @@ class O2MCascadeTest(AssertMixin):
         assert o3 in sess
         assert o4 in sess
         sess.flush()
-        
+
         o5 = tables.Order()
         o5.description='order5'
         sess.save(o5)
@@ -109,8 +109,8 @@ class O2MCascadeTest(AssertMixin):
             assert False
         except exceptions.FlushError, e:
             assert "is an orphan" in str(e)
-        
-        
+
+
     def testdelete(self):
         sess = create_session()
         l = sess.query(tables.User).all()
@@ -130,7 +130,7 @@ class O2MCascadeTest(AssertMixin):
 
     def testdelete2(self):
         """test that unloaded collections are still included in a delete-cascade by default."""
-        
+
         sess = create_session()
         u = sess.query(tables.User).get_by(user_name='ed')
         # assert 'addresses' collection not loaded
@@ -144,7 +144,7 @@ class O2MCascadeTest(AssertMixin):
         """test that cascade only reaches instances that are still part of the collection,
         not those that have been removed"""
         sess = create_session()
-        
+
         u = tables.User()
         u.user_name = 'newuser'
         o = tables.Order()
@@ -152,12 +152,12 @@ class O2MCascadeTest(AssertMixin):
         u.orders.append(o)
         sess.save(u)
         sess.flush()
-        
+
         u.orders.remove(o)
         sess.delete(u)
         assert u in sess.deleted
         assert o not in sess.deleted
-    
+
 
     def testorphan(self):
         sess = create_session()
@@ -180,23 +180,23 @@ class M2OCascadeTest(AssertMixin):
         ctx.current.clear()
         for t in metadata.table_iterator(reverse=True):
             t.delete().execute()
-            
+
     def tearDownAll(self):
         clear_mappers()
         metadata.drop_all()
-        
+
     def setUpAll(self):
         global ctx, data, metadata, User, Pref, Extra
         ctx = SessionContext(create_session)
         metadata = MetaData(testbase.db)
-        extra = Table("extra", metadata, 
+        extra = Table("extra", metadata,
             Column("extra_id", Integer, Sequence("extra_id_seq", optional=True), primary_key=True),
             Column("prefs_id", Integer, ForeignKey("prefs.prefs_id"))
         )
-        prefs = Table('prefs', metadata, 
+        prefs = Table('prefs', metadata,
             Column('prefs_id', Integer, Sequence('prefs_id_seq', optional=True), primary_key=True),
             Column('prefs_data', String(40)))
-            
+
         users = Table('users', metadata,
             Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
             Column('user_name', String(40)),
@@ -236,6 +236,7 @@ class M2OCascadeTest(AssertMixin):
         ctx.current.flush()
         ctx.current.clear()
 
+    @testing.fails_on('maxdb')
     def testorphan(self):
         jack = ctx.current.query(User).get_by(user_name='jack')
         p = jack.pref
@@ -245,6 +246,7 @@ class M2OCascadeTest(AssertMixin):
         assert p not in ctx.current
         assert e not in ctx.current
 
+    @testing.fails_on('maxdb')
     def testorphan2(self):
         jack = ctx.current.query(User).get_by(user_name='jack')
         p = jack.pref
@@ -260,28 +262,28 @@ class M2OCascadeTest(AssertMixin):
         ctx.current.flush()
         assert p not in ctx.current
         assert e not in ctx.current
-    
-        
+
+
 
 class M2MCascadeTest(AssertMixin):
     def setUpAll(self):
         global metadata, a, b, atob
         metadata = MetaData(testbase.db)
-        a = Table('a', metadata, 
+        a = Table('a', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30))
             )
-        b = Table('b', metadata,     
+        b = Table('b', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30))
             )
-        atob = Table('atob', metadata, 
+        atob = Table('atob', metadata,
             Column('aid', Integer, ForeignKey('a.id')),
             Column('bid', Integer, ForeignKey('b.id'))
-            
+
             )
         metadata.create_all()
-        
+
     def tearDownAll(self):
         metadata.drop_all()
 
@@ -292,26 +294,26 @@ class M2MCascadeTest(AssertMixin):
         class B(object):
             def __init__(self, data):
                 self.data = data
-        
+
         mapper(A, a, properties={
             # if no backref here, delete-orphan failed until [ticket:427] was fixed
             'bs':relation(B, secondary=atob, cascade="all, delete-orphan")
         })
         mapper(B, b)
-        
+
         sess = create_session()
         a1 = A('a1')
         b1 = B('b1')
         a1.bs.append(b1)
         sess.save(a1)
         sess.flush()
-        
+
         a1.bs.remove(b1)
         sess.flush()
         assert atob.count().scalar() ==0
         assert b.count().scalar() == 0
         assert a.count().scalar() == 1
-    
+
     def testcascadedelete(self):
         class A(object):
             def __init__(self, data):
@@ -319,19 +321,19 @@ class M2MCascadeTest(AssertMixin):
         class B(object):
             def __init__(self, data):
                 self.data = data
-        
+
         mapper(A, a, properties={
             'bs':relation(B, secondary=atob, cascade="all, delete-orphan")
         })
         mapper(B, b)
-        
+
         sess = create_session()
         a1 = A('a1')
         b1 = B('b1')
         a1.bs.append(b1)
         sess.save(a1)
         sess.flush()
-        
+
         sess.delete(a1)
         sess.flush()
         assert atob.count().scalar() ==0
@@ -340,7 +342,7 @@ class M2MCascadeTest(AssertMixin):
 
 class UnsavedOrphansTest(ORMTest):
     """tests regarding pending entities that are orphans"""
-    
+
     def define_tables(self, metadata):
         global users, addresses, User, Address
         users = Table('users', metadata,
@@ -355,7 +357,7 @@ class UnsavedOrphansTest(ORMTest):
         )
         class User(object):pass
         class Address(object):pass
-        
+
     def test_pending_orphan(self):
         """test that an entity that never had a parent on a delete-orphan cascade cant be saved."""
 
@@ -373,7 +375,7 @@ class UnsavedOrphansTest(ORMTest):
         assert a.address_id is None, "Error: address should not be persistent"
 
     def test_delete_new_object(self):
-        """test that an entity which is attached then detached from its 
+        """test that an entity which is attached then detached from its
         parent with a delete-orphan cascade gets counted as an orphan"""
 
         mapper(Address, addresses)
@@ -422,7 +424,7 @@ class UnsavedOrphansTest2(ORMTest):
         )
 
     def testdeletechildwithchild(self):
-        """test that an entity which is attached then detached from its 
+        """test that an entity which is attached then detached from its
         parent with a delete-orphan cascade gets counted as an orphan, as well
         as its own child instances"""
 
@@ -460,7 +462,7 @@ class UnsavedOrphansTest2(ORMTest):
 
 class DoubleParentOrphanTest(AssertMixin):
     """test orphan detection for an entity with two parent relations"""
-    
+
     def setUpAll(self):
         global metadata, address_table, businesses, homes
         metadata = MetaData(testbase.db)
@@ -487,7 +489,7 @@ class DoubleParentOrphanTest(AssertMixin):
         metadata.drop_all()
     def test_non_orphan(self):
         """test that an entity can have two parent delete-orphan cascades, and persists normally."""
-        
+
         class Address(object):pass
         class Home(object):pass
         class Business(object):pass
@@ -504,7 +506,7 @@ class DoubleParentOrphanTest(AssertMixin):
         b1.address = a2
         [session.save(x) for x in [h1,b1]]
         session.flush()
-        
+
     def test_orphan(self):
         """test that an entity can have two parent delete-orphan cascades, and is detected as an orphan
         when saved without a parent."""

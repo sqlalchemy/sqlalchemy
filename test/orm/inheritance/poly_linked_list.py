@@ -23,22 +23,22 @@ class PolymorphicCircularTest(ORMTest):
                       Column('id', Integer, ForeignKey('table1.id'), primary_key=True),
                       )
 
-        data = Table('data', metadata, 
+        data = Table('data', metadata,
             Column('id', Integer, primary_key=True),
             Column('node_id', Integer, ForeignKey('table1.id')),
             Column('data', String(30))
             )
-            
+
         #join = polymorphic_union(
         #    {
         #    'table3' : table1.join(table3),
         #    'table2' : table1.join(table2),
         #    'table1' : table1.select(table1.c.type.in_(['table1', 'table1b'])),
         #    }, None, 'pjoin')
-        
+
         join = table1.outerjoin(table2).outerjoin(table3).alias('pjoin')
         #join = None
-        
+
         class Table1(object):
             def __init__(self, name, data=None):
                 self.name = name
@@ -49,19 +49,19 @@ class PolymorphicCircularTest(ORMTest):
 
         class Table1B(Table1):
             pass
-            
+
         class Table2(Table1):
             pass
 
         class Table3(Table1):
             pass
-    
+
         class Data(object):
             def __init__(self, data):
                 self.data = data
             def __repr__(self):
                 return "%s(%d, %s)" % (self.__class__.__name__, self.id, repr(str(self.data)))
-                
+
         try:
             # this is how the mapping used to work.  ensure that this raises an error now
             table1_mapper = mapper(Table1, table1,
@@ -69,8 +69,8 @@ class PolymorphicCircularTest(ORMTest):
                                    polymorphic_on=table1.c.type,
                                    polymorphic_identity='table1',
                                    properties={
-                                    'next': relation(Table1, 
-                                        backref=backref('prev', primaryjoin=join.c.id==join.c.related_id, foreignkey=join.c.id, uselist=False), 
+                                    'next': relation(Table1,
+                                        backref=backref('prev', primaryjoin=join.c.id==join.c.related_id, foreignkey=join.c.id, uselist=False),
                                         uselist=False, primaryjoin=join.c.id==join.c.related_id),
                                     'data':relation(mapper(Data, data))
                                     }
@@ -80,10 +80,10 @@ class PolymorphicCircularTest(ORMTest):
         except:
             assert True
             clear_mappers()
-            
+
         # currently, the "eager" relationships degrade to lazy relationships
         # due to the polymorphic load.
-        # the "next" relation used to have a "lazy=False" on it, but the EagerLoader raises the "self-referential" 
+        # the "next" relation used to have a "lazy=False" on it, but the EagerLoader raises the "self-referential"
         # exception now.  since eager loading would never work for that relation anyway, its better that the user
         # gets an exception instead of it silently not eager loading.
         table1_mapper = mapper(Table1, table1,
@@ -91,8 +91,8 @@ class PolymorphicCircularTest(ORMTest):
                                polymorphic_on=table1.c.type,
                                polymorphic_identity='table1',
                                properties={
-                               'next': relation(Table1, 
-                                   backref=backref('prev', primaryjoin=table1.c.id==table1.c.related_id, remote_side=table1.c.id, uselist=False), 
+                               'next': relation(Table1,
+                                   backref=backref('prev', primaryjoin=table1.c.id==table1.c.related_id, remote_side=table1.c.id, uselist=False),
                                    uselist=False, primaryjoin=table1.c.id==table1.c.related_id),
                                'data':relation(mapper(Data, data), lazy=False)
                                 }
@@ -105,27 +105,31 @@ class PolymorphicCircularTest(ORMTest):
                                polymorphic_identity='table2')
 
         table3_mapper = mapper(Table3, table3, inherits=table1_mapper, polymorphic_identity='table3')
-        
+
         table1_mapper.compile()
         assert table1_mapper.primary_key == [table1.c.id], table1_mapper.primary_key
-        
+
+    @testing.fails_on('maxdb')
     def testone(self):
         self.do_testlist([Table1, Table2, Table1, Table2])
 
+    @testing.fails_on('maxdb')
     def testtwo(self):
         self.do_testlist([Table3])
-        
+
+    @testing.fails_on('maxdb')
     def testthree(self):
         self.do_testlist([Table2, Table1, Table1B, Table3, Table3, Table1B, Table1B, Table2, Table1])
 
+    @testing.fails_on('maxdb')
     def testfour(self):
         self.do_testlist([
-                Table2('t2', [Data('data1'), Data('data2')]), 
+                Table2('t2', [Data('data1'), Data('data2')]),
                 Table1('t1', []),
                 Table3('t3', [Data('data3')]),
                 Table1B('t1b', [Data('data4'), Data('data5')])
                 ])
-        
+
     def do_testlist(self, classes):
         sess = create_session( )
 
@@ -147,7 +151,7 @@ class PolymorphicCircularTest(ORMTest):
         # save to DB
         sess.save(t)
         sess.flush()
-        
+
         # string version of the saved list
         assertlist = []
         node = t
@@ -183,7 +187,7 @@ class PolymorphicCircularTest(ORMTest):
                 assert n.next is node
             node = n
         backwards = repr(assertlist)
-        
+
         # everything should match !
         print "ORIGNAL", original
         print "BACKWARDS",backwards

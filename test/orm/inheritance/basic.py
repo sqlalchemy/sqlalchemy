@@ -37,7 +37,7 @@ class O2MTest(ORMTest):
                 return "Bar id %d, data %s" % (self.id, self.data)
 
         mapper(Bar, bar, inherits=Foo)
-        
+
         class Blub(Bar):
             def __repr__(self):
                 return "Blub id %d, data %s" % (self.id, self.data)
@@ -65,7 +65,7 @@ class O2MTest(ORMTest):
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
 
-class GetTest(ORMTest):    
+class GetTest(ORMTest):
     def define_tables(self, metadata):
         global foo, bar, blub
         foo = Table('foo', metadata,
@@ -83,7 +83,7 @@ class GetTest(ORMTest):
             Column('foo_id', Integer, ForeignKey('foo.id')),
             Column('bar_id', Integer, ForeignKey('bar.id')),
             Column('data', String(20)))
-    
+
     def create_test(polymorphic):
         def test_get(self):
             class Foo(object):
@@ -91,7 +91,7 @@ class GetTest(ORMTest):
 
             class Bar(Foo):
                 pass
-        
+
             class Blub(Bar):
                 pass
 
@@ -103,7 +103,7 @@ class GetTest(ORMTest):
                 mapper(Foo, foo)
                 mapper(Bar, bar, inherits=Foo)
                 mapper(Blub, blub, inherits=Bar)
-        
+
             sess = create_session()
             f = Foo()
             b = Bar()
@@ -112,7 +112,7 @@ class GetTest(ORMTest):
             sess.save(b)
             sess.save(bl)
             sess.flush()
-            
+
             if polymorphic:
                 def go():
                     assert sess.query(Foo).get(f.id) == f
@@ -121,33 +121,33 @@ class GetTest(ORMTest):
                     assert sess.query(Bar).get(b.id) == b
                     assert sess.query(Bar).get(bl.id) == bl
                     assert sess.query(Blub).get(bl.id) == bl
-            
+
                 self.assert_sql_count(testbase.db, go, 0)
             else:
-                # this is testing the 'wrong' behavior of using get() 
+                # this is testing the 'wrong' behavior of using get()
                 # polymorphically with mappers that are not configured to be
                 # polymorphic.  the important part being that get() always
                 # returns an instance of the query's type.
                 def go():
                     assert sess.query(Foo).get(f.id) == f
-                    
+
                     bb = sess.query(Foo).get(b.id)
                     assert isinstance(b, Foo) and bb.id==b.id
-                    
+
                     bll = sess.query(Foo).get(bl.id)
                     assert isinstance(bll, Foo) and bll.id==bl.id
-                    
+
                     assert sess.query(Bar).get(b.id) == b
-                    
+
                     bll = sess.query(Bar).get(bl.id)
                     assert isinstance(bll, Bar) and bll.id == bl.id
-                    
+
                     assert sess.query(Blub).get(bl.id) == bl
-            
+
                 self.assert_sql_count(testbase.db, go, 3)
-                
+
         return test_get
-        
+
     test_get_polymorphic = create_test(True)
     test_get_nonpolymorphic = create_test(False)
 
@@ -155,7 +155,7 @@ class GetTest(ORMTest):
 class ConstructionTest(ORMTest):
     def define_tables(self, metadata):
         global content_type, content, product
-        content_type = Table('content_type', metadata, 
+        content_type = Table('content_type', metadata,
             Column('id', Integer, primary_key=True)
             )
         content = Table('content', metadata,
@@ -163,7 +163,7 @@ class ConstructionTest(ORMTest):
             Column('content_type_id', Integer, ForeignKey('content_type.id')),
             Column('type', String(30))
             )
-        product = Table('product', metadata, 
+        product = Table('product', metadata,
             Column('id', Integer, ForeignKey('content.id'), primary_key=True)
         )
 
@@ -195,7 +195,7 @@ class ConstructionTest(ORMTest):
         p = Product()
         p.contenttype = ContentType()
         # TODO: assertion ??
-        
+
 class EagerLazyTest(ORMTest):
     """tests eager load/lazy load of child items off inheritance mappers, tests that
     LazyLoader constructs the right query condition."""
@@ -214,6 +214,7 @@ class EagerLazyTest(ORMTest):
                         Column('foo_id', Integer, ForeignKey('foo.id'))
         )
 
+    @testing.fails_on('maxdb')
     def testbasic(self):
         class Foo(object): pass
         class Bar(Foo): pass
@@ -234,7 +235,7 @@ class EagerLazyTest(ORMTest):
 
         bar_foo.insert().execute(bar_id=1, foo_id=3)
         bar_foo.insert().execute(bar_id=2, foo_id=4)
-        
+
         sess = create_session()
         q = sess.query(Bar)
         self.assert_(len(q.selectfirst().lazy) == 1)
@@ -253,7 +254,7 @@ class FlushTest(ORMTest):
 
         roles = Table('role', metadata,
             Column('id', Integer, primary_key=True),
-            Column('description', String(32)) 
+            Column('description', String(32))
         )
 
         user_roles = Table('user_role', metadata,
@@ -265,14 +266,14 @@ class FlushTest(ORMTest):
             Column('admin_id', Integer, primary_key=True),
             Column('user_id', Integer, ForeignKey('users.id'))
         )
-            
+
     def testone(self):
         class User(object):pass
         class Role(object):pass
         class Admin(User):pass
         role_mapper = mapper(Role, roles)
         user_mapper = mapper(User, users, properties = {
-                'roles' : relation(Role, secondary=user_roles, lazy=False, private=False) 
+                'roles' : relation(Role, secondary=user_roles, lazy=False, private=False)
             }
         )
         admin_mapper = mapper(Admin, admins, inherits=user_mapper)
@@ -290,7 +291,7 @@ class FlushTest(ORMTest):
         a.password = 'admin'
         sess.save(a)
         sess.flush()
-        
+
         assert user_roles.count().scalar() == 1
 
     def testtwo(self):
@@ -311,7 +312,7 @@ class FlushTest(ORMTest):
             }
         )
 
-        admin_mapper = mapper(Admin, admins, inherits=user_mapper) 
+        admin_mapper = mapper(Admin, admins, inherits=user_mapper)
 
         # create roles
         adminrole = Role('admin')
@@ -411,7 +412,7 @@ class SyncCompileTest(ORMTest):
     """test that syncrules compile properly on custom inherit conds"""
     def define_tables(self, metadata):
         global _a_table, _b_table, _c_table
-        
+
         _a_table = Table('a', metadata,
            Column('id', Integer, primary_key=True),
            Column('data1', String)
@@ -427,14 +428,14 @@ class SyncCompileTest(ORMTest):
            Column('b_a_id', Integer, ForeignKey('b.a_id'), primary_key=True),
            Column('data3', String)
         )
-    
+
     def test_joins(self):
         for j1 in (None, _b_table.c.a_id==_a_table.c.id, _a_table.c.id==_b_table.c.a_id):
             for j2 in (None, _b_table.c.a_id==_c_table.c.b_a_id, _c_table.c.b_a_id==_b_table.c.a_id):
                 self._do_test(j1, j2)
                 for t in _a_table.metadata.table_iterator(reverse=True):
                     t.delete().execute().close()
-                
+
     def _do_test(self, j1, j2):
         class A(object):
            def __init__(self, **kwargs):
@@ -446,12 +447,12 @@ class SyncCompileTest(ORMTest):
 
         class C(B):
             pass
-        
+
         mapper(A, _a_table)
-        mapper(B, _b_table, inherits=A, 
+        mapper(B, _b_table, inherits=A,
                inherit_condition=j1
                )
-        mapper(C, _c_table, inherits=B, 
+        mapper(C, _c_table, inherits=B,
                inherit_condition=j2
                )
 
@@ -473,7 +474,7 @@ class SyncCompileTest(ORMTest):
         assert len(session.query(B).all()) == 2
         assert len(session.query(C).all()) == 1
 
-        
 
-if __name__ == "__main__":    
+
+if __name__ == "__main__":
     testbase.main()

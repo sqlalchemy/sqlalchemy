@@ -24,15 +24,15 @@ class CaseTest(PersistTest):
 		{'pk':6, 'info':'pk_6_data'})
     def tearDownAll(self):
         info_table.drop()
-    
-    @testing.unsupported('maxdb')
+
+    @testing.fails_on('maxdb')
     def testcase(self):
         inner = select([case([
-		[info_table.c.pk < 3, 
+		[info_table.c.pk < 3,
                         literal('lessthan3', type_=String)],
-        	[and_(info_table.c.pk >= 3, info_table.c.pk < 7), 
+        	[and_(info_table.c.pk >= 3, info_table.c.pk < 7),
                         literal('gt3', type_=String)]]).label('x'),
-        	info_table.c.pk, info_table.c.info], 
+        	info_table.c.pk, info_table.c.info],
                 from_obj=[info_table]).alias('q_inner')
 
         inner_result = inner.execute().fetchall()
@@ -67,12 +67,12 @@ class CaseTest(PersistTest):
         ]
 
         w_else = select([case([
-		[info_table.c.pk < 3, 
+		[info_table.c.pk < 3,
                         literal(3, type_=Integer)],
-        	[and_(info_table.c.pk >= 3, info_table.c.pk < 6), 
+        	[and_(info_table.c.pk >= 3, info_table.c.pk < 6),
                         literal(6, type_=Integer)]],
                 else_ = 0).label('x'),
-        	info_table.c.pk, info_table.c.info], 
+        	info_table.c.pk, info_table.c.info],
                 from_obj=[info_table]).alias('q_inner')
 
         else_result = w_else.execute().fetchall()

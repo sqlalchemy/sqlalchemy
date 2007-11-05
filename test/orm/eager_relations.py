@@ -44,15 +44,15 @@ class EagerTest(QueryTest):
         assert [
             User(id=7, addresses=[
                 Address(id=1)
-            ]), 
+            ]),
             User(id=8, addresses=[
                 Address(id=3, email_address='ed@bettyboop.com'),
                 Address(id=4, email_address='ed@lala.com'),
                 Address(id=2, email_address='ed@wood.com')
-            ]), 
+            ]),
             User(id=9, addresses=[
                 Address(id=5)
-            ]), 
+            ]),
             User(id=10, addresses=[])
         ] == q.all()
 
@@ -64,22 +64,22 @@ class EagerTest(QueryTest):
         mapper(User, users, properties = dict(
             addresses = relation(Address, lazy=False),
         ))
-        
+
         q = create_session().query(User)
         l = q.filter(User.id==Address.user_id).order_by(Address.email_address).all()
-        
+
         assert [
             User(id=8, addresses=[
                 Address(id=2, email_address='ed@wood.com'),
                 Address(id=3, email_address='ed@bettyboop.com'),
                 Address(id=4, email_address='ed@lala.com'),
-            ]), 
+            ]),
             User(id=9, addresses=[
                 Address(id=5)
-            ]), 
+            ]),
             User(id=7, addresses=[
                 Address(id=1)
-            ]), 
+            ]),
         ] == l
 
     def test_orderby_desc(self):
@@ -92,15 +92,15 @@ class EagerTest(QueryTest):
         assert [
             User(id=7, addresses=[
                 Address(id=1)
-            ]), 
+            ]),
             User(id=8, addresses=[
                 Address(id=2, email_address='ed@wood.com'),
                 Address(id=4, email_address='ed@lala.com'),
                 Address(id=3, email_address='ed@bettyboop.com'),
-            ]), 
+            ]),
             User(id=9, addresses=[
                 Address(id=5)
-            ]), 
+            ]),
             User(id=10, addresses=[])
         ] == sess.query(User).all()
 
@@ -115,7 +115,7 @@ class EagerTest(QueryTest):
         def go():
             assert fixtures.item_keyword_result == q.all()
         self.assert_sql_count(testbase.db, go, 1)
-        
+
         def go():
             assert fixtures.item_keyword_result[0:2] == q.join('keywords').filter(keywords.c.name == 'red').all()
         self.assert_sql_count(testbase.db, go, 1)
@@ -131,22 +131,22 @@ class EagerTest(QueryTest):
 
         def go():
             assert fixtures.item_keyword_result[0:2] == q.options(eagerload('keywords')).join('keywords').filter(keywords.c.name == 'red').all()
-            
+
         self.assert_sql_count(testbase.db, go, 1)
 
     def test_cyclical(self):
         """test that a circular eager relationship breaks the cycle with a lazy loader"""
-        
+
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
             addresses = relation(Address, lazy=False, backref=backref('user', lazy=False))
         ))
         assert class_mapper(User).get_property('addresses').lazy is False
         assert class_mapper(Address).get_property('user').lazy is False
-        
+
         sess = create_session()
         assert fixtures.user_address_result == sess.query(User).all()
-        
+
     def test_double(self):
         """tests eager loading with two relations simulatneously, from the same table, using aliases.  """
         openorders = alias(orders, 'openorders')
@@ -228,23 +228,24 @@ class EagerTest(QueryTest):
 
     def test_no_false_hits(self):
         """test that eager loaders don't interpret main table columns as part of their eager load."""
-        
+
         mapper(User, users, properties={
             'addresses':relation(Address, lazy=False),
             'orders':relation(Order, lazy=False)
         })
         mapper(Address, addresses)
         mapper(Order, orders)
-        
+
         allusers = create_session().query(User).all()
-        
+
         # using a textual select, the columns will be 'id' and 'name'.
-        # the eager loaders have aliases which should not hit on those columns, they should 
+        # the eager loaders have aliases which should not hit on those columns, they should
         # be required to locate only their aliased/fully table qualified column name.
         noeagers = create_session().query(User).from_statement("select * from users").all()
         assert 'orders' not in noeagers[0].__dict__
         assert 'addresses' not in noeagers[0].__dict__
 
+    @testing.fails_on('maxdb')
     def test_limit(self):
         """test limit operations combined with lazy-load relationships."""
 
@@ -263,12 +264,12 @@ class EagerTest(QueryTest):
         if testing.against('mysql'):
             l = q.limit(2).all()
             assert fixtures.user_all_result[:2] == l
-        else:        
+        else:
             l = q.limit(2).offset(1).order_by(User.id).all()
             print fixtures.user_all_result[1:3]
             print l
             assert fixtures.user_all_result[1:3] == l
-    
+
     def test_distinct(self):
         # this is an involved 3x union of the users table to get a lot of rows.
         # then see if the "distinct" works its way out.  you actually get the same
@@ -287,24 +288,26 @@ class EagerTest(QueryTest):
             l = q.filter(s.c.u2_id==User.c.id).distinct().all()
             assert fixtures.user_address_result == l
         self.assert_sql_count(testbase.db, go, 1)
-        
+
+    @testing.fails_on('maxdb')
     def test_limit_2(self):
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
                 keywords = relation(Keyword, secondary=item_keywords, lazy=False, order_by=[keywords.c.id]),
             ))
-            
+
         sess = create_session()
         q = sess.query(Item)
         l = q.filter((Item.c.description=='item 2') | (Item.c.description=='item 5') | (Item.c.description=='item 3')).\
             order_by(Item.id).limit(2).all()
 
         assert fixtures.item_keyword_result[1:3] == l
-        
+
+    @testing.fails_on('maxdb')
     def test_limit_3(self):
-        """test that the ORDER BY is propigated from the inner select to the outer select, when using the 
+        """test that the ORDER BY is propigated from the inner select to the outer select, when using the
         'wrapped' select statement resulting from the combination of eager loading and limit/offset clauses."""
-        
+
         mapper(Item, items)
         mapper(Order, orders, properties = dict(
                 items = relation(Item, secondary=order_items, lazy=False)
@@ -316,17 +319,17 @@ class EagerTest(QueryTest):
             orders = relation(Order, lazy=False),
         ))
         sess = create_session()
-        
+
         q = sess.query(User)
 
         if not testing.against('maxdb', 'mssql'):
             l = q.join('orders').order_by(Order.user_id.desc()).limit(2).offset(1)
             assert [
-                User(id=9, 
+                User(id=9,
                     orders=[Order(id=2), Order(id=4)],
                     addresses=[Address(id=5)]
                 ),
-                User(id=7, 
+                User(id=7,
                     orders=[Order(id=1), Order(id=3), Order(id=5)],
                     addresses=[Address(id=1)]
                 )
@@ -334,7 +337,7 @@ class EagerTest(QueryTest):
 
         l = q.join('addresses').order_by(Address.email_address.desc()).limit(1).offset(0)
         assert [
-            User(id=7, 
+            User(id=7,
                 orders=[Order(id=1), Order(id=3), Order(id=5)],
                 addresses=[Address(id=1)]
             )
@@ -345,43 +348,44 @@ class EagerTest(QueryTest):
             address = relation(mapper(Address, addresses), lazy=False, uselist=False)
         ))
         q = create_session().query(User)
-        
+
         def go():
             l = q.filter(users.c.id == 7).all()
             assert [User(id=7, address=Address(id=1))] == l
         self.assert_sql_count(testbase.db, go, 1)
 
+    @testing.fails_on('maxdb')
     def test_many_to_one(self):
         mapper(Address, addresses, properties = dict(
             user = relation(mapper(User, users), lazy=False)
         ))
         sess = create_session()
         q = sess.query(Address)
-        
+
         def go():
             a = q.filter(addresses.c.id==1).one()
             assert a.user is not None
             u1 = sess.query(User).get(7)
             assert a.user is u1
         self.assert_sql_count(testbase.db, go, 1)
-        
+
 
     def test_one_and_many(self):
-        """tests eager load for a parent object with a child object that 
+        """tests eager load for a parent object with a child object that
         contains a many-to-many relationship to a third object."""
-        
+
         mapper(User, users, properties={
             'orders':relation(Order, lazy=False)
         })
-        mapper(Item, items) 
+        mapper(Item, items)
         mapper(Order, orders, properties = dict(
                 items = relation(Item, secondary=order_items, lazy=False, order_by=items.c.id)
             ))
-            
+
         q = create_session().query(User)
-        
+
         l = q.filter("users.id in (7, 8, 9)")
-        
+
         def go():
             assert fixtures.user_order_result[0:3] == l.all()
         self.assert_sql_count(testbase.db, go, 1)
@@ -389,27 +393,27 @@ class EagerTest(QueryTest):
     def test_double_with_aggregate(self):
 
         max_orders_by_user = select([func.max(orders.c.id).label('order_id')], group_by=[orders.c.user_id]).alias('max_orders_by_user')
-        
+
         max_orders = orders.select(orders.c.id==max_orders_by_user.c.order_id).alias('max_orders')
-        
+
         mapper(Order, orders)
         mapper(User, users, properties={
                'orders':relation(Order, backref='user', lazy=False),
                'max_order':relation(mapper(Order, max_orders, non_primary=True), lazy=False, uselist=False)
                })
         q = create_session().query(User)
-        
+
         def go():
             assert [
                 User(id=7, orders=[
                         Order(id=1),
                         Order(id=3),
                         Order(id=5),
-                    ], 
+                    ],
                     max_order=Order(id=5)
                 ),
                 User(id=8, orders=[]),
-                User(id=9, orders=[Order(id=2),Order(id=4)], 
+                User(id=9, orders=[Order(id=2),Order(id=4)],
                     max_order=Order(id=4)
                 ),
                 User(id=10),
@@ -431,7 +435,7 @@ class EagerTest(QueryTest):
         """test eager loading of a mapper which is against a select"""
 
         s = select([orders], orders.c.isopen==1).alias('openorders')
-        
+
         mapper(Order, s, properties={
             'user':relation(User, lazy=False)
         })
@@ -443,7 +447,7 @@ class EagerTest(QueryTest):
             Order(id=3, user=User(id=7)),
             Order(id=4, user=User(id=9))
         ] == q.all()
-        
+
         q = q.select_from(s.join(order_items).join(items)).filter(~Item.id.in_([1, 2, 5]))
         assert [
             Order(id=3, user=User(id=7)),
@@ -451,7 +455,7 @@ class EagerTest(QueryTest):
 
     def test_aliasing(self):
         """test that eager loading uses aliases to insulate the eager load from regular criterion against those tables."""
-        
+
         mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy=False)
         ))
@@ -466,12 +470,13 @@ class SelfReferentialEagerTest(ORMTest):
             Column('id', Integer, Sequence('node_id_seq', optional=True), primary_key=True),
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
-    
+
+    @testing.fails_on('maxdb')
     def test_basic(self):
         class Node(Base):
             def append(self, node):
                 self.children.append(node)
-                
+
         mapper(Node, nodes, properties={
             'children':relation(Node, lazy=False, join_depth=3)
         })
@@ -545,6 +550,7 @@ class SelfReferentialEagerTest(ORMTest):
                 ),
             ])
 
+    @testing.fails_on('maxdb')
     def test_no_depth(self):
         class Node(Base):
             def append(self, node):
@@ -580,7 +586,7 @@ class SelfReferentialEagerTest(ORMTest):
 class SelfReferentialM2MEagerTest(ORMTest):
     def define_tables(self, metadata):
         global widget, widget_rel
-        
+
         widget = Table('widget', metadata,
             Column('id', Integer, primary_key=True),
             Column('name', Unicode(40), nullable=False, unique=True),
@@ -610,49 +616,49 @@ class SelfReferentialM2MEagerTest(ORMTest):
         sess.save(w1)
         sess.flush()
         sess.clear()
-        
+
 #        l = sess.query(Widget).filter(Widget.name=='w1').all()
 #        print l
         assert [Widget(name='w1', children=[Widget(name='w2')])] == sess.query(Widget).filter(Widget.name=='w1').all()
-    
+
 class CyclicalInheritingEagerTest(ORMTest):
     def define_tables(self, metadata):
         global t1, t2
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
             Column('c1', Integer, primary_key=True),
             Column('c2', String(30)),
             Column('type', String(30))
             )
 
-        t2 = Table('t2', metadata, 
+        t2 = Table('t2', metadata,
             Column('c1', Integer, primary_key=True),
             Column('c2', String(30)),
             Column('type', String(30)),
             Column('t1.id', Integer, ForeignKey('t1.c1')))
-    
+
     def test_basic(self):
         class T(object):
             pass
-        
+
         class SubT(T):
             pass
-        
+
         class T2(object):
             pass
 
         class SubT2(T2):
             pass
-            
+
         mapper(T, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1')
         mapper(SubT, None, inherits=T, polymorphic_identity='subt1', properties={
             't2s':relation(SubT2, lazy=False, backref=backref('subt', lazy=False))
         })
         mapper(T2, t2, polymorphic_on=t2.c.type, polymorphic_identity='t2')
         mapper(SubT2, None, inherits=T2, polymorphic_identity='subt2')
-        
+
         # testing a particular endless loop condition in eager join setup
         create_session().query(SubT).all()
-        
-        
+
+
 if __name__ == '__main__':
     testbase.main()

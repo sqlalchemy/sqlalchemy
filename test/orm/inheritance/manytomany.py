@@ -18,7 +18,7 @@ class InheritTest(ORMTest):
                    primary_key=True),
             Column('name', String(50), nullable=False))
 
-        users = Table('prin_users', metadata, 
+        users = Table('prin_users', metadata,
             Column('principal_id', Integer,
                    ForeignKey('principals.principal_id'), primary_key=True),
             Column('password', String(50), nullable=False),
@@ -53,7 +53,7 @@ class InheritTest(ORMTest):
 
         mapper(Group, groups, inherits=Principal, properties={
             'users': relation(User, secondary=user_group_map,
-                              lazy=True, backref="groups") 
+                              lazy=True, backref="groups")
             })
 
         g = Group(name="group1")
@@ -62,7 +62,7 @@ class InheritTest(ORMTest):
         sess.save(g)
         sess.flush()
         # TODO: put an assertion
-        
+
 class InheritTest2(ORMTest):
     """deals with inheritance and many-to-many relationships"""
     def define_tables(self, metadata):
@@ -87,7 +87,7 @@ class InheritTest2(ORMTest):
         def __init__(self, data=None):
             self.data = data
         class Bar(Foo):pass
-        
+
         mapper(Foo, foo)
         mapper(Bar, bar, inherits=Foo)
         print foo.join(bar).primary_key
@@ -97,13 +97,13 @@ class InheritTest2(ORMTest):
         sess.save(b)
         sess.flush()
         sess.clear()
-        
+
         # test that "bar.bid" does not need to be referenced in a get
         # (ticket 185)
         assert sess.query(Bar).get(b.id).id == b.id
-        
+
     def testbasic(self):
-        class Foo(object): 
+        class Foo(object):
             def __init__(self, data=None):
                 self.data = data
 
@@ -114,7 +114,7 @@ class InheritTest2(ORMTest):
         mapper(Bar, bar, inherits=Foo, properties={
             'foos': relation(Foo, secondary=foo_bar, lazy=False)
         })
-        
+
         sess = create_session()
         b = Bar('barfoo')
         sess.save(b)
@@ -155,10 +155,10 @@ class InheritTest3(ORMTest):
             Column('id', Integer, ForeignKey('bar.id'), primary_key=True),
             Column('data', String(20)))
 
-        bar_foo = Table('bar_foo', metadata, 
+        bar_foo = Table('bar_foo', metadata,
             Column('bar_id', Integer, ForeignKey('bar.id')),
             Column('foo_id', Integer, ForeignKey('foo.id')))
-            
+
         blub_bar = Table('bar_blub', metadata,
             Column('blub_id', Integer, ForeignKey('blub.id')),
             Column('bar_id', Integer, ForeignKey('bar.id')))
@@ -166,7 +166,7 @@ class InheritTest3(ORMTest):
         blub_foo = Table('blub_foo', metadata,
             Column('blub_id', Integer, ForeignKey('blub.id')),
             Column('foo_id', Integer, ForeignKey('foo.id')))
-            
+
     def testbasic(self):
         class Foo(object):
             def __init__(self, data=None):
@@ -178,7 +178,7 @@ class InheritTest3(ORMTest):
         class Bar(Foo):
             def __repr__(self):
                 return "Bar id %d, data %s" % (self.id, self.data)
-                
+
         mapper(Bar, bar, inherits=Foo, properties={
             'foos' :relation(Foo, secondary=bar_foo, lazy=True)
         })
@@ -194,8 +194,9 @@ class InheritTest3(ORMTest):
         l = sess.query(Bar).select()
         print repr(l[0]) + repr(l[0].foos)
         self.assert_(repr(l[0]) + repr(l[0].foos) == compare)
-    
-    def testadvanced(self):    
+
+    @testing.fails_on('maxdb')
+    def testadvanced(self):
         class Foo(object):
             def __init__(self, data=None):
                 self.data = data
@@ -211,7 +212,7 @@ class InheritTest3(ORMTest):
         class Blub(Bar):
             def __repr__(self):
                 return "Blub id %d, data %s, bars %s, foos %s" % (self.id, self.data, repr([b for b in self.bars]), repr([f for f in self.foos]))
-            
+
         mapper(Blub, blub, inherits=Bar, properties={
             'bars':relation(Bar, secondary=blub_bar, lazy=False),
             'foos':relation(Foo, secondary=blub_foo, lazy=False),
@@ -238,7 +239,7 @@ class InheritTest3(ORMTest):
         x = sess.query(Blub).get_by(id=blubid)
         print x
         self.assert_(repr(x) == compare)
-        
-        
-if __name__ == "__main__":    
+
+
+if __name__ == "__main__":
     testbase.main()

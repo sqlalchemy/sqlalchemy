@@ -20,25 +20,26 @@ class GenerativeQueryTest(PersistTest):
                     Column('id', Integer, Sequence('foo_id_seq'), primary_key=True),
                     Column('bar', Integer),
                     Column('range', Integer))
-        
+
         mapper(Foo, foo)
         metadata.create_all()
-        
+
         sess = create_session(bind=testbase.db)
         for i in range(100):
             sess.save(Foo(bar=i, range=i%10))
         sess.flush()
-    
+
     def tearDownAll(self):
         metadata.drop_all()
         clear_mappers()
-    
+
     def test_selectby(self):
         res = create_session(bind=testbase.db).query(Foo).filter_by(range=5)
         assert res.order_by([Foo.c.bar])[0].bar == 5
         assert res.order_by([desc(Foo.c.bar)])[0].bar == 95
-        
+
     @testing.unsupported('mssql')
+    @testing.fails_on('maxdb')
     def test_slice(self):
         sess = create_session(bind=testbase.db)
         query = sess.query(Foo)
@@ -90,14 +91,14 @@ class GenerativeQueryTest(PersistTest):
         query = create_session(bind=testbase.db).query(Foo)
         assert query.filter(foo.c.bar<30).apply_avg(foo.c.bar).first() == 14.5
         assert query.filter(foo.c.bar<30).apply_avg(foo.c.bar).one() == 14.5
-        
+
     def test_filter(self):
         query = create_session(bind=testbase.db).query(Foo)
         assert query.count() == 100
         assert query.filter(Foo.c.bar < 30).count() == 30
         res2 = query.filter(Foo.c.bar < 30).filter(Foo.c.bar > 10)
         assert res2.count() == 19
-    
+
     def test_options(self):
         query = create_session(bind=testbase.db).query(Foo)
         class ext1(MapperExtension):
@@ -105,7 +106,7 @@ class GenerativeQueryTest(PersistTest):
                 instance.TEST = "hello world"
                 return EXT_CONTINUE
         assert query.options(extension(ext1()))[0].TEST == "hello world"
-        
+
     def test_order_by(self):
         query = create_session(bind=testbase.db).query(Foo)
         assert query.order_by([Foo.c.bar])[0].bar == 0
@@ -114,7 +115,7 @@ class GenerativeQueryTest(PersistTest):
     def test_offset(self):
         query = create_session(bind=testbase.db).query(Foo)
         assert list(query.order_by([Foo.c.bar]).offset(10))[0].bar == 10
-        
+
     def test_offset(self):
         query = create_session(bind=testbase.db).query(Foo)
         assert len(list(query.limit(10))) == 10
@@ -209,7 +210,7 @@ class RelationsTest(AssertMixin):
             filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
         print x.compile()
         self.assert_result(list(x), tables.User, *tables.user_result[1:3])
-        
+
 
 class CaseSensitiveTest(PersistTest):
     def setUpAll(self):
@@ -232,7 +233,7 @@ class CaseSensitiveTest(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
         clear_mappers()
-        
+
     def test_distinctcount(self):
         q = create_session(bind=testbase.db).query(Obj1)
         assert q.count() == 4
@@ -244,7 +245,7 @@ class CaseSensitiveTest(PersistTest):
 class SelfRefTest(ORMTest):
     def define_tables(self, metadata):
         global t1
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
             Column('id', Integer, primary_key=True),
             Column('parent_id', Integer, ForeignKey('t1.id'))
             )
@@ -263,8 +264,8 @@ class SelfRefTest(ORMTest):
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Self-referential query on 'T.children (T)' property requires create_aliases=True argument.", str(e)
-        
-            
-            
+
+
+
 if __name__ == "__main__":
-    testbase.main()        
+    testbase.main()

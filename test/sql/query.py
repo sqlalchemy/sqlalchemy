@@ -7,7 +7,7 @@ from testlib import *
 
 
 class QueryTest(PersistTest):
-    
+
     def setUpAll(self):
         global users, addresses, metadata
         metadata = MetaData(testbase.db)
@@ -15,23 +15,23 @@ class QueryTest(PersistTest):
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
         )
-        addresses = Table('query_addresses', metadata, 
+        addresses = Table('query_addresses', metadata,
             Column('address_id', Integer, primary_key=True),
             Column('user_id', Integer, ForeignKey('query_users.user_id')),
             Column('address', String(30)))
         metadata.create_all()
-    
+
     def tearDown(self):
         addresses.delete().execute()
         users.delete().execute()
-    
+
     def tearDownAll(self):
         metadata.drop_all()
-        
+
     def testinsert(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         assert users.count().scalar() == 1
-    
+
     def test_insert_heterogeneous_params(self):
         users.insert().execute(
             {'user_id':7, 'user_name':'jack'},
@@ -39,7 +39,7 @@ class QueryTest(PersistTest):
             {'user_id':9}
         )
         assert users.select().execute().fetchall() == [(7, 'jack'), (8, 'ed'), (9, None)]
-        
+
     def testupdate(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         assert users.count().scalar() == 1
@@ -56,7 +56,7 @@ class QueryTest(PersistTest):
             INSERTed including defaults that fired off on the DB side and
             detects rows that had defaults and post-fetches.
             """
-            
+
             result = table.insert().execute(**values)
             ret = values.copy()
 
@@ -73,7 +73,7 @@ class QueryTest(PersistTest):
         for supported, table, values, assertvalues in [
             (
                 {'unsupported':['sqlite']},
-                Table("t1", metadata, 
+                Table("t1", metadata,
                     Column('id', Integer, Sequence('t1_id_seq', optional=True), primary_key=True),
                     Column('foo', String(30), primary_key=True)),
                 {'foo':'hi'},
@@ -81,7 +81,7 @@ class QueryTest(PersistTest):
             ),
             (
                 {'unsupported':['sqlite']},
-                Table("t2", metadata, 
+                Table("t2", metadata,
                     Column('id', Integer, Sequence('t2_id_seq', optional=True), primary_key=True),
                     Column('foo', String(30), primary_key=True),
                     Column('bar', String(30), PassiveDefault('hi'))
@@ -91,7 +91,7 @@ class QueryTest(PersistTest):
             ),
             (
                 {'unsupported':[]},
-                Table("t3", metadata, 
+                Table("t3", metadata,
                     Column("id", String(40), primary_key=True),
                     Column('foo', String(30), primary_key=True),
                     Column("bar", String(30))
@@ -101,7 +101,7 @@ class QueryTest(PersistTest):
             ),
             (
                 {'unsupported':[]},
-                Table("t4", metadata, 
+                Table("t4", metadata,
                     Column('id', Integer, Sequence('t4_id_seq', optional=True), primary_key=True),
                     Column('foo', String(30), primary_key=True),
                     Column('bar', String(30), PassiveDefault('hi'))
@@ -111,7 +111,7 @@ class QueryTest(PersistTest):
             ),
             (
                 {'unsupported':[]},
-                Table("t5", metadata, 
+                Table("t5", metadata,
                     Column('id', String(10), primary_key=True),
                     Column('bar', String(30), PassiveDefault('hi'))
                 ),
@@ -139,30 +139,30 @@ class QueryTest(PersistTest):
         self.assert_(len(l) == 3)
 
     def test_fetchmany(self):
-        users.insert().execute(user_id = 7, user_name = 'jack') 
-        users.insert().execute(user_id = 8, user_name = 'ed') 
-        users.insert().execute(user_id = 9, user_name = 'fred') 
-        r = users.select().execute() 
-        l = [] 
-        for row in r.fetchmany(size=2): 
-            l.append(row) 
+        users.insert().execute(user_id = 7, user_name = 'jack')
+        users.insert().execute(user_id = 8, user_name = 'ed')
+        users.insert().execute(user_id = 9, user_name = 'fred')
+        r = users.select().execute()
+        l = []
+        for row in r.fetchmany(size=2):
+            l.append(row)
         self.assert_(len(l) == 2, "fetchmany(size=2) got %s rows" % len(l))
-        
+
     def test_compiled_execute(self):
-        users.insert().execute(user_id = 7, user_name = 'jack') 
+        users.insert().execute(user_id = 7, user_name = 'jack')
         s = select([users], users.c.user_id==bindparam('id')).compile()
         c = testbase.db.connect()
         assert c.execute(s, id=7).fetchall()[0]['user_id'] == 7
-    
+
     def test_compiled_insert_execute(self):
-        users.insert().compile().execute(user_id = 7, user_name = 'jack') 
+        users.insert().compile().execute(user_id = 7, user_name = 'jack')
         s = select([users], users.c.user_id==bindparam('id')).compile()
         c = testbase.db.connect()
         assert c.execute(s, id=7).fetchall()[0]['user_id'] == 7
 
     def test_repeated_bindparams(self):
         """Tests that a BindParam can be used more than once.
-        
+
         This should be run for DB-APIs with both positional and named
         paramstyles.
         """
@@ -173,7 +173,7 @@ class QueryTest(PersistTest):
         s = users.select(or_(users.c.user_name==u, users.c.user_name==u))
         r = s.execute(userid='fred').fetchall()
         assert len(r) == 1
-    
+
     def test_bindparam_shortname(self):
         """test the 'shortname' field on BindParamClause."""
         users.insert().execute(user_id = 7, user_name = 'jack')
@@ -213,14 +213,14 @@ class QueryTest(PersistTest):
         a_eq(prep(":this \:that"), "? :that")
         a_eq(prep(r"(\:that$other)"), "(:that$other)")
         a_eq(prep(r".\:that$ :other."), ".:that$ ?.")
-        
+
     def testdelete(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
         print repr(users.select().execute().fetchall())
 
         users.delete(users.c.user_name == 'fred').execute()
-        
+
         print repr(users.select().execute().fetchall())
 
     def testselectlimit(self):
@@ -233,8 +233,9 @@ class QueryTest(PersistTest):
         users.insert().execute(user_id=7, user_name='fido')
         r = users.select(limit=3, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
-        
-    @testing.unsupported('mssql', 'maxdb')
+
+    @testing.unsupported('mssql')
+    @testing.fails_on('maxdb')
     def testselectlimitoffset(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
@@ -247,8 +248,9 @@ class QueryTest(PersistTest):
         self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
         r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
-        
-    @testing.supported('mssql', 'maxdb')
+
+    @testing.supported('mssql')
+    @testing.fails_on('maxdb')
     def test_select_limit_nooffset(self):
         try:
             r = users.select(limit=3, offset=2, order_by=[users.c.user_id]).execute().fetchall()
@@ -256,11 +258,11 @@ class QueryTest(PersistTest):
         except exceptions.InvalidRequestError:
             pass
 
-    @testing.unsupported('mysql')  
+    @testing.unsupported('mysql')
     def test_scalar_select(self):
         """test that scalar subqueries with labels get their type propigated to the result set."""
         # mysql and/or mysqldb has a bug here, type isnt propigated for scalar subquery.
-        datetable = Table('datetable', metadata, 
+        datetable = Table('datetable', metadata,
             Column('id', Integer, primary_key=True),
             Column('today', DateTime))
         datetable.create()
@@ -278,7 +280,7 @@ class QueryTest(PersistTest):
 
         Tests simple, compound, aliased and DESC clauses.
         """
-        
+
         users.insert().execute(user_id=1, user_name='c')
         users.insert().execute(user_id=2, user_name='b')
         users.insert().execute(user_id=3, user_name='a')
@@ -291,7 +293,7 @@ class QueryTest(PersistTest):
             a_eq(users.select(order_by=[users.c.user_id],
                               use_labels=labels),
                  [(1, 'c'), (2, 'b'), (3, 'a')])
-        
+
             a_eq(users.select(order_by=[users.c.user_name, users.c.user_id],
                               use_labels=labels),
                  [(3, 'a'), (2, 'b'), (1, 'c')])
@@ -300,7 +302,7 @@ class QueryTest(PersistTest):
                         use_labels=labels,
                         order_by=[users.c.user_id]),
                  [(1,), (2,), (3,)])
-             
+
             a_eq(select([users.c.user_id.label('foo'), users.c.user_name],
                         use_labels=labels,
                         order_by=[users.c.user_name, users.c.user_id]),
@@ -339,7 +341,7 @@ class QueryTest(PersistTest):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
         addresses.insert().execute(address_id=1, user_id=2, address='foo@bar.com')
-        
+
         r = users.select(users.c.user_id==2).execute().fetchone()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
@@ -347,13 +349,13 @@ class QueryTest(PersistTest):
         r = text("select * from query_users where user_id=2", bind=testbase.db).execute().fetchone()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
-    
+
         # test slices
         r = text("select * from query_addresses", bind=testbase.db).execute().fetchone()
         self.assert_(r[0:1] == (1,))
         self.assert_(r[1:] == (2, 'foo@bar.com'))
         self.assert_(r[:-1] == (1, 2))
-        
+
     def test_ambiguous_column(self):
         users.insert().execute(user_id=1, user_name='john')
         r = users.outerjoin(addresses).select().execute().fetchone()
@@ -363,7 +365,7 @@ class QueryTest(PersistTest):
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Ambiguous column name 'user_id' in result set! try 'use_labels' option on select statement." or \
                    str(e) == "Ambiguous column name 'USER_ID' in result set! try 'use_labels' option on select statement."
-    
+
     def test_column_label_targeting(self):
         users.insert().execute(user_id=7, user_name='ed')
 
@@ -374,7 +376,7 @@ class QueryTest(PersistTest):
             row = s.select(use_labels=True).execute().fetchone()
             assert row[s.c.user_id] == 7
             assert row[s.c.user_name] == 'ed'
-        
+
     def test_keys(self):
         users.insert().execute(user_id=1, user_name='foo')
         r = users.select().execute().fetchone()
@@ -396,19 +398,19 @@ class QueryTest(PersistTest):
         r = testbase.db.execute('select user_name from query_users', {}).fetchone()
         self.assertEqual(len(r), 1)
         r.close()
-    
+
     def test_cant_execute_join(self):
         try:
             users.join(addresses).execute()
         except exceptions.ArgumentError, e:
             assert str(e).startswith('Not an executable clause: ')
-            
+
     def test_functions(self):
         x = testbase.db.func.current_date().execute().scalar()
         y = testbase.db.func.current_date().select().execute().scalar()
         z = testbase.db.func.current_date().scalar()
         assert (x == y == z) is True
-        
+
         x = testbase.db.func.current_date(type_=Date)
         assert isinstance(x.type, Date)
         assert isinstance(x.execute().scalar(), datetime.date)
@@ -422,7 +424,7 @@ class QueryTest(PersistTest):
         finally:
             conn.close()
         assert (x == y == z) is True
-         
+
     def test_update_functions(self):
         """
         Tests sending functions and SQL expressions to the VALUES and SET
@@ -459,25 +461,25 @@ class QueryTest(PersistTest):
 
             res = exec_sorted(select([t2.c.value, t2.c.stuff]))
             self.assertEquals(res, [(-14, 'hi'), (3, None), (7, None)])
-            
+
             t2.update(values=dict(value=func.length("asdsafasd"))).execute(stuff="some stuff")
             assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [(9,"some stuff"), (9,"some stuff"), (9,"some stuff")]
-            
+
             t2.delete().execute()
-            
+
             t2.insert(values=dict(value=func.length("one") + 8)).execute()
             assert t2.select().execute().fetchone()['value'] == 11
-            
+
             t2.update(values=dict(value=func.length("asfda"))).execute()
             assert select([t2.c.value, t2.c.stuff]).execute().fetchone() == (5, "thisisstuff")
 
             t2.update(values={t2.c.value:func.length("asfdaasdf"), t2.c.stuff:"foo"}).execute()
             print "HI", select([t2.c.value, t2.c.stuff]).execute().fetchone()
             assert select([t2.c.value, t2.c.stuff]).execute().fetchone() == (9, "foo")
-            
+
         finally:
             meta.drop_all()
-            
+
     @testing.supported('postgres')
     def test_functions_with_cols(self):
         # TODO: shouldnt this work on oracle too ?
@@ -485,14 +487,14 @@ class QueryTest(PersistTest):
         y = testbase.db.func.current_date().select().execute().scalar()
         z = testbase.db.func.current_date().scalar()
         w = select(['*'], from_obj=[testbase.db.func.current_date()]).scalar()
-        
+
         # construct a column-based FROM object out of a function, like in [ticket:172]
         s = select([sql.column('date', type_=DateTime)], from_obj=[testbase.db.func.current_date()])
         q = s.execute().fetchone()[s.c.date]
         r = s.alias('datequery').select().scalar()
-        
+
         assert x == y == z == w == q == r
-        
+
     def test_column_order_with_simple_query(self):
         # should return values in column definition order
         users.insert().execute(user_id=1, user_name='foo')
@@ -501,7 +503,7 @@ class QueryTest(PersistTest):
         self.assertEqual(r[1], 'foo')
         self.assertEqual([x.lower() for x in r.keys()], ['user_id', 'user_name'])
         self.assertEqual(r.values(), [1, 'foo'])
-        
+
     def test_column_order_with_text_query(self):
         # should return values in query order
         users.insert().execute(user_id=1, user_name='foo')
@@ -510,7 +512,7 @@ class QueryTest(PersistTest):
         self.assertEqual(r[1], 1)
         self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
-    
+
     @testing.unsupported('oracle', 'firebird', 'maxdb')
     def test_column_accessor_shadow(self):
         meta = MetaData(testbase.db)
@@ -540,7 +542,7 @@ class QueryTest(PersistTest):
             r.close()
         finally:
             shadowed.drop(checkfirst=True)
-    
+
     @testing.supported('mssql')
     def test_fetchid_trigger(self):
         meta = MetaData(testbase.db)
@@ -566,16 +568,16 @@ class QueryTest(PersistTest):
             tr.commit()
             con.execute("""drop trigger paj""")
             meta.drop_all()
-    
+
     @testing.supported('mssql')
     def test_insertid_schema(self):
         meta = MetaData(testbase.db)
         con = testbase.db.connect()
         con.execute('create schema paj')
         tbl = Table('test', meta, Column('id', Integer, primary_key=True), schema='paj')
-        tbl.create()        
+        tbl.create()
         try:
-            tbl.insert().execute({'id':1})        
+            tbl.insert().execute({'id':1})
         finally:
             tbl.drop()
             con.execute('drop schema paj')
@@ -584,58 +586,58 @@ class QueryTest(PersistTest):
     def test_insertid_reserved(self):
         meta = MetaData(testbase.db)
         table = Table(
-            'select', meta, 
+            'select', meta,
             Column('col', Integer, primary_key=True)
         )
         table.create()
-        
+
         meta2 = MetaData(testbase.db)
         try:
             table.insert().execute(col=7)
         finally:
             table.drop()
 
-    @testing.unsupported('maxdb')
+    @testing.fails_on('maxdb')
     def test_in_filtering(self):
         """test the behavior of the in_() function."""
-        
+
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
         users.insert().execute(user_id = 9, user_name = None)
-        
+
         s = users.select(users.c.user_name.in_([]))
         r = s.execute().fetchall()
         # No username is in empty set
         assert len(r) == 0
-        
+
         s = users.select(not_(users.c.user_name.in_([])))
         r = s.execute().fetchall()
         # All usernames with a value are outside an empty set
         assert len(r) == 2
-        
+
         s = users.select(users.c.user_name.in_(['jack','fred']))
         r = s.execute().fetchall()
         assert len(r) == 2
-        
+
         s = users.select(not_(users.c.user_name.in_(['jack','fred'])))
         r = s.execute().fetchall()
         # Null values are not outside any set
         assert len(r) == 0
-        
+
         u = bindparam('search_key')
-        
+
         s = users.select(u.in_([]))
         r = s.execute(search_key='john').fetchall()
         assert len(r) == 0
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
-        
+
         s = users.select(not_(u.in_([])))
         r = s.execute(search_key='john').fetchall()
         assert len(r) == 3
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
-        
+
         s = users.select(users.c.user_name.in_([]) == True)
         r = s.execute().fetchall()
         assert len(r) == 0
@@ -653,24 +655,24 @@ class CompoundTest(PersistTest):
     def setUpAll(self):
         global metadata, t1, t2, t3
         metadata = MetaData(testbase.db)
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
             Column('col1', Integer, Sequence('t1pkseq'), primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30))
             )
-        t2 = Table('t2', metadata, 
+        t2 = Table('t2', metadata,
             Column('col1', Integer, Sequence('t2pkseq'), primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30)))
-        t3 = Table('t3', metadata, 
+        t3 = Table('t3', metadata,
             Column('col1', Integer, Sequence('t3pkseq'), primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30)))
         metadata.create_all()
-        
+
         t1.insert().execute([
             dict(col2="t1col2r1", col3="aaa", col4="aaa"),
             dict(col2="t1col2r2", col3="bbb", col4="bbb"),
@@ -686,7 +688,7 @@ class CompoundTest(PersistTest):
             dict(col2="t3col2r2", col3="bbb", col4="aaa"),
             dict(col2="t3col2r3", col3="ccc", col4="bbb"),
         ])
-        
+
     def tearDownAll(self):
         metadata.drop_all()
 
@@ -699,7 +701,7 @@ class CompoundTest(PersistTest):
                    t1.c.col2.in_(["t1col2r1", "t1col2r2"])),
             select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
                    t2.c.col2.in_(["t2col2r2", "t2col2r3"]))
-        )        
+        )
         u = union(s1, s2)
 
         wanted = [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'),
@@ -709,28 +711,28 @@ class CompoundTest(PersistTest):
 
         found2 = self._fetchall_sorted(u.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
-        
+
     def test_union_ordered(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
                    t1.c.col2.in_(["t1col2r1", "t1col2r2"])),
             select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
                    t2.c.col2.in_(["t2col2r2", "t2col2r3"]))
-        )        
+        )
         u = union(s1, s2, order_by=['col3', 'col4'])
 
         wanted = [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'),
                   ('ccc', 'aaa')]
         self.assertEquals(u.execute().fetchall(), wanted)
 
-    @testing.unsupported('maxdb')
+    @testing.fails_on('maxdb')
     def test_union_ordered_alias(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
                    t1.c.col2.in_(["t1col2r1", "t1col2r2"])),
             select([t2.c.col3.label('col3'), t2.c.col4.label('col4')],
                    t2.c.col2.in_(["t2col2r2", "t2col2r3"]))
-        )        
+        )
         u = union(s1, s2, order_by=['col3', 'col4'])
 
         wanted = [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'),
@@ -826,7 +828,7 @@ class CompoundTest(PersistTest):
         )
         wanted = [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         found = self._fetchall_sorted(u.execute())
-        
+
         self.assertEquals(found, wanted)
 
     @testing.unsupported('mysql')
@@ -889,7 +891,7 @@ class JoinTest(PersistTest):
 
     def assertRows(self, statement, expected):
         """Execute a statement and assert that rows returned equal expected."""
-        
+
         found = exec_sorted(statement)
         self.assertEquals(found, sorted(expected))
 
@@ -1069,7 +1071,7 @@ class JoinTest(PersistTest):
                 from_obj=[(t1.join(t2).outerjoin(t3, criteria))])
             print expr
             self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
-        
+
     def test_mixed_where(self):
         """Joins t1->t2, outer t2->t3, plus a where on each table in turn."""
 
@@ -1117,13 +1119,13 @@ class OperatorTest(PersistTest):
     def setUpAll(self):
         global metadata, flds
         metadata = MetaData(testbase.db)
-        flds = Table('flds', metadata, 
+        flds = Table('flds', metadata,
             Column('idcol', Integer, Sequence('t1pkseq'), primary_key=True),
             Column('intcol', Integer),
             Column('strcol', String(50)),
             )
         metadata.create_all()
-        
+
         flds.insert().execute([
             dict(intcol=5, strcol='foo'),
             dict(intcol=13, strcol='bar')
@@ -1132,7 +1134,7 @@ class OperatorTest(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.unsupported('maxdb')
+    @testing.fails_on('maxdb')
     def test_modulo(self):
         self.assertEquals(
             select([flds.c.intcol % 3],
@@ -1149,4 +1151,4 @@ def exec_sorted(statement, *args, **kw):
 
 
 if __name__ == "__main__":
-    testbase.main()        
+    testbase.main()
