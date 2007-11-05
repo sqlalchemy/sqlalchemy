@@ -893,10 +893,6 @@ class CustomPKTest(ORMTest):
         d['t2'] = t1.join(t2)
         pjoin = polymorphic_union(d, None, 'pjoin')
         
-        #print pjoin.original.primary_key
-        #print pjoin.primary_key
-        assert len(pjoin.primary_key) == 2
-        
         mapper(T1, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1', select_table=pjoin, primary_key=[pjoin.c.id])
         mapper(T2, t2, inherits=T1, polymorphic_identity='t2')
         print [str(c) for c in class_mapper(T1).primary_key]
@@ -931,10 +927,6 @@ class CustomPKTest(ORMTest):
         d['t1'] = t1.select(t1.c.type=='t1')
         d['t2'] = t1.join(t2)
         pjoin = polymorphic_union(d, None, 'pjoin')
-
-        #print pjoin.original.primary_key
-        #print pjoin.primary_key
-        assert len(pjoin.primary_key) == 2
 
         mapper(T1, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1', select_table=pjoin)
         mapper(T2, t2, inherits=T1, polymorphic_identity='t2')

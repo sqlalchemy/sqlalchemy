@@ -29,6 +29,14 @@ CHANGES
 
   - func. objects can be pickled/unpickled [ticket:844]
 
+  - rewrote and simplified the system used to "target" columns across
+    selectable expressions.  On the SQL side this is represented by the
+    "corresponding_column()" method. This method is used heavily by the ORM
+    to "adapt" elements of an expression to similar, aliased expressions,
+    as well as to target result set columns originally bound to a 
+    table or selectable to an aliased, "corresponding" expression.  The new
+    rewrite features completely consistent and accurate behavior.
+    
 - orm
   - eager loading with LIMIT/OFFSET applied no longer adds the primary 
     table joined to a limited subquery of itself; the eager loads now

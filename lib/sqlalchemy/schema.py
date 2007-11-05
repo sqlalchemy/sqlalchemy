@@ -449,7 +449,6 @@ class Column(SchemaItem, expression._ColumnClause):
         self.onupdate = kwargs.pop('onupdate', None)
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = util.Set()
-        self.__originating_column = self
         self._foreign_keys = util.OrderedSet()
         if kwargs:
             raise exceptions.ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
@@ -554,9 +553,7 @@ class Column(SchemaItem, expression._ColumnClause):
         fk = [ForeignKey(f._colspec) for f in self.foreign_keys]
         c = Column(name or self.name, self.type, self.default, key = name or self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, quote=self.quote, *fk)
         c.table = selectable
-        c.orig_set = self.orig_set
-        c.__originating_column = self.__originating_column
-        c._distance = self._distance + 1
+        c.proxies = [self]
         c._pre_existing_column = self._pre_existing_column
         if not c._is_oid:
             selectable.columns.add(c)
@@ -635,10 +632,8 @@ class ForeignKey(SchemaItem):
                 # locate the parent table this foreign key is attached to.
                 # we use the "original" column which our parent column represents
                 # (its a list of columns/other ColumnElements if the parent table is a UNION)
-                for c in self.parent.orig_set:
-                    if isinstance(c, Column):
-                        parenttable = c.table
-                        break
+                if isinstance(self.parent.base_column, Column):
+                    parenttable = self.parent.base_column.table
                 else:
                     raise exceptions.ArgumentError("Parent column '%s' does not descend from a table-attached Column" % str(self.parent))
                 m = re.match(r"^(.+?)(?:\.(.+?))?(?:\.(.+?))?$", self._colspec, re.UNICODE)

@@ -882,7 +882,7 @@ class Query(object):
             if order_by:
                 s2.append_order_by(*util.to_list(order_by))
             
-            s3 = s2.alias('primary_tbl_limited')
+            s3 = s2.alias()
                 
             self._primary_adapter = mapperutil.create_row_adapter(s3, self.table)
 

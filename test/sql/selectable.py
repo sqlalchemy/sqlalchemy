@@ -185,8 +185,8 @@ class SelectableTest(AssertMixin):
         print j4
         print j4.corresponding_column(j2.c.aid)
         print j4.c.aid
-        # TODO: this is the assertion case which fails
-#        assert j4.corresponding_column(j2.c.aid) is j4.c.aid
+        assert j4.corresponding_column(j2.c.aid) is j4.c.aid
+        assert j4.corresponding_column(a.c.id) is j4.c.id
 
 class PrimaryKeyTest(AssertMixin):
     def test_join_pk_collapse_implicit(self):
