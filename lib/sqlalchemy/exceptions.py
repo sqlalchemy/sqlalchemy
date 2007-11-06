@@ -131,8 +131,8 @@ class OperationalError(DatabaseError):
 class IntegrityError(DatabaseError):
     """Wraps a DB-API IntegrityError."""
 
-class InterfaceError(DatabaseError):
-    """Wraps a DB-API InterfaceError."""
+class InternalError(DatabaseError):
+    """Wraps a DB-API InternalError."""
 
 class ProgrammingError(DatabaseError):
     """Wraps a DB-API ProgrammingError."""
