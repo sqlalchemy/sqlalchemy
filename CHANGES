@@ -36,6 +36,9 @@ CHANGES
     as well as to target result set columns originally bound to a 
     table or selectable to an aliased, "corresponding" expression.  The new
     rewrite features completely consistent and accurate behavior.
+
+  - Added a field ("info") for storing arbitrary data on schema items
+    [ticket:573]    
     
 - orm
   - eager loading with LIMIT/OFFSET applied no longer adds the primary 

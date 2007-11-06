@@ -71,10 +71,17 @@ class SchemaItem(object):
         else:
             m = self.metadata
             return m and m.bind or None
-
-
     bind = property(lambda s:s._get_bind())
     
+    def info(self):
+        try:
+            return self._info
+        except AttributeError:
+            self._info = {}
+            return self._info
+    info = property(info)
+    
+
 def _get_table_key(name, schema):
     if schema is None:
         return name
@@ -156,6 +163,10 @@ class Table(SchemaItem, expression.TableClause):
             ``Table`` object.  Defaults to ``None`` which indicates all 
             columns should be reflected.
         
+          info
+            Defaults to {}: A space to store application specific data;
+            this must be a dictionary.
+
           mustexist
             Defaults to False: indicates that this Table must already
             have been defined elsewhere in the application, else an
@@ -199,6 +210,8 @@ class Table(SchemaItem, expression.TableClause):
         else:
             self.fullname = self.name
         self.owner = kwargs.pop('owner', None)
+        if kwargs.get('info'):
+            self._info = kwargs.pop('info')
         
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', None)
@@ -383,6 +396,10 @@ class Column(SchemaItem, expression._ColumnClause):
             specify indexes with explicit names or indexes that
             contain multiple columns, use the ``Index`` construct instead.
 
+          info
+            Defaults to {}: A space to store application specific data;
+            this must be a dictionary.
+
           unique
             Defaults to False: indicates that this column contains a
             unique constraint, or if `index` is True as well,
@@ -430,6 +447,8 @@ class Column(SchemaItem, expression._ColumnClause):
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = util.Set()
         self._foreign_keys = util.OrderedSet()
+        if kwargs.get('info'):
+            self._info = kwargs.pop('info')
         if kwargs:
             raise exceptions.ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
