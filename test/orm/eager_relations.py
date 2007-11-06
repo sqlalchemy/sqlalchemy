@@ -56,6 +56,26 @@ class EagerTest(QueryTest):
             User(id=10, addresses=[])
         ] == q.all()
 
+    def test_orderby_multi(self):
+        mapper(User, users, properties = {
+            'addresses':relation(mapper(Address, addresses), lazy=False, order_by=[addresses.c.email_address, addresses.c.id]),
+        })
+        q = create_session().query(User)
+        assert [
+            User(id=7, addresses=[
+                Address(id=1)
+            ]), 
+            User(id=8, addresses=[
+                Address(id=3, email_address='ed@bettyboop.com'),
+                Address(id=4, email_address='ed@lala.com'),
+                Address(id=2, email_address='ed@wood.com')
+            ]), 
+            User(id=9, addresses=[
+                Address(id=5)
+            ]), 
+            User(id=10, addresses=[])
+        ] == q.all()
+
     def test_orderby_secondary(self):
         """tests that a regular mapper select on a single table can order by a relation to a second table"""
 

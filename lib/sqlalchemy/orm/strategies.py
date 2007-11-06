@@ -533,14 +533,14 @@ class EagerLoader(AbstractRelationLoader):
         if self.secondaryjoin is not None:
             context.eager_joins = sql.outerjoin(towrap, clauses.secondary, clauses.primaryjoin).outerjoin(clauses.alias, clauses.secondaryjoin)
             if self.order_by is False and self.secondary.default_order_by() is not None:
-                context.eager_order_by.append(*clauses.secondary.default_order_by())
+                context.eager_order_by += clauses.secondary.default_order_by()
         else:
             context.eager_joins = towrap.outerjoin(clauses.alias, clauses.primaryjoin)
             if self.order_by is False and clauses.alias.default_order_by() is not None:
-                context.eager_order_by.append(*clauses.alias.default_order_by())
+                context.eager_order_by += clauses.alias.default_order_by()
 
         if clauses.order_by:
-            context.eager_order_by.append(*util.to_list(clauses.order_by))
+            context.eager_order_by += util.to_list(clauses.order_by)
         
         for value in self.select_mapper.iterate_properties:
             context.exec_with_path(self.select_mapper, value.key, value.setup, context, parentclauses=clauses, parentmapper=self.select_mapper)
