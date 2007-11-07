@@ -109,6 +109,9 @@ CHANGES
   - Added proxying of save_or_update, __contains__ and __iter__ methods for
     scoped sessions.
 
+  - fixed very hard-to-reproduce issue where by the FROM clause of Query
+    could get polluted by certain generative calls [ticket:852]
+    
 - dialects
 
   - Added experimental support for MaxDB (versions >= 7.6.03.007 only).
