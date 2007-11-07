@@ -189,9 +189,13 @@ class DefaultCompiler(engine.Compiled):
         
         if params:
             pd = {}
-            for key, bindparam in self.binds.iteritems():
-                name = self.bind_names[bindparam]
-                pd[name] = params.get(key, bindparam.value)
+            for bindparam, name in self.bind_names.iteritems():
+                for paramname in (bindparam.key, bindparam.shortname, name):
+                    if paramname in params:
+                        pd[name] = params[paramname]
+                        break
+                else:
+                    pd[name] = bindparam.value
             return pd
         else:
             return dict([(self.bind_names[bindparam], bindparam.value) for bindparam in self.bind_names])

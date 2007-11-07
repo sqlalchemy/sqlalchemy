@@ -42,6 +42,9 @@ CHANGES
 
   - fixed the close() method on Transaction when using strategy='threadlocal'
 
+  - fix to compiled bind parameters to not mistakenly populate None
+    [ticket:853]
+  
 - orm
   - eager loading with LIMIT/OFFSET applied no longer adds the primary 
     table joined to a limited subquery of itself; the eager loads now
