@@ -666,22 +666,20 @@ def table(name, *columns):
 
     return TableClause(name, *columns)
 
-def bindparam(key, value=None, type_=None, shortname=None, unique=False):
+def bindparam(key, value=None, shortname=None, type_=None, unique=False):
     """Create a bind parameter clause with the given key.
 
     value
       a default value for this bind parameter.  a bindparam with a
       value is called a ``value-based bindparam``.
 
-    shortname
-      an ``alias`` for this bind parameter.  usually used to alias the
-      ``key`` nd ``label`` of a column, i.e. ``somecolname`` and
-      ``sometable_somecolname``
-
     type
       a sqlalchemy.types.TypeEngine object indicating the type of this
       bind param, will invoke type-specific bind parameter processing
 
+    shortname
+      deprecated.  
+      
     unique
       if True, bind params sharing the same name will have their
       underlying ``key`` modified to a uniquely generated name.
@@ -689,9 +687,9 @@ def bindparam(key, value=None, type_=None, shortname=None, unique=False):
     """
 
     if isinstance(key, _ColumnClause):
-        return _BindParamClause(key.name, value, type_=key.type, shortname=shortname, unique=unique)
+        return _BindParamClause(key.name, value, type_=key.type, unique=unique, shortname=shortname)
     else:
-        return _BindParamClause(key, value, type_=type_, shortname=shortname, unique=unique)
+        return _BindParamClause(key, value, type_=type_, unique=unique, shortname=shortname)
 
 def outparam(key, type_=None):
     """Create an 'OUT' parameter for usage in functions (stored procedures), for databases which support them.
@@ -807,7 +805,7 @@ def _literal_as_binds(element, name='literal', type_=None):
         if element is None:
             return null()
         else:
-            return _BindParamClause(name, element, shortname=name, type_=type_, unique=True)
+            return _BindParamClause(name, element, type_=type_, unique=True)
     else:
         return element
 
@@ -1325,7 +1323,7 @@ class _CompareMixin(ColumnOperators):
         return lambda other: self.__operate(operator, other)
 
     def _bind_param(self, obj):
-        return _BindParamClause('literal', obj, shortname=None, type_=self.type, unique=True)
+        return _BindParamClause('literal', obj, type_=self.type, unique=True)
 
     def _check_literal(self, other):
         if isinstance(other, Operators):
@@ -1706,7 +1704,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
 
     __visit_name__ = 'bindparam'
 
-    def __init__(self, key, value, shortname=None, type_=None, unique=False, isoutparam=False):
+    def __init__(self, key, value, type_=None, unique=False, isoutparam=False, shortname=None):
         """Construct a _BindParamClause.
 
         key
@@ -1723,12 +1721,8 @@ class _BindParamClause(ClauseElement, _CompareMixin):
           compilation/execution.
 
         shortname
-          Defaults to the key, a *short name* that will also identify
-          this bind parameter, similar to an alias.  the bind
-          parameter keys sent to a statement compilation or compiled
-          execution may match either the key or the shortname of the
-          corresponding ``_BindParamClause`` objects.
-
+          deprecated.
+          
         type\_
           A ``TypeEngine`` object that will be used to pre-process the
           value corresponding to this ``_BindParamClause`` at
@@ -1747,10 +1741,10 @@ class _BindParamClause(ClauseElement, _CompareMixin):
 
         self.key = key or "{ANON %d param}" % id(self)
         self.value = value
-        self.shortname = shortname or key
         self.unique = unique
         self.isoutparam = isoutparam
-
+        self.shortname = shortname
+        
         if type_ is None:
             self.type = self.type_map.get(type(value), sqltypes.NullType)()
         elif isinstance(type_, type):
@@ -2607,7 +2601,7 @@ class _ColumnClause(ColumnElement):
             return []
 
     def _bind_param(self, obj):
-        return _BindParamClause(self._label, obj, shortname=self.name, type_=self.type, unique=True)
+        return _BindParamClause(self._label, obj, type_=self.type, unique=True)
 
     def _make_proxy(self, selectable, name = None):
         # propigate the "is_literal" flag only if we are keeping our name,

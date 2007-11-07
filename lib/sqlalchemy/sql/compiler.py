@@ -362,9 +362,6 @@ class DefaultCompiler(engine.Compiled):
     def visit_bindparam(self, bindparam, **kwargs):
         # apply truncation to the ultimate generated name
 
-        if bindparam.shortname != bindparam.key:
-            self.binds.setdefault(bindparam.shortname, bindparam)
-
         if bindparam.unique:
             count = 1
             key = bindparam.key

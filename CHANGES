@@ -7,6 +7,9 @@ CHANGES
 
 - sql
 
+  - the "shortname" keyword parameter on bindparam() has been 
+    deprecated.
+  
   - Added contains operator (generates a "LIKE %<other>%" clause).
 
   - Removed regular expression step from most statement compilations.
