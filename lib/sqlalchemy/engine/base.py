@@ -509,6 +509,9 @@ class Connectable(object):
     def execute(self, object, *multiparams, **params):
         raise NotImplementedError()
 
+    def execute_clauseelement(self, elem, multiparams=None, params=None):
+        raise NotImplementedError()
+
 class Connection(Connectable):
     """Provides high-level functionality for a wrapped DB-API connection.
 
@@ -821,9 +824,9 @@ class Connection(Connectable):
                 return [multiparams]
 
     def _execute_function(self, func, multiparams, params):
-        return self._execute_clauseelement(func.select(), multiparams, params)
+        return self.execute_clauseelement(func.select(), multiparams, params)
 
-    def _execute_clauseelement(self, elem, multiparams=None, params=None):
+    def execute_clauseelement(self, elem, multiparams=None, params=None):
         params = self.__distill_params(multiparams, params)
         if params:
             keys = params[0].keys()
@@ -890,7 +893,7 @@ class Connection(Connectable):
     # poor man's multimethod/generic function thingy
     executors = {
         expression._Function : _execute_function,
-        expression.ClauseElement : _execute_clauseelement,
+        expression.ClauseElement : execute_clauseelement,
         Compiled : _execute_compiled,
         schema.SchemaItem:_execute_default,
         str.__mro__[-2] : _execute_text
@@ -1120,9 +1123,9 @@ class Engine(Connectable):
     def scalar(self, statement, *multiparams, **params):
         return self.execute(statement, *multiparams, **params).scalar()
 
-    def _execute_clauseelement(self, elem, multiparams=None, params=None):
+    def execute_clauseelement(self, elem, multiparams=None, params=None):
         connection = self.contextual_connect(close_with_result=True)
-        return connection._execute_clauseelement(elem, multiparams, params)
+        return connection.execute_clauseelement(elem, multiparams, params)
 
     def _execute_compiled(self, compiled, multiparams, params):
         connection = self.contextual_connect(close_with_result=True)

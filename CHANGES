@@ -44,6 +44,9 @@ CHANGES
 
   - fix to compiled bind parameters to not mistakenly populate None
     [ticket:853]
+   
+  - <Engine|Connection>._execute_clauseelement becomes a public method
+    Connectable.execute_clauseelement
   
 - orm
   - eager loading with LIMIT/OFFSET applied no longer adds the primary 

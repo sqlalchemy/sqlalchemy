@@ -970,7 +970,7 @@ class ClauseElement(object):
         e = self.bind
         if e is None:
             raise exceptions.InvalidRequestError("This Compiled object is not bound to any Engine or Connection.")
-        return e._execute_clauseelement(self, multiparams, params)
+        return e.execute_clauseelement(self, multiparams, params)
 
     def scalar(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``, returning the result's scalar representation."""
