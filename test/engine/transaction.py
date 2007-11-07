@@ -384,7 +384,7 @@ class TLTransactionTest(PersistTest):
         users.drop(tlengine)
         tlengine.dispose()
     
-    def testclose(self):
+    def test_connection_close(self):
         """test that when connections are closed for real, transactions are rolled back and disposed."""
         
         c = tlengine.contextual_connect()
@@ -396,6 +396,32 @@ class TLTransactionTest(PersistTest):
         assert not tlengine.session.in_transaction()
         assert not hasattr(tlengine.session, '_TLSession__transaction')
         assert not hasattr(tlengine.session, '_TLSession__trans')
+
+    def test_transaction_close(self):
+        c = tlengine.contextual_connect()
+        t = c.begin()
+        tlengine.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.execute(users.insert(), user_id=2, user_name='user2')
+        t2 = c.begin()
+        tlengine.execute(users.insert(), user_id=3, user_name='user3')
+        tlengine.execute(users.insert(), user_id=4, user_name='user4')
+        t2.close()
+
+        external_connection = tlengine.connect()
+        result = external_connection.execute("select * from query_users")
+        try:
+            assert len(result.fetchall()) == 4
+        finally:
+            external_connection.close()
+
+        t.close()
+
+        external_connection = tlengine.connect()
+        result = external_connection.execute("select * from query_users")
+        try:
+            assert len(result.fetchall()) == 0
+        finally:
+            external_connection.close()
         
     def testrollback(self):
         """test a basic rollback"""

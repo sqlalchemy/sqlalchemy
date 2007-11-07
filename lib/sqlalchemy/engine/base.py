@@ -939,7 +939,7 @@ class Transaction(object):
         method returns.
 
         This is used to cancel a Transaction without affecting the scope of
-        an enclosign transaction.
+        an enclosing transaction.
         """
         if not self._parent._is_active:
             return
