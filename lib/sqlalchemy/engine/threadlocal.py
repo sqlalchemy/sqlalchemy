@@ -80,6 +80,8 @@ class TLSession(object):
     def close(self):
         if self.__tcount == 1:
             self.rollback()
+        elif self.__tcount > 1:
+            self.__tcount -= 1
         
     def is_begun(self):
         return self.__tcount > 0

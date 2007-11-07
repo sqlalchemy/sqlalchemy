@@ -407,12 +407,8 @@ class TLTransactionTest(PersistTest):
         tlengine.execute(users.insert(), user_id=4, user_name='user4')
         t2.close()
 
-        external_connection = tlengine.connect()
-        result = external_connection.execute("select * from query_users")
-        try:
-            assert len(result.fetchall()) == 4
-        finally:
-            external_connection.close()
+        result = c.execute("select * from query_users")
+        assert len(result.fetchall()) == 4
 
         t.close()
 

@@ -41,7 +41,7 @@ CHANGES
     [ticket:573]    
 
   - fixed the close() method on Transaction when using strategy='threadlocal'
-      
+
 - orm
   - eager loading with LIMIT/OFFSET applied no longer adds the primary 
     table joined to a limited subquery of itself; the eager loads now
