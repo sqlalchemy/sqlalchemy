@@ -118,7 +118,7 @@ class SyncRule(object):
         try:
             return self._dest_primary_key
         except AttributeError:
-            self._dest_primary_key = self.dest_mapper is not None and self.dest_column in self.dest_mapper.pks_by_table[self.dest_column.table]
+            self._dest_primary_key = self.dest_mapper is not None and self.dest_column in self.dest_mapper.pks_by_table[self.dest_column.table] and not self.dest_mapper.allow_null_pks
             return self._dest_primary_key
 
     def execute(self, source, dest, obj, child, clearkeys):

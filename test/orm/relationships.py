@@ -400,7 +400,40 @@ class RelationTest4(ORMTest):
             assert False
         except exceptions.AssertionError, e:
             assert str(e).startswith("Dependency rule tried to blank-out primary key column 'B.id' on instance ")
+            
+    def test_no_nullPK_sBtoA(self):
+        class A(object):pass
+        class B(object):pass
+        mapper(B, tableB, properties={
+            'a':relation(A, cascade="save-update")
+        })
+        mapper(A, tableA)
+        b1 = B()
+        b1.a = None
+        sess = create_session()
+        sess.save(b1)
+        try:
+            # this raises an error as of r3695.  in that rev, the attributes package was modified so that a 
+            # setting of "None" shows up as a change, which in turn fires off dependency.py and then triggers
+            # the rule.
+            sess.flush()
+            assert False
+        except exceptions.AssertionError, e:
+            assert str(e).startswith("Dependency rule tried to blank-out primary key column 'B.id' on instance ")
 
+    def test_nullPKsOK_sBtoA(self):
+        class A(object):pass
+        class B(object):pass
+        mapper(B, tableB, properties={
+            'a':relation(A, cascade="save-update")
+        }, allow_null_pks=True)
+        mapper(A, tableA)
+        b1 = B()
+        b1.a = None
+        sess = create_session()
+        sess.save(b1)
+        sess.flush()
+        
     def test_delete_cascade_BtoA(self):
         """test that the 'blank the PK' error doesnt get raised when the child is to be deleted as part of a 
         cascade"""

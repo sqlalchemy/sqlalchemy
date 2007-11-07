@@ -87,7 +87,7 @@ CHANGES
   - Deferred column attributes no longer trigger a load operation when the
     attribute is assigned to.  In those cases, the newly assigned value
     will be present in the flushes' UPDATE statement unconditionally.
-
+    
   - Fixed a truncation error when re-assigning a subset of a collection
     (obj.relation = obj.relation[1:]) [ticket:834]
 
