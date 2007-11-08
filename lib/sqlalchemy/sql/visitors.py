@@ -47,10 +47,19 @@ class ClauseVisitor(object):
                 traversal.insert(0, t)
                 for c in t.get_children(**self.__traverse_options__):
                     stack.append(c)
-
+    
     def traverse(self, obj, stop_on=None, clone=False):
+        
         if clone:
-            obj = obj._clone()
+            cloned = {}
+            def do_clone(obj):
+                # the full traversal will only make a clone of a particular element
+                # once.
+                if obj not in cloned:
+                    cloned[obj] = obj._clone()
+                return cloned[obj]
+            
+            obj = do_clone(obj)
             
         stack = [obj]
         traversal = []
@@ -59,7 +68,7 @@ class ClauseVisitor(object):
             if stop_on is None or t not in stop_on:
                 traversal.insert(0, t)
                 if clone:
-                    t._copy_internals()
+                    t._copy_internals(clone=do_clone)
                 for c in t.get_children(**self.__traverse_options__):
                     stack.append(c)
         for target in traversal:

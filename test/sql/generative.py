@@ -1,6 +1,7 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.sql import table, column, ClauseElement
+from sqlalchemy.sql.expression import  _clone
 from testlib import *
 from sqlalchemy.sql.visitors import *
 from sqlalchemy import util
@@ -56,8 +57,8 @@ class TraversalTest(AssertMixin):
                         return True
                 return False
             
-            def _copy_internals(self):    
-                self.items = [i._clone() for i in self.items]
+            def _copy_internals(self, clone=_clone):    
+                self.items = [clone(i) for i in self.items]
 
             def get_children(self, **kwargs):
                 return self.items
@@ -223,7 +224,23 @@ class ClauseTest(SQLCompileTest):
         print str(s5)
         assert str(s5) == s5_assert
         assert str(s4) == s4_assert
-    
+
+    def test_alias(self):
+        subq = t2.select().alias('subq')
+        s = select([t1.c.col1, subq.c.col1], from_obj=[t1, subq, t1.join(subq, t1.c.col1==subq.c.col2)])
+        orig = str(s)
+        s2 = ClauseVisitor().traverse(s, clone=True)
+        assert orig == str(s) == str(s2)
+
+        s4 = ClauseVisitor().traverse(s2, clone=True)
+        assert orig == str(s) == str(s2) == str(s4)
+
+        s3 = sql_util.ClauseAdapter(table('foo')).traverse(s, clone=True)
+        assert orig == str(s) == str(s3)
+
+        s4 = sql_util.ClauseAdapter(table('foo')).traverse(s3, clone=True)
+        assert orig == str(s) == str(s3) == str(s4)
+        
     def test_correlated_select(self):
         s = select(['*'], t1.c.col1==t2.c.col1, from_obj=[t1, t2]).correlate(t2)
         class Vis(ClauseVisitor):

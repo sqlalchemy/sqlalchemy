@@ -148,7 +148,7 @@ class AbstractClauseProcessor(object):
             list_[i] = self.traverse(list_[i], stop_on=stop_on)
         return list_
 
-    def _convert_element(self, elem, stop_on):
+    def _convert_element(self, elem, stop_on, cloned):
         v = self
         while v is not None:
             newelem = v.convert_element(elem)
@@ -156,25 +156,32 @@ class AbstractClauseProcessor(object):
                 stop_on.add(newelem)
                 return newelem
             v = getattr(v, '_next_acp', None)
-        return elem._clone()
         
-    def traverse(self, elem, clone=True, stop_on=None, _clone_toplevel=True):
+        if elem not in cloned:
+            # the full traversal will only make a clone of a particular element
+            # once.
+            cloned[elem] = elem._clone()
+        return cloned[elem]
+        
+    def traverse(self, elem, clone=True, stop_on=None):
         if not clone:
             raise exceptions.ArgumentError("AbstractClauseProcessor 'clone' argument must be True")
-            
+        
         if stop_on is None:
             stop_on = util.Set()
-            
+        return self._traverse(elem, stop_on, {}, _clone_toplevel=True)
+        
+    def _traverse(self, elem, stop_on, cloned, _clone_toplevel=False):
         if elem in stop_on:
             return elem
         
         if _clone_toplevel:
-            elem = self._convert_element(elem, stop_on)
+            elem = self._convert_element(elem, stop_on, cloned)
             if elem in stop_on:
                 return elem
             
         def clone(element):
-            return self._convert_element(element, stop_on)
+            return self._convert_element(element, stop_on, cloned)
         elem._copy_internals(clone=clone)
         
         v = getattr(self, '_next', None)
@@ -186,7 +193,7 @@ class AbstractClauseProcessor(object):
         
         for e in elem.get_children(**self.__traverse_options__):
             if e not in stop_on:
-                self.traverse(e, stop_on=stop_on, _clone_toplevel=False)
+                self._traverse(e, stop_on, cloned)
         return elem
         
 class ClauseAdapter(AbstractClauseProcessor):

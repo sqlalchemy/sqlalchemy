@@ -844,6 +844,14 @@ class ClauseElement(object):
         """
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
+        
+        # this is a marker that helps to "equate" clauses to each other
+        # when a Select returns its list of FROM clauses.  the cloning
+        # process leaves around a lot of remnants of the previous clause
+        # typically in the form of column expressions still attached to the
+        # old table.
+        c._is_clone_of = self
+        
         return c
 
     def _get_from_objects(self, **modifiers):
@@ -2212,7 +2220,7 @@ class Join(FromClause):
         self.__primary_key = ColumnSet([c for c in self._flatten_exportable_columns() if c.primary_key and c not in omit])
 
     def description(self):
-        return "Join object on %s and %s" % (self.left.description, self.right.description)
+        return "Join object on %s(%d) and %s(%d)" % (self.left.description, id(self.left), self.right.description, id(self.right))
     description = property(description)
     
     primary_key = property(lambda s:s.__primary_key)
@@ -2393,15 +2401,6 @@ class Alias(FromClause):
     def _exportable_columns(self):
         #return self.selectable._exportable_columns()
         return self.selectable.columns
-
-    def _clone(self):
-        # TODO: need test coverage to assert ClauseAdapter behavior
-        # here; must identify non-ORM failure cases when a. _clone() returns 'self' in all 
-        # cases and b. when _clone() does an actual _clone() in all cases.
-        if isinstance(self.selectable, TableClause):
-            return self
-        else:
-            return super(Alias, self)._clone()
 
     def _copy_internals(self, clone=_clone):
        self._clone_from_clause()
@@ -2996,6 +2995,9 @@ class Select(_SelectBaseMixin, FromClause):
         for col in self._raw_columns:
             for f in col._hide_froms():
                 hide_froms.add(f)
+                while hasattr(f, '_is_clone_of'):
+                    hide_froms.add(f._is_clone_of)
+                    f = f._is_clone_of
             for f in col._get_from_objects():
                 froms.add(f)
 
@@ -3007,17 +3009,26 @@ class Select(_SelectBaseMixin, FromClause):
             froms.add(elem)
             for f in elem._get_from_objects():
                 froms.add(f)
-
+        
         for elem in froms:
             for f in elem._hide_froms():
                 hide_froms.add(f)
-
+                while hasattr(f, '_is_clone_of'):
+                    hide_froms.add(f._is_clone_of)
+                    f = f._is_clone_of
+        
         froms = froms.difference(hide_froms)
-
+        
         if len(froms) > 1:
             corr = self.__correlate
             if self._should_correlate and existing_froms is not None:
                 corr = existing_froms.union(corr)
+                
+            for f in list(corr):
+                while hasattr(f, '_is_clone_of'):
+                    corr.add(f._is_clone_of)
+                    f = f._is_clone_of
+                
             f = froms.difference(corr)
             if len(f) == 0:
                 raise exceptions.InvalidRequestError("Select statement '%s' is overcorrelated; returned no 'from' clauses" % str(self.__dont_correlate()))
@@ -3070,8 +3081,8 @@ class Select(_SelectBaseMixin, FromClause):
 
     def _copy_internals(self, clone=_clone):
         self._clone_from_clause()
-        self._raw_columns = [clone(c) for c in self._raw_columns]
         self._recorrelate_froms([(f, clone(f)) for f in self._froms])
+        self._raw_columns = [clone(c) for c in self._raw_columns]
         for attr in ('_whereclause', '_having', '_order_by_clause', '_group_by_clause'):
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr)))
