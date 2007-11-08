@@ -50,7 +50,7 @@ class ZooMarkTest(testing.AssertMixin):
         metadata.create_all()
         
     @testing.supported('postgres')
-    @profiling.profiled('populate', call_range=(2990, 4400), always=True)
+    @profiling.profiled('populate', call_range=(2970, 4400), always=True)
     def test_1a_populate(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
