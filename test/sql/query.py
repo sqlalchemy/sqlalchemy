@@ -495,6 +495,7 @@ class QueryTest(PersistTest):
 
         assert x == y == z == w == q == r
 
+
     def test_column_order_with_simple_query(self):
         # should return values in column definition order
         users.insert().execute(user_id=1, user_name='foo')

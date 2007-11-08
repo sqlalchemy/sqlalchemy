@@ -842,7 +842,6 @@ class ClauseElement(object):
         part of the "deep" copy afforded by a traversal that combines
         the _copy_internals() method.
         """
-
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
         return c
@@ -2396,11 +2395,21 @@ class Alias(FromClause):
         return self.selectable.columns
 
     def _clone(self):
-        # Alias is immutable
-        return self
+        # TODO: need test coverage to assert ClauseAdapter behavior
+        # here; must identify non-ORM failure cases when a. _clone() returns 'self' in all 
+        # cases and b. when _clone() does an actual _clone() in all cases.
+        if isinstance(self.selectable, TableClause):
+            return self
+        else:
+            return super(Alias, self)._clone()
 
     def _copy_internals(self, clone=_clone):
-        pass
+       self._clone_from_clause()
+       self.selectable = _clone(self.selectable)
+       baseselectable = self.selectable
+       while isinstance(baseselectable, Alias):
+           baseselectable = baseselectable.selectable
+       self.original = baseselectable
 
     def get_children(self, **kwargs):
         for c in self.c:

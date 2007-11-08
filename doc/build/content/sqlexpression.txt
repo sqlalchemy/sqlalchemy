@@ -835,11 +835,11 @@ The `select()` function can take keyword arguments `order_by`, `group_by` (as we
 
     {python}
     >>> s = select([addresses.c.user_id, func.count(addresses.c.id)]).\
-    ...     group_by(addresses.c.user_id).having(func.count(addresses.c.id>1))
+    ...     group_by(addresses.c.user_id).having(func.count(addresses.c.id)>1)
     {opensql}>>> print conn.execute(s).fetchall()
     SELECT addresses.user_id, count(addresses.id) 
     FROM addresses GROUP BY addresses.user_id 
-    HAVING count(addresses.id > ?)
+    HAVING count(addresses.id) > ?
     [1]
     {stop}[(1, 2), (2, 2)]
     

@@ -701,7 +701,33 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
             assert False
         except AttributeError:
             assert True
+
+    def test_functions_with_cols(self):
+        from sqlalchemy.sql import column
+        users = table('users', column('id'), column('name'), column('fullname'))
+        calculate = select([column('q'), column('z'), column('r')], 
+            from_obj=[func.calculate(bindparam('x'), bindparam('y'))])
         
+        self.assert_compile(select([users], users.c.id > calculate.c.z), 
+        "SELECT users.id, users.name, users.fullname "
+        "FROM users, (SELECT q, z, r "
+        "FROM calculate(:x, :y)) "
+        "WHERE users.id > z"
+        )
+
+        print "--------------------------------------------------"
+        s = select([users], users.c.id.between(
+            calculate.alias('c1').unique_params(x=17, y=45).c.z, 
+            calculate.alias('c2').unique_params(x=5, y=12).c.z))
+
+        self.assert_compile(s, 
+        "SELECT users.id, users.name, users.fullname "
+        "FROM users, (SELECT q, z, r "
+        "FROM calculate(:x, :y)) AS c1, (SELECT q, z, r "
+        "FROM calculate(:x_1, :y_1)) AS c2 "
+        "WHERE users.id BETWEEN c1.z AND c2.z"
+        , checkparams={'y': 45, 'x': 17, 'y_1': 12, 'x_1': 5})
+
     def testextract(self):
         """test the EXTRACT function"""
         self.assert_compile(select([extract("month", table3.c.otherstuff)]), "SELECT extract(month FROM thirdtable.otherstuff) FROM thirdtable")
