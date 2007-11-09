@@ -521,14 +521,24 @@ class Mapper(object):
 
         # TODO: matching of cols to foreign keys might better be generalized
         # into general column translation (i.e. corresponding_column)
+
+        # recursively descend into the foreign key collection of the given column
+        # and assemble each FK-related col as an "equivalent" for the given column
+        def equivs(col, recursive, equiv):
+            if col in recursive:
+                return
+            recursive.add(col)
+            for fk in col.foreign_keys:
+                result.setdefault(fk.column, util.Set()).add(equiv)
+                equivs(fk.column, recursive, col)
+                
         for column in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
             for col in column.proxy_set:
                 if not col.foreign_keys:
                     result.setdefault(col, util.Set()).add(col)
                 else:
-                    for fk in col.foreign_keys:
-                        result.setdefault(fk.column, util.Set()).add(col)
-
+                    equivs(col, util.Set(), col)
+                    
         return result
     
     class _CompileOnAttr(PropComparator):
