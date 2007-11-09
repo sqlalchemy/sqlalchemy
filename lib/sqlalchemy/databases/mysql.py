@@ -365,10 +365,10 @@ class MSDecimal(MSNumeric):
             return self._extend("DECIMAL(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
 
 
-class MSDouble(MSNumeric):
+class MSDouble(sqltypes.Float, _NumericType):
     """MySQL DOUBLE type."""
 
-    def __init__(self, precision=10, length=2, asdecimal=True, **kw):
+    def __init__(self, precision=None, length=None, asdecimal=True, **kw):
         """Construct a DOUBLE.
 
         precision
@@ -389,8 +389,14 @@ class MSDouble(MSNumeric):
 
         if ((precision is None and length is not None) or
             (precision is not None and length is None)):
-            raise exceptions.ArgumentError("You must specify both precision and length or omit both altogether.")
-        super(MSDouble, self).__init__(precision, length, asdecimal=asdecimal, **kw)
+            raise exceptions.ArgumentError(
+                "You must specify both precision and length or omit "
+                "both altogether.")
+
+        _NumericType.__init__(self, **kw)
+        sqltypes.Float.__init__(self, asdecimal=asdecimal)
+        self.length = length
+        self.precision = precision
 
     def get_col_spec(self):
         if self.precision is not None and self.length is not None:
@@ -401,10 +407,42 @@ class MSDouble(MSNumeric):
             return self._extend('DOUBLE')
 
 
+class MSReal(MSDouble):
+    """MySQL REAL type."""
+
+    def __init__(self, precision=None, length=None, asdecimal=True, **kw):
+        """Construct a REAL.
+
+        precision
+          Total digits in this number.  If length and precision are both None,
+          values are stored to limits allowed by the server.
+
+        length
+          The number of digits after the decimal point.
+
+        unsigned
+          Optional.
+
+        zerofill
+          Optional. If true, values will be stored as strings left-padded with
+          zeros. Note that this does not effect the values returned by the
+          underlying database API, which continue to be numeric.
+        """
+        MSDouble.__init__(self, precision, length, asdecimal, **kw)
+
+    def get_col_spec(self):
+        if self.precision is not None and self.length is not None:
+            return self._extend("REAL(%(precision)s, %(length)s)" %
+                                {'precision': self.precision,
+                                 'length' : self.length})
+        else:
+            return self._extend('REAL')
+
+
 class MSFloat(sqltypes.Float, _NumericType):
     """MySQL FLOAT type."""
 
-    def __init__(self, precision=10, length=None, asdecimal=False, **kw):
+    def __init__(self, precision=None, length=None, asdecimal=False, **kw):
         """Construct a FLOAT.
 
         precision
@@ -423,12 +461,13 @@ class MSFloat(sqltypes.Float, _NumericType):
           underlying database API, which continue to be numeric.
         """
 
-        self.length = length
         _NumericType.__init__(self, **kw)
-        sqltypes.Float.__init__(self, precision, asdecimal=asdecimal)
+        sqltypes.Float.__init__(self, asdecimal=asdecimal)
+        self.length = length
+        self.precision = precision
 
     def get_col_spec(self):
-        if hasattr(self, 'length') and self.length is not None:
+        if self.length is not None and self.precision is not None:
             return self._extend("FLOAT(%s, %s)" % (self.precision, self.length))
         elif self.precision is not None:
             return self._extend("FLOAT(%s)" % (self.precision,))
@@ -1284,6 +1323,8 @@ colspecs = {
     sqltypes.NCHAR: MSNChar,
     sqltypes.TIMESTAMP: MSTimeStamp,
     sqltypes.BLOB: MSBlob,
+    MSDouble: MSDouble,
+    MSReal: MSReal,
     _BinaryType: _BinaryType,
 }
 
@@ -1798,14 +1839,45 @@ class MySQLCompiler(compiler.DefaultCompiler):
         sql_operators.mod: '%%'
     })
 
-    def visit_cast(self, cast, **kwargs):
-        if isinstance(cast.type, (sqltypes.Date, sqltypes.Time,
-                                  sqltypes.DateTime)):
-            return super(MySQLCompiler, self).visit_cast(cast, **kwargs)
+    def visit_typeclause(self, typeclause):
+        type_ = typeclause.type.dialect_impl(self.dialect)
+        if isinstance(type_, MSInteger):
+            if getattr(type_, 'unsigned', False):
+                return 'UNSIGNED INTEGER'
+            else:
+                return 'SIGNED INTEGER'
+        elif isinstance(type_, (MSChar, MSDecimal, MSDateTime,
+                                MSDate, MSTime)):
+            return type_.get_col_spec()
+        elif isinstance(type_, (MSText, MSNChar, MSNVarChar)):
+            return 'CHAR'
+        elif type(type_) is MSString:
+            if getattr(type_, 'length'):
+                return 'CHAR(%s)' % type_.length
+            else:
+                return 'CHAR'
+        elif isinstance(type_, _BinaryType):
+            return 'BINARY'
+        elif isinstance(type_, MSNumeric):
+            return type_.get_col_spec().replace('NUMERIC', 'DECIMAL')
+        elif isinstance(type_, MSTimeStamp):
+            return 'DATETIME'
+        elif isinstance(type_, (MSDateTime, MSDate, MSTime)):
+            return type_.get_col_spec()
         else:
-            # so just skip the CAST altogether for now.
-            # TODO: put whatever MySQL does for CAST here.
+            return None
+
+    def visit_cast(self, cast, **kwargs):
+        # No cast until 4, no decimals until 5.
+        type_ = self.process(cast.typeclause)
+        if type_ is None:
             return self.process(cast.clause)
+
+        if self.stack and self.stack[-1].get('select'):
+            # not sure if we want to set the typemap here...
+            self.typemap.setdefault("CAST", cast.type)
+        return 'CAST(%s AS %s)' % (self.process(cast.clause), type_)
+
 
     def get_select_precolumns(self, select):
         if isinstance(select._distinct, basestring):

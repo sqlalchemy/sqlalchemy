@@ -145,6 +145,12 @@ CHANGES
   - Added test coverage for unknown type reflection. Fixed sqlite/mysql
     handling of type reflection for unknown types.
 
+  - Added REAL for mysql dialect (for folks exploiting the 
+    REAL_AS_FLOAT sql mode).
+
+  - mysql Float, MSFloat and MSDouble constructed without arguments
+    now produce no-argument DDL, e.g.'FLOAT'.
+
 - misc
 
   - Removed unused util.hash().

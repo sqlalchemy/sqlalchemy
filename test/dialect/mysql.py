@@ -46,7 +46,7 @@ class TypesTest(AssertMixin):
     @testing.supported('mysql')
     def test_numeric(self):
         "Exercise type specification and options for numeric types."
-        
+
         columns = [
             # column type, args, kwargs, expected ddl
             # e.g. Column(Integer(10, unsigned=True)) == 'INTEGER(10) UNSIGNED'
@@ -80,8 +80,6 @@ class TypesTest(AssertMixin):
 
             (mysql.MSDouble, [None, None], {},
              'DOUBLE'),
-            (mysql.MSDouble, [12], {},
-             'DOUBLE(12, 2)'),
             (mysql.MSDouble, [12, 4], {'unsigned':True},
              'DOUBLE(12, 4) UNSIGNED'),
             (mysql.MSDouble, [12, 4], {'zerofill':True},
@@ -89,8 +87,17 @@ class TypesTest(AssertMixin):
             (mysql.MSDouble, [12, 4], {'zerofill':True, 'unsigned':True},
              'DOUBLE(12, 4) UNSIGNED ZEROFILL'),
 
+            (mysql.MSReal, [None, None], {},
+             'REAL'),
+            (mysql.MSReal, [12, 4], {'unsigned':True},
+             'REAL(12, 4) UNSIGNED'),
+            (mysql.MSReal, [12, 4], {'zerofill':True},
+             'REAL(12, 4) ZEROFILL'),
+            (mysql.MSReal, [12, 4], {'zerofill':True, 'unsigned':True},
+             'REAL(12, 4) UNSIGNED ZEROFILL'),
+
             (mysql.MSFloat, [], {},
-             'FLOAT(10)'),
+             'FLOAT'),
             (mysql.MSFloat, [None], {},
              'FLOAT'),
             (mysql.MSFloat, [12], {},
@@ -156,7 +163,7 @@ class TypesTest(AssertMixin):
 
         numeric_table = Table(*table_args)
         gen = testbase.db.dialect.schemagenerator(testbase.db.dialect, testbase.db, None, None)
-        
+
         for col in numeric_table.c:
             index = int(col.name[1:])
             self.assert_eq(gen.get_column_specification(col),
@@ -169,7 +176,7 @@ class TypesTest(AssertMixin):
         except:
             raise
         numeric_table.drop()
-    
+
     @testing.supported('mysql')
     @testing.exclude('mysql', '<', (4, 1, 1))
     def test_charset(self):
@@ -225,7 +232,7 @@ class TypesTest(AssertMixin):
              'TINYTEXT CHARACTER SET utf8 COLLATE utf8_bin'),
 
             (mysql.MSMediumText, [], {'charset':'utf8', 'binary':True},
-             'MEDIUMTEXT CHARACTER SET utf8 BINARY'), 
+             'MEDIUMTEXT CHARACTER SET utf8 BINARY'),
 
             (mysql.MSLongText, [], {'ascii':True},
              'LONGTEXT ASCII'),
@@ -241,7 +248,7 @@ class TypesTest(AssertMixin):
 
         charset_table = Table(*table_args)
         gen = testbase.db.dialect.schemagenerator(testbase.db.dialect, testbase.db, None, None)
-        
+
         for col in charset_table.c:
             index = int(col.name[1:])
             self.assert_eq(gen.get_column_specification(col),
@@ -259,7 +266,7 @@ class TypesTest(AssertMixin):
     @testing.exclude('mysql', '<', (5, 0, 5))
     def test_bit_50(self):
         """Exercise BIT types on 5.0+ (not valid for all engine types)"""
-        
+
         meta = MetaData(testbase.db)
         bit_table = Table('mysql_bits', meta,
                           Column('b1', mysql.MSBit),
@@ -381,7 +388,7 @@ class TypesTest(AssertMixin):
     @testing.exclude('mysql', '<', (4, 1, 0))
     def test_timestamp(self):
         """Exercise funky TIMESTAMP default syntax."""
-    
+
         meta = MetaData(testbase.db)
 
         try:
@@ -450,7 +457,7 @@ class TypesTest(AssertMixin):
                 self.assert_eq(colspec(table.c.y5), 'y5 YEAR(4)')
         finally:
             meta.drop_all()
-        
+
 
     @testing.supported('mysql')
     def test_set(self):
@@ -486,7 +493,7 @@ class TypesTest(AssertMixin):
                         print "Found %s" % list(row)
                         raise
                     table.delete().execute()
-                
+
                 roundtrip([None, None, None],[None] * 3)
                 roundtrip(['', '', ''], [set([''])] * 3)
 
@@ -513,7 +520,7 @@ class TypesTest(AssertMixin):
     @testing.supported('mysql')
     def test_enum(self):
         """Exercise the ENUM type."""
-        
+
         db = testbase.db
         enum_table = Table('mysql_enum', MetaData(testbase.db),
             Column('e1', mysql.MSEnum("'a'", "'b'")),
@@ -562,7 +569,7 @@ class TypesTest(AssertMixin):
         if testbase.db.dialect.dbapi.version_info < (1, 2, 2, 'beta', 3) and \
            testbase.db.dialect.dbapi.version_info >= (1, 2, 2):
             # these mysqldb seem to always uses 'sets', even on later pythons
-            import sets 
+            import sets
             def convert(value):
                 if value is None:
                     return value
@@ -570,7 +577,7 @@ class TypesTest(AssertMixin):
                     return sets.Set([])
                 else:
                     return sets.Set([value])
-                
+
             e = []
             for row in expected:
                 e.append(tuple([convert(c) for c in row]))
@@ -645,14 +652,14 @@ class TypesTest(AssertMixin):
         t_table = Table('mysql_types', m, *columns)
         try:
             m.create_all()
-        
+
             m2 = MetaData(db)
             rt = Table('mysql_types', m2, autoload=True)
             try:
                 db.execute('CREATE OR REPLACE VIEW mysql_types_v '
                            'AS SELECT * from mysql_types')
                 rv = Table('mysql_types_v', m2, autoload=True)
-        
+
                 expected = [len(c) > 1 and c[1] or c[0] for c in specs]
 
                 # Early 5.0 releases seem to report more "general" for columns
@@ -781,7 +788,7 @@ class SQLTest(SQLCompileTest):
     @testing.supported('mysql')
     def test_limit(self):
         t = sql.table('t', sql.column('col1'), sql.column('col2'))
-        
+
         self.assert_compile(
             select([t]).limit(10).offset(20),
             "SELECT t.col1, t.col2 FROM t  LIMIT 20, 10"
@@ -816,7 +823,7 @@ class SQLTest(SQLCompileTest):
             )
 
 def colspec(c):
-    return testbase.db.dialect.schemagenerator(testbase.db.dialect, 
+    return testbase.db.dialect.schemagenerator(testbase.db.dialect,
         testbase.db, None, None).get_column_specification(c)
 
 if __name__ == "__main__":
