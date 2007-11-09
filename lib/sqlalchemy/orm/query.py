@@ -896,10 +896,13 @@ class Query(object):
                 
             # for a DISTINCT query, you need the columns explicitly specified in order
             # to use it in "order_by".  ensure they are in the column criterion (particularly oid).
-            # TODO: this should be done at the SQL level not the mapper level
-            # TODO: need test coverage for this 
             if self._distinct and order_by:
-                [statement.append_column(c) for c in util.to_list(order_by)]
+                order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
+                cf = sql_util.ColumnFinder()
+                for o in order_by:
+                    cf.traverse(o)
+
+                [statement.append_column(c) for c in cf]
 
         context.statement = statement
                 

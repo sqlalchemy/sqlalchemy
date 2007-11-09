@@ -356,6 +356,12 @@ class CountTest(QueryTest):
 
         assert 2 == create_session().query(User).filter(users.c.name.endswith('ed')).count()
 
+class DistinctTest(QueryTest):
+    def test_basic(self):
+        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).distinct().all()
+        assert [User(id=7), User(id=9), User(id=8),User(id=10)] == create_session().query(User).distinct().order_by(desc(User.name)).all()
+        
+    
 class TextTest(QueryTest):
     def test_fulltext(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users").all()
