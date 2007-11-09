@@ -240,6 +240,10 @@ class Query(object):
         
         q = self._clone()
 
+        # duck type to get a ClauseElement
+        if hasattr(column, 'clause_element'):
+            column = column.clause_element()
+        
         # alias non-labeled column elements. 
         if isinstance(column, sql.ColumnElement) and not hasattr(column, '_label'):
             column = column.label(None)
@@ -682,6 +686,9 @@ class Query(object):
                             res.append(row_adapter(row)[m])
                         process.append((proc, res))
                     y(m)
+                else:
+                    raise exceptions.InvalidRequestError("Invalid column expression '%r'" % m)
+                    
             result = []
         else:
             result = util.UniqueAppender([])

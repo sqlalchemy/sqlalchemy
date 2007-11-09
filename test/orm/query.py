@@ -721,8 +721,24 @@ class InstancesTest(QueryTest):
         assert l == [(user8, address3)]
 
     def test_multi_columns(self):
+        sess = create_session()
+
+        expected = [(u, u.name) for u in sess.query(User).all()]
+        
+        for add_col in (User.name, users.c.name, User.c.name):
+            assert sess.query(User).add_column(add_col).all() == expected
+
+        try:
+            sess.query(User).add_column(object()).all()
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert "Invalid column expression" in str(e)
+            
+        
+    def test_multi_columns_2(self):
         """test aliased/nonalised joins with the usage of add_column()"""
         sess = create_session()
+
         (user7, user8, user9, user10) = sess.query(User).all()
         expected = [(user7, 1),
             (user8, 3),
@@ -740,7 +756,8 @@ class InstancesTest(QueryTest):
         q = sess.query(User)
         l = q.add_column("count").from_statement(s).all()
         assert l == expected
-
+    
+        
     def test_two_columns(self):
         sess = create_session()
         (user7, user8, user9, user10) = sess.query(User).all()

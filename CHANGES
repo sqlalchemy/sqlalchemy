@@ -73,7 +73,11 @@ CHANGES
 
   - query doesn't throw an error if you use distinct() and an order_by()
     containing UnaryExpressions (or other) together [ticket:848]
-    
+
+  - fixed error where Query.add_column() would not accept a class-bound
+    attribute as an argument; Query also raises an error if an invalid
+    argument was sent to add_column() (at instances() time) [ticket:858]
+        
   - The session API has been solidified:
 
     - It's an error to session.save() an object which is already
