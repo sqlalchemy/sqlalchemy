@@ -519,12 +519,15 @@ class Mapper(object):
             if mapper.inherit_condition is not None:
                 vis.traverse(mapper.inherit_condition)
 
-        for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
-            if not col.foreign_keys:
-                result.setdefault(col, util.Set()).add(col)
-            else:
-                for fk in col.foreign_keys:
-                    result.setdefault(fk.column, util.Set()).add(col)
+        # TODO: matching of cols to foreign keys might better be generalized
+        # into general column translation (i.e. corresponding_column)
+        for column in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
+            for col in column.proxy_set:
+                if not col.foreign_keys:
+                    result.setdefault(col, util.Set()).add(col)
+                else:
+                    for fk in col.foreign_keys:
+                        result.setdefault(fk.column, util.Set()).add(col)
 
         return result
     
