@@ -1200,11 +1200,7 @@ class _CompareMixin(ColumnOperators):
 
         type_ = self._compare_type(obj)
 
-        # TODO: generalize operator overloading like this out into the
-        # types module
-        if op == operators.add and isinstance(type_, (sqltypes.Concatenable)):
-            op = operators.concat_op
-        return _BinaryExpression(self.expression_element(), obj, op, type_=type_)
+        return _BinaryExpression(self.expression_element(), obj, type_.adapt_operator(op), type_=type_)
 
     # a mapping of operators with the method they use, along with their negated
     # operator for comparison operators
@@ -1289,7 +1285,10 @@ class _CompareMixin(ColumnOperators):
         return self.__compare(operators.like_op, po)
 
     def label(self, name):
-        """Produce a column label, i.e. ``<columnname> AS <name>``"""
+        """Produce a column label, i.e. ``<columnname> AS <name>``.
+        
+        if 'name' is None, an anonymous label name will be generated.
+        """
         return _Label(name, self, self.type)
 
     def desc(self):
@@ -1333,7 +1332,10 @@ class _CompareMixin(ColumnOperators):
         return _BindParamClause('literal', obj, type_=self.type, unique=True)
 
     def _check_literal(self, other):
-        if isinstance(other, Operators):
+        if isinstance(other, _BindParamClause) and isinstance(other.type, sqltypes.NullType):
+            other.type = self.type
+            return other
+        elif isinstance(other, Operators):
             return other.expression_element()
         elif _is_literal(other):
             return self._bind_param(other)

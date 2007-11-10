@@ -213,17 +213,19 @@ class DefaultCompiler(engine.Compiled):
     def visit_grouping(self, grouping, **kwargs):
         return "(" + self.process(grouping.elem) + ")"
         
-    def visit_label(self, label):
+    def visit_label(self, label, typemap=None, column_labels=None):
         labelname = self._truncated_identifier("colident", label.name)
         
-        if len(self.stack) == 1 and self.stack[-1].get('select'):
+        if typemap is not None:
             self.typemap.setdefault(labelname.lower(), label.obj.type)
+            
+        if column_labels is not None:
             if isinstance(label.obj, sql._ColumnClause):
-                self.column_labels[label.obj._label] = labelname
-            self.column_labels[label.name] = labelname
+                column_labels[label.obj._label] = labelname
+            column_labels[label.name] = labelname
         return " ".join([self.process(label.obj), self.operator_string(operators.as_), self.preparer.format_label(label, labelname)])
         
-    def visit_column(self, column, **kwargs):
+    def visit_column(self, column, typemap=None, column_labels=None, **kwargs):
         # there is actually somewhat of a ruleset when you would *not* necessarily
         # want to truncate a column identifier, if its mapped to the name of a 
         # physical column.  but thats very hard to identify at this point, and 
@@ -234,10 +236,9 @@ class DefaultCompiler(engine.Compiled):
         else:
             name = column.name
 
-        if len(self.stack) == 1 and self.stack[-1].get('select'):
-            # if we are within a visit to a Select, set up the "typemap"
-            # for this column which is used to translate result set values
-            self.typemap.setdefault(name.lower(), column.type)
+        if typemap is not None:
+            typemap.setdefault(name.lower(), column.type)
+        if column_labels is not None:    
             self.column_labels.setdefault(column._label, name.lower())
         
         if column._is_oid:
@@ -303,15 +304,12 @@ class DefaultCompiler(engine.Compiled):
     def visit_calculatedclause(self, clause, **kwargs):
         return self.process(clause.clause_expr)
 
-    def visit_cast(self, cast, **kwargs):
-        if self.stack and self.stack[-1].get('select'):
-            # not sure if we want to set the typemap here...
-            self.typemap.setdefault("CAST", cast.type)
+    def visit_cast(self, cast, typemap=None, **kwargs):
         return "CAST(%s AS %s)" % (self.process(cast.clause), self.process(cast.typeclause))
 
-    def visit_function(self, func, **kwargs):
-        if self.stack and self.stack[-1].get('select'):
-            self.typemap.setdefault(func.name, func.type)
+    def visit_function(self, func, typemap=None, **kwargs):
+        if typemap is not None:
+            typemap.setdefault(func.name, func.type)
         if not self.apply_function_parens(func):
             return ".".join(func.packagenames + [func.name])
         else:
@@ -349,12 +347,14 @@ class DefaultCompiler(engine.Compiled):
             s = s + " " + self.operator_string(unary.modifier)
         return s
         
-    def visit_binary(self, binary, **kwargs):
+    def visit_binary(self, binary, typemap=None, **kwargs):
         op = self.operator_string(binary.operator)
         if callable(op):
             return op(self.process(binary.left), self.process(binary.right))
         else:
             return self.process(binary.left) + " " + op + " " + self.process(binary.right)
+            
+        return ret
         
     def operator_string(self, operator):
         return self.operators.get(operator, str(operator))
@@ -453,6 +453,8 @@ class DefaultCompiler(engine.Compiled):
             column.table is not None and \
             not isinstance(column.table, sql.Select):
             return column.label(column.name)
+        elif not isinstance(column, (sql._UnaryExpression, sql._TextClause)) and not hasattr(column, 'name'):
+            return column.label(None)
         else:
             return None
 
@@ -462,13 +464,18 @@ class DefaultCompiler(engine.Compiled):
         
         if asfrom:
             stack_entry['is_selected_from'] = stack_entry['is_subquery'] = True
+            column_clause_args = {}
         elif self.stack and self.stack[-1].get('select'):
             stack_entry['is_subquery'] = True
-
+            column_clause_args = {}
+        else:
+            column_clause_args = {'typemap':self.typemap, 'column_labels':self.column_labels}
+            
         if self.stack and self.stack[-1].get('from'):
             existingfroms = self.stack[-1]['from']
         else:
             existingfroms = None
+            
         froms = select._get_display_froms(existingfroms)
 
         correlate_froms = util.Set()
@@ -492,15 +499,15 @@ class DefaultCompiler(engine.Compiled):
                 labelname = co._label
                 if labelname is not None:
                     l = co.label(labelname)
-                    inner_columns.add(self.process(l))
+                    inner_columns.add(self.process(l, **column_clause_args))
                 else:
-                    inner_columns.add(self.process(co))
+                    inner_columns.add(self.process(co, **column_clause_args))
             else:
                 l = self.label_select_column(select, co)
                 if l is not None:
-                    inner_columns.add(self.process(l))
+                    inner_columns.add(self.process(l, **column_clause_args))
                 else:
-                    inner_columns.add(self.process(co))
+                    inner_columns.add(self.process(co, **column_clause_args))
             
         collist = string.join(inner_columns.difference(util.Set([None])), ', ')
 

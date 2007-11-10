@@ -410,6 +410,7 @@ class InfoCompiler(compiler.DefaultCompiler):
         return ""
 
     def __visit_label(self, label):
+        # TODO: whats this method for ?
         if self.select_stack:
             self.typemap.setdefault(label.name.lower(), label.obj.type)
         if self.strings[label.obj]:

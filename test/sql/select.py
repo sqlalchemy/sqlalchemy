@@ -230,21 +230,21 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
 
     def test_scalar_select(self):
         s = select([table1.c.myid], scalar=True, correlate=False)
-        self.assert_compile(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) FROM mytable")
+        self.assert_compile(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) AS anon_1 FROM mytable")
 
         s = select([table1.c.myid], scalar=True)
-        self.assert_compile(select([table2, s]), "SELECT myothertable.otherid, myothertable.othername, (SELECT mytable.myid FROM mytable) FROM myothertable")
+        self.assert_compile(select([table2, s]), "SELECT myothertable.otherid, myothertable.othername, (SELECT mytable.myid FROM mytable) AS anon_1 FROM myothertable")
 
         s = select([table1.c.myid]).correlate(None).as_scalar()
-        self.assert_compile(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) FROM mytable")
+        self.assert_compile(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) AS anon_1 FROM mytable")
 
         s = select([table1.c.myid]).as_scalar()
-        self.assert_compile(select([table2, s]), "SELECT myothertable.otherid, myothertable.othername, (SELECT mytable.myid FROM mytable) FROM myothertable")
+        self.assert_compile(select([table2, s]), "SELECT myothertable.otherid, myothertable.othername, (SELECT mytable.myid FROM mytable) AS anon_1 FROM myothertable")
 
         # test expressions against scalar selects
-        self.assert_compile(select([s - literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) - :literal")
-        self.assert_compile(select([select([table1.c.name]).as_scalar() + literal('x')]), "SELECT (SELECT mytable.name FROM mytable) || :literal")
-        self.assert_compile(select([s > literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) > :literal")
+        self.assert_compile(select([s - literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) - :literal AS anon_1")
+        self.assert_compile(select([select([table1.c.name]).as_scalar() + literal('x')]), "SELECT (SELECT mytable.name FROM mytable) || :literal AS anon_1")
+        self.assert_compile(select([s > literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) > :literal AS anon_1")
 
         self.assert_compile(select([select([table1.c.name]).label('foo')]), "SELECT (SELECT mytable.name FROM mytable) AS foo")
 
@@ -294,7 +294,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         s1 = select([a1.c.otherid], table1.c.myid==a1.c.otherid, scalar=True)
         j1 = table1.join(table2, table1.c.myid==table2.c.otherid)
         s2 = select([table1, s1], from_obj=[j1])
-        self.assert_compile(s2, "SELECT mytable.myid, mytable.name, mytable.description, (SELECT t2alias.otherid FROM myothertable AS t2alias WHERE mytable.myid = t2alias.otherid) FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
+        self.assert_compile(s2, "SELECT mytable.myid, mytable.name, mytable.description, (SELECT t2alias.otherid FROM myothertable AS t2alias WHERE mytable.myid = t2alias.otherid) AS anon_1 FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
 
     def testlabelcomparison(self):
         x = func.lala(table1.c.myid).label('foo')
@@ -640,7 +640,7 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
     def testliteral(self):
         self.assert_compile(select([literal("foo") + literal("bar")], from_obj=[table1]),
-            "SELECT :literal || :literal_1 FROM mytable")
+            "SELECT :literal || :literal_1 AS anon_1 FROM mytable")
 
     def testcalculatedcolumns(self):
          value_tbl = table('values',
@@ -652,7 +652,7 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
          self.assert_compile(
              select([value_tbl.c.id, (value_tbl.c.val2 -
      value_tbl.c.val1)/value_tbl.c.val1]),
-             "SELECT values.id, (values.val2 - values.val1) / values.val1 FROM values"
+             "SELECT values.id, (values.val2 - values.val1) / values.val1 AS anon_1 FROM values"
          )
 
          self.assert_compile(
@@ -1110,9 +1110,9 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
             # coverage on other dialects.
             sel = select([tbl, cast(tbl.c.v1, Numeric)]).compile(dialect=dialect)
             if isinstance(dialect, type(mysql.dialect())):
-                self.assertEqual(str(sel), "SELECT casttest.id, casttest.v1, casttest.v2, casttest.ts, CAST(casttest.v1 AS DECIMAL(10, 2)) \nFROM casttest")
+                self.assertEqual(str(sel), "SELECT casttest.id, casttest.v1, casttest.v2, casttest.ts, CAST(casttest.v1 AS DECIMAL(10, 2)) AS anon_1 \nFROM casttest")
             else:
-                self.assertEqual(str(sel), "SELECT casttest.id, casttest.v1, casttest.v2, casttest.ts, CAST(casttest.v1 AS NUMERIC(10, 2)) \nFROM casttest")
+                self.assertEqual(str(sel), "SELECT casttest.id, casttest.v1, casttest.v2, casttest.ts, CAST(casttest.v1 AS NUMERIC(10, 2)) AS anon_1 \nFROM casttest")
 
         # first test with Postgres engine
         check_results(postgres.dialect(), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '%(literal)s')

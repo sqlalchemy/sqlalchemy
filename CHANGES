@@ -12,6 +12,24 @@ CHANGES
   
   - Added contains operator (generates a "LIKE %<other>%" clause).
 
+  - anonymous column expressions are automatically labeled.  
+    e.g. select([x* 5]) produces "SELECT x * 5 AS anon_1".
+    This allows the labelname to be present in the cursor.description
+    which can then be appropriately matched to result-column processing
+    rules. (we can't reliably use positional tracking for result-column 
+    matches since text() expressions may represent multiple columns).
+  
+  - operator overloading is now controlled by TypeEngine objects - the 
+    one built-in operator overload so far is String types overloading
+    '+' to be the string concatenation operator.
+    User-defined types can also define their own operator overloading
+    by overriding the adapt_operator(self, op) method.
+    
+  - untyped bind parameters on the right side of a binary expression
+    will be assigned the type of the left side of the operation, to better
+    enable the appropriate bind parameter processing to take effect
+    [ticket:819]
+    
   - Removed regular expression step from most statement compilations.
     Also fixes [ticket:833]
 

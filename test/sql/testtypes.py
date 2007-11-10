@@ -3,6 +3,7 @@ import pickleable
 import datetime, os
 from sqlalchemy import *
 from sqlalchemy import types
+from sqlalchemy.sql import operators
 import sqlalchemy.engine.url as url
 from sqlalchemy.databases import mssql, oracle, mysql, postgres, firebird
 from testlib import *
@@ -367,7 +368,76 @@ class BinaryTest(AssertMixin):
         # put a number less than the typical MySQL default BLOB size
         return file(f).read(len)
 
+class ExpressionTest(AssertMixin):
+    def setUpAll(self):
+        global test_table, meta
 
+        class MyCustomType(types.TypeEngine):
+            def get_col_spec(self):
+                return "INT"
+            def bind_processor(self, dialect):
+                def process(value):
+                    return value * 10
+                return process
+            def result_processor(self, dialect):
+                def process(value):
+                    return value / 10
+                return process
+            def adapt_operator(self, op):
+                return {operators.add:operators.sub, operators.sub:operators.add}.get(op, op)
+                
+        meta = MetaData(testbase.db)
+        test_table = Table('test', meta, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            Column('timestamp', Date),
+            Column('value', MyCustomType))
+        
+        meta.create_all()
+        
+        test_table.insert().execute({'id':1, 'data':'somedata', 'timestamp':datetime.date(2007, 10, 15), 'value':25})
+        
+    def tearDownAll(self):
+        meta.drop_all()
+    
+    def test_control(self):
+        assert testbase.db.execute("select value from test").scalar() == 250
+        
+        assert test_table.select().execute().fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
+        
+    def test_bind_adapt(self):
+        expr = test_table.c.timestamp == bindparam("thedate")
+        assert expr.right.type.__class__ == test_table.c.timestamp.type.__class__
+        
+        assert testbase.db.execute(test_table.select().where(expr), {"thedate":datetime.date(2007, 10, 15)}).fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
+
+        expr = test_table.c.value == bindparam("somevalue")
+        assert expr.right.type.__class__ == test_table.c.value.type.__class__
+        assert testbase.db.execute(test_table.select().where(expr), {"somevalue":25}).fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
+        
+
+    def test_operator_adapt(self):
+        """test type-based overloading of operators"""
+        
+        # test string concatenation
+        expr = test_table.c.data + "somedata"
+        assert testbase.db.execute(select([expr])).scalar() == "somedatasomedata"
+
+        expr = test_table.c.id + 15
+        assert testbase.db.execute(select([expr])).scalar() == 16
+
+        # test custom operator conversion
+        expr = test_table.c.value + 40
+        assert expr.type.__class__ is test_table.c.value.type.__class__
+        
+        # + operator converted to -
+        # value is calculated as: (250 - (40 * 10)) / 10 == -15
+        assert testbase.db.execute(select([expr.label('foo')])).scalar() == -15
+
+        # this one relies upon anonymous labeling to assemble result
+        # processing rules on the column.
+        assert testbase.db.execute(select([expr])).scalar() == -15
+        
 class DateTest(AssertMixin):
     def setUpAll(self):
         global users_with_date, insert_data

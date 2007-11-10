@@ -895,13 +895,13 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         kwargs['mssql_aliased'] = True
         return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
 
-    def visit_column(self, column):
+    def visit_column(self, column, **kwargs):
         if column.table is not None and not self.isupdate and not self.isdelete:
             # translate for schema-qualified table aliases
             t = self._schema_aliased_table(column.table)
             if t is not None:
                 return self.process(t.corresponding_column(column))
-        return super(MSSQLCompiler, self).visit_column(column)
+        return super(MSSQLCompiler, self).visit_column(column, **kwargs)
 
     def visit_binary(self, binary):
         """Move bind parameters to the right-hand side of an operator, where possible."""

@@ -109,7 +109,7 @@ class PGBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
 
-class PGArray(sqltypes.TypeEngine, sqltypes.Concatenable):
+class PGArray(sqltypes.Concatenable, sqltypes.TypeEngine):
     def __init__(self, item_type):
         if isinstance(item_type, type):
             item_type = item_type()

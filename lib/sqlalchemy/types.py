@@ -131,7 +131,14 @@ class AbstractType(object):
         """
 
         return None
-
+    
+    def adapt_operator(self, op):
+        """given an operator from the sqlalchemy.sql.operators package, 
+        translate it to a new operator based on the semantics of this type.
+        
+        By default, returns the operator unchanged."""
+        return op
+        
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, ",".join(["%s=%s" % (k, getattr(self, k)) for k in inspect.getargspec(self.__init__)[0][1:]]))
 
@@ -282,9 +289,14 @@ NullTypeEngine = NullType
 
 class Concatenable(object):
     """marks a type as supporting 'concatenation'"""
-    pass
+    def adapt_operator(self, op):
+        from sqlalchemy.sql import operators
+        if op == operators.add:
+            return operators.concat_op
+        else:
+            return op
     
-class String(TypeEngine, Concatenable):
+class String(Concatenable, TypeEngine):
     def __init__(self, length=None, convert_unicode=False):
         self.length = length
         self.convert_unicode = convert_unicode

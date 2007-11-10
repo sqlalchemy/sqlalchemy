@@ -1339,6 +1339,7 @@ class ResultProxy(object):
             for i, item in enumerate(metadata):
                 # sqlite possibly prepending table name to colnames so strip
                 colname = (item[0].split('.')[-1]).decode(self.dialect.encoding)
+
                 if self.context.typemap is not None:
                     type = self.context.typemap.get(colname.lower(), typemap.get(item[1], types.NULLTYPE))
                 else:
