@@ -282,6 +282,22 @@ class ClauseTest(SQLCompileTest):
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t1), clone=True), "SELECT * FROM table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t2), clone=True), "SELECT * FROM table1 AS t1alias WHERE t1alias.col1 = t2alias.col2")
     
+    def test_selfreferential(self):
+        m = MetaData()
+        a=Table( 'a',m,
+          Column( 'id',    Integer, primary_key=True),
+          Column( 'xxx_id', Integer, ForeignKey( 'a.id', name='adf',use_alter=True ) )
+        )
+
+        e = (a.c.id == a.c.xxx_id)
+        assert str(e) == "a.id = a.xxx_id"
+        b = a.alias()
+
+        e = sql_util.ClauseAdapter( b, include= set([ a.c.id ]),
+          equivalents= { a.c.id: set([ a.c.id]) }
+        ).traverse( e)
+        
+        assert str(e) == "a_1.id = a.xxx_id"
 
     def test_joins(self):
         """test that ClauseAdapter can target a Join object, replace it, and not dig into the sub-joins after
