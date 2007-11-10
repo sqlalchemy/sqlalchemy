@@ -22,11 +22,10 @@ from sqlalchemy import exceptions, logging
 from sqlalchemy import queue as Queue
 from sqlalchemy.util import thread, threading, pickle
 
-
 proxies = {}
 
 def manage(module, **params):
-    """Returns a proxy for module that automatically pools connections.
+    """Return a proxy for a DB-API module that automatically pools connections.
 
     Given a DB-API 2.0 module and pool management parameters, returns
     a proxy for the module that will automatically pool connections,
@@ -127,7 +126,7 @@ class Pool(object):
         self._on_connect = []
         self._on_checkout = []
         self._on_checkin = []
-        
+
         if listeners:
             for l in listeners:
                 self.add_listener(l)
@@ -137,20 +136,23 @@ class Pool(object):
 
     def create_connection(self):
         return _ConnectionRecord(self)
-    
+
     def recreate(self):
-        """return a new instance of this Pool's class with identical creation arguments."""
+        """Return a new instance with identical creation arguments."""
+
         raise NotImplementedError()
 
     def dispose(self):
-        """dispose of this pool.
-        
-        this method leaves the possibility of checked-out connections remaining opened,
-        so it is advised to not reuse the pool once dispose() is called, and to instead
-        use a new pool constructed by the recreate() method.
+        """Dispose of this pool.
+
+        This method leaves the possibility of checked-out connections
+        remaining open, It is advised to not reuse the pool once dispose()
+        is called, and to instead use a new pool constructed by the
+        recreate() method.
         """
+
         raise NotImplementedError()
-        
+
     def connect(self):
         if not self._use_threadlocal:
             return _ConnectionFairy(self).checkout()
@@ -257,7 +259,7 @@ class _ConnectionRecord(object):
             if self.__pool._should_log_info:
                 self.__pool.log("Error on connect(): %s" % (str(e)))
             raise
-            
+
 def _finalize_fairy(connection, connection_record, pool, ref=None):
     if ref is not None and connection_record.backref is not ref:
         return
@@ -280,7 +282,7 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
             for l in pool._on_checkin:
                 l.checkin(connection, connection_record)
         pool.return_conn(connection_record)
-    
+
 class _ConnectionFairy(object):
     """Proxies a DB-API connection and provides return-on-dereference support."""
 
@@ -297,14 +299,14 @@ class _ConnectionFairy(object):
             raise
         if self._pool._should_log_info:
             self._pool.log("Connection %s checked out from pool" % repr(self.connection))
-    
+
     _logger = property(lambda self: self._pool.logger)
-    
+
     is_valid = property(lambda self:self.connection is not None)
-    
+
     def _get_properties(self):
         """A property collection unique to this DB-API connection."""
-        
+
         try:
             return self._connection_record.properties
         except AttributeError:
@@ -316,13 +318,14 @@ class _ConnectionFairy(object):
                 self._detatched_properties = value = {}
                 return value
     properties = property(_get_properties)
-    
+
     def invalidate(self, e=None):
         """Mark this connection as invalidated.
-        
+
         The connection will be immediately closed.  The containing
         ConnectionRecord will create a new connection when next used.
         """
+
         if self.connection is None:
             raise exceptions.InvalidRequestError("This connection is closed")
         if self._connection_record is not None:
@@ -371,18 +374,17 @@ class _ConnectionFairy(object):
 
     def detach(self):
         """Separate this connection from its Pool.
-        
-        This means that the connection will no longer be returned to
-        the pool when closed, and will instead be literally closed.
-        The containing ConnectionRecord is separated from the DB-API
-        connection, and will create a new connection when next used.
 
-        Note that any overall connection limiting constraints imposed
-        by a Pool implementation may be violated after a detach, as
-        the detached connection is removed from the pool's knowledge
-        and control.
+        This means that the connection will no longer be returned to the
+        pool when closed, and will instead be literally closed.  The
+        containing ConnectionRecord is separated from the DB-API connection,
+        and will create a new connection when next used.
+
+        Note that any overall connection limiting constraints imposed by a
+        Pool implementation may be violated after a detach, as the detached
+        connection is removed from the pool's knowledge and control.
         """
-        
+
         if self._connection_record is not None:
             self._connection_record.connection = None
             self._connection_record.backref = None
@@ -408,7 +410,7 @@ class _CursorFairy(object):
 
     def invalidate(self, e=None):
         self.__parent.invalidate(e=e)
-    
+
     def close(self):
         try:
             self.cursor.close()
@@ -421,14 +423,14 @@ class _CursorFairy(object):
         return getattr(self.cursor, key)
 
 class SingletonThreadPool(Pool):
-    """Maintains a single connection per thread.
+    """A Pool that maintains one connection per thread.
 
-    Maintains one connection per each thread, never moving a
-    connection to a thread other than the one which it was created in.
+    Maintains one connection per each thread, never moving a connection to a
+    thread other than the one which it was created in.
 
-    This is used for SQLite, which both does not handle multithreading
-    by default, and also requires a singleton connection if a :memory:
-    database is being used.
+    This is used for SQLite, which both does not handle multithreading by
+    default, and also requires a singleton connection if a :memory: database
+    is being used.
 
     Options are the same as those of Pool, as well as:
 
@@ -444,11 +446,11 @@ class SingletonThreadPool(Pool):
 
     def recreate(self):
         self.log("Pool recreating")
-        return SingletonThreadPool(self._creator, pool_size=self.size, recycle=self._recycle, echo=self._should_log_info, use_threadlocal=self._use_threadlocal)
-        
+        return SingletonThreadPool(self._creator, pool_size=self.size, recycle=self._recycle, echo=self._should_log_info, use_threadlocal=self._use_threadlocal, listeners=self.listeners)
+
     def dispose(self):
         """Dispose of this pool.
-        
+
         this method leaves the possibility of checked-out connections
         remaining opened, so it is advised to not reuse the pool once
         dispose() is called, and to instead use a new pool constructed
@@ -461,7 +463,7 @@ class SingletonThreadPool(Pool):
             except (SystemExit, KeyboardInterrupt):
                 raise
             except:
-                # sqlite won't even let you close a conn from a thread 
+                # sqlite won't even let you close a conn from a thread
                 # that didn't create it
                 pass
             del self._conns[key]
@@ -498,7 +500,7 @@ class SingletonThreadPool(Pool):
             return c
 
 class QueuePool(Pool):
-    """Use ``Queue.Queue`` to maintain a fixed-size list of connections.
+    """A Pool that imposes a limit on the number of open connections.
 
     Arguments include all those used by the base Pool class, as well
     as:
@@ -538,7 +540,7 @@ class QueuePool(Pool):
 
     def recreate(self):
         self.log("Pool recreating")
-        return QueuePool(self._creator, pool_size=self._pool.maxsize, max_overflow=self._max_overflow, timeout=self._timeout, recycle=self._recycle, echo=self._should_log_info, use_threadlocal=self._use_threadlocal)
+        return QueuePool(self._creator, pool_size=self._pool.maxsize, max_overflow=self._max_overflow, timeout=self._timeout, recycle=self._recycle, echo=self._should_log_info, use_threadlocal=self._use_threadlocal, listeners=self.listeners)
 
     def do_return_conn(self, conn):
         try:
@@ -609,10 +611,10 @@ class QueuePool(Pool):
         return self._pool.maxsize - self._pool.qsize() + self._overflow
 
 class NullPool(Pool):
-    """A Pool implementation which does not pool connections.
+    """A Pool which does not pool connections.
 
-    Instead it literally opens and closes the underlying DB-API
-    connection per each connection open/close.
+    Instead it literally opens and closes the underlying DB-API connection
+    per each connection open/close.
     """
 
     def status(self):
@@ -628,8 +630,7 @@ class NullPool(Pool):
         return self.create_connection()
 
 class StaticPool(Pool):
-    """A Pool implementation which stores exactly one connection that is 
-    returned for all requests."""
+    """A Pool of exactly one connection, used for all requests."""
 
     def __init__(self, creator, **params):
         Pool.__init__(self, creator, **params)
@@ -650,15 +651,14 @@ class StaticPool(Pool):
 
     def do_get(self):
         return self.connection
-    
-    
-class AssertionPool(Pool):
-    """A Pool implementation that allows at most one checked out
-    connection at a time.
 
-    This will raise an exception if more than one connection is
-    checked out at a time.  Useful for debugging code that is using
-    more connections than desired.
+
+class AssertionPool(Pool):
+    """A Pool that allows at most one checked out connection at any given time.
+
+    This will raise an exception if more than one connection is checked out
+    at a time.  Useful for debugging code that is using more connections
+    than desired.
     """
 
     ## TODO: modify this to handle an arbitrary connection count.
@@ -688,19 +688,21 @@ class AssertionPool(Pool):
         return c
 
 class _DBProxy(object):
-    """Proxy a DB-API 2.0 connect() call to a pooled connection keyed to
-    the specific connect parameters. Other attributes are proxied
-    through via __getattr__.
+    """Layers connection pooling behavior on top of a standard DB-API module.
+
+    Proxies a DB-API 2.0 connect() call to a connection pool keyed to the
+    specific connect parameters. Other functions and attributes are delegated
+    to the underlying DB-API module.
     """
 
-    def __init__(self, module, poolclass = QueuePool, **params):
-        """Initialize a new proxy.
+    def __init__(self, module, poolclass=QueuePool, **params):
+        """Initializes a new proxy.
 
         module
-          a DB-API 2.0 module.
+          a DB-API 2.0 module
 
         poolclass
-          a Pool class, defaulting to QueuePool.
+          a Pool class, defaulting to QueuePool
 
         Other parameters are sent to the Pool object's constructor.
         """
@@ -732,16 +734,14 @@ class _DBProxy(object):
     def connect(self, *args, **params):
         """Activate a connection to the database.
 
-        Connect to the database using this DBProxy's module and the
-        given connect arguments.  If the arguments match an existing
-        pool, the connection will be returned from the pool's current
-        thread-local connection instance, or if there is no
-        thread-local connection instance it will be checked out from
-        the set of pooled connections.
+        Connect to the database using this DBProxy's module and the given
+        connect arguments.  If the arguments match an existing pool, the
+        connection will be returned from the pool's current thread-local
+        connection instance, or if there is no thread-local connection
+        instance it will be checked out from the set of pooled connections.
 
-        If the pool has no available connections and allows new
-        connections to be created, a new database connection will be
-        made.
+        If the pool has no available connections and allows new connections
+        to be created, a new database connection will be made.
         """
 
         return self.get_pool(*args, **params).connect()

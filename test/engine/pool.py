@@ -32,19 +32,19 @@ class MockCursor(object):
     def close(self):
         pass
 mock_dbapi = MockDBAPI()
-         
+
 class PoolTest(PersistTest):
-    
+
     def setUp(self):
         pool.clear_managers()
 
     def testmanager(self):
         manager = pool.manage(mock_dbapi, use_threadlocal=True)
-        
+
         connection = manager.connect('foo.db')
         connection2 = manager.connect('foo.db')
         connection3 = manager.connect('bar.db')
-        
+
         print "connection " + repr(connection)
         self.assert_(connection.cursor() is not None)
         self.assert_(connection is connection2)
@@ -57,10 +57,10 @@ class PoolTest(PersistTest):
             connection = manager.connect(None)
         except:
             pass
-    
+
     def testnonthreadlocalmanager(self):
         manager = pool.manage(mock_dbapi, use_threadlocal = False)
-        
+
         connection = manager.connect('foo.db')
         connection2 = manager.connect('foo.db')
 
@@ -77,12 +77,12 @@ class PoolTest(PersistTest):
 
     def _do_testqueuepool(self, useclose=False):
         p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = False)
-    
+
         def status(pool):
             tup = (pool.size(), pool.checkedin(), pool.overflow(), pool.checkedout())
             print "Pool size: %d  Connections in pool: %d Current Overflow: %d Current Checked out connections: %d" % tup
             return tup
-                
+
         c1 = p.connect()
         self.assert_(status(p) == (3,0,-2,1))
         c2 = p.connect()
@@ -117,7 +117,7 @@ class PoolTest(PersistTest):
         else:
             c2 = None
         self.assert_(status(p) == (3, 2, 0, 1))
-    
+
     def test_timeout(self):
         p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = 0, use_threadlocal = False, timeout=2)
         c1 = p.connect()
@@ -148,7 +148,7 @@ class PoolTest(PersistTest):
                     continue
                 time.sleep(4)
                 c1.close()
-            
+
         threads = []
         for i in xrange(10):
             th = threading.Thread(target=checkout)
@@ -156,17 +156,17 @@ class PoolTest(PersistTest):
             threads.append(th)
         for th in threads:
             th.join()
-        
+
         print timeouts
         assert len(timeouts) > 0
         for t in timeouts:
             assert abs(t - 3) < 1, "Not all timeouts were 3 seconds: " + repr(timeouts)
-        
+
     def _test_overflow(self, thread_count, max_overflow):
         def creator():
             time.sleep(.05)
             return mock_dbapi.connect('foo.db')
-            
+
         p = pool.QueuePool(creator=creator,
                            pool_size=3, timeout=2,
                            max_overflow=max_overflow)
@@ -196,7 +196,7 @@ class PoolTest(PersistTest):
 
     def test_max_overflow(self):
         self._test_overflow(40, 5)
-        
+
     def test_mixed_close(self):
         p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True)
         c1 = p.connect()
@@ -220,7 +220,7 @@ class PoolTest(PersistTest):
         assert p.checkedout() == 0
         c3 = p.connect()
         assert c3 is not None
-    
+
     def test_trick_the_counter(self):
         """this is a "flaw" in the connection pool; since threadlocal uses a single ConnectionFairy per thread
         with an open/close counter, you can fool the counter into giving you a ConnectionFairy with an
@@ -239,7 +239,7 @@ class PoolTest(PersistTest):
 
     def test_recycle(self):
         p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False, recycle=3)
-        
+
         c1 = p.connect()
         c_id = id(c1.connection)
         c1.close()
@@ -249,7 +249,7 @@ class PoolTest(PersistTest):
         time.sleep(4)
         c3= p.connect()
         assert id(c3.connection) != c_id
-    
+
     def test_invalidate(self):
         dbapi = MockDBAPI()
         p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False)
@@ -260,7 +260,7 @@ class PoolTest(PersistTest):
         assert c1.connection.id == c_id
         c1.invalidate()
         c1 = None
-        
+
         c1 = p.connect()
         assert c1.connection.id != c_id
 
@@ -271,9 +271,9 @@ class PoolTest(PersistTest):
         assert p2.size() == 1
         assert p2._use_threadlocal is False
         assert p2._max_overflow == 0
-        
+
     def test_reconnect(self):
-        """tests reconnect operations at the pool level.  SA's engine/dialect includes another 
+        """tests reconnect operations at the pool level.  SA's engine/dialect includes another
         layer of reconnect support for 'database was lost' errors."""
         dbapi = MockDBAPI()
         p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False)
@@ -313,7 +313,7 @@ class PoolTest(PersistTest):
         assert not con.closed
         c1.close()
         assert con.closed
-    
+
     def test_threadfairy(self):
         p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True)
         c1 = p.connect()
@@ -331,7 +331,7 @@ class PoolTest(PersistTest):
         for p in (
             pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True),
             pool.SingletonThreadPool(creator = lambda: mock_dbapi.connect('foo.db'), use_threadlocal = True)
-        ):   
+        ):
             c1 = p.connect()
             c2 = p.connect()
             self.assert_(c1 is c2)
@@ -359,7 +359,7 @@ class PoolTest(PersistTest):
                 c1.close()
 
             c1 = c2 = c3 = None
-            
+
             # extra tests with QueuePool to ensure connections get __del__()ed when dereferenced
             if isinstance(p, pool.QueuePool):
                 self.assert_(p.checkedout() == 0)
@@ -459,11 +459,12 @@ class PoolTest(PersistTest):
             #, pool_size=1, max_overflow=0, **kw)
 
         def assert_listeners(p, total, conn, cout, cin):
-            self.assert_(len(p.listeners) == total)
-            self.assert_(len(p._on_connect) == conn)
-            self.assert_(len(p._on_checkout) == cout)
-            self.assert_(len(p._on_checkin) == cin)
-            
+            for instance in (p, p.recreate()):
+                self.assert_(len(instance.listeners) == total)
+                self.assert_(len(instance._on_connect) == conn)
+                self.assert_(len(instance._on_checkout) == cout)
+                self.assert_(len(instance._on_checkin) == cin)
+
         p = _pool()
         assert_listeners(p, 0, 0, 0, 0)
 
@@ -495,7 +496,7 @@ class PoolTest(PersistTest):
 
         snoop.clear()
 
-        # this one depends on immediate gc 
+        # this one depends on immediate gc
         c = p.connect()
         cc = c.connection
         snoop.assert_in(cc, False, True, False)
@@ -550,7 +551,7 @@ class PoolTest(PersistTest):
 
     def tearDown(self):
        pool.clear_managers()
-        
-        
+
+
 if __name__ == "__main__":
-    testbase.main()        
+    testbase.main()
