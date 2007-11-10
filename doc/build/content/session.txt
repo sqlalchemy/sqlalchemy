@@ -222,10 +222,6 @@ The session is also keeping track of all newly created (i.e. pending) objects, a
     # persistent objects that have been marked as deleted via session.delete(obj)
     session.deleted
 
-Note that if a session is created with the `weak_identity_map` flag, an item which is marked as "dirty" will be silently removed from the session if the item falls out of scope in the user application.  This is because the unit of work does not look for "dirty" changes except for within a flush operation (or any time the session.dirty collection is accessed). 
-
-However, the `new` and `deleted` collections are strong-referencing sets.  Even if you're using `weak_identity_map`, if you abandon all references to new or deleted objects within a session, *they are still present* in either of those two lists, and will be saved on the next flush operation, unless they are removed from the Session explicitly or the session is cleared.
-
 ### Querying
 
 The `query()` function takes one or more classes and/or mappers, along with an optional `entity_name` parameter, and returns a new `Query` object which will issue mapper queries within the context of this Session.  For each mapper is passed, the Query uses that mapper.  For each class, the Query will locate the primary mapper for the class using `class_mapper()`.
