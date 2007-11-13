@@ -22,14 +22,14 @@ from sqlalchemy.util import Decimal, pickle
 class _UserTypeAdapter(type):
     """adapts 0.3 style user-defined types with convert_bind_param/convert_result_value
     to use newer bind_processor()/result_processor() methods."""
-    
+
     def __init__(cls, clsname, bases, dict):
         if not hasattr(cls.convert_result_value, '_sa_override'):
             cls.__instrument_result_proc(cls)
-            
+
         if not hasattr(cls.convert_bind_param, '_sa_override'):
             cls.__instrument_bind_proc(cls)
-            
+
         return super(_UserTypeAdapter, cls).__init__(clsname, bases, dict)
 
     def __instrument_bind_proc(cls, class_):
@@ -40,7 +40,7 @@ class _UserTypeAdapter(type):
         class_.super_bind_processor = class_.bind_processor
         class_.bind_processor = bind_processor
 
-    def __instrument_result_proc(cls, class_):    
+    def __instrument_result_proc(cls, class_):
         def result_processor(self, dialect):
             def process(value):
                 return self.convert_result_value(value, dialect)
@@ -48,13 +48,13 @@ class _UserTypeAdapter(type):
         class_.super_result_processor = class_.result_processor
         class_.result_processor = result_processor
 
-        
+
 class AbstractType(object):
     __metaclass__ = _UserTypeAdapter
-    
+
     def __init__(self, *args, **kwargs):
         pass
-        
+
     def copy_value(self, value):
         return value
 
@@ -78,10 +78,10 @@ class AbstractType(object):
         else:
             return value
     convert_result_value._sa_override = True
-    
+
     def convert_bind_param(self, value, dialect):
         """Legacy convert_bind_param() compatability method.
-        
+
         This adapter method is provided for user-defined types that implement
         the older convert_* interface and need to call their super method.
         These calls are adapted behind the scenes to use the newer
@@ -99,29 +99,29 @@ class AbstractType(object):
         else:
             return value
     convert_bind_param._sa_override = True
-    
+
     def bind_processor(self, dialect):
         """Defines a bind parameter processing function."""
-        
+
         return None
 
     def result_processor(self, dialect):
         """Defines a result-column processing function."""
-        
+
         return None
 
     def compare_values(self, x, y):
         """compare two values for equality."""
-        
+
         return x == y
 
     def is_mutable(self):
         """return True if the target Python type is 'mutable'.
-        
+
         This allows systems like the ORM to know if an object
         can be considered 'not changed' by identity alone.
         """
-        
+
         return False
 
     def get_dbapi_type(self, dbapi):
@@ -131,16 +131,19 @@ class AbstractType(object):
         """
 
         return None
-    
+
     def adapt_operator(self, op):
-        """given an operator from the sqlalchemy.sql.operators package, 
+        """given an operator from the sqlalchemy.sql.operators package,
         translate it to a new operator based on the semantics of this type.
-        
+
         By default, returns the operator unchanged."""
         return op
-        
+
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, ",".join(["%s=%s" % (k, getattr(self, k)) for k in inspect.getargspec(self.__init__)[0][1:]]))
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            ",".join(["%s=%s" % (k, getattr(self, k, None))
+                      for k in inspect.getargspec(self.__init__)[0][1:]]))
 
 class TypeEngine(AbstractType):
     def dialect_impl(self, dialect):
@@ -151,33 +154,33 @@ class TypeEngine(AbstractType):
             return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
         except KeyError:
             return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
-    
+
     def __getstate__(self):
         d = self.__dict__.copy()
         d['_impl_dict'] = {}
         return d
-        
+
     def get_col_spec(self):
         raise NotImplementedError()
 
 
     def bind_processor(self, dialect):
         return None
-        
+
     def result_processor(self, dialect):
         return None
-        
+
     def adapt(self, cls):
-        return cls()   
-    
+        return cls()
+
     def get_search_list(self):
-        """return a list of classes to test for a match 
+        """return a list of classes to test for a match
         when adapting this type to a dialect-specific type.
-        
+
         """
-        
+
         return self.__class__.__mro__[0:-1]
-        
+
 class TypeDecorator(AbstractType):
     def __init__(self, *args, **kwargs):
         if not hasattr(self.__class__, 'impl'):
@@ -202,13 +205,13 @@ class TypeDecorator(AbstractType):
 
     def load_dialect_impl(self, dialect):
         """loads the dialect-specific implementation of this type.
-        
+
         by default calls dialect.type_descriptor(self.impl), but
         can be overridden to provide different behavior.
         """
 
         return dialect.type_descriptor(self.impl)
-        
+
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying implementation."""
 
@@ -295,7 +298,7 @@ class Concatenable(object):
             return operators.concat_op
         else:
             return op
-    
+
 class String(Concatenable, TypeEngine):
     def __init__(self, length=None, convert_unicode=False):
         self.length = length
@@ -314,7 +317,7 @@ class String(Concatenable, TypeEngine):
             return process
         else:
             return None
-        
+
     def result_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
             def process(value):
@@ -343,7 +346,7 @@ class Unicode(String):
     def __init__(self, length=None, **kwargs):
         kwargs['convert_unicode'] = True
         super(Unicode, self).__init__(length=length, **kwargs)
-    
+
 class Integer(TypeEngine):
     """Integer datatype."""
 
@@ -376,7 +379,7 @@ class Numeric(TypeEngine):
             else:
                 return value
         return process
-    
+
     def result_processor(self, dialect):
         if self.asdecimal:
             def process(value):
@@ -392,7 +395,7 @@ class Float(Numeric):
     def __init__(self, precision = 10, asdecimal=False, **kwargs):
         self.precision = precision
         self.asdecimal = asdecimal
-        
+
     def adapt(self, impltype):
         return impltype(precision=self.precision, asdecimal=self.asdecimal)
 
@@ -438,7 +441,7 @@ class Binary(TypeEngine):
             else:
                 return None
         return process
-        
+
     def adapt(self, impltype):
         return impltype(length=self.length)
 
@@ -470,7 +473,7 @@ class PickleType(MutableType, TypeDecorator):
                     return None
                 return impl_process(dumps(value, protocol))
         return process
-    
+
     def result_processor(self, dialect):
         impl_process = self.impl.result_processor(dialect)
         loads = self.pickler.loads
@@ -485,7 +488,7 @@ class PickleType(MutableType, TypeDecorator):
                     return None
                 return loads(str(impl_process(value)))
         return process
-        
+
     def copy_value(self, value):
         if self.mutable:
             return self.pickler.loads(self.pickler.dumps(value, self.protocol))
@@ -505,7 +508,7 @@ class PickleType(MutableType, TypeDecorator):
 
 class Boolean(TypeEngine):
     pass
-    
+
 class Interval(TypeDecorator):
     """Type to be used in Column statements to store python timedeltas.
 
@@ -524,24 +527,24 @@ class Interval(TypeDecorator):
 
     def load_dialect_impl(self, dialect):
         """Checks if engine has native implementation of timedelta python type,
-        if so it returns right class to handle it, if there is no native support, 
+        if so it returns right class to handle it, if there is no native support,
         it fallback to engine's DateTime implementation class
         """
         if not hasattr(self,'__supported'):
             import sqlalchemy.databases.postgres as pg
             self.__supported = {pg.PGDialect:pg.PGInterval}
             del pg
-            
+
         if self.__hasNativeImpl(dialect):
             #For now, only PostgreSQL has native timedelta types support
             return self.__supported[dialect.__class__]()
         else:
             #All others should fallback to DateTime
             return dialect.type_descriptor(DateTime)
-        
+
     def __hasNativeImpl(self,dialect):
         return dialect.__class__ in self.__supported
-    
+
     def bind_processor(self, dialect):
         impl_processor = self.impl.bind_processor(dialect)
         if self.__hasNativeImpl(dialect):
@@ -559,7 +562,7 @@ class Interval(TypeDecorator):
                         return None
                     return impl_processor(zero_timestamp + value)
             return process
-            
+
     def result_processor(self, dialect):
         impl_processor = self.impl.result_processor(dialect)
         if self.__hasNativeImpl(dialect):
@@ -577,7 +580,7 @@ class Interval(TypeDecorator):
                         return None
                     return impl_processor(value) - zero_timestamp
             return process
-            
+
 class FLOAT(Float): pass
 class TEXT(String): pass
 class NUMERIC(Numeric): pass
