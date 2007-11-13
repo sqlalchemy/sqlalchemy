@@ -142,7 +142,7 @@ class AbstractType(object):
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
-            ",".join(["%s=%s" % (k, getattr(self, k, None))
+            ", ".join(["%s=%r" % (k, getattr(self, k, None))
                       for k in inspect.getargspec(self.__init__)[0][1:]]))
 
 class TypeEngine(AbstractType):

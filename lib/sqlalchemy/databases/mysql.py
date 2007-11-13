@@ -283,7 +283,7 @@ class _StringType(object):
                 params[attr] = val
 
         return "%s(%s)" % (self.__class__.__name__,
-                           ','.join(['%s=%s' % (k, params[k]) for k in params]))
+                           ', '.join(['%s=%r' % (k, params[k]) for k in params]))
 
 
 class MSNumeric(sqltypes.Numeric, _NumericType):
