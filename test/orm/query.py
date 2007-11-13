@@ -349,7 +349,12 @@ class AggregateTest(QueryTest):
         sess = create_session()
         assert sess.query(Order).apply_sum(Order.user_id * Order.address_id).filter(Order.id.in_([2, 3, 4])).one() == 79
 
+    def test_having(self):
+        sess = create_session()
+        assert [User(name=u'ed',id=8)] == sess.query(User).group_by([c for c in User.c]).join('addresses').having(func.count(Address.c.id)> 2).all()
 
+        assert [User(name=u'jack',id=7), User(name=u'fred',id=9)] == sess.query(User).group_by([c for c in User.c]).join('addresses').having(func.count(Address.c.id)< 2).all()
+        
 class CountTest(QueryTest):
     def test_basic(self):
         assert 4 == create_session().query(User).count()

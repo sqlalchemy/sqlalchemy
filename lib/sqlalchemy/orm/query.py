@@ -37,6 +37,7 @@ class Query(object):
         self._statement = None
         self._params = {}
         self._criterion = None
+        self._having = None
         self._column_aggregate = None
         self._joinpoint = self.mapper
         self._aliases = None
@@ -466,7 +467,27 @@ class Query(object):
         else:
             q._group_by = q._group_by + util.to_list(criterion)
         return q
-
+    
+    def having(self, criterion):
+        """apply a HAVING criterion to the quer and return the newly resulting ``Query``."""
+        
+        if isinstance(criterion, basestring):
+            criterion = sql.text(criterion)
+            
+        if criterion is not None and not isinstance(criterion, sql.ClauseElement):
+            raise exceptions.ArgumentError("having() argument must be of type sqlalchemy.sql.ClauseElement or string")
+        
+        
+        if self._aliases is not None:
+            criterion = self._aliases.adapt_clause(criterion)
+            
+        q = self._clone()
+        if q._having is not None:
+            q._having = q._having & criterion
+        else:
+            q._having = criterion
+        return q
+        
     def join(self, prop, id=None, aliased=False, from_joinpoint=False):
         """create a join of this ``Query`` object's criterion
         to a relationship and return the newly resulting ``Query``.
@@ -918,7 +939,7 @@ class Query(object):
     def _select_args(self):
         """Return a dictionary of attributes that can be applied to a ``sql.Select`` statement.
         """
-        return {'limit':self._limit, 'offset':self._offset, 'distinct':self._distinct, 'group_by':self._group_by or None}
+        return {'limit':self._limit, 'offset':self._offset, 'distinct':self._distinct, 'group_by':self._group_by or None, 'having':self._having or None}
 
 
     def _get_entity_clauses(self, m):
