@@ -905,8 +905,25 @@ class DeferredTest(MapperSuperTest):
         self.assert_sql(testbase.db, go, [
             ("SELECT orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen, orders.order_id AS orders_order_id FROM orders ORDER BY %s" % orderby, {}),
         ])
+        
+    def test_locates_col(self):
+        """test that manually adding a col to the result undefers the column"""
+        mapper(Order, orders, properties={
+            'description':deferred(orders.c.description)
+        })
 
-
+        sess = create_session()
+        o1 = sess.query(Order).first()
+        def go():
+            assert o1.description == 'order 1'
+        self.assert_sql_count(testbase.db, go, 1)
+        
+        sess = create_session()
+        o1 = sess.query(Order).add_column(orders.c.description).first()[0]
+        def go():
+            assert o1.description == 'order 1'
+        self.assert_sql_count(testbase.db, go, 0)
+        
     def test_deepoptions(self):
         m = mapper(User, users, properties={
             'orders':relation(mapper(Order, orders, properties={

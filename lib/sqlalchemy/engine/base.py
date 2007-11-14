@@ -1406,6 +1406,8 @@ class ResultProxy(object):
 
     def _has_key(self, row, key):
         try:
+            # _key_cache uses __missing__ in 2.5, so not much alternative
+            # to catching KeyError
             self._key_cache[key]
             return True
         except KeyError:

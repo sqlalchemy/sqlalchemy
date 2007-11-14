@@ -96,6 +96,11 @@ class ColumnFinder(visitors.ClauseVisitor):
     def __iter__(self):
         return iter(self.columns)
 
+def find_columns(selectable):
+    cf = ColumnFinder()
+    cf.traverse(selectable)
+    return iter(cf)
+    
 class ColumnsInClause(visitors.ClauseVisitor):
     """Given a selectable, visit clauses and determine if any columns
     from the clause are in the selectable.

@@ -124,6 +124,39 @@ class EagerTest(QueryTest):
             User(id=10, addresses=[])
         ] == sess.query(User).all()
 
+    def test_deferred_fk_col(self):
+        mapper(Address, addresses, properties={
+            'user_id':deferred(addresses.c.user_id),
+            'user':relation(User, lazy=False)
+        })
+        mapper(User, users)
+
+        assert [Address(id=1, user=User(id=7)), Address(id=4, user=User(id=8)), Address(id=5, user=User(id=9))] == create_session().query(Address).filter(Address.id.in_([1, 4, 5])).all()
+
+        assert [Address(id=1, user=User(id=7)), Address(id=4, user=User(id=8)), Address(id=5, user=User(id=9))] == create_session().query(Address).filter(Address.id.in_([1, 4, 5])).limit(3).all()
+
+        sess = create_session()
+        a = sess.query(Address).get(1)
+        def go():
+            assert a.user_id==7
+        # assert that the eager loader added 'user_id' to the row
+        # and deferred loading of that col was disabled
+        self.assert_sql_count(testbase.db, go, 0)
+        
+        # do the mapping in reverse
+        # (we would have just used an "addresses" backref but the test fixtures then require the whole
+        # backref to be set up, lazy loaders trigger, etc.)
+        clear_mappers()
+
+        mapper(Address, addresses, properties={
+            'user_id':deferred(addresses.c.user_id),
+        })
+        mapper(User, users, properties={'addresses':relation(Address, lazy=False)})
+
+        assert [User(id=7, addresses=[Address(id=1)])] == create_session().query(User).filter(User.id==7).options(eagerload('addresses')).all()
+
+        assert [User(id=7, addresses=[Address(id=1)])] == create_session().query(User).limit(1).filter(User.id==7).options(eagerload('addresses')).all()
+        
     def test_many_to_many(self):
 
         mapper(Keyword, keywords)

@@ -134,7 +134,7 @@ class DeferredColumnLoader(LoaderStrategy):
     """Deferred column loader, a per-column or per-column-group lazy loader."""
     
     def create_row_processor(self, selectcontext, mapper, row):
-        if self.group is not None and selectcontext.attributes.get(('undefer', self.group), False):
+        if (self.group is not None and selectcontext.attributes.get(('undefer', self.group), False)) or self.columns[0] in row:
             return self.parent_property._get_strategy(ColumnLoader).create_row_processor(selectcontext, mapper, row)
         elif not self.is_class_level or len(selectcontext.options):
             def new_execute(instance, row, **flags):
@@ -532,10 +532,24 @@ class EagerLoader(AbstractRelationLoader):
         
         if self.secondaryjoin is not None:
             context.eager_joins = sql.outerjoin(towrap, clauses.secondary, clauses.primaryjoin).outerjoin(clauses.alias, clauses.secondaryjoin)
+            
+            # TODO: check for "deferred" cols on parent/child tables here ?  this would only be
+            # useful if the primary/secondaryjoin are against non-PK columns on the tables (and therefore might be deferred)
+            
             if self.order_by is False and self.secondary.default_order_by() is not None:
                 context.eager_order_by += clauses.secondary.default_order_by()
         else:
             context.eager_joins = towrap.outerjoin(clauses.alias, clauses.primaryjoin)
+
+            # ensure all the cols on the parent side are actually in the
+            # columns clause (i.e. are not deferred), so that aliasing applied by the Query propagates 
+            # those columns outward.  This has the effect of "undefering" those columns.
+            for col in sql_util.find_columns(clauses.primaryjoin):
+                if localparent.mapped_table.c.contains_column(col):
+                    context.primary_columns.append(col)
+                else:
+                    context.secondary_columns.append(col)
+                
             if self.order_by is False and clauses.alias.default_order_by() is not None:
                 context.eager_order_by += clauses.alias.default_order_by()
 

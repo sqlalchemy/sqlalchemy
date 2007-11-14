@@ -884,14 +884,14 @@ class Query(object):
             # locate all embedded Column clauses so they can be added to the
             # "inner" select statement where they'll be available to the enclosing
             # statement's "order by"
+
+            cf = sql_util.ColumnFinder()
+
             if order_by:
                 order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
-                cf = sql_util.ColumnFinder()
                 for o in order_by:
                     cf.traverse(o)
-            else:
-                cf = []
-
+            
             s2 = sql.select(context.primary_columns + list(cf), whereclause, from_obj=context.from_clauses, use_labels=True, correlate=False, **self._select_args())
 
             if order_by:
