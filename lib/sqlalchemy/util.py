@@ -511,7 +511,7 @@ class IdentitySet(object):
     """
 
     def __init__(self, iterable=None):
-        self._members = {}
+        self._members = _IterableUpdatableDict()
         if iterable:
             for o in iterable:
                 self.add(o)
@@ -701,6 +701,19 @@ class IdentitySet(object):
 
     def __repr__(self):
         return '%s(%r)' % (type(self).__name__, self._members.values())
+
+if sys.version_info >= (2, 4):
+    _IterableUpdatableDict = dict
+else:
+    class _IterableUpdatableDict(dict):
+        """A dict that can update(iterable) like Python 2.4+'s dict."""
+        def update(self, __iterable=None, **kw):
+            if __iterable is not None:
+                if not isinstance(__iterable, dict):
+                    __iterable = dict(__iterable)
+                dict.update(self, __iterable)
+            if kw:
+                dict.update(self, **kw)
 
 def _iter_id(iterable):
     """Generator: ((id(o), o) for o in iterable)."""
