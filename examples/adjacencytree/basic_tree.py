@@ -1,18 +1,18 @@
-"""a basic Adjacency List model tree."""
+"""A basic Adjacency List model tree."""
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from sqlalchemy.util import OrderedDict
+from sqlalchemy import MetaData, Table, Column, Sequence, ForeignKey
+from sqlalchemy import Integer, String
+from sqlalchemy.orm import create_session, mapper, relation, backref
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 metadata = MetaData('sqlite:///')
 metadata.bind.echo = True
 
 trees = Table('treenodes', metadata,
-    Column('node_id', Integer, Sequence('treenode_id_seq',optional=False), primary_key=True),
-    Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
-    Column('node_name', String(50), nullable=False),
-    )
+    Column('id', Integer, Sequence('treenode_id_seq', optional=True),
+           primary_key=True),
+    Column('parent_id', Integer, ForeignKey('treenodes.id'), nullable=True),
+    Column('name', String(50), nullable=False))
 
 
 class TreeNode(object):
@@ -32,23 +32,20 @@ class TreeNode(object):
     def __str__(self):
         return self._getstring(0, False)
     def _getstring(self, level, expand = False):
-        s = ('  ' * level) + "%s (%s,%s, %d)" % (self.name, self.id,self.parent_id,id(self)) + '\n'
+        s = ('  ' * level) + "%s (%s,%s, %d)" % (
+            self.name, self.id,self.parent_id,id(self)) + '\n'
         if expand:
-            s += ''.join([n._getstring(level+1, True) for n in self.children.values()])
+            s += ''.join([n._getstring(level+1, True)
+                          for n in self.children.values()])
         return s
     def print_nodes(self):
         return self._getstring(0, True)
-        
-mapper(TreeNode, trees, properties=dict(
-    id=trees.c.node_id,
-    name=trees.c.node_name,
-    parent_id=trees.c.parent_node_id,
-    children=relation(TreeNode, cascade="all", 
-        backref=backref("parent", remote_side=[trees.c.node_id]), collection_class=attribute_mapped_collection('name'),
-        lazy=False,
-        join_depth=3
-    ),
-))
+
+mapper(TreeNode, trees, properties={
+    'children': relation(TreeNode, cascade="all",
+                         backref=backref("parent", remote_side=[trees.c.id]),
+                         collection_class=attribute_mapped_collection('name'),
+                         lazy=False, join_depth=3)})
 
 print "\n\n\n----------------------------"
 print "Creating Tree Table:"
