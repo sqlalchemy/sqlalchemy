@@ -153,9 +153,33 @@ class EagerTest(QueryTest):
         })
         mapper(User, users, properties={'addresses':relation(Address, lazy=False)})
 
-        assert [User(id=7, addresses=[Address(id=1)])] == create_session().query(User).filter(User.id==7).options(eagerload('addresses')).all()
+        assert [User(id=7, addresses=[Address(id=1)])] == create_session().query(User).filter(User.id==7).all()
 
-        assert [User(id=7, addresses=[Address(id=1)])] == create_session().query(User).limit(1).filter(User.id==7).options(eagerload('addresses')).all()
+        assert [User(id=7, addresses=[Address(id=1)])] == create_session().query(User).limit(1).filter(User.id==7).all()
+
+        sess = create_session()
+        u = sess.query(User).get(7)
+        def go():
+            assert u.addresses[0].user_id==7
+        # assert that the eager loader didn't have to affect 'user_id' here
+        # and that its still deferred
+        self.assert_sql_count(testbase.db, go, 1)
+        
+        clear_mappers()
+        
+        mapper(User, users, properties={'addresses':relation(Address, lazy=False)})
+        mapper(Address, addresses, properties={
+            'user_id':deferred(addresses.c.user_id),
+            'dingalings':relation(Dingaling, lazy=False)
+        })
+        mapper(Dingaling, dingalings, properties={
+            'address_id':deferred(dingalings.c.address_id)
+        })
+        sess = create_session()
+        def go():
+            u = sess.query(User).limit(1).get(8)
+            assert User(id=8, addresses=[Address(id=2, dingalings=[Dingaling(id=1)]), Address(id=3), Address(id=4)]) == u
+        self.assert_sql_count(testbase.db, go, 1)
         
     def test_many_to_many(self):
 

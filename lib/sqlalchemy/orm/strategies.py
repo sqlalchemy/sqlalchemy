@@ -547,8 +547,6 @@ class EagerLoader(AbstractRelationLoader):
             for col in sql_util.find_columns(clauses.primaryjoin):
                 if localparent.mapped_table.c.contains_column(col):
                     context.primary_columns.append(col)
-                else:
-                    context.secondary_columns.append(col)
                 
             if self.order_by is False and clauses.alias.default_order_by() is not None:
                 context.eager_order_by += clauses.alias.default_order_by()

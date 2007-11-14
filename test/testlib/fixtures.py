@@ -69,6 +69,7 @@ class Order(Base):pass
 class Item(Base):pass
 class Keyword(Base):pass
 class Address(Base):pass
+class Dingaling(Base):pass
 
 metadata = MetaData()
 
@@ -89,6 +90,12 @@ addresses = Table('addresses', metadata,
     Column('user_id', None, ForeignKey('users.id')),
     Column('email_address', String(50), nullable=False))
 
+dingalings = Table("dingalings", metadata, 
+    Column('id', Integer, primary_key=True),
+    Column('address_id', None, ForeignKey('addresses.id')),
+    Column('data', String(30))
+    )
+    
 items = Table('items', metadata, 
     Column('id', Integer, primary_key=True),
     Column('description', String(30), nullable=False)
@@ -121,6 +128,10 @@ def install_fixture_data():
         dict(id = 3, user_id = 8, email_address = "ed@bettyboop.com"),
         dict(id = 4, user_id = 8, email_address = "ed@lala.com"),
         dict(id = 5, user_id = 9, email_address = "fred@fred.com"),
+    )
+    dingalings.insert().execute(
+        dict(id=1, address_id=2, data='ding 1/2'),
+        dict(id=2, address_id=5, data='ding 2/5'),
     )
     orders.insert().execute(
         dict(id = 1, user_id = 7, description = 'order 1', isopen=0, address_id=1),
