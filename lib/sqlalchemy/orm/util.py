@@ -252,7 +252,10 @@ def create_row_adapter(from_, to, equivalent_columns=None):
         def __init__(self, row):
             self.row = row
         def __contains__(self, key):
-            return key in self.row or (key in map and map[key] in self.row)
+            if key in map:
+                return map[key] in self.row
+            else:
+                return key in self.row
         def has_key(self, key):
             return key in self
         def __getitem__(self, key):

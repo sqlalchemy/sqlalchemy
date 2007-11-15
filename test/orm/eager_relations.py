@@ -581,6 +581,41 @@ class SelfReferentialEagerTest(ORMTest):
             ]) == d
         self.assert_sql_count(testbase.db, go, 1)
 
+    def test_with_deferred(self):
+        class Node(Base):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relation(Node, lazy=False, join_depth=3),
+            'data':deferred(nodes.c.data)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        sess.save(n1)
+        sess.flush()
+        sess.clear()
+
+        def go():
+            assert Node(data='n1', children=[Node(data='n11'), Node(data='n12')]) == sess.query(Node).first()
+        self.assert_sql_count(testbase.db, go, 4)
+        
+        sess.clear()
+
+        def go():
+            assert Node(data='n1', children=[Node(data='n11'), Node(data='n12')]) == sess.query(Node).options(undefer('data')).first()
+        self.assert_sql_count(testbase.db, go, 3)
+
+        sess.clear()
+        
+        def go():
+            assert Node(data='n1', children=[Node(data='n11'), Node(data='n12')]) == sess.query(Node).options(undefer('data'), undefer('children.data')).first()
+        self.assert_sql_count(testbase.db, go, 1)
+        
+        
+        
     def test_options(self):
         class Node(Base):
             def append(self, node):
