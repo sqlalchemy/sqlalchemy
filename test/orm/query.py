@@ -363,6 +363,30 @@ class DistinctTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).distinct().all()
         assert [User(id=7), User(id=9), User(id=8),User(id=10)] == create_session().query(User).distinct().order_by(desc(User.name)).all()
+
+    def test_joined(self):
+        """test that orderbys from a joined table get placed into the columns clause when DISTINCT is used"""
+        
+        sess = create_session()
+        q = sess.query(User).join('addresses').distinct().order_by(desc(Address.email_address))
+
+        assert [User(id=7), User(id=9), User(id=8)] == q.all()
+
+        sess.clear()
+        
+        # test that it works on embedded eagerload/LIMIT subquery 
+        q = sess.query(User).join('addresses').distinct().options(eagerload('addresses')).order_by(desc(Address.email_address)).limit(2)
+
+        def go():
+            assert [
+                User(id=7, addresses=[
+                    Address(id=1)
+                ]), 
+                User(id=9, addresses=[
+                    Address(id=5)
+                ]), 
+            ] == q.all()
+        self.assert_sql_count(testbase.db, go, 1)
         
     
 class TextTest(QueryTest):
