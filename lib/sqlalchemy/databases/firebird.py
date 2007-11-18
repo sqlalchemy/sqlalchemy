@@ -354,11 +354,11 @@ class FBCompiler(compiler.DefaultCompiler):
         else:
             return self.process(alias.original, **kwargs)
 
-    def visit_function(self, func):
+    def apply_function_parens(self, func):
         if func.clauses:
-            return super(FBCompiler, self).visit_function(func)
+            return super(FBCompiler, self).apply_function_parens(func)
         else:
-            return func.name
+            return False
 
     def default_from(self):
         return " FROM rdb$database"
