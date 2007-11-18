@@ -209,6 +209,9 @@ class OperatorTest(QueryTest):
                              "\n'" + compiled + "'\n does not match\n'" +
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
 
+    def test_op(self):
+        assert str(User.name.op('ilike')('17').compile(dialect=default.DefaultDialect())) == "users.name ilike :users_name"
+        
     def test_in(self):
          self._test(User.id.in_(['a', 'b']),
                     "users.id IN (:users_id, :users_id_1)")

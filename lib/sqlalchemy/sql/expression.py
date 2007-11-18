@@ -1049,7 +1049,12 @@ class Operators(object):
 
     def __invert__(self):
         return self.operate(operators.inv)
-
+    
+    def op(self, opstring):
+        def op(b):
+            return self.operate(operators.op, opstring, b)
+        return op
+        
     def clause_element(self):
         raise NotImplementedError()
 

@@ -21,6 +21,9 @@ def is_():
 def isnot():
     raise NotImplementedError()
 
+def op(a, opstring, b):
+    return a.op(opstring)(b)
+
 def like_op(a, b):
     return a.like(b)
 
