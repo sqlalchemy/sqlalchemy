@@ -192,10 +192,11 @@ class DeferredColumnLoader(LoaderStrategy):
             else:
                 group = [self.parent_property.key]
             
+            # narrow the keys down to just those which aren't present on the instance
             group = [k for k in group if k not in instance.__dict__]
             
             if self._should_log_debug:
-                self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), group and ','.join([p.key for p in group]) or 'None'))
+                self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), group and ','.join(group) or 'None'))
 
             session = sessionlib.object_session(instance)
             if session is None:

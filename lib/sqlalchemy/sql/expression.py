@@ -2382,12 +2382,15 @@ class Alias(FromClause):
                 alias = getattr(self.original, 'name', None)
             alias = '{ANON %d %s}' % (id(self), alias or 'anon')
         self.name = alias
-        self.encodedname = alias.encode('ascii', 'backslashreplace')
         if self.selectable.oid_column is not None:
             self.oid_column = self.selectable.oid_column._make_proxy(self)
         else:
             self.oid_column = None
-
+    
+    def description(self):
+        return self.name.encode('ascii', 'backslashreplace')
+    description = property(description)
+    
     def is_derived_from(self, fromclause):
         return self.selectable.is_derived_from(fromclause)
 
@@ -2559,13 +2562,16 @@ class _ColumnClause(ColumnElement):
 
     def __init__(self, text, selectable=None, type_=None, _is_oid=False, is_literal=False):
         self.key = self.name = text
-        self.encodedname = isinstance(self.name, unicode) and self.name.encode('ascii', 'backslashreplace') or self.name
         self.table = selectable
         self.type = sqltypes.to_instance(type_)
         self._is_oid = _is_oid
         self.__label = None
         self.is_literal = is_literal
-
+    
+    def description(self):
+        return self.name.encode('ascii', 'backslashreplace')
+    description = property(description)
+    
     def _clone(self):
         # ColumnClause is immutable
         return self
@@ -2637,10 +2643,13 @@ class TableClause(FromClause):
     def __init__(self, name, *columns):
         super(TableClause, self).__init__()
         self.name = self.fullname = name
-        self.encodedname = self.name.encode('ascii', 'backslashreplace')
         self.oid_column = _ColumnClause('oid', self, _is_oid=True)
         self._export_columns(columns)
-
+    
+    def description(self):
+        return self.name.encode('ascii', 'backslashreplace')
+    description = property(description)
+    
     def _clone(self):
         # TableClause is immutable
         return self

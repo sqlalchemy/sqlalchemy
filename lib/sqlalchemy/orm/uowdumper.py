@@ -177,7 +177,7 @@ class UOWDumper(unitofwork.UOWExecutor):
     def _repr_task(self, task):
         if task.mapper is not None:
             if task.mapper.__class__.__name__ == 'Mapper':
-                name = task.mapper.class_.__name__ + "/" + task.mapper.local_table.name + "/" + str(task.mapper.entity_name)
+                name = task.mapper.class_.__name__ + "/" + task.mapper.local_table.description + "/" + str(task.mapper.entity_name)
             else:
                 name = repr(task.mapper)
         else:

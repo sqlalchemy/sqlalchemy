@@ -257,7 +257,7 @@ class Table(SchemaItem, expression.TableClause):
             ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']])
 
     def __str__(self):
-        return _get_table_key(self.encodedname, self.schema)
+        return _get_table_key(self.description, self.schema)
 
     def append_column(self, column):
         """Append a ``Column`` to this ``Table``."""
@@ -459,11 +459,11 @@ class Column(SchemaItem, expression._ColumnClause):
     def __str__(self):
         if self.table is not None:
             if self.table.named_with_column():
-                return (self.table.encodedname + "." + self.encodedname)
+                return (self.table.description + "." + self.description)
             else:
-                return self.encodedname
+                return self.description
         else:
-            return self.encodedname
+            return self.description
 
     def _get_bind(self):
         return self.table.bind
