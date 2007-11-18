@@ -557,19 +557,25 @@ class InstanceState(object):
         self.instance_dict = None
         
     def __cleanup(self, ref):
-        if self.instance_dict is None or self.instance_dict() is None:
+        # tiptoe around Python GC unpredictableness
+        instance_dict = self.instance_dict
+        if instance_dict is None:
             return
             
-        instance_dict = self.instance_dict()
-        
+        instance_dict = instance_dict()
+        if instance_dict is None:
+            return
+
         # the mutexing here is based on the assumption that gc.collect()
         # may be firing off cleanup handlers in a different thread than that
         # which is normally operating upon the instance dict.
         instance_dict._mutex.acquire()
         try:
             # if instance_dict de-refed us, or it called our
-            # _resurrect, return
-            if self.instance_dict is None or self.instance_dict() is None or self.obj() is not None:
+            # _resurrect, return.  again setting local copy
+            # to avoid the rug being pulled in between
+            id2 = self.instance_dict
+            if id2 is None or id2() is None or self.obj() is not None:
                 return
                 
             self.__resurrect(instance_dict)

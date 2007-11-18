@@ -107,7 +107,11 @@ CHANGES
   - fixed error where Query.add_column() would not accept a class-bound
     attribute as an argument; Query also raises an error if an invalid
     argument was sent to add_column() (at instances() time) [ticket:858]
-        
+
+  - added a little more checking for garbage-collection dereferences in
+    InstanceState.__cleanup() to reduce "gc ignored" errors on app
+    shutdown
+    
   - The session API has been solidified:
 
     - It's an error to session.save() an object which is already
