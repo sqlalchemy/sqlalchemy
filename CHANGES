@@ -178,6 +178,8 @@ CHANGES
   - added awareness of schema name in oracle table_names() function,
     fixes metadata.reflect(schema='someschema') [ticket:847]
 
+  - MSSQL anonymous labels for selection of functions made deterministic
+  
   - sqlite will reflect "DECIMAL" as a numeric column.
 
   - Made access dao detection more reliable [ticket:828]

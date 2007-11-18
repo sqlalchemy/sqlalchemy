@@ -43,6 +43,15 @@ class CompileTest(SQLCompileTest):
         self.assert_compile(u, "SELECT t1.col3 AS col3, t1.col4 AS col4 FROM t1 WHERE t1.col2 IN (:t1_col2, :t1_col2_1) UNION SELECT t2.col3 AS col3, t2.col4 AS col4 FROM t2 WHERE t2.col2 IN (:t2_col2, :t2_col2_1) ORDER BY col3, col4")
 
         self.assert_compile(u.alias('bar').select(), "SELECT bar.col3, bar.col4 FROM (SELECT t1.col3 AS col3, t1.col4 AS col4 FROM t1 WHERE t1.col2 IN (:t1_col2, :t1_col2_1) UNION SELECT t2.col3 AS col3, t2.col4 AS col4 FROM t2 WHERE t2.col2 IN (:t2_col2, :t2_col2_1)) AS bar")
+
+    def test_function(self):
+        self.assert_compile(func.foo(1, 2), "foo(:foo, :foo_1)")
+        self.assert_compile(func.current_time(), "current_time")
+        self.assert_compile(func.foo(), "foo()")
+
+        m = MetaData()
+        t = Table('sometable', m, Column('col1', Integer), Column('col2', Integer))
+        self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) AS max_1 FROM sometable")
         
 if __name__ == "__main__":
     testbase.main()

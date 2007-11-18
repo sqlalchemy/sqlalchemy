@@ -903,25 +903,25 @@ class MSSQLCompiler(compiler.DefaultCompiler):
                 return self.process(t.corresponding_column(column))
         return super(MSSQLCompiler, self).visit_column(column, **kwargs)
 
-    def visit_binary(self, binary):
+    def visit_binary(self, binary, **kwargs):
         """Move bind parameters to the right-hand side of an operator, where possible."""
         if isinstance(binary.left, expression._BindParamClause) and binary.operator == operator.eq:
-            return self.process(expression._BinaryExpression(binary.right, binary.left, binary.operator))
+            return self.process(expression._BinaryExpression(binary.right, binary.left, binary.operator), **kwargs)
         else:
-            return super(MSSQLCompiler, self).visit_binary(binary)
+            return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
     def label_select_column(self, select, column):
         if isinstance(column, expression._Function):
-            return column.label(column.name + "_" + hex(random.randint(0, 65535))[2:])        
+            return column.label(None)
         else:
             return super(MSSQLCompiler, self).label_select_column(select, column)
 
     function_rewrites =  {'current_date': 'getdate',
                           'length':     'len',
                           }
-    def visit_function(self, func):
+    def visit_function(self, func, **kwargs):
         func.name = self.function_rewrites.get(func.name, func.name)
-        return super(MSSQLCompiler, self).visit_function(func)            
+        return super(MSSQLCompiler, self).visit_function(func, **kwargs)
 
     def for_update_clause(self, select):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use

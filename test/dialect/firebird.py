@@ -24,8 +24,11 @@ class CompileTest(SQLCompileTest):
         self.assert_compile(func.foo(1, 2), "foo(:foo, :foo_1)")
         self.assert_compile(func.current_time(), "current_time")
         self.assert_compile(func.foo(), "foo")
-        t = table('sometable', column('col1'), column('col2'))
+        
+        m = MetaData()
+        t = Table('sometable', m, Column('col1', Integer), Column('col2', Integer))
         self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) FROM sometable")
+
         
 if __name__ == '__main__':
     testbase.main()
