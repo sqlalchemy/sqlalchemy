@@ -1591,9 +1591,9 @@ class MySQLDialect(default.DefaultDialect):
         """
 
         try:
-            return connection.properties['_mysql_server_version_info']
+            return connection.info['_mysql_server_version_info']
         except KeyError:
-            version = connection.properties['_mysql_server_version_info'] = \
+            version = connection.info['_mysql_server_version_info'] = \
               self._server_version_info(connection.connection.connection)
             return version
 
@@ -1663,8 +1663,8 @@ class MySQLDialect(default.DefaultDialect):
         """Sniff out the character set in use for connection results."""
 
         # Allow user override, won't sniff if force_charset is set.
-        if 'force_charset' in connection.properties:
-            return connection.properties['force_charset']
+        if 'force_charset' in connection.info:
+            return connection.info['force_charset']
 
         # Note: MySQL-python 1.2.1c7 seems to ignore changes made
         # on a connection via set_character_set()
@@ -1710,7 +1710,7 @@ class MySQLDialect(default.DefaultDialect):
         # http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
 
         try:
-            return connection.properties['lower_case_table_names']
+            return connection.info['lower_case_table_names']
         except KeyError:
             row = _compat_fetchone(connection.execute(
                     "SHOW VARIABLES LIKE 'lower_case_table_names'"),
@@ -1727,7 +1727,7 @@ class MySQLDialect(default.DefaultDialect):
                 else:
                     cs = int(row[1])
                 row.close()
-            connection.properties['lower_case_table_names'] = cs
+            connection.info['lower_case_table_names'] = cs
             return cs
 
     def _detect_collations(self, connection, charset=None):
@@ -1737,7 +1737,7 @@ class MySQLDialect(default.DefaultDialect):
         """
 
         try:
-            return connection.properties['collations']
+            return connection.info['collations']
         except KeyError:
             collations = {}
             if self.server_version_info(connection) < (4, 1, 0):
@@ -1746,7 +1746,7 @@ class MySQLDialect(default.DefaultDialect):
                 rs = connection.execute('SHOW COLLATION')
                 for row in _compat_fetchall(rs, charset):
                     collations[row[0]] = row[1]
-            connection.properties['collations'] = collations
+            connection.info['collations'] = collations
             return collations
 
     def _show_create_table(self, connection, table, charset=None,

@@ -61,6 +61,10 @@ CHANGES
   - Added a field ("info") for storing arbitrary data on schema items
     [ticket:573]    
 
+  - The "properties" collection on Connections has been renamed "info" to
+    match schema's writable collections.  Access is still available via
+    the "properties" name until 0.5.
+
   - fixed the close() method on Transaction when using strategy='threadlocal'
 
   - fix to compiled bind parameters to not mistakenly populate None

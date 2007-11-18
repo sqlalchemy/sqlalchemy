@@ -29,7 +29,7 @@ class PoolListener(object):
     Events also receive a ``_ConnectionRecord``, a long-lived internal
     ``Pool`` object that basically represents a "slot" in the
     connection pool.  ``_ConnectionRecord`` objects have one public
-    attribute of note: ``properties``, a dictionary whose contents are
+    attribute of note: ``info``, a dictionary whose contents are
     scoped to the lifetime of the DB-API connection managed by the
     record.  You can use this shared storage area however you like.
 
@@ -51,7 +51,7 @@ class PoolListener(object):
 
         con_record
           The ``_ConnectionRecord`` that persistently manages the connection
-          
+
         """
 
     def checkout(self, dbapi_con, con_record, con_proxy):

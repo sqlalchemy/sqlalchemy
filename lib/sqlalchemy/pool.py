@@ -199,7 +199,7 @@ class _ConnectionRecord(object):
     def __init__(self, pool):
         self.__pool = pool
         self.connection = self.__connect()
-        self.properties = {}
+        self.info = {}
         if pool._on_connect:
             for l in pool._on_connect:
                 l.connect(self.connection, self)
@@ -222,7 +222,7 @@ class _ConnectionRecord(object):
     def get_connection(self):
         if self.connection is None:
             self.connection = self.__connect()
-            self.properties.clear()
+            self.info.clear()
             if self.__pool._on_connect:
                 for l in self.__pool._on_connect:
                     l.connect(self.connection, self)
@@ -231,7 +231,7 @@ class _ConnectionRecord(object):
                 self.__pool.log("Connection %s exceeded timeout; recycling" % repr(self.connection))
             self.__close()
             self.connection = self.__connect()
-            self.properties.clear()
+            self.info.clear()
             if self.__pool._on_connect:
                 for l in self.__pool._on_connect:
                     l.connect(self.connection, self)
@@ -259,6 +259,9 @@ class _ConnectionRecord(object):
             if self.__pool._should_log_info:
                 self.__pool.log("Error on connect(): %s" % (str(e)))
             raise
+
+    properties = property(lambda self: self.info,
+                          doc="A synonym for .info, will be removed in 0.5.")
 
 def _finalize_fairy(connection, connection_record, pool, ref=None):
     if ref is not None and connection_record.backref is not ref:
@@ -304,20 +307,21 @@ class _ConnectionFairy(object):
 
     is_valid = property(lambda self:self.connection is not None)
 
-    def _get_properties(self):
-        """A property collection unique to this DB-API connection."""
+    def _get_info(self):
+        """An info collection unique to this DB-API connection."""
 
         try:
-            return self._connection_record.properties
+            return self._connection_record.info
         except AttributeError:
             if self.connection is None:
                 raise exceptions.InvalidRequestError("This connection is closed")
             try:
-                return self._detatched_properties
+                return self._detached_info
             except AttributeError:
-                self._detatched_properties = value = {}
+                self._detached_info = value = {}
                 return value
-    properties = property(_get_properties)
+    info = property(_get_info)
+    properties = property(_get_info)
 
     def invalidate(self, e=None):
         """Mark this connection as invalidated.
@@ -389,8 +393,8 @@ class _ConnectionFairy(object):
             self._connection_record.connection = None
             self._connection_record.backref = None
             self._pool.do_return_conn(self._connection_record)
-            self._detatched_properties = \
-              self._connection_record.properties.copy()
+            self._detached_info = \
+              self._connection_record.info.copy()
             self._connection_record = None
 
     def close(self):

@@ -379,28 +379,28 @@ class PoolTest(PersistTest):
                            pool_size=1, max_overflow=0, use_threadlocal=False)
 
         c = p.connect()
-        self.assert_(not c.properties)
-        self.assert_(c.properties is c._connection_record.properties)
+        self.assert_(not c.info)
+        self.assert_(c.info is c._connection_record.info)
 
-        c.properties['foo'] = 'bar'
+        c.info['foo'] = 'bar'
         c.close()
         del c
 
         c = p.connect()
-        self.assert_('foo' in c.properties)
+        self.assert_('foo' in c.info)
 
         c.invalidate()
         c = p.connect()
-        self.assert_('foo' not in c.properties)
+        self.assert_('foo' not in c.info)
 
-        c.properties['foo2'] = 'bar2'
+        c.info['foo2'] = 'bar2'
         c.detach()
-        self.assert_('foo2' in c.properties)
+        self.assert_('foo2' in c.info)
 
         c2 = p.connect()
         self.assert_(c.connection is not c2.connection)
-        self.assert_(not c2.properties)
-        self.assert_('foo2' in c.properties)
+        self.assert_(not c2.info)
+        self.assert_('foo2' in c.info)
 
     def test_listeners(self):
         dbapi = MockDBAPI()

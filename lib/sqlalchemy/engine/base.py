@@ -557,8 +557,13 @@ class Connection(Connectable):
     dialect = property(lambda s:s.engine.dialect, doc="Dialect used by this Connection.")
     connection = property(_get_connection, doc="The underlying DB-API connection managed by this Connection.")
     should_close_with_result = property(lambda s:s.__close_with_result, doc="Indicates if this Connection should be closed when a corresponding ResultProxy is closed; this is essentially an auto-release mode.")
-    properties = property(lambda s: s._get_connection().properties,
-                          doc="A collection of per-DB-API connection instance properties.")
+
+    info = property(lambda s: s._get_connection().info,
+                    doc=("A collection of per-DB-API connection instance "
+                         "properties."))
+    properties = property(lambda s: s._get_connection().info,
+                          doc=("An alias for the .info collection, will be "
+                               "removed in 0.5."))
 
     def connect(self):
         """Returns self.
