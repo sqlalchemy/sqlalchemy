@@ -142,9 +142,9 @@ def process_relationships(klass, was_deferred=False):
     # not able to find any of the related tables
     if not defer:
         for col in klass.columns:
-            if col.foreign_key is not None:
+            if col.foreign_keys:
                 found = False
-                cn = col.foreign_key._colspec
+                cn = col.foreign_keys[0]._colspec
                 table_name = cn[:cn.rindex('.')]
                 for other_klass in ActiveMapperMeta.classes.values():
                     if other_klass.table.fullname.lower() == table_name.lower():

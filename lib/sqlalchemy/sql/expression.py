@@ -1379,27 +1379,11 @@ class ColumnElement(ClauseElement, _CompareMixin):
     objects using Python expressions.  See the ``_CompareMixin``
     docstring for more details.
     """
-
-    primary_key = property(lambda self:getattr(self, '_primary_key', False),
-                           doc=\
-        """Primary key flag.  Indicates if this ``Column`` represents part or 
-        whole of a primary key for its parent table.
-        """)
-    foreign_keys = property(lambda self:getattr(self, '_foreign_keys', []),
-                            doc=\
-        """Foreign key accessor.  References a list of ``ForeignKey`` objects 
-        which each represent a foreign key placed on this column's ultimate
-        ancestor.
-        """)
-
-    def _one_fkey(self):
-        if self._foreign_keys:
-            return list(self._foreign_keys)[0]
-        else:
-            return None
-
-    foreign_key = property(_one_fkey)
     
+    def __init__(self):
+        self.primary_key = False
+        self.foreign_keys = []
+
     def base_columns(self):
         if hasattr(self, '_base_columns'):
             return self._base_columns
@@ -1869,6 +1853,7 @@ class _Null(ColumnElement):
     """
 
     def __init__(self):
+        ColumnElement.__init__(self)
         self.type = sqltypes.NULLTYPE
 
     def _get_from_objects(self, **modifiers):
@@ -2025,6 +2010,7 @@ class _Function(_CalculatedClause, FromClause):
 class _Cast(ColumnElement):
 
     def __init__(self, clause, totype, **kwargs):
+        ColumnElement.__init__(self)
         if not hasattr(clause, 'label'):
             clause = literal(clause)
         self.type = sqltypes.to_instance(totype)
@@ -2053,6 +2039,7 @@ class _Cast(ColumnElement):
 
 class _UnaryExpression(ColumnElement):
     def __init__(self, element, operator=None, modifier=None, type_=None, negate=None):
+        ColumnElement.__init__(self)
         self.operator = operator
         self.modifier = modifier
 
@@ -2096,6 +2083,7 @@ class _BinaryExpression(ColumnElement):
     """Represent an expression that is ``LEFT <operator> RIGHT``."""
 
     def __init__(self, left, right, operator, type_=None, negate=None):
+        ColumnElement.__init__(self)
         self.left = _literal_as_text(left).self_group(against=operator)
         self.right = _literal_as_text(right).self_group(against=operator)
         self.operator = operator
@@ -2186,11 +2174,21 @@ class Join(FromClause):
             self.onclause = onclause
         self.isouter = isouter
         self.__folded_equivalents = None
-        self._init_primary_key()
 
-    def _init_primary_key(self):
+    def _export_columns(self):
+        if hasattr(self, '_columns'):
+            return
+        self._columns = ColumnCollection()
+        self._foreign_keys = util.Set()
+
+        columns = list(self._flatten_exportable_columns())
+        self.__init_primary_key(columns)
+        for co in columns:
+            cp = self._proxy_column(co)
+        
+    def __init_primary_key(self, columns):
         from sqlalchemy import schema
-        pkcol = util.Set([c for c in self._flatten_exportable_columns() if c.primary_key])
+        pkcol = util.Set([c for c in columns if c.primary_key])
 
         equivs = {}
         def add_equiv(a, b):
@@ -2219,17 +2217,14 @@ class Join(FromClause):
                     omit.add(p)
                     p = c
 
-        self.__primary_key = ColumnSet([c for c in self._flatten_exportable_columns() if c.primary_key and c not in omit])
-
+        self._primary_key = ColumnSet(pkcol.difference(omit))
+        
     def description(self):
         return "Join object on %s(%d) and %s(%d)" % (self.left.description, id(self.left), self.right.description, id(self.right))
     description = property(description)
     
-    primary_key = property(lambda s:s.__primary_key)
-
     def self_group(self, against=None):
         return _FromGrouping(self)
-
 
     def _exportable_columns(self):
         return [c for c in self.left.columns] + [c for c in self.right.columns]
@@ -2246,7 +2241,6 @@ class Join(FromClause):
         self.right = clone(self.right)
         self.onclause = clone(self.onclause)
         self.__folded_equivalents = None
-        self._init_primary_key()
 
     def get_children(self, **kwargs):
         return self.left, self.right, self.onclause
@@ -2255,16 +2249,16 @@ class Join(FromClause):
         crit = []
         constraints = util.Set()
         for fk in secondary.foreign_keys:
-            if fk.references(primary):
-                crit.append(primary.corresponding_column(fk.column) == fk.parent)
+            col = fk.get_referent(primary)
+            if col:
+                crit.append(col == fk.parent)
                 constraints.add(fk.constraint)
-                self.foreignkey = fk.parent
         if primary is not secondary:
             for fk in primary.foreign_keys:
-                if fk.references(secondary):
-                    crit.append(secondary.corresponding_column(fk.column) == fk.parent)
+                col = fk.get_referent(secondary)
+                if col:
+                    crit.append(col == fk.parent)
                     constraints.add(fk.constraint)
-                    self.foreignkey = fk.parent
         if len(crit) == 0:
             raise exceptions.ArgumentError(
                 "Can't find any foreign key relationships "
@@ -2432,6 +2426,7 @@ class _ColumnElementAdapter(ColumnElement):
     """
 
     def __init__(self, elem):
+        ColumnElement.__init__(self)
         self.elem = elem
         self.type = getattr(elem, 'type', None)
 
@@ -2511,6 +2506,8 @@ class _Label(ColumnElement):
     proxies = property(lambda s:s.obj.proxies)
     base_columns = property(lambda s:s.obj.base_columns)
     proxy_set = property(lambda s:s.obj.proxy_set)
+    primary_key = property(lambda s:s.obj.primary_key)
+    foreign_keys = property(lambda s:s.obj.foreign_keys)
     
     def expression_element(self):
         return self.obj
@@ -2561,6 +2558,7 @@ class _ColumnClause(ColumnElement):
     """
 
     def __init__(self, text, selectable=None, type_=None, _is_oid=False, is_literal=False):
+        ColumnElement.__init__(self)
         self.key = self.name = text
         self.table = selectable
         self.type = sqltypes.to_instance(type_)

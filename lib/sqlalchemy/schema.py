@@ -436,7 +436,7 @@ class Column(SchemaItem, expression._ColumnClause):
         super(Column, self).__init__(name, None, type_)
         self.args = args
         self.key = kwargs.pop('key', name)
-        self._primary_key = kwargs.pop('primary_key', False)
+        self.primary_key = kwargs.pop('primary_key', False)
         self.nullable = kwargs.pop('nullable', not self.primary_key)
         self._is_oid = kwargs.pop('_is_oid', False)
         self.default = kwargs.pop('default', None)
@@ -446,14 +446,12 @@ class Column(SchemaItem, expression._ColumnClause):
         self.onupdate = kwargs.pop('onupdate', None)
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = util.Set()
-        self._foreign_keys = util.OrderedSet()
+        self.foreign_keys = util.OrderedSet()
         if kwargs.get('info'):
             self._info = kwargs.pop('info')
         if kwargs:
             raise exceptions.ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
-    primary_key = util.SimpleProperty('_primary_key')
-    foreign_keys = util.SimpleProperty('_foreign_keys')
     columns = property(lambda self:[self])
 
     def __str__(self):
@@ -483,7 +481,7 @@ class Column(SchemaItem, expression._ColumnClause):
         kwarg = []
         if self.key != self.name:
             kwarg.append('key')
-        if self._primary_key:
+        if self.primary_key:
             kwarg.append('primary_key')
         if not self.nullable:
             kwarg.append('nullable')
@@ -624,6 +622,12 @@ class ForeignKey(SchemaItem):
 
         return table.corresponding_column(self.column, False) is not None
     
+    def get_referent(self, table):
+        """return the column in the given table referenced by this ``ForeignKey``, or
+        None if this ``ForeignKey`` does not reference the given table.
+        """
+        return table.corresponding_column(self.column, False)
+        
     def _init_column(self):
         # ForeignKey inits its remote column as late as possible, so tables can
         # be defined without dependencies

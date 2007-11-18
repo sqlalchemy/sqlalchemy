@@ -274,7 +274,7 @@ class ZooMarkTest(testing.AssertMixin):
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
     
     @testing.supported('postgres')
-    @profiling.profiled('multiview', call_range=(2720, 3055), always=True)
+    @profiling.profiled('multiview', call_range=(2400, 2600), always=True)
     def test_7_multiview(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
