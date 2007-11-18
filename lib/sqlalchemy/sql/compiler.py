@@ -465,13 +465,13 @@ class DefaultCompiler(engine.Compiled):
         if asfrom:
             stack_entry['is_selected_from'] = stack_entry['is_subquery'] = True
             column_clause_args = {}
-        elif self.stack and self.stack[-1].get('select'):
+        elif self.stack and 'select' in self.stack[-1]:
             stack_entry['is_subquery'] = True
             column_clause_args = {}
         else:
             column_clause_args = {'typemap':self.typemap, 'column_labels':self.column_labels}
             
-        if self.stack and self.stack[-1].get('from'):
+        if self.stack and 'from' in self.stack[-1]:
             existingfroms = self.stack[-1]['from']
         else:
             existingfroms = None

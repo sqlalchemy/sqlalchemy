@@ -21,7 +21,7 @@ class ZooMarkTest(testing.AssertMixin):
     """
     
     @testing.supported('postgres')
-    @profiling.profiled('create', call_range=(1610, 2000), always=True)        
+    @profiling.profiled('create', call_range=(1500, 1880), always=True)        
     def test_1_create_tables(self):
         global metadata
         metadata = MetaData(testbase.db)
@@ -50,7 +50,7 @@ class ZooMarkTest(testing.AssertMixin):
         metadata.create_all()
         
     @testing.supported('postgres')
-    @profiling.profiled('populate', call_range=(2970, 4400), always=True)
+    @profiling.profiled('populate', call_range=(2800, 3700), always=True)
     def test_1a_populate(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -118,7 +118,7 @@ class ZooMarkTest(testing.AssertMixin):
                                 MotherID=bai_yun)
     
     @testing.supported('postgres')
-    @profiling.profiled('insert', call_range=(160, 250), always=True)
+    @profiling.profiled('insert', call_range=(150, 220), always=True)
     def test_2_insert(self):
         Animal = metadata.tables['Animal']
         i = Animal.insert()
@@ -274,7 +274,7 @@ class ZooMarkTest(testing.AssertMixin):
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
     
     @testing.supported('postgres')
-    @profiling.profiled('multiview', call_range=(2400, 2600), always=True)
+    @profiling.profiled('multiview', call_range=(2300, 2500), always=True)
     def test_7_multiview(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
