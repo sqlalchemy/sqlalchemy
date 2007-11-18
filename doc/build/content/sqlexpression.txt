@@ -787,7 +787,7 @@ To embed a SELECT in a column expression, use `as_scalar()`:
     ...    ])).fetchall()
     SELECT users.name, (SELECT count(addresses.id) 
     FROM addresses 
-    WHERE users.id = addresses.user_id) 
+    WHERE users.id = addresses.user_id) AS anon_1 
     FROM users
     []
     {stop}[(u'jack', 2), (u'wendy', 2), (u'fred', 0), (u'mary', 0)]

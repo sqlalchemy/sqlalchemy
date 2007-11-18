@@ -901,7 +901,7 @@ Now when we load Jack, removing an address from his `addresses` collection will 
     BEGIN
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.id = ? ORDER BY users.oid 
+    WHERE users.id = ?
     [5]
     {stop}
     
@@ -1073,12 +1073,12 @@ We can now look up all blog posts with the keyword 'firstpost'.   We'll use a sp
 
     {python}
     {sql}>>> session.query(BlogPost).filter(BlogPost.keywords.any(keyword='firstpost')).all()
+    INSERT INTO posts (user_id, headline, body) VALUES (?, ?, ?)
+    [2, "Wendy's Blog Post", 'This is a test']
     INSERT INTO keywords (keyword) VALUES (?)
     ['wendy']
     INSERT INTO keywords (keyword) VALUES (?)
     ['firstpost']
-    INSERT INTO posts (user_id, headline, body) VALUES (?, ?, ?)
-    [2, "Wendy's Blog Post", 'This is a test']
     INSERT INTO post_keywords (post_id, keyword_id) VALUES (?, ?)
     [[1, 1], [1, 2]]
     SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
