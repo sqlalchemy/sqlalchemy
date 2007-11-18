@@ -17,7 +17,7 @@ import inspect
 import datetime as dt
 
 from sqlalchemy import exceptions
-from sqlalchemy.util import Decimal, pickle
+from sqlalchemy.util import pickle, Decimal as _python_Decimal
 
 class _UserTypeAdapter(type):
     """adapts 0.3 style user-defined types with convert_bind_param/convert_result_value
@@ -384,7 +384,7 @@ class Numeric(TypeEngine):
         if self.asdecimal:
             def process(value):
                 if value is not None:
-                    return Decimal(str(value))
+                    return _python_Decimal(str(value))
                 else:
                     return value
             return process
