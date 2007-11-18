@@ -105,14 +105,11 @@ class Query(object):
         key column values in the order of the table def's primary key
         columns.
         """
-        print "LOAD CHECK1"
         ret = self._extension.load(self, ident, **kwargs)
         if ret is not mapper.EXT_CONTINUE:
             return ret
-        print "LOAD CHECK2"
         key = self.mapper.identity_key_from_primary_key(ident)
         instance = self.populate_existing()._get(key, ident, **kwargs)
-        print "LOAD CHECK3"
         if instance is None and raiseerr:
             raise exceptions.InvalidRequestError("No instance found for identity %s" % repr(ident))
         return instance
