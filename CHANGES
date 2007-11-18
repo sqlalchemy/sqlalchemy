@@ -79,10 +79,10 @@ CHANGES
   - session.refresh() and session.expire() now support an additional argument
     "attribute_names", a list of individual attribute keynames to be refreshed
     or expired, allowing partial reloads of attributes on an already-loaded 
-    instance.
+    instance. [ticket:802]
     
   - Mapped classes may now define __eq__, __hash__, and __nonzero__ methods
-    with arbitrary sementics.  The orm now handles all mapped instances on
+    with arbitrary semantics.  The orm now handles all mapped instances on
     an identity-only basis. (e.g. 'is' vs '==') [ticket:676]
 
   - the "properties" accessor on Mapper is removed; it now throws an informative
