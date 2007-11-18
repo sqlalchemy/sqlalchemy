@@ -822,6 +822,99 @@ class SQLTest(SQLCompileTest):
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1"
             )
 
+    @testing.supported('mysql')
+    def test_cast(self):
+        t = sql.table('t', sql.column('col'))
+        m = mysql
+
+        specs = [
+            (Integer, "CAST(t.col AS SIGNED INTEGER)"),
+            (INT, "CAST(t.col AS SIGNED INTEGER)"),
+            (m.MSInteger, "CAST(t.col AS SIGNED INTEGER)"),
+            (m.MSInteger(unsigned=True), "CAST(t.col AS UNSIGNED INTEGER)"),
+            (SmallInteger, "CAST(t.col AS SIGNED INTEGER)"),
+            (m.MSSmallInteger, "CAST(t.col AS SIGNED INTEGER)"),
+            (m.MSTinyInteger, "CAST(t.col AS SIGNED INTEGER)"),
+            # 'SIGNED INTEGER' is a bigint, so this is ok.
+            (m.MSBigInteger, "CAST(t.col AS SIGNED INTEGER)"),
+            (m.MSBigInteger(unsigned=False), "CAST(t.col AS SIGNED INTEGER)"),
+            (m.MSBigInteger(unsigned=True), "CAST(t.col AS UNSIGNED INTEGER)"),
+            (m.MSBit, "t.col"),
+
+            # this is kind of sucky.  thank you default arguments!
+            (NUMERIC, "CAST(t.col AS DECIMAL(10, 2))"),
+            (DECIMAL, "CAST(t.col AS DECIMAL(10, 2))"),
+            (Numeric, "CAST(t.col AS DECIMAL(10, 2))"),
+            (m.MSNumeric, "CAST(t.col AS DECIMAL(10, 2))"),
+            (m.MSDecimal, "CAST(t.col AS DECIMAL(10, 2))"),
+
+            (FLOAT, "t.col"),
+            (Float, "t.col"),
+            (m.MSFloat, "t.col"),
+            (m.MSDouble, "t.col"),
+            (m.MSReal, "t.col"),
+
+            (TIMESTAMP, "CAST(t.col AS DATETIME)"),
+            (DATETIME, "CAST(t.col AS DATETIME)"),
+            (DATE, "CAST(t.col AS DATE)"),
+            (TIME, "CAST(t.col AS TIME)"),
+            (DateTime, "CAST(t.col AS DATETIME)"),
+            (Date, "CAST(t.col AS DATE)"),
+            (Time, "CAST(t.col AS TIME)"),
+            (m.MSDateTime, "CAST(t.col AS DATETIME)"),
+            (m.MSDate, "CAST(t.col AS DATE)"),
+            (m.MSTime, "CAST(t.col AS TIME)"),
+            (m.MSTimeStamp, "CAST(t.col AS DATETIME)"),
+            (m.MSYear, "t.col"),
+            (m.MSYear(2), "t.col"),
+            (Interval, "t.col"),
+
+            (String, "CAST(t.col AS CHAR)"),
+            (Unicode, "CAST(t.col AS CHAR)"),
+            (VARCHAR, "CAST(t.col AS CHAR)"),
+            (NCHAR, "CAST(t.col AS CHAR)"),
+            (CHAR, "CAST(t.col AS CHAR)"),
+            (CLOB, "CAST(t.col AS CHAR)"),
+            (TEXT, "CAST(t.col AS CHAR)"),
+            (String(32), "CAST(t.col AS CHAR(32))"),
+            (Unicode(32), "CAST(t.col AS CHAR(32))"),
+            (CHAR(32), "CAST(t.col AS CHAR(32))"),
+            (m.MSString, "CAST(t.col AS CHAR)"),
+            (m.MSText, "CAST(t.col AS CHAR)"),
+            (m.MSTinyText, "CAST(t.col AS CHAR)"),
+            (m.MSMediumText, "CAST(t.col AS CHAR)"),
+            (m.MSLongText, "CAST(t.col AS CHAR)"),
+            (m.MSNChar, "CAST(t.col AS CHAR)"),
+            (m.MSNVarChar, "CAST(t.col AS CHAR)"),
+
+            (Binary, "CAST(t.col AS BINARY)"),
+            (BLOB, "CAST(t.col AS BINARY)"),
+            (m.MSBlob, "CAST(t.col AS BINARY)"),
+            (m.MSBlob(32), "CAST(t.col AS BINARY)"),
+            (m.MSTinyBlob, "CAST(t.col AS BINARY)"),
+            (m.MSMediumBlob, "CAST(t.col AS BINARY)"),
+            (m.MSLongBlob, "CAST(t.col AS BINARY)"),
+            (m.MSBinary, "CAST(t.col AS BINARY)"),
+            (m.MSBinary(32), "CAST(t.col AS BINARY)"),
+            (m.MSVarBinary, "CAST(t.col AS BINARY)"),
+            (m.MSVarBinary(32), "CAST(t.col AS BINARY)"),
+
+            # maybe this could be changed to something more DWIM, needs
+            # testing
+            (Boolean, "t.col"),
+            (BOOLEAN, "t.col"),
+            (m.MSBoolean, "t.col"),
+
+            (m.MSEnum, "t.col"),
+            (m.MSEnum("'1'", "'2'"), "t.col"),
+            (m.MSSet, "t.col"),            
+            (m.MSSet("'1'", "'2'"), "t.col"),
+            ]
+
+        for type_, expected in specs:
+            self.assert_compile(cast(t.c.col, type_), expected)
+
+
 def colspec(c):
     return testbase.db.dialect.schemagenerator(testbase.db.dialect,
         testbase.db, None, None).get_column_specification(c)

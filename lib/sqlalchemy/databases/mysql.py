@@ -565,7 +565,7 @@ class MSTinyInteger(MSInteger):
             return self._extend("TINYINT")
 
 
-class MSSmallInteger(sqltypes.Smallinteger, _NumericType):
+class MSSmallInteger(sqltypes.Smallinteger, MSInteger):
     """MySQL SMALLINTEGER type."""
 
     def __init__(self, length=None, **kw):
@@ -585,7 +585,7 @@ class MSSmallInteger(sqltypes.Smallinteger, _NumericType):
 
         self.length = length
         _NumericType.__init__(self, **kw)
-        sqltypes.Smallinteger.__init__(self, length)
+        sqltypes.SmallInteger.__init__(self, length)
 
     def get_col_spec(self):
         if self.length is not None:
@@ -1846,12 +1846,12 @@ class MySQLCompiler(compiler.DefaultCompiler):
                 return 'UNSIGNED INTEGER'
             else:
                 return 'SIGNED INTEGER'
-        elif isinstance(type_, (MSChar, MSDecimal, MSDateTime,
-                                MSDate, MSTime)):
+        elif isinstance(type_, (MSDecimal, MSDateTime, MSDate, MSTime)):
             return type_.get_col_spec()
-        elif isinstance(type_, (MSText, MSNChar, MSNVarChar)):
+        elif isinstance(type_, MSText):
             return 'CHAR'
-        elif type(type_) is MSString:
+        elif (isinstance(type_, _StringType) and not
+              isinstance(type_, (MSEnum, MSSet))):
             if getattr(type_, 'length'):
                 return 'CHAR(%s)' % type_.length
             else:
