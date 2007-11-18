@@ -501,7 +501,7 @@ class PickleType(MutableType, TypeDecorator):
         elif self.mutable:
             return self.pickler.dumps(x, self.protocol) == self.pickler.dumps(y, self.protocol)
         else:
-            return x is y
+            return x == y
 
     def is_mutable(self):
         return self.mutable

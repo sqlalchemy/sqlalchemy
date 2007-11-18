@@ -97,6 +97,10 @@ CHANGES
     only those paths, i.e. and not 'x.y.x'; eagerload('children.children')
     applies only to exactly two-levels deep, etc. [ticket:777]
 
+  - PickleType will compare using `==` when set up with mutable=False,
+    and not the `is` operator.  To use `is` or any other comparator, send
+    in a custom comparison function using PickleType(comparator=my_custom_comparator).
+    
   - query doesn't throw an error if you use distinct() and an order_by()
     containing UnaryExpressions (or other) together [ticket:848]
 
