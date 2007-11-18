@@ -781,14 +781,6 @@ class Session(object):
 
         return self.uow.prune_identity_map()
 
-    def is_expired(self, obj, unexpire=False):
-        """Return True if the given object has been marked as expired."""
-
-        ret = obj._state.trigger is not None
-        if ret and unexpire:
-            obj._state.trigger = None
-        return ret
-
     def expunge(self, object):
         """Remove the given `object` from this ``Session``.
 
