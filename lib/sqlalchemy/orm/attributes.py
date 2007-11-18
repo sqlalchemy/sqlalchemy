@@ -177,40 +177,15 @@ class AttributeImpl(object):
         if callable_ is None:
             self.initialize(state)
         else:
-            state.callables[self] = callable_
+            state.callables[self.key] = callable_
 
     def _get_callable(self, state):
-        if self in state.callables:
-            return state.callables[self]
+        if self.key in state.callables:
+            return state.callables[self.key]
         elif self.callable_ is not None:
             return self.callable_(state.obj())
         else:
             return None
-
-    def reset(self, state):
-        """Remove any per-instance callable functions corresponding to
-        this ``InstrumentedAttribute``'s attribute from the given
-        object, and remove this ``InstrumentedAttribute``'s attribute
-        from the given object's dictionary.
-        """
-
-        try:
-            del state.callables[self]
-        except KeyError:
-            pass
-        self.clear(state)
-
-    def clear(self, state):
-        """Remove this ``InstrumentedAttribute``'s attribute from the given object's dictionary.
-
-        Subsequent calls to ``getattr(obj, key)`` will raise an
-        ``AttributeError`` by default.
-        """
-
-        try:
-            del state.dict[self.key]
-        except KeyError:
-            pass
 
     def check_mutable_modified(self, state):
         return False
@@ -232,11 +207,6 @@ class AttributeImpl(object):
         try:
             return state.dict[self.key]
         except KeyError:
-            # if an instance-wide "trigger" was set, call that
-            # and start again
-            if state.trigger:
-                state.call_trigger()
-                return self.get(state, passive=passive)
 
             callable_ = self._get_callable(state)
             if callable_ is not None:
@@ -246,6 +216,8 @@ class AttributeImpl(object):
                 if value is not ATTR_WAS_SET:
                     return self.set_committed_value(state, value)
                 else:
+                    if self.key not in state.dict:
+                        return self.get(state, passive=passive)
                     return state.dict[self.key]
             else:
                 # Return a new, empty value
@@ -275,10 +247,6 @@ class AttributeImpl(object):
             self.commit_to_state(state, value)
         # remove per-instance callable, if any
         state.callables.pop(self, None)
-        state.dict[self.key] = value
-        return value
-
-    def set_raw_value(self, state, value):
         state.dict[self.key] = value
         return value
 
@@ -318,7 +286,8 @@ class ScalarAttributeImpl(AttributeImpl):
         if copy_function is None:
             copy_function = self.__copy
         self.copy = copy_function
-
+        self.accepts_global_callable = True
+        
     def __copy(self, item):
         # scalar values are assumed to be immutable unless a copy function
         # is passed
@@ -350,10 +319,6 @@ class ScalarAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
-        # if an instance-wide "trigger" was set, call that
-        if state.trigger:
-            state.call_trigger()
-
         state.dict[self.key] = value
         state.modified=True
 
@@ -372,6 +337,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
           compare_function=compare_function, mutable_scalars=mutable_scalars, **kwargs)
         if compare_function is None:
             self.is_equal = identity_equal
+        self.accepts_global_callable = False
 
     def delete(self, state):
         old = self.get(state)
@@ -388,10 +354,6 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
         if initiator is self:
             return
-
-        # if an instance-wide "trigger" was set, call that
-        if state.trigger:
-            state.call_trigger()
 
         old = self.get(state)
         state.dict[self.key] = value
@@ -415,6 +377,8 @@ class CollectionAttributeImpl(AttributeImpl):
         if copy_function is None:
             copy_function = self.__copy
         self.copy = copy_function
+
+        self.accepts_global_callable = False
 
         if typecallable is None:
             typecallable = list
@@ -477,10 +441,6 @@ class CollectionAttributeImpl(AttributeImpl):
             value = list(getattr(value, '_sa_adapter'))
         elif setting_type == dict:
             value = value.values()
-
-        # if an instance-wide "trigger" was set, call that
-        if state.trigger:
-            state.call_trigger()
 
         old = self.get(state)
         old_collection = self.get_collection(state, old)
@@ -583,13 +543,13 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
 class InstanceState(object):
     """tracks state information at the instance level."""
 
-    __slots__ = 'class_', 'obj', 'dict', 'committed_state', 'modified', 'trigger', 'callables', 'parents', 'instance_dict', '_strong_obj'
+    __slots__ = 'class_', 'obj', 'dict', 'committed_state', 'modified', 'trigger', 'callables', 'parents', 'instance_dict', '_strong_obj', 'expired_attributes'
     
     def __init__(self, obj):
         self.class_ = obj.__class__
         self.obj = weakref.ref(obj, self.__cleanup)
         self.dict = obj.__dict__
-        self.committed_state = None
+        self.committed_state = {}
         self.modified = False
         self.trigger = None
         self.callables = {}
@@ -649,36 +609,75 @@ class InstanceState(object):
         self.dict = self.obj().__dict__
         self.callables = {}
         self.trigger = None
+    
+    def initialize(self, key):
+        getattr(self.class_, key).impl.initialize(self)
         
-    def call_trigger(self):
-        trig = self.trigger
-        self.trigger = None
-        trig()
+    def set_callable(self, key, callable_):
+        self.dict.pop(key, None)
+        self.callables[key] = callable_
+
+    def __fire_trigger(self):
+        self.trigger(self.obj(), self.expired_attributes)
+        for k in self.expired_attributes:
+            self.callables.pop(k, None)
+        self.expired_attributes.clear()
+        return ATTR_WAS_SET
+    
+    def expire_attributes(self, attribute_names):
+        if not hasattr(self, 'expired_attributes'):
+            self.expired_attributes = util.Set()
+        if attribute_names is None:
+            for attr in self.class_._sa_attribute_manager.managed_attributes(self.class_):
+                self.dict.pop(attr.impl.key, None)
+                self.callables[attr.impl.key] = self.__fire_trigger
+                self.expired_attributes.add(attr.impl.key)
+        else:
+            for key in attribute_names:
+                self.dict.pop(key, None)
+
+                if not getattr(self.class_, key).impl.accepts_global_callable:
+                    continue
+
+                self.callables[key] = self.__fire_trigger
+                self.expired_attributes.add(key)
+                
+    def reset(self, key):
+        """remove the given attribute and any callables associated with it."""
         
-    def commit(self, manager, obj):
+        self.dict.pop(key, None)
+        self.callables.pop(key, None)
+        
+    def clear(self):
+        """clear all attributes from the instance."""
+        
+        for attr in self.class_._sa_attribute_manager.managed_attributes(self.class_):
+            self.dict.pop(attr.impl.key, None)
+    
+    def commit(self, keys):
+        """commit all attributes named in the given list of key names.
+        
+        This is used by a partial-attribute load operation to mark committed those attributes
+        which were refreshed from the database.
+        """
+        
+        for key in keys:
+            getattr(self.class_, key).impl.commit_to_state(self)
+            
+    def commit_all(self):
+        """commit all attributes unconditionally.
+        
+        This is used after a flush() or a regular instance load or refresh operation
+        to mark committed all populated attributes.
+        """
+        
         self.committed_state = {}
         self.modified = False
-        for attr in manager.managed_attributes(obj.__class__):
+        for attr in self.class_._sa_attribute_manager.managed_attributes(self.class_):
             attr.impl.commit_to_state(self)
         # remove strong ref
         self._strong_obj = None
         
-    def rollback(self, manager, obj):
-        if not self.committed_state:
-            manager._clear(obj)
-        else:
-            for attr in manager.managed_attributes(obj.__class__):
-                if attr.impl.key in self.committed_state:
-                    if not hasattr(attr.impl, 'get_collection'):
-                        obj.__dict__[attr.impl.key] = self.committed_state[attr.impl.key]
-                    else:
-                        collection = attr.impl.get_collection(self)
-                        collection.clear_without_event()
-                        for item in self.committed_state[attr.impl.key]:
-                            collection.append_without_event(item)
-                else:
-                    if attr.impl.key in self.dict:
-                        del self.dict[attr.impl.key]
 
 class InstanceDict(UserDict.UserDict):
     """similar to WeakValueDictionary, but wired towards 'state' objects."""
@@ -878,28 +877,6 @@ class AttributeManager(object):
     def clear_attribute_cache(self):
         self._attribute_cache.clear()
 
-    def rollback(self, *obj):
-        """Retrieve the committed history for each object in the given
-        list, and rolls back the attributes each instance to their
-        original value.
-        """
-
-        for o in obj:
-            o._state.rollback(self, o)
-
-    def _clear(self, obj):
-        for attr in self.managed_attributes(obj.__class__):
-            try:
-                del obj.__dict__[attr.impl.key]
-            except KeyError:
-                pass
-    
-    def commit(self, *obj):
-        """Establish the "committed state" for each object in the given list."""
-
-        for o in obj:
-            o._state.commit(self, o)
-
     def managed_attributes(self, class_):
         """Return a list of all ``InstrumentedAttribute`` objects
         associated with the given class.
@@ -970,59 +947,8 @@ class AttributeManager(object):
         else:
             return [x]
 
-    def trigger_history(self, obj, callable):
-        """Clear all managed object attributes and places the given
-        `callable` as an attribute-wide *trigger*, which will execute
-        upon the next attribute access, after which the trigger is
-        removed.
-        """
-
-        s = obj._state
-        self._clear(obj)
-        s.committed_state = None
-        s.trigger = callable
-
-    def untrigger_history(self, obj):
-        """Remove a trigger function set by trigger_history.
-
-        Does not restore the previous state of the object.
-        """
-
-        obj._state.trigger = None
-
-    def has_trigger(self, obj):
-        """Return True if the given object has a trigger function set
-        by ``trigger_history()``.
-        """
-
-        return obj._state.trigger is not None
-
-    def reset_instance_attribute(self, obj, key):
-        """Remove any per-instance callable functions corresponding to
-        given attribute `key` from the given object, and remove this
-        attribute from the given object's dictionary.
-        """
-
-        attr = getattr(obj.__class__, key)
-        attr.impl.reset(obj._state)
-
-    def is_class_managed(self, class_, key):
-        """Return True if the given `key` correponds to an
-        instrumented property on the given class.
-        """
-        return hasattr(class_, key) and isinstance(getattr(class_, key), InstrumentedAttribute)
-
     def has_parent(self, class_, obj, key, optimistic=False):
         return getattr(class_, key).impl.hasparent(obj._state, optimistic=optimistic)
-
-    def init_instance_attribute(self, obj, key, callable_=None, clear=False):
-        """Initialize an attribute on an instance to either a blank
-        value, cancelling out any class- or instance-level callables
-        that were present, or if a `callable` is supplied set the
-        callable to be invoked when the attribute is next accessed.
-        """
-
-        getattr(obj.__class__, key).impl.set_callable(obj._state, callable_, clear=clear)
 
     def _create_prop(self, class_, key, uselist, callable_, typecallable, useobject, **kwargs):
         """Create a scalar property object, defaulting to
@@ -1134,12 +1060,6 @@ class AttributeManager(object):
         comparator = kwargs.pop('comparator', None)
         setattr(class_, key, InstrumentedAttribute(self._create_prop(class_, key, uselist, callable_, useobject=useobject,
                                            typecallable=typecallable, **kwargs), comparator=comparator))
-
-    def set_raw_value(self, instance, key, value):
-        getattr(instance.__class__, key).impl.set_raw_value(instance._state, value)
-
-    def set_committed_value(self, instance, key, value):
-        getattr(instance.__class__, key).impl.set_committed_value(instance._state, value)
 
     def init_collection(self, instance, key):
         """Initialize a collection attribute and return the collection adapter."""

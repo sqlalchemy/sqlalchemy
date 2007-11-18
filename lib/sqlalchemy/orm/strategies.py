@@ -114,8 +114,7 @@ class ColumnLoader(LoaderStrategy):
             
             def new_execute(instance, row, isnew, **flags):
                 if isnew:
-                    loader = strategy.setup_loader(instance, props=props, create_statement=create_statement)
-                    sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=loader)
+                    instance._state.set_callable(self.key, strategy.setup_loader(instance, props=props, create_statement=create_statement))
                     
             if self._should_log_debug:
                 self.logger.debug("Returning deferred column fetcher for %s %s" % (mapper, self.key))
@@ -134,19 +133,19 @@ class DeferredColumnLoader(LoaderStrategy):
     """Deferred column loader, a per-column or per-column-group lazy loader."""
     
     def create_row_processor(self, selectcontext, mapper, row):
-        if (self.group is not None and selectcontext.attributes.get(('undefer', self.group), False)) or self.columns[0] in row:
+        if self.columns[0] in row:
             return self.parent_property._get_strategy(ColumnLoader).create_row_processor(selectcontext, mapper, row)
         elif not self.is_class_level or len(selectcontext.options):
             def new_execute(instance, row, **flags):
                 if self._should_log_debug:
                     self.logger.debug("set deferred callable on %s" % mapperutil.attribute_str(instance, self.key))
-                sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=self.setup_loader(instance))
+                instance._state.set_callable(self.key, self.setup_loader(instance))
             return (new_execute, None, None)
         else:
             def new_execute(instance, row, **flags):
                 if self._should_log_debug:
                     self.logger.debug("set deferred callable on %s" % mapperutil.attribute_str(instance, self.key))
-                sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
+                instance._state.reset(self.key)
             return (new_execute, None, None)
 
     def init(self):
@@ -162,8 +161,11 @@ class DeferredColumnLoader(LoaderStrategy):
         self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
         sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, useobject=False, callable_=self.setup_loader, copy_function=self.columns[0].type.copy_value, compare_function=self.columns[0].type.compare_values, mutable_scalars=self.columns[0].type.is_mutable(), comparator=self.parent_property.comparator)
 
-    def setup_query(self, context, **kwargs):
-        if self.group is not None and context.attributes.get(('undefer', self.group), False):
+    def setup_query(self, context, only_load_props=None, **kwargs):
+        if \
+            (self.group is not None and context.attributes.get(('undefer', self.group), False)) or \
+            (only_load_props and self.key in only_load_props):
+            
             self.parent_property._get_strategy(ColumnLoader).setup_query(context, **kwargs)
         
     def setup_loader(self, instance, props=None, create_statement=None):
@@ -198,27 +200,12 @@ class DeferredColumnLoader(LoaderStrategy):
                 raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session; deferred load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
 
             if create_statement is None:
-                (clause, param_map) = localparent._get_clause
                 ident = instance._instance_key[1]
-                params = {}
-                for i, primary_key in enumerate(localparent.primary_key):
-                    params[param_map[primary_key].key] = ident[i]
-                statement = sql.select([p.columns[0] for p in group], clause, from_obj=[localparent.mapped_table], use_labels=True)
+                session.query(localparent)._get(None, ident=ident, only_load_props=[p.key for p in group], refresh_instance=instance)
             else:
                 statement, params = create_statement(instance)
-            
-            # TODO: have the "fetch of one row" operation go through the same channels as a query._get()
-            # deferred load of several attributes should be a specialized case of a query refresh operation
-            conn = session.connection(mapper=localparent, instance=instance)
-            result = conn.execute(statement, params)
-            try:
-                row = result.fetchone()
-                for prop in group:
-                    sessionlib.attribute_manager.set_committed_value(instance, prop.key, row[prop.columns[0]])
-                return attributes.ATTR_WAS_SET
-            finally:
-                result.close()
-
+                session.query(localparent).from_statement(statement).params(params)._get(None, only_load_props=[p.key for p in group], refresh_instance=instance)
+            return attributes.ATTR_WAS_SET
         return lazyload
                 
 DeferredColumnLoader.logger = logging.class_logger(DeferredColumnLoader)
@@ -248,7 +235,10 @@ class AbstractRelationLoader(LoaderStrategy):
         self._should_log_debug = logging.is_debug_enabled(self.logger)
         
     def _init_instance_attribute(self, instance, callable_=None):
-        return sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=callable_)
+        if callable_:
+            instance._state.set_callable(self.key, callable_)
+        else:
+            instance._state.initialize(self.key)
         
     def _register_attribute(self, class_, callable_=None, **kwargs):
         self.logger.info("register managed %s attribute %s on class %s" % ((self.uselist and "list-holding" or "scalar"), self.key, self.parent.class_.__name__))
@@ -399,7 +389,7 @@ class LazyLoader(AbstractRelationLoader):
                     # so that the class-level lazy loader is executed when next referenced on this instance.
                     # this usually is not needed unless the constructor of the object referenced the attribute before we got 
                     # to load data into it.
-                    sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
+                    instance._state.reset(self.key)
             return (new_execute, None, None)
 
     def _create_lazy_clause(cls, prop, reverse_direction=False):
@@ -603,10 +593,7 @@ class EagerLoader(AbstractRelationLoader):
                         # parent object, bypassing InstrumentedAttribute
                         # event handlers.
                         #
-                        # FIXME: instead of...
-                        sessionlib.attribute_manager.set_raw_value(instance, self.key, self.select_mapper._instance(selectcontext, decorated_row, None))
-                        # bypass and set directly:
-                        #instance.__dict__[self.key] = self.select_mapper._instance(selectcontext, decorated_row, None)
+                        instance.__dict__[self.key] = self.select_mapper._instance(selectcontext, decorated_row, None)
                     else:
                         # call _instance on the row, even though the object has been created,
                         # so that we further descend into properties

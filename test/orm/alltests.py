@@ -11,6 +11,7 @@ def suite():
         'orm.lazy_relations',
         'orm.eager_relations',
         'orm.mapper',
+        'orm.expire',
         'orm.selectable',
         'orm.collection',
         'orm.generative',

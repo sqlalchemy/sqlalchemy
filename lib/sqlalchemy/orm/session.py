@@ -6,7 +6,7 @@
 
 import weakref
 from sqlalchemy import util, exceptions, sql, engine
-from sqlalchemy.orm import unitofwork, query, util as mapperutil
+from sqlalchemy.orm import unitofwork, query, attributes, util as mapperutil
 from sqlalchemy.orm.mapper import object_mapper as _object_mapper
 from sqlalchemy.orm.mapper import class_mapper as _class_mapper
 from sqlalchemy.orm.mapper import Mapper
@@ -522,9 +522,9 @@ class Session(object):
         resources of the underlying ``Connection``.
         """
 
-        engine = self.get_bind(mapper, clause=clause)
+        engine = self.get_bind(mapper, clause=clause, **kwargs)
         
-        return self.__connection(engine, close_with_result=True).execute(clause, params or {}, **kwargs)
+        return self.__connection(engine, close_with_result=True).execute(clause, params or {})
 
     def scalar(self, clause, params=None, mapper=None, **kwargs):
         """Like execute() but return a scalar result."""
@@ -716,26 +716,57 @@ class Session(object):
         entity_name = kwargs.pop('entity_name', None)
         return self.query(class_, entity_name=entity_name).load(ident, **kwargs)
 
-    def refresh(self, obj):
-        """Reload the attributes for the given object from the
-        database, clear any changes made.
+    def refresh(self, obj, attribute_names=None):
+        """Refresh the attributes on the given instance.
+        
+        When called, a query will be issued
+        to the database which will refresh all attributes with their
+        current value.  
+        
+        Lazy-loaded relational attributes will remain lazily loaded, so that 
+        the instance-wide refresh operation will be followed
+        immediately by the lazy load of that attribute.
+        
+        Eagerly-loaded relational attributes will eagerly load within the
+        single refresh operation.
+        
+        The ``attribute_names`` argument is an iterable collection
+        of attribute names indicating a subset of attributes to be 
+        refreshed.
         """
 
         self._validate_persistent(obj)
-        if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
+            
+        if self.query(obj.__class__)._get(obj._instance_key, refresh_instance=obj, only_load_props=attribute_names) is None:
             raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(obj))
 
-    def expire(self, obj):
-        """Mark the given object as expired.
-
-        This will add an instrumentation to all mapped attributes on
-        the instance such that when an attribute is next accessed, the
-        session will reload all attributes on the instance from the
-        database.
+    def expire(self, obj, attribute_names=None):
+        """Expire the attributes on the given instance.
+        
+        The instance's attributes are instrumented such that
+        when an attribute is next accessed, a query will be issued
+        to the database which will refresh all attributes with their
+        current value.  
+        
+        Lazy-loaded relational attributes will remain lazily loaded, so that 
+        triggering one will incur the instance-wide refresh operation, followed
+        immediately by the lazy load of that attribute.
+        
+        Eagerly-loaded relational attributes will eagerly load within the
+        single refresh operation.
+        
+        The ``attribute_names`` argument is an iterable collection
+        of attribute names indicating a subset of attributes to be 
+        expired.
         """
-
-        for c in [obj] + list(_object_mapper(obj).cascade_iterator('refresh-expire', obj)):
-            self._expire_impl(c)
+        
+        if attribute_names:
+            self._validate_persistent(obj)
+            expire_instance(obj, attribute_names=attribute_names)
+        else:
+            for c in [obj] + list(_object_mapper(obj).cascade_iterator('refresh-expire', obj)):
+                self._validate_persistent(obj)
+                expire_instance(c, None)
 
     def prune(self):
         """Removes unreferenced instances cached in the identity map.
@@ -750,21 +781,12 @@ class Session(object):
 
         return self.uow.prune_identity_map()
 
-    def _expire_impl(self, obj):
-        self._validate_persistent(obj)
-
-        def exp():
-            if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
-                raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(obj))
-
-        attribute_manager.trigger_history(obj, exp)
-
     def is_expired(self, obj, unexpire=False):
         """Return True if the given object has been marked as expired."""
 
-        ret = attribute_manager.has_trigger(obj)
+        ret = obj._state.trigger is not None
         if ret and unexpire:
-            attribute_manager.untrigger_history(obj)
+            obj._state.trigger = None
         return ret
 
     def expunge(self, object):
@@ -999,7 +1021,7 @@ class Session(object):
     def _register_persistent(self, obj):
         obj._sa_session_id = self.hash_key
         self.identity_map[obj._instance_key] = obj
-        attribute_manager.commit(obj)
+        obj._state.commit_all()
 
     def _attach(self, obj):
         old_id = getattr(obj, '_sa_session_id', None)
@@ -1083,6 +1105,25 @@ class Session(object):
     new = property(lambda s:s.uow.new,
                    doc="A ``Set`` of all objects marked as 'new' within this ``Session``.")
 
+def expire_instance(obj, attribute_names):
+    """standalone expire instance function. 
+    
+    installs a callable with the given instance's _state
+    which will fire off when any of the named attributes are accessed;
+    their existing value is removed.
+    
+    If the list is None or blank, the entire instance is expired.
+    """
+    
+    if obj._state.trigger is None:
+        def load_attributes(instance, attribute_names):
+            if object_session(instance).query(instance.__class__)._get(instance._instance_key, refresh_instance=instance, only_load_props=attribute_names) is None:
+                raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(instance))
+        obj._state.trigger = load_attributes
+        
+    obj._state.expire_attributes(attribute_names)
+    
+
 
 # this is the AttributeManager instance used to provide attribute behavior on objects.
 # to all the "global variable police" out there:  its a stateless object.
@@ -1108,3 +1149,4 @@ def object_session(obj):
 unitofwork.object_session = object_session
 from sqlalchemy.orm import mapper
 mapper.attribute_manager = attribute_manager
+mapper.expire_instance = expire_instance

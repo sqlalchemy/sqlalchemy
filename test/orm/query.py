@@ -12,15 +12,10 @@ from testlib.fixtures import *
 class QueryTest(FixtureTest):
     keep_mappers = True
     keep_data = True
-
+    
     def setUpAll(self):
         super(QueryTest, self).setUpAll()
-        install_fixture_data()
         self.setup_mappers()
-
-    def tearDownAll(self):
-        clear_mappers()
-        super(QueryTest, self).tearDownAll()
 
     def setup_mappers(self):
         mapper(User, users, properties={

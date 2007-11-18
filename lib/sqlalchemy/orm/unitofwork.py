@@ -128,7 +128,7 @@ class UnitOfWork(object):
         if hasattr(obj, '_sa_insert_order'):
             delattr(obj, '_sa_insert_order')
         self.identity_map[obj._instance_key] = obj
-        attribute_manager.commit(obj)
+        obj._state.commit_all()
 
     def register_new(self, obj):
         """register the given object as 'new' (i.e. unsaved) within this unit of work."""

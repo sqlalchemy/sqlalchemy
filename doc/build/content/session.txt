@@ -396,6 +396,18 @@ To assist with the Session's "sticky" behavior of instances which are present, i
     session.expire(obj1)
     session.expire(obj2)
 
+`refresh()` and `expire()` also support being passed a list of individual attribute names in which to be refreshed.  These names can reference any attribute, column-based or relation based:
+
+    {python}
+    # immediately re-load the attributes 'hello', 'world' on obj1, obj2
+    session.refresh(obj1, ['hello', 'world'])
+    session.refresh(obj2, ['hello', 'world'])
+    
+    # expire the attriibutes 'hello', 'world' objects obj1, obj2, attributes will be reloaded
+    # on the next access:
+    session.expire(obj1, ['hello', 'world'])
+    session.expire(obj2, ['hello', 'world'])
+
 ## Cascades
 
 Mappers support the concept of configurable *cascade* behavior on `relation()`s.  This behavior controls how the Session should treat the instances that have a parent-child relationship with another instance that is operated upon by the Session.  Cascade is indicated as a comma-separated list of string keywords, with the possible values `all`, `delete`, `save-update`, `refresh-expire`, `merge`, `expunge`, and `delete-orphan`.

@@ -67,66 +67,11 @@ class MapperTest(MapperSuperTest):
         u2 = s.query(User).filter_by(user_name='jack').one()
         assert u is u2
 
-    def test_refresh(self):
-        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), backref='user')})
-        s = create_session()
-        u = s.get(User, 7)
-        u.user_name = 'foo'
-        a = Address()
-        assert object_session(a) is None
-        u.addresses.append(a)
-
-        self.assert_(a in u.addresses)
-
-        s.refresh(u)
-
-        # its refreshed, so not dirty
-        self.assert_(u not in s.dirty)
-
-        # username is back to the DB
-        self.assert_(u.user_name == 'jack')
-
-        self.assert_(a not in u.addresses)
-
-        u.user_name = 'foo'
-        u.addresses.append(a)
-        # now its dirty
-        self.assert_(u in s.dirty)
-        self.assert_(u.user_name == 'foo')
-        self.assert_(a in u.addresses)
-        s.expire(u)
-
-        # get the attribute, it refreshes
-        self.assert_(u.user_name == 'jack')
-        self.assert_(a not in u.addresses)
 
     def test_compileonsession(self):
         m = mapper(User, users)
         session = create_session()
         session.connection(m)
-
-    def test_expirecascade(self):
-        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), cascade="all, refresh-expire")})
-        s = create_session()
-        u = s.get(User, 8)
-        u.addresses[0].email_address = 'someotheraddress'
-        s.expire(u)
-        assert u.addresses[0].email_address == 'ed@wood.com'
-
-    def test_refreshwitheager(self):
-        """test that a refresh/expire operation loads rows properly and sends correct "isnew" state to eager loaders"""
-        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), lazy=False)})
-        s = create_session()
-        u = s.get(User, 8)
-        assert len(u.addresses) == 3
-        s.refresh(u)
-        assert len(u.addresses) == 3
-
-        s = create_session()
-        u = s.get(User, 8)
-        assert len(u.addresses) == 3
-        s.expire(u)
-        assert len(u.addresses) == 3
 
     def test_incompletecolumns(self):
         """test loading from a select which does not contain all columns"""
@@ -186,71 +131,6 @@ class MapperTest(MapperSuperTest):
         except Exception, e:
             assert e is ex
 
-    def test_refresh_lazy(self):
-        """test that when a lazy loader is set as a trigger on an object's attribute (at the attribute level, not the class level), a refresh() operation doesnt fire the lazy loader or create any problems"""
-        s = create_session()
-        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
-        q2 = s.query(User).options(lazyload('addresses'))
-        u = q2.selectfirst(users.c.user_id==8)
-        def go():
-            s.refresh(u)
-        self.assert_sql_count(testbase.db, go, 1)
-
-    def test_expire(self):
-        """test the expire function"""
-        s = create_session()
-        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), lazy=False)})
-        u = s.get(User, 7)
-        assert(len(u.addresses) == 1)
-        u.user_name = 'foo'
-        del u.addresses[0]
-        s.expire(u)
-        # test plain expire
-        self.assert_(u.user_name =='jack')
-        self.assert_(len(u.addresses) == 1)
-
-        # we're changing the database here, so if this test fails in the middle,
-        # it'll screw up the other tests which are hardcoded to 7/'jack'
-        u.user_name = 'foo'
-        s.flush()
-        # change the value in the DB
-        users.update(users.c.user_id==7, values=dict(user_name='jack')).execute()
-        s.expire(u)
-        # object isnt refreshed yet, using dict to bypass trigger
-        self.assert_(u.__dict__.get('user_name') != 'jack')
-        # do a select
-        s.query(User).select()
-        # test that it refreshed
-        self.assert_(u.__dict__['user_name'] == 'jack')
-
-        # object should be back to normal now,
-        # this should *not* produce a SELECT statement (not tested here though....)
-        self.assert_(u.user_name =='jack')
-
-    @testing.fails_on('maxdb')
-    def test_refresh2(self):
-        """test a hang condition that was occuring on expire/refresh"""
-
-        s = create_session()
-        m1 = mapper(Address, addresses)
-
-        m2 = mapper(User, users, properties = dict(addresses=relation(Address,private=True,lazy=False)) )
-        u=User()
-        u.user_name='Justin'
-        a = Address()
-        a.address_id=17  # to work around the hardcoded IDs in this test suite....
-        u.addresses.append(a)
-        s.flush()
-        s.clear()
-        u = s.query(User).selectfirst()
-        print u.user_name
-
-        #ok so far
-        s.expire(u)        #hangs when
-        print u.user_name #this line runs
-
-        s.refresh(u) #hangs
-
     def test_props(self):
         m = mapper(User, users, properties = {
             'addresses' : relation(mapper(Address, addresses))
@@ -299,7 +179,18 @@ class MapperTest(MapperSuperTest):
         sess.save(u3)
         sess.flush()
         sess.rollback()
-
+    
+    def test_illegal_non_primary(self):
+        mapper(User, users)
+        mapper(Address, addresses)
+        try:
+            mapper(User, users, non_primary=True, properties={
+                'addresses':relation(Address)
+            }).compile()
+            assert False
+        except exceptions.ArgumentError, e:
+            assert "Attempting to assign a new relation 'addresses' to a non-primary mapper on class 'User'" in str(e)
+        
     def test_propfilters(self):
         t = Table('person', MetaData(),
                   Column('id', Integer, primary_key=True),

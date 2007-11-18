@@ -84,7 +84,7 @@ class GetTest(ORMTest):
             Column('bar_id', Integer, ForeignKey('bar.id')),
             Column('data', String(20)))
 
-    def create_test(polymorphic):
+    def create_test(polymorphic, name):
         def test_get(self):
             class Foo(object):
                 pass
@@ -145,11 +145,11 @@ class GetTest(ORMTest):
                     assert sess.query(Blub).get(bl.id) == bl
 
                 self.assert_sql_count(testbase.db, go, 3)
-
+        test_get.__name__ = name
         return test_get
 
-    test_get_polymorphic = create_test(True)
-    test_get_nonpolymorphic = create_test(False)
+    test_get_polymorphic = create_test(True, 'test_get_polymorphic')
+    test_get_nonpolymorphic = create_test(False, 'test_get_nonpolymorphic')
 
 
 class ConstructionTest(ORMTest):

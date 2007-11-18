@@ -5,6 +5,8 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy import exceptions
 from testlib import *
 
+ROLLBACK_SUPPORTED=False
+
 # these test classes defined at the module
 # level to support pickling
 class MyTest(object):pass
@@ -29,7 +31,7 @@ class AttributesTest(PersistTest):
         
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
-        manager.commit(u)
+        u._state.commit_all()
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
 
@@ -37,10 +39,11 @@ class AttributesTest(PersistTest):
         u.email_address = 'foo@bar.com'
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.email_address == 'foo@bar.com')
-        
-        manager.rollback(u)
-        print repr(u.__dict__)
-        self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
+
+        if ROLLBACK_SUPPORTED:
+            manager.rollback(u)
+            print repr(u.__dict__)
+            self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
 
     def test_pickleness(self):
 
@@ -128,7 +131,7 @@ class AttributesTest(PersistTest):
 
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
-        manager.commit(u, a)
+        u, a._state.commit_all()
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
 
@@ -140,11 +143,12 @@ class AttributesTest(PersistTest):
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.addresses[0].email_address == 'lala@123.com' and u.addresses[1].email_address == 'foo@bar.com')
 
-        manager.rollback(u, a)
-        print repr(u.__dict__)
-        print repr(u.addresses[0].__dict__)
-        self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
-        self.assert_(len(manager.get_history(u, 'addresses').unchanged_items()) == 1)
+        if ROLLBACK_SUPPORTED:
+            manager.rollback(u, a)
+            print repr(u.__dict__)
+            print repr(u.addresses[0].__dict__)
+            self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
+            self.assert_(len(manager.get_history(u, 'addresses').unchanged_items()) == 1)
 
     def test_backref(self):
         class Student(object):pass
@@ -231,9 +235,9 @@ class AttributesTest(PersistTest):
         # create objects as if they'd been freshly loaded from the database (without history)
         b = Blog()
         p1 = Post()
-        manager.init_instance_attribute(b, 'posts', lambda:[p1])
-        manager.init_instance_attribute(p1, 'blog', lambda:b)
-        manager.commit(p1, b)
+        b._state.set_callable('posts', lambda:[p1])
+        p1._state.set_callable('blog', lambda:b)
+        p1, b._state.commit_all()
 
         # no orphans (called before the lazy loaders fire off)
         assert manager.has_parent(Blog, p1, 'posts', optimistic=True)
@@ -292,7 +296,7 @@ class AttributesTest(PersistTest):
         x.element = 'this is the element'
         hist = manager.get_history(x, 'element')
         assert hist.added_items() == ['this is the element']
-        manager.commit(x)
+        x._state.commit_all()
         hist = manager.get_history(x, 'element')
         assert hist.added_items() == []
         assert hist.unchanged_items() == ['this is the element']
@@ -320,7 +324,7 @@ class AttributesTest(PersistTest):
         manager.register_attribute(Bar, 'id', uselist=False, useobject=True)
 
         x = Foo()
-        manager.commit(x)
+        x._state.commit_all()
         x.col2.append(Bar(4))
         h = manager.get_history(x, 'col2')
         print h.added_items()
@@ -362,7 +366,7 @@ class AttributesTest(PersistTest):
         manager.register_attribute(Foo, 'element', uselist=False, copy_function=lambda x:[y for y in x], mutable_scalars=True, useobject=False)
         x = Foo()
         x.element = ['one', 'two', 'three']    
-        manager.commit(x)
+        x._state.commit_all()
         x.element[1] = 'five'
         assert manager.is_modified(x)
         
@@ -372,7 +376,7 @@ class AttributesTest(PersistTest):
         manager.register_attribute(Foo, 'element', uselist=False, useobject=False)
         x = Foo()
         x.element = ['one', 'two', 'three']    
-        manager.commit(x)
+        x._state.commit_all()
         x.element[1] = 'five'
         assert not manager.is_modified(x)
         

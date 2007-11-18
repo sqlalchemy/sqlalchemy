@@ -7,12 +7,10 @@ from testlib.fixtures import *
 
 from query import QueryTest
 
-class DynamicTest(QueryTest):
+class DynamicTest(FixtureTest):
     keep_mappers = False
-
-    def setup_mappers(self):
-        pass
-
+    keep_data = True
+    
     def test_basic(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))

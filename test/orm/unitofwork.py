@@ -119,8 +119,10 @@ class VersioningTest(ORMTest):
         except exceptions.ConcurrentModificationError, e:
             assert True
         # reload it
+        print "RELOAD"
         s1.query(Foo).load(f1s1.id)
         # now assert version OK
+        print "VERSIONCHECK"
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
         
         # assert brand new load is OK too

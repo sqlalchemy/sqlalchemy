@@ -8,12 +8,10 @@ from testlib import *
 from testlib.fixtures import *
 from query import QueryTest
 
-class LazyTest(QueryTest):
+class LazyTest(FixtureTest):
     keep_mappers = False
-
-    def setup_mappers(self):
-        pass
-        
+    keep_data = True
+    
     def test_basic(self):
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses), lazy=True)
@@ -275,13 +273,10 @@ class LazyTest(QueryTest):
         
         assert a.user is u1
 
-class M2OGetTest(QueryTest):
+class M2OGetTest(FixtureTest):
     keep_mappers = False
-    keep_data = False
+    keep_data = True
 
-    def setup_mappers(self):
-        pass
-        
     def test_m2o_noload(self):
         """test that a NULL foreign key doesn't trigger a lazy load"""
         mapper(User, users)

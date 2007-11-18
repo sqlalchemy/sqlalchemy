@@ -599,7 +599,7 @@ class PropertyLoader(StrategizedProperty):
 
             if self.backref is not None:
                 self.backref.compile(self)
-        elif not sessionlib.attribute_manager.is_class_managed(self.parent.class_, self.key):
+        elif not mapper.class_mapper(self.parent.class_).get_property(self.key, raiseerr=False):
             raise exceptions.ArgumentError("Attempting to assign a new relation '%s' to a non-primary mapper on class '%s'.  New relations can only be added to the primary mapper, i.e. the very first mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
 
         super(PropertyLoader, self).do_init()
@@ -702,28 +702,5 @@ class BackRef(object):
 
         return attributes.GenericBackrefExtension(self.key)
 
-def deferred_load(instance, props):
-    """set multiple instance attributes to 'deferred' or 'lazy' load, for the given set of MapperProperty objects.
-
-    this will remove the current value of the attribute and set a per-instance
-    callable to fire off when the instance is next accessed.
-    
-    for column-based properties, aggreagtes them into a single list against a single deferred loader
-    so that a single column access loads all columns
-
-    """
-
-    if not props:
-        return
-    column_props = [p for p in props if isinstance(p, ColumnProperty)]
-    callable_ = column_props[0]._get_strategy(strategies.DeferredColumnLoader).setup_loader(instance, props=column_props)
-    for p in column_props:
-        sessionlib.attribute_manager.init_instance_attribute(instance, p.key, callable_=callable_, clear=True)
-        
-    for p in [p for p in props if isinstance(p, PropertyLoader)]:
-        callable_ = p._get_strategy(strategies.LazyLoader).setup_loader(instance)
-        sessionlib.attribute_manager.init_instance_attribute(instance, p.key, callable_=callable_, clear=True)
-
 mapper.ColumnProperty = ColumnProperty
-mapper.deferred_load = deferred_load
         

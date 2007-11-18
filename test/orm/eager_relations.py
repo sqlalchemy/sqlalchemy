@@ -7,9 +7,10 @@ from testlib import *
 from testlib.fixtures import *
 from query import QueryTest
 
-class EagerTest(QueryTest):
+class EagerTest(FixtureTest):
     keep_mappers = False
-
+    keep_data = True
+    
     def setup_mappers(self):
         pass
 
