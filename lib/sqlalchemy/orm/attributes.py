@@ -618,7 +618,8 @@ class InstanceState(object):
         self.callables[key] = callable_
 
     def __fire_trigger(self):
-        self.trigger(self.obj(), self.expired_attributes)
+        instance = self.obj()
+        self.trigger(instance, [k for k in self.expired_attributes if k not in self.dict])
         for k in self.expired_attributes:
             self.callables.pop(k, None)
         self.expired_attributes.clear()

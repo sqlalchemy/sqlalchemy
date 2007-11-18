@@ -729,7 +729,27 @@ class DeferredTest(MapperSuperTest):
         def go():
             sess.flush()
         self.assert_sql_count(testbase.db, go, 0)
-
+    
+    def test_preserve_changes(self):
+        """test that the deferred load operation doesn't revert modifications on attributes"""
+        
+        mapper(Order, orders, properties = {
+            'userident':deferred(orders.c.user_id, group='primary'),
+            'description':deferred(orders.c.description, group='primary'),
+            'opened':deferred(orders.c.isopen, group='primary')
+        })
+        sess = create_session()
+        o = sess.query(Order).get(3)
+        assert 'userident' not in o.__dict__
+        o.description = 'somenewdescription'
+        assert o.description == 'somenewdescription'
+        def go():
+            assert o.opened == 1
+        self.assert_sql_count(testbase.db, go, 1)
+        assert o.description == 'somenewdescription'
+        assert o in sess.dirty
+        
+        
     def test_commitsstate(self):
         """test that when deferred elements are loaded via a group, they get the proper CommittedState
         and dont result in changes being committed"""

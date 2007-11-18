@@ -100,7 +100,7 @@ class ColumnLoader(LoaderStrategy):
             strategy = self.parent_property._get_strategy(DeferredColumnLoader)
             
             # full list of ColumnProperty objects to be loaded in the deferred fetch
-            props = [p for p in mapper.iterate_properties if isinstance(p.strategy, ColumnLoader) and p.columns[0].table in needs_tables]
+            props = [p.key for p in mapper.iterate_properties if isinstance(p.strategy, ColumnLoader) and p.columns[0].table in needs_tables]
 
             # TODO: we are somewhat duplicating efforts from mapper._get_poly_select_loader 
             # and should look for ways to simplify.
@@ -188,10 +188,12 @@ class DeferredColumnLoader(LoaderStrategy):
             if props is not None:
                 group = props
             elif self.group is not None:
-                group = [p for p in localparent.iterate_properties if isinstance(p.strategy, DeferredColumnLoader) and p.group==self.group]
+                group = [p.key for p in localparent.iterate_properties if isinstance(p.strategy, DeferredColumnLoader) and p.group==self.group]
             else:
-                group = [self.parent_property]
-                
+                group = [self.parent_property.key]
+            
+            group = [k for k in group if k not in instance.__dict__]
+            
             if self._should_log_debug:
                 self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), group and ','.join([p.key for p in group]) or 'None'))
 
@@ -201,10 +203,10 @@ class DeferredColumnLoader(LoaderStrategy):
 
             if create_statement is None:
                 ident = instance._instance_key[1]
-                session.query(localparent)._get(None, ident=ident, only_load_props=[p.key for p in group], refresh_instance=instance)
+                session.query(localparent)._get(None, ident=ident, only_load_props=group, refresh_instance=instance)
             else:
                 statement, params = create_statement(instance)
-                session.query(localparent).from_statement(statement).params(params)._get(None, only_load_props=[p.key for p in group], refresh_instance=instance)
+                session.query(localparent).from_statement(statement).params(params)._get(None, only_load_props=group, refresh_instance=instance)
             return attributes.ATTR_WAS_SET
         return lazyload
                 

@@ -62,6 +62,20 @@ class ExpireTest(FixtureTest):
         sess.flush()
         sess.clear()
         assert sess.query(User).get(7).name == 'somenewname'
+    
+    def test_expire_preserves_changes(self):
+        """test that the expire load operation doesn't revert post-expire changes"""
+        
+        mapper(Order, orders)
+        sess = create_session()
+        o = sess.query(Order).get(3)
+        sess.expire(o)
+        
+        o.description = "order 3 modified"
+        def go():
+            assert o.isopen == 1
+        self.assert_sql_count(testbase.db, go, 1)
+        assert o.description == 'order 3 modified'
         
     def test_expire_committed(self):
         """test that the committed state of the attribute receives the most recent DB data"""
