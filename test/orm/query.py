@@ -673,7 +673,7 @@ class InstancesTest(QueryTest):
         
         oalias = orders.alias('o1')
         ialias = items.alias('i1')
-        query = users.outerjoin(oalias).outerjoin(order_items).outerjoin(ialias).select(use_labels=True)
+        query = users.outerjoin(oalias).outerjoin(order_items).outerjoin(ialias).select(use_labels=True).order_by(users.c.id).order_by(oalias.c.id).order_by(ialias.c.id)
         q = create_session().query(User)
         # test using string alias with more than one level deep
         def go():
