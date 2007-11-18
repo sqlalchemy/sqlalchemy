@@ -177,7 +177,7 @@ colspecs = {
 
 ischema_names = {
     'VARCHAR2' : OracleString,
-    'DATE' : OracleDate,
+    'DATE' : OracleDateTime,
     'DATETIME' : OracleDateTime,
     'NUMBER' : OracleNumeric,
     'BLOB' : OracleBinary,
@@ -442,10 +442,23 @@ class OracleDialect(default.DefaultDialect):
         else:
             return name.encode(self.encoding)
     
+    def get_default_schema_name(self,connection):
+        try:
+            return self._default_schema_name
+        except AttributeError:
+            name = self._default_schema_name = \
+                connection.execute('SELECT USER FROM DUAL').scalar()
+            return name
+
     def table_names(self, connection, schema):
         # note that table_names() isnt loading DBLINKed or synonym'ed tables
-        s = "select table_name from all_tables where tablespace_name NOT IN ('SYSTEM', 'SYSAUX')"
-        return [self._normalize_name(row[0]) for row in connection.execute(s)]
+        if schema is None:
+            s = "select table_name from all_tables where tablespace_name NOT IN ('SYSTEM', 'SYSAUX')"
+            cursor = connection.execute(s)
+        else:
+            s = "select table_name from all_tables where tablespace_name NOT IN ('SYSTEM','SYSAUX') AND OWNER = :owner"
+            cursor = connection.execute(s,{'owner':self._denormalize_name(schema)})
+        return [self._normalize_name(row[0]) for row in cursor]
 
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer

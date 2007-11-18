@@ -186,7 +186,7 @@ class ReflectionTest(PersistTest):
     def test_unknown_types(self):
         meta = MetaData(testbase.db)
         t = Table("test", meta, 
-            Column('foo', String(30)))
+            Column('foo', DateTime))
             
         import sys
         dialect_module = sys.modules[testbase.db.dialect.__module__]
@@ -689,7 +689,7 @@ class CreateDropTest(PersistTest):
         metadata.drop_all(bind=testbase.db)
 
 class UnicodeTest(PersistTest):
-    @testing.unsupported('sybase', 'maxdb')
+    @testing.unsupported('sybase', 'maxdb', 'oracle')
     def test_basic(self):
         try:
             # the 'convert_unicode' should not get in the way of the reflection 

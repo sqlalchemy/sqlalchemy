@@ -157,8 +157,14 @@ CHANGES
     could get polluted by certain generative calls [ticket:852]
     
 - dialects
-
+ 
   - Added experimental support for MaxDB (versions >= 7.6.03.007 only).
+
+  - oracle will now reflect "DATE" as an OracleDateTime column, not 
+    OracleDate
+
+  - added awareness of schema name in oracle table_names() function,
+    fixes metadata.reflect(schema='someschema') [ticket:847]
 
   - sqlite will reflect "DECIMAL" as a numeric column.
 
