@@ -254,6 +254,8 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         c = Company(name='company1')
         c.employees.append(Manager(status='AAB', manager_name='manager1', **{person_attribute_name:'pointy haired boss'}))
         c.employees.append(Engineer(status='BBA', engineer_name='engineer1', primary_language='java', **{person_attribute_name:'dilbert'}))
+        dilbert = c.employees[-1]
+        
         if include_base:
             c.employees.append(Person(status='HHH', **{person_attribute_name:'joesmith'}))
         c.employees.append(Engineer(status='CGG', engineer_name='engineer2', primary_language='python', **{person_attribute_name:'wally'}))
@@ -262,6 +264,11 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         print session.new
         session.flush()
         session.clear()
+        
+        dilbert = session.query(Person).get(dilbert.person_id)
+        assert getattr(dilbert, person_attribute_name) == 'dilbert'
+        session.clear()
+        
         id = c.company_id
         def go():
             c = session.query(Company).get(id)

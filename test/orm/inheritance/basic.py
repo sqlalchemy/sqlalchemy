@@ -121,7 +121,7 @@ class GetTest(ORMTest):
                     assert sess.query(Bar).get(b.id) == b
                     assert sess.query(Bar).get(bl.id) == bl
                     assert sess.query(Blub).get(bl.id) == bl
-
+                    
                 self.assert_sql_count(testbase.db, go, 0)
             else:
                 # this is testing the 'wrong' behavior of using get()
@@ -145,6 +145,7 @@ class GetTest(ORMTest):
                     assert sess.query(Blub).get(bl.id) == bl
 
                 self.assert_sql_count(testbase.db, go, 3)
+            
         test_get.__name__ = name
         return test_get
 
