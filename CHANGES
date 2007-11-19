@@ -1,7 +1,14 @@
 =======
 CHANGES
 =======
+0.4.2
+-----
 
+- orm
+
+   - fixed endless loop issue when using lazy="dynamic" on both 
+     sides of a bi-directional relationship [ticket:872]
+     
 0.4.1
 -----
 

@@ -9,7 +9,7 @@ from query import QueryTest
 
 class DynamicTest(FixtureTest):
     keep_mappers = False
-    keep_data = True
+    refresh_data = True
     
     def test_basic(self):
         mapper(User, users, properties={
@@ -36,7 +36,23 @@ class DynamicTest(FixtureTest):
         def go():
             assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
         self.assert_sql_count(testbase.db, go, 2)
-
+    
+    def test_m2m(self):
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items, lazy="dynamic", backref=backref('orders', lazy="dynamic"))
+        })
+        mapper(Item, items)
+        
+        sess = create_session()
+        o1 = Order(id=15, description="order 10")
+        i1 = Item(id=10, description="item 8")
+        o1.items.append(i1)
+        sess.save(o1)
+        sess.flush()
+        
+        assert o1 in i1.orders.all()
+        assert i1 in o1.items.all()
+        
 class FlushTest(FixtureTest):
     def test_basic(self):
         class Fixture(Base):
