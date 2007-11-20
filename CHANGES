@@ -8,7 +8,11 @@ CHANGES
 
    - fixed endless loop issue when using lazy="dynamic" on both 
      sides of a bi-directional relationship [ticket:872]
-     
+
+   - clarified the error message which occurs when you try to update()
+     an instance with the same identity key as an instance already present
+     in the session.
+ 
 0.4.1
 -----
 

@@ -281,7 +281,7 @@ class PropertyLoader(StrategizedProperty):
         return str(self.parent.class_.__name__) + "." + self.key + " (" + str(self.mapper.class_.__name__)  + ")"
 
     def merge(self, session, source, dest, dont_load, _recursive):
-        if not "merge" in self.cascade or self.mapper in _recursive:
+        if not "merge" in self.cascade:
             return
         childlist = sessionlib.attribute_manager.get_history(source, self.key, passive=True)
         if childlist is None:
@@ -299,7 +299,6 @@ class PropertyLoader(StrategizedProperty):
                 obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     setattr(dest, self.key, obj)
-
 
     def cascade_iterator(self, type, object, recursive, halt_on=None):
         if not type in self.cascade:

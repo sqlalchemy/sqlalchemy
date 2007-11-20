@@ -104,6 +104,9 @@ class MergeTest(AssertMixin):
         # merge persistent object into another session
         sess4 = create_session()
         u = sess4.merge(u)
+        assert len(u.addresses)
+        for a in u.addresses:
+            assert a.user is u
         def go():
             sess4.flush()
         # no changes; therefore flush should do nothing
@@ -111,7 +114,11 @@ class MergeTest(AssertMixin):
         
         # test with "dontload" merge
         sess5 = create_session()
+        print "------------------"
         u = sess5.merge(u, dont_load=True)
+        assert len(u.addresses)
+        for a in u.addresses:
+            assert a.user is u
         def go():
             sess5.flush()
         # no changes; therefore flush should do nothing

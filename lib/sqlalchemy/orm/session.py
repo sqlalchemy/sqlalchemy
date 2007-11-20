@@ -866,40 +866,35 @@ class Session(object):
         """
 
         if _recursive is None:
-            _recursive = util.Set()
+            _recursive = {}  #TODO: this should be an IdentityDict
         if entity_name is not None:
             mapper = _class_mapper(object.__class__, entity_name=entity_name)
         else:
             mapper = _object_mapper(object)
-        if mapper in _recursive or object in _recursive:
-            return None
-        _recursive.add(mapper)
-        _recursive.add(object)
-        try:
-            key = getattr(object, '_instance_key', None)
-            if key is None:
+        if object in _recursive:
+            return _recursive[object]
+        
+        key = getattr(object, '_instance_key', None)
+        if key is None:
+            merged = attribute_manager.new_instance(mapper.class_)
+        else:
+            if key in self.identity_map:
+                merged = self.identity_map[key]
+            elif dont_load:
                 merged = attribute_manager.new_instance(mapper.class_)
+                merged._instance_key = key
+                self._update_impl(merged, entity_name=mapper.entity_name)
+                merged._state.committed_state = object._state.committed_state.copy()
             else:
-                if key in self.identity_map:
-                    merged = self.identity_map[key]
-                elif dont_load:
-                    merged = attribute_manager.new_instance(mapper.class_)
-                    merged._instance_key = key
-                    self.update(merged, entity_name=mapper.entity_name)
-                    merged._state.committed_state = object._state.committed_state.copy()
-                else:
-                    merged = self.get(mapper.class_, key[1])
-                    if merged is None:
-                        raise exceptions.AssertionError("Instance %s has an instance key but is not persisted" % mapperutil.instance_str(object))
-            for prop in mapper.iterate_properties:
-                prop.merge(self, object, merged, dont_load, _recursive)
-            if dont_load:
-                merged._state.modified = object._state.modified
-            if key is None:
-                self.save(merged, entity_name=mapper.entity_name)
-            return merged
-        finally:
-            _recursive.remove(mapper)
+                merged = self.get(mapper.class_, key[1])
+                if merged is None:
+                    raise exceptions.AssertionError("Instance %s has an instance key but is not persisted" % mapperutil.instance_str(object))
+        _recursive[object] = merged
+        for prop in mapper.iterate_properties:
+            prop.merge(self, object, merged, dont_load, _recursive)
+        if key is None:
+            self.save(merged, entity_name=mapper.entity_name)
+        return merged
             
     def identity_key(cls, *args, **kwargs):
         """Get an identity key.
@@ -987,7 +982,7 @@ class Session(object):
         if not hasattr(obj, '_instance_key'):
             raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % mapperutil.instance_str(obj))
         elif self.identity_map.get(obj._instance_key, obj) is not obj:
-            raise exceptions.InvalidRequestError("Instance '%s' is with key %s already persisted with a different identity" % (mapperutil.instance_str(obj), obj._instance_key))
+            raise exceptions.InvalidRequestError("Could not update instance '%s', identity key %s; a different instance with the same identity key already exists in this session." % (mapperutil.instance_str(obj), obj._instance_key))
         self._attach(obj)
 
     def _save_or_update_impl(self, object, entity_name=None):
