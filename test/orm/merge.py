@@ -1,6 +1,8 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy import exceptions
 from sqlalchemy.orm import *
+from sqlalchemy.orm import mapperlib
 from testlib import *
 from testlib.tables import *
 import testlib.tables as tables
@@ -122,18 +124,23 @@ class MergeTest(AssertMixin):
         def go():
             sess5.flush()
         # no changes; therefore flush should do nothing
+        # but also, dont_load wipes out any difference in committed state, 
+        # so no flush at all
         self.assert_sql_count(testbase.db, go, 0)
 
-        # pre merge change
-        u.user_name='fred3'
         sess4 = create_session()
         u = sess4.merge(u, dont_load=True)
         # post merge change
         u.addresses[1].email_address='afafds'
         def go():
             sess4.flush()
-        # changes still flush
-        self.assert_sql_count(testbase.db, go, 2)
+        # afafds change flushes
+        self.assert_sql_count(testbase.db, go, 1)
+        
+        sess5 = create_session()
+        u2 = sess5.query(User).get(u.user_id)
+        assert u2.user_name == 'fred2'
+        assert u2.addresses[1].email_address == 'afafds'
 
     def test_saved_cascade_2(self):
         """tests a more involved merge"""
@@ -197,6 +204,97 @@ class MergeTest(AssertMixin):
         u2.address.email_address = 'hoho@lalala.com'
 
         u3 = sess.merge(u2)
+
+    def test_noload_with_eager(self):
+        """this test illustrates that with noload=True, we can't just
+        copy the committed_state of the merged instance over; since it references collection objects
+        which themselves are to be merged.  This committed_state would instead need to be piecemeal 
+        'converted' to represent the correct objects.  
+        However, at the moment I'd rather not support this use case; if you are merging with dont_load=True,
+        you're typically dealing with caching and the merged objects shouldnt be "dirty".
+        """
         
+        mapper(User, users, properties={
+            'addresses':relation(mapper(Address, addresses),uselist = True)
+        })
+        sess = create_session()
+        u = User()
+        u.user_id = 7
+        u.user_name = "fred"
+        a1 = Address()
+        a1.email_address='foo@bar.com'
+        u.addresses.append(a1)
+
+        sess.save(u)
+        sess.flush()
+
+        sess2 = create_session()
+        u2 = sess2.query(User).options(eagerload('addresses')).get(7)
+        
+        sess3 = create_session()
+        u3 = sess3.merge(u2, dont_load=True)
+        def go():
+            sess3.flush()
+        self.assert_sql_count(testbase.db, go, 0)
+
+    def test_noload_disallows_dirty(self):
+        """noload doesnt support 'dirty' objects right now (see test_noload_with_eager()). 
+        Therefore lets assert it."""
+        
+        mapper(User, users)
+        sess = create_session()
+        u = User()
+        u.user_id = 7
+        u.user_name = "fred"
+        sess.save(u)
+        sess.flush()
+
+        u.user_name = 'ed'
+        sess2 = create_session()
+        try:
+            sess2.merge(u, dont_load=True)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert "merge() with dont_load=True option does not support objects marked as 'dirty'.  flush() all changes on mapped instances before merging with dont_load=True." in str(e)
+            
+        u2 = sess2.query(User).options(eagerload('addresses')).get(7)
+        
+        sess3 = create_session()
+        u3 = sess3.merge(u2, dont_load=True)
+        def go():
+            sess3.flush()
+        self.assert_sql_count(testbase.db, go, 0)
+        
+    def test_noload_sets_entityname(self):
+        """test that a noload-merged entity has entity_name set, has_mapper() passes, and lazyloads work"""
+        mapper(User, users, properties={
+            'addresses':relation(mapper(Address, addresses),uselist = True)
+        })
+        sess = create_session()
+        u = User()
+        u.user_id = 7
+        u.user_name = "fred"
+        a1 = Address()
+        a1.email_address='foo@bar.com'
+        u.addresses.append(a1)
+
+        sess.save(u)
+        sess.flush()
+        sess.clear()
+        
+        # reload 'u' such that its addresses list hasn't loaded
+        u = sess.query(User).get(7)
+        
+        sess2 = create_session()
+        u2 = sess2.merge(u, dont_load=True)
+        # assert merged instance has a mapper and lazy load proceeds
+        assert hasattr(u2, '_entity_name')
+        assert mapperlib.has_mapper(u2)
+        def go():
+            assert u2.addresses != []
+            assert len(u2.addresses) == 1
+        self.assert_sql_count(testbase.db, go, 1)
+        
+
 if __name__ == "__main__":    
     testbase.main()

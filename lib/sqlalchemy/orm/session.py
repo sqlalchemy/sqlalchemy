@@ -881,10 +881,13 @@ class Session(object):
             if key in self.identity_map:
                 merged = self.identity_map[key]
             elif dont_load:
+                if object._state.modified:
+                    raise exceptions.InvalidRequestError("merge() with dont_load=True option does not support objects marked as 'dirty'.  flush() all changes on mapped instances before merging with dont_load=True.")
+                    
                 merged = attribute_manager.new_instance(mapper.class_)
                 merged._instance_key = key
+                merged._entity_name = entity_name
                 self._update_impl(merged, entity_name=mapper.entity_name)
-                merged._state.committed_state = object._state.committed_state.copy()
             else:
                 merged = self.get(mapper.class_, key[1])
                 if merged is None:
@@ -894,6 +897,8 @@ class Session(object):
             prop.merge(self, object, merged, dont_load, _recursive)
         if key is None:
             self.save(merged, entity_name=mapper.entity_name)
+        elif dont_load:
+            merged._state.commit_all()
         return merged
             
     def identity_key(cls, *args, **kwargs):

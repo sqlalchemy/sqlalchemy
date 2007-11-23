@@ -12,7 +12,17 @@ CHANGES
    - clarified the error message which occurs when you try to update()
      an instance with the same identity key as an instance already present
      in the session.
- 
+
+   - some clarifications and fixes to merge(instance, dont_load=True).  
+     fixed bug where lazy loaders were getting disabled on returned instances.
+     Also, we currently do not support merging an instance which has uncommitted
+     changes on it, in the case that dont_load=True is used....this will
+     now raise an error.  This is due to complexities in merging the 
+     "committed state" of the given instance to correctly correspond to the
+     newly copied instance.  Since the use case for dont_load=True is 
+     caching, the given instances shouldn't have any uncommitted changes on them
+     anyway.
+
 0.4.1
 -----
 
