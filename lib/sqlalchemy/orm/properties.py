@@ -292,13 +292,19 @@ class PropertyLoader(StrategizedProperty):
             for current in list(childlist):
                 obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
-                    dest_list.append_with_event(obj)
+                    if dont_load:
+                        dest_list.append_without_event(obj)
+                    else:
+                        dest_list.append_with_event(obj)
         else:
             current = list(childlist)[0]
             if current is not None:
                 obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
-                    setattr(dest, self.key, obj)
+                    if dont_load:
+                        dest.__dict__[self.key] = obj
+                    else:
+                        setattr(dest, self.key, obj)
 
     def cascade_iterator(self, type, object, recursive, halt_on=None):
         if not type in self.cascade:

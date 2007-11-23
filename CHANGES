@@ -19,9 +19,11 @@ CHANGES
      changes on it, in the case that dont_load=True is used....this will
      now raise an error.  This is due to complexities in merging the 
      "committed state" of the given instance to correctly correspond to the
-     newly copied instance.  Since the use case for dont_load=True is 
-     caching, the given instances shouldn't have any uncommitted changes on them
-     anyway.
+     newly copied instance, as well as other modified state.  
+     Since the use case for dont_load=True is caching, the given instances 
+     shouldn't have any uncommitted changes on them anyway.
+     We also copy the instances over without using any events now, so that
+     the 'dirty' list on the new session remains unaffected.
 
 0.4.1
 -----

@@ -261,6 +261,7 @@ class MergeTest(AssertMixin):
         
         sess3 = create_session()
         u3 = sess3.merge(u2, dont_load=True)
+        assert not sess3.dirty
         def go():
             sess3.flush()
         self.assert_sql_count(testbase.db, go, 0)
@@ -287,6 +288,7 @@ class MergeTest(AssertMixin):
         
         sess2 = create_session()
         u2 = sess2.merge(u, dont_load=True)
+        assert not sess2.dirty
         # assert merged instance has a mapper and lazy load proceeds
         assert hasattr(u2, '_entity_name')
         assert mapperlib.has_mapper(u2)
@@ -294,7 +296,90 @@ class MergeTest(AssertMixin):
             assert u2.addresses != []
             assert len(u2.addresses) == 1
         self.assert_sql_count(testbase.db, go, 1)
-        
 
+    def test_noload_sets_backrefs(self):
+        mapper(User, users, properties={
+            'addresses':relation(mapper(Address, addresses),backref='user')
+        })
+        sess = create_session()
+        u = User()
+        u.user_id = 7
+        u.user_name = "fred"
+        a1 = Address()
+        a1.email_address='foo@bar.com'
+        u.addresses.append(a1)
+
+        sess.save(u)
+        sess.flush()
+
+        assert u.addresses[0].user is u
+
+        sess2 = create_session()
+        u2 = sess2.merge(u, dont_load=True)
+        assert not sess2.dirty
+        def go():
+            assert u2.addresses[0].user is u2
+        self.assert_sql_count(testbase.db, go, 0)
+    
+    def test_noload_preserves_parents(self):
+        """test that merge with noload does not trigger a 'delete-orphan' operation.
+        
+        merge with noload sets attributes without using events.  this means the
+        'hasparent' flag is not propagated to the newly merged instance.  in fact this
+        works out OK, because the '_state.parents' collection on the newly 
+        merged instance is empty; since the mapper doesn't see an active 'False' setting
+        in this collection when _is_orphan() is called, it does not count as an orphan 
+        (i.e. this is the 'optimistic' logic in mapper._is_orphan().)
+        """
+        
+        mapper(User, users, properties={
+            'addresses':relation(mapper(Address, addresses),backref='user', cascade="all, delete-orphan")
+        })
+        sess = create_session()
+        u = User()
+        u.user_id = 7
+        u.user_name = "fred"
+        a1 = Address()
+        a1.email_address='foo@bar.com'
+        u.addresses.append(a1)
+        sess.save(u)
+        sess.flush()
+
+        assert u.addresses[0].user is u
+
+        sess2 = create_session()
+        u2 = sess2.merge(u, dont_load=True)
+        assert not sess2.dirty
+        a2 = u2.addresses[0]
+        a2.email_address='somenewaddress'
+        assert not object_mapper(a2)._is_orphan(a2)
+        sess2.flush()
+        sess2.clear()
+        assert sess2.query(User).get(u2.user_id).addresses[0].email_address == 'somenewaddress'
+        
+        # this use case is not supported; this is with a pending Address on the pre-merged
+        # object, and we currently dont support 'dirty' objects being merged with dont_load=True.  
+        # in this case, the empty '_state.parents' collection would be an issue,
+        # since the optimistic flag is False in _is_orphan() for pending instances.
+        # so if we start supporting 'dirty' with dont_load=True, this test will need to pass
+        sess = create_session()
+        u = sess.query(User).get(7)
+        u.addresses.append(Address())
+        sess2 = create_session()
+        try:
+            u2 = sess2.merge(u, dont_load=True)
+            assert False
+
+            # if dont_load is changed to support dirty objects, this code needs to pass
+            a2 = u2.addresses[0]
+            a2.email_address='somenewaddress'
+            assert not object_mapper(a2)._is_orphan(a2)
+            sess2.flush()
+            sess2.clear()
+            assert sess2.query(User).get(u2.user_id).addresses[0].email_address == 'somenewaddress'
+        except exceptions.InvalidRequestError, e:
+            assert "dont_load=True option does not support" in str(e)
+         
+        
 if __name__ == "__main__":    
     testbase.main()
