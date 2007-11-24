@@ -6,7 +6,7 @@
 
 import weakref, warnings, operator
 from sqlalchemy import sql, util, exceptions, logging
-from sqlalchemy.sql import expression
+from sqlalchemy.sql import expression, visitors
 from sqlalchemy.sql import util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier, create_row_adapter
@@ -513,11 +513,9 @@ class Mapper(object):
                     result[binary.right].add(binary.left)
                 else:
                     result[binary.right] = util.Set([binary.left])
-        vis = mapperutil.BinaryVisitor(visit_binary)
-
         for mapper in self.base_mapper.polymorphic_iterator():
             if mapper.inherit_condition is not None:
-                vis.traverse(mapper.inherit_condition)
+                visitors.traverse(mapper.inherit_condition, visit_binary=visit_binary)
 
         # TODO: matching of cols to foreign keys might better be generalized
         # into general column translation (i.e. corresponding_column)
@@ -1472,11 +1470,10 @@ class Mapper(object):
         allconds = []
         param_names = []
 
-        visitor = mapperutil.BinaryVisitor(visit_binary)
         for mapper in self.iterate_to_root():
             if mapper is base_mapper:
                 break
-            allconds.append(visitor.traverse(mapper.inherit_condition, clone=True))
+            allconds.append(visitors.traverse(mapper.inherit_condition, clone=True, visit_binary=visit_binary))
         
         return sql.and_(*allconds), param_names
 

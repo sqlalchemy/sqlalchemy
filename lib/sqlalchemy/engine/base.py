@@ -87,6 +87,17 @@ class Dialect(object):
     supports_pk_autoincrement
       Indicates if the dialect should allow the database to passively assign
       a primary key column value.
+
+    dbapi_type_map
+      A mapping of DB-API type objects present in this Dialect's
+      DB-API implmentation mapped to TypeEngine implementations used
+      by the dialect.
+
+      This is used to apply types to result sets based on the DB-API
+      types present in cursor.description; it only takes effect for
+      result sets against textual statements where no explicit
+      typemap was present.  
+      
     """
 
     def create_connect_args(self, url):
@@ -99,21 +110,6 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def dbapi_type_map(self):
-        """Returns a DB-API to sqlalchemy.types mapping.
-
-        A mapping of DB-API type objects present in this Dialect's
-        DB-API implmentation mapped to TypeEngine implementations used
-        by the dialect.
-
-        This is used to apply types to result sets based on the DB-API
-        types present in cursor.description; it only takes effect for
-        result sets against textual statements where no explicit
-        typemap was present.  Constructed SQL statements always have
-        type information explicitly embedded.
-        """
-
-        raise NotImplementedError()
 
     def type_descriptor(self, typeobj):
         """Transform a generic type to a database-specific type.
@@ -1339,7 +1335,7 @@ class ResultProxy(object):
         metadata = self.cursor.description
 
         if metadata is not None:
-            typemap = self.dialect.dbapi_type_map()
+            typemap = self.dialect.dbapi_type_map
 
             for i, item in enumerate(metadata):
                 # sqlite possibly prepending table name to colnames so strip

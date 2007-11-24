@@ -12,7 +12,7 @@ to handle flush-time dependency sorting and processing.
 """
 
 from sqlalchemy import sql, schema, util, exceptions, logging
-from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import util as sql_util, visitors
 from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
@@ -439,9 +439,9 @@ class PropertyLoader(StrategizedProperty):
                     self._opposite_side.add(binary.right)
                 if binary.right in self.foreign_keys:
                     self._opposite_side.add(binary.left)
-            mapperutil.BinaryVisitor(visit_binary).traverse(self.primaryjoin)
+            visitors.traverse(self.primaryjoin, visit_binary=visit_binary)
             if self.secondaryjoin is not None:
-                mapperutil.BinaryVisitor(visit_binary).traverse(self.secondaryjoin)
+                visitors.traverse(self.secondaryjoin, visit_binary=visit_binary)
         else:
             self.foreign_keys = util.Set()
             self._opposite_side = util.Set()
@@ -463,7 +463,7 @@ class PropertyLoader(StrategizedProperty):
                     if f.references(binary.left.table):
                         self.foreign_keys.add(binary.right)
                         self._opposite_side.add(binary.left)
-            mapperutil.BinaryVisitor(visit_binary).traverse(self.primaryjoin)
+            visitors.traverse(self.primaryjoin, visit_binary=visit_binary)
 
             if len(self.foreign_keys) == 0:
                 raise exceptions.ArgumentError(
@@ -472,7 +472,7 @@ class PropertyLoader(StrategizedProperty):
                     "'foreign_keys' argument to indicate which columns in "
                     "the join condition are foreign." %(str(self.primaryjoin), str(self)))
             if self.secondaryjoin is not None:
-                mapperutil.BinaryVisitor(visit_binary).traverse(self.secondaryjoin)
+                visitors.traverse(self.secondaryjoin, visit_binary=visit_binary)
 
 
     def _determine_direction(self):
@@ -543,14 +543,13 @@ class PropertyLoader(StrategizedProperty):
         # in the "polymorphic" selectables.  these are used to construct joins for both Query as well as
         # eager loading, and also are used to calculate "lazy loading" clauses.
 
-        # as we will be using the polymorphic selectables (i.e. select_table argument to Mapper) to figure this out,
-        # first create maps of all the "equivalent" columns, since polymorphic selectables will often munge
-        # several "equivalent" columns (such as parent/child fk cols) into just one column.
-
-        target_equivalents = self.mapper._get_equivalent_columns()
-            
-        # if the target mapper loads polymorphically, adapt the clauses to the target's selectable
         if self.loads_polymorphic:
+
+            # as we will be using the polymorphic selectables (i.e. select_table argument to Mapper) to figure this out,
+            # first create maps of all the "equivalent" columns, since polymorphic selectables will often munge
+            # several "equivalent" columns (such as parent/child fk cols) into just one column.
+            target_equivalents = self.mapper._get_equivalent_columns()
+
             if self.secondaryjoin:
                 self.polymorphic_secondaryjoin = sql_util.ClauseAdapter(self.mapper.select_table).traverse(self.secondaryjoin, clone=True)
                 self.polymorphic_primaryjoin = self.primaryjoin
@@ -560,6 +559,7 @@ class PropertyLoader(StrategizedProperty):
                 elif self.direction is sync.MANYTOONE:
                     self.polymorphic_primaryjoin = sql_util.ClauseAdapter(self.mapper.select_table, exclude=self.foreign_keys, equivalents=target_equivalents).traverse(self.primaryjoin, clone=True)
                 self.polymorphic_secondaryjoin = None
+
             # load "polymorphic" versions of the columns present in "remote_side" - this is
             # important for lazy-clause generation which goes off the polymorphic target selectable
             for c in list(self.remote_side):

@@ -98,3 +98,15 @@ class NoColumnVisitor(ClauseVisitor):
     """
     
     __traverse_options__ = {'column_collections':False}
+
+def traverse(clause, **kwargs):
+    clone = kwargs.pop('clone', False)
+    class Vis(ClauseVisitor):
+        __traverse_options__ = kwargs.pop('traverse_options', {})
+        def __getattr__(self, key):
+            if key in kwargs:
+                return kwargs[key]
+            else:
+                return None
+    return Vis().traverse(clause, clone=clone)
+

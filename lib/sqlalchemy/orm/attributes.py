@@ -686,7 +686,7 @@ class InstanceState(object):
         self._strong_obj = None
         
 
-class InstanceDict(UserDict.UserDict):
+class WeakInstanceDict(UserDict.UserDict):
     """similar to WeakValueDictionary, but wired towards 'state' objects."""
     
     def __init__(self, *args, **kw):
@@ -802,7 +802,12 @@ class InstanceDict(UserDict.UserDict):
     def copy(self):
         raise NotImplementedError()
 
-    
+    def all_states(self):
+        return self.data.values()
+
+class StrongInstanceDict(dict):
+    def all_states(self):
+        return [o._state for o in self.values()]
     
 class AttributeHistory(object):
     """Calculate the *history* of a particular attribute on a

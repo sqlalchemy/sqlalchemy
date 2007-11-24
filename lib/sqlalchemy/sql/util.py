@@ -3,6 +3,7 @@ from sqlalchemy.sql import expression, visitors
 
 """Utility functions that build upon SQL and Schema constructs."""
 
+# TODO: replace with plain list.  break out sorting funcs into module-level funcs
 class TableCollection(object):
     def __init__(self, tables=None):
         self.tables = tables or []
@@ -65,6 +66,7 @@ class TableCollection(object):
         return sequence
 
 
+# TODO: replace with plain module-level func
 class TableFinder(TableCollection, visitors.NoColumnVisitor):
     """locate all Tables within a clause."""
 

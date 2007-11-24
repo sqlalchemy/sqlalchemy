@@ -480,6 +480,21 @@ class MaxDBDialect(default.DefaultDialect):
         super(MaxDBDialect, self).__init__(**kw)
         self._raise_known = _raise_known_sql_errors
 
+        if self.dbapi is None:
+            self.dbapi_type_map = {}
+        else:
+            self.dbapi_type_map = {
+                'Long Binary': MaxBlob(),
+                'Long byte_t': MaxBlob(),
+                'Long Unicode': MaxText(),
+                'Timestamp': MaxTimestamp(),
+                'Date': MaxDate(),
+                'Time': MaxTime(),
+                datetime.datetime: MaxTimestamp(),
+                datetime.date: MaxDate(),
+                datetime.time: MaxTime(),
+            }
+
     def dbapi(cls):
         from sapdb import dbapi as _dbapi
         return _dbapi
@@ -497,22 +512,6 @@ class MaxDBDialect(default.DefaultDialect):
             return typeobj.adapt(MaxUnicode)
         else:
             return sqltypes.adapt_type(typeobj, colspecs)
-
-    def dbapi_type_map(self):
-        if self.dbapi is None:
-            return {}
-        else:
-            return {
-                'Long Binary': MaxBlob(),
-                'Long byte_t': MaxBlob(),
-                'Long Unicode': MaxText(),
-                'Timestamp': MaxTimestamp(),
-                'Date': MaxDate(),
-                'Time': MaxTime(),
-                datetime.datetime: MaxTimestamp(),
-                datetime.date: MaxDate(),
-                datetime.time: MaxTime(),
-            }
 
     def create_execution_context(self, connection, **kw):
         return MaxDBExecutionContext(self, connection, **kw)

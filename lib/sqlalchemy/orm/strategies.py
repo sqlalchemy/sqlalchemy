@@ -407,21 +407,11 @@ class LazyLoader(AbstractRelationLoader):
             else:
                 return othercol in remote_side
 
-        def find_column_in_expr(expr):
-            if not isinstance(expr, sql.ColumnElement):
-                return None
-            columns = []
-            class FindColumnInColumnClause(visitors.ClauseVisitor):
-                def visit_column(self, c):
-                    columns.append(c)
-            FindColumnInColumnClause().traverse(expr)
-            return len(columns) and columns[0] or None
-        
         def visit_binary(binary):
-            leftcol = find_column_in_expr(binary.left)
-            rightcol = find_column_in_expr(binary.right)
-            if leftcol is None or rightcol is None:
+            if not isinstance(binary.left, sql.ColumnElement) or not isinstance(binary.right, sql.ColumnElement):
                 return
+            leftcol = binary.left
+            rightcol = binary.right
             
             if should_bind(leftcol, rightcol):
                 col = leftcol
@@ -438,14 +428,13 @@ class LazyLoader(AbstractRelationLoader):
                 reverse[leftcol] = binds[col]
 
         lazywhere = primaryjoin
-        li = mapperutil.BinaryVisitor(visit_binary)
         
         if not secondaryjoin or not reverse_direction:
-            lazywhere = li.traverse(lazywhere, clone=True)
+            lazywhere = visitors.traverse(lazywhere, clone=True, visit_binary=visit_binary)
         
         if secondaryjoin is not None:
             if reverse_direction:
-                secondaryjoin = li.traverse(secondaryjoin, clone=True)
+                secondaryjoin = visitors.traverse(secondaryjoin, clone=True, visit_binary=visit_binary)
             lazywhere = sql.and_(lazywhere, secondaryjoin)
         return (lazywhere, binds, reverse)
     _create_lazy_clause = classmethod(_create_lazy_clause)

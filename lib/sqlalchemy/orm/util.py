@@ -98,7 +98,10 @@ class TranslatingDict(dict):
             return ourcol
 
     def __getitem__(self, col):
-        return super(TranslatingDict, self).__getitem__(self.__translate_col(col))
+        try:
+            return super(TranslatingDict, self).__getitem__(col)
+        except KeyError:
+            return super(TranslatingDict, self).__getitem__(self.__translate_col(col))
 
     def has_key(self, col):
         return col in self
@@ -171,13 +174,6 @@ class ExtensionCarrier(object):
         
     def __getattr__(self, key):
         return self.methods.get(key, self._pass)
-
-class BinaryVisitor(visitors.ClauseVisitor):
-    def __init__(self, func):
-        self.func = func
-
-    def visit_binary(self, binary):
-        self.func(binary)
 
 class AliasedClauses(object):
     """Creates aliases of a mapped tables for usage in ORM queries.

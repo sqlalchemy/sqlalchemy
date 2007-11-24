@@ -907,11 +907,8 @@ class Query(object):
                 for o in order_by:
                     cf.traverse(o)
             
-            s2 = sql.select(context.primary_columns + list(cf), whereclause, from_obj=context.from_clauses, use_labels=True, correlate=False, **self._select_args())
+            s2 = sql.select(context.primary_columns + list(cf), whereclause, from_obj=context.from_clauses, use_labels=True, correlate=False, order_by=util.to_list(order_by), **self._select_args())
 
-            if order_by:
-                s2.append_order_by(*util.to_list(order_by))
-            
             s3 = s2.alias()
                 
             self._primary_adapter = mapperutil.create_row_adapter(s3, self.table)
@@ -926,12 +923,9 @@ class Query(object):
 
             statement.append_order_by(*context.eager_order_by)
         else:
-            statement = sql.select(context.primary_columns + context.secondary_columns, whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, **self._select_args())
+            statement = sql.select(context.primary_columns + context.secondary_columns, whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, order_by=util.to_list(order_by), **self._select_args())
             if context.eager_joins:
                 statement.append_from(context.eager_joins, _copy_collection=False)
-
-            if order_by:
-                statement.append_order_by(*util.to_list(order_by))
 
             if context.eager_order_by:
                 statement.append_order_by(*context.eager_order_by)

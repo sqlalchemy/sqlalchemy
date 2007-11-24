@@ -639,8 +639,7 @@ class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
     def __init__(self, **params):
         super(SybaseSQLDialect_mxodbc, self).__init__(**params)
 
-    def dbapi_type_map(self):
-        return {'getdate' : SybaseDate_mxodbc()}
+        self.dbapi_type_map = {'getdate' : SybaseDate_mxodbc()}
         
     def import_dbapi(cls):
         #import mx.ODBC.Windows as module
@@ -686,9 +685,7 @@ class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
 class SybaseSQLDialect_pyodbc(SybaseSQLDialect):
     def __init__(self, **params):
         super(SybaseSQLDialect_pyodbc, self).__init__(**params)
-
-    def dbapi_type_map(self):
-        return {'getdate' : SybaseDate_pyodbc()}
+        self.dbapi_type_map = {'getdate' : SybaseDate_pyodbc()}
 
     def import_dbapi(cls):
         import mypyodbc as module

@@ -33,7 +33,8 @@ class DefaultDialect(base.Dialect):
     supports_sane_multi_rowcount = True
     preexecute_pk_sequences = False
     supports_pk_autoincrement = True
-
+    dbapi_type_map = {}
+    
     def __init__(self, convert_unicode=False, encoding='utf-8', default_paramstyle='named', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode
         self.encoding = encoding
@@ -59,12 +60,6 @@ class DefaultDialect(base.Dialect):
                     property(lambda s: s.preexecute_sequences, doc=(
                       "Proxy to deprecated preexecute_sequences attribute.")))
 
-    def dbapi_type_map(self):
-        # most DB-APIs have problems with this (such as, psycocpg2 types 
-        # are unhashable).  So far Oracle can return it.
-        
-        return {}
-    
     def create_execution_context(self, connection, **kwargs):
         return DefaultExecutionContext(self, connection, **kwargs)
 

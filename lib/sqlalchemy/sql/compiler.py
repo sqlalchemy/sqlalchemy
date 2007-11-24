@@ -245,19 +245,25 @@ class DefaultCompiler(engine.Compiled):
             n = self.dialect.oid_column_name(column)
             if n is not None:
                 if column.table is None or not column.table.named_with_column():
-                    return self.preparer.format_column(column, name=n)
+                    return n
                 else:
-                    return "%s.%s" % (self.preparer.format_table(column.table, use_schema=False, name=ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)), n)
+                    return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + n
             elif len(column.table.primary_key) != 0:
                 pk = list(column.table.primary_key)[0]
                 pkname = (pk.is_literal and name or self._truncated_identifier("colident", pk.name))
-                return self.preparer.format_column_with_table(list(column.table.primary_key)[0], column_name=pkname, table_name=ANONYMOUS_LABEL.sub(self._process_anon, column.table.name))
+                return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.preparer.quote(pk, pkname)
             else:
                 return None
         elif column.table is None or not column.table.named_with_column():
-            return self.preparer.format_column(column, name=name)
+            if getattr(column, "is_literal", False):
+                return name
+            else:
+                return self.preparer.quote(column, name)
         else:
-            return self.preparer.format_column_with_table(column, column_name=name, table_name=ANONYMOUS_LABEL.sub(self._process_anon, column.table.name))
+            if getattr(column, "is_literal", False):
+                return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + name
+            else:
+                return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.preparer.quote(column, name)
 
 
     def visit_fromclause(self, fromclause, **kwargs):
@@ -588,7 +594,10 @@ class DefaultCompiler(engine.Compiled):
 
     def visit_table(self, table, asfrom=False, **kwargs):
         if asfrom:
-            return self.preparer.format_table(table)
+            if getattr(table, "schema", None):
+                return self.preparer.quote(table, table.schema) + "." + self.preparer.quote(table, table.name)
+            else:
+                return self.preparer.quote(table, table.name)
         else:
             return ""
 
@@ -606,7 +615,7 @@ class DefaultCompiler(engine.Compiled):
 
         return ("INSERT INTO %s (%s) VALUES (%s)" %
                 (preparer.format_table(insert_stmt.table),
-                 ', '.join([preparer.format_column(c[0])
+                 ', '.join([preparer.quote(c[0], c[0].name)
                             for c in colparams]),
                  ', '.join([c[1] for c in colparams])))
     
@@ -616,7 +625,7 @@ class DefaultCompiler(engine.Compiled):
         self.isupdate = True
         colparams = self._get_colparams(update_stmt)
 
-        text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + string.join(["%s=%s" % (self.preparer.format_column(c[0]), c[1]) for c in colparams], ', ')
+        text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + string.join(["%s=%s" % (self.preparer.quote(c[0], c[0].name), c[1]) for c in colparams], ', ')
 
         if update_stmt._whereclause:
             text += " WHERE " + self.process(update_stmt._whereclause)
@@ -831,7 +840,7 @@ class SchemaGenerator(DDLBase):
         if constraint.name is not None:
             self.append("CONSTRAINT %s " % self.preparer.format_constraint(constraint))
         self.append("PRIMARY KEY ")
-        self.append("(%s)" % ', '.join([self.preparer.format_column(c) for c in constraint]))
+        self.append("(%s)" % ', '.join([self.preparer.quote(c, c.name) for c in constraint]))
 
     def visit_foreign_key_constraint(self, constraint):
         if constraint.use_alter and self.dialect.supports_alter:
@@ -849,10 +858,11 @@ class SchemaGenerator(DDLBase):
         if constraint.name is not None:
             self.append("CONSTRAINT %s " %
                         preparer.format_constraint(constraint))
+        table = list(constraint.elements)[0].column.table
         self.append("FOREIGN KEY(%s) REFERENCES %s (%s)" % (
-            ', '.join([preparer.format_column(f.parent) for f in constraint.elements]),
-            preparer.format_table(list(constraint.elements)[0].column.table),
-            ', '.join([preparer.format_column(f.column) for f in constraint.elements])
+            ', '.join([preparer.quote(f.parent, f.parent.name) for f in constraint.elements]),
+            preparer.format_table(table),
+            ', '.join([preparer.quote(f.column, f.column.name) for f in constraint.elements])
         ))
         if constraint.ondelete is not None:
             self.append(" ON DELETE %s" % constraint.ondelete)
@@ -864,7 +874,7 @@ class SchemaGenerator(DDLBase):
         if constraint.name is not None:
             self.append("CONSTRAINT %s " %
                         self.preparer.format_constraint(constraint))
-        self.append(" UNIQUE (%s)" % (', '.join([self.preparer.format_column(c) for c in constraint])))
+        self.append(" UNIQUE (%s)" % (', '.join([self.preparer.quote(c, c.name) for c in constraint])))
 
     def visit_column(self, column):
         pass
@@ -877,7 +887,7 @@ class SchemaGenerator(DDLBase):
         self.append("INDEX %s ON %s (%s)" \
                     % (preparer.format_index(index),
                        preparer.format_table(index.table),
-                       string.join([preparer.format_column(c) for c in index.columns], ', ')))
+                       string.join([preparer.quote(c, c.name) for c in index.columns], ', ')))
         self.execute()
 
 class SchemaDropper(DDLBase):
@@ -978,12 +988,12 @@ class IdentifierPreparer(object):
                 or not self.legal_characters.match(unicode(value))
                 or (lc_value != value))
 
-    def __generic_obj_format(self, obj, ident):
+    def quote(self, obj, ident):
         if getattr(obj, 'quote', False):
             return self.quote_identifier(ident)
-        try:
+        if ident in self.__strings:
             return self.__strings[ident]
-        except KeyError:
+        else:
             if self._requires_quotes(ident):
                 self.__strings[ident] = self.quote_identifier(ident)
             else:
@@ -994,57 +1004,55 @@ class IdentifierPreparer(object):
         return object.quote or self._requires_quotes(object.name)
 
     def format_sequence(self, sequence, use_schema=True):
-        name = self.__generic_obj_format(sequence, sequence.name)
+        name = self.quote(sequence, sequence.name)
         if use_schema and sequence.schema is not None:
-            name = self.__generic_obj_format(sequence, sequence.schema) + "." + name
+            name = self.quote(sequence, sequence.schema) + "." + name
         return name
 
     def format_label(self, label, name=None):
-        return self.__generic_obj_format(label, name or label.name)
+        return self.quote(label, name or label.name)
 
     def format_alias(self, alias, name=None):
-        return self.__generic_obj_format(alias, name or alias.name)
+        return self.quote(alias, name or alias.name)
 
     def format_savepoint(self, savepoint, name=None):
-        return self.__generic_obj_format(savepoint, name or savepoint.ident)
+        return self.quote(savepoint, name or savepoint.ident)
 
     def format_constraint(self, constraint):
-        return self.__generic_obj_format(constraint, constraint.name)
+        return self.quote(constraint, constraint.name)
 
     def format_index(self, index):
-        return self.__generic_obj_format(index, index.name)
+        return self.quote(index, index.name)
 
     def format_table(self, table, use_schema=True, name=None):
         """Prepare a quoted table and schema name."""
 
         if name is None:
             name = table.name
-        result = self.__generic_obj_format(table, name)
+        result = self.quote(table, name)
         if use_schema and getattr(table, "schema", None):
-            result = self.__generic_obj_format(table, table.schema) + "." + result
+            result = self.quote(table, table.schema) + "." + result
         return result
 
     def format_column(self, column, use_table=False, name=None, table_name=None):
-        """Prepare a quoted column name."""
+        """Prepare a quoted column name.
+        
+        deprecated.  use preparer.quote(col, column.name) or combine with format_table()
+        """
+        
         if name is None:
             name = column.name
         if not getattr(column, 'is_literal', False):
             if use_table:
-                return self.format_table(column.table, use_schema=False, name=table_name) + "." + self.__generic_obj_format(column, name)
+                return self.format_table(column.table, use_schema=False, name=table_name) + "." + self.quote(column, name)
             else:
-                return self.__generic_obj_format(column, name)
+                return self.quote(column, name)
         else:
             # literal textual elements get stuck into ColumnClause alot, which shouldnt get quoted
             if use_table:
                 return self.format_table(column.table, use_schema=False, name=table_name) + "." + name
             else:
                 return name
-
-    def format_column_with_table(self, column, column_name=None, table_name=None):
-        """Prepare a quoted column name with table name."""
-        
-        return self.format_column(column, use_table=True, name=column_name, table_name=table_name)
-
 
     def format_table_seq(self, table, use_schema=True):
         """Format table name and schema as a tuple."""

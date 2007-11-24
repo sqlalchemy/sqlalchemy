@@ -79,7 +79,7 @@ class ClauseSynchronizer(object):
                         self.syncrules.append(SyncRule(self.child_mapper, source_column, dest_column, dest_mapper=self.parent_mapper, issecondary=issecondary))
 
         rules_added = len(self.syncrules)
-        BinaryVisitor(compile_binary).traverse(sqlclause)
+        visitors.traverse(sqlclause, visit_binary=compile_binary)
         if len(self.syncrules) == rules_added:
             raise exceptions.ArgumentError("No syncrules generated for join criterion " + str(sqlclause))
 
@@ -144,9 +144,3 @@ class SyncRule(object):
 
 SyncRule.logger = logging.class_logger(SyncRule)
 
-class BinaryVisitor(visitors.ClauseVisitor):
-    def __init__(self, func):
-        self.func = func
-
-    def visit_binary(self, binary):
-        self.func(binary)

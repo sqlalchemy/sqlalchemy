@@ -89,9 +89,9 @@ class UnitOfWork(object):
 
     def __init__(self, session):
         if session.weak_identity_map:
-            self.identity_map = attributes.InstanceDict()
+            self.identity_map = attributes.WeakInstanceDict()
         else:
-            self.identity_map = {}
+            self.identity_map = attributes.StrongInstanceDict()
 
         self.new = util.IdentitySet() #OrderedSet()
         self.deleted = util.IdentitySet()
@@ -158,6 +158,7 @@ class UnitOfWork(object):
             )
             ])
 
+        
     def flush(self, session, objects=None):
         """create a dependency tree of all pending SQL operations within this unit of work and execute."""
         
@@ -166,12 +167,16 @@ class UnitOfWork(object):
         # communication with the mappers and relationships to fire off SQL
         # and synchronize attributes between related objects.
 
-        # detect persistent objects that have changes
-        dirty = self.locate_dirty()
-
+        dirty = [x for x in self.identity_map.all_states()
+            if x.modified
+            or (getattr(x.class_, '_sa_has_mutable_scalars', False) and attribute_manager._is_modified(x))
+        ]
+        
         if len(dirty) == 0 and len(self.deleted) == 0 and len(self.new) == 0:
             return
-
+            
+        dirty = util.IdentitySet([x.obj() for x in dirty]).difference(self.deleted)
+        
         flush_context = UOWTransaction(self, session)
 
         if session.extension is not None:
@@ -232,7 +237,7 @@ class UnitOfWork(object):
         the number of objects pruned.
         """
 
-        if isinstance(self.identity_map, attributes.InstanceDict):
+        if isinstance(self.identity_map, attributes.WeakInstanceDict):
             return 0
         ref_count = len(self.identity_map)
         dirty = self.locate_dirty()

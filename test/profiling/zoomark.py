@@ -245,7 +245,7 @@ class ZooMarkTest(testing.AssertMixin):
             legs.sort()
     
     @testing.supported('postgres')
-    @profiling.profiled('editing', call_range=(1200, 1290), always=True)
+    @profiling.profiled('editing', call_range=(1150, 1280), always=True)
     def test_6_editing(self):
         Zoo = metadata.tables['Zoo']
         

@@ -251,24 +251,19 @@ class OracleDialect(default.DefaultDialect):
         self.supports_timestamp = self.dbapi is None or hasattr(self.dbapi, 'TIMESTAMP' )
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
-        
-        if self.dbapi is not None:
-            self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB"] if hasattr(self.dbapi, k)]
-        else:
+        if self.dbapi is None or not self.auto_convert_lobs or not 'CLOB' in self.dbapi.__dict__:
+            self.dbapi_type_map = {}
             self.ORACLE_BINARY_TYPES = []
-
-    def dbapi_type_map(self):
-        if self.dbapi is None or not self.auto_convert_lobs:
-            return {}
         else:
             # only use this for LOB objects.  using it for strings, dates
             # etc. leads to a little too much magic, reflection doesn't know if it should
             # expect encoded strings or unicodes, etc.
-            return {
+            self.dbapi_type_map = {
                 self.dbapi.CLOB: OracleText(), 
                 self.dbapi.BLOB: OracleBinary(), 
                 self.dbapi.BINARY: OracleRaw(), 
             }
+            self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB"] if hasattr(self.dbapi, k)]
 
     def dbapi(cls):
         import cx_Oracle
