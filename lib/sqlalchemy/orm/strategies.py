@@ -495,7 +495,7 @@ class EagerLoader(AbstractRelationLoader):
                     towrap = fromclause
                     break
                 elif isinstance(fromclause, sql.Join):
-                    if localparent.mapped_table in sql_util.TableFinder(fromclause, include_aliases=True):
+                    if localparent.mapped_table in sql_util.find_tables(fromclause, include_aliases=True):
                         towrap = fromclause
                         break
             else:

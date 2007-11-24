@@ -77,43 +77,6 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
             result.append(sql.select([col(name, table) for name in colnames], from_obj=[table]))
     return sql.union_all(*result).alias(aliasname)
 
-class TranslatingDict(dict):
-    """A dictionary that stores ``ColumnElement`` objects as keys.
-
-    Incoming ``ColumnElement`` keys are translated against those of an
-    underling ``FromClause`` for all operations.  This way the columns
-    from any ``Selectable`` that is derived from or underlying this
-    ``TranslatingDict`` 's selectable can be used as keys.
-    """
-
-    def __init__(self, selectable):
-        super(TranslatingDict, self).__init__()
-        self.selectable = selectable
-
-    def __translate_col(self, col):
-        ourcol = self.selectable.corresponding_column(col, raiseerr=False)
-        if ourcol is None:
-            return col
-        else:
-            return ourcol
-
-    def __getitem__(self, col):
-        try:
-            return super(TranslatingDict, self).__getitem__(col)
-        except KeyError:
-            return super(TranslatingDict, self).__getitem__(self.__translate_col(col))
-
-    def has_key(self, col):
-        return col in self
-
-    def __setitem__(self, col, value):
-        return super(TranslatingDict, self).__setitem__(self.__translate_col(col), value)
-
-    def __contains__(self, col):
-        return super(TranslatingDict, self).__contains__(self.__translate_col(col))
-
-    def setdefault(self, col, value):
-        return super(TranslatingDict, self).setdefault(self.__translate_col(col), value)
 
 class ExtensionCarrier(object):
     """stores a collection of MapperExtension objects.

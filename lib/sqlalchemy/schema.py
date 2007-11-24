@@ -1143,8 +1143,7 @@ class MetaData(SchemaItem):
             tables = self.tables.values()
         else:
             tables = util.Set(tables).intersection(self.tables.values())
-        sorter = sql_util.TableCollection(list(tables))
-        return iter(sorter.sort(reverse=reverse))
+        return iter(sql_util.sort_tables(tables, reverse=reverse))
 
     def _get_parent(self):
         return None

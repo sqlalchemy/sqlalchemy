@@ -900,12 +900,12 @@ class Query(object):
             # "inner" select statement where they'll be available to the enclosing
             # statement's "order by"
 
-            cf = sql_util.ColumnFinder()
+            cf = util.Set()
 
             if order_by:
                 order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
                 for o in order_by:
-                    cf.traverse(o)
+                    cf.update(sql_util.find_columns(o))
             
             s2 = sql.select(context.primary_columns + list(cf), whereclause, from_obj=context.from_clauses, use_labels=True, correlate=False, order_by=util.to_list(order_by), **self._select_args())
 
@@ -934,9 +934,9 @@ class Query(object):
             # to use it in "order_by".  ensure they are in the column criterion (particularly oid).
             if self._distinct and order_by:
                 order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
-                cf = sql_util.ColumnFinder()
+                cf = util.Set()
                 for o in order_by:
-                    cf.traverse(o)
+                    cf.update(sql_util.find_columns(o))
 
                 [statement.append_column(c) for c in cf]
 
@@ -976,7 +976,7 @@ class Query(object):
                 return None
         elif isinstance(m, sql.ColumnElement):
             aliases = []
-            for table in sql_util.TableFinder(m, check_columns=True):
+            for table in sql_util.find_tables(m, check_columns=True):
                 for a in self._alias_ids.get(table, []):
                     aliases.append(a)
             if len(aliases) > 1:

@@ -143,7 +143,7 @@ class QueueDependencySorter(object):
         self.tuples = tuples
         self.allitems = allitems
 
-    def sort(self, allow_self_cycles=True, allow_all_cycles=False):
+    def sort(self, allow_self_cycles=True, allow_all_cycles=False, create_tree=True):
         (tuples, allitems) = (self.tuples, self.allitems)
         #print "\n---------------------------------\n"
         #print repr([t for t in tuples])
@@ -152,7 +152,7 @@ class QueueDependencySorter(object):
 
         nodes = {}
         edges = _EdgeCollection()
-        for item in allitems + [t[0] for t in tuples] + [t[1] for t in tuples]:
+        for item in list(allitems) + [t[0] for t in tuples] + [t[1] for t in tuples]:
             if id(item) not in nodes:
                 node = _Node(item)
                 nodes[id(item)] = node
@@ -205,7 +205,10 @@ class QueueDependencySorter(object):
             del nodes[id(node.item)]
             for childnode in edges.pop_node(node):
                 queue.append(childnode)
-        return self._create_batched_tree(output)
+        if create_tree:
+            return self._create_batched_tree(output)
+        else:
+            return [n.item for n in output]
 
 
     def _create_batched_tree(self, nodes):

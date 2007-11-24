@@ -1243,12 +1243,7 @@ class RowProxy(object):
         return self.__parent._has_key(self.__row, key)
 
     def __getitem__(self, key):
-        if isinstance(key, slice):
-            indices = key.indices(len(self))
-            return tuple([self.__parent._get_col(self.__row, i)
-                          for i in xrange(*indices)])
-        else:
-            return self.__parent._get_col(self.__row, key)
+        return self.__parent._get_col(self.__row, key)
 
     def __getattr__(self, name):
         try:
@@ -1474,7 +1469,15 @@ class ResultProxy(object):
         return self.dialect.supports_sane_multi_rowcount
 
     def _get_col(self, row, key):
-        rec = self._key_cache[key]
+        try:
+            rec = self._key_cache[key]
+        except TypeError:
+            # the 'slice' use case is very infrequent,
+            # so we use an exception catch to reduce conditionals in _get_col
+            if isinstance(key, slice):
+                indices = key.indices(len(row))
+                return tuple([self._get_col(row, i) for i in xrange(*indices)])
+
         if rec[1]:
             return rec[1](row[rec[2]])
         else:
@@ -1482,8 +1485,10 @@ class ResultProxy(object):
 
     def _fetchone_impl(self):
         return self.cursor.fetchone()
+        
     def _fetchmany_impl(self, size=None):
         return self.cursor.fetchmany(size)
+        
     def _fetchall_impl(self):
         return self.cursor.fetchall()
 

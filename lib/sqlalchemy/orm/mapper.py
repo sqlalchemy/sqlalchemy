@@ -392,7 +392,7 @@ class Mapper(object):
 
         # locate all tables contained within the "table" passed in, which
         # may be a join or other construct
-        self.tables = sqlutil.TableFinder(self.mapped_table)
+        self.tables = sqlutil.find_tables(self.mapped_table)
 
         if not self.tables:
             raise exceptions.InvalidRequestError("Could not find any Table objects in mapped table '%s'" % str(self.mapped_table))
@@ -576,7 +576,7 @@ class Mapper(object):
         # table columns mapped to lists of MapperProperty objects
         # using a list allows a single column to be defined as
         # populating multiple object attributes
-        self._columntoproperty = mapperutil.TranslatingDict(self.mapped_table)
+        self._columntoproperty = {} #mapperutil.TranslatingDict(self.mapped_table)
 
         # load custom properties
         if self._init_properties is not None:
@@ -663,7 +663,8 @@ class Mapper(object):
 
             self.columns[key] = col
             for col in prop.columns:
-                self._columntoproperty[col] = prop
+                for col in col.proxy_set:
+                    self._columntoproperty[col] = prop
             
         self.__props[key] = prop
 
@@ -995,7 +996,7 @@ class Mapper(object):
             for t in mapper.tables:
                 table_to_mapper.setdefault(t, mapper)
 
-        for table in sqlutil.TableCollection(list(table_to_mapper.keys())).sort(reverse=False):
+        for table in sqlutil.sort_tables(table_to_mapper.keys(), reverse=False):
             # two lists to store parameters for each table/object pair located
             insert = []
             update = []
@@ -1217,7 +1218,7 @@ class Mapper(object):
             for t in mapper.tables:
                 table_to_mapper.setdefault(t, mapper)
 
-        for table in sqlutil.TableCollection(list(table_to_mapper.keys())).sort(reverse=True):
+        for table in sqlutil.sort_tables(table_to_mapper.keys(), reverse=True):
             delete = {}
             for (obj, connection) in tups:
                 mapper = object_mapper(obj)
@@ -1260,16 +1261,13 @@ class Mapper(object):
                     mapper.extension.after_delete(mapper, connection, obj)
 
     def _has_pks(self, table):
-        try:
-            pk = self.pks_by_table[table]
-            if not pk:
-                return False
-            for k in pk:
+        if self.pks_by_table.get(table, None):
+            for k in self.pks_by_table[table]:
                 if k not in self._columntoproperty:
                     return False
             else:
                 return True
-        except KeyError:
+        else:
             return False
 
     def register_dependencies(self, uowcommit, *args, **kwargs):
