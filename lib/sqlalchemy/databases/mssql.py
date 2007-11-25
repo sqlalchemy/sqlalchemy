@@ -799,14 +799,14 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         super(MSSQLDialect_pyodbc, self).do_execute(cursor, statement, parameters, context=context, **kwargs)
         if context and context.HASIDENT and (not context.IINSERT) and context.dialect.use_scope_identity:
             import pyodbc
-            # fetch the last inserted id from the manipulated statement (pre_exec).
-            try:
-                row = cursor.fetchone()
-            except pyodbc.Error, e:
-                # if nocount OFF fetchone throws an exception and we have to jump over
-                # the rowcount to the resultset
-                cursor.nextset()
-                row = cursor.fetchone()
+            # Fetch the last inserted id from the manipulated statement
+            # We may have to skip over a number of result sets with no data (due to triggers, etc.)
+            while True:
+                try:
+                    row = cursor.fetchone()
+                    break
+                except pyodbc.Error, e:
+                    cursor.nextset()
             context._last_inserted_ids = [int(row[0])]
 
 class MSSQLDialect_adodbapi(MSSQLDialect):
