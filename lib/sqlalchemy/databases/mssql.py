@@ -40,7 +40,7 @@ Known issues / TODO:
 import datetime, random, warnings, re, sys, operator
 
 from sqlalchemy import sql, schema, exceptions, util
-from sqlalchemy.sql import compiler, expression
+from sqlalchemy.sql import compiler, expression, operators as sqlops
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
     
@@ -848,6 +848,9 @@ dialect_mapping = {
 
 
 class MSSQLCompiler(compiler.DefaultCompiler):
+    operators = compiler.OPERATORS.copy()
+    operators[sqlops.concat_op] = '+'
+
     def __init__(self, *args, **kwargs):
         super(MSSQLCompiler, self).__init__(*args, **kwargs)
         self.tablealiases = {}
