@@ -3015,7 +3015,7 @@ class Select(_SelectBaseMixin, FromClause):
         correlating.
         """
 
-        froms = util.Set()
+        froms = util.OrderedSet()
         hide_froms = util.Set()
 
         for col in self._raw_columns:

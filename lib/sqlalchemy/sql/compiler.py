@@ -510,7 +510,7 @@ class DefaultCompiler(engine.Compiled):
                     whereclause = sql.and_(w, whereclause)
                 else:
                     whereclause = w
-
+                    
         if froms:
             text += " \nFROM "
             text += string.join(from_strings, ', ')
