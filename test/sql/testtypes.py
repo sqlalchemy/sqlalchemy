@@ -587,8 +587,8 @@ class NumericTest(AssertMixin):
 
     def test_decimal(self):
         from decimal import Decimal
-        numeric_table.insert().execute(numericcol=3.5, floatcol=5.6, ncasdec=12.4, fcasdec=15.78)
-        numeric_table.insert().execute(numericcol=Decimal("3.5"), floatcol=Decimal("5.6"), ncasdec=Decimal("12.4"), fcasdec=Decimal("15.78"))
+        numeric_table.insert().execute(numericcol=3.5, floatcol=5.6, ncasdec=12.4, fcasdec=15.75)
+        numeric_table.insert().execute(numericcol=Decimal("3.5"), floatcol=Decimal("5.6"), ncasdec=Decimal("12.4"), fcasdec=Decimal("15.75"))
         l = numeric_table.select().execute().fetchall()
         print l
         rounded = [
@@ -596,8 +596,8 @@ class NumericTest(AssertMixin):
             (l[1][0], l[1][1], round(l[1][2], 5), l[1][3], l[1][4]),
         ]
         assert rounded == [
-            (1, 3.5, 5.6, Decimal("12.4"), Decimal("15.78")),
-            (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.78")),
+            (1, 3.5, 5.6, Decimal("12.4"), Decimal("15.75")),
+            (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.75")),
         ]
 
 

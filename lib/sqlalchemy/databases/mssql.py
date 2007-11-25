@@ -43,12 +43,23 @@ from sqlalchemy import sql, schema, exceptions, util
 from sqlalchemy.sql import compiler, expression, operators as sqlops
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
+from sqlalchemy.util import Decimal as _python_Decimal
     
 MSSQL_RESERVED_WORDS = util.Set(['function'])
 
 class MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect):
-        return None
+        if self.asdecimal:
+            def process(value):
+                if value is not None:
+                    return _python_Decimal(str(value))
+                else:
+                    return value
+            return process
+        else:
+            def process(value):
+                return float(value)
+            return process
 
     def bind_processor(self, dialect):
         def process(value):
