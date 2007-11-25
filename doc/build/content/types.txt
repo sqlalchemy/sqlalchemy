@@ -19,7 +19,7 @@ Following is a rundown of the standard types.
 
 #### String
 
-This type is the base type for all string and character types, such as `Unicode`, `Text`, `CLOB`, etc.  By default it generates a VARCHAR in DDL.  It includes an argument `length`, which indicates the length in characters of the type, as well as `convert_unicode` and `assert_unicode`, which are booleans.  `length` will be used as the length argument when generating DDL.  If `length` is omitted, the `String` type resolves into the `Text` type.
+This type is the base type for all string and character types, such as `Unicode`, `TEXT`, `CLOB`, etc.  By default it generates a VARCHAR in DDL.  It includes an argument `length`, which indicates the length in characters of the type, as well as `convert_unicode` and `assert_unicode`, which are booleans.  `length` will be used as the length argument when generating DDL.  If `length` is omitted, the `String` type resolves into the `TEXT` type.
 
 `convert_unicode=True` indicates that incoming strings, if they are Python `unicode` strings, will be encoded into a raw bytestring using the `encoding` attribute of the dialect (defaults to `utf-8`).  Similarly, raw bytestrings coming back from the database will be decoded into `unicode` objects on the way back.
 
@@ -43,6 +43,10 @@ TODO
 
 TODO
 
+#### Interval
+
+TODO
+
 #### Binary
 
 TODO
@@ -51,46 +55,13 @@ TODO
 
 TODO
 
-#### Summary of Types
-    {python title="package sqlalchemy.types"}
-    class String(TypeEngine):
-        def __init__(self, length=None)
-        
-    class Integer(TypeEngine)
-    
-    class SmallInteger(Integer)
-    
-    class Numeric(TypeEngine): 
-        def __init__(self, precision=10, length=2)
-    
-    class Float(Numeric):
-        def __init__(self, precision=10)
-    
-    # DateTime, Date and Time types deal with datetime objects from the Python datetime module
-    class DateTime(TypeEngine)
-    
-    class Date(TypeEngine)
-    
-    class Time(TypeEngine)
-    
-    class Binary(TypeEngine): 
-        def __init__(self, length=None)
-        
-    class Boolean(TypeEngine)
-    
-    # converts unicode strings to raw bytes
-    # as bind params, raw bytes to unicode as 
-    # rowset values, using the unicode encoding 
-    # setting on the engine (defaults to 'utf-8')
-    class Unicode(TypeDecorator):
-        impl = String
-    
-    # uses the pickle protocol to serialize data
-    # in/out of Binary columns
-    class PickleType(TypeDecorator):
-        impl = Binary
+#### PickleType
 
-More specific subclasses of these types are available, which various database engines may choose to implement specifically, allowing finer grained control over types:
+TODO
+
+#### SQL-Specific Types {@name=sqlspecific}
+
+These are subclasses of the generic types and include:
 
     {python}
     class FLOAT(Numeric)
@@ -105,9 +76,6 @@ More specific subclasses of these types are available, which various database en
     class CHAR(String)
     class BLOB(Binary)
     class BOOLEAN(Boolean)
-
-When using a specific database engine, these types are adapted even further via a set of database-specific subclasses defined by the database engine.
-There may eventually be more type objects that are defined for specific databases.  An example of this would be Postgres' Array type.
 
 ### Dialect Specific Types {@name=dialect}
 
