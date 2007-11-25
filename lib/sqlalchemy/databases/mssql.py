@@ -39,11 +39,13 @@ Known issues / TODO:
 
 import datetime, random, warnings, re, sys, operator
 
-from sqlalchemy import sql, schema, exceptions
+from sqlalchemy import sql, schema, exceptions, util
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
     
+MSSQL_RESERVED_WORDS = util.Set(['function'])
+
 class MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect):
         return None
@@ -967,6 +969,8 @@ class MSSQLDefaultRunner(base.DefaultRunner):
     pass
 
 class MSSQLIdentifierPreparer(compiler.IdentifierPreparer):
+    reserved_words = compiler.IdentifierPreparer.reserved_words.union(MSSQL_RESERVED_WORDS)
+
     def __init__(self, dialect):
         super(MSSQLIdentifierPreparer, self).__init__(dialect, initial_quote='[', final_quote=']')
 
@@ -980,7 +984,3 @@ dialect.schemagenerator = MSSQLSchemaGenerator
 dialect.schemadropper = MSSQLSchemaDropper
 dialect.preparer = MSSQLIdentifierPreparer
 dialect.defaultrunner = MSSQLDefaultRunner
-
-
-
-
