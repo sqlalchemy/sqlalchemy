@@ -723,8 +723,8 @@ class SelfReferentialM2MEagerTest(ORMTest):
         })
 
         sess = create_session()
-        w1 = Widget(name='w1')
-        w2 = Widget(name='w2')
+        w1 = Widget(name=u'w1')
+        w2 = Widget(name=u'w2')
         w1.children.append(w2)
         sess.save(w1)
         sess.flush()
@@ -732,7 +732,7 @@ class SelfReferentialM2MEagerTest(ORMTest):
 
 #        l = sess.query(Widget).filter(Widget.name=='w1').all()
 #        print l
-        assert [Widget(name='w1', children=[Widget(name='w2')])] == sess.query(Widget).filter(Widget.name=='w1').all()
+        assert [Widget(name='w1', children=[Widget(name='w2')])] == sess.query(Widget).filter(Widget.name==u'w1').all()
 
 class CyclicalInheritingEagerTest(ORMTest):
     def define_tables(self, metadata):

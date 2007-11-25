@@ -730,7 +730,7 @@ class EagerTest8(ORMTest):
         testbase.db.execute(project_t.insert(), {'id':1})
         testbase.db.execute(task_status_t.insert(), {'id':1})
         testbase.db.execute(task_type_t.insert(), {'id':1})
-        testbase.db.execute(task_t.insert(), {'title':'task 1', 'task_type_id':1, 'status_id':1, 'prj_id':1})
+        testbase.db.execute(task_t.insert(), {'title':u'task 1', 'task_type_id':1, 'status_id':1, 'prj_id':1})
 
     @testing.fails_on('maxdb')
     def test_nested_joins(self):

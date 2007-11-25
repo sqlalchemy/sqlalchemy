@@ -150,13 +150,13 @@ class RelationTest2(PersistTest):
         c1 = Company()
         c2 = Company()
 
-        e1 = Employee('emp1', c1, 1)
-        e2 = Employee('emp2', c1, 2, e1)
-        e3 = Employee('emp3', c1, 3, e1)
-        e4 = Employee('emp4', c1, 4, e3)
-        e5 = Employee('emp5', c2, 1)
-        e6 = Employee('emp6', c2, 2, e5)
-        e7 = Employee('emp7', c2, 3, e5)
+        e1 = Employee(u'emp1', c1, 1)
+        e2 = Employee(u'emp2', c1, 2, e1)
+        e3 = Employee(u'emp3', c1, 3, e1)
+        e4 = Employee(u'emp4', c1, 4, e3)
+        e5 = Employee(u'emp5', c2, 1)
+        e6 = Employee(u'emp6', c2, 2, e5)
+        e7 = Employee(u'emp7', c2, 3, e5)
 
         [sess.save(x) for x in [c1,c2]]
         sess.flush()
@@ -194,13 +194,13 @@ class RelationTest2(PersistTest):
         c1 = Company()
         c2 = Company()
 
-        e1 = Employee('emp1', c1, 1)
-        e2 = Employee('emp2', c1, 2, e1)
-        e3 = Employee('emp3', c1, 3, e1)
-        e4 = Employee('emp4', c1, 4, e3)
-        e5 = Employee('emp5', c2, 1)
-        e6 = Employee('emp6', c2, 2, e5)
-        e7 = Employee('emp7', c2, 3, e5)
+        e1 = Employee(u'emp1', c1, 1)
+        e2 = Employee(u'emp2', c1, 2, e1)
+        e3 = Employee(u'emp3', c1, 3, e1)
+        e4 = Employee(u'emp4', c1, 4, e3)
+        e5 = Employee(u'emp5', c2, 1)
+        e6 = Employee(u'emp6', c2, 2, e5)
+        e7 = Employee(u'emp7', c2, 3, e5)
 
         [sess.save(x) for x in [c1,c2]]
         sess.flush()
@@ -314,15 +314,15 @@ class RelationTest3(PersistTest):
 
     def testbasic(self):
         """test the combination of complicated join conditions with post_update"""
-        j1 = Job('somejob')
-        j1.create_page('page1')
-        j1.create_page('page2')
-        j1.create_page('page3')
+        j1 = Job(u'somejob')
+        j1.create_page(u'page1')
+        j1.create_page(u'page2')
+        j1.create_page(u'page3')
 
-        j2 = Job('somejob2')
-        j2.create_page('page1')
-        j2.create_page('page2')
-        j2.create_page('page3')
+        j2 = Job(u'somejob2')
+        j2.create_page(u'page1')
+        j2.create_page(u'page2')
+        j2.create_page(u'page3')
 
         j2.pages[0].add_version()
         j2.pages[0].add_version()
@@ -337,14 +337,14 @@ class RelationTest3(PersistTest):
         s.flush()
 
         s.clear()
-        j = s.query(Job).get_by(jobno='somejob')
+        j = s.query(Job).get_by(jobno=u'somejob')
         oldp = list(j.pages)
         j.pages = []
 
         s.flush()
 
         s.clear()
-        j = s.query(Job).get_by(jobno='somejob2')
+        j = s.query(Job).get_by(jobno=u'somejob2')
         j.pages[1].current_version = 12
         s.delete(j)
         s.flush()

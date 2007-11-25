@@ -18,6 +18,7 @@ import datetime as dt
 
 from sqlalchemy import exceptions
 from sqlalchemy.util import pickle, Decimal as _python_Decimal
+NoneType = type(None)
 
 class _UserTypeAdapter(type):
     """adapts 0.3 style user-defined types with convert_bind_param/convert_result_value
@@ -319,7 +320,7 @@ class String(Concatenable, TypeEngine):
             def process(value):
                 if isinstance(value, unicode):
                     return value.encode(dialect.encoding)
-                elif assert_unicode:
+                elif assert_unicode and not isinstance(value, (unicode, NoneType)):
                     raise exceptions.InvalidRequestError("Received non-unicode bind param value %r" % value)
                 else:
                     return value
