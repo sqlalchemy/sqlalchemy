@@ -588,7 +588,7 @@ class MSSQLDialect(default.DefaultDialect):
             raise exceptions.NoSuchTableError(table.name)
 
         # We also run an sp_columns to check for identity columns:
-        cursor = connection.execute("sp_columns [%s]" % self.identifier_preparer.format_table(table))
+        cursor = connection.execute("sp_columns %s" % self.identifier_preparer.format_table(table))
         ic = None
         while True:
             row = cursor.fetchone()
