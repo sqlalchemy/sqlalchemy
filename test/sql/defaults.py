@@ -261,6 +261,7 @@ class PKDefaultTest(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
         
+    @testing.unsupported('mssql')
     def test_basic(self):
         t2.insert().execute(nextid=1)
         r = t1.insert().execute(data='hi')
