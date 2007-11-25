@@ -356,11 +356,11 @@ class AccessCompiler(compiler.DefaultCompiler):
         """Access uses "mod" instead of "%" """
         return binary.operator == '%' and 'mod' or binary.operator
 
-    def label_select_column(self, select, column):
+    def label_select_column(self, select, column, asfrom):
         if isinstance(column, expression._Function):
-            return column.label(column.name + "_" + hex(random.randint(0, 65535))[2:])        
+            return column.label()
         else:
-            return super(AccessCompiler, self).label_select_column(select, column)
+            return super(AccessCompiler, self).label_select_column(select, column, asfrom)
 
     function_rewrites =  {'current_date':       'now',
                           'current_timestamp':  'now',

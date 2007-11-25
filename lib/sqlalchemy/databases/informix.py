@@ -409,15 +409,6 @@ class InfoCompiler(compiler.DefaultCompiler):
     def limit_clause(self, select):
         return ""
 
-    def __visit_label(self, label):
-        # TODO: whats this method for ?
-        if self.select_stack:
-            self.typemap.setdefault(label.name.lower(), label.obj.type)
-        if self.strings[label.obj]:
-            self.strings[label] = self.strings[label.obj] + " AS "  + label.name
-        else:
-            self.strings[label] = None
-
     def visit_function( self , func ):
         if func.name.lower() == 'current_date':
             return "today"

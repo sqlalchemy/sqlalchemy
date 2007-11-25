@@ -101,6 +101,9 @@ class ReturningTest(AssertMixin):
             
             result3 = table.insert(postgres_returning=[(table.c.id*2).label('double_id')]).execute({'persons': 4, 'full': False})
             self.assertEqual([dict(row) for row in result3], [{'double_id':8}])
+            
+            result4 = testbase.db.execute('insert into tables (id, persons, "full") values (5, 10, true) returning persons')
+            self.assertEqual([dict(row) for row in result4], [{'persons': 10}])
         finally:
             table.drop()
     

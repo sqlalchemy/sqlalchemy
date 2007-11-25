@@ -185,8 +185,8 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
             if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
                 self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
 
-    def is_select(self):
-        return SELECT_REGEXP.match(self.statement)
+    def returns_rows_text(self, statement):
+        return SELECT_REGEXP.match(statement)
         
 class SQLiteDialect(default.DefaultDialect):
     supports_alter = False
@@ -343,9 +343,6 @@ class SQLiteCompiler(compiler.DefaultCompiler):
         if self.dialect.supports_cast:
             return super(SQLiteCompiler, self).visit_cast(cast)
         else:
-            if self.stack and self.stack[-1].get('select'):
-                # not sure if we want to set the typemap here...
-                self.typemap.setdefault("CAST", cast.type)
             return self.process(cast.clause)
 
     def limit_clause(self, select):

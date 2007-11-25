@@ -339,8 +339,8 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
     _ms_is_select = re.compile(r'\s*(?:SELECT|sp_columns)',
                                re.I | re.UNICODE)
     
-    def is_select(self):
-        return self._ms_is_select.match(self.statement) is not None
+    def returns_rows_text(self, statement):
+        return self._ms_is_select.match(statement) is not None
 
 
 class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):    
@@ -910,11 +910,11 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         else:
             return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
-    def label_select_column(self, select, column):
+    def label_select_column(self, select, column, asfrom):
         if isinstance(column, expression._Function):
             return column.label(None)
         else:
-            return super(MSSQLCompiler, self).label_select_column(select, column)
+            return super(MSSQLCompiler, self).label_select_column(select, column, asfrom)
 
     function_rewrites =  {'current_date': 'getdate',
                           'length':     'len',

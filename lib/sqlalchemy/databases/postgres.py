@@ -233,16 +233,24 @@ RETURNING_QUOTED_RE = re.compile(
 
 class PGExecutionContext(default.DefaultExecutionContext):
 
-    def is_select(self):
-        m = SELECT_RE.match(self.statement)
-        return m and (not m.group(1) or (RETURNING_RE.search(self.statement)
-           and RETURNING_QUOTED_RE.match(self.statement)))
+    def returns_rows_text(self, statement):
+        m = SELECT_RE.match(statement)
+        return m and (not m.group(1) or (RETURNING_RE.search(statement)
+           and RETURNING_QUOTED_RE.match(statement)))
+    
+    def returns_rows_compiled(self, compiled):
+        return isinstance(compiled.statement, expression.Selectable) or \
+            (
+                (compiled.isupdate or compiled.isinsert) and "postgres_returning" in compiled.statement.kwargs
+            )
         
     def create_cursor(self):
         # executing a default or Sequence standalone creates an execution context without a statement.  
         # so slightly hacky "if no statement assume we're server side" logic
+        # TODO: dont use regexp if Compiled is used ?
         self.__is_server_side = \
-            self.dialect.server_side_cursors and (self.statement is None or \
+            self.dialect.server_side_cursors and \
+            (self.statement is None or \
             (SELECT_RE.match(self.statement) and not re.search(r'FOR UPDATE(?: NOWAIT)?\s*$', self.statement, re.I))
         )
 

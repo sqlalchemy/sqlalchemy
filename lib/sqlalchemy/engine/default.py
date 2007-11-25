@@ -146,9 +146,8 @@ class DefaultExecutionContext(base.ExecutionContext):
                 if value is not None
             ])
             
-            self.typemap = compiled.typemap
-            self.column_labels = compiled.column_labels
-
+            self.result_map = compiled.result_map
+            
             if not dialect.supports_unicode_statements:
                 self.statement = unicode(compiled).encode(self.dialect.encoding)
             else:
@@ -156,6 +155,12 @@ class DefaultExecutionContext(base.ExecutionContext):
                 
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
+            if isinstance(compiled.statement, expression._TextClause):
+                self.returns_rows = self.returns_rows_text(self.statement)
+                self.should_autocommit = self.should_autocommit_text(self.statement)
+            else:
+                self.returns_rows = self.returns_rows_compiled(compiled)
+                self.should_autocommit = self.should_autocommit_compiled(compiled)
             
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]
@@ -170,7 +175,7 @@ class DefaultExecutionContext(base.ExecutionContext):
 
         elif statement is not None:
             # plain text statement.  
-            self.typemap = self.column_labels = None
+            self.result_map = None
             self.parameters = self.__encode_param_keys(parameters)
             self.executemany = len(parameters) > 1
             if not dialect.supports_unicode_statements:
@@ -179,10 +184,12 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.statement = statement
             self.isinsert = self.isupdate = False
             self.cursor = self.create_cursor()
+            self.returns_rows = self.returns_rows_text(statement)
+            self.should_autocommit = self.should_autocommit_text(statement)
         else:
             # no statement. used for standalone ColumnDefault execution.
             self.statement = None
-            self.isinsert = self.isupdate = self.executemany = False
+            self.isinsert = self.isupdate = self.executemany = self.returns_rows = self.should_autocommit = False
             self.cursor = self.create_cursor()
     
     connection = property(lambda s:s._connection._branch())
@@ -244,10 +251,18 @@ class DefaultExecutionContext(base.ExecutionContext):
                 parameters.append(param)
         return parameters
                 
-    def is_select(self):
-        """return TRUE if the statement is expected to have result rows."""
+    def returns_rows_compiled(self, compiled):
+        return isinstance(compiled.statement, expression.Selectable)
         
-        return SELECT_REGEXP.match(self.statement)
+    def returns_rows_text(self, statement):
+        return SELECT_REGEXP.match(statement)
+
+    def should_autocommit_compiled(self, compiled):
+        return isinstance(compiled.statement, expression._UpdateBase)
+
+    def should_autocommit_text(self, statement):
+        return AUTOCOMMIT_REGEXP.match(statement)
+
 
     def create_cursor(self):
         return self._connection.connection.cursor()
@@ -261,9 +276,6 @@ class DefaultExecutionContext(base.ExecutionContext):
     def result(self):
         return self.get_result_proxy()
 
-    def should_autocommit(self):
-        return AUTOCOMMIT_REGEXP.match(self.statement)
-            
     def pre_exec(self):
         pass
 

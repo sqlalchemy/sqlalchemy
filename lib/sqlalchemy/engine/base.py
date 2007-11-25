@@ -315,6 +315,12 @@ class ExecutionContext(object):
     isupdate
       True if the statement is an UPDATE.
 
+    should_autocommit
+      True if the statement is a "committable" statement
+      
+    returns_rows
+      True if the statement should return result rows
+      
     The Dialect should provide an ExecutionContext via the
     create_execution_context() method.  The `pre_exec` and `post_exec`
     methods will be called for compiled statements.
@@ -363,8 +369,13 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def should_autocommit(self):
-        """Return True if this context's statement should be 'committed' automatically in a non-transactional context"""
+    def should_autocommit_compiled(self, compiled):
+        """return True if the given Compiled object refers to a "committable" statement."""
+        
+        raise NotImplementedError()
+        
+    def should_autocommit_text(self, statement):
+        """Parse the given textual statement and return True if it refers to a "committable" statement"""
 
         raise NotImplementedError()
 
@@ -750,7 +761,7 @@ class Connection(Connectable):
 
         # TODO: have the dialect determine if autocommit can be set on
         # the connection directly without this extra step
-        if not self.in_transaction() and context.should_autocommit():
+        if not self.in_transaction() and context.should_autocommit:
             self._commit_impl()
 
     def _autorollback(self):
@@ -1305,7 +1316,7 @@ class ResultProxy(object):
         self.cursor = context.cursor
         self.connection = context.root_connection
         self.__echo = context.engine._should_log_info
-        if context.is_select():
+        if context.returns_rows:
             self._init_metadata()
             self._rowcount = None
         else:
@@ -1322,8 +1333,6 @@ class ResultProxy(object):
     out_parameters = property(lambda s:s.context.out_parameters)
 
     def _init_metadata(self):
-        if hasattr(self, '_ResultProxy__props'):
-            return
         self.__props = {}
         self._key_cache = self._create_key_cache()
         self.__keys = []
@@ -1336,20 +1345,24 @@ class ResultProxy(object):
                 # sqlite possibly prepending table name to colnames so strip
                 colname = (item[0].split('.')[-1]).decode(self.dialect.encoding)
 
-                if self.context.typemap is not None:
-                    type = self.context.typemap.get(colname.lower(), typemap.get(item[1], types.NULLTYPE))
+                if self.context.result_map:
+                    try:
+                        (name, obj, type_) = self.context.result_map[colname]
+                    except KeyError:
+                        (name, obj, type_) = (colname, None, typemap.get(item[1], types.NULLTYPE))
                 else:
-                    type = typemap.get(item[1], types.NULLTYPE)
+                    (name, obj, type_) = (colname, None, typemap.get(item[1], types.NULLTYPE))
 
-                rec = (type, type.dialect_impl(self.dialect).result_processor(self.dialect), i)
+                rec = (type_, type_.dialect_impl(self.dialect).result_processor(self.dialect), i)
 
-                if rec[0] is None:
-                    raise exceptions.InvalidRequestError(
-                        "None for metadata " + colname)
-                if self.__props.setdefault(colname.lower(), rec) is not rec:
-                    self.__props[colname.lower()] = (type, self.__ambiguous_processor(colname), 0)
+                if self.__props.setdefault(name.lower(), rec) is not rec:
+                    self.__props[name.lower()] = (type_, self.__ambiguous_processor(colname), 0)
+                    
                 self.__keys.append(colname)
                 self.__props[i] = rec
+                if obj:
+                    for o in obj:
+                        self.__props[o] = rec
 
             if self.__echo:
                 self.context.engine.logger.debug("Col " + repr(tuple([x[0] for x in metadata])))
@@ -1362,16 +1375,19 @@ class ResultProxy(object):
             """Given a key, which could be a ColumnElement, string, etc.,
             matches it to the appropriate key we got from the result set's
             metadata; then cache it locally for quick re-access."""
-
-            if isinstance(key, int) and key in props:
+            
+            if isinstance(key, basestring):
+                key = key.lower()
+            
+            try:
                 rec = props[key]
-            elif isinstance(key, basestring) and key.lower() in props:
-                rec = props[key.lower()]
-            elif isinstance(key, expression.ColumnElement):
-                label = context.column_labels.get(key._label, key.name).lower()
-                if label in props:
-                    rec = props[label]
-            if not "rec" in locals():
+            except KeyError:
+                # fallback for targeting a ColumnElement to a textual expression
+                if isinstance(key, expression.ColumnElement):
+                    if key._label.lower() in props:
+                        return props[key._label.lower()]
+                    elif key.name.lower() in props:
+                        return props[key.name.lower()]
                 raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (str(key)))
 
             return rec
@@ -1470,18 +1486,20 @@ class ResultProxy(object):
 
     def _get_col(self, row, key):
         try:
-            rec = self._key_cache[key]
+            type_, processor, index = self._key_cache[key]
         except TypeError:
             # the 'slice' use case is very infrequent,
             # so we use an exception catch to reduce conditionals in _get_col
             if isinstance(key, slice):
                 indices = key.indices(len(row))
                 return tuple([self._get_col(row, i) for i in xrange(*indices)])
-
-        if rec[1]:
-            return rec[1](row[rec[2]])
+            else:
+                raise
+                
+        if processor:
+            return processor(row[index])
         else:
-            return row[rec[2]]
+            return row[index]
 
     def _fetchone_impl(self):
         return self.cursor.fetchone()

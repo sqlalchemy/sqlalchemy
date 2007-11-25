@@ -456,7 +456,7 @@ class Column(SchemaItem, expression._ColumnClause):
 
     def __str__(self):
         if self.table is not None:
-            if self.table.named_with_column():
+            if self.table.named_with_column:
                 return (self.table.description + "." + self.description)
             else:
                 return self.description

@@ -1378,9 +1378,6 @@ def descriptor():
 
 
 class MySQLExecutionContext(default.DefaultExecutionContext):
-    _my_is_select = re.compile(r'\s*(?:SELECT|SHOW|DESCRIBE|XA +RECOVER)',
-                               re.I | re.UNICODE)
-
     def post_exec(self):
         if self.compiled.isinsert and not self.executemany:
             if (not len(self._last_inserted_ids) or
@@ -1388,11 +1385,11 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
                 self._last_inserted_ids = ([self.cursor.lastrowid] +
                                            self._last_inserted_ids[1:])
 
-    def is_select(self):
-        return SELECT_RE.match(self.statement)
+    def returns_rows_text(self, statement):
+        return SELECT_RE.match(statement)
 
-    def should_autocommit(self):
-        return AUTOCOMMIT_RE.match(self.statement)
+    def should_autocommit_text(self, statement):
+        return AUTOCOMMIT_RE.match(statement)
 
 
 class MySQLDialect(default.DefaultDialect):
@@ -1873,9 +1870,6 @@ class MySQLCompiler(compiler.DefaultCompiler):
         if type_ is None:
             return self.process(cast.clause)
 
-        if self.stack and self.stack[-1].get('select'):
-            # not sure if we want to set the typemap here...
-            self.typemap.setdefault("CAST", cast.type)
         return 'CAST(%s AS %s)' % (self.process(cast.clause), type_)
 
 

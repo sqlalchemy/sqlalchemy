@@ -1522,6 +1522,7 @@ class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM`` clause of a ``SELECT`` statement."""
 
     __visit_name__ = 'fromclause'
+    named_with_column=False
 
     def __init__(self):
         self.oid_column = None
@@ -1561,13 +1562,6 @@ class FromClause(Selectable):
         """return an alias of this ``FromClause`` against another ``FromClause``."""
 
         return Alias(self, name)
-
-    def named_with_column(self):
-        """True if the name of this FromClause may be prepended to a
-        column in a generated SQL statement.
-        """
-
-        return False
 
     def is_derived_from(self, fromclause):
         """Return True if this FromClause is 'derived' from the given FromClause.
@@ -2379,6 +2373,8 @@ class Alias(FromClause):
     ``FromClause`` subclasses.
     """
 
+    named_with_column = True
+    
     def __init__(self, selectable, alias=None):
         baseselectable = selectable
         while isinstance(baseselectable, Alias):
@@ -2386,7 +2382,7 @@ class Alias(FromClause):
         self.original = baseselectable
         self.selectable = selectable
         if alias is None:
-            if self.original.named_with_column():
+            if self.original.named_with_column:
                 alias = getattr(self.original, 'name', None)
             alias = '{ANON %d %s}' % (id(self), alias or 'anon')
         self.name = alias
@@ -2407,9 +2403,6 @@ class Alias(FromClause):
 
     def _table_iterator(self):
         return self.original._table_iterator()
-
-    def named_with_column(self):
-        return True
 
     def _exportable_columns(self):
         #return self.selectable._exportable_columns()
@@ -2602,7 +2595,7 @@ class _ColumnClause(ColumnElement):
         if self.is_literal:
             return None
         if self.__label is None:
-            if self.table is not None and self.table.named_with_column():
+            if self.table is not None and self.table.named_with_column:
                 self.__label = self.table.name + "_" + self.name
                 counter = 1
                 while self.__label in self.table.c:
@@ -2652,6 +2645,8 @@ class TableClause(FromClause):
     functionality.
     """
 
+    named_with_column = True
+    
     def __init__(self, name, *columns):
         super(TableClause, self).__init__()
         self.name = self.fullname = name
@@ -2665,9 +2660,6 @@ class TableClause(FromClause):
     def _clone(self):
         # TableClause is immutable
         return self
-
-    def named_with_column(self):
-        return True
 
     def append_column(self, c):
         self._columns[c.name] = c
@@ -3041,16 +3033,14 @@ class Select(_SelectBaseMixin, FromClause):
         froms = froms.difference(hide_froms)
         
         if len(froms) > 1:
-            corr = self.__correlate
+            if self.__correlate:
+                froms = froms.difference(self.__correlate)
             if self._should_correlate and existing_froms is not None:
-                corr.update(existing_froms)
+                froms = froms.difference(existing_froms)
                 
-            f = froms.difference(corr)
-            if not f:
+            if not froms:
                 raise exceptions.InvalidRequestError("Select statement '%s' is overcorrelated; returned no 'from' clauses" % str(self.__dont_correlate()))
-            return f
-        else:
-            return froms
+        return froms
 
     froms = property(_get_display_froms, doc="""Return a list of all FromClause elements which will be applied to the FROM clause of the resulting statement.""")
 

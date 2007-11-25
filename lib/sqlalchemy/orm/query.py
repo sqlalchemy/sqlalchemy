@@ -249,7 +249,7 @@ class Query(object):
         # alias non-labeled column elements. 
         if isinstance(column, sql.ColumnElement) and not hasattr(column, '_label'):
             column = column.label(None)
-
+            
         q._entities = q._entities + [(column, None, id)]
         return q
         
@@ -887,7 +887,7 @@ class Query(object):
                     context.exec_with_path(self.select_mapper, value.key, value.setup, context, parentclauses=clauses)
             elif isinstance(m, sql.ColumnElement):
                 if clauses is not None:
-                    m = clauses.adapt_clause(m)
+                    m = clauses.aliased_column(m)
                 context.secondary_columns.append(m)
             
         if self._eager_loaders and self._nestable(**self._select_args()):
