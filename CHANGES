@@ -25,6 +25,10 @@ CHANGES
      We also copy the instances over without using any events now, so that
      the 'dirty' list on the new session remains unaffected.
 
+- dialects
+
+   - MSSQL/PyODBC no longer has a global "set nocount on".
+
 0.4.1
 -----
 

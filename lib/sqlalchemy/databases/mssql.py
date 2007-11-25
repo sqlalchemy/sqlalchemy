@@ -345,17 +345,10 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
 
 class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):    
     def pre_exec(self):
-        """execute "set nocount on" on all connections, as a partial 
-        workaround for multiple result set issues."""
-                
-        if not getattr(self.connection, 'pyodbc_done_nocount', False):
-            self.connection.execute('SET nocount ON')
-            self.connection.pyodbc_done_nocount = True
-            
+        """where appropriate, issue "select scope_identity()" in the same statement"""                
         super(MSSQLExecutionContext_pyodbc, self).pre_exec()
-
-        # where appropriate, issue "select scope_identity()" in the same statement
-        if self.compiled.isinsert and self.HASIDENT and (not self.IINSERT) and self.dialect.use_scope_identity:
+        if self.compiled.isinsert and self.HASIDENT and (not self.IINSERT) \
+                and len(self.parameters) == 1 and self.dialect.use_scope_identity:
             self.statement += "; select scope_identity()"
 
     def post_exec(self):
