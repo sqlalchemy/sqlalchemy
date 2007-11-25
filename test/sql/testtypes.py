@@ -2,7 +2,7 @@ import testbase
 import pickleable
 import datetime, os
 from sqlalchemy import *
-from sqlalchemy import types
+from sqlalchemy import types, exceptions
 from sqlalchemy.sql import operators
 import sqlalchemy.engine.url as url
 from sqlalchemy.databases import mssql, oracle, mysql, postgres, firebird
@@ -178,9 +178,9 @@ class UserDefinedTest(PersistTest):
     def testprocessing(self):
 
         global users
-        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4='jack', goofy5='jack', goofy6='jack')
-        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4='lala', goofy5='lala', goofy6='lala')
-        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4='fred', goofy5='fred', goofy6='fred')
+        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack')
+        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala')
+        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred')
 
         l = users.select().execute().fetchall()
         assert l == [
@@ -286,7 +286,13 @@ class UnicodeTest(AssertMixin):
             print "it's %s!" % testbase.db.name
         else:
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
-
+    
+    def testassert(self):
+        try:
+            unicode_table.insert().execute(unicode_varchar='im not unicode')
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Received non-unicode bind param value 'im not unicode'"
+        
     @testing.unsupported('oracle')
     def testblanks(self):
         unicode_table.insert().execute(unicode_varchar=u'')
@@ -295,8 +301,10 @@ class UnicodeTest(AssertMixin):
     def testengineparam(self):
         """tests engine-wide unicode conversion"""
         prev_unicode = testbase.db.engine.dialect.convert_unicode
+        prev_assert = testbase.db.engine.dialect.assert_unicode
         try:
             testbase.db.engine.dialect.convert_unicode = True
+            testbase.db.engine.dialect.assert_unicode = False
             rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
             unicodedata = rawdata.decode('utf-8')
             unicode_table.insert().execute(unicode_varchar=unicodedata,
@@ -312,6 +320,7 @@ class UnicodeTest(AssertMixin):
             self.assert_(isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == unicodedata)
         finally:
             testbase.db.engine.dialect.convert_unicode = prev_unicode
+            testbase.db.engine.dialect.convert_unicode = prev_assert
 
     @testing.unsupported('oracle')
     def testlength(self):

@@ -5,10 +5,53 @@ The package `sqlalchemy.types` defines the datatype identifiers which may be use
 
 ### Built-in Types {@name=standard}
 
-SQLAlchemy comes with a set of standard generic datatypes, which are defined as classes.   
+SQLAlchemy comes with a set of standard generic datatypes, which are defined as classes.  Types are usually used when defining tables, and can be left as a class or instantiated, for example:
 
-The standard set of generic types are:
+    {python}
+    mytable = Table('mytable', metadata,
+        Column('myid', Integer, primary_key=True),
+        Column('data', String(30)),
+        Column('info', Unicode(100)),
+        Column('value', Number(7,4)) 
+        )
 
+Following is a rundown of the standard types.
+
+#### String
+
+This type is the base type for all string and character types, such as `Unicode`, `Text`, `CLOB`, etc.  By default it generates a VARCHAR in DDL.  It includes an argument `length`, which indicates the length in characters of the type, as well as `convert_unicode` and `assert_unicode`, which are booleans.  `length` will be used as the length argument when generating DDL.  If `length` is omitted, the `String` type resolves into the `Text` type.
+
+`convert_unicode=True` indicates that incoming strings, if they are Python `unicode` strings, will be encoded into a raw bytestring using the `encoding` attribute of the dialect (defaults to `utf-8`).  Similarly, raw bytestrings coming back from the database will be decoded into `unicode` objects on the way back.
+
+`assert_unicode=True` is set to true by default when `convert_unicode=True`, and indicates that incoming bind parameters will be checked that they are in fact  `unicode` objects, else an error is raised.  (this flag is new as of version 0.4.2)
+
+Both `convert_unicode` and `assert_unicode` may be set at the engine level as flags to `create_engine()`.
+
+#### Unicode
+
+The `Unicode` type is shorthand for `String` with `convert_unicode=True` and `assert_unicode=True`.  When writing a unicode-aware appication, it is strongly recommended that this type is used, and that only unicode strings are used in the application.  By "unicode string" we mean a string with a u, i.e. `u'hello'`.  Otherwise, particularly when using the ORM, data will be converted to unicode when it returns from the database, but local data which was generated locally will not be in unicode format, which can create confusion.
+
+#### Numeric
+
+TODO
+
+#### Float
+
+TODO
+
+#### Datetime/Date/Time
+
+TODO
+
+#### Binary
+
+TODO
+
+#### Boolean
+
+TODO
+
+#### Summary of Types
     {python title="package sqlalchemy.types"}
     class String(TypeEngine):
         def __init__(self, length=None)
@@ -65,17 +108,6 @@ More specific subclasses of these types are available, which various database en
 
 When using a specific database engine, these types are adapted even further via a set of database-specific subclasses defined by the database engine.
 There may eventually be more type objects that are defined for specific databases.  An example of this would be Postgres' Array type.
-
-Type objects are specified to table meta data using either the class itself, or an instance of the class.  Creating an instance of the class allows you to specify parameters for the type, such as string length, numerical precision, etc.:
-
-    {python}
-    mytable = Table('mytable', engine, 
-        # define type using a class
-        Column('my_id', Integer, primary_key=True), 
-        
-        # define type using an object instance
-        Column('value', Number(7,4)) 
-    )
 
 ### Dialect Specific Types {@name=dialect}
 

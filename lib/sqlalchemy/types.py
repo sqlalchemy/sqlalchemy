@@ -300,18 +300,27 @@ class Concatenable(object):
             return op
 
 class String(Concatenable, TypeEngine):
-    def __init__(self, length=None, convert_unicode=False):
+    def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
         self.length = length
         self.convert_unicode = convert_unicode
+        self.assert_unicode = assert_unicode
 
     def adapt(self, impltype):
         return impltype(length=self.length, convert_unicode=self.convert_unicode)
 
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
+            if self.assert_unicode is not None:
+                assert_unicode = self.assert_unicode
+            elif dialect.assert_unicode is not None:
+                assert_unicode = dialect.assert_unicode
+            else:
+                assert_unicode = True
             def process(value):
                 if isinstance(value, unicode):
                     return value.encode(dialect.encoding)
+                elif assert_unicode:
+                    raise exceptions.InvalidRequestError("Received non-unicode bind param value %r" % value)
                 else:
                     return value
             return process
@@ -344,7 +353,7 @@ class String(Concatenable, TypeEngine):
 
 class Unicode(String):
     def __init__(self, length=None, **kwargs):
-        kwargs['convert_unicode'] = True
+        kwargs['convert_unicode'] = kwargs['assert_unicode'] = True
         super(Unicode, self).__init__(length=length, **kwargs)
 
 class Integer(TypeEngine):
