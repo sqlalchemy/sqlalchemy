@@ -961,7 +961,7 @@ def register_class(class_, extra_init=None, on_exception=None):
     # (like associationproxy) become aware of themselves at the 
     # class level
     for key in dir(class_):
-        getattr(class_, key)
+        getattr(class_, key, None)
     
     oldinit = None
     doinit = False
