@@ -689,7 +689,7 @@ class CreateDropTest(PersistTest):
         metadata.drop_all(bind=testbase.db)
 
 class UnicodeTest(PersistTest):
-    @testing.unsupported('sybase', 'maxdb', 'oracle')
+
     def test_basic(self):
         try:
             # the 'convert_unicode' should not get in the way of the reflection 
@@ -698,7 +698,11 @@ class UnicodeTest(PersistTest):
             bind = engines.utf8_engine(options={'convert_unicode':True})
             metadata = MetaData(bind)
 
-            names = set([u'plain', u'Unit\u00e9ble', u'\u6e2c\u8a66'])
+            if testing.against('sybase', 'maxdb', 'oracle'):
+                names = set(['plain'])
+            else:
+                names = set([u'plain', u'Unit\u00e9ble', u'\u6e2c\u8a66'])
+
             for name in names:
                 Table(name, metadata, Column('id', Integer, Sequence(name + "_id_seq"), primary_key=True))
             metadata.create_all()
