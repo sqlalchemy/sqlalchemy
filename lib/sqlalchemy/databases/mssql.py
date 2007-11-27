@@ -877,6 +877,8 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         s = select._distinct and "DISTINCT " or ""
         if select._limit:
             s += "TOP %s " % (select._limit,)
+        if select._offset:
+            raise exceptions.InvalidRequestError('MSSQL does not support LIMIT with an offset')
         return s
 
     def limit_clause(self, select):    
@@ -948,36 +950,6 @@ class MSSQLCompiler(compiler.DefaultCompiler):
             return " ORDER BY " + order_by
         else:
             return ""
-
-    def visit_select(self, select, **kwargs):
-        """Look for OFFSET in a select statement, and if so tries to wrap 
-        it in a subquery with ``row_number()`` criterion.
-        """
-
-        if not getattr(select, '_mssql_visit', None) and select._offset is not None:
-            # to use ROW_NUMBER(), an ORDER BY is required.
-            orderby = self.process(select._order_by_clause)
-            if not orderby:
-                raise exceptions.InvalidRequestError("OFFSET in MS-SQL requires an ORDER BY clause")
-                
-            oldselect = select
-            select = select.column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("mssql_rn")).order_by(None)
-            select._mssql_visit = True
-
-            select_alias = select.alias()
-            limitselect = sql.select([c.label(list(c.proxies)[0].name) for c in select_alias.c if c.key!='mssql_rn'])
-            #limitselect._order_by_clause = select._order_by_clause
-            select._order_by_clause = expression.ClauseList(None)
-
-            if select._offset is not None:
-                limitselect.append_whereclause("mssql_rn>%d" % select._offset)
-                if select._limit is not None:
-                    limitselect.append_whereclause("mssql_rn<=%d" % (select._limit + select._offset))
-                    select._limit = None
-            return self.process(limitselect, **kwargs)
-        else:
-            return compiler.DefaultCompiler.visit_select(self, select, **kwargs)
-
 
 
 class MSSQLSchemaGenerator(compiler.SchemaGenerator):

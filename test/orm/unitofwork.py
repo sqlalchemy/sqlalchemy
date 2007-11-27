@@ -234,7 +234,7 @@ class UnicodeSchemaTest(ORMTest):
         Session.clear()
 
     @testing.supported('sqlite', 'postgres')
-    def dont_test_inheritance_mapping(self):
+    def test_inheritance_mapping(self):
         class A(fixtures.Base):pass
         class B(A):pass
         mapper(A, t1, polymorphic_on=t1.c.type, polymorphic_identity='a')
@@ -1079,7 +1079,6 @@ class SaveTest(ORMTest):
         Session.close()
         l = Session.query(AddressUser).selectone()
         self.assert_(l.user_id == au.user_id and l.address_id == au.address_id)
-        print "TEST INHERITS DONE"
         
     def test_deferred(self):
         """test deferred column operations"""
@@ -1119,7 +1118,7 @@ class SaveTest(ORMTest):
     # why no support on oracle ?  because oracle doesn't save
     # "blank" strings; it saves a single space character. 
     @testing.unsupported('oracle') 
-    def dont_test_dont_update_blanks(self):
+    def test_dont_update_blanks(self):
         mapper(User, users)
         u = User()
         u.user_name = ""
@@ -1172,7 +1171,7 @@ class SaveTest(ORMTest):
         u = Session.get(User, id)
         assert u.user_name == 'imnew'
     
-    def dont_test_history_get(self):
+    def test_history_get(self):
         """tests that the history properly lazy-fetches data when it wasnt otherwise loaded"""
         mapper(User, users, properties={
             'addresses':relation(Address, cascade="all, delete-orphan")

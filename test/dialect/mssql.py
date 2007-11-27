@@ -52,38 +52,6 @@ class CompileTest(SQLCompileTest):
         m = MetaData()
         t = Table('sometable', m, Column('col1', Integer), Column('col2', Integer))
         self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) AS max_1 FROM sometable")
-
-    def test_limit(self):
-        t = table('sometable', column('col1'), column('col2'))
-
-        s = select([t]).limit(10).offset(20).order_by(t.c.col1).apply_labels()
-
-        self.assert_compile(s, "SELECT anon_1.sometable_col1 AS sometable_col1, anon_1.sometable_col2 AS sometable_col2 FROM (SELECT sometable.col1 AS sometable_col1, sometable.col2 AS sometable_col2, "
-            "ROW_NUMBER() OVER (ORDER BY sometable.col1) AS mssql_rn FROM sometable) AS anon_1 WHERE mssql_rn>20 AND mssql_rn<=30"
-        )
-
-        s = select([t]).limit(10).offset(20).order_by(t.c.col1)
-
-        self.assert_compile(s, "SELECT anon_1.col1 AS col1, anon_1.col2 AS col2 FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2, "
-            "ROW_NUMBER() OVER (ORDER BY sometable.col1) AS mssql_rn FROM sometable) AS anon_1 WHERE mssql_rn>20 AND mssql_rn<=30"
-        )
-
-        s = select([s.c.col1, s.c.col2])
-
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT anon_1.col1 AS col1, anon_1.col2 AS col2 FROM "
-            "(SELECT sometable.col1 AS col1, sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.col1) AS mssql_rn FROM sometable) AS anon_1 "
-            "WHERE mssql_rn>20 AND mssql_rn<=30)")
-
-        # testing this twice to ensure oracle doesn't modify the original statement 
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT anon_1.col1 AS col1, anon_1.col2 AS col2 FROM "
-            "(SELECT sometable.col1 AS col1, sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.col1) AS mssql_rn FROM sometable) AS anon_1 "
-            "WHERE mssql_rn>20 AND mssql_rn<=30)")
-
-        s = select([t]).limit(10).offset(20).order_by(t.c.col2)
-
-        self.assert_compile(s, "SELECT anon_1.col1 AS col1, anon_1.col2 AS col2 FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.col2) AS mssql_rn FROM sometable) AS anon_1 WHERE mssql_rn>20 AND mssql_rn<=30")
-
         
 if __name__ == "__main__":
     testbase.main()
