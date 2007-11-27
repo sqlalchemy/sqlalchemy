@@ -5,12 +5,15 @@ CHANGES
 -----
 - sql
     - added new flag to String and create_engine(), assert_unicode=(True|False|None).
-    When convert_unicode=True, this flag also defaults to `True`, and results in all 
-    unicode conversion operations raising an exception when a non-unicode bytestring
-    is passed as a bind parameter.  It is strongly advised that all unicode-aware
-    applications make proper use of Python unicode objects (i.e. u'hello' and 
-    not 'hello').
-    
+      When convert_unicode=True, this flag also defaults to `True`, and results in all 
+      unicode conversion operations raising an exception when a non-unicode bytestring
+      is passed as a bind parameter.  It is strongly advised that all unicode-aware
+      applications make proper use of Python unicode objects (i.e. u'hello' and 
+      not 'hello').
+
+    - column labels in the form "tablename.columname", i.e. with a dot, are now
+      supported.
+      
 - orm
 
    - fixed endless loop issue when using lazy="dynamic" on both 

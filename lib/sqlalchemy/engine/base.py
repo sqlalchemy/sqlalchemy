@@ -1342,9 +1342,15 @@ class ResultProxy(object):
             typemap = self.dialect.dbapi_type_map
 
             for i, item in enumerate(metadata):
-                # sqlite possibly prepending table name to colnames so strip
-                colname = (item[0].split('.')[-1]).decode(self.dialect.encoding)
-
+                colname = item[0].decode(self.dialect.encoding)
+                
+                if '.' in colname:
+                    # sqlite will in some circumstances prepend table name to colnames, so strip
+                    origname = colname
+                    colname = colname.split('.')[-1]
+                else:
+                    origname = None
+                    
                 if self.context.result_map:
                     try:
                         (name, obj, type_) = self.context.result_map[colname]
@@ -1356,7 +1362,12 @@ class ResultProxy(object):
                 rec = (type_, type_.dialect_impl(self.dialect).result_processor(self.dialect), i)
 
                 if self.__props.setdefault(name.lower(), rec) is not rec:
-                    self.__props[name.lower()] = (type_, self.__ambiguous_processor(colname), 0)
+                    self.__props[name.lower()] = (type_, self.__ambiguous_processor(name), 0)
+                
+                # store the "origname" if we truncated (sqlite only)
+                if origname:
+                    if self.__props.setdefault(origname.lower(), rec) is not rec:
+                        self.__props[origname.lower()] = (type_, self.__ambiguous_processor(origname), 0)
                     
                 self.__keys.append(colname)
                 self.__props[i] = rec

@@ -361,6 +361,11 @@ class QueryTest(PersistTest):
             "UNION select query_users.user_id, query_users.user_name from query_users", bind=testbase.db).execute().fetchone()
         self.assert_(r['user_id']) == 1
         self.assert_(r['user_name']) == "john"
+
+        # test using literal tablename.colname
+        r = text('select query_users.user_id AS "query_users.user_id", query_users.user_name AS "query_users.user_name" from query_users', bind=testbase.db).execute().fetchone()
+        self.assert_(r['query_users.user_id']) == 1
+        self.assert_(r['query_users.user_name']) == "john"
         
 
     def test_ambiguous_column(self):
