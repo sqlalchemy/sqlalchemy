@@ -16,11 +16,11 @@ class AttributesTest(PersistTest):
     """tests for the attributes.py module, which deals with tracking attribute changes on an object."""
     def test_basic(self):
         class User(object):pass
-        manager = attributes.AttributeManager()
-        manager.register_class(User)
-        manager.register_attribute(User, 'user_id', uselist = False, useobject=False)
-        manager.register_attribute(User, 'user_name', uselist = False, useobject=False)
-        manager.register_attribute(User, 'email_address', uselist = False, useobject=False)
+        
+        attributes.register_class(User)
+        attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
+        attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
+        attributes.register_attribute(User, 'email_address', uselist = False, useobject=False)
         
         u = User()
         print repr(u.__dict__)
@@ -41,25 +41,25 @@ class AttributesTest(PersistTest):
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.email_address == 'foo@bar.com')
 
         if ROLLBACK_SUPPORTED:
-            manager.rollback(u)
+            attributes.rollback(u)
             print repr(u.__dict__)
             self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
 
     def test_pickleness(self):
 
-        manager = attributes.AttributeManager()
-        manager.register_class(MyTest)
-        manager.register_class(MyTest2)
-        manager.register_attribute(MyTest, 'user_id', uselist = False, useobject=False)
-        manager.register_attribute(MyTest, 'user_name', uselist = False, useobject=False)
-        manager.register_attribute(MyTest, 'email_address', uselist = False, useobject=False)
-        manager.register_attribute(MyTest2, 'a', uselist = False, useobject=False)
-        manager.register_attribute(MyTest2, 'b', uselist = False, useobject=False)
+        
+        attributes.register_class(MyTest)
+        attributes.register_class(MyTest2)
+        attributes.register_attribute(MyTest, 'user_id', uselist = False, useobject=False)
+        attributes.register_attribute(MyTest, 'user_name', uselist = False, useobject=False)
+        attributes.register_attribute(MyTest, 'email_address', uselist = False, useobject=False)
+        attributes.register_attribute(MyTest2, 'a', uselist = False, useobject=False)
+        attributes.register_attribute(MyTest2, 'b', uselist = False, useobject=False)
         # shouldnt be pickling callables at the class level
         def somecallable(*args):
             return None
         attr_name = 'mt2'
-        manager.register_attribute(MyTest, attr_name, uselist = True, trackparent=True, callable_=somecallable, useobject=True)
+        attributes.register_attribute(MyTest, attr_name, uselist = True, trackparent=True, callable_=somecallable, useobject=True)
 
         o = MyTest()
         o.mt2.append(MyTest2())
@@ -109,14 +109,14 @@ class AttributesTest(PersistTest):
     def test_list(self):
         class User(object):pass
         class Address(object):pass
-        manager = attributes.AttributeManager()
-        manager.register_class(User)
-        manager.register_class(Address)
-        manager.register_attribute(User, 'user_id', uselist = False, useobject=False)
-        manager.register_attribute(User, 'user_name', uselist = False, useobject=False)
-        manager.register_attribute(User, 'addresses', uselist = True, useobject=True)
-        manager.register_attribute(Address, 'address_id', uselist = False, useobject=False)
-        manager.register_attribute(Address, 'email_address', uselist = False, useobject=False)
+        
+        attributes.register_class(User)
+        attributes.register_class(Address)
+        attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
+        attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
+        attributes.register_attribute(User, 'addresses', uselist = True, useobject=True)
+        attributes.register_attribute(Address, 'address_id', uselist = False, useobject=False)
+        attributes.register_attribute(Address, 'email_address', uselist = False, useobject=False)
         
         u = User()
         print repr(u.__dict__)
@@ -144,20 +144,20 @@ class AttributesTest(PersistTest):
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.addresses[0].email_address == 'lala@123.com' and u.addresses[1].email_address == 'foo@bar.com')
 
         if ROLLBACK_SUPPORTED:
-            manager.rollback(u, a)
+            attributes.rollback(u, a)
             print repr(u.__dict__)
             print repr(u.addresses[0].__dict__)
             self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
-            self.assert_(len(manager.get_history(u, 'addresses').unchanged_items()) == 1)
+            self.assert_(len(attributes.get_history(u, 'addresses').unchanged_items()) == 1)
 
     def test_backref(self):
         class Student(object):pass
         class Course(object):pass
-        manager = attributes.AttributeManager()
-        manager.register_class(Student)
-        manager.register_class(Course)
-        manager.register_attribute(Student, 'courses', uselist=True, extension=attributes.GenericBackrefExtension('students'), useobject=True)
-        manager.register_attribute(Course, 'students', uselist=True, extension=attributes.GenericBackrefExtension('courses'), useobject=True)
+        
+        attributes.register_class(Student)
+        attributes.register_class(Course)
+        attributes.register_attribute(Student, 'courses', uselist=True, extension=attributes.GenericBackrefExtension('students'), useobject=True)
+        attributes.register_attribute(Course, 'students', uselist=True, extension=attributes.GenericBackrefExtension('courses'), useobject=True)
         
         s = Student()
         c = Course()
@@ -181,10 +181,10 @@ class AttributesTest(PersistTest):
         class Post(object):pass
         class Blog(object):pass
 
-        manager.register_class(Post)
-        manager.register_class(Blog)
-        manager.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
-        manager.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
+        attributes.register_class(Post)
+        attributes.register_class(Blog)
+        attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
+        attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
         b = Blog()
         (p1, p2, p3) = (Post(), Post(), Post())
         b.posts.append(p1)
@@ -206,10 +206,10 @@ class AttributesTest(PersistTest):
 
         class Port(object):pass
         class Jack(object):pass
-        manager.register_class(Port)
-        manager.register_class(Jack)
-        manager.register_attribute(Port, 'jack', uselist=False, extension=attributes.GenericBackrefExtension('port'), useobject=True)
-        manager.register_attribute(Jack, 'port', uselist=False, extension=attributes.GenericBackrefExtension('jack'), useobject=True)
+        attributes.register_class(Port)
+        attributes.register_class(Jack)
+        attributes.register_attribute(Port, 'jack', uselist=False, extension=attributes.GenericBackrefExtension('port'), useobject=True)
+        attributes.register_attribute(Jack, 'port', uselist=False, extension=attributes.GenericBackrefExtension('jack'), useobject=True)
         p = Port()
         j = Jack()
         p.jack = j
@@ -221,16 +221,16 @@ class AttributesTest(PersistTest):
 
     def test_lazytrackparent(self):
         """test that the "hasparent" flag works properly when lazy loaders and backrefs are used"""
-        manager = attributes.AttributeManager()
+        
 
         class Post(object):pass
         class Blog(object):pass
-        manager.register_class(Post)
-        manager.register_class(Blog)
+        attributes.register_class(Post)
+        attributes.register_class(Blog)
         
         # set up instrumented attributes with backrefs    
-        manager.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
-        manager.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
+        attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
+        attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
 
         # create objects as if they'd been freshly loaded from the database (without history)
         b = Blog()
@@ -240,8 +240,8 @@ class AttributesTest(PersistTest):
         p1, b._state.commit_all()
 
         # no orphans (called before the lazy loaders fire off)
-        assert manager.has_parent(Blog, p1, 'posts', optimistic=True)
-        assert manager.has_parent(Post, b, 'blog', optimistic=True)
+        assert attributes.has_parent(Blog, p1, 'posts', optimistic=True)
+        assert attributes.has_parent(Post, b, 'blog', optimistic=True)
 
         # assert connections
         assert p1.blog is b
@@ -251,17 +251,17 @@ class AttributesTest(PersistTest):
         b2 = Blog()
         p2 = Post()
         b2.posts.append(p2)
-        assert manager.has_parent(Blog, p2, 'posts')
-        assert manager.has_parent(Post, b2, 'blog')
+        assert attributes.has_parent(Blog, p2, 'posts')
+        assert attributes.has_parent(Post, b2, 'blog')
         
     def test_inheritance(self):
         """tests that attributes are polymorphic"""
         class Foo(object):pass
         class Bar(Foo):pass
         
-        manager = attributes.AttributeManager()
-        manager.register_class(Foo)
-        manager.register_class(Bar)
+        
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
         
         def func1():
             print "func1"
@@ -272,9 +272,9 @@ class AttributesTest(PersistTest):
         def func3():
             print "func3"
             return "this is the shared attr"
-        manager.register_attribute(Foo, 'element', uselist=False, callable_=lambda o:func1, useobject=True)
-        manager.register_attribute(Foo, 'element2', uselist=False, callable_=lambda o:func3, useobject=True)
-        manager.register_attribute(Bar, 'element', uselist=False, callable_=lambda o:func2, useobject=True)
+        attributes.register_attribute(Foo, 'element', uselist=False, callable_=lambda o:func1, useobject=True)
+        attributes.register_attribute(Foo, 'element2', uselist=False, callable_=lambda o:func3, useobject=True)
+        attributes.register_attribute(Bar, 'element', uselist=False, callable_=lambda o:func2, useobject=True)
         
         x = Foo()
         y = Bar()
@@ -288,16 +288,16 @@ class AttributesTest(PersistTest):
         if the object is of a descendant class with managed attributes in the parent class"""
         class Foo(object):pass
         class Bar(Foo):pass
-        manager = attributes.AttributeManager()
-        manager.register_class(Foo)
-        manager.register_class(Bar)
-        manager.register_attribute(Foo, 'element', uselist=False, useobject=True)
+        
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+        attributes.register_attribute(Foo, 'element', uselist=False, useobject=True)
         x = Bar()
         x.element = 'this is the element'
-        hist = manager.get_history(x, 'element')
+        hist = attributes.get_history(x, 'element')
         assert hist.added_items() == ['this is the element']
         x._state.commit_all()
-        hist = manager.get_history(x, 'element')
+        hist = attributes.get_history(x, 'element')
         assert hist.added_items() == []
         assert hist.unchanged_items() == ['this is the element']
 
@@ -310,23 +310,23 @@ class AttributesTest(PersistTest):
             def __repr__(self):
                 return "Bar: id %d" % self.id
                 
-        manager = attributes.AttributeManager()
-        manager.register_class(Foo)
-        manager.register_class(Bar)
+        
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
 
         def func1():
             return "this is func 1"
         def func2():
             return [Bar(1), Bar(2), Bar(3)]
 
-        manager.register_attribute(Foo, 'col1', uselist=False, callable_=lambda o:func1, useobject=True)
-        manager.register_attribute(Foo, 'col2', uselist=True, callable_=lambda o:func2, useobject=True)
-        manager.register_attribute(Bar, 'id', uselist=False, useobject=True)
+        attributes.register_attribute(Foo, 'col1', uselist=False, callable_=lambda o:func1, useobject=True)
+        attributes.register_attribute(Foo, 'col2', uselist=True, callable_=lambda o:func2, useobject=True)
+        attributes.register_attribute(Bar, 'id', uselist=False, useobject=True)
 
         x = Foo()
         x._state.commit_all()
         x.col2.append(Bar(4))
-        h = manager.get_history(x, 'col2')
+        h = attributes.get_history(x, 'col2')
         print h.added_items()
         print h.unchanged_items()
 
@@ -335,12 +335,12 @@ class AttributesTest(PersistTest):
         class Foo(object):pass
         class Bar(object):pass
         
-        manager = attributes.AttributeManager()
-        manager.register_class(Foo)
-        manager.register_class(Bar)
         
-        manager.register_attribute(Foo, 'element', uselist=False, trackparent=True, useobject=True)
-        manager.register_attribute(Bar, 'element', uselist=False, trackparent=True, useobject=True)
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+        
+        attributes.register_attribute(Foo, 'element', uselist=False, trackparent=True, useobject=True)
+        attributes.register_attribute(Bar, 'element', uselist=False, trackparent=True, useobject=True)
         
         f1 = Foo()
         f2 = Foo()
@@ -350,35 +350,35 @@ class AttributesTest(PersistTest):
         f1.element = b1
         b2.element = f2
         
-        assert manager.has_parent(Foo, b1, 'element')
-        assert not manager.has_parent(Foo, b2, 'element')
-        assert not manager.has_parent(Foo, f2, 'element')
-        assert manager.has_parent(Bar, f2, 'element')
+        assert attributes.has_parent(Foo, b1, 'element')
+        assert not attributes.has_parent(Foo, b2, 'element')
+        assert not attributes.has_parent(Foo, f2, 'element')
+        assert attributes.has_parent(Bar, f2, 'element')
         
         b2.element = None
-        assert not manager.has_parent(Bar, f2, 'element')
+        assert not attributes.has_parent(Bar, f2, 'element')
 
     def test_mutablescalars(self):
         """test detection of changes on mutable scalar items"""
         class Foo(object):pass
-        manager = attributes.AttributeManager()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'element', uselist=False, copy_function=lambda x:[y for y in x], mutable_scalars=True, useobject=False)
-        x = Foo()
-        x.element = ['one', 'two', 'three']    
-        x._state.commit_all()
-        x.element[1] = 'five'
-        assert manager.is_modified(x)
         
-        manager.unregister_class(Foo)
-        manager = attributes.AttributeManager()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'element', uselist=False, useobject=False)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'element', uselist=False, copy_function=lambda x:[y for y in x], mutable_scalars=True, useobject=False)
         x = Foo()
         x.element = ['one', 'two', 'three']    
         x._state.commit_all()
         x.element[1] = 'five'
-        assert not manager.is_modified(x)
+        assert attributes.is_modified(x)
+        
+        attributes.unregister_class(Foo)
+        
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'element', uselist=False, useobject=False)
+        x = Foo()
+        x.element = ['one', 'two', 'three']    
+        x._state.commit_all()
+        x.element[1] = 'five'
+        assert not attributes.is_modified(x)
         
     def test_descriptorattributes(self):
         """changeset: 1633 broke ability to use ORM to map classes with unusual
@@ -392,18 +392,20 @@ class AttributesTest(PersistTest):
         class Foo(object):
             A = des()
 
-        manager = attributes.AttributeManager()
-        manager.unregister_class(Foo)
+        
+        attributes.unregister_class(Foo)
     
     def test_collectionclasses(self):
-        manager = attributes.AttributeManager()
+        
         class Foo(object):pass
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, "collection", uselist=True, typecallable=set, useobject=True)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, "collection", uselist=True, typecallable=set, useobject=True)
         assert isinstance(Foo().collection, set)
         
+        attributes.unregister_attribute(Foo, "collection")
+
         try:
-            manager.register_attribute(Foo, "collection", uselist=True, typecallable=dict, useobject=True)
+            attributes.register_attribute(Foo, "collection", uselist=True, typecallable=dict, useobject=True)
             assert False
         except exceptions.ArgumentError, e:
             assert str(e) == "Type InstrumentedDict must elect an appender method to be a collection class"
@@ -415,12 +417,14 @@ class AttributesTest(PersistTest):
             @collection.remover
             def remove(self, item):
                 del self[item.foo]
-        manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyDict, useobject=True)
+        attributes.register_attribute(Foo, "collection", uselist=True, typecallable=MyDict, useobject=True)
         assert isinstance(Foo().collection, MyDict)
+
+        attributes.unregister_attribute(Foo, "collection")
         
         class MyColl(object):pass
         try:
-            manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl, useobject=True)
+            attributes.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl, useobject=True)
             assert False
         except exceptions.ArgumentError, e:
             assert str(e) == "Type MyColl must elect an appender method to be a collection class"
@@ -435,7 +439,7 @@ class AttributesTest(PersistTest):
             @collection.remover
             def remove(self, item):
                 pass
-        manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl, useobject=True)
+        attributes.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl, useobject=True)
         try:
             Foo().collection
             assert True

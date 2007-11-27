@@ -35,8 +35,7 @@ class Entity(object):
     def __repr__(self):
         return str((id(self), self.a, self.b, self.c))
 
-manager = attributes.AttributeManager()
-manager.register_class(Entity)
+attributes.register_class(Entity)
 
 _id = 1
 def entity_maker():
@@ -56,8 +55,8 @@ class CollectionsTest(PersistTest):
             pass
 
         canary = Canary()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -94,8 +93,8 @@ class CollectionsTest(PersistTest):
             pass
         
         canary = Canary()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -236,8 +235,8 @@ class CollectionsTest(PersistTest):
             pass
 
         canary = Canary()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -360,8 +359,8 @@ class CollectionsTest(PersistTest):
             pass
 
         canary = Canary()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -493,8 +492,8 @@ class CollectionsTest(PersistTest):
             pass
 
         canary = Canary()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -598,8 +597,8 @@ class CollectionsTest(PersistTest):
             pass
 
         canary = Canary()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -716,8 +715,8 @@ class CollectionsTest(PersistTest):
             pass
 
         canary = Canary()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -891,8 +890,8 @@ class CollectionsTest(PersistTest):
             pass
         
         canary = Canary()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -1025,8 +1024,8 @@ class CollectionsTest(PersistTest):
         class Foo(object):
             pass
         canary = Canary()
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
                                    typecallable=Custom, useobject=True)
 
         obj = Foo()
@@ -1095,8 +1094,8 @@ class CollectionsTest(PersistTest):
 
         canary = Canary()
         creator = entity_maker
-        manager.register_class(Foo)
-        manager.register_attribute(Foo, 'attr', True, extension=canary, useobject=True)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary, useobject=True)
 
         obj = Foo()
         col1 = obj.attr

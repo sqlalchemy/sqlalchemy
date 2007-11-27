@@ -99,7 +99,6 @@ import copy, inspect, sys, weakref
 
 from sqlalchemy import exceptions, schema, util as sautil
 from sqlalchemy.util import attrgetter
-from sqlalchemy.orm import mapper
 
 
 __all__ = ['collection', 'collection_adapter',
@@ -118,9 +117,11 @@ def column_mapped_collection(mapping_spec):
     after a session flush.
     """
 
+    from sqlalchemy.orm import object_mapper
+
     if isinstance(mapping_spec, schema.Column):
         def keyfunc(value):
-            m = mapper.object_mapper(value)
+            m = object_mapper(value)
             return m.get_attr_by_column(value, mapping_spec)
     else:
         cols = []
@@ -131,7 +132,7 @@ def column_mapped_collection(mapping_spec):
             cols.append(c)
         mapping_spec = tuple(cols)
         def keyfunc(value):
-            m = mapper.object_mapper(value)
+            m = object_mapper(value)
             return tuple([m.get_attr_by_column(value, c) for c in mapping_spec])
     return lambda: MappedCollection(keyfunc)
 

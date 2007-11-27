@@ -59,7 +59,7 @@ class ColumnProperty(StrategizedProperty):
         setattr(object, self.key, value)
 
     def get_history(self, obj, passive=False):
-        return sessionlib.attribute_manager.get_history(obj, self.key, passive=passive)
+        return attributes.get_history(obj, self.key, passive=passive)
 
     def merge(self, session, source, dest, dont_load, _recursive):
         setattr(dest, self.key, getattr(source, self.key, None))
@@ -283,12 +283,12 @@ class PropertyLoader(StrategizedProperty):
     def merge(self, session, source, dest, dont_load, _recursive):
         if not "merge" in self.cascade:
             return
-        childlist = sessionlib.attribute_manager.get_history(source, self.key, passive=True)
+        childlist = attributes.get_history(source, self.key, passive=True)
         if childlist is None:
             return
         if self.uselist:
             # sets a blank collection according to the correct list class
-            dest_list = sessionlib.attribute_manager.init_collection(dest, self.key)
+            dest_list = attributes.init_collection(dest, self.key)
             for current in list(childlist):
                 obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
@@ -311,7 +311,7 @@ class PropertyLoader(StrategizedProperty):
             return
         passive = type != 'delete' or self.passive_deletes
         mapper = self.mapper.primary_mapper()
-        for c in sessionlib.attribute_manager.get_as_list(object, self.key, passive=passive):
+        for c in attributes.get_as_list(object, self.key, passive=passive):
             if c is not None and c not in recursive and (halt_on is None or not halt_on(c)):
                 if not isinstance(c, self.mapper.class_):
                     raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
@@ -326,7 +326,7 @@ class PropertyLoader(StrategizedProperty):
 
         mapper = self.mapper.primary_mapper()
         passive = type != 'delete' or self.passive_deletes
-        for c in sessionlib.attribute_manager.get_as_list(object, self.key, passive=passive):
+        for c in attributes.get_as_list(object, self.key, passive=passive):
             if c is not None and c not in recursive and (halt_on is None or not halt_on(c)):
                 if not isinstance(c, self.mapper.class_):
                     raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))

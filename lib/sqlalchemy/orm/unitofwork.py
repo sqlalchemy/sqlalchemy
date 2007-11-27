@@ -63,20 +63,13 @@ class UOWEventHandler(interfaces.AttributeExtension):
                 ename = prop.mapper.entity_name
                 sess.save_or_update(newvalue, entity_name=ename)
 
-
-class UOWAttributeManager(attributes.AttributeManager):
-    """Override ``AttributeManager`` to provide the ``UOWProperty``
-    instance for all ``InstrumentedAttributes``.
-    """
-
-    def _create_prop(self, class_, key, uselist, callable_, typecallable,
-                    cascade=None, extension=None, **kwargs):
-        extension = util.to_list(extension or [])
-        extension.insert(0, UOWEventHandler(key, class_, cascade=cascade))
-
-        return super(UOWAttributeManager, self)._create_prop(
-            class_, key, uselist, callable_, typecallable,
-            extension=extension, **kwargs)
+def register_attribute(class_, key, *args, **kwargs):
+    cascade = kwargs.pop('cascade', None)
+    extension = util.to_list(kwargs.pop('extension', None) or [])
+    extension.insert(0, UOWEventHandler(key, class_, cascade=cascade))
+    kwargs['extension'] = extension
+    return attributes.register_attribute(class_, key, *args, **kwargs)
+    
 
 
 class UnitOfWork(object):
@@ -154,7 +147,7 @@ class UnitOfWork(object):
             if x not in self.deleted 
             and (
                 x._state.modified
-                or (getattr(x.__class__, '_sa_has_mutable_scalars', False) and attribute_manager._is_modified(x._state))
+                or (getattr(x.__class__, '_sa_has_mutable_scalars', False) and attributes._is_modified(x._state))
             )
             ])
 
@@ -169,7 +162,7 @@ class UnitOfWork(object):
 
         dirty = [x for x in self.identity_map.all_states()
             if x.modified
-            or (getattr(x.class_, '_sa_has_mutable_scalars', False) and attribute_manager._is_modified(x))
+            or (getattr(x.class_, '_sa_has_mutable_scalars', False) and attributes._is_modified(x))
         ]
         
         if len(dirty) == 0 and len(self.deleted) == 0 and len(self.new) == 0:
@@ -1108,6 +1101,3 @@ class UOWExecutor(object):
         for child in element.childtasks:
             self.execute(trans, child, isdelete)
 
-# the AttributeManager used by the UOW/Session system to instrument
-# object instances and track history.
-attribute_manager = UOWAttributeManager()

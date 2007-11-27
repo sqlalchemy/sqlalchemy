@@ -19,7 +19,7 @@ from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union, create_row_adapter
 from sqlalchemy.orm.session import Session as _Session
-from sqlalchemy.orm.session import object_session, attribute_manager, sessionmaker
+from sqlalchemy.orm.session import object_session, sessionmaker
 from sqlalchemy.orm.scoping import ScopedSession
 
 

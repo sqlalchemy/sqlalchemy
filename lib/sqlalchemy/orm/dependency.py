@@ -10,7 +10,7 @@
  dependencies at flush time.
 """
 
-from sqlalchemy.orm import sync
+from sqlalchemy.orm import sync, attributes
 from sqlalchemy.orm.sync import ONETOMANY,MANYTOONE,MANYTOMANY
 from sqlalchemy import sql, util, exceptions
 from sqlalchemy.orm import session as sessionlib
@@ -145,7 +145,7 @@ class DependencyProcessor(object):
         processor represents.
         """
 
-        return sessionlib.attribute_manager.get_history(obj, self.key, passive = passive)
+        return attributes.get_history(obj, self.key, passive = passive)
 
     def _conditional_post_update(self, obj, uowcommit, related):
         """Execute a post_update call.

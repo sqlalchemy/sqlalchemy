@@ -5,10 +5,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import operator, weakref, threading
+from itertools import chain
 import UserDict
 from sqlalchemy import util
 from sqlalchemy.orm import interfaces, collections
-from sqlalchemy.orm.mapper import class_mapper, identity_equal
+from sqlalchemy.orm.util import identity_equal
 from sqlalchemy import exceptions
 
 
@@ -57,21 +58,20 @@ class InstrumentedAttribute(interfaces.PropComparator):
     def hasparent(self, instance, optimistic=False):
         return self.impl.hasparent(instance._state, optimistic=optimistic)
 
-    property = property(lambda s: class_mapper(s.impl.class_).get_property(s.impl.key),
-                        doc="the MapperProperty object associated with this attribute")
+    def _property(self):
+        from sqlalchemy.orm.mapper import class_mapper
+        return class_mapper(self.impl.class_).get_property(self.impl.key)
+    property = property(_property, doc="the MapperProperty object associated with this attribute")
 
 
 class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
 
-    def __init__(self, class_, manager, key, callable_, trackparent=False, extension=None, compare_function=None, mutable_scalars=False, **kwargs):
+    def __init__(self, class_, key, callable_, trackparent=False, extension=None, compare_function=None, mutable_scalars=False, **kwargs):
         """Construct an AttributeImpl.
 
         class_
           the class to be instrumented.
-
-        manager
-          AttributeManager managing this class
 
         key
           string name of the attribute
@@ -102,7 +102,6 @@ class AttributeImpl(object):
         """
 
         self.class_ = class_
-        self.manager = manager
         self.key = key
         self.callable_ = callable_
         self.trackparent = trackparent
@@ -207,7 +206,6 @@ class AttributeImpl(object):
         try:
             return state.dict[self.key]
         except KeyError:
-
             callable_ = self._get_callable(state)
             if callable_ is not None:
                 if passive:
@@ -279,8 +277,8 @@ class AttributeImpl(object):
 
 class ScalarAttributeImpl(AttributeImpl):
     """represents a scalar value-holding InstrumentedAttribute."""
-    def __init__(self, class_, manager, key, callable_, copy_function=None, compare_function=None, mutable_scalars=False, **kwargs):
-        super(ScalarAttributeImpl, self).__init__(class_, manager, key,
+    def __init__(self, class_, key, callable_, copy_function=None, compare_function=None, mutable_scalars=False, **kwargs):
+        super(ScalarAttributeImpl, self).__init__(class_, key,
           callable_, compare_function=compare_function, mutable_scalars=mutable_scalars, **kwargs)
 
         if copy_function is None:
@@ -331,8 +329,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     Adds events to delete/set operations.
     """
     
-    def __init__(self, class_, manager, key, callable_, trackparent=False, extension=None, copy_function=None, compare_function=None, mutable_scalars=False, **kwargs):
-        super(ScalarObjectAttributeImpl, self).__init__(class_, manager, key,
+    def __init__(self, class_, key, callable_, trackparent=False, extension=None, copy_function=None, compare_function=None, mutable_scalars=False, **kwargs):
+        super(ScalarObjectAttributeImpl, self).__init__(class_, key,
           callable_, trackparent=trackparent, extension=extension,
           compare_function=compare_function, mutable_scalars=mutable_scalars, **kwargs)
         if compare_function is None:
@@ -369,8 +367,8 @@ class CollectionAttributeImpl(AttributeImpl):
     bag semantics to the orm layer independent of the user data implementation.
     """
     
-    def __init__(self, class_, manager, key, callable_, typecallable=None, trackparent=False, extension=None, copy_function=None, compare_function=None, **kwargs):
-        super(CollectionAttributeImpl, self).__init__(class_, manager,
+    def __init__(self, class_, key, callable_, typecallable=None, trackparent=False, extension=None, copy_function=None, compare_function=None, **kwargs):
+        super(CollectionAttributeImpl, self).__init__(class_, 
           key, callable_, trackparent=trackparent, extension=extension,
           compare_function=compare_function, **kwargs)
 
@@ -590,10 +588,10 @@ class InstanceState(object):
             instance_dict._mutex.release()
         
     def __resurrect(self, instance_dict):
-        if self.modified or self.class_._sa_attribute_manager._is_modified(self):
+        if self.modified or _is_modified(self):
             # store strong ref'ed version of the object; will revert
             # to weakref when changes are persisted
-            obj = self.class_._sa_attribute_manager.new_instance(self.class_, state=self)
+            obj = new_instance(self.class_, state=self)
             self.obj = weakref.ref(obj, self.__cleanup)
             self._strong_obj = obj
             obj.__dict__.update(self.dict)
@@ -635,7 +633,7 @@ class InstanceState(object):
         if not hasattr(self, 'expired_attributes'):
             self.expired_attributes = util.Set()
         if attribute_names is None:
-            for attr in self.class_._sa_attribute_manager.managed_attributes(self.class_):
+            for attr in managed_attributes(self.class_):
                 self.dict.pop(attr.impl.key, None)
                 self.callables[attr.impl.key] = self.__fire_trigger
                 self.expired_attributes.add(attr.impl.key)
@@ -651,16 +649,9 @@ class InstanceState(object):
                 
     def reset(self, key):
         """remove the given attribute and any callables associated with it."""
-        
         self.dict.pop(key, None)
         self.callables.pop(key, None)
         
-    def clear(self):
-        """clear all attributes from the instance."""
-        
-        for attr in self.class_._sa_attribute_manager.managed_attributes(self.class_):
-            self.dict.pop(attr.impl.key, None)
-    
     def commit(self, keys):
         """commit all attributes named in the given list of key names.
         
@@ -680,7 +671,7 @@ class InstanceState(object):
         
         self.committed_state = {}
         self.modified = False
-        for attr in self.class_._sa_attribute_manager.managed_attributes(self.class_):
+        for attr in managed_attributes(self.class_):
             attr.impl.commit_to_state(self)
         # remove strong ref
         self._strong_obj = None
@@ -878,204 +869,182 @@ class AttributeHistory(object):
     def deleted_items(self):
         return list(self._deleted_items)
 
-class AttributeManager(object):
-    """Allow the instrumentation of object attributes."""
-
-    def __init__(self):
-        # will cache attributes, indexed by class objects
-        self._inherited_attribute_cache = weakref.WeakKeyDictionary()
-        self._noninherited_attribute_cache = weakref.WeakKeyDictionary()
-
-    def clear_attribute_cache(self):
-        self._attribute_cache.clear()
-
-    def managed_attributes(self, class_):
-        """Return a list of all ``InstrumentedAttribute`` objects
-        associated with the given class.
-        """
-
-        try:
-            # TODO: move this collection onto the class itself?
-            return self._inherited_attribute_cache[class_]
-        except KeyError:
-            if not isinstance(class_, type):
-                raise TypeError(repr(class_) + " is not a type")
-            inherited = [v for v in [getattr(class_, key, None) for key in dir(class_)] if isinstance(v, InstrumentedAttribute)]
-            self._inherited_attribute_cache[class_] = inherited
-            return inherited
-
-    def noninherited_managed_attributes(self, class_):
-        try:
-            # TODO: move this collection onto the class itself?
-            return self._noninherited_attribute_cache[class_]
-        except KeyError:
-            if not isinstance(class_, type):
-                raise TypeError(repr(class_) + " is not a type")
-            noninherited = [v for v in [getattr(class_, key, None) for key in list(class_.__dict__)] if isinstance(v, InstrumentedAttribute)]
-            self._noninherited_attribute_cache[class_] = noninherited
-            return noninherited
-
-    def is_modified(self, obj):
-        return self._is_modified(obj._state)
+def managed_attributes(class_):
+    """return all InstrumentedAttributes associated with the given class_ and its superclasses."""
     
-    def _is_modified(self, state):
-        if state.modified:
-            return True
-        elif getattr(state.class_, '_sa_has_mutable_scalars', False):
-            for attr in self.managed_attributes(state.class_):
-                if getattr(attr.impl, 'mutable_scalars', False) and attr.impl.check_mutable_modified(state):
-                    return True
-            else:
-                return False
+    return chain(*[getattr(cl, '_sa_attrs', []) for cl in class_.__mro__[:-1]])
+
+def noninherited_managed_attributes(class_):
+    """return all InstrumentedAttributes associated with the given class_, but not its superclasses."""
+
+    return getattr(class_, '_sa_attrs', [])
+
+def is_modified(obj):
+    return _is_modified(obj._state)
+
+def _is_modified(state):
+    if state.modified:
+        return True
+    elif getattr(state.class_, '_sa_has_mutable_scalars', False):
+        for attr in managed_attributes(state.class_):
+            if getattr(attr.impl, 'mutable_scalars', False) and attr.impl.check_mutable_modified(state):
+                return True
         else:
             return False
-            
-    def get_history(self, obj, key, **kwargs):
-        """Return a new ``AttributeHistory`` object for the given
-        attribute on the given object.
-        """
-
-        return getattr(obj.__class__, key).impl.get_history(obj._state, **kwargs)
-
-    def get_as_list(self, obj, key, passive=False):
-        """Return an attribute of the given name from the given object.
-
-        If the attribute is a scalar, return it as a single-item list,
-        otherwise return a collection based attribute.
-
-        If the attribute's value is to be produced by an unexecuted
-        callable, the callable will only be executed if the given
-        `passive` flag is False.
-        """
-        attr = getattr(obj.__class__, key).impl
-        state = obj._state
-        x = attr.get(state, passive=passive)
-        if x is PASSIVE_NORESULT:
-            return []
-        elif hasattr(attr, 'get_collection'):
-            return list(attr.get_collection(state, x))
-        elif isinstance(x, list):
-            return x
-        else:
-            return [x]
-
-    def has_parent(self, class_, obj, key, optimistic=False):
-        return getattr(class_, key).impl.hasparent(obj._state, optimistic=optimistic)
-
-    def _create_prop(self, class_, key, uselist, callable_, typecallable, useobject, **kwargs):
-        """Create a scalar property object, defaulting to
-        ``InstrumentedAttribute``, which will communicate change
-        events back to this ``AttributeManager``.
-        """
+    else:
+        return False
         
-        if kwargs.pop('dynamic', False):
-            from sqlalchemy.orm import dynamic
-            return dynamic.DynamicAttributeImpl(class_, self, key, typecallable, **kwargs)
-        elif uselist:
-            return CollectionAttributeImpl(class_, self, key,
-                                                   callable_,
-                                                   typecallable,
-                                                   **kwargs)
-        elif useobject:
-            return ScalarObjectAttributeImpl(class_, self, key, callable_,
-                                               **kwargs)
-        else:
-            return ScalarAttributeImpl(class_, self, key, callable_,
-                                               **kwargs)
+def get_history(obj, key, **kwargs):
 
-    def manage(self, obj):
-        if not hasattr(obj, '_state'):
-            obj._state = InstanceState(obj)
-            
-    def new_instance(self, class_, state=None):
-        """create a new instance of class_ without its __init__() method being called."""
+    return getattr(obj.__class__, key).impl.get_history(obj._state, **kwargs)
+
+def get_as_list(obj, key, passive=False):
+    """Return an attribute of the given name from the given object.
+
+    If the attribute is a scalar, return it as a single-item list,
+    otherwise return a collection based attribute.
+
+    If the attribute's value is to be produced by an unexecuted
+    callable, the callable will only be executed if the given
+    `passive` flag is False.
+    """
+
+    attr = getattr(obj.__class__, key).impl
+    state = obj._state
+    x = attr.get(state, passive=passive)
+    if x is PASSIVE_NORESULT:
+        return []
+    elif hasattr(attr, 'get_collection'):
+        return list(attr.get_collection(state, x))
+    elif isinstance(x, list):
+        return x
+    else:
+        return [x]
+
+def has_parent(class_, obj, key, optimistic=False):
+    return getattr(class_, key).impl.hasparent(obj._state, optimistic=optimistic)
+
+def _create_prop(class_, key, uselist, callable_, typecallable, useobject, **kwargs):
+    if kwargs.pop('dynamic', False):
+        from sqlalchemy.orm import dynamic
+        return dynamic.DynamicAttributeImpl(class_, key, typecallable, **kwargs)
+    elif uselist:
+        return CollectionAttributeImpl(class_, key, callable_, typecallable, **kwargs)
+    elif useobject:
+        return ScalarObjectAttributeImpl(class_, key, callable_,
+                                           **kwargs)
+    else:
+        return ScalarAttributeImpl(class_, key, callable_,
+                                           **kwargs)
+
+def manage(obj):
+    """initialize an InstanceState on the given instance."""
+    
+    if not hasattr(obj, '_state'):
+        obj._state = InstanceState(obj)
         
-        s = class_.__new__(class_)
-        if state:
-            s._state = state
-        else:
-            s._state = InstanceState(s)
-        return s
-        
-    def register_class(self, class_, extra_init=None, on_exception=None):
-        """decorate the constructor of the given class to establish attribute
-        management on new instances."""
+def new_instance(class_, state=None):
+    """create a new instance of class_ without its __init__() method being called.
+    
+    Also initializes an InstanceState on the new instance.
+    """
+    
+    s = class_.__new__(class_)
+    if state:
+        s._state = state
+    else:
+        s._state = InstanceState(s)
+    return s
+    
+def register_class(class_, extra_init=None, on_exception=None):
+    # do a sweep first, this also helps some attribute extensions
+    # (like associationproxy) become aware of themselves at the 
+    # class level
+    for key in dir(class_):
+        getattr(class_, key)
+    
+    oldinit = None
+    doinit = False
 
-        # do a sweep first, this also helps some attribute extensions
-        # (like associationproxy) become aware of themselves at the 
-        # class level
-        self.unregister_class(class_)
-        
-        oldinit = None
-        doinit = False
-        class_._sa_attribute_manager = self
+    def init(instance, *args, **kwargs):
+        instance._state = InstanceState(instance)
 
-        def init(instance, *args, **kwargs):
-            instance._state = InstanceState(instance)
+        if extra_init:
+            extra_init(class_, oldinit, instance, args, kwargs)
 
-            if extra_init:
-                extra_init(class_, oldinit, instance, args, kwargs)
-
-            if doinit:
-                try:
-                    oldinit(instance, *args, **kwargs)
-                except:
-                    if on_exception:
-                        on_exception(class_, oldinit, instance, args, kwargs)
-                    raise
-        
-        # override oldinit
-        oldinit = class_.__init__
-        if oldinit is None or not hasattr(oldinit, '_oldinit'):
-            init._oldinit = oldinit
-            class_.__init__ = init
-        # if oldinit is already one of our 'init' methods, replace it
-        elif hasattr(oldinit, '_oldinit'):
-            init._oldinit = oldinit._oldinit
-            class_.__init = init
-            oldinit = oldinit._oldinit
-            
-        if oldinit is not None:
-            doinit = oldinit is not object.__init__
+        if doinit:
             try:
-                init.__name__ = oldinit.__name__
-                init.__doc__ = oldinit.__doc__
+                oldinit(instance, *args, **kwargs)
             except:
-                # cant set __name__ in py 2.3 !
-                pass
-            
-    def unregister_class(self, class_):
-        if hasattr(class_, '__init__') and hasattr(class_.__init__, '_oldinit'):
-            if class_.__init__._oldinit is not None:
-                class_.__init__ = class_.__init__._oldinit
-            else:
-                delattr(class_, '__init__')
-                
-        for attr in self.noninherited_managed_attributes(class_):
-            delattr(class_, attr.impl.key)
-        self._inherited_attribute_cache.pop(class_,None)
-        self._noninherited_attribute_cache.pop(class_,None)
+                if on_exception:
+                    on_exception(class_, oldinit, instance, args, kwargs)
+                raise
+    
+    # override oldinit
+    oldinit = class_.__init__
+    if oldinit is None or not hasattr(oldinit, '_oldinit'):
+        init._oldinit = oldinit
+        class_.__init__ = init
+    # if oldinit is already one of our 'init' methods, replace it
+    elif hasattr(oldinit, '_oldinit'):
+        init._oldinit = oldinit._oldinit
+        class_.__init = init
+        oldinit = oldinit._oldinit
         
-    def register_attribute(self, class_, key, uselist, useobject, callable_=None, **kwargs):
-        """Register an attribute at the class level to be instrumented
-        for all instances of the class.
-        """
+    if oldinit is not None:
+        doinit = oldinit is not object.__init__
+        try:
+            init.__name__ = oldinit.__name__
+            init.__doc__ = oldinit.__doc__
+        except:
+            # cant set __name__ in py 2.3 !
+            pass
+        
+def unregister_class(class_):
+    if hasattr(class_, '__init__') and hasattr(class_.__init__, '_oldinit'):
+        if class_.__init__._oldinit is not None:
+            class_.__init__ = class_.__init__._oldinit
+        else:
+            delattr(class_, '__init__')
+    
+    for attr in noninherited_managed_attributes(class_):
+        if attr.impl.key in class_.__dict__ and isinstance(class_.__dict__[attr.impl.key], InstrumentedAttribute):
+            delattr(class_, attr.impl.key)
+    if '_sa_attrs' in class_.__dict__:
+        delattr(class_, '_sa_attrs')
 
-        # firt invalidate the cache for the given class
-        # (will be reconstituted as needed, while getting managed attributes)
-        self._inherited_attribute_cache.pop(class_, None)
-        self._noninherited_attribute_cache.pop(class_, None)
+def register_attribute(class_, key, uselist, useobject, callable_=None, **kwargs):
+    if not '_sa_attrs' in class_.__dict__:
+        class_._sa_attrs = []
+        
+    typecallable = kwargs.pop('typecallable', None)
+    if isinstance(typecallable, InstrumentedAttribute):
+        typecallable = None
+    comparator = kwargs.pop('comparator', None)
 
-        typecallable = kwargs.pop('typecallable', None)
-        if isinstance(typecallable, InstrumentedAttribute):
-            typecallable = None
-        comparator = kwargs.pop('comparator', None)
-        setattr(class_, key, InstrumentedAttribute(self._create_prop(class_, key, uselist, callable_, useobject=useobject,
-                                           typecallable=typecallable, **kwargs), comparator=comparator))
+    if key in class_.__dict__ and isinstance(class_.__dict__[key], InstrumentedAttribute):
+        # this currently only occurs if two primary mappers are made for the same class.
+        # TODO:  possibly have InstrumentedAttribute check "entity_name" when searching for impl.
+        # raise an error if two attrs attached simultaneously otherwise
+        return
+        
+    inst = InstrumentedAttribute(_create_prop(class_, key, uselist, callable_, useobject=useobject,
+                                       typecallable=typecallable, **kwargs), comparator=comparator)
+    
+    setattr(class_, key, inst)
+    class_._sa_attrs.append(inst)
 
-    def init_collection(self, instance, key):
-        """Initialize a collection attribute and return the collection adapter."""
-        attr = getattr(instance.__class__, key).impl
-        state = instance._state
-        user_data = attr.initialize(state)
-        return attr.get_collection(state, user_data)
+def unregister_attribute(class_, key):
+    if key in class_.__dict__:
+        attr = getattr(class_, key)
+        if isinstance(attr, InstrumentedAttribute):
+            class_._sa_attrs.remove(attr)
+            delattr(class_, key)
+
+def init_collection(instance, key):
+    """Initialize a collection attribute and return the collection adapter."""
+
+    attr = getattr(instance.__class__, key).impl
+    state = instance._state
+    user_data = attr.initialize(state)
+    return attr.get_collection(state, user_data)

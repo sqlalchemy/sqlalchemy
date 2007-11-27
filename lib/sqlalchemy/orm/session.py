@@ -455,7 +455,7 @@ class Session(object):
         # we would want to expand attributes.py to be able to save *two* rollback points, one to the 
         # last flush() and the other to when the object first entered the transaction.
         # [ticket:705]
-        #attribute_manager.rollback(*self.identity_map.values())
+        #attributes.rollback(*self.identity_map.values())
         if self.transaction is None and self.transactional:
             self.begin()
             
@@ -876,7 +876,7 @@ class Session(object):
         
         key = getattr(object, '_instance_key', None)
         if key is None:
-            merged = attribute_manager.new_instance(mapper.class_)
+            merged = attributes.new_instance(mapper.class_)
         else:
             if key in self.identity_map:
                 merged = self.identity_map[key]
@@ -884,7 +884,7 @@ class Session(object):
                 if object._state.modified:
                     raise exceptions.InvalidRequestError("merge() with dont_load=True option does not support objects marked as 'dirty'.  flush() all changes on mapped instances before merging with dont_load=True.")
                     
-                merged = attribute_manager.new_instance(mapper.class_)
+                merged = attributes.new_instance(mapper.class_)
                 merged._instance_key = key
                 merged._entity_name = entity_name
                 self._update_impl(merged, entity_name=mapper.entity_name)
@@ -976,7 +976,7 @@ class Session(object):
             raise exceptions.InvalidRequestError("Instance '%s' is already persistent" % mapperutil.instance_str(obj))
         else:
             # TODO: consolidate the steps here
-            attribute_manager.manage(obj)
+            attributes.manage(obj)
             obj._entity_name = kwargs.get('entity_name', None)
             self._attach(obj)
             self.uow.register_new(obj)
@@ -1070,7 +1070,7 @@ class Session(object):
         not be loaded in the course of performing this test.
         """
 
-        for attr in attribute_manager.managed_attributes(obj.__class__):
+        for attr in attributes.managed_attributes(obj.__class__):
             if not include_collections and hasattr(attr.impl, 'get_collection'):
                 continue
             if attr.get_history(obj).is_modified():
@@ -1115,11 +1115,7 @@ def expire_instance(obj, attribute_names):
         
     obj._state.expire_attributes(attribute_names)
     
-
-
-# this is the AttributeManager instance used to provide attribute behavior on objects.
-# to all the "global variable police" out there:  its a stateless object.
-attribute_manager = unitofwork.attribute_manager
+register_attribute = unitofwork.register_attribute
 
 # this dictionary maps the hash key of a Session to the Session itself, and
 # acts as a Registry with which to locate Sessions.  this is to enable
@@ -1140,5 +1136,4 @@ def object_session(obj):
 # Lazy initialization to avoid circular imports
 unitofwork.object_session = object_session
 from sqlalchemy.orm import mapper
-mapper.attribute_manager = attribute_manager
 mapper.expire_instance = expire_instance

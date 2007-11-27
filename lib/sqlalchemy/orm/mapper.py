@@ -10,7 +10,7 @@ from sqlalchemy.sql import expression, visitors
 from sqlalchemy.sql import util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier, create_row_adapter
-from sqlalchemy.orm import sync
+from sqlalchemy.orm import sync, attributes
 from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, SynonymProperty, PropComparator
 deferred_load = None
 
@@ -31,7 +31,6 @@ NO_ATTRIBUTE = object()
 _COMPILE_MUTEX = util.threading.Lock()
 
 # initialize these two lazily
-attribute_manager = None
 ColumnProperty = None
 
 class Mapper(object):
@@ -167,7 +166,7 @@ class Mapper(object):
     def _is_orphan(self, obj):
         optimistic = has_identity(obj)
         for (key,klass) in self.delete_orphans:
-            if attribute_manager.has_parent(klass, obj, key, optimistic=optimistic):
+            if attributes.has_parent(klass, obj, key, optimistic=optimistic):
                return False
         else:
             if self.delete_orphans:
@@ -205,7 +204,7 @@ class Mapper(object):
         self.__props_init = True
         if hasattr(self.class_, 'c'):
             del self.class_.c
-        attribute_manager.unregister_class(self.class_)
+        attributes.unregister_class(self.class_)
         
     def compile(self):
         """Compile this mapper into its final internal format.
@@ -248,6 +247,7 @@ class Mapper(object):
         self.__log("_initialize_properties() started")
         l = [(key, prop) for key, prop in self.__props.iteritems()]
         for key, prop in l:
+            self.__log("initialize prop " + key)
             if getattr(prop, 'key', None) is None:
                 prop.init(key, self)
         self.__log("_initialize_properties() complete")
@@ -728,7 +728,7 @@ class Mapper(object):
         def on_exception(class_, oldinit, instance, args, kwargs):
             util.warn_exception(self.extension.init_failed, self, class_, oldinit, instance, args, kwargs)
 
-        attribute_manager.register_class(self.class_, extra_init=extra_init, on_exception=on_exception)
+        attributes.register_class(self.class_, extra_init=extra_init, on_exception=on_exception)
 
         _COMPILE_MUTEX.acquire()
         try:
@@ -1424,9 +1424,9 @@ class Mapper(object):
             if 'create_instance' in extension.methods:
                 instance = extension.create_instance(self, context, row, self.class_)
                 if instance is EXT_CONTINUE:
-                    instance = attribute_manager.new_instance(self.class_)
+                    instance = attributes.new_instance(self.class_)
             else:
-                instance = attribute_manager.new_instance(self.class_)
+                instance = attributes.new_instance(self.class_)
                 
             instance._entity_name = self.entity_name
             instance._instance_key = identitykey
@@ -1596,15 +1596,6 @@ def has_mapper(object):
     """
 
     return hasattr(object, '_entity_name')
-
-def identity_equal(a, b):
-    if a is b:
-        return True
-    id_a = getattr(a, '_instance_key', None)
-    id_b = getattr(b, '_instance_key', None)
-    if id_a is None or id_b is None:
-        return False
-    return id_a == id_b
 
 def object_mapper(object, entity_name=None, raiseerror=True):
     """Given an object, return the primary Mapper associated with the object instance.
