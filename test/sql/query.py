@@ -355,6 +355,13 @@ class QueryTest(PersistTest):
         self.assert_(r[0:1] == (1,))
         self.assert_(r[1:] == (2, 'foo@bar.com'))
         self.assert_(r[:-1] == (1, 2))
+        
+        # test a little sqlite weirdness - with the UNION, cols come back as "query_users.user_id" in cursor.description
+        r = text("select query_users.user_id, query_users.user_name from query_users "
+            "UNION select query_users.user_id, query_users.user_name from query_users", bind=testbase.db).execute().fetchone()
+        self.assert_(r['user_id']) == 1
+        self.assert_(r['user_name']) == "john"
+        
 
     def test_ambiguous_column(self):
         users.insert().execute(user_id=1, user_name='john')
