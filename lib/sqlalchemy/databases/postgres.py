@@ -406,12 +406,13 @@ class PGDialect(default.DefaultDialect):
         preparer = self.identifier_preparer
         if table.schema is not None:
             schema_where_clause = "n.nspname = :schema"
+            schemaname = table.schema
+            if isinstance(schemaname, str):
+                schemaname = schemaname.decode(self.encoding)
         else:
             schema_where_clause = "pg_catalog.pg_table_is_visible(c.oid)"
-
-        ## information schema in pg suffers from too many permissions' restrictions
-        ## let us find out at the pg way what is needed...
-
+            schemaname = None
+            
         SQL_COLS = """
             SELECT a.attname,
               pg_catalog.format_type(a.atttypid, a.atttypmod),
@@ -431,8 +432,10 @@ class PGDialect(default.DefaultDialect):
         """ % schema_where_clause
 
         s = sql.text(SQL_COLS, bindparams=[sql.bindparam('table_name', type_=sqltypes.Unicode), sql.bindparam('schema', type_=sqltypes.Unicode)], typemap={'attname':sqltypes.Unicode, 'default':sqltypes.Unicode})
-        c = connection.execute(s, table_name=table.name,
-                                  schema=table.schema)
+        tablename = table.name
+        if isinstance(tablename, str):
+            tablename = tablename.decode(self.encoding)
+        c = connection.execute(s, table_name=tablename, schema=schemaname)
         rows = c.fetchall()
 
         if not rows:
