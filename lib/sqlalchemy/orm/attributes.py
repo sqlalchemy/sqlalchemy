@@ -610,9 +610,21 @@ class InstanceState(object):
             return self.obj() or self.__resurrect(instance_dict)
         finally:
             instance_dict._mutex.release()
+
+    def is_modified(self):
+        if self.modified:
+            return True
+        elif getattr(self.class_, '_sa_has_mutable_scalars', False):
+            for attr in managed_attributes(self.class_):
+                if getattr(attr.impl, 'mutable_scalars', False) and attr.impl.check_mutable_modified(self):
+                    return True
+            else:
+                return False
+        else:
+            return False
         
     def __resurrect(self, instance_dict):
-        if self.modified or _is_modified(self):
+        if self.is_modified():
             # store strong ref'ed version of the object; will revert
             # to weakref when changes are persisted
             obj = new_instance(self.class_, state=self)
@@ -644,7 +656,7 @@ class InstanceState(object):
     def set_callable(self, key, callable_):
         self.dict.pop(key, None)
         self.callables[key] = callable_
-
+    
     def __fire_trigger(self):
         instance = self.obj()
         self.trigger(instance, [k for k in self.expired_attributes if k not in self.dict])
@@ -904,19 +916,8 @@ def noninherited_managed_attributes(class_):
     return getattr(class_, '_sa_attrs', [])
 
 def is_modified(obj):
-    return _is_modified(obj._state)
+    return obj._state.is_modified()
 
-def _is_modified(state):
-    if state.modified:
-        return True
-    elif getattr(state.class_, '_sa_has_mutable_scalars', False):
-        for attr in managed_attributes(state.class_):
-            if getattr(attr.impl, 'mutable_scalars', False) and attr.impl.check_mutable_modified(state):
-                return True
-        else:
-            return False
-    else:
-        return False
         
 def get_history(obj, key, **kwargs):
 

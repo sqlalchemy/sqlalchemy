@@ -909,7 +909,7 @@ class Mapper(object):
         
     def _getpropbycolumn(self, column, raiseerror=True):
         try:
-            prop = self._columntoproperty[column]
+            return self._columntoproperty[column]
         except KeyError:
             try:
                 prop = self.__props[column.key]
@@ -920,7 +920,6 @@ class Mapper(object):
                 if not raiseerror:
                     return None
                 raise exceptions.InvalidRequestError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
-        return prop
 
     def get_attr_by_column(self, obj, column, raiseerror=True):
         """Return an instance attribute using a Column as the key."""
@@ -1431,6 +1430,8 @@ class Mapper(object):
                 instance = extension.create_instance(self, context, row, self.class_)
                 if instance is EXT_CONTINUE:
                     instance = attributes.new_instance(self.class_)
+                else:
+                    attributes.manage(instance)
             else:
                 instance = attributes.new_instance(self.class_)
                 
