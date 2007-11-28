@@ -55,7 +55,7 @@ class ZooMarkTest(testing.AssertMixin):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
         
-        wap = Zoo.insert().execute(Name='Wild Animal Park',
+        wap = Zoo.insert().execute(Name=u'Wild Animal Park',
                            Founded=datetime.date(2000, 1, 1),
                            # 59 can give rounding errors with divmod, which
                            # AdapterFromADO needs to correct.
@@ -64,7 +64,7 @@ class ZooMarkTest(testing.AssertMixin):
                            Admission=4.95,
                            ).last_inserted_ids()[0]
         
-        sdz = Zoo.insert().execute(Name = 'San Diego Zoo',
+        sdz = Zoo.insert().execute(Name =u'San Diego Zoo',
                            Founded = datetime.date(1935, 9, 13),
                            Opens = datetime.time(9, 0, 0),
                            Admission = 0,
@@ -78,43 +78,43 @@ class ZooMarkTest(testing.AssertMixin):
                   )
         
         seaworld = Zoo.insert().execute(
-                Name = 'Sea_World', Admission = 60).last_inserted_ids()[0]
+                Name =u'Sea_World', Admission = 60).last_inserted_ids()[0]
         
         # Let's add a crazy futuristic Zoo to test large date values.
-        lp = Zoo.insert().execute(Name = 'Luna Park',
+        lp = Zoo.insert().execute(Name =u'Luna Park',
                                   Founded = datetime.date(2072, 7, 17),
                                   Opens = datetime.time(0, 0, 0),
                                   Admission = 134.95,
                                   ).last_inserted_ids()[0]
         
         # Animals
-        leopardid = Animal.insert().execute(Species='Leopard', Lifespan=73.5,
+        leopardid = Animal.insert().execute(Species=u'Leopard', Lifespan=73.5,
                                             ).last_inserted_ids()[0]
         Animal.update(Animal.c.ID==leopardid).execute(ZooID=wap,
                 LastEscape=datetime.datetime(2004, 12, 21, 8, 15, 0, 999907))
         
-        lion = Animal.insert().execute(Species='Lion', ZooID=wap).last_inserted_ids()[0]
-        Animal.insert().execute(Species='Slug', Legs=1, Lifespan=.75)
+        lion = Animal.insert().execute(Species=u'Lion', ZooID=wap).last_inserted_ids()[0]
+        Animal.insert().execute(Species=u'Slug', Legs=1, Lifespan=.75)
         
-        tiger = Animal.insert().execute(Species='Tiger', ZooID=sdz
+        tiger = Animal.insert().execute(Species=u'Tiger', ZooID=sdz
                                         ).last_inserted_ids()[0]
         
         # Override Legs.default with itself just to make sure it works.
-        Animal.insert().execute(Species='Bear', Legs=4)
-        Animal.insert().execute(Species='Ostrich', Legs=2, Lifespan=103.2)
-        Animal.insert().execute(Species='Centipede', Legs=100)
+        Animal.insert().execute(Species=u'Bear', Legs=4)
+        Animal.insert().execute(Species=u'Ostrich', Legs=2, Lifespan=103.2)
+        Animal.insert().execute(Species=u'Centipede', Legs=100)
         
-        emp = Animal.insert().execute(Species='Emperor Penguin', Legs=2,
+        emp = Animal.insert().execute(Species=u'Emperor Penguin', Legs=2,
                                       ZooID=seaworld).last_inserted_ids()[0]
-        adelie = Animal.insert().execute(Species='Adelie Penguin', Legs=2,
+        adelie = Animal.insert().execute(Species=u'Adelie Penguin', Legs=2,
                                          ZooID=seaworld).last_inserted_ids()[0]
         
-        Animal.insert().execute(Species='Millipede', Legs=1000000, ZooID=sdz)
+        Animal.insert().execute(Species=u'Millipede', Legs=1000000, ZooID=sdz)
         
         # Add a mother and child to test relationships
-        bai_yun = Animal.insert().execute(Species='Ape', Name='Bai Yun',
+        bai_yun = Animal.insert().execute(Species=u'Ape', Name=u'Bai Yun',
                                           Legs=2).last_inserted_ids()[0]
-        Animal.insert().execute(Species='Ape', Name='Hua Mei', Legs=2,
+        Animal.insert().execute(Species=u'Ape', Name=u'Hua Mei', Legs=2,
                                 MotherID=bai_yun)
     
     @testing.supported('postgres')
@@ -123,7 +123,7 @@ class ZooMarkTest(testing.AssertMixin):
         Animal = metadata.tables['Animal']
         i = Animal.insert()
         for x in xrange(ITERATIONS):
-            tick = i.execute(Species='Tick', Name='Tick %d' % x, Legs=8)
+            tick = i.execute(Species=u'Tick', Name=u'Tick %d' % x, Legs=8)
     
     @testing.supported('postgres')
     @profiling.profiled('properties', call_range=(2300, 3030), always=True)
@@ -137,16 +137,16 @@ class ZooMarkTest(testing.AssertMixin):
         
         for x in xrange(ITERATIONS):
             # Zoos
-            WAP = fullobject(Zoo.select(Zoo.c.Name=='Wild Animal Park'))
+            WAP = fullobject(Zoo.select(Zoo.c.Name==u'Wild Animal Park'))
             SDZ = fullobject(Zoo.select(Zoo.c.Founded==datetime.date(1935, 9, 13)))
             Biodome = fullobject(Zoo.select(Zoo.c.Name==u'Montr\xe9al Biod\xf4me'))
             seaworld = fullobject(Zoo.select(Zoo.c.Admission == float(60)))
             
             # Animals
-            leopard = fullobject(Animal.select(Animal.c.Species == 'Leopard'))
-            ostrich = fullobject(Animal.select(Animal.c.Species=='Ostrich'))
+            leopard = fullobject(Animal.select(Animal.c.Species ==u'Leopard'))
+            ostrich = fullobject(Animal.select(Animal.c.Species==u'Ostrich'))
             millipede = fullobject(Animal.select(Animal.c.Legs==1000000))
-            ticks = fullobject(Animal.select(Animal.c.Species=='Tick'))
+            ticks = fullobject(Animal.select(Animal.c.Species==u'Tick'))
     
     @testing.supported('postgres')
     @profiling.profiled('expressions', call_range=(9200, 12050), always=True)
@@ -167,31 +167,31 @@ class ZooMarkTest(testing.AssertMixin):
                                      ))) == ITERATIONS + 9
             assert len(fulltable(Animal.select(Animal.c.Legs > 10))) == 2
             assert len(fulltable(Animal.select(Animal.c.Lifespan > 70))) == 2
-            assert len(fulltable(Animal.select(Animal.c.Species.startswith('L')))) == 2
-            assert len(fulltable(Animal.select(Animal.c.Species.endswith('pede')))) == 2
+            assert len(fulltable(Animal.select(Animal.c.Species.startswith(u'L')))) == 2
+            assert len(fulltable(Animal.select(Animal.c.Species.endswith(u'pede')))) == 2
             
             assert len(fulltable(Animal.select(Animal.c.LastEscape != None))) == 1
             assert len(fulltable(Animal.select(None == Animal.c.LastEscape
                                      ))) == ITERATIONS + 11
             
             # In operator (containedby)
-            assert len(fulltable(Animal.select(Animal.c.Species.like('%pede%')))) == 2
-            assert len(fulltable(Animal.select(Animal.c.Species.in_(['Lion', 'Tiger', 'Bear'])))) == 3
+            assert len(fulltable(Animal.select(Animal.c.Species.like(u'%pede%')))) == 2
+            assert len(fulltable(Animal.select(Animal.c.Species.in_([u'Lion', u'Tiger', u'Bear'])))) == 3
             
             # Try In with cell references
             class thing(object): pass
             pet, pet2 = thing(), thing()
-            pet.Name, pet2.Name = 'Slug', 'Ostrich'
+            pet.Name, pet2.Name =u'Slug', u'Ostrich'
             assert len(fulltable(Animal.select(Animal.c.Species.in_([pet.Name, pet2.Name])))) == 2
             
             # logic and other functions
-            assert len(fulltable(Animal.select(Animal.c.Species.like('Slug')))) == 1
-            assert len(fulltable(Animal.select(Animal.c.Species.like('%pede%')))) == 2
-            name = 'Lion'
+            assert len(fulltable(Animal.select(Animal.c.Species.like(u'Slug')))) == 1
+            assert len(fulltable(Animal.select(Animal.c.Species.like(u'%pede%')))) == 2
+            name =u'Lion'
             assert len(fulltable(Animal.select(func.length(Animal.c.Species) == len(name)
                                      ))) == ITERATIONS + 3
             
-            assert len(fulltable(Animal.select(Animal.c.Species.like('%i%')
+            assert len(fulltable(Animal.select(Animal.c.Species.like(u'%i%')
                                      ))) == ITERATIONS + 7
             
             # Test now(), today(), year(), month(), day()
@@ -251,26 +251,26 @@ class ZooMarkTest(testing.AssertMixin):
         
         for x in xrange(ITERATIONS):
             # Edit
-            SDZ = Zoo.select(Zoo.c.Name=='San Diego Zoo').execute().fetchone()
+            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().fetchone()
             Zoo.update(Zoo.c.ID==SDZ['ID']).execute(
-                     Name='The San Diego Zoo',
+                     Name=u'The San Diego Zoo',
                      Founded = datetime.date(1900, 1, 1),
                      Opens = datetime.time(7, 30, 0),
                      Admission = "35.00")
             
             # Test edits
-            SDZ = Zoo.select(Zoo.c.Name=='The San Diego Zoo').execute().fetchone()
+            SDZ = Zoo.select(Zoo.c.Name==u'The San Diego Zoo').execute().fetchone()
             assert SDZ['Founded'] == datetime.date(1900, 1, 1), SDZ['Founded']
             
             # Change it back
             Zoo.update(Zoo.c.ID==SDZ['ID']).execute(
-                     Name = 'San Diego Zoo',
+                     Name =u'San Diego Zoo',
                      Founded = datetime.date(1935, 9, 13),
                      Opens = datetime.time(9, 0, 0),
                      Admission = "0")
             
             # Test re-edits
-            SDZ = Zoo.select(Zoo.c.Name=='San Diego Zoo').execute().fetchone()
+            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().fetchone()
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
     
     @testing.supported('postgres')
@@ -285,14 +285,14 @@ class ZooMarkTest(testing.AssertMixin):
         
         for x in xrange(ITERATIONS):
             za = fulltable(select([Zoo.c.ID] + list(Animal.c),
-                                  Zoo.c.Name == 'San Diego Zoo',
+                                  Zoo.c.Name ==u'San Diego Zoo',
                                   from_obj = [join(Zoo, Animal)]))
             
-            SDZ = Zoo.select(Zoo.c.Name=='San Diego Zoo')
+            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo')
             
             e = fulltable(select([Zoo.c.ID, Animal.c.ID],
-                                 and_(Zoo.c.Name=='San Diego Zoo',
-                                      Animal.c.Species=='Leopard'),
+                                 and_(Zoo.c.Name==u'San Diego Zoo',
+                                      Animal.c.Species==u'Leopard'),
                                  from_obj = [join(Zoo, Animal)]))
             
             # Now try the same query with INNER, LEFT, and RIGHT JOINs.
@@ -309,5 +309,5 @@ class ZooMarkTest(testing.AssertMixin):
 
 ITERATIONS = 1
 
-if __name__ == '__main__':
+if __name__ ==u'__main__':
     testbase.main()
