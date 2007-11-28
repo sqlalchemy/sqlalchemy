@@ -175,8 +175,9 @@ class SessionTransaction(object):
             if bind in self.__connections:
                 return self.__connections[bind][0]
 
-            if bind in self.__parent._connection_dict():
-                (conn, trans, autoclose) = self.__parent.__connections[bind]
+            conn_dict = self.__parent._connection_dict()
+            if bind in conn_dict:
+                (conn, trans, autoclose) = conn_dict[bind]
                 self.__connections[conn] = self.__connections[bind.engine] = (conn, conn.begin_nested(), autoclose)
                 return conn
         elif bind in self.__connections:

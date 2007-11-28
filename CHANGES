@@ -48,6 +48,9 @@ CHANGES
      We also copy the instances over without using any events now, so that
      the 'dirty' list on the new session remains unaffected.
 
+   - fixed bug which could arise when using session.begin_nested() in conjunction
+     with more than one level deep of enclosing session.begin() statements
+     
 - dialects
 
    - MSSQL/PyODBC no longer has a global "set nocount on".

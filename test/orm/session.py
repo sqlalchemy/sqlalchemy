@@ -242,6 +242,29 @@ class SessionTest(AssertMixin):
             raise
     
     @testing.supported('postgres', 'mysql')
+    @engines.close_open_connections
+    def test_heavy_nesting(self):
+        session = create_session(bind=testbase.db)
+
+        session.begin()
+        session.connection().execute("insert into users (user_name) values ('user1')")
+
+        session.begin()
+        
+        session.begin_nested()
+
+        session.connection().execute("insert into users (user_name) values ('user2')")
+        assert session.connection().execute("select count(1) from users").scalar() == 2
+
+        session.rollback()
+        assert session.connection().execute("select count(1) from users").scalar() == 1
+        session.connection().execute("insert into users (user_name) values ('user3')")
+
+        session.commit()
+        assert session.connection().execute("select count(1) from users").scalar() == 2
+        
+    
+    @testing.supported('postgres', 'mysql')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def test_twophase(self):
         # TODO: mock up a failure condition here
