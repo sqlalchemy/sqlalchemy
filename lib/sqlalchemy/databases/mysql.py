@@ -725,7 +725,7 @@ class MSText(_StringType, sqltypes.TEXT):
 
         _StringType.__init__(self, **kwargs)
         sqltypes.TEXT.__init__(self, length,
-                               kwargs.get('convert_unicode', False))
+                               kwargs.get('convert_unicode', False), kwargs.get('assert_unicode', None))
 
     def get_col_spec(self):
         if self.length:
@@ -889,7 +889,7 @@ class MSString(_StringType, sqltypes.String):
 
         _StringType.__init__(self, **kwargs)
         sqltypes.String.__init__(self, length,
-                                 kwargs.get('convert_unicode', False))
+                                 kwargs.get('convert_unicode', False), kwargs.get('assert_unicode', None))
 
     def get_col_spec(self):
         if self.length:

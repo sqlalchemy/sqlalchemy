@@ -307,16 +307,14 @@ class String(Concatenable, TypeEngine):
         self.assert_unicode = assert_unicode
 
     def adapt(self, impltype):
-        return impltype(length=self.length, convert_unicode=self.convert_unicode)
+        return impltype(length=self.length, convert_unicode=self.convert_unicode, assert_unicode=self.assert_unicode)
 
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
-            if self.assert_unicode is not None:
-                assert_unicode = self.assert_unicode
-            elif dialect.assert_unicode is not None:
-                assert_unicode = dialect.assert_unicode
+            if self.assert_unicode is None:
+                assert_unicode = bool(dialect.assert_unicode)
             else:
-                assert_unicode = True
+                assert_unicode = self.assert_unicode
             def process(value):
                 if isinstance(value, unicode):
                     return value.encode(dialect.encoding)

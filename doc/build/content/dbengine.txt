@@ -126,7 +126,7 @@ Keyword options can also be specified to `create_engine()`, following the string
 
 A list of all standard options, as well as several that are used by particular database dialects, is as follows:
 
-* **assert_unicode=None** - defaults to `True` when `convert_unicode==True`.  This will assert that all incoming string bind parameters are instances of `unicode`.  Only takes effect when `convert_unicode==True`.  Set to `False` to disable unicode assertions when `convert_unicode==True`.  This flag is also available on the `String` type and its decsendants. New in 0.4.2.  
+* **assert_unicode=False** - When set to `True` alongside convert_unicode=`True`, asserts that incoming string bind parameters are instances of `unicode`, otherwise raises an error.  Only takes effect when `convert_unicode==True`.  This flag is also available on the `String` type and its decsendants. New in 0.4.2.  
 * **connect_args** - a dictionary of options which will be passed directly to the DBAPI's `connect()` method as additional keyword arguments.
 * **convert_unicode=False** - if set to True, all String/character based types will convert Unicode values to raw byte values going into the database, and all raw byte values to Python Unicode coming out in result sets.  This is an engine-wide method to provide unicode conversion across the board.  For unicode conversion on a column-by-column level, use the `Unicode` column type instead, described in [types](rel:types).
 * **creator** - a callable which returns a DBAPI connection.  This creation function will be passed to the underlying connection pool and will be used to create all new database connections.  Usage of this function causes connection parameters specified in the URL argument to be bypassed.
