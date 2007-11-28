@@ -12,8 +12,8 @@ constructors.
 
 from sqlalchemy import util as sautil
 from sqlalchemy.orm.mapper import Mapper, object_mapper, class_mapper, mapper_registry
-from sqlalchemy.orm.interfaces import SynonymProperty, MapperExtension, EXT_CONTINUE, EXT_STOP, EXT_PASS, ExtensionOption, PropComparator
-from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty, CompositeProperty, BackRef
+from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, EXT_STOP, EXT_PASS, ExtensionOption, PropComparator
+from sqlalchemy.orm.properties import SynonymProperty, PropertyLoader, ColumnProperty, CompositeProperty, BackRef
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import Query
@@ -517,13 +517,49 @@ def mapper(class_, local_table=None, *args, **params):
 
     return Mapper(class_, local_table, *args, **params)
 
-def synonym(name, proxy=False):
-    """Set up `name` as a synonym to another ``MapperProperty``.
+def synonym(name, map_column=False, proxy=False):
+    """Set up `name` as a synonym to another mapped property.
 
-    Used with the `properties` dictionary sent to ``mapper()``.
+    Used with the ``properties`` dictionary sent to  [sqlalchemy.orm#mapper()].
+    
+    Any existing attributes on the class which map the key name sent
+    to the ``properties`` dictionary will be used by the synonym to 
+    provide instance-attribute behavior (that is, any Python property object,
+    provided by the ``property`` builtin or providing a ``__get__()``, 
+    ``__set__()`` and ``__del__()`` method).  If no name exists for the key,
+    the ``synonym()`` creates a default getter/setter object automatically
+    and applies it to the class.
+    
+    `name` refers to the name of the existing mapped property, which
+    can be any other ``MapperProperty`` including column-based
+    properties and relations.
+    
+    if `map_column` is ``True``, an additional ``ColumnProperty``
+    is created on the mapper automatically, using the synonym's 
+    name as the keyname of the property, and the keyname of this ``synonym()``
+    as the name of the column to map.  For example, if a table has a column
+    named ``status``::
+    
+        class MyClass(object):
+            def _get_status(self):
+                return self._status
+            def _set_status(self, value):
+                self._status = value
+            status = property(_get_status, _set_status)
+            
+        mapper(MyClass, sometable, properties={
+            "status":synonym("_status", map_column=True)
+        })
+        
+    The column named ``status`` will be mapped to the attribute named ``_status``, 
+    and the ``status`` attribute on ``MyClass`` will be used to proxy access to the
+    column-based attribute.
+    
+    The `proxy` keyword argument is deprecated and currently does nothing; synonyms 
+    now always establish an attribute getter/setter funciton if one is not already available.
     """
 
-    return SynonymProperty(name, proxy=proxy)
+    return SynonymProperty(name, map_column=map_column)
 
 def compile_mappers():
     """Compile all mappers that have been defined.

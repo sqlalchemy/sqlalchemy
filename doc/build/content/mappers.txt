@@ -140,9 +140,9 @@ Correlated subqueries may be used as well:
             )
     })
     
-#### Overriding Attribute Behavior {@name=overriding}
+#### Overriding Attribute Behavior with Synonyms {@name=overriding}
 
-A common request is the ability to create custom class properties that override the behavior of setting/getting an attribute.  You accomplish this using normal Python `property` constructs:
+A common request is the ability to create custom class properties that override the behavior of setting/getting an attribute.  As of 0.4.2, the `synonym()` construct provides an easy way to do this in conjunction with a normal Python `property` constructs.  Below, we re-map the `email` column of our mapped table to a custom attribute setter/getter, mapping the actual column to the property named `_email`:
 
     {python}
     class MyAddress(object):
@@ -153,37 +153,20 @@ A common request is the ability to create custom class properties that override 
        email = property(_get_email, _set_email)
     
     mapper(MyAddress, addresses_table, properties = {
-      # map the '_email' attribute to the "email" column
-      # on the table
-      '_email': addresses_table.c.email
+        'email':synonym('_email', map_column=True)
     })
 
-To have your custom `email` property be recognized by keyword-based `Query` functions such as `filter_by()`, place a `synonym` on your mapper:
+The `email` attribute is now usable in the same way as any other mapped attribute, including filter expressions, get/set operations, etc.:
 
     {python}
-    mapper(MyAddress, addresses_table, properties = {
-      '_email': addresses_table.c.email
-      
-      'email':synonym('_email')
-    })
+    address = sess.query(MyAddress).filter(MyAddress.email == 'some address').one()
+
+    address.email = 'some other address'
+    sess.flush()
     
-    # use the synonym in a query
-    result = session.query(MyAddress).filter_by(email='john@smith.com')
+    q = sess.query(MyAddress).filter_by(email='some other address')
 
-Synonym strategies such as the above can be easily automated, such as this example which specifies all columns and synonyms explicitly:
-
-    {python}
-    mapper(MyAddress, addresses_table, properties = dict(
-        [('_'+col.key, col) for col in addresses_table.c] +
-        [(col.key, synonym('_'+col.key)) for col in addresses_table.c]
-    ))
-
-The `column_prefix` option can also help with the above scenario by setting up the columns automatically with a prefix:
-
-    {python}
-    mapper(MyAddress, addresses_table, column_prefix='_', properties = dict(
-        [(col.key, synonym('_'+col.key)) for col in addresses_table.c]
-    ))
+If the mapped class does not provide a property, the `synonym()` construct will create a default getter/setter object automatically.
 
 #### Composite Column Types {@name=composite}
 

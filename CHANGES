@@ -17,6 +17,18 @@ CHANGES
       
 - orm
 
+   - new synonym() behavior: an attribute will be placed on the mapped
+     class, if one does not exist already, in all cases. if a property
+     already exists on the class, the synonym will decorate the property
+     with the appropriate comparison operators so that it can be used in in
+     column expressions just like any other mapped attribute (i.e. usable in
+     filter(), etc.) the "proxy=True" flag is deprecated and no longer means
+     anything. Additionally, the flag "map_column=True" will automatically
+     generate a ColumnProperty corresponding to the name of the synonym,
+     i.e.: 'somename':synonym('_somename', map_column=True) will map the
+     column named 'somename' to the attribute '_somename'. See the example
+     in the mapper docs. [ticket:801]
+     
    - fixed endless loop issue when using lazy="dynamic" on both 
      sides of a bi-directional relationship [ticket:872]
 

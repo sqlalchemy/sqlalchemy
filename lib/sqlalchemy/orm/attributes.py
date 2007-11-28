@@ -63,7 +63,31 @@ class InstrumentedAttribute(interfaces.PropComparator):
         return class_mapper(self.impl.class_).get_property(self.impl.key)
     property = property(_property, doc="the MapperProperty object associated with this attribute")
 
+class ProxiedAttribute(InstrumentedAttribute):
+    class ProxyImpl(object):
+        def __init__(self, key):
+            self.key = key
 
+        def commit_to_state(self, state, value=NO_VALUE):
+            pass
+
+    def __init__(self, key, user_prop, comparator=None):
+        self.user_prop = user_prop
+        self.comparator = comparator
+        self.key = key
+        self.impl = ProxiedAttribute.ProxyImpl(key)
+    def __get__(self, obj, owner):
+        if obj is None:
+            self.user_prop.__get__(obj, owner)                
+            return self
+        return self.user_prop.__get__(obj, owner)
+    def __set__(self, obj, value):
+        return self.user_prop.__set__(obj, value)
+    def __delete__(self, obj):
+        return self.user_prop.__delete__(obj)
+
+        
+    
 class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
 
@@ -1013,7 +1037,7 @@ def unregister_class(class_):
     if '_sa_attrs' in class_.__dict__:
         delattr(class_, '_sa_attrs')
 
-def register_attribute(class_, key, uselist, useobject, callable_=None, **kwargs):
+def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_property=None, **kwargs):
     if not '_sa_attrs' in class_.__dict__:
         class_._sa_attrs = []
         
@@ -1027,8 +1051,11 @@ def register_attribute(class_, key, uselist, useobject, callable_=None, **kwargs
         # TODO:  possibly have InstrumentedAttribute check "entity_name" when searching for impl.
         # raise an error if two attrs attached simultaneously otherwise
         return
-        
-    inst = InstrumentedAttribute(_create_prop(class_, key, uselist, callable_, useobject=useobject,
+    
+    if proxy_property:
+        inst = ProxiedAttribute(key, proxy_property, comparator=comparator)
+    else:
+        inst = InstrumentedAttribute(_create_prop(class_, key, uselist, callable_, useobject=useobject,
                                        typecallable=typecallable, **kwargs), comparator=comparator)
     
     setattr(class_, key, inst)

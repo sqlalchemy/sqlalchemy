@@ -63,7 +63,6 @@ class MapperTest(MapperSuperTest):
         u = s.get(User, 7)
         assert u._user_name=='jack'
     	assert u._user_id ==7
-        assert not hasattr(u, 'user_name')
         u2 = s.query(User).filter_by(user_name='jack').one()
         assert u is u2
 
@@ -391,17 +390,18 @@ class MapperTest(MapperSuperTest):
         ))
 
         assert hasattr(User, 'adlist')
-        assert not hasattr(User, 'adname')
+        assert hasattr(User, 'adname')  # as of 0.4.2, synonyms always create a property
 
-        u = sess.query(User).get_by(uname='jack')
+        # test compile
+        assert not isinstance(User.uname == 'jack', bool)
+
+        u = sess.query(User).filter(User.uname=='jack').one()
         self.assert_result(u.adlist, Address, *(user_address_result[0]['addresses'][1]))
 
-        assert hasattr(u, 'adlist')
-        assert not hasattr(u, 'adname')
-
         addr = sess.query(Address).get_by(address_id=user_address_result[0]['addresses'][1][0]['address_id'])
-        u = sess.query(User).get_by(adname=addr)
-        u2 = sess.query(User).get_by(adlist=addr)
+        u = sess.query(User).filter_by(adname=addr).one()
+        u2 = sess.query(User).filter_by(adlist=addr).one()
+        
         assert u is u2
 
         assert u not in sess.dirty
@@ -409,7 +409,53 @@ class MapperTest(MapperSuperTest):
         assert u.uname == "some user name"
         assert u.user_name == "some user name"
         assert u in sess.dirty
+    
+    def test_column_synonyms(self):
+        """test new-style synonyms which automatically instrument properties, set up aliased column, etc."""
 
+        sess = create_session()
+        
+        assert_col = []
+        class User(object):
+            def _get_user_name(self):
+                assert_col.append(('get', self._user_name))
+                return self._user_name
+            def _set_user_name(self, name):
+                assert_col.append(('set', name))
+                self._user_name = name
+            user_name = property(_get_user_name, _set_user_name)
+
+        mapper(Address, addresses)
+        try:
+            mapper(User, users, properties = {
+                'addresses':relation(Address, lazy=True),
+                'not_user_name':synonym('_user_name', map_column=True)
+            })
+            User.not_user_name
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Can't compile synonym '_user_name': no column on table 'users' named 'not_user_name'"
+        
+        clear_mappers()
+        
+        mapper(Address, addresses)
+        mapper(User, users, properties = {
+            'addresses':relation(Address, lazy=True),
+            'user_name':synonym('_user_name', map_column=True)
+        })
+        
+        # test compile
+        assert not isinstance(User.user_name == 'jack', bool)
+        
+        assert hasattr(User, 'user_name')
+        assert hasattr(User, '_user_name')
+        
+        u = sess.query(User).filter(User.user_name == 'jack').one()
+        assert u.user_name == 'jack'
+        u.user_name = 'foo'
+        assert u.user_name == 'foo'
+        assert assert_col == [('get', 'jack'), ('set', 'foo'), ('get', 'foo')]
+        
     @testing.fails_on('maxdb')
     def test_synonymoptions(self):
         sess = create_session()

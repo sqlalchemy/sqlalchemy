@@ -1039,7 +1039,28 @@ class SaveTest(ORMTest):
         print repr(u.user_id), repr(userlist[0].user_id), repr(userlist[0].user_name)
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
-
+    
+    def test_synonym(self):
+        class User(object):
+            def _get_name(self):
+                return "User:" + self.user_name
+            def _set_name(self, name):
+                self.user_name = name + ":User"
+            name = property(_get_name, _set_name)
+            
+        mapper(User, users, properties={
+            'name':synonym('user_name')
+        })
+        
+        u = User()
+        u.name = "some name"
+        assert u.name == 'User:some name:User'
+        Session.save(u)
+        Session.flush()
+        Session.clear()
+        u = Session.query(User).first()
+        assert u.name == 'User:some name:User'
+        
     def test_lazyattr_commit(self):
         """tests that when a lazy-loaded list is unloaded, and a commit occurs, that the
         'passive' call on that list does not blow away its value"""

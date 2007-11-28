@@ -11,7 +11,7 @@ from sqlalchemy.sql import expression
 __all__ = ['EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS', 'MapperExtension',
            'MapperProperty', 'PropComparator', 'StrategizedProperty', 
            'build_path', 'MapperOption', 
-           'ExtensionOption', 'SynonymProperty', 'PropertyOption', 
+           'ExtensionOption', 'PropertyOption', 
            'AttributeExtension', 'StrategizedOption', 'LoaderStrategy' ]
 
 EXT_CONTINUE = EXT_PASS = object()
@@ -517,33 +517,6 @@ class ExtensionOption(MapperOption):
         query._extension = query._extension.copy()
         query._extension.insert(self.ext)
 
-class SynonymProperty(MapperProperty):
-    def __init__(self, name, proxy=False):
-        self.name = name
-        self.proxy = proxy
-
-    def setup(self, querycontext, **kwargs):
-        pass
-
-    def create_row_processor(self, selectcontext, mapper, row):
-        return (None, None, None)
-
-    def do_init(self):
-        if not self.proxy:
-            return
-        class SynonymProp(object):
-            def __set__(s, obj, value):
-                setattr(obj, self.name, value)
-            def __delete__(s, obj):
-                delattr(obj, self.name)
-            def __get__(s, obj, owner):
-                if obj is None:
-                    return s
-                return getattr(obj, self.name)
-        setattr(self.parent.class_, self.key, SynonymProp())
-
-    def merge(self, session, source, dest, _recursive):
-        pass
 
 class PropertyOption(MapperOption):
     """A MapperOption that is applied to a property off the mapper or

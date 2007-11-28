@@ -11,7 +11,7 @@ from sqlalchemy.sql import util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier, create_row_adapter
 from sqlalchemy.orm import sync, attributes
-from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, SynonymProperty, PropComparator
+from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, PropComparator
 deferred_load = None
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
@@ -32,6 +32,7 @@ _COMPILE_MUTEX = util.threading.Lock()
 
 # initialize these two lazily
 ColumnProperty = None
+SynonymProperty = None
 
 class Mapper(object):
     """Define the correlation of class attributes to database table
@@ -544,6 +545,7 @@ class Mapper(object):
         def __init__(self, class_, key):
             self.class_ = class_
             self.key = key
+            
         def __getattribute__(self, key):
             cls = object.__getattribute__(self, 'class_')
             clskey = object.__getattribute__(self, 'key')
@@ -576,7 +578,7 @@ class Mapper(object):
         # table columns mapped to lists of MapperProperty objects
         # using a list allows a single column to be defined as
         # populating multiple object attributes
-        self._columntoproperty = {} #mapperutil.TranslatingDict(self.mapped_table)
+        self._columntoproperty = {}
 
         # load custom properties
         if self._init_properties is not None:
@@ -665,14 +667,18 @@ class Mapper(object):
             for col in prop.columns:
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
-            
+        elif isinstance(prop, SynonymProperty):
+            prop.instrument = getattr(self.class_, key, None)
+            if prop.map_column:
+                if not key in self.select_table.c:
+                    raise exceptions.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.select_table.description, key))
+                self._compile_property(prop.name, ColumnProperty(self.select_table.c[key]), init=init, setparent=setparent)    
         self.__props[key] = prop
 
         if setparent:
             prop.set_parent(self)
 
-            # TODO: centralize _CompileOnAttr logic, move into MapperProperty classes
-            if (not isinstance(prop, SynonymProperty) or prop.proxy) and not self.non_primary and not hasattr(self.class_, key):
+            if not self.non_primary:
                 setattr(self.class_, key, Mapper._CompileOnAttr(self.class_, key))
 
         if init:

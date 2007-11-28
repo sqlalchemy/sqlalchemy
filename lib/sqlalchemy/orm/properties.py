@@ -17,10 +17,10 @@ from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 import operator
-from sqlalchemy.orm.interfaces import StrategizedProperty, PropComparator
+from sqlalchemy.orm.interfaces import StrategizedProperty, PropComparator, MapperProperty
 from sqlalchemy.exceptions import ArgumentError
 
-__all__ = ['ColumnProperty', 'CompositeProperty', 'PropertyLoader', 'BackRef']
+__all__ = ['ColumnProperty', 'CompositeProperty', 'SynonymProperty', 'PropertyLoader', 'BackRef']
 
 class ColumnProperty(StrategizedProperty):
     """Describes an object attribute that corresponds to a table column."""
@@ -123,6 +123,40 @@ class CompositeProperty(ColumnProperty):
             return sql.or_(*[a!=b for a, b in
                              zip(self.prop.columns,
                                  other.__composite_values__())])
+
+class SynonymProperty(MapperProperty):
+    def __init__(self, name, map_column=None):
+        self.name = name
+        self.map_column=map_column
+        self.instrument = None
+        
+    def setup(self, querycontext, **kwargs):
+        pass
+
+    def create_row_processor(self, selectcontext, mapper, row):
+        return (None, None, None)
+
+    def do_init(self):
+        class_ = self.parent.class_
+        aliased_property = self.parent.get_property(self.key, resolve_synonyms=True)
+        self.logger.info("register managed attribute %s on class %s" % (self.key, class_.__name__))
+        if self.instrument is None:
+            class SynonymProp(object):
+                def __set__(s, obj, value):
+                    setattr(obj, self.name, value)
+                def __delete__(s, obj):
+                    delattr(obj, self.name)
+                def __get__(s, obj, owner):
+                    if obj is None:
+                        return s
+                    return getattr(obj, self.name)
+            self.instrument = SynonymProp()
+            
+        sessionlib.register_attribute(class_, self.key, uselist=False, proxy_property=self.instrument, useobject=False, comparator=aliased_property.comparator)
+
+    def merge(self, session, source, dest, _recursive):
+        pass
+SynonymProperty.logger = logging.class_logger(SynonymProperty)
 
 class PropertyLoader(StrategizedProperty):
     """Describes an object property that holds a single item or list
@@ -708,4 +742,4 @@ class BackRef(object):
         return attributes.GenericBackrefExtension(self.key)
 
 mapper.ColumnProperty = ColumnProperty
-        
+mapper.SynonymProperty = SynonymProperty
