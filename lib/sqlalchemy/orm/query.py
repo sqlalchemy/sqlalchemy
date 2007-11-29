@@ -6,10 +6,10 @@
 
 from sqlalchemy import sql, util, exceptions, logging
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.sql import expression, visitors
+from sqlalchemy.sql import expression, visitors, operators
 from sqlalchemy.orm import mapper, object_mapper
 from sqlalchemy.orm import util as mapperutil
-import operator
+from itertools import chain
 
 __all__ = ['Query', 'QueryContext']
 
@@ -46,7 +46,7 @@ class Query(object):
         self._populate_existing = False
         self._version_check = False
         self._autoflush = True
-        self._eager_loaders = util.Set([x for x in self.mapper._eager_loaders])
+        self._eager_loaders = util.Set(chain(*[mapper._eager_loaders for mapper in [m for m in self.mapper.iterate_to_root()]]))
         self._attributes = {}
         self._current_path = ()
         self._primary_adapter=None
@@ -135,7 +135,7 @@ class Query(object):
         mapper = object_mapper(instance)
         prop = mapper.get_property(property, resolve_synonyms=True)
         target = prop.mapper
-        criterion = prop.compare(operator.eq, instance, value_is_parent=True)
+        criterion = prop.compare(operators.eq, instance, value_is_parent=True)
         return Query(target, **kwargs).filter(criterion)
     query_from_parent = classmethod(query_from_parent)
     
@@ -185,7 +185,7 @@ class Query(object):
                 raise exceptions.InvalidRequestError("Could not locate a property which relates instances of class '%s' to instances of class '%s'" % (self.mapper.class_.__name__, instance.__class__.__name__))
         else:
             prop = mapper.get_property(property, resolve_synonyms=True)
-        return self.filter(prop.compare(operator.eq, instance, value_is_parent=True))
+        return self.filter(prop.compare(operators.eq, instance, value_is_parent=True))
 
     def add_entity(self, entity, alias=None, id=None):
         """add a mapped entity to the list of result columns to be returned.
@@ -319,7 +319,7 @@ class Query(object):
     def filter_by(self, **kwargs):
         """apply the given filtering criterion to the query and return the newly resulting ``Query``."""
 
-        clauses = [self._joinpoint.get_property(key, resolve_synonyms=True).compare(operator.eq, value)
+        clauses = [self._joinpoint.get_property(key, resolve_synonyms=True).compare(operators.eq, value)
             for key, value in kwargs.iteritems()]
         
         return self.filter(sql.and_(*clauses))
@@ -1154,9 +1154,9 @@ class Query(object):
         for key, value in params.iteritems():
             (keys, prop) = self._locate_prop(key, start=start)
             if isinstance(prop, properties.PropertyLoader):
-                c = prop.compare(operator.eq, value) & self.join_via(keys[:-1])
+                c = prop.compare(operators.eq, value) & self.join_via(keys[:-1])
             else:
-                c = prop.compare(operator.eq, value) & self.join_via(keys)
+                c = prop.compare(operators.eq, value) & self.join_via(keys)
             if clause is None:
                 clause =  c
             else:

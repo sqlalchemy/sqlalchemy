@@ -32,6 +32,10 @@ CHANGES
    - fixed endless loop issue when using lazy="dynamic" on both 
      sides of a bi-directional relationship [ticket:872]
 
+   - fixed bug where Query would not apply a subquery to the SQL when LIMIT
+     was used in conjunction with an inheriting mapper where the eager 
+     loader was only in the parent mapper.
+     
    - clarified the error message which occurs when you try to update()
      an instance with the same identity key as an instance already present
      in the session.

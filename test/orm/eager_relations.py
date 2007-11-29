@@ -772,6 +772,5 @@ class CyclicalInheritingEagerTest(ORMTest):
         # testing a particular endless loop condition in eager join setup
         create_session().query(SubT).all()
 
-
 if __name__ == '__main__':
     testbase.main()

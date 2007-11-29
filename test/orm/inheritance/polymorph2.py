@@ -3,7 +3,7 @@ from sqlalchemy import *
 from sqlalchemy import exceptions, util
 from sqlalchemy.orm import *
 from testlib import *
-
+from testlib import fixtures
 
 class AttrSettable(object):
     def __init__(self, **kwargs):
@@ -351,16 +351,6 @@ class RelationTest4(ORMTest):
         print class_mapper(Person).primary_key
         print person_mapper.get_select_mapper().primary_key
         
-        # so the primaryjoin is "people.c.person_id==cars.c.owner".  the "lazy" clause will be
-        # "people.c.person_id=?".  the employee_join is two selects union'ed together, one of which 
-        # will contain employee.c.person_id the other contains manager.c.person_id.  people.c.person_id is not explicitly in 
-        # either column clause in this case.  we can modify polymorphic_union to always put the "base" column in which would fix this,
-        # but im not sure if that really fixes the issue in all cases and its too far from the problem.
-        # instead, when the primaryjoin is adapted to point to the polymorphic union and is targeting employee_join.c.person_id, 
-        # it has to use not just straight column correspondence but also "keys_ok=True", meaning it will link up to any column 
-        # with the name "person_id", as opposed to columns that descend directly from people.c.person_id.  polymorphic unions
-        # require the cols all match up on column name which then determine the top selectable names, so matching by name is OK.
-
         session = create_session()
 
         # creating 5 managers named from M1 to E5
@@ -949,6 +939,68 @@ class CustomPKTest(ORMTest):
         ot1 = sess.query(T1).get(ot1.id)
         ot1.data = 'hi'
         sess.flush()
+
+class InheritingEagerTest(ORMTest):
+    def define_tables(self, metadata):
+        global people, employees, tags, peopleTags
+        
+        people = Table('people', metadata,
+                           Column('id', Integer, primary_key=True),
+                           Column('_type', String(30), nullable=False),
+                          )
+
+
+        employees = Table('employees', metadata,
+                         Column('id', Integer, ForeignKey('people.id'),primary_key=True),
+                        )
+
+        tags = Table('tags', metadata,
+                           Column('id', Integer, primary_key=True),
+                           Column('label', String, nullable=False),
+                       )
+
+        peopleTags = Table('peopleTags', metadata,
+                               Column('person_id', Integer,ForeignKey('people.id')),
+                               Column('tag_id', Integer,ForeignKey('tags.id')),
+                         )
+                         
+    def test_basic(self):
+        """test that Query uses the full set of mapper._eager_loaders when generating SQL"""
+        
+        class Person(fixtures.Base):
+            pass
+            
+        class Employee(Person):
+           def __init__(self, name='bob'):
+               self.name = name
+
+        class Tag(fixtures.Base):
+           def __init__(self, label):
+               self.label = label
+
+        mapper(Person, people, polymorphic_on=people.c._type,polymorphic_identity='person', properties={
+            'tags': relation(Tag, secondary=peopleTags,backref='people', lazy=False)
+        })
+        mapper(Employee, employees, inherits=Person,polymorphic_identity='employee')
+        mapper(Tag, tags)
+
+        session = create_session()
+
+        bob = Employee()
+        session.save(bob)
+        
+        tag = Tag('crazy')
+        bob.tags.append(tag)
+
+        tag = Tag('funny')
+        bob.tags.append(tag)
+        session.flush()
+
+        session.clear()
+        # query from Employee with limit, query needs to apply eager limiting subquery
+        instance = session.query(Employee).filter_by(id=1).limit(1).first()
+        assert len(instance.tags) == 2
+       
         
 if __name__ == "__main__":    
     testbase.main()

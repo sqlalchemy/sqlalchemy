@@ -849,13 +849,6 @@ class Mapper(object):
 
         raise exceptions.InvalidRequestError("No contextual Session is established.  Use a MapperExtension that implements get_session or use 'import sqlalchemy.mods.threadlocal' to establish a default thread-local contextual session.")
             
-    def has_eager(self):
-        """Return True if one of the properties attached to this
-        Mapper is eager loading.
-        """
-
-        return len(self._eager_loaders) > 0
-
     def instances(self, cursor, session, *mappers, **kwargs):
         """Return a list of mapped instances corresponding to the rows
         in a given ResultProxy.
