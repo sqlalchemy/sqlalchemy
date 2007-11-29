@@ -582,6 +582,48 @@ class SelfReferentialEagerTest(ORMTest):
             ]) == d
         self.assert_sql_count(testbase.db, go, 1)
 
+    
+    def test_lazy_fallback_doesnt_affect_eager(self):
+        class Node(Base):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relation(Node, lazy=False, join_depth=1)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
+        sess.save(n1)
+        sess.flush()
+        sess.clear()
+
+        # eager load with join depth 1.  when eager load of 'n1'
+        # hits the children of 'n12', no columns are present, eager loader
+        # degrades to lazy loader; fine.  but then, 'n12' is *also* in the
+        # first level of columns since we're loading the whole table.
+        # when those rows arrive, now we *can* eager load its children and an
+        # eager collection should be initialized.  essentially the 'n12' instance
+        # is present in not just two different rows but two distinct sets of columns
+        # in this result set.
+        def go():
+            allnodes = sess.query(Node).order_by(Node.data).all()
+            n12 = allnodes[2]
+            assert n12.data == 'n12'
+            print "N12 IS", id(n12)
+            print [c.data for c in n12.children]
+            assert [
+                Node(data='n121'),
+                Node(data='n122'),
+                Node(data='n123')
+            ] == list(n12.children)
+        self.assert_sql_count(testbase.db, go, 1)
+        
     def test_with_deferred(self):
         class Node(Base):
             def append(self, node):

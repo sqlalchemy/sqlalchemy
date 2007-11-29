@@ -32,6 +32,13 @@ CHANGES
    - fixed endless loop issue when using lazy="dynamic" on both 
      sides of a bi-directional relationship [ticket:872]
 
+   - fix to self-referential eager loading such that if the same mapped
+     instance appears in two or more distinct sets of columns in the same
+     result set, its eagerly loaded collection will be populated regardless
+     of whether or not all of the rows contain a set of "eager" columns for
+     that collection.  this would also show up as a KeyError when fetching
+     results with join_depth turned on.
+     
    - fixed bug where Query would not apply a subquery to the SQL when LIMIT
      was used in conjunction with an inheriting mapper where the eager 
      loader was only in the parent mapper.

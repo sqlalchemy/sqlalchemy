@@ -591,7 +591,12 @@ class EagerLoader(AbstractRelationLoader):
                         # so that we further descend into properties
                         self.select_mapper._instance(selectcontext, decorated_row, None)
                 else:
-                    if isnew:
+                    appender_key = ('appender', id(instance), self.key)
+                    if isnew or appender_key not in selectcontext.attributes:
+                        # appender_key can be absent from selectcontext.attributes with isnew=False
+                        # when self-referential eager loading is used; the same instance may be present
+                        # in two distinct sets of result columns
+                        
                         if self._should_log_debug:
                             self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
 
@@ -599,13 +604,13 @@ class EagerLoader(AbstractRelationLoader):
                         appender = util.UniqueAppender(collection, 'append_without_event')
 
                         # store it in the "scratch" area, which is local to this load operation.
-                        selectcontext.attributes[('appender', id(instance), self.key)] = appender
-                    result_list = selectcontext.attributes[('appender', id(instance), self.key)]
+                        selectcontext.attributes[appender_key] = appender
+                    
+                    result_list = selectcontext.attributes[appender_key]
                     if self._should_log_debug:
                         self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
-                        
-                    self.select_mapper._instance(selectcontext, decorated_row, result_list)
 
+                    self.select_mapper._instance(selectcontext, decorated_row, result_list)
 
             if self._should_log_debug:
                 self.logger.debug("Returning eager instance loader for %s" % str(self))

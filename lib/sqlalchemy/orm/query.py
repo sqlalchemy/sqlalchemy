@@ -46,7 +46,7 @@ class Query(object):
         self._populate_existing = False
         self._version_check = False
         self._autoflush = True
-        self._eager_loaders = util.Set(chain(*[mapper._eager_loaders for mapper in [m for m in self.mapper.iterate_to_root()]]))
+        self._eager_loaders = util.Set(chain(*[mp._eager_loaders for mp in [m for m in self.mapper.iterate_to_root()]]))
         self._attributes = {}
         self._current_path = ()
         self._primary_adapter=None
