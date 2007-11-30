@@ -58,9 +58,6 @@ class ColumnProperty(StrategizedProperty):
     def setattr(self, object, value, column):
         setattr(object, self.key, value)
 
-    def get_history(self, obj, passive=False):
-        return attributes.get_history(obj, self.key, passive=passive)
-
     def merge(self, session, source, dest, dont_load, _recursive):
         setattr(dest, self.key, getattr(source, self.key, None))
 

@@ -571,6 +571,8 @@ class Session(object):
         self.uow = unitofwork.UnitOfWork(self)
         self.identity_map = self.uow.identity_map
 
+    # TODO: need much more test coverage for bind_mapper() and similar !
+    
     def bind_mapper(self, mapper, bind, entity_name=None):
         """Bind the given `mapper` or `class` to the given ``Engine`` or ``Connection``.
 
