@@ -2,7 +2,7 @@ import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
-
+from sqlalchemy import exceptions
 
 class Place(object):
     '''represents a place'''
@@ -68,6 +68,19 @@ class M2MTest(ORMTest):
             Column('pl2_id', Integer, ForeignKey('place.place_id')),
             )
 
+    def testerror(self):
+        mapper(Place, place, properties={
+            'transitions':relation(Transition, secondary=place_input, backref='places')
+        })
+        mapper(Transition, transition, properties={
+            'places':relation(Place, secondary=place_input, backref='transitions')
+        })
+        try:
+            compile_mappers()
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Error creating backref 'transitions' on relation 'Transition.places (Place)': property of that name exists on mapper 'Mapper|Place|place'"
+        
     def testcircular(self):
         """tests a many-to-many relationship from a table to itself."""
 
