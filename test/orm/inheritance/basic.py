@@ -3,7 +3,7 @@ from sqlalchemy import *
 from sqlalchemy import exceptions, util
 from sqlalchemy.orm import *
 from testlib import *
-
+from testlib import fixtures
 
 class O2MTest(ORMTest):
     """deals with inheritance and one-to-many relationships"""
@@ -332,6 +332,109 @@ class FlushTest(ORMTest):
         sess.flush()
         assert user_roles.count().scalar() == 1
 
+class VersioningTest(ORMTest):
+    def define_tables(self, metadata):
+        global base, subtable, stuff
+        base = Table('base', metadata, 
+            Column('id', Integer, Sequence('version_test_seq', optional=True), primary_key=True ),
+            Column('version_id', Integer, nullable=False),
+            Column('value', String(40)),
+            Column('discriminator', Integer, nullable=False)
+        )
+        subtable = Table('subtable', metadata, 
+            Column('id', None, ForeignKey('base.id'), primary_key=True),
+            Column('subdata', String(50))
+            )
+        stuff = Table('stuff', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('parent', Integer, ForeignKey('base.id'))
+            )
+            
+    @engines.close_open_connections
+    def test_save_update(self):
+        class Base(fixtures.Base):
+            pass
+        class Sub(Base):
+            pass
+        class Stuff(Base):
+            pass
+        mapper(Stuff, stuff)
+        mapper(Base, base, polymorphic_on=base.c.discriminator, version_id_col=base.c.version_id, polymorphic_identity=1, properties={
+            'stuff':relation(Stuff)
+        })
+        mapper(Sub, subtable, inherits=Base, polymorphic_identity=2)
+        
+        sess = create_session()
+        
+        b1 = Base(value='b1')
+        s1 = Sub(value='sub1', subdata='some subdata')
+        sess.save(b1)
+        sess.save(s1)
+        
+        sess.flush()
+        
+        sess2 = create_session()
+        s2 = sess2.query(Base).get(s1.id)
+        s2.subdata = 'sess2 subdata'
+        
+        s1.subdata = 'sess1 subdata'
+        
+        sess.flush()
+        
+        try:
+            sess2.query(Base).with_lockmode('read').get(s1.id)
+            assert False
+        except exceptions.ConcurrentModificationError, e:
+            assert True
+
+        try:
+            sess2.flush()
+            assert False
+        except exceptions.ConcurrentModificationError, e:
+            assert True
+        
+        sess2.refresh(s2)
+        assert s2.subdata == 'sess1 subdata'
+        s2.subdata = 'sess2 subdata'
+        sess2.flush()
+    
+    def test_delete(self):
+        class Base(fixtures.Base):
+            pass
+        class Sub(Base):
+            pass
+            
+        mapper(Base, base, polymorphic_on=base.c.discriminator, version_id_col=base.c.version_id, polymorphic_identity=1)
+        mapper(Sub, subtable, inherits=Base, polymorphic_identity=2)
+        
+        sess = create_session()
+        
+        b1 = Base(value='b1')
+        s1 = Sub(value='sub1', subdata='some subdata')
+        s2 = Sub(value='sub2', subdata='some other subdata')
+        sess.save(b1)
+        sess.save(s1)
+        sess.save(s2)
+        
+        sess.flush()
+
+        sess2 = create_session()
+        s3 = sess2.query(Base).get(s1.id)
+        sess2.delete(s3)
+        sess2.flush()
+        
+        s2.subdata = 'some new subdata'
+        sess.flush()
+        
+        try:
+            s1.subdata = 'some new subdata'
+            sess.flush()
+            assert False
+        except exceptions.ConcurrentModificationError, e:
+            assert True
+        
+
+    
 class DistinctPKTest(ORMTest):
     """test the construction of mapper.primary_key when an inheriting relationship
     joins on a column other than primary key column."""

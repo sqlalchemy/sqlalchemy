@@ -28,6 +28,11 @@ CHANGES
      i.e.: 'somename':synonym('_somename', map_column=True) will map the
      column named 'somename' to the attribute '_somename'. See the example
      in the mapper docs. [ticket:801]
+
+   - added support for version_id_col in conjunction with inheriting mappers.
+     version_id_col is typically set on the base mapper in an inheritance
+     relationship where it takes effect for all inheriting mappers. 
+     [ticket:883]
      
    - fixed endless loop issue when using lazy="dynamic" on both 
      sides of a bi-directional relationship [ticket:872]
