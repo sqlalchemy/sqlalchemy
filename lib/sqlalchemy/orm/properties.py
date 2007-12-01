@@ -12,13 +12,13 @@ to handle flush-time dependency sorting and processing.
 """
 
 from sqlalchemy import sql, schema, util, exceptions, logging
-from sqlalchemy.sql import util as sql_util, visitors
+from sqlalchemy.sql import util as sql_util, visitors, operators
 from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
-import operator
 from sqlalchemy.orm.interfaces import StrategizedProperty, PropComparator, MapperProperty
 from sqlalchemy.exceptions import ArgumentError
+import warnings
 
 __all__ = ['ColumnProperty', 'CompositeProperty', 'SynonymProperty', 'PropertyLoader', 'BackRef']
 
@@ -48,7 +48,12 @@ class ColumnProperty(StrategizedProperty):
             return strategies.DeferredColumnLoader(self)
         else:
             return strategies.ColumnLoader(self)
-    
+
+    def do_init(self):
+        super(ColumnProperty, self).do_init()
+        if len(self.columns) > 1 and self.parent.primary_key.issuperset(self.columns):
+            warnings.warn(RuntimeWarning("On mapper %s, primary key column '%s' is being combined with distinct primary key column '%s' in attribute '%s'.  Use explicit properties to give each column its own mapped attribute name." % (str(self.parent), str(self.columns[1]), str(self.columns[0]), self.key)))
+        
     def copy(self):
         return ColumnProperty(deferred=self.deferred, group=self.group, *self.columns)
         
@@ -75,9 +80,7 @@ class ColumnProperty(StrategizedProperty):
             col = self.prop.columns[0]
             return op(col._bind_param(other), col)
 
-            
 ColumnProperty.logger = logging.class_logger(ColumnProperty)
-
 
 class CompositeProperty(ColumnProperty):
     """subclasses ColumnProperty to provide composite type support."""
@@ -86,6 +89,10 @@ class CompositeProperty(ColumnProperty):
         super(CompositeProperty, self).__init__(*columns, **kwargs)
         self.composite_class = class_
         self.comparator = kwargs.pop('comparator', CompositeProperty.Comparator)(self)
+
+    def do_init(self):
+        super(ColumnProperty, self).do_init()
+        # TODO: similar PK check as ColumnProperty does ?
         
     def copy(self):
         return CompositeProperty(deferred=self.deferred, group=self.group, composite_class=self.composite_class, *self.columns)
@@ -283,7 +290,7 @@ class PropertyLoader(StrategizedProperty):
             return ~sql.exists([1], j & sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(other))]))
             
     def compare(self, op, value, value_is_parent=False):
-        if op == operator.eq:
+        if op == operators.eq:
             if value is None:
                 return ~sql.exists([1], self.prop.mapper.mapped_table, self.prop.primaryjoin)
             else:
@@ -347,23 +354,9 @@ class PropertyLoader(StrategizedProperty):
                 if not isinstance(c, self.mapper.class_):
                     raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
                 recursive.add(c)
-                yield c
-                for c2 in mapper.cascade_iterator(type, c, recursive):
-                    yield c2
-
-    def cascade_callable(self, type, object, callable_, recursive, halt_on=None):
-        if not type in self.cascade:
-            return
-
-        mapper = self.mapper.primary_mapper()
-        passive = type != 'delete' or self.passive_deletes
-        for c in attributes.get_as_list(object, self.key, passive=passive):
-            if c is not None and c not in recursive and (halt_on is None or not halt_on(c)):
-                if not isinstance(c, self.mapper.class_):
-                    raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
-                recursive.add(c)
-                callable_(c, mapper.entity_name)
-                mapper.cascade_callable(type, c, callable_, recursive)
+                yield (c, mapper)
+                for (c2, m) in mapper.cascade_iterator(type, c, recursive):
+                    yield (c2, m)
 
     def _get_target_class(self):
         """Return the target class of the relation, even if the
@@ -464,7 +457,7 @@ class PropertyLoader(StrategizedProperty):
         if self.foreign_keys:
             self._opposite_side = util.Set()
             def visit_binary(binary):
-                if binary.operator != operator.eq or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
+                if binary.operator != operators.eq or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                     return
                 if binary.left in self.foreign_keys:
                     self._opposite_side.add(binary.right)
@@ -477,7 +470,7 @@ class PropertyLoader(StrategizedProperty):
             self.foreign_keys = util.Set()
             self._opposite_side = util.Set()
             def visit_binary(binary):
-                if binary.operator != operator.eq or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
+                if binary.operator != operators.eq or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                     return
 
                 # this check is for when the user put the "view_only" flag on and has tables that have nothing

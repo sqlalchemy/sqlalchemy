@@ -18,8 +18,9 @@ def sort_tables(tables, reverse=False):
         vis.traverse(table)
     sequence = topological.QueueDependencySorter( tuples, tables).sort(create_tree=False)
     if reverse:
-        sequence.reverse()
-    return sequence
+        return util.reversed(sequence)
+    else:
+        return sequence
 
 def find_tables(clause, check_columns=False, include_aliases=False):
     tables = []

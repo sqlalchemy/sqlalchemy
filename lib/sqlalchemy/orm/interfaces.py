@@ -319,18 +319,15 @@ class MapperProperty(object):
         """
         
         raise NotImplementedError()
-        
-    def cascade_iterator(self, type, object, recursive=None, halt_on=None):
-        """return an iterator of objects which are child objects of the given object,
-        as attached to the attribute corresponding to this MapperProperty."""
-        
-        return []
 
-    def cascade_callable(self, type, object, callable_, recursive=None, halt_on=None):
-        """run the given callable across all objects which are child objects of 
-        the given object, as attached to the attribute corresponding to this MapperProperty."""
+    def cascade_iterator(self, type, object, recursive=None, halt_on=None):
+        """iterate through instances related to the given instance along
+        a particular 'cascade' path, starting with this MapperProperty.
         
-        return []
+        see PropertyLoader for the related instance implementation.
+        """
+        
+        return iter([])
 
     def get_criterion(self, query, key, value):
         """Return a ``WHERE`` clause suitable for this

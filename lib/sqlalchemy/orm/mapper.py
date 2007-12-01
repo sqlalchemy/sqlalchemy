@@ -4,15 +4,15 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import weakref, warnings, operator
+import weakref, warnings
+from itertools import chain
 from sqlalchemy import sql, util, exceptions, logging
-from sqlalchemy.sql import expression, visitors
+from sqlalchemy.sql import expression, visitors, operators
 from sqlalchemy.sql import util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier, create_row_adapter
 from sqlalchemy.orm import sync, attributes
 from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, PropComparator
-deferred_load = None
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
 
@@ -22,7 +22,7 @@ mapper_registry = weakref.WeakKeyDictionary()
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
 
-# a constant returned by get_attr_by_column to indicate
+# a constant returned by _get_attr_by_column to indicate
 # this mapper is not handling an attribute for a particular
 # column
 NO_ATTRIBUTE = object()
@@ -152,6 +152,7 @@ class Mapper(object):
         self._compile_inheritance()
         self._compile_tables()
         self._compile_properties()
+        self._compile_pks()
         self._compile_selectable()
 
         self.__log("constructed")
@@ -376,12 +377,6 @@ class Mapper(object):
         self.polymorphic_map[key] = class_or_mapper
 
     def _compile_tables(self):
-        """After the inheritance relationships have been reconciled,
-        set up some more table-based instance variables and determine
-        the *primary key* columns for all tables represented by this
-        ``Mapper``.
-        """
-
         # summary of the various Selectable units:
         # mapped_table - the Selectable that represents a join of the underlying Tables to be saved (or just the Table)
         # local_table - the Selectable that was passed to this Mapper's constructor, if any
@@ -401,27 +396,25 @@ class Mapper(object):
         if not self.tables:
             raise exceptions.InvalidRequestError("Could not find any Table objects in mapped table '%s'" % str(self.mapped_table))
 
-        # TODO: move the "figure pks" step down into compile_properties; after 
-        # all columns have been mapped, assemble PK columns and their
-        # proxied parents into the pks_by_table collection, then get rid 
-        # of the _has_pks method
-        
-        # determine primary key columns
-        self.pks_by_table = {}
+    def _compile_pks(self):
 
-        # go through all of our represented tables
-        # and assemble primary key columns
-        for t in self.tables + [self.mapped_table]:
+        self._pks_by_table = {}
+        self._cols_by_table = {}
+        
+        all_cols = util.Set(chain(*[c2 for c2 in [col.proxy_set for col in [c for c in self._columntoproperty]]]))
+        pk_cols = util.Set([c for c in all_cols if c.primary_key])
+        
+        for t in util.Set(self.tables + [self.mapped_table]):
             self._all_tables.add(t)
-            if t not in self.pks_by_table:
-                self.pks_by_table[t] = util.OrderedSet()
-            self.pks_by_table[t].update(t.primary_key)
-                
-        if self.primary_key_argument is not None:
+            if t.primary_key and pk_cols.issuperset(t.primary_key):
+                self._pks_by_table[t] = util.Set(t.primary_key).intersection(pk_cols)
+            self._cols_by_table[t] = util.Set(t.c).intersection(all_cols)
+            
+        if self.primary_key_argument:
             for k in self.primary_key_argument:
-                self.pks_by_table.setdefault(k.table, util.OrderedSet()).add(k)
+                self._pks_by_table.setdefault(k.table, util.Set()).add(k)
                 
-        if len(self.pks_by_table[self.mapped_table]) == 0:
+        if len(self._pks_by_table[self.mapped_table]) == 0:
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
 
         if self.inherits is not None and not self.concrete and not self.primary_key_argument:
@@ -437,7 +430,7 @@ class Mapper(object):
         
             primary_key = expression.ColumnSet()
 
-            for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
+            for col in (self.primary_key_argument or self._pks_by_table[self.mapped_table]):
                 c = self.mapped_table.corresponding_column(col, raiseerr=False)
                 if c is None:
                     for cc in self._equivalent_columns[col]:
@@ -474,7 +467,10 @@ class Mapper(object):
 
             self.primary_key = primary_key
             self.__log("Identified primary key columns: " + str(primary_key))
-        
+
+            # create a "get clause" based on the primary key.  this is used
+            # by query.get() and many-to-one lazyloads to load this item
+            # by primary key.
             _get_clause = sql.and_()
             _get_params = {}
             for primary_key in self.primary_key:
@@ -510,7 +506,7 @@ class Mapper(object):
 
         result = {}
         def visit_binary(binary):
-            if binary.operator == operator.eq:
+            if binary.operator == operators.eq:
                 if binary.left in result:
                     result[binary.left].add(binary.right)
                 else:
@@ -533,13 +529,17 @@ class Mapper(object):
                 return
             recursive.add(col)
             for fk in col.foreign_keys:
-                result.setdefault(fk.column, util.Set()).add(equiv)
+                if fk.column not in result:
+                    result[fk.column] = util.Set()
+                result[fk.column].add(equiv)
                 equivs(fk.column, recursive, col)
                 
-        for column in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
+        for column in (self.primary_key_argument or self._pks_by_table[self.mapped_table]):
             for col in column.proxy_set:
                 if not col.foreign_keys:
-                    result.setdefault(col, util.Set()).add(col)
+                    if col not in result:
+                        result[col] = util.Set()
+                    result[col].add(col)
                 else:
                     equivs(col, util.Set(), col)
                     
@@ -571,11 +571,6 @@ class Mapper(object):
             return getattr(getattr(cls, clskey), key)
             
     def _compile_properties(self):
-        """Inspect the properties dictionary sent to the Mapper's
-        constructor as well as the mapped_table, and create
-        ``MapperProperty`` objects corresponding to each mapped column
-        and relation.
-        """
 
         # object attribute names mapped to MapperProperty objects
         self.__props = util.OrderedDict()
@@ -637,9 +632,6 @@ class Mapper(object):
                 # TODO: the "property already exists" case is still not well defined here.  
                 # assuming single-column, etc.
                 
-                if column in self.primary_key and prop.columns[-1] in self.primary_key:
-                    warnings.warn(RuntimeWarning("On mapper %s, primary key column '%s' is being combined with distinct primary key column '%s' in attribute '%s'.  Use explicit properties to give each column its own mapped attribute name." % (str(self), str(column), str(prop.columns[-1]), key)))
-
                 if prop.parent is not self:
                     # existing ColumnProperty from an inheriting mapper.
                     # make a copy and append our column to it
@@ -896,38 +888,27 @@ class Mapper(object):
         instance.
         """
 
-        return [self.get_attr_by_column(instance, column) for column in self.primary_key]
+        return [self._get_attr_by_column(instance, column) for column in self.primary_key]
 
-    def canload(self, instance):
+    def _canload(self, instance):
         """return true if this mapper is capable of loading the given instance"""
         if self.polymorphic_on is not None:
             return isinstance(instance, self.class_)
         else:
             return instance.__class__ is self.class_
         
-    def _getpropbycolumn(self, column, raiseerror=True):
-        try:
-            return self._columntoproperty[column]
-        except KeyError:
-            try:
-                prop = self.__props[column.key]
-                if not raiseerror:
-                    return None
-                raise exceptions.InvalidRequestError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
-            except KeyError:
-                if not raiseerror:
-                    return None
-                raise exceptions.InvalidRequestError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
-
-    def get_attr_by_column(self, obj, column, raiseerror=True):
+    def _get_attr_by_column(self, obj, column):
         """Return an instance attribute using a Column as the key."""
-
-        prop = self._getpropbycolumn(column, raiseerror)
-        if prop is None:
-            return NO_ATTRIBUTE
-        return prop.getattr(obj, column)
-
-    def set_attr_by_column(self, obj, column, value):
+        try:
+            return self._columntoproperty[column].getattr(obj, column)
+        except KeyError:
+            prop = self.__props.get(column.key, None)
+            if prop:
+                raise exceptions.InvalidRequestError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
+            else:
+                raise exceptions.InvalidRequestError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
+        
+    def _set_attr_by_column(self, obj, column, value):
         """Set the value of an instance attribute using a Column as the key."""
 
         self._columntoproperty[column].setattr(obj, value, column)
@@ -996,18 +977,18 @@ class Mapper(object):
         table_to_mapper = {}
         for mapper in self.base_mapper.polymorphic_iterator():
             for t in mapper.tables:
-                table_to_mapper.setdefault(t, mapper)
+                table_to_mapper[t] = mapper
 
-        for table in sqlutil.sort_tables(table_to_mapper.keys(), reverse=False):
+        for table in sqlutil.sort_tables(table_to_mapper.keys()):
             # two lists to store parameters for each table/object pair located
             insert = []
             update = []
 
             for obj, connection in tups:
                 mapper = object_mapper(obj)
-                if table not in mapper.tables or not mapper._has_pks(table):
+                if table not in mapper._pks_by_table:
                     continue
-                pks = mapper.pks_by_table[table]
+                pks = mapper._pks_by_table[table]
                 instance_key = mapper.identity_key_from_instance(obj)
 
                 if self.__should_log_debug:
@@ -1019,11 +1000,11 @@ class Mapper(object):
                 hasdata = False
 
                 if isinsert:
-                    for col in table.columns:
+                    for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
                             params[col.key] = 1
                         elif col in pks:
-                            value = mapper.get_attr_by_column(obj, col)
+                            value = mapper._get_attr_by_column(obj, col)
                             if value is not None:
                                 params[col.key] = value
                         elif mapper.polymorphic_on is not None and mapper.polymorphic_on.shares_lineage(col):
@@ -1033,9 +1014,7 @@ class Mapper(object):
                             if col.default is None or value is not None:
                                 params[col.key] = value
                         else:
-                            value = mapper.get_attr_by_column(obj, col, False)
-                            if value is NO_ATTRIBUTE:
-                                continue
+                            value = mapper._get_attr_by_column(obj, col)
                             if col.default is None or value is not None:
                                 if isinstance(value, sql.ClauseElement):
                                     value_params[col] = value
@@ -1043,24 +1022,22 @@ class Mapper(object):
                                     params[col.key] = value
                     insert.append((obj, params, mapper, connection, value_params))
                 else:
-                    for col in table.columns:
+                    for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
-                            params[col._label] = mapper.get_attr_by_column(obj, col)
+                            params[col._label] = mapper._get_attr_by_column(obj, col)
                             params[col.key] = params[col._label] + 1
                             for prop in mapper._columntoproperty.values():
                                 history = attributes.get_history(obj, prop.key, passive=True)
                                 if history and history.added_items():
                                     hasdata = True
                         elif col in pks:
-                            params[col._label] = mapper.get_attr_by_column(obj, col)
+                            params[col._label] = mapper._get_attr_by_column(obj, col)
                         elif mapper.polymorphic_on is not None and mapper.polymorphic_on.shares_lineage(col):
                             pass
                         else:
                             if post_update_cols is not None and col not in post_update_cols:
                                 continue
-                            prop = mapper._getpropbycolumn(col, False)
-                            if prop is None:
-                                continue
+                            prop = mapper._columntoproperty[col]
                             history = attributes.get_history(obj, prop.key, passive=True)
                             if history:
                                 a = history.added_items()
@@ -1076,14 +1053,14 @@ class Mapper(object):
             if update:
                 mapper = table_to_mapper[table]
                 clause = sql.and_()
-                for col in mapper.pks_by_table[table]:
+                for col in mapper._pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col._label, type_=col.type, unique=True))
                 if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
                     clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type_=col.type, unique=True))
                 statement = table.update(clause)
                 rows = 0
                 supports_sane_rowcount = True
-                pks = mapper.pks_by_table[table]
+                pks = mapper._pks_by_table[table]
                 def comparator(a, b):
                     for col in pks:
                         x = cmp(a[1][col._label],b[1][col._label])
@@ -1115,23 +1092,22 @@ class Mapper(object):
 
                     if primary_key is not None:
                         i = 0
-                        for col in mapper.pks_by_table[table]:
-                            if mapper.get_attr_by_column(obj, col) is None and len(primary_key) > i:
-                                mapper.set_attr_by_column(obj, col, primary_key[i])
+                        for col in mapper._pks_by_table[table]:
+                            if mapper._get_attr_by_column(obj, col) is None and len(primary_key) > i:
+                                mapper._set_attr_by_column(obj, col, primary_key[i])
                             i+=1
                     mapper._postfetch(connection, table, obj, c, c.last_inserted_params(), value_params)
 
                     # synchronize newly inserted ids from one table to the next
                     # TODO: this fires off more than needed, try to organize syncrules
                     # per table
-                    mappers = list(mapper.iterate_to_root())
-                    mappers.reverse()
-                    for m in mappers:
+                    for m in util.reversed(list(mapper.iterate_to_root())):
                         if m._synchronizer is not None:
                             m._synchronizer.execute(obj, obj)
 
                     # testlib.pragma exempt:__hash__
                     inserted_objects.add((id(obj), obj, connection))
+
         if not postupdate:
             for id_, obj, connection in inserted_objects:
                 for mapper in object_mapper(obj).iterate_to_root():
@@ -1141,7 +1117,7 @@ class Mapper(object):
                 for mapper in object_mapper(obj).iterate_to_root():
                     if 'after_update' in mapper.extension.methods:
                         mapper.extension.after_update(mapper, connection, obj)
-
+    
     def _postfetch(self, connection, table, obj, resultproxy, params, value_params):
         """After an ``INSERT`` or ``UPDATE``, assemble newly generated
         values on an instance.  For columns which are marked as being generated
@@ -1152,20 +1128,15 @@ class Mapper(object):
         postfetch_cols = resultproxy.postfetch_cols().union(util.Set(value_params.keys())) 
         deferred_props = []
 
-        for c in table.c:
+        for c in self._cols_by_table[table]:
             if c in postfetch_cols and (not c.key in params or c in value_params):
-                prop = self._getpropbycolumn(c, raiseerror=False)
-                if prop is None:
-                    continue
+                prop = self._columntoproperty[c]
                 deferred_props.append(prop.key)
                 continue
             if c.primary_key or not c.key in params:
                 continue
-            v = self.get_attr_by_column(obj, c, False)
-            if v is NO_ATTRIBUTE:
-                continue
-            elif v != params[c.key]:
-                self.set_attr_by_column(obj, c, params[c.key])
+            if self._get_attr_by_column(obj, c) != params[c.key]:
+                self._set_attr_by_column(obj, c, params[c.key])
         
         if deferred_props:
             expire_instance(obj, deferred_props)
@@ -1196,13 +1167,13 @@ class Mapper(object):
         table_to_mapper = {}
         for mapper in self.base_mapper.polymorphic_iterator():
             for t in mapper.tables:
-                table_to_mapper.setdefault(t, mapper)
+                table_to_mapper[t] = mapper
 
         for table in sqlutil.sort_tables(table_to_mapper.keys(), reverse=True):
             delete = {}
             for (obj, connection) in tups:
                 mapper = object_mapper(obj)
-                if table not in mapper.tables or not mapper._has_pks(table):
+                if table not in mapper._pks_by_table:
                     continue
 
                 params = {}
@@ -1210,23 +1181,23 @@ class Mapper(object):
                     continue
                 else:
                     delete.setdefault(connection, []).append(params)
-                for col in mapper.pks_by_table[table]:
-                    params[col.key] = mapper.get_attr_by_column(obj, col)
+                for col in mapper._pks_by_table[table]:
+                    params[col.key] = mapper._get_attr_by_column(obj, col)
                 if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
-                    params[mapper.version_id_col.key] = mapper.get_attr_by_column(obj, mapper.version_id_col)
+                    params[mapper.version_id_col.key] = mapper._get_attr_by_column(obj, mapper.version_id_col)
                 # testlib.pragma exempt:__hash__
                 deleted_objects.add((id(obj), obj, connection))
             for connection, del_objects in delete.iteritems():
                 mapper = table_to_mapper[table]
                 def comparator(a, b):
-                    for col in mapper.pks_by_table[table]:
+                    for col in mapper._pks_by_table[table]:
                         x = cmp(a[col.key],b[col.key])
                         if x != 0:
                             return x
                     return 0
                 del_objects.sort(comparator)
                 clause = sql.and_()
-                for col in mapper.pks_by_table[table]:
+                for col in mapper._pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.key, type_=col.type, unique=True))
                 if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
                     clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col.key, type_=mapper.version_id_col.type, unique=True))
@@ -1240,17 +1211,6 @@ class Mapper(object):
                 if 'after_delete' in mapper.extension.methods:
                     mapper.extension.after_delete(mapper, connection, obj)
 
-    def _has_pks(self, table):
-        # TODO: determine this beforehand
-        if self.pks_by_table.get(table, None):
-            for k in self.pks_by_table[table]:
-                if k not in self._columntoproperty:
-                    return False
-            else:
-                return True
-        else:
-            return False
-
     def register_dependencies(self, uowcommit, *args, **kwargs):
         """Register ``DependencyProcessor`` instances with a
         ``unitofwork.UOWTransaction``.
@@ -1263,8 +1223,8 @@ class Mapper(object):
             prop.register_dependencies(uowcommit, *args, **kwargs)
 
     def cascade_iterator(self, type, object, recursive=None, halt_on=None):
-        """Iterate each element in an object graph, for all relations
-        taht meet the given cascade rule.
+        """Iterate each element and its mapper in an object graph, 
+        for all relations that meet the given cascade rule.
 
         type
           The name of the cascade rule (i.e. save-update, delete,
@@ -1282,33 +1242,8 @@ class Mapper(object):
         if recursive is None:
             recursive=util.IdentitySet()
         for prop in self.__props.values():
-            for c in prop.cascade_iterator(type, object, recursive, halt_on=halt_on):
-                yield c
-
-    def cascade_callable(self, type, object, callable_, recursive=None, halt_on=None):
-        """Execute a callable for each element in an object graph, for
-        all relations that meet the given cascade rule.
-
-        type
-          The name of the cascade rule (i.e. save-update, delete, etc.)
-
-        object
-          The lead object instance.  child items will be processed per
-          the relations defined for this object's mapper.
-
-        callable\_
-          The callable function.
-
-        recursive
-          Used by the function for internal context during recursive
-          calls, leave as None.
-          
-        """
-
-        if recursive is None:
-            recursive=util.IdentitySet()
-        for prop in self.__props.values():
-            prop.cascade_callable(type, object, callable_, recursive, halt_on=halt_on)
+            for (c, m) in prop.cascade_iterator(type, object, recursive, halt_on=halt_on):
+                yield (c, m)
 
     def get_select_mapper(self):
         """Return the mapper used for issuing selects.
@@ -1365,8 +1300,8 @@ class Mapper(object):
                 
             isnew = False
 
-            if context.version_check and self.version_id_col is not None and self.get_attr_by_column(instance, self.version_id_col) != row[self.version_id_col]:
-                raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self.get_attr_by_column(instance, self.version_id_col), row[self.version_id_col]))
+            if context.version_check and self.version_id_col is not None and self._get_attr_by_column(instance, self.version_id_col) != row[self.version_id_col]:
+                raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self._get_attr_by_column(instance, self.version_id_col), row[self.version_id_col]))
 
             if context.populate_existing or self.always_refresh or instance._state.trigger is not None:
                 instance._state.trigger = None
@@ -1541,7 +1476,7 @@ class Mapper(object):
 
             params = {}
             for c in param_names:
-                params[c.name] = self.get_attr_by_column(instance, c)
+                params[c.name] = self._get_attr_by_column(instance, c)
             row = selectcontext.session.connection(self).execute(statement, params).fetchone()
             self.populate_instance(selectcontext, instance, row, isnew=False, instancekey=identitykey, ispostselect=True)
 

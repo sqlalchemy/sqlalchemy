@@ -115,10 +115,12 @@ class SyncRule(object):
         #print "SyncRule", source_mapper, source_column, dest_column, dest_mapper
 
     def dest_primary_key(self):
+        # late-evaluating boolean since some syncs are created
+        # before the mapper has assembled pks
         try:
             return self._dest_primary_key
         except AttributeError:
-            self._dest_primary_key = self.dest_mapper is not None and self.dest_column in self.dest_mapper.pks_by_table[self.dest_column.table] and not self.dest_mapper.allow_null_pks
+            self._dest_primary_key = self.dest_mapper is not None and self.dest_column in self.dest_mapper._pks_by_table[self.dest_column.table] and not self.dest_mapper.allow_null_pks
             return self._dest_primary_key
 
     def execute(self, source, dest, obj, child, clearkeys):
@@ -131,7 +133,7 @@ class SyncRule(object):
             value = None
             clearkeys = True
         else:
-            value = self.source_mapper.get_attr_by_column(source, self.source_column)
+            value = self.source_mapper._get_attr_by_column(source, self.source_column)
         if isinstance(dest, dict):
             dest[self.dest_column.key] = value
         else:
@@ -140,7 +142,7 @@ class SyncRule(object):
 
             if logging.is_debug_enabled(self.logger):
                 self.logger.debug("execute() instances: %s(%s)->%s(%s) ('%s')" % (mapperutil.instance_str(source), str(self.source_column), mapperutil.instance_str(dest), str(self.dest_column), value))
-            self.dest_mapper.set_attr_by_column(dest, self.dest_column, value)
+            self.dest_mapper._set_attr_by_column(dest, self.dest_column, value)
 
 SyncRule.logger = logging.class_logger(SyncRule)
 

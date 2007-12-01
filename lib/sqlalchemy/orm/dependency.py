@@ -111,7 +111,7 @@ class DependencyProcessor(object):
     def _verify_canload(self, child):
         if not self.enable_typechecks:
             return
-        if child is not None and not self.mapper.canload(child):
+        if child is not None and not self.mapper._canload(child):
             raise exceptions.FlushError("Attempting to flush an item of type %s on collection '%s', which is handled by mapper '%s' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?  Set 'enable_typechecks=False' on the relation() to disable this exception.  Mismatched typeloading may cause bi-directional relationships (backrefs) to not function properly." % (child.__class__, self.prop, self.mapper))
         
     def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
@@ -240,7 +240,7 @@ class OneToManyDP(DependencyProcessor):
                             uowcommit.register_object(child, isdelete=False)
                         elif self.hasparent(child) is False:
                             uowcommit.register_object(child, isdelete=True)
-                            for c in self.mapper.cascade_iterator('delete', child):
+                            for c, m in self.mapper.cascade_iterator('delete', child):
                                 uowcommit.register_object(c, isdelete=True)
 
     def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
@@ -294,7 +294,7 @@ class ManyToOneDP(DependencyProcessor):
                         for child in childlist.deleted_items() + childlist.unchanged_items():
                             if child is not None and self.hasparent(child) is False:
                                 uowcommit.register_object(child, isdelete=True)
-                                for c in self.mapper.cascade_iterator('delete', child):
+                                for c, m in self.mapper.cascade_iterator('delete', child):
                                     uowcommit.register_object(c, isdelete=True)
         else:
             for obj in deplist:
@@ -305,7 +305,7 @@ class ManyToOneDP(DependencyProcessor):
                         for child in childlist.deleted_items():
                             if self.hasparent(child) is False:
                                 uowcommit.register_object(child, isdelete=True)
-                                for c in self.mapper.cascade_iterator('delete', child):
+                                for c, m in self.mapper.cascade_iterator('delete', child):
                                     uowcommit.register_object(c, isdelete=True)
 
     def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
@@ -391,7 +391,7 @@ class ManyToManyDP(DependencyProcessor):
                     for child in childlist.deleted_items():
                         if self.cascade.delete_orphan and self.hasparent(child) is False:
                             uowcommit.register_object(child, isdelete=True)
-                            for c in self.mapper.cascade_iterator('delete', child):
+                            for c, m in self.mapper.cascade_iterator('delete', child):
                                 uowcommit.register_object(c, isdelete=True)
 
     def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):

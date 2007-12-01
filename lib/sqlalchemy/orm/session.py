@@ -1,4 +1,4 @@
-# objectstore.py
+# session.py
 # Copyright (C) 2005, 2006, 2007 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
@@ -103,10 +103,10 @@ class SessionExtension(object):
 
         Note that this may not be per-flush if a longer running transaction is ongoing."""
 
-    def before_flush(self, session, flush_context, objects):
+    def before_flush(self, session, flush_context, instances):
         """execute before flush process has started.
         
-        'objects' is an optional list of objects which were passed to the ``flush()``
+        'instances' is an optional list of objects which were passed to the ``flush()``
         method.
         """
 
@@ -719,7 +719,7 @@ class Session(object):
         entity_name = kwargs.pop('entity_name', None)
         return self.query(class_, entity_name=entity_name).load(ident, **kwargs)
 
-    def refresh(self, obj, attribute_names=None):
+    def refresh(self, instance, attribute_names=None):
         """Refresh the attributes on the given instance.
         
         When called, a query will be issued
@@ -738,12 +738,12 @@ class Session(object):
         refreshed.
         """
 
-        self._validate_persistent(obj)
+        self._validate_persistent(instance)
             
-        if self.query(obj.__class__)._get(obj._instance_key, refresh_instance=obj, only_load_props=attribute_names) is None:
-            raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(obj))
+        if self.query(instance.__class__)._get(instance._instance_key, refresh_instance=instance, only_load_props=attribute_names) is None:
+            raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(instance))
 
-    def expire(self, obj, attribute_names=None):
+    def expire(self, instance, attribute_names=None):
         """Expire the attributes on the given instance.
         
         The instance's attributes are instrumented such that
@@ -764,11 +764,16 @@ class Session(object):
         """
         
         if attribute_names:
-            self._validate_persistent(obj)
-            expire_instance(obj, attribute_names=attribute_names)
+            self._validate_persistent(instance)
+            expire_instance(instance, attribute_names=attribute_names)
         else:
-            for c in [obj] + list(_object_mapper(obj).cascade_iterator('refresh-expire', obj)):
-                self._validate_persistent(obj)
+            # pre-fetch the full cascade since the expire is going to 
+            # remove associations
+            cascaded = list(_cascade_iterator('refresh-expire', instance))
+            self._validate_persistent(instance)
+            expire_instance(instance, None)
+            for (c, m) in cascaded:
+                self._validate_persistent(c)
                 expire_instance(c, None)
 
     def prune(self):
@@ -784,20 +789,20 @@ class Session(object):
 
         return self.uow.prune_identity_map()
 
-    def expunge(self, object):
-        """Remove the given `object` from this ``Session``.
+    def expunge(self, instance):
+        """Remove the given `instance` from this ``Session``.
 
-        This will free all internal references to the object.
+        This will free all internal references to the instance.
         Cascading will be applied according to the *expunge* cascade
         rule.
         """
-        self._validate_persistent(object)
-        for c in [object] + list(_object_mapper(object).cascade_iterator('expunge', object)):
+        self._validate_persistent(instance)
+        for c, m in [(instance, None)] + list(_cascade_iterator('expunge', instance)):
             if c in self:
                 self.uow._remove_deleted(c)
                 self._unattach(c)
 
-    def save(self, object, entity_name=None):
+    def save(self, instance, entity_name=None):
         """Add a transient (unsaved) instance to this ``Session``.
 
         This operation cascades the `save_or_update` method to
@@ -808,12 +813,10 @@ class Session(object):
         specific ``Mapper`` used to handle this instance.
         """
 
-        self._save_impl(object, entity_name=entity_name)
-        _object_mapper(object).cascade_callable('save-update', object,
-                                                lambda c, e:self._save_or_update_impl(c, e),
-                                                halt_on=lambda c:c in self)
+        self._save_impl(instance, entity_name=entity_name)
+        self._cascade_save_or_update(instance)
 
-    def update(self, object, entity_name=None):
+    def update(self, instance, entity_name=None):
         """Bring the given detached (saved) instance into this
         ``Session``.
 
@@ -826,37 +829,37 @@ class Session(object):
         ``cascade="save-update"``.
         """
 
-        self._update_impl(object, entity_name=entity_name)
-        _object_mapper(object).cascade_callable('save-update', object,
-                                                lambda c, e:self._save_or_update_impl(c, e),
-                                                halt_on=lambda c:c in self)
+        self._update_impl(instance, entity_name=entity_name)
+        self._cascade_save_or_update(instance)
 
-    def save_or_update(self, object, entity_name=None):
-        """Save or update the given object into this ``Session``.
+    def save_or_update(self, instance, entity_name=None):
+        """Save or update the given instance into this ``Session``.
 
         The presence of an `_instance_key` attribute on the instance
         determines whether to ``save()`` or ``update()`` the instance.
         """
 
-        self._save_or_update_impl(object, entity_name=entity_name)
-        _object_mapper(object).cascade_callable('save-update', object,
-                                                lambda c, e:self._save_or_update_impl(c, e),
-                                                halt_on=lambda c:c in self)
+        self._save_or_update_impl(instance, entity_name=entity_name)
+        self._cascade_save_or_update(instance)
+    
+    def _cascade_save_or_update(self, instance):
+        for obj, mapper in _cascade_iterator('save-update', instance, halt_on=lambda c:c in self):
+            self._save_or_update_impl(obj, mapper.entity_name)
 
-    def delete(self, object):
+    def delete(self, instance):
         """Mark the given instance as deleted.
 
         The delete operation occurs upon ``flush()``.
         """
 
-        self._delete_impl(object)
-        for c in list(_object_mapper(object).cascade_iterator('delete', object)):
+        self._delete_impl(instance)
+        for c, m in _cascade_iterator('delete', instance):
             self._delete_impl(c, ignore_transient=True)
 
 
-    def merge(self, object, entity_name=None, dont_load=False, _recursive=None):
-        """Copy the state of the given `object` onto the persistent
-        object with the same identifier.
+    def merge(self, instance, entity_name=None, dont_load=False, _recursive=None):
+        """Copy the state of the given `instance` onto the persistent
+        instance with the same identifier.
 
         If there is no persistent instance currently associated with
         the session, it will be loaded.  Return the persistent
@@ -871,20 +874,20 @@ class Session(object):
         if _recursive is None:
             _recursive = {}  #TODO: this should be an IdentityDict
         if entity_name is not None:
-            mapper = _class_mapper(object.__class__, entity_name=entity_name)
+            mapper = _class_mapper(instance.__class__, entity_name=entity_name)
         else:
-            mapper = _object_mapper(object)
-        if object in _recursive:
-            return _recursive[object]
+            mapper = _object_mapper(instance)
+        if instance in _recursive:
+            return _recursive[instance]
         
-        key = getattr(object, '_instance_key', None)
+        key = getattr(instance, '_instance_key', None)
         if key is None:
             merged = attributes.new_instance(mapper.class_)
         else:
             if key in self.identity_map:
                 merged = self.identity_map[key]
             elif dont_load:
-                if object._state.modified:
+                if instance._state.modified:
                     raise exceptions.InvalidRequestError("merge() with dont_load=True option does not support objects marked as 'dirty'.  flush() all changes on mapped instances before merging with dont_load=True.")
                     
                 merged = attributes.new_instance(mapper.class_)
@@ -894,10 +897,10 @@ class Session(object):
             else:
                 merged = self.get(mapper.class_, key[1])
                 if merged is None:
-                    raise exceptions.AssertionError("Instance %s has an instance key but is not persisted" % mapperutil.instance_str(object))
-        _recursive[object] = merged
+                    raise exceptions.AssertionError("Instance %s has an instance key but is not persisted" % mapperutil.instance_str(instance))
+        _recursive[instance] = merged
         for prop in mapper.iterate_properties:
-            prop.merge(self, object, merged, dont_load, _recursive)
+            prop.merge(self, instance, merged, dont_load, _recursive)
         if key is None:
             self.save(merged, entity_name=mapper.entity_name)
         elif dont_load:
@@ -968,96 +971,96 @@ class Session(object):
         return mapper.identity_key_from_instance(instance)
     identity_key = classmethod(identity_key)
     
-    def object_session(cls, obj):
+    def object_session(cls, instance):
         """return the ``Session`` to which the given object belongs."""
         
-        return object_session(obj)
+        return object_session(instance)
     object_session = classmethod(object_session)
     
-    def _save_impl(self, obj, **kwargs):
-        if hasattr(obj, '_instance_key'):
-            raise exceptions.InvalidRequestError("Instance '%s' is already persistent" % mapperutil.instance_str(obj))
+    def _save_impl(self, instance, **kwargs):
+        if hasattr(instance, '_instance_key'):
+            raise exceptions.InvalidRequestError("Instance '%s' is already persistent" % mapperutil.instance_str(instance))
         else:
             # TODO: consolidate the steps here
-            attributes.manage(obj)
-            obj._entity_name = kwargs.get('entity_name', None)
-            self._attach(obj)
-            self.uow.register_new(obj)
+            attributes.manage(instance)
+            instance._entity_name = kwargs.get('entity_name', None)
+            self._attach(instance)
+            self.uow.register_new(instance)
 
-    def _update_impl(self, obj, **kwargs):
-        if obj in self and obj not in self.deleted:
+    def _update_impl(self, instance, **kwargs):
+        if instance in self and instance not in self.deleted:
             return
-        if not hasattr(obj, '_instance_key'):
-            raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % mapperutil.instance_str(obj))
-        elif self.identity_map.get(obj._instance_key, obj) is not obj:
+        if not hasattr(instance, '_instance_key'):
+            raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % mapperutil.instance_str(instance))
+        elif self.identity_map.get(instance._instance_key, instance) is not instance:
             raise exceptions.InvalidRequestError("Could not update instance '%s', identity key %s; a different instance with the same identity key already exists in this session." % (mapperutil.instance_str(obj), obj._instance_key))
-        self._attach(obj)
+        self._attach(instance)
 
-    def _save_or_update_impl(self, object, entity_name=None):
-        key = getattr(object, '_instance_key', None)
+    def _save_or_update_impl(self, instance, entity_name=None):
+        key = getattr(instance, '_instance_key', None)
         if key is None:
-            self._save_impl(object, entity_name=entity_name)
+            self._save_impl(instance, entity_name=entity_name)
         else:
-            self._update_impl(object, entity_name=entity_name)
+            self._update_impl(instance, entity_name=entity_name)
 
-    def _delete_impl(self, obj, ignore_transient=False):
-        if obj in self and obj in self.deleted:
+    def _delete_impl(self, instance, ignore_transient=False):
+        if instance in self and instance in self.deleted:
             return
-        if not hasattr(obj, '_instance_key'):
+        if not hasattr(instance, '_instance_key'):
             if ignore_transient:
                 return
             else:
-                raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % mapperutil.instance_str(obj))
-        if self.identity_map.get(obj._instance_key, obj) is not obj:
-            raise exceptions.InvalidRequestError("Instance '%s' is with key %s already persisted with a different identity" % (mapperutil.instance_str(obj), obj._instance_key))
-        self._attach(obj)
-        self.uow.register_deleted(obj)
+                raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % mapperutil.instance_str(instance))
+        if self.identity_map.get(instance._instance_key, instance) is not instance:
+            raise exceptions.InvalidRequestError("Instance '%s' is with key %s already persisted with a different identity" % (mapperutil.instance_str(instance), instance._instance_key))
+        self._attach(instance)
+        self.uow.register_deleted(instance)
 
-    def _register_persistent(self, obj):
-        obj._sa_session_id = self.hash_key
-        self.identity_map[obj._instance_key] = obj
-        obj._state.commit_all()
+    def _register_persistent(self, instance):
+        instance._sa_session_id = self.hash_key
+        self.identity_map[instance._instance_key] = instance
+        instance._state.commit_all()
 
-    def _attach(self, obj):
-        old_id = getattr(obj, '_sa_session_id', None)
+    def _attach(self, instance):
+        old_id = getattr(instance, '_sa_session_id', None)
         if old_id != self.hash_key:
-            if old_id is not None and old_id in _sessions and obj in _sessions[old_id]:
+            if old_id is not None and old_id in _sessions and instance in _sessions[old_id]:
                 raise exceptions.InvalidRequestError("Object '%s' is already attached "
                                                      "to session '%s' (this is '%s')" %
-                                                     (mapperutil.instance_str(obj), old_id, id(self)))
+                                                     (mapperutil.instance_str(instance), old_id, id(self)))
 
-            key = getattr(obj, '_instance_key', None)
+            key = getattr(instance, '_instance_key', None)
             if key is not None:
-                self.identity_map[key] = obj
-            obj._sa_session_id = self.hash_key
+                self.identity_map[key] = instance
+            instance._sa_session_id = self.hash_key
         
-    def _unattach(self, obj):
-        if obj._sa_session_id == self.hash_key:
-            del obj._sa_session_id
+    def _unattach(self, instance):
+        if instance._sa_session_id == self.hash_key:
+            del instance._sa_session_id
 
-    def _validate_persistent(self, obj):
-        """Validate that the given object is persistent within this
+    def _validate_persistent(self, instance):
+        """Validate that the given instance is persistent within this
         ``Session``.
         """
         
-        return obj in self
+        return instance in self
 
-    def __contains__(self, obj):
-        """return True if the given object is associated with this session.
+    def __contains__(self, instance):
+        """return True if the given instance is associated with this session.
         
         The instance may be pending or persistent within the Session for a
         result of True.
         """
         
-        return obj in self.uow.new or (hasattr(obj, '_instance_key') and self.identity_map.get(obj._instance_key) is obj)
+        return instance in self.uow.new or (hasattr(instance, '_instance_key') and self.identity_map.get(instance._instance_key) is instance)
 
     def __iter__(self):
-        """return an iterator of all objects which are pending or persistent within this Session."""
+        """return an iterator of all instances which are pending or persistent within this Session."""
         
         return iter(list(self.uow.new) + self.uow.identity_map.values())
 
-    def is_modified(self, obj, include_collections=True, passive=False):
-        """return True if the given object has modified attributes.
+    def is_modified(self, instance, include_collections=True, passive=False):
+        """return True if the given instance has modified attributes.
         
         This method retrieves a history instance for each instrumented attribute
         on the instance and performs a comparison of the current value to its
@@ -1073,15 +1076,15 @@ class Session(object):
         not be loaded in the course of performing this test.
         """
 
-        for attr in attributes.managed_attributes(obj.__class__):
+        for attr in attributes.managed_attributes(instance.__class__):
             if not include_collections and hasattr(attr.impl, 'get_collection'):
                 continue
-            if attr.get_history(obj).is_modified():
+            if attr.get_history(instance).is_modified():
                 return True
         return False
         
     dirty = property(lambda s:s.uow.locate_dirty(),
-                     doc="""A ``Set`` of all objects marked as 'dirty' within this ``Session``.  
+                     doc="""A ``Set`` of all instances marked as 'dirty' within this ``Session``.  
                      
                      Note that the 'dirty' state here is 'optimistic'; most attribute-setting or collection
                      modification operations will mark an instance as 'dirty' and place it in this set,
@@ -1095,12 +1098,12 @@ class Session(object):
                      """)
 
     deleted = property(lambda s:s.uow.deleted,
-                       doc="A ``Set`` of all objects marked as 'deleted' within this ``Session``")
+                       doc="A ``Set`` of all instances marked as 'deleted' within this ``Session``")
 
     new = property(lambda s:s.uow.new,
-                   doc="A ``Set`` of all objects marked as 'new' within this ``Session``.")
+                   doc="A ``Set`` of all instances marked as 'new' within this ``Session``.")
 
-def expire_instance(obj, attribute_names):
+def expire_instance(instance, attribute_names):
     """standalone expire instance function. 
     
     installs a callable with the given instance's _state
@@ -1110,29 +1113,30 @@ def expire_instance(obj, attribute_names):
     If the list is None or blank, the entire instance is expired.
     """
     
-    if obj._state.trigger is None:
+    if instance._state.trigger is None:
         def load_attributes(instance, attribute_names):
             if object_session(instance).query(instance.__class__)._get(instance._instance_key, refresh_instance=instance, only_load_props=attribute_names) is None:
                 raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(instance))
-        obj._state.trigger = load_attributes
+        instance._state.trigger = load_attributes
         
-    obj._state.expire_attributes(attribute_names)
+    instance._state.expire_attributes(attribute_names)
     
 register_attribute = unitofwork.register_attribute
 
-# this dictionary maps the hash key of a Session to the Session itself, and
-# acts as a Registry with which to locate Sessions.  this is to enable
-# object instances to be associated with Sessions without having to attach the
-# actual Session object directly to the object instance.
 _sessions = weakref.WeakValueDictionary()
 
-def object_session(obj):
-    """Return the ``Session`` to which the given object is bound, or ``None`` if none."""
+def _cascade_iterator(cascade, instance, **kwargs):
+    mapper = _object_mapper(instance)
+    for (o, m) in mapper.cascade_iterator(cascade, instance, **kwargs):
+        yield o, m
 
-    hashkey = getattr(obj, '_sa_session_id', None)
+def object_session(instance):
+    """Return the ``Session`` to which the given instance is bound, or ``None`` if none."""
+
+    hashkey = getattr(instance, '_sa_session_id', None)
     if hashkey is not None:
         sess = _sessions.get(hashkey)
-        if obj in sess:
+        if instance in sess:
             return sess
     return None
 

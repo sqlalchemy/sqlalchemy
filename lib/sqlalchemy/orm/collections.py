@@ -122,7 +122,7 @@ def column_mapped_collection(mapping_spec):
     if isinstance(mapping_spec, schema.Column):
         def keyfunc(value):
             m = object_mapper(value)
-            return m.get_attr_by_column(value, mapping_spec)
+            return m._get_attr_by_column(value, mapping_spec)
     else:
         cols = []
         for c in mapping_spec:
@@ -133,7 +133,7 @@ def column_mapped_collection(mapping_spec):
         mapping_spec = tuple(cols)
         def keyfunc(value):
             m = object_mapper(value)
-            return tuple([m.get_attr_by_column(value, c) for c in mapping_spec])
+            return tuple([m._get_attr_by_column(value, c) for c in mapping_spec])
     return lambda: MappedCollection(keyfunc)
 
 def attribute_mapped_collection(attr_name):

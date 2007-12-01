@@ -269,8 +269,8 @@ class MapperTest(MapperSuperTest):
         class A(object):pass
         m = mapper(A, account_ids_table.join(account_stuff_table))
         m.compile()
-        assert m._has_pks(account_ids_table)
-        assert not m._has_pks(account_stuff_table)
+        assert account_ids_table in m._pks_by_table
+        assert account_stuff_table not in m._pks_by_table
         metadata.create_all(testbase.db)
         try:
             sess = create_session(bind=testbase.db)

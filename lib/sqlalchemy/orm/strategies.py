@@ -109,7 +109,7 @@ class ColumnLoader(LoaderStrategy):
             def create_statement(instance):
                 params = {}
                 for c in param_names:
-                    params[c.name] = mapper.get_attr_by_column(instance, c)
+                    params[c.name] = mapper._get_attr_by_column(instance, c)
                 return (statement, params)
             
             def new_execute(instance, row, isnew, **flags):
@@ -301,7 +301,7 @@ class LazyLoader(AbstractRelationLoader):
             def visit_bindparam(s, bindparam):
                 mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
                 if bindparam.key in bind_to_col:
-                    bindparam.value = mapper.get_attr_by_column(instance, bind_to_col[bindparam.key])
+                    bindparam.value = mapper._get_attr_by_column(instance, bind_to_col[bindparam.key])
         return Visitor().traverse(criterion, clone=True)
     
     def setup_loader(self, instance, options=None, path=None):
@@ -338,7 +338,7 @@ class LazyLoader(AbstractRelationLoader):
             if self.use_get:
                 params = {}
                 for col, bind in self.lazybinds.iteritems():
-                    params[bind.key] = self.parent.get_attr_by_column(instance, col)
+                    params[bind.key] = self.parent._get_attr_by_column(instance, col)
                 ident = []
                 nonnulls = False
                 for primary_key in self.select_mapper.primary_key: 
