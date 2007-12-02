@@ -43,6 +43,7 @@ class EntityTest(AssertMixin):
     def tearDownAll(self):
         metadata.drop_all()
     def tearDown(self):
+        ctx.current.clear()
         clear_mappers()
         for t in metadata.table_iterator(reverse=True):
             t.delete().execute()

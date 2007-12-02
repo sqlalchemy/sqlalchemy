@@ -11,7 +11,7 @@ constructors.
 """
 
 from sqlalchemy import util as sautil
-from sqlalchemy.orm.mapper import Mapper, object_mapper, class_mapper, mapper_registry
+from sqlalchemy.orm.mapper import Mapper, object_mapper, class_mapper, _mapper_registry
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, EXT_STOP, EXT_PASS, ExtensionOption, PropComparator
 from sqlalchemy.orm.properties import SynonymProperty, PropertyLoader, ColumnProperty, CompositeProperty, BackRef
 from sqlalchemy.orm import mapper as mapperlib
@@ -21,7 +21,7 @@ from sqlalchemy.orm.util import polymorphic_union, create_row_adapter
 from sqlalchemy.orm.session import Session as _Session
 from sqlalchemy.orm.session import object_session, sessionmaker
 from sqlalchemy.orm.scoping import ScopedSession
-
+from itertools import chain
 
 __all__ = [ 'relation', 'column_property', 'composite', 'backref', 'eagerload',
             'eagerload_all', 'lazyload', 'noload', 'deferred', 'defer',
@@ -567,9 +567,9 @@ def compile_mappers():
     This is equivalent to calling ``compile()`` on any individual mapper.
     """
 
-    if not mapper_registry:
+    if not _mapper_registry:
         return
-    mapper_registry.values()[0].compile()
+    _mapper_registry.values()[0][0].compile()
 
 def clear_mappers():
     """Remove all mappers that have been created thus far.
@@ -579,10 +579,9 @@ def clear_mappers():
     """
     mapperlib._COMPILE_MUTEX.acquire()
     try:
-        for mapper in mapper_registry.values():
+        for mapper in chain(*_mapper_registry.values()):
             mapper.dispose()
-        mapper_registry.clear()
-        mapperlib.ClassKey.dispose(mapperlib.ClassKey)
+        _mapper_registry.clear()
         from sqlalchemy.orm import dependency
         dependency.MapperStub.dispose(dependency.MapperStub)
     finally:

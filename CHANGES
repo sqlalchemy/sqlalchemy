@@ -37,7 +37,8 @@ CHANGES
    - several ORM attributes have been removed or made private:
      mapper.get_attr_by_column(), mapper.set_attr_by_column(), 
      mapper.pks_by_table, mapper.cascade_callable(), 
-     MapperProperty.cascade_callable(), mapper.canload()
+     MapperProperty.cascade_callable(), mapper.canload(),
+     mapper._mapper_registry, attributes.AttributeManager
      
    - fixed endless loop issue when using lazy="dynamic" on both 
      sides of a bi-directional relationship [ticket:872]

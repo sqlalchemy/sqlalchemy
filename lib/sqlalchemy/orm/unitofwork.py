@@ -147,7 +147,7 @@ class UnitOfWork(object):
             if x not in self.deleted 
             and (
                 x._state.modified
-                or (getattr(x.__class__, '_sa_has_mutable_scalars', False) and x.state.is_modified())
+                or (x.__class__._class_state.has_mutable_scalars and x.state.is_modified())
             )
             ])
 
@@ -162,7 +162,7 @@ class UnitOfWork(object):
 
         dirty = [x for x in self.identity_map.all_states()
             if x.modified
-            or (getattr(x.class_, '_sa_has_mutable_scalars', False) and x.is_modified())
+            or (x.class_._class_state.has_mutable_scalars and x.is_modified())
         ]
         
         if len(dirty) == 0 and len(self.deleted) == 0 and len(self.new) == 0:

@@ -14,10 +14,9 @@ from sqlalchemy.orm.util import ExtensionCarrier, create_row_adapter
 from sqlalchemy.orm import sync, attributes
 from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, PropComparator
 
-__all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
+__all__ = ['Mapper', 'class_mapper', 'object_mapper', '_mapper_registry']
 
-# a dictionary mapping classes to their primary mappers
-mapper_registry = weakref.WeakKeyDictionary()
+_mapper_registry = weakref.WeakKeyDictionary()
 
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
@@ -88,7 +87,6 @@ class Mapper(object):
 
         self.class_ = class_
         self.entity_name = entity_name
-        self.class_key = ClassKey(class_, entity_name)
         self.primary_key_argument = primary_key
         self.non_primary = non_primary
         self.order_by = order_by
@@ -206,7 +204,10 @@ class Mapper(object):
         self.__props_init = True
         if hasattr(self.class_, 'c'):
             del self.class_.c
-        attributes.unregister_class(self.class_)
+        if not self.non_primary and self.entity_name in self._class_state.mappers:
+            del self._class_state.mappers[self.entity_name]
+        if not self._class_state.mappers:
+            attributes.unregister_class(self.class_)
         
     def compile(self):
         """Compile this mapper into its final internal format.
@@ -220,7 +221,7 @@ class Mapper(object):
             if self.__props_init:
                 return self
             # initialize properties on all mappers
-            for mapper in mapper_registry.values():
+            for mapper in chain(*_mapper_registry.values()):
                 if not mapper.__props_init:
                     mapper.__initialize_properties()
 
@@ -718,11 +719,13 @@ class Mapper(object):
         """
 
         if self.non_primary:
+            self._class_state = self.class_._class_state
             return
 
-        if not self.non_primary and (self.class_key in mapper_registry):
+        if not self.non_primary and '_class_state' in self.class_.__dict__ and (self.entity_name in self.class_._class_state.mappers):
              raise exceptions.ArgumentError("Class '%s' already has a primary mapper defined with entity name '%s'.  Use non_primary=True to create a non primary Mapper.  clear_mappers() will remove *all* current mappers from all classes." % (self.class_, self.entity_name))
 
+            
         def extra_init(class_, oldinit, instance, args, kwargs):
             self.compile()
             if 'init_instance' in self.extension.methods:
@@ -732,10 +735,15 @@ class Mapper(object):
             util.warn_exception(self.extension.init_failed, self, class_, oldinit, instance, args, kwargs)
 
         attributes.register_class(self.class_, extra_init=extra_init, on_exception=on_exception)
+        
+        self._class_state = self.class_._class_state
+        if self._class_state not in _mapper_registry:
+            _mapper_registry[self._class_state] = []
 
         _COMPILE_MUTEX.acquire()
         try:
-            mapper_registry[self.class_key] = self
+            _mapper_registry[self._class_state].append(self)
+            self.class_._class_state.mappers[self.entity_name] = self
         finally:
             _COMPILE_MUTEX.release()
 
@@ -806,11 +814,11 @@ class Mapper(object):
     def _is_primary_mapper(self):
         """Return True if this mapper is the primary mapper for its class key (class + entity_name)."""
         # FIXME: cant we just look at "non_primary" flag ?
-        return mapper_registry.get(self.class_key, None) is self
+        return self._class_state.mappers[self.entity_name] is self
 
     def primary_mapper(self):
         """Return the primary mapper corresponding to this mapper's class key (class + entity_name)."""
-        return mapper_registry[self.class_key]
+        return self._class_state.mappers[self.entity_name]
 
     def is_assigned(self, instance):
         """Return True if this mapper handles the given instance.
@@ -1485,26 +1493,6 @@ class Mapper(object):
 Mapper.logger = logging.class_logger(Mapper)
 
 
-class ClassKey(object):
-    """Key a class and an entity name to a mapper, via the mapper_registry."""
-
-    __metaclass__ = util.ArgSingleton
-
-    def __init__(self, class_, entity_name):
-        self.class_ = class_
-        self.entity_name = entity_name
-        self._hash = hash((self.class_, self.entity_name))
-        
-    def __hash__(self):
-        return self._hash
-
-    def __eq__(self, other):
-        return self is other
-
-    def __repr__(self):
-        return "ClassKey(%s, %s)" % (repr(self.class_), repr(self.entity_name))
-
-    
 def has_identity(object):
     return hasattr(object, '_instance_key')
 
@@ -1533,7 +1521,7 @@ def object_mapper(object, entity_name=None, raiseerror=True):
     """
 
     try:
-        mapper = mapper_registry[ClassKey(object.__class__, getattr(object, '_entity_name', entity_name))]
+        mapper = object.__class__._class_state.mappers[getattr(object, '_entity_name', entity_name)]
     except (KeyError, AttributeError):
         if raiseerror:
             raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (object.__class__.__name__, getattr(object, '_entity_name', entity_name)))
@@ -1548,7 +1536,7 @@ def class_mapper(class_, entity_name=None, compile=True):
     """
 
     try:
-        mapper = mapper_registry[ClassKey(class_, entity_name)]
+        mapper = class_._class_state.mappers[entity_name]
     except (KeyError, AttributeError):
         raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (class_.__name__, entity_name))
     if compile:

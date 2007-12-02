@@ -1076,7 +1076,7 @@ class Session(object):
         not be loaded in the course of performing this test.
         """
 
-        for attr in attributes.managed_attributes(instance.__class__):
+        for attr in attributes._managed_attributes(instance.__class__):
             if not include_collections and hasattr(attr.impl, 'get_collection'):
                 continue
             if attr.get_history(instance).is_modified():
