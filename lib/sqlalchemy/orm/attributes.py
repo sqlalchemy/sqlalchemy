@@ -564,7 +564,8 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
         getattr(child.__class__, self.key).impl.append(child._state, instance, initiator)
 
     def remove(self, instance, child, initiator):
-        getattr(child.__class__, self.key).impl.remove(child._state, instance, initiator)
+        if child is not None:
+            getattr(child.__class__, self.key).impl.remove(child._state, instance, initiator)
 
 class ClassState(object):
     """tracks state information at the class level."""

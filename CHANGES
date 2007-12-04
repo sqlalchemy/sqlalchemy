@@ -38,6 +38,9 @@ CHANGES
      ColumnElement is accepted now, as the compiler auto-labels non-labeled
      ColumnElements now.  a selectable, like a select() statement, still
      requires conversion to ColumnElement via as_scalar() or label().
+
+   - fixed backref bug where you could not del instance.attr if attr
+     was None
      
    - several ORM attributes have been removed or made private:
      mapper.get_attr_by_column(), mapper.set_attr_by_column(), 

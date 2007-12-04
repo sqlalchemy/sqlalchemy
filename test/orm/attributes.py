@@ -203,6 +203,10 @@ class AttributesTest(PersistTest):
         p4.blog = b
         self.assert_(b.posts == [p1, p2, p4])
 
+        # assert no failure removing None
+        p5 = Post()
+        p5.blog = None
+        del p5.blog
 
         class Port(object):pass
         class Jack(object):pass
