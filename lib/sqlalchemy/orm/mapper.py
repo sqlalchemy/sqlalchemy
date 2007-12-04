@@ -667,6 +667,8 @@ class Mapper(object):
                     self._columntoproperty[col] = prop
         elif isinstance(prop, SynonymProperty):
             prop.instrument = getattr(self.class_, key, None)
+            if isinstance(prop.instrument, Mapper._CompileOnAttr):
+                prop.instrument = None
             if prop.map_column:
                 if not key in self.select_table.c:
                     raise exceptions.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.select_table.description, key))
@@ -725,7 +727,6 @@ class Mapper(object):
         if not self.non_primary and '_class_state' in self.class_.__dict__ and (self.entity_name in self.class_._class_state.mappers):
              raise exceptions.ArgumentError("Class '%s' already has a primary mapper defined with entity name '%s'.  Use non_primary=True to create a non primary Mapper.  clear_mappers() will remove *all* current mappers from all classes." % (self.class_, self.entity_name))
 
-            
         def extra_init(class_, oldinit, instance, args, kwargs):
             self.compile()
             if 'init_instance' in self.extension.methods:

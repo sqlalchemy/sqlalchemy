@@ -155,7 +155,7 @@ class MapperTest(MapperSuperTest):
         mapper(Foo, addresses, inherits=User)
         assert getattr(Foo().__class__, 'user_name').impl is not None
 
-    def test_addproperty(self):
+    def test_add_property(self):
         m = mapper(User, users)
         mapper(Address, addresses)
         m.add_property('user_name', deferred(users.c.user_name))
@@ -170,15 +170,40 @@ class MapperTest(MapperSuperTest):
         def go():
             self.assert_result([u], User, user_address_result[0])
             assert u.user_name == 'jack'
-
+            assert u.name == 'jack'
         self.assert_sql_count(testbase.db, go, 2)
 
+        u.name = 'ed'
         u3 = User()
         u3.user_name = 'some user'
         sess.save(u3)
         sess.flush()
         sess.rollback()
-    
+        
+    def test_replace_property(self):
+        m = mapper(User, users)
+        m.add_property('_user_name',users.c.user_name)
+        m.add_property('user_name', synonym('_user_name', proxy=True))
+        
+        sess = create_session()
+        u = sess.query(User).filter_by(user_name='jack').one()
+        assert u._user_name == 'jack'
+        assert u.user_name == 'jack'
+        u.user_name = 'jacko'
+        assert m._columntoproperty[users.c.user_name] is m.get_property('_user_name')
+        
+        clear_mappers()
+
+        m = mapper(User, users)
+        m.add_property('user_name', synonym('_user_name', map_column=True))
+        
+        sess.clear()
+        u = sess.query(User).filter_by(user_name='jack').one()
+        assert u._user_name == 'jack'
+        assert u.user_name == 'jack'
+        u.user_name = 'jacko'
+        assert m._columntoproperty[users.c.user_name] is m.get_property('_user_name')
+        
     def test_illegal_non_primary(self):
         mapper(User, users)
         mapper(Address, addresses)
@@ -409,6 +434,7 @@ class MapperTest(MapperSuperTest):
         assert u.uname == "some user name"
         assert u.user_name == "some user name"
         assert u in sess.dirty
+
     
     def test_column_synonyms(self):
         """test new-style synonyms which automatically instrument properties, set up aliased column, etc."""
@@ -456,6 +482,7 @@ class MapperTest(MapperSuperTest):
         assert u.user_name == 'foo'
         assert assert_col == [('get', 'jack'), ('set', 'foo'), ('get', 'foo')]
         
+
     @testing.fails_on('maxdb')
     def test_synonymoptions(self):
         sess = create_session()
