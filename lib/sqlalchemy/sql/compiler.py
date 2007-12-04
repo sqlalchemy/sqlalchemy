@@ -438,7 +438,7 @@ class DefaultCompiler(engine.Compiled):
         if isinstance(column, sql._Label):
             return column
             
-        if select.use_labels and column._label:
+        if select.use_labels and getattr(column, '_label', None):
             return column.label(column._label)
                 
         if \

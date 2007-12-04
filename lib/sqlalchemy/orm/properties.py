@@ -12,7 +12,7 @@ to handle flush-time dependency sorting and processing.
 """
 
 from sqlalchemy import sql, schema, util, exceptions, logging
-from sqlalchemy.sql import util as sql_util, visitors, operators
+from sqlalchemy.sql import util as sql_util, visitors, operators, ColumnElement
 from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
@@ -38,10 +38,8 @@ class ColumnProperty(StrategizedProperty):
         self.comparator = ColumnProperty.ColumnComparator(self)
         # sanity check
         for col in columns:
-            if not hasattr(col, 'name'):
-                if hasattr(col, 'label'):
-                    raise ArgumentError('ColumnProperties must be named for the mapper to work with them.  Try .label() to fix this')
-                raise ArgumentError('%r is not a valid candidate for ColumnProperty' % col)
+            if not isinstance(col, ColumnElement):
+                raise ArgumentError('column_property() must be given a ColumnElement as its argument.  Try .label() or .as_scalar() for Selectables to fix this.')
         
     def create_strategy(self):
         if self.deferred:
