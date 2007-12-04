@@ -280,7 +280,7 @@ class MapperProperty(object):
         pass
 
     def create_row_processor(self, selectcontext, mapper, row):
-        """return a 3-tuple consiting of a two row processing functions and an instance post-processing function.
+        """return a 3-tuple consiting of two row processing functions and an instance post-processing function.
         
         Input arguments are the query.SelectionContext and the *first*
         applicable row of a result set obtained within query.Query.instances(), called
