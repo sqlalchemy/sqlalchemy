@@ -726,8 +726,8 @@ class UnicodeTest(PersistTest):
 
 
 class SchemaTest(PersistTest):
+    
     # this test should really be in the sql tests somewhere, not engine
-    @testing.unsupported('sqlite', 'firebird')
     def test_iteration(self):
         metadata = MetaData()
         table1 = Table('table1', metadata,
@@ -748,8 +748,12 @@ class SchemaTest(PersistTest):
         gen.traverse(table2)
         buf = buf.getvalue()
         print buf
-        assert buf.index("CREATE TABLE someschema.table1") > -1
-        assert buf.index("CREATE TABLE someschema.table2") > -1
+        if testbase.db.dialect.preparer(testbase.db.dialect).omit_schema:
+            assert buf.index("CREATE TABLE table1") > -1
+            assert buf.index("CREATE TABLE table2") > -1
+        else:
+            assert buf.index("CREATE TABLE someschema.table1") > -1
+            assert buf.index("CREATE TABLE someschema.table2") > -1
 
     @testing.supported('maxdb', 'mysql', 'postgres')
     def test_explicit_default_schema(self):

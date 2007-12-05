@@ -1021,7 +1021,7 @@ class IdentifierPreparer(object):
         if name is None:
             name = table.name
         result = self.quote(table, name)
-        if use_schema and getattr(table, "schema", None):
+        if not self.omit_schema and use_schema and getattr(table, "schema", None):
             result = self.quote(table, table.schema) + "." + result
         return result
 
