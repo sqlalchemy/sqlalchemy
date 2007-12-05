@@ -15,6 +15,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator',
 
 import inspect
 import datetime as dt
+import warnings
 
 from sqlalchemy import exceptions
 from sqlalchemy.util import pickle, Decimal as _python_Decimal
@@ -312,14 +313,17 @@ class String(Concatenable, TypeEngine):
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
             if self.assert_unicode is None:
-                assert_unicode = bool(dialect.assert_unicode)
+                assert_unicode = dialect.assert_unicode
             else:
                 assert_unicode = self.assert_unicode
             def process(value):
                 if isinstance(value, unicode):
                     return value.encode(dialect.encoding)
                 elif assert_unicode and not isinstance(value, (unicode, NoneType)):
-                    raise exceptions.InvalidRequestError("Received non-unicode bind param value %r" % value)
+                    if assert_unicode == 'warn':
+                        warnings.warn(RuntimeWarning("Unicode type received non-unicode bind param value %r" % value))                        
+                    else:
+                        raise exceptions.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
                 else:
                     return value
             return process
@@ -352,7 +356,8 @@ class String(Concatenable, TypeEngine):
 
 class Unicode(String):
     def __init__(self, length=None, **kwargs):
-        kwargs['convert_unicode'] = kwargs['assert_unicode'] = True
+        kwargs['convert_unicode'] = True
+        kwargs['assert_unicode'] = 'warn'
         super(Unicode, self).__init__(length=length, **kwargs)
 
 class Integer(TypeEngine):

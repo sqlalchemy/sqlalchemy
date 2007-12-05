@@ -23,13 +23,13 @@ This type is the base type for all string and character types, such as `Unicode`
 
 `convert_unicode=True` indicates that incoming strings, if they are Python `unicode` strings, will be encoded into a raw bytestring using the `encoding` attribute of the dialect (defaults to `utf-8`).  Similarly, raw bytestrings coming back from the database will be decoded into `unicode` objects on the way back.
 
-`assert_unicode` is set to `None` by default. When `True`, it indicates that incoming bind parameters will be checked that they are in fact  `unicode` objects, else an error is raised.  Setting it to `None` indicates that the dialect-level `convert_unicode` setting should take place, whereas setting it to `False` disables it unconditionally  (this flag is new as of version 0.4.2).
+`assert_unicode` is set to `None` by default. When `True`, it indicates that incoming bind parameters will be checked that they are in fact  `unicode` objects, else an error is raised.  A value of `'warn'` instead raises a warning.  Setting it to `None` indicates that the dialect-level `convert_unicode` setting should take place, whereas setting it to `False` disables it unconditionally  (this flag is new as of version 0.4.2).
 
 Both `convert_unicode` and `assert_unicode` may be set at the engine level as flags to `create_engine()`.
 
 #### Unicode
 
-The `Unicode` type is shorthand for `String` with `convert_unicode=True` and `assert_unicode=True`.  When writing a unicode-aware appication, it is strongly recommended that this type is used, and that only unicode strings are used in the application.  By "unicode string" we mean a string with a u, i.e. `u'hello'`.  Otherwise, particularly when using the ORM, data will be converted to unicode when it returns from the database, but local data which was generated locally will not be in unicode format, which can create confusion.
+The `Unicode` type is shorthand for `String` with `convert_unicode=True` and `assert_unicode='warn'`.  When writing a unicode-aware appication, it is strongly recommended that this type is used, and that only unicode strings are used in the application.  By "unicode string" we mean a string with a u, i.e. `u'hello'`.  Otherwise, particularly when using the ORM, data will be converted to unicode when it returns from the database, but local data which was generated locally will not be in unicode format, which can create confusion.
 
 #### Numeric
 

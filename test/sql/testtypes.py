@@ -288,11 +288,14 @@ class UnicodeTest(AssertMixin):
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
     
     def testassert(self):
+        import warnings
+        warnings.filterwarnings("error", r".*non-unicode bind")
+        
         try:
             unicode_table.insert().execute(unicode_varchar='im not unicode')
             assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Received non-unicode bind param value 'im not unicode'"
+        except RuntimeWarning, e:
+            assert str(e) == "Unicode type received non-unicode bind param value 'im not unicode'", str(e)
         
         unicode_engine = engines.utf8_engine(options={'convert_unicode':True, 'assert_unicode':True})
         try:
@@ -300,7 +303,7 @@ class UnicodeTest(AssertMixin):
                 unicode_engine.execute(unicode_table.insert(), plain_varchar='im not unicode')
                 assert False
             except exceptions.InvalidRequestError, e:
-                assert str(e) == "Received non-unicode bind param value 'im not unicode'"
+                assert str(e) == "Unicode type received non-unicode bind param value 'im not unicode'"
         finally:
             unicode_engine.dispose()
         

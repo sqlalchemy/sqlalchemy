@@ -14,12 +14,13 @@ CHANGES
       represented so far but will continue to add to the system [ticket:615]
 
     - added new flag to String and create_engine(),
-      assert_unicode=(True|False|None). Defaults to `False` or `None` on
-      create_engine() and String, `True` on the Unicode type. When `True`,
+      assert_unicode=(True|False|'warn'|None). Defaults to `False` or `None` on
+      create_engine() and String, `'warn'` on the Unicode type. When `True`,
       results in all unicode conversion operations raising an exception when a
-      non-unicode bytestring is passed as a bind parameter. It is strongly
-      advised that all unicode-aware applications make proper use of Python
-      unicode objects (i.e. u'hello' and not 'hello').
+      non-unicode bytestring is passed as a bind parameter. 'warn' results
+      in a warning. It is strongly advised that all unicode-aware applications 
+      make proper use of Python unicode objects (i.e. u'hello' and not 'hello')
+      so that data round trips accurately.
 
     - tables with schemas can still be used in sqlite, firebird,
       schema name just gets dropped [ticket:890]
