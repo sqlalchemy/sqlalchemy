@@ -474,7 +474,7 @@ class PKTest(ORMTest):
             Session.commit()
             assert False
         except exceptions.FlushError, fe:
-            assert str(fe) == "Can't change the identity of instance Entry@%s in session (existing identity: (%s, (5, 5), None); new identity: (%s, (5, 6), None))" % (hex(id(e)), repr(e.__class__), repr(e.__class__))
+            assert str(fe) == "Can't change the identity of instance Entry@%s in session (existing identity: (%s, (5, 5), None); new identity: (%s, (5, 6), None))" % (hex(id(e)), repr(e.__class__), repr(e.__class__)), str(fe)
             
 class ForeignPKTest(ORMTest):
     """tests mapper detection of the relationship direction when parent/child tables are joined on their
