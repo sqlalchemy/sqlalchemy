@@ -31,7 +31,15 @@ CHANGES
     - from_obj keyword argument to select() can be a scalar or a list.
     
 - orm
-
+   - a major behavioral change to collection-based backrefs: they no 
+     longer trigger lazy loads !  "reverse" adds and removes 
+     are queued up and are merged with the collection when it is 
+     actually read from and loaded; but do not trigger a load beforehand.
+     For users who have noticed this behavior, this should be much more
+     convenient than using dynamic relations in some cases; for those who 
+     have not, you might notice your apps using a lot fewer queries than
+     before in some situations. [ticket:871]
+     
    - new synonym() behavior: an attribute will be placed on the mapped
      class, if one does not exist already, in all cases. if a property
      already exists on the class, the synonym will decorate the property

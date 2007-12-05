@@ -151,6 +151,7 @@ class AttributeImpl(object):
                 value = state.dict[self.key]
         if value is not NO_VALUE:
             state.committed_state[self.key] = self.copy(value)
+        state.pending.pop(self.key, None)
 
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to the given item.
@@ -181,7 +182,7 @@ class AttributeImpl(object):
         current = self.get(state, passive=passive)
         if current is PASSIVE_NORESULT:
             return None
-        return AttributeHistory(self, state, current, passive=passive)
+        return AttributeHistory(self, state, current)
         
     def set_callable(self, state, callable_, clear=False):
         """Set a callable function for this attribute on the given object.
@@ -249,10 +250,10 @@ class AttributeImpl(object):
                 # Return a new, empty value
                 return self.initialize(state)
 
-    def append(self, state, value, initiator):
+    def append(self, state, value, initiator, passive=False):
         self.set(state, value, initiator)
 
-    def remove(self, state, value, initiator):
+    def remove(self, state, value, initiator, passive=False):
         self.set(state, None, initiator)
 
     def set(self, state, value, initiator):
@@ -433,17 +434,27 @@ class CollectionAttributeImpl(AttributeImpl):
         state.dict[self.key] = user_data
         return user_data
 
-    def append(self, state, value, initiator):
+    def append(self, state, value, initiator, passive=False):
         if initiator is self:
             return
-        collection = self.get_collection(state)
-        collection.append_with_event(value, initiator)
 
-    def remove(self, state, value, initiator):
+        collection = self.get_collection(state, passive=passive)
+        if collection is PASSIVE_NORESULT:
+            state.get_pending(self).append(value)
+            self.fire_append_event(state, value, initiator)
+        else:
+            collection.append_with_event(value, initiator)
+
+    def remove(self, state, value, initiator, passive=False):
         if initiator is self:
             return
-        collection = self.get_collection(state)
-        collection.remove_with_event(value, initiator)
+
+        collection = self.get_collection(state, passive=passive)
+        if collection is PASSIVE_NORESULT:
+            state.get_pending(self).remove(value)
+            self.fire_remove_event(state, value, initiator)
+        else:
+            collection.remove_with_event(value, initiator)
 
     def set(self, state, value, initiator):
         """Set a value on the given object.
@@ -470,7 +481,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
         old = self.get(state)
         old_collection = self.get_collection(state, old)
-
+        
         new_collection, user_data = self._build_collection(state)
 
         idset = util.IdentitySet
@@ -494,7 +505,10 @@ class CollectionAttributeImpl(AttributeImpl):
             old_collection.unlink(old)
 
     def set_committed_value(self, state, value):
-        """Set an attribute value on the given instance and 'commit' it."""
+        """Set an attribute value on the given instance and 'commit' it.
+        
+        Loads the existing collection from lazy callables in all cases.
+        """
 
         collection, user_data = self._build_collection(state)
         self._load_collection(state, value or [], emit_events=False,
@@ -509,24 +523,45 @@ class CollectionAttributeImpl(AttributeImpl):
         return value
 
     def _build_collection(self, state):
+        """build a new, blank collection and return it wrapped in a CollectionAdapter."""
+        
         user_data = self.collection_factory()
         collection = collections.CollectionAdapter(self, state, user_data)
         return collection, user_data
 
     def _load_collection(self, state, values, emit_events=True, collection=None):
+        """given an empty CollectionAdapter, load the collection with current values.
+        
+        Loads the collection from lazy callables in all cases.
+        """
+        
         collection = collection or self.get_collection(state)
         if values is None:
             return
-        elif emit_events:
+
+        appender = emit_events and collection.append_with_event or collection.append_without_event
+        
+        if self.key in state.pending:
+            # move 'pending' items into the newly loaded collection
+            added = state.pending[self.key].added_items
+            removed = state.pending[self.key].deleted_items
             for item in values:
-                collection.append_with_event(item)
+                if item not in removed:
+                    appender(item)
+            for item in added:
+                appender(item)
+            del state.pending[self.key]
         else:
             for item in values:
-                collection.append_without_event(item)
+                appender(item)
 
-    def get_collection(self, state, user_data=None):
+    def get_collection(self, state, user_data=None, passive=False):
+        """retrieve the CollectionAdapter associated with the given state."""
+        
         if user_data is None:
-            user_data = self.get(state)
+            user_data = self.get(state, passive=passive)
+            if user_data is PASSIVE_NORESULT:
+                return user_data
         try:
             return getattr(user_data, '_sa_adapter')
         except AttributeError:
@@ -554,18 +589,18 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
             # present when updating via a backref.
             impl = getattr(oldchild.__class__, self.key).impl
             try:                
-                impl.remove(oldchild._state, instance, initiator)
+                impl.remove(oldchild._state, instance, initiator, passive=True)
             except (ValueError, KeyError, IndexError):
                 pass
         if child is not None:
-            getattr(child.__class__, self.key).impl.append(child._state, instance, initiator)
+            getattr(child.__class__, self.key).impl.append(child._state, instance, initiator, passive=True)
 
     def append(self, instance, child, initiator):
-        getattr(child.__class__, self.key).impl.append(child._state, instance, initiator)
+        getattr(child.__class__, self.key).impl.append(child._state, instance, initiator, passive=True)
 
     def remove(self, instance, child, initiator):
         if child is not None:
-            getattr(child.__class__, self.key).impl.remove(child._state, instance, initiator)
+            getattr(child.__class__, self.key).impl.remove(child._state, instance, initiator, passive=True)
 
 class ClassState(object):
     """tracks state information at the class level."""
@@ -577,7 +612,7 @@ class ClassState(object):
 class InstanceState(object):
     """tracks state information at the instance level."""
 
-    __slots__ = 'class_', 'obj', 'dict', 'committed_state', 'modified', 'trigger', 'callables', 'parents', 'instance_dict', '_strong_obj', 'expired_attributes'
+    __slots__ = 'class_', 'obj', 'dict', 'pending', 'committed_state', 'modified', 'trigger', 'callables', 'parents', 'instance_dict', '_strong_obj', 'expired_attributes'
     
     def __init__(self, obj):
         self.class_ = obj.__class__
@@ -588,6 +623,7 @@ class InstanceState(object):
         self.trigger = None
         self.callables = {}
         self.parents = {}
+        self.pending = {}
         self.instance_dict = None
         
     def __cleanup(self, ref):
@@ -627,6 +663,11 @@ class InstanceState(object):
         finally:
             instance_dict._mutex.release()
 
+    def get_pending(self, attributeimpl):
+        if attributeimpl.key not in self.pending:
+            self.pending[attributeimpl.key] = PendingCollection()
+        return self.pending[attributeimpl.key]
+        
     def is_modified(self):
         if self.modified:
             return True
@@ -654,11 +695,12 @@ class InstanceState(object):
             return None
             
     def __getstate__(self):
-        return {'committed_state':self.committed_state, 'parents':self.parents, 'modified':self.modified, 'instance':self.obj()}
+        return {'committed_state':self.committed_state, 'pending':self.pending, 'parents':self.parents, 'modified':self.modified, 'instance':self.obj()}
     
     def __setstate__(self, state):
         self.committed_state = state['committed_state']
         self.parents = state['parents']
+        self.pending = state['pending']
         self.modified = state['modified']
         self.obj = weakref.ref(state['instance'])
         self.class_ = self.obj().__class__
@@ -857,7 +899,7 @@ class AttributeHistory(object):
     particular instance.
     """
 
-    def __init__(self, attr, state, current, passive=False):
+    def __init__(self, attr, state, current):
         self.attr = attr
 
         # get the "original" value.  if a lazy load was fired when we got
@@ -919,6 +961,27 @@ class AttributeHistory(object):
     def deleted_items(self):
         return list(self._deleted_items)
 
+class PendingCollection(object):
+    """stores items appended and removed from a collection that has not been loaded yet.
+    
+    When the collection is loaded, the changes present in PendingCollection are applied
+    to produce the final result.
+    """
+    
+    def __init__(self):
+        self.deleted_items = util.IdentitySet()
+        self.added_items = util.OrderedIdentitySet()
+
+    def append(self, value):
+        if value in self.deleted_items:
+            self.deleted_items.remove(value)
+        self.added_items.add(value)
+    
+    def remove(self, value):
+        if value in self.added_items:
+            self.added_items.remove(value)
+        self.deleted_items.add(value)
+    
 def _managed_attributes(class_):
     """return all InstrumentedAttributes associated with the given class_ and its superclasses."""
     

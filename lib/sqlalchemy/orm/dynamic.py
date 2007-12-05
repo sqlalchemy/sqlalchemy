@@ -44,12 +44,12 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             state.dict[self.key] = c = CollectionHistory(self, state)
             return c
 
-    def append(self, state, value, initiator):
+    def append(self, state, value, initiator, passive=False):
         if initiator is not self:
             self.get_history(state)._added_items.append(value)
             self.fire_append_event(state, value, initiator)
     
-    def remove(self, state, value, initiator):
+    def remove(self, state, value, initiator, passive=False):
         if initiator is not self:
             self.get_history(state)._deleted_items.append(value)
             self.fire_remove_event(state, value, initiator)

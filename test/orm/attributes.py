@@ -150,82 +150,9 @@ class AttributesTest(PersistTest):
             self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
             self.assert_(len(attributes.get_history(u, 'addresses').unchanged_items()) == 1)
 
-    def test_backref(self):
-        class Student(object):pass
-        class Course(object):pass
         
-        attributes.register_class(Student)
-        attributes.register_class(Course)
-        attributes.register_attribute(Student, 'courses', uselist=True, extension=attributes.GenericBackrefExtension('students'), useobject=True)
-        attributes.register_attribute(Course, 'students', uselist=True, extension=attributes.GenericBackrefExtension('courses'), useobject=True)
-        
-        s = Student()
-        c = Course()
-        s.courses.append(c)
-        self.assert_(c.students == [s])
-        s.courses.remove(c)
-        self.assert_(c.students == [])
-        
-        (s1, s2, s3) = (Student(), Student(), Student())
-             
-        c.students = [s1, s2, s3]
-        self.assert_(s2.courses == [c])
-        self.assert_(s1.courses == [c])
-        print "--------------------------------"
-        print s1
-        print s1.courses
-        print c
-        print c.students
-        s1.courses.remove(c)
-        self.assert_(c.students == [s2,s3])        
-        class Post(object):pass
-        class Blog(object):pass
-
-        attributes.register_class(Post)
-        attributes.register_class(Blog)
-        attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
-        attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
-        b = Blog()
-        (p1, p2, p3) = (Post(), Post(), Post())
-        b.posts.append(p1)
-        b.posts.append(p2)
-        b.posts.append(p3)
-        self.assert_(b.posts == [p1, p2, p3])
-        self.assert_(p2.blog is b)
-        
-        p3.blog = None
-        self.assert_(b.posts == [p1, p2])
-        p4 = Post()
-        p4.blog = b
-        self.assert_(b.posts == [p1, p2, p4])
-        
-        p4.blog = b
-        p4.blog = b
-        self.assert_(b.posts == [p1, p2, p4])
-
-        # assert no failure removing None
-        p5 = Post()
-        p5.blog = None
-        del p5.blog
-
-        class Port(object):pass
-        class Jack(object):pass
-        attributes.register_class(Port)
-        attributes.register_class(Jack)
-        attributes.register_attribute(Port, 'jack', uselist=False, extension=attributes.GenericBackrefExtension('port'), useobject=True)
-        attributes.register_attribute(Jack, 'port', uselist=False, extension=attributes.GenericBackrefExtension('jack'), useobject=True)
-        p = Port()
-        j = Jack()
-        p.jack = j
-        self.assert_(j.port is p)
-        self.assert_(p.jack is not None)
-        
-        j.port = None
-        self.assert_(p.jack is None)
-
     def test_lazytrackparent(self):
         """test that the "hasparent" flag works properly when lazy loaders and backrefs are used"""
-        
 
         class Post(object):pass
         class Blog(object):pass
@@ -449,6 +376,173 @@ class AttributesTest(PersistTest):
             assert True
         except exceptions.ArgumentError, e:
             assert False
-            
+
+
+class BackrefTest(PersistTest):
+        
+    def test_manytomany(self):
+        class Student(object):pass
+        class Course(object):pass
+
+        attributes.register_class(Student)
+        attributes.register_class(Course)
+        attributes.register_attribute(Student, 'courses', uselist=True, extension=attributes.GenericBackrefExtension('students'), useobject=True)
+        attributes.register_attribute(Course, 'students', uselist=True, extension=attributes.GenericBackrefExtension('courses'), useobject=True)
+
+        s = Student()
+        c = Course()
+        s.courses.append(c)
+        self.assert_(c.students == [s])
+        s.courses.remove(c)
+        self.assert_(c.students == [])
+
+        (s1, s2, s3) = (Student(), Student(), Student())
+
+        c.students = [s1, s2, s3]
+        self.assert_(s2.courses == [c])
+        self.assert_(s1.courses == [c])
+        print "--------------------------------"
+        print s1
+        print s1.courses
+        print c
+        print c.students
+        s1.courses.remove(c)
+        self.assert_(c.students == [s2,s3])        
+    
+    def test_onetomany(self):
+        class Post(object):pass
+        class Blog(object):pass
+        
+        attributes.register_class(Post)
+        attributes.register_class(Blog)
+        attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
+        attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
+        b = Blog()
+        (p1, p2, p3) = (Post(), Post(), Post())
+        b.posts.append(p1)
+        b.posts.append(p2)
+        b.posts.append(p3)
+        self.assert_(b.posts == [p1, p2, p3])
+        self.assert_(p2.blog is b)
+
+        p3.blog = None
+        self.assert_(b.posts == [p1, p2])
+        p4 = Post()
+        p4.blog = b
+        self.assert_(b.posts == [p1, p2, p4])
+
+        p4.blog = b
+        p4.blog = b
+        self.assert_(b.posts == [p1, p2, p4])
+
+        # assert no failure removing None
+        p5 = Post()
+        p5.blog = None
+        del p5.blog
+
+    def test_onetoone(self):
+        class Port(object):pass
+        class Jack(object):pass
+        attributes.register_class(Port)
+        attributes.register_class(Jack)
+        attributes.register_attribute(Port, 'jack', uselist=False, extension=attributes.GenericBackrefExtension('port'), useobject=True)
+        attributes.register_attribute(Jack, 'port', uselist=False, extension=attributes.GenericBackrefExtension('jack'), useobject=True)
+        p = Port()
+        j = Jack()
+        p.jack = j
+        self.assert_(j.port is p)
+        self.assert_(p.jack is not None)
+
+        j.port = None
+        self.assert_(p.jack is None)
+
+class DeferredBackrefTest(PersistTest):
+    def setUp(self):
+        global Post, Blog, called, lazy_load
+        
+        class Post(object):
+            def __init__(self, name):
+                self.name = name
+            def __eq__(self, other):
+                return other.name == self.name
+
+        class Blog(object):
+            def __init__(self, name):
+                self.name = name
+            def __eq__(self, other):
+                return other.name == self.name
+
+        called = [0]
+
+        lazy_load = []
+        def lazy_posts(instance):
+            def load():
+                called[0] += 1
+                return lazy_load
+            return load
+
+        attributes.register_class(Post)
+        attributes.register_class(Blog)
+        attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
+        attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), callable_=lazy_posts, trackparent=True, useobject=True)
+
+    def test_lazy_add(self):
+        global lazy_load
+
+        p1, p2, p3 = Post("post 1"), Post("post 2"), Post("post 3")
+        lazy_load = [p1, p2, p3]
+
+        b = Blog("blog 1")
+        p = Post("post 4")
+        p.blog = b
+        p = Post("post 5")
+        p.blog = b
+        # setting blog doesnt call 'posts' callable
+        assert called[0] == 0
+
+        # calling backref calls the callable, populates extra posts
+        assert b.posts == [p1, p2, p3, Post("post 4"), Post("post 5")]
+        assert called[0] == 1
+
+    def test_lazy_remove(self):
+        global lazy_load
+        called[0] = 0
+        lazy_load = []
+
+        b = Blog("blog 1")
+        p = Post("post 1")
+        p.blog = b
+        assert called[0] == 0
+
+        lazy_load = [p]
+
+        p.blog = None
+        p2 = Post("post 2")
+        p2.blog = b
+        assert called[0] == 0
+        assert b.posts == [p2]
+        assert called[0] == 1
+
+    def test_normal_load(self):
+        global lazy_load
+        lazy_load = (p1, p2, p3) = [Post("post 1"), Post("post 2"), Post("post 3")]
+        called[0] = 0
+
+        b = Blog("blog 1")
+
+        # assign without using backref system
+        p2.__dict__['blog'] = b
+
+        assert b.posts == [Post("post 1"), Post("post 2"), Post("post 3")]
+        assert called[0] == 1
+        p2.blog = None
+        p4 = Post("post 4")
+        p4.blog = b
+        assert b.posts == [Post("post 1"), Post("post 3"), Post("post 4")]
+        assert called[0] == 1
+
+        called[0] = 0
+        lazy_load = (p1, p2, p3) = [Post("post 1"), Post("post 2"), Post("post 3")]
+        
 if __name__ == "__main__":
     testbase.main()

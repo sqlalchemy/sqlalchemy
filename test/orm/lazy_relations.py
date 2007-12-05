@@ -272,7 +272,41 @@ class LazyTest(FixtureTest):
         u1 = sess.query(User).get(7)
         
         assert a.user is u1
+    
+    def test_backrefs_dont_lazyload(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref='user')
+        })
+        mapper(Address, addresses)
+        sess = create_session()
+        ad = sess.query(Address).filter_by(id=1).one()
+        assert ad.user.id == 7
+        def go():
+            ad.user = None
+            assert ad.user is None
+        self.assert_sql_count(testbase.db, go, 0)
 
+        u1 = sess.query(User).filter_by(id=7).one()
+        def go():
+            assert ad not in u1.addresses
+        self.assert_sql_count(testbase.db, go, 1)
+
+        sess.expire(u1, ['addresses'])
+        def go():
+            assert ad in u1.addresses
+        self.assert_sql_count(testbase.db, go, 1)
+
+        sess.expire(u1, ['addresses'])
+        ad2 = Address()
+        def go():
+            ad2.user = u1
+            assert ad2.user is u1
+        self.assert_sql_count(testbase.db, go, 0)
+        
+        def go():
+            assert ad2 in u1.addresses
+        self.assert_sql_count(testbase.db, go, 1)
+            
 class M2OGetTest(FixtureTest):
     keep_mappers = False
     keep_data = True

@@ -33,8 +33,7 @@ class HistoryTest(ORMTest):
         u = User(_sa_session=s)
         a = Address(_sa_session=s)
         a.user = u
-        #print repr(a.__class__._attribute_manager.get_history(a, 'user').added_items())
-        #print repr(u.addresses.added_items())
+
         self.assert_(u.addresses == [a])
         s.commit()
 

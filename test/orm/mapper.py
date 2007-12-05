@@ -1322,15 +1322,17 @@ class RequirementsTest(AssertMixin):
         h1.h1s.append(H1())
 
         s.flush()
-
+        self.assertEquals(t1.count().scalar(), 4)
+        
         h6 = H6()
         h6.h1a = h1
         h6.h1b = h1
 
         h6 = H6()
         h6.h1a = h1
-        h6.h1b = H1()
-
+        h6.h1b = x = H1()
+        assert x in s
+        
         h6.h1b.h2s.append(H2())
 
         s.flush()
