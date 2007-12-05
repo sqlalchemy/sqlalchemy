@@ -1,6 +1,9 @@
 0.3.12
 - sql
     - func. objects can be pickled/unpickled [ticket:844]
+    - tables with schemas can still be used in sqlite, firebird,
+      schema name just gets dropped [ticket:890]
+
 - orm
     - query.get() and related functions (like many-to-one lazyloading)
       generate randomly-generated bind parameter names, to prevent

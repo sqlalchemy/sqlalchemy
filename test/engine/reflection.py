@@ -595,7 +595,6 @@ class CreateDropTest(PersistTest):
 
 class SchemaTest(PersistTest):
     # this test should really be in the sql tests somewhere, not engine
-    @testbase.unsupported('sqlite')
     def testiteration(self):
         metadata = MetaData()
         table1 = Table('table1', metadata,
@@ -616,8 +615,12 @@ class SchemaTest(PersistTest):
         gen.traverse(table2)
         buf = buf.getvalue()
         print buf
-        assert buf.index("CREATE TABLE someschema.table1") > -1
-        assert buf.index("CREATE TABLE someschema.table2") > -1
+        if testbase.db.dialect.preparer().omit_schema:
+            assert buf.index("CREATE TABLE table1") > -1
+            assert buf.index("CREATE TABLE table2") > -1
+        else:
+            assert buf.index("CREATE TABLE someschema.table1") > -1
+            assert buf.index("CREATE TABLE someschema.table2") > -1
 
 
 if __name__ == "__main__":
