@@ -408,12 +408,15 @@ class Mapper(object):
         for t in util.Set(self.tables + [self.mapped_table]):
             self._all_tables.add(t)
             if t.primary_key and pk_cols.issuperset(t.primary_key):
-                self._pks_by_table[t] = util.Set(t.primary_key).intersection(pk_cols)
-            self._cols_by_table[t] = util.Set(t.c).intersection(all_cols)
+                # ordering is important since it determines the ordering of mapper.primary_key (and therefore query.get())
+                self._pks_by_table[t] = util.OrderedSet(t.primary_key).intersection(pk_cols)
+            self._cols_by_table[t] = util.OrderedSet(t.c).intersection(all_cols)
             
         if self.primary_key_argument:
             for k in self.primary_key_argument:
-                self._pks_by_table.setdefault(k.table, util.Set()).add(k)
+                if k.table not in self._pks_by_table:
+                    self._pks_by_table[k.table] = util.OrderedSet()
+                self._pks_by_table[k.table].add(k)
                 
         if len(self._pks_by_table[self.mapped_table]) == 0:
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
