@@ -164,9 +164,9 @@ class RelationTest2(PersistTest):
 
         test_c1 = sess.query(Company).get(c1.company_id)
         test_e1 = sess.query(Employee).get([c1.company_id, e1.emp_id])
-        assert test_e1.name == 'emp1'
+        assert test_e1.name == 'emp1', test_e1.name
         test_e5 = sess.query(Employee).get([c2.company_id, e5.emp_id])
-        assert test_e5.name == 'emp5'
+        assert test_e5.name == 'emp5', test_e5.name
         assert [x.name for x in test_e1.employees] == ['emp2', 'emp3']
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
@@ -208,9 +208,9 @@ class RelationTest2(PersistTest):
 
         test_c1 = sess.query(Company).get(c1.company_id)
         test_e1 = sess.query(Employee).get([c1.company_id, e1.emp_id])
-        assert test_e1.name == 'emp1'
+        assert test_e1.name == 'emp1', test_e1.name
         test_e5 = sess.query(Employee).get([c2.company_id, e5.emp_id])
-        assert test_e5.name == 'emp5'
+        assert test_e5.name == 'emp5', test_e5.name
         assert [x.name for x in test_e1.employees] == ['emp2', 'emp3']
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
