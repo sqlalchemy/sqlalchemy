@@ -4,6 +4,15 @@ CHANGES
 0.4.2
 -----
 - sql
+    - generic functions ! we introduce a database of known SQL functions, such
+      as current_timestamp, coalesce, and create explicit function objects
+      representing them. These objects have constrained argument lists, are
+      type aware, and can compile in a dialect-specific fashion. So saying
+      func.char_length("foo", "bar") raises an error (too many args),
+      func.coalesce(datetime.date(2007, 10, 5), datetime.date(2005, 10, 15))
+      knows that its return type is a Date. We only have a few functions
+      represented so far but will continue to add to the system [ticket:615]
+
     - added new flag to String and create_engine(),
       assert_unicode=(True|False|None). Defaults to `False` or `None` on
       create_engine() and String, `True` on the Unicode type. When `True`,
@@ -12,9 +21,15 @@ CHANGES
       advised that all unicode-aware applications make proper use of Python
       unicode objects (i.e. u'hello' and not 'hello').
 
+    - changed the various "literal" generation functions to use an anonymous
+      bind parameter.  not much changes here except their labels now look 
+      like ":param_1", ":param_2" instead of ":literal"
+      
     - column labels in the form "tablename.columname", i.e. with a dot, are now
       supported.
       
+    - from_obj keyword argument to select() can be a scalar or a list.
+    
 - orm
 
    - new synonym() behavior: an attribute will be placed on the mapped

@@ -1353,7 +1353,7 @@ class ResultProxy(object):
                     
                 if self.context.result_map:
                     try:
-                        (name, obj, type_) = self.context.result_map[colname]
+                        (name, obj, type_) = self.context.result_map[colname.lower()]
                     except KeyError:
                         (name, obj, type_) = (colname, None, typemap.get(item[1], types.NULLTYPE))
                 else:

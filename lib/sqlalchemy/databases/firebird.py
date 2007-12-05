@@ -354,11 +354,11 @@ class FBCompiler(compiler.DefaultCompiler):
         else:
             return self.process(alias.original, **kwargs)
 
-    def apply_function_parens(self, func):
+    def function_argspec(self, func):
         if func.clauses:
-            return super(FBCompiler, self).apply_function_parens(func)
+            return self.process(func.clause_expr)
         else:
-            return False
+            return ""
 
     def default_from(self):
         return " FROM rdb$database"

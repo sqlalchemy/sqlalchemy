@@ -17,6 +17,7 @@ def suite():
         'sql.unicode',
         
         # assorted round-trip tests
+        'sql.functions',
         'sql.query',
         'sql.quote',
         'sql.rowcount',

@@ -170,13 +170,13 @@ class OperatorTest(QueryTest):
                                 ):
             for (lhs, rhs, res) in (
                 (5, User.id, ':users_id %s users.id'),
-                (5, literal(6), ':literal %s :literal_1'),
+                (5, literal(6), ':param_1 %s :param_2'),
                 (User.id, 5, 'users.id %s :users_id'),
-                (User.id, literal('b'), 'users.id %s :literal'),
+                (User.id, literal('b'), 'users.id %s :param_1'),
                 (User.id, User.id, 'users.id %s users.id'),
-                (literal(5), 'b', ':literal %s :literal_1'),
-                (literal(5), User.id, ':literal %s users.id'),
-                (literal(5), literal(6), ':literal %s :literal_1'),
+                (literal(5), 'b', ':param_1 %s :param_2'),
+                (literal(5), User.id, ':param_1 %s users.id'),
+                (literal(5), literal(6), ':param_1 %s :param_2'),
                 ):
                 self._test(py_op(lhs, rhs), res % sql_op)
 
@@ -190,13 +190,13 @@ class OperatorTest(QueryTest):
                                         (operator.ge, '>=', '<=')):
             for (lhs, rhs, l_sql, r_sql) in (
                 ('a', User.id, ':users_id', 'users.id'),
-                ('a', literal('b'), ':literal_1', ':literal'), # note swap!
+                ('a', literal('b'), ':param_2', ':param_1'), # note swap!
                 (User.id, 'b', 'users.id', ':users_id'),
-                (User.id, literal('b'), 'users.id', ':literal'),
+                (User.id, literal('b'), 'users.id', ':param_1'),
                 (User.id, User.id, 'users.id', 'users.id'),
-                (literal('a'), 'b', ':literal', ':literal_1'),
-                (literal('a'), User.id, ':literal', 'users.id'),
-                (literal('a'), literal('b'), ':literal', ':literal_1'),
+                (literal('a'), 'b', ':param_1', ':param_2'),
+                (literal('a'), User.id, ':param_1', 'users.id'),
+                (literal('a'), literal('b'), ':param_1', ':param_2'),
                 ):
 
                 # the compiled clause should match either (e.g.):
@@ -224,7 +224,7 @@ class OperatorTest(QueryTest):
         for (expr, compare) in (
             (func.max(User.id), "max(users.id)"),
             (User.id.desc(), "users.id DESC"),
-            (between(5, User.id, Address.id), ":literal BETWEEN users.id AND addresses.id"),
+            (between(5, User.id, Address.id), ":param_1 BETWEEN users.id AND addresses.id"),
             # this one would require adding compile() to InstrumentedScalarAttribute.  do we want this ?
             #(User.id, "users.id")
         ):

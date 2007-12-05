@@ -22,7 +22,7 @@ class CompileTest(SQLCompileTest):
 
     def test_function(self):
         self.assert_compile(func.foo(1, 2), "foo(:foo, :foo_1)")
-        self.assert_compile(func.current_time(), "current_time")
+        self.assert_compile(func.current_time(), "CURRENT_TIME")
         self.assert_compile(func.foo(), "foo")
         
         m = MetaData()
