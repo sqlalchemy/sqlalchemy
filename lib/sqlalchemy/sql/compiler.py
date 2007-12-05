@@ -996,7 +996,7 @@ class IdentifierPreparer(object):
 
     def format_sequence(self, sequence, use_schema=True):
         name = self.quote(sequence, sequence.name)
-        if use_schema and sequence.schema is not None:
+        if not self.omit_schema and use_schema and sequence.schema is not None:
             name = self.quote(sequence, sequence.schema) + "." + name
         return name
 
@@ -1052,7 +1052,7 @@ class IdentifierPreparer(object):
         # ('database', 'owner', etc.) could override this and return
         # a longer sequence.
 
-        if use_schema and getattr(table, 'schema', None):
+        if not self.omit_schema and use_schema and getattr(table, 'schema', None):
             return (self.quote_identifier(table.schema),
                     self.format_table(table, use_schema=False))
         else:
