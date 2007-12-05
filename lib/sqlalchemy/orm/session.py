@@ -993,7 +993,7 @@ class Session(object):
         if not hasattr(instance, '_instance_key'):
             raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % mapperutil.instance_str(instance))
         elif self.identity_map.get(instance._instance_key, instance) is not instance:
-            raise exceptions.InvalidRequestError("Could not update instance '%s', identity key %s; a different instance with the same identity key already exists in this session." % (mapperutil.instance_str(obj), obj._instance_key))
+            raise exceptions.InvalidRequestError("Could not update instance '%s', identity key %s; a different instance with the same identity key already exists in this session." % (mapperutil.instance_str(instance), instance._instance_key))
         self._attach(instance)
 
     def _save_or_update_impl(self, instance, entity_name=None):
