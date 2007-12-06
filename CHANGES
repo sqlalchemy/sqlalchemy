@@ -43,7 +43,13 @@ CHANGES
      convenient than using dynamic relations in some cases; for those who 
      have not, you might notice your apps using a lot fewer queries than
      before in some situations. [ticket:871]
-     
+
+   - query.get() and query.load() do not take existing filter or other
+     criterion into account; these methods *always* look up the given id
+     in the database or return the current instance from the identity map, 
+     disregarding any existing filter, join, group_by or other criterion
+     which has been configured. [ticket:893]
+          
    - new synonym() behavior: an attribute will be placed on the mapped
      class, if one does not exist already, in all cases. if a property
      already exists on the class, the synonym will decorate the property

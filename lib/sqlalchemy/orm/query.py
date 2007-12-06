@@ -52,6 +52,15 @@ class Query(object):
         self._primary_adapter=None
         self._only_load_props = None
         self._refresh_instance = None
+    
+    def _no_criterion(self):
+        q = self._clone()
+        q._from_obj = [self.table]
+        q._alias_ids = {}
+        q._joinpoint = self.mapper
+        q._statement = q._aliases = q._criterion = None
+        q._order_by = q._group_by = q._distinct = False
+        return q
         
     def _clone(self):
         q = Query.__new__(Query)
@@ -757,8 +766,8 @@ class Query(object):
             ident = util.to_list(ident)
 
         q = self
-        
         if ident is not None:
+            q = q._no_criterion()
             params = {}
             (_get_clause, _get_params) = self.select_mapper._get_clause
             q = q.filter(_get_clause)

@@ -60,7 +60,33 @@ class GetTest(QueryTest):
         s.clear()
         u2 = s.query(User).get(7)
         assert u is not u2
+    
+    def test_no_criterion(self):
+        """test that get()/load() does not use preexisting filter/etc. criterion"""
+        
+        s = create_session()
+        
+        assert s.query(User).filter(User.id==7).get(19) is None
 
+        u = s.query(User).get(7)
+        assert s.query(User).filter(User.id==9).get(7) is u
+        s.clear()
+        assert s.query(User).filter(User.id==9).get(7).id == u.id
+
+        # user 10 has no addresses
+        u = s.query(User).get(10)
+        assert s.query(User).join('addresses').get(10) is u
+        s.clear()
+        assert s.query(User).join('addresses').get(10).id == u.id
+        
+        u = s.query(User).get(7)
+        assert s.query(User).join('addresses').filter(Address.user_id==8).filter(User.id==7).first() is None
+        assert s.query(User).join('addresses').filter(Address.user_id==8).get(7) is u
+        s.clear()
+        assert s.query(User).join('addresses').filter(Address.user_id==8).get(7).id == u.id
+        
+        assert s.query(User).join('addresses').filter(Address.user_id==8).load(7).id == u.id
+        
     def test_unique_param_names(self):
         class SomeUser(object):
             pass
