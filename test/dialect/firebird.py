@@ -21,7 +21,7 @@ class CompileTest(SQLCompileTest):
         self.assert_compile(s, "SELECT sometable_1.col1, sometable_1.col2 FROM sometable sometable_1")
 
     def test_function(self):
-        self.assert_compile(func.foo(1, 2), "foo(:foo, :foo_1)")
+        self.assert_compile(func.foo(1, 2), "foo(:foo_1, :foo_2)")
         self.assert_compile(func.current_time(), "CURRENT_TIME")
         self.assert_compile(func.foo(), "foo")
         

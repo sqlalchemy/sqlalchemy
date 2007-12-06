@@ -22,6 +22,15 @@ CHANGES
       make proper use of Python unicode objects (i.e. u'hello' and not 'hello')
       so that data round trips accurately.
 
+    - generation of "unique" bind parameters has been simplified to use the same
+      "unique identifier" mechanisms as everything else.  This doesn't affect
+      user code, except any code that might have been hardcoded against the generated
+      names.  Generated bind params now have the form "<paramname>_<num>",
+      whereas before only the second bind of the same name would have this form.
+    
+    - bindparam() objects themselves can be used as keys for execute(), i.e.
+      statement.execute({bind1:'foo', bind2:'bar'})
+      
     - tables with schemas can still be used in sqlite, firebird,
       schema name just gets dropped [ticket:890]
 

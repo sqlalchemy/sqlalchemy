@@ -922,7 +922,7 @@ class ClauseElement(object):
                 if bind.key in kwargs:
                     bind.value = kwargs[bind.key]
                 if unique:
-                    bind.unique=True
+                    bind._convert_to_unique()
         return Vis().traverse(self, clone=True)
 
     def compare(self, other):
@@ -1749,10 +1749,14 @@ class _BindParamClause(ClauseElement, _CompareMixin):
           if True, the parameter should be treated like a stored procedure "OUT"
           parameter.
         """
-
-        self.key = key or "{ANON %d param}" % id(self)
-        self.value = value
+        
+        if unique:
+            self.key = "{ANON %d %s}" % (id(self), key or 'param')
+        else:
+            self.key = key or "{ANON %d param}" % id(self)
+        self._orig_key = key
         self.unique = unique
+        self.value = value
         self.isoutparam = isoutparam
         self.shortname = shortname
         
@@ -1778,6 +1782,17 @@ class _BindParamClause(ClauseElement, _CompareMixin):
         type(None):sqltypes.NullType
     }
 
+    def _clone(self):
+        c = ClauseElement._clone(self)
+        if self.unique:
+            c.key = "{ANON %d %s}" % (id(c), c._orig_key or 'param')
+        return c
+    
+    def _convert_to_unique(self):
+        if not self.unique:
+            self.unique=True
+            self.key = "{ANON %d %s}" % (id(self), self._orig_key or 'param')
+        
     def _get_from_objects(self, **modifiers):
         return []
 

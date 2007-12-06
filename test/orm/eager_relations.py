@@ -700,11 +700,11 @@ class SelfReferentialEagerTest(ORMTest):
         if testing.against('sqlite'):
             self.assert_sql(testbase.db, go, [
                 (
-                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data FROM nodes WHERE nodes.data = :nodes_data ORDER BY nodes.oid  LIMIT 1 OFFSET 0",
-                    {'nodes_data': 'n1'}
+                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data FROM nodes WHERE nodes.data = :nodes_data_1 ORDER BY nodes.oid  LIMIT 1 OFFSET 0",
+                    {'nodes_data_1': 'n1'}
                 ),
             ])
-
+            
     @testing.fails_on('maxdb')
     def test_no_depth(self):
         class Node(Base):

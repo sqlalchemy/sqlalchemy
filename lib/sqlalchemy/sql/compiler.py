@@ -196,7 +196,7 @@ class DefaultCompiler(engine.Compiled):
         if params:
             pd = {}
             for bindparam, name in self.bind_names.iteritems():
-                for paramname in (bindparam.key, bindparam.shortname, name):
+                for paramname in (bindparam, bindparam.key, bindparam.shortname, name):
                     if paramname in params:
                         pd[name] = params[paramname]
                         break
@@ -373,26 +373,13 @@ class DefaultCompiler(engine.Compiled):
         return self.operators.get(operator, str(operator))
     
     def visit_bindparam(self, bindparam, **kwargs):
-        # TODO: remove this whole "unique" thing, just use regular
-        # anonymous params to implement.  params used for inserts/updates
-        # etc. should no longer be "unique".
-        if bindparam.unique:
-            count = 1
-            key = bindparam.key
-            # redefine the generated name of the bind param in the case
-            # that we have multiple conflicting bind parameters.
-            while self.binds.setdefault(key, bindparam) is not bindparam:
-                tag = "_%d" % count
-                key = bindparam.key + tag
-                count += 1
-            bindparam.key = key
-            return self.bindparam_string(self._truncate_bindparam(bindparam))
-        else:
-            existing = self.binds.get(bindparam.key)
-            if existing is not None and existing.unique:
+        name = self._truncate_bindparam(bindparam)
+        if name in self.binds:
+            existing = self.binds[name]
+            if existing.unique or bindparam.unique:
                 raise exceptions.CompileError("Bind parameter '%s' conflicts with unique bind parameter of the same name" % bindparam.key)
-            self.binds[bindparam.key] = bindparam
-            return self.bindparam_string(self._truncate_bindparam(bindparam))
+        self.binds[bindparam.key] = self.binds[name] = bindparam
+        return self.bindparam_string(name)
     
     def _truncate_bindparam(self, bindparam):
         if bindparam in self.bind_names:
@@ -632,7 +619,7 @@ class DefaultCompiler(engine.Compiled):
         """
 
         def create_bind_param(col, value):
-            bindparam = sql.bindparam(col.key, value, type_=col.type, unique=True)
+            bindparam = sql.bindparam(col.key, value, type_=col.type)
             self.binds[col.key] = bindparam
             return self.bindparam_string(self._truncate_bindparam(bindparam))
 

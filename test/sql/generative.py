@@ -218,13 +218,33 @@ class ClauseTest(SQLCompileTest):
             def visit_binary(self, binary):
                 if binary.left is t1.c.col3:
                     binary.left = t1.c.col1
-                    binary.right = bindparam("table1_col1")
+                    binary.right = bindparam("table1_col1", unique=True)
         s5 = Vis().traverse(s4, clone=True)
         print str(s4)
         print str(s5)
         assert str(s5) == s5_assert
         assert str(s4) == s4_assert
+    
+    def test_binds(self):
+        """test that unique bindparams change their name upon clone() to prevent conflicts"""
+        
+        s = select([t1], t1.c.col1==bindparam(None, unique=True)).alias()
+        s2 = ClauseVisitor().traverse(s, clone=True).alias()
+        s3 = select([s], s.c.col2==s2.c.col2)
 
+        self.assert_compile(s3, "SELECT anon_1.col1, anon_1.col2, anon_1.col3 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "\
+        "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :param_2) AS anon_1, "\
+        "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :param_3) AS anon_4 "\
+        "WHERE anon_1.col2 = anon_4.col2")
+        
+        s = select([t1], t1.c.col1==4).alias()
+        s2 = ClauseVisitor().traverse(s, clone=True).alias()
+        s3 = select([s], s.c.col2==s2.c.col2)
+        self.assert_compile(s3, "SELECT anon_1.col1, anon_1.col2, anon_1.col3 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "\
+        "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :table1_col1_2) AS anon_1, "\
+        "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :table1_col1_3) AS anon_4 "\
+        "WHERE anon_1.col2 = anon_4.col2")
+        
     def test_alias(self):
         subq = t2.select().alias('subq')
         s = select([t1.c.col1, subq.c.col1], from_obj=[t1, subq, t1.join(subq, t1.c.col1==subq.c.col2)])
@@ -247,7 +267,7 @@ class ClauseTest(SQLCompileTest):
             def visit_select(self, select):
                 select.append_whereclause(t1.c.col2==7)
                 
-        self.assert_compile(Vis().traverse(s, clone=True), "SELECT * FROM table1 WHERE table1.col1 = table2.col1 AND table1.col2 = :table1_col2")
+        self.assert_compile(Vis().traverse(s, clone=True), "SELECT * FROM table1 WHERE table1.col1 = table2.col1 AND table1.col2 = :table1_col2_1")
 
     def test_clause_adapter(self):
         
@@ -358,13 +378,18 @@ class SelectTest(SQLCompileTest):
             )
     
     def test_select(self):
-        self.assert_compile(t1.select().where(t1.c.col1==5).order_by(t1.c.col3), "SELECT table1.col1, table1.col2, table1.col3 FROM table1 WHERE table1.col1 = :table1_col1 ORDER BY table1.col3")
+        self.assert_compile(t1.select().where(t1.c.col1==5).order_by(t1.c.col3), 
+        "SELECT table1.col1, table1.col2, table1.col3 FROM table1 WHERE table1.col1 = :table1_col1_1 ORDER BY table1.col3")
     
-        self.assert_compile(t1.select().select_from(select([t2], t2.c.col1==t1.c.col1)).order_by(t1.c.col3), "SELECT table1.col1, table1.col2, table1.col3 FROM table1, (SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 FROM table2 WHERE table2.col1 = table1.col1) ORDER BY table1.col3")
+        self.assert_compile(t1.select().select_from(select([t2], t2.c.col1==t1.c.col1)).order_by(t1.c.col3), 
+            "SELECT table1.col1, table1.col2, table1.col3 FROM table1, (SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 "\
+            "FROM table2 WHERE table2.col1 = table1.col1) ORDER BY table1.col3")
         
         s = select([t2], t2.c.col1==t1.c.col1, correlate=False)
         s = s.correlate(t1).order_by(t2.c.col3)
-        self.assert_compile(t1.select().select_from(s).order_by(t1.c.col3), "SELECT table1.col1, table1.col2, table1.col3 FROM table1, (SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 FROM table2 WHERE table2.col1 = table1.col1 ORDER BY table2.col3) ORDER BY table1.col3")
+        self.assert_compile(t1.select().select_from(s).order_by(t1.c.col3), 
+            "SELECT table1.col1, table1.col2, table1.col3 FROM table1, (SELECT table2.col1 AS col1, table2.col2 AS col2, table2.col3 AS col3 "\
+            "FROM table2 WHERE table2.col1 = table1.col1 ORDER BY table2.col3) ORDER BY table1.col3")
 
     def test_columns(self):
         s = t1.select()

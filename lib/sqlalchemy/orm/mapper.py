@@ -1066,9 +1066,9 @@ class Mapper(object):
                 mapper = table_to_mapper[table]
                 clause = sql.and_()
                 for col in mapper._pks_by_table[table]:
-                    clause.clauses.append(col == sql.bindparam(col._label, type_=col.type, unique=True))
+                    clause.clauses.append(col == sql.bindparam(col._label, type_=col.type))
                 if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
-                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type_=col.type, unique=True))
+                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type_=col.type))
                 statement = table.update(clause)
                 rows = 0
                 supports_sane_rowcount = True
@@ -1210,9 +1210,9 @@ class Mapper(object):
                 del_objects.sort(comparator)
                 clause = sql.and_()
                 for col in mapper._pks_by_table[table]:
-                    clause.clauses.append(col == sql.bindparam(col.key, type_=col.type, unique=True))
+                    clause.clauses.append(col == sql.bindparam(col.key, type_=col.type))
                 if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
-                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col.key, type_=mapper.version_id_col.type, unique=True))
+                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col.key, type_=mapper.version_id_col.type))
                 statement = table.delete(clause)
                 c = connection.execute(statement, del_objects)
                 if c.supports_sane_multi_rowcount() and c.rowcount != len(del_objects):
@@ -1389,11 +1389,11 @@ class Mapper(object):
             if leftcol is None or rightcol is None:
                 return
             if leftcol.table not in needs_tables:
-                binary.left = sql.bindparam(leftcol.name, None, type_=binary.right.type, unique=True)
-                param_names.append(leftcol)
+                binary.left = sql.bindparam(None, None, type_=binary.right.type)
+                param_names.append((leftcol, binary.left))
             elif rightcol not in needs_tables:
-                binary.right = sql.bindparam(rightcol.name, None, type_=binary.right.type, unique=True)
-                param_names.append(rightcol)
+                binary.right = sql.bindparam(None, None, type_=binary.right.type)
+                param_names.append((rightcol, binary.right))
 
         allconds = []
         param_names = []
@@ -1487,8 +1487,8 @@ class Mapper(object):
             identitykey = self.identity_key_from_instance(instance)
 
             params = {}
-            for c in param_names:
-                params[c.name] = self._get_attr_by_column(instance, c)
+            for c, bind in param_names:
+                params[bind] = self._get_attr_by_column(instance, c)
             row = selectcontext.session.connection(self).execute(statement, params).fetchone()
             self.populate_instance(selectcontext, instance, row, isnew=False, instancekey=identitykey, ispostselect=True)
 

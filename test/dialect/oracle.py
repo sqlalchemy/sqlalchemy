@@ -95,8 +95,8 @@ class CompileTest(SQLCompileTest):
         self.assert_compile(query, 
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
 FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid(+) AND \
-(mytable.name = :mytable_name OR mytable.myid = :mytable_myid OR \
-myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo where boo = lar))",
+(mytable.name = :mytable_name_1 OR mytable.myid = :mytable_myid_2 OR \
+myothertable.othername != :myothertable_othername_3 OR EXISTS (select yay from foo where boo = lar))",
             dialect=oracle.OracleDialect(use_ansi = False))
 
         query = table1.outerjoin(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
@@ -125,7 +125,7 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
             order_by(addresses.oid_column, address_types.oid_column)
         self.assert_compile(s, "SELECT address_types_1.id, address_types_1.name, addresses.id, addresses.user_id, "
             "addresses.address_type_id, addresses.email_address FROM addresses LEFT OUTER JOIN address_types address_types_1 "
-            "ON addresses.address_type_id = address_types_1.id WHERE addresses.user_id = :addresses_user_id ORDER BY addresses.rowid, "
+            "ON addresses.address_type_id = address_types_1.id WHERE addresses.user_id = :addresses_user_id_2 ORDER BY addresses.rowid, "
             "address_types.rowid")
 
 class TypesTest(SQLCompileTest):

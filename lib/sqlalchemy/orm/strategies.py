@@ -108,8 +108,8 @@ class ColumnLoader(LoaderStrategy):
             statement = sql.select(needs_tables, cond, use_labels=True)
             def create_statement(instance):
                 params = {}
-                for c in param_names:
-                    params[c.name] = mapper._get_attr_by_column(instance, c)
+                for (c, bind) in param_names:
+                    params[bind] = mapper._get_attr_by_column(instance, c)
                 return (statement, params)
             
             def new_execute(instance, row, isnew, **flags):
@@ -297,12 +297,11 @@ class LazyLoader(AbstractRelationLoader):
             (criterion, lazybinds, rev) = LazyLoader._create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
         bind_to_col = dict([(lazybinds[col].key, col) for col in lazybinds])
 
-        class Visitor(visitors.ClauseVisitor):
-            def visit_bindparam(s, bindparam):
-                mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
-                if bindparam.key in bind_to_col:
-                    bindparam.value = mapper._get_attr_by_column(instance, bind_to_col[bindparam.key])
-        return Visitor().traverse(criterion, clone=True)
+        def visit_bindparam(bindparam):
+            mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
+            if bindparam.key in bind_to_col:
+                bindparam.value = mapper._get_attr_by_column(instance, bind_to_col[bindparam.key])
+        return visitors.traverse(criterion, clone=True, visit_bindparam=visit_bindparam)
     
     def setup_loader(self, instance, options=None, path=None):
         if not mapper.has_mapper(instance):
@@ -416,7 +415,7 @@ class LazyLoader(AbstractRelationLoader):
             if should_bind(leftcol, rightcol):
                 col = leftcol
                 binary.left = binds.setdefault(leftcol,
-                        sql.bindparam(None, None, type_=binary.right.type, unique=True))
+                        sql.bindparam(None, None, type_=binary.right.type))
                 reverse[rightcol] = binds[col]
 
             # the "left is not right" compare is to handle part of a join clause that is "table.c.col1==table.c.col1",
@@ -424,7 +423,7 @@ class LazyLoader(AbstractRelationLoader):
             if leftcol is not rightcol and should_bind(rightcol, leftcol):
                 col = rightcol
                 binary.right = binds.setdefault(rightcol,
-                        sql.bindparam(None, None, type_=binary.left.type, unique=True))
+                        sql.bindparam(None, None, type_=binary.left.type))
                 reverse[leftcol] = binds[col]
 
         lazywhere = primaryjoin
