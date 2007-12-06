@@ -10,6 +10,7 @@ from sqlalchemy.sql import expression, visitors, operators
 from sqlalchemy.orm import mapper, object_mapper
 from sqlalchemy.orm import util as mapperutil
 from itertools import chain
+import warnings
 
 __all__ = ['Query', 'QueryContext']
 
@@ -55,6 +56,10 @@ class Query(object):
     
     def _no_criterion(self):
         q = self._clone()
+        
+        if q._criterion or q._statement or q._from_obj != [self.table]:
+            warnings.warn(RuntimeWarning("Query.get() being called on a Query with existing criterion; criterion is being ignored."))
+            
         q._from_obj = [self.table]
         q._alias_ids = {}
         q._joinpoint = self.mapper

@@ -63,8 +63,19 @@ class GetTest(QueryTest):
     
     def test_no_criterion(self):
         """test that get()/load() does not use preexisting filter/etc. criterion"""
-        
+
         s = create_session()
+
+        import warnings
+        warnings.filterwarnings("error", r".*Query.*")
+        print "---------------------------------------"
+        try:
+            s.query(User).join('addresses').filter(Address.user_id==8).get(7)
+            assert False
+        except RuntimeWarning, e:
+            assert str(e) == "Query.get() being called on a Query with existing criterion; criterion is being ignored."
+
+        warnings.filterwarnings("once", r".*Query.*")
         
         assert s.query(User).filter(User.id==7).get(19) is None
 
@@ -86,6 +97,8 @@ class GetTest(QueryTest):
         assert s.query(User).join('addresses').filter(Address.user_id==8).get(7).id == u.id
         
         assert s.query(User).join('addresses').filter(Address.user_id==8).load(7).id == u.id
+
+
         
     def test_unique_param_names(self):
         class SomeUser(object):
