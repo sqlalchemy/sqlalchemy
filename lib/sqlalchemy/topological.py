@@ -143,7 +143,7 @@ class QueueDependencySorter(object):
         self.tuples = tuples
         self.allitems = allitems
 
-    def sort(self, allow_self_cycles=True, allow_all_cycles=False, create_tree=True):
+    def sort(self, allow_cycles=False, ignore_self_cycles=False, create_tree=True):
         (tuples, allitems) = (self.tuples, self.allitems)
         #print "\n---------------------------------\n"
         #print repr([t for t in tuples])
@@ -159,12 +159,12 @@ class QueueDependencySorter(object):
 
         for t in tuples:
             if t[0] is t[1]:
-                if allow_self_cycles:
+                if allow_cycles:
                     n = nodes[id(t[0])]
                     n.cycles = util.Set([n])
-                    continue
-                else:
+                elif not ignore_self_cycles:
                     raise CircularDependencyError("Self-referential dependency detected " + repr(t))
+                continue
             childnode = nodes[id(t[1])]
             parentnode = nodes[id(t[0])]
             edges.add((parentnode, childnode))
@@ -179,7 +179,7 @@ class QueueDependencySorter(object):
             if not queue:
                 # edges remain but no edgeless nodes to remove; this indicates
                 # a cycle
-                if allow_all_cycles:
+                if allow_cycles:
                     for cycle in self._find_cycles(edges):
                         lead = cycle[0][0]
                         lead.cycles = util.Set()
@@ -207,6 +207,8 @@ class QueueDependencySorter(object):
                 queue.append(childnode)
         if create_tree:
             return self._create_batched_tree(output)
+        elif allow_cycles:
+            return output
         else:
             return [n.item for n in output]
 

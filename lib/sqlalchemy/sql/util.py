@@ -16,7 +16,7 @@ def sort_tables(tables, reverse=False):
     vis = TVisitor()
     for table in tables:
         vis.traverse(table)
-    sequence = topological.QueueDependencySorter( tuples, tables).sort(create_tree=False)
+    sequence = topological.QueueDependencySorter( tuples, tables).sort(ignore_self_cycles=True, create_tree=False)
     if reverse:
         return util.reversed(sequence)
     else:

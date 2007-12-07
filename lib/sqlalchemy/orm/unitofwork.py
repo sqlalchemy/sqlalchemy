@@ -480,7 +480,7 @@ class UOWTransaction(object):
 
         # get list of base mappers
         mappers = [t.mapper for t in self.tasks.values() if t.base_task is t]
-        head = topological.QueueDependencySorter(self.dependencies, mappers).sort(allow_all_cycles=True)
+        head = topological.QueueDependencySorter(self.dependencies, mappers).sort(allow_cycles=True)
         if self._should_log_debug:
             self.logger.debug("Dependent tuples:\n" + "\n".join(["(%s->%s)" % (d[0].class_.__name__, d[1].class_.__name__) for d in self.dependencies]))
             self.logger.debug("Dependency sort:\n"+ str(head))
