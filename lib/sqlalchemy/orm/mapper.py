@@ -418,7 +418,7 @@ class Mapper(object):
                     self._pks_by_table[k.table] = util.OrderedSet()
                 self._pks_by_table[k.table].add(k)
                 
-        if len(self._pks_by_table[self.mapped_table]) == 0:
+        if self.mapped_table not in self._pks_by_table or len(self._pks_by_table[self.mapped_table]) == 0:
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
 
         if self.inherits is not None and not self.concrete and not self.primary_key_argument:

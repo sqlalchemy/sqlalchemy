@@ -66,7 +66,15 @@ class MapperTest(MapperSuperTest):
         u2 = s.query(User).filter_by(user_name='jack').one()
         assert u is u2
 
-
+    
+    def test_no_pks(self):
+        s = select([users.c.user_name]).alias('foo')
+        try:
+            mapper(User, s)
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Could not assemble any primary key columns for mapped table 'foo'"
+        
     def test_compileonsession(self):
         m = mapper(User, users)
         session = create_session()
