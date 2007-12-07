@@ -57,6 +57,9 @@ CHANGES
      that of regular relations.  if passive_deletes flag (also just added)
      is not set, a delete of the parent item will trigger a full load of 
      the child items so that they can be deleted or updated accordingly.
+
+   - also with dynamic, implemented correct count() behavior as well
+     as other helper methods.
      
    - query.get() and query.load() do not take existing filter or other
      criterion into account; these methods *always* look up the given id

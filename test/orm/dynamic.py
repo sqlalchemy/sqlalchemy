@@ -24,6 +24,14 @@ class DynamicTest(FixtureTest):
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
         assert fixtures.user_address_result == q.all()
 
+    def test_count(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        sess = create_session()
+        u = sess.query(User).first()
+        assert u.addresses.count() == 1, u.addresses.count()
+        
     def test_backref(self):
         mapper(Address, addresses, properties={
             'user':relation(User, backref=backref('addresses', lazy='dynamic'))

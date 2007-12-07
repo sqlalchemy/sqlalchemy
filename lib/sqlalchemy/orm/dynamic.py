@@ -74,7 +74,11 @@ class AppenderQuery(Query):
             return None
         else:
             return sess
-            
+    
+    def _get_session(self):
+        return self.__session()
+    session = property(_get_session)
+    
     def __iter__(self):
         sess = self.__session()
         if sess is None:
@@ -88,7 +92,14 @@ class AppenderQuery(Query):
             return self.attr.get_history(self.state, passive=True)._added_items.__getitem__(index)
         else:
             return self._clone(sess).__getitem__(index)
-
+    
+    def count(self):
+        sess = self.__session()
+        if sess is None:
+            return len(self.attr.get_history(self.state, passive=True)._added_items)
+        else:
+            return self._clone(sess).count()
+    
     def _clone(self, sess=None):
         # note we're returning an entirely new Query class instance here
         # without any assignment capabilities;
