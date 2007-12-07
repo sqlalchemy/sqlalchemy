@@ -376,7 +376,7 @@ class DefaultCompiler(engine.Compiled):
         name = self._truncate_bindparam(bindparam)
         if name in self.binds:
             existing = self.binds[name]
-            if existing.unique or bindparam.unique:
+            if existing is not bindparam and (existing.unique or bindparam.unique):
                 raise exceptions.CompileError("Bind parameter '%s' conflicts with unique bind parameter of the same name" % bindparam.key)
         self.binds[bindparam.key] = self.binds[name] = bindparam
         return self.bindparam_string(name)

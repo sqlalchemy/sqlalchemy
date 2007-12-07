@@ -170,18 +170,14 @@ class QueryTest(PersistTest):
         users.insert().execute(user_id = 8, user_name = 'fred')
 
         u = bindparam('userid')
-        s = users.select(or_(users.c.user_name==u, users.c.user_name==u))
+        s = users.select(and_(users.c.user_name==u, users.c.user_name==u))
         r = s.execute(userid='fred').fetchall()
         assert len(r) == 1
 
-    def test_unique_conflict(self):
         u = bindparam('userid', unique=True)
-        s = users.select(or_(users.c.user_name==u, users.c.user_name==u))
-        try:
-            str(s)
-            assert False
-        except exceptions.CompileError, e:
-            assert str(e) == "Bind parameter '{ANON %d userid}' conflicts with unique bind parameter of the same name" % id(u)
+        s = users.select(and_(users.c.user_name==u, users.c.user_name==u))
+        r = s.execute({u:'fred'}).fetchall()
+        assert len(r) == 1
 
     def test_bindparams_in_params(self):
         """test that a _BindParamClause itself can be a key in the params dict"""

@@ -968,7 +968,15 @@ EXISTS (select yay from foo where boo = lar)",
         assert s2.compile().params == {'myid':8, 'myotherid':7}
         assert s3.compile().params == {'myid':9, 'myotherid':7}
 
-
+        # test using same 'unique' param object twice in one compile
+        s = select([table1.c.myid]).where(table1.c.myid==12).as_scalar()
+        s2 = select([table1, s], table1.c.myid==s)
+        self.assert_compile(s2, 
+            "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable WHERE mytable.myid = :mytable_myid_2) AS anon_1 FROM mytable WHERE mytable.myid = (SELECT mytable.myid FROM mytable WHERE mytable.myid = :mytable_myid_2)")
+        positional = s2.compile(dialect=sqlite.dialect())
+        pp = positional.get_params()
+        assert [pp[k] for k in positional.positiontup] == [12, 12]
+        
         # check that conflicts with "unique" params are caught
         s = select([table1], or_(table1.c.myid==7, table1.c.myid==bindparam('mytable_myid_1')))
         try:
