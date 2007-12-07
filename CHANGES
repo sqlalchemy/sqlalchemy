@@ -53,6 +53,11 @@ CHANGES
      have not, you might notice your apps using a lot fewer queries than
      before in some situations. [ticket:871]
 
+   - added "cascade delete" behavior to "dynamic" relations just like
+     that of regular relations.  if passive_deletes flag (also just added)
+     is not set, a delete of the parent item will trigger a full load of 
+     the child items so that they can be deleted or updated accordingly.
+     
    - query.get() and query.load() do not take existing filter or other
      criterion into account; these methods *always* look up the given id
      in the database or return the current instance from the identity map, 

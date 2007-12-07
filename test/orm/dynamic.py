@@ -24,6 +24,21 @@ class DynamicTest(FixtureTest):
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
         assert fixtures.user_address_result == q.all()
 
+    def test_backref(self):
+        mapper(Address, addresses, properties={
+            'user':relation(User, backref=backref('addresses', lazy='dynamic'))
+        })
+        mapper(User, users)
+        
+        sess = create_session()
+        ad = sess.query(Address).get(1)
+        def go():
+            ad.user = None
+        self.assert_sql_count(testbase.db, go, 1)
+        sess.flush()
+        u = sess.query(User).get(7)
+        assert ad not in u.addresses
+        
     def test_no_count(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
@@ -101,9 +116,15 @@ class FlushTest(FixtureTest):
         sess.delete(u.addresses[4])
         sess.delete(u.addresses[3])
         assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
-
+        
         sess.delete(u)
+        
+        # u.addresses relation will have to force the load
+        # of all addresses so that they can be updated
+        sess.flush()
         sess.close()
+        
+        assert testbase.db.scalar(addresses.count(addresses.c.user_id != None)) ==0
 
     @testing.fails_on('maxdb')
     def test_remove_orphans(self):
