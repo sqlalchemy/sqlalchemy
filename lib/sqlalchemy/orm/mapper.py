@@ -861,10 +861,13 @@ class Mapper(object):
     def instances(self, cursor, session, *mappers, **kwargs):
         """Return a list of mapped instances corresponding to the rows
         in a given ResultProxy.
+        
+        DEPRECATED.
         """
 
         import sqlalchemy.orm.query
         return sqlalchemy.orm.Query(self, session).instances(cursor, *mappers, **kwargs)
+    instances = util.deprecated(instances, False)
 
     def identity_key_from_row(self, row):
         """Return an identity-map key for use in storing/retrieving an
