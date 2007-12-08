@@ -514,7 +514,7 @@ class MapperTest(MapperSuperTest):
         assert u.user_name == 'foo'
         assert assert_col == [('get', 'jack'), ('set', 'foo'), ('get', 'foo')]
         
-
+class OptionsTest(MapperSuperTest):
     @testing.fails_on('maxdb')
     def test_synonymoptions(self):
         sess = create_session()
@@ -559,9 +559,9 @@ class MapperTest(MapperSuperTest):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
         sess = create_session()
         mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True)
+            addresses = relation(mapper(Address, addresses))
         ))
-        l = sess.query(User).options(eagerload('addresses')).select()
+        l = sess.query(User).options(eagerload('addresses')).all()
 
         def go():
             self.assert_result(l, User, *user_address_result)
@@ -573,7 +573,7 @@ class MapperTest(MapperSuperTest):
         mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = True)
         ))
-        u = sess.query(User).options(eagerload('addresses')).get_by(user_id=8)
+        u = sess.query(User).options(eagerload('addresses')).filter_by(user_id=8).one()
 
         def go():
             assert u.user_id == 8
@@ -593,9 +593,9 @@ class MapperTest(MapperSuperTest):
     def test_lazyoptionswithlimit(self):
         sess = create_session()
         mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = False)
+            addresses = relation(mapper(Address, addresses), lazy=False)
         ))
-        u = sess.query(User).options(lazyload('addresses')).get_by(user_id=8)
+        u = sess.query(User).options(lazyload('addresses')).filter_by(user_id=8).one()
 
         def go():
             assert u.user_id == 8
@@ -606,8 +606,8 @@ class MapperTest(MapperSuperTest):
         """tests that an eager relation automatically degrades to a lazy relation if eager columns are not available"""
         sess = create_session()
         usermapper = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = False)
-        )).compile()
+            addresses = relation(mapper(Address, addresses), lazy=False)
+        ))
 
         # first test straight eager load, 1 statement
         def go():
@@ -622,7 +622,7 @@ class MapperTest(MapperSuperTest):
         # (previous users in session fell out of scope and were removed from session's identity map)
         def go():
             r = users.select().execute()
-            l = usermapper.instances(r, sess)
+            l = sess.query(usermapper).instances(r)
             self.assert_result(l, User, *user_address_result)
         self.assert_sql_count(testbase.db, go, 4)
 
@@ -649,7 +649,7 @@ class MapperTest(MapperSuperTest):
 
         # first test straight eager load, 1 statement
         def go():
-            l = sess.query(usermapper).select()
+            l = sess.query(usermapper).all()
             self.assert_result(l, User, *user_all_result)
         self.assert_sql_count(testbase.db, go, 1)
 
@@ -659,7 +659,7 @@ class MapperTest(MapperSuperTest):
         # then assert the data, which will launch 6 more lazy loads
         def go():
             r = users.select().execute()
-            l = usermapper.instances(r, sess)
+            l = sess.query(usermapper).instances(r)
             self.assert_result(l, User, *user_all_result)
         self.assert_sql_count(testbase.db, go, 7)
 
@@ -668,25 +668,11 @@ class MapperTest(MapperSuperTest):
         """tests that an eager relation can be upgraded to a lazy relation via the options method"""
         sess = create_session()
         mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = False)
+            addresses = relation(mapper(Address, addresses), lazy=False)
         ))
         l = sess.query(User).options(lazyload('addresses')).select()
         def go():
             self.assert_result(l, User, *user_address_result)
-        self.assert_sql_count(testbase.db, go, 3)
-
-    def test_latecompile(self):
-        """tests mappers compiling late in the game"""
-
-        mapper(User, users, properties = {'orders': relation(Order)})
-        mapper(Item, orderitems, properties={'keywords':relation(Keyword, secondary=itemkeywords)})
-        mapper(Keyword, keywords)
-        mapper(Order, orders, properties={'items':relation(Item)})
-
-        sess = create_session()
-        u = sess.query(User).select()
-        def go():
-            print u[0].orders[1].items[0].keywords[1]
         self.assert_sql_count(testbase.db, go, 3)
 
     def test_deepoptions(self):
