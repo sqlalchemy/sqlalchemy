@@ -308,11 +308,8 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self._last_updated_params
 
     def lastrow_has_defaults(self):
-        return hasattr(self, '_postfetch_cols') and len(self._postfetch_cols)
+        return hasattr(self, 'postfetch_cols') and len(self.postfetch_cols)
 
-    def postfetch_cols(self):
-        return self._postfetch_cols
-        
     def set_input_sizes(self):
         """Given a cursor and ClauseParameters, call the appropriate
         style of ``setinputsizes()`` on the cursor, using DB-API types
@@ -383,4 +380,4 @@ class DefaultExecutionContext(base.ExecutionContext):
                 else:
                     self._last_updated_params = compiled_parameters
 
-                self._postfetch_cols = self.compiled.postfetch
+                self.postfetch_cols = self.compiled.postfetch

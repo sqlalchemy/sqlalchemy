@@ -320,6 +320,10 @@ class ExecutionContext(object):
       
     returns_rows
       True if the statement should return result rows
+
+    postfetch_cols
+     a list of Column objects for which a server-side default
+     or inline SQL expression value was fired off.  applies to inserts and updates.
       
     The Dialect should provide an ExecutionContext via the
     create_execution_context() method.  The `pre_exec` and `post_exec`
@@ -414,11 +418,6 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def postfetch_cols(self):
-        """return a list of Column objects for which a 'passive' server-side default
-        value was fired off.  applies to inserts and updates."""
-
-        raise NotImplementedError()
 
 class Compiled(object):
     """Represent a compiled SQL expression.
@@ -1481,7 +1480,7 @@ class ResultProxy(object):
 
         See ExecutionContext for details.
         """
-        return self.context.postfetch_cols()
+        return self.context.postfetch_cols
         
     def supports_sane_rowcount(self):
         """Return ``supports_sane_rowcount`` from the dialect.

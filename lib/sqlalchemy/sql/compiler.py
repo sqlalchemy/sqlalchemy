@@ -459,10 +459,7 @@ class DefaultCompiler(engine.Compiled):
 
         stack_entry = {'select':select}
         
-        if asfrom:
-            stack_entry['is_subquery'] = True
-            column_clause_args = {}
-        elif self.stack and 'select' in self.stack[-1]:
+        if asfrom or (self.stack and 'select' in self.stack[-1]):
             stack_entry['is_subquery'] = True
             column_clause_args = {}
         else:
@@ -546,6 +543,7 @@ class DefaultCompiler(engine.Compiled):
 
     def get_select_precolumns(self, select):
         """Called when building a ``SELECT`` statement, position is just before column list."""
+
         return select._distinct and "DISTINCT " or ""
 
     def order_by_clause(self, select):
@@ -624,8 +622,8 @@ class DefaultCompiler(engine.Compiled):
             self.binds[col.key] = bindparam
             return self.bindparam_string(self._truncate_bindparam(bindparam))
 
-        self.postfetch = util.Set()
-        self.prefetch = util.Set()
+        self.postfetch = []
+        self.prefetch = []
         
         # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
@@ -651,7 +649,7 @@ class DefaultCompiler(engine.Compiled):
                 if sql._is_literal(value):
                     value = create_bind_param(c, value)
                 else:
-                    self.postfetch.add(c)
+                    self.postfetch.append(c)
                     value = self.process(value.self_group())
                 values.append((c, value))
             elif isinstance(c, schema.Column):
@@ -663,35 +661,35 @@ class DefaultCompiler(engine.Compiled):
                             (c.default is not None and 
                              not isinstance(c.default, schema.Sequence))):
                             values.append((c, create_bind_param(c, None)))
-                            self.prefetch.add(c)
+                            self.prefetch.append(c)
                     elif isinstance(c.default, schema.ColumnDefault):
                         if isinstance(c.default.arg, sql.ClauseElement):
                             values.append((c, self.process(c.default.arg.self_group())))
                             if not c.primary_key:
                                 # dont add primary key column to postfetch
-                                self.postfetch.add(c)
+                                self.postfetch.append(c)
                         else:
                             values.append((c, create_bind_param(c, None)))
-                            self.prefetch.add(c)
+                            self.prefetch.append(c)
                     elif isinstance(c.default, schema.PassiveDefault):
                         if not c.primary_key:
-                            self.postfetch.add(c)
+                            self.postfetch.append(c)
                     elif isinstance(c.default, schema.Sequence):
                         proc = self.process(c.default)
                         if proc is not None:
                             values.append((c, proc))
                             if not c.primary_key:
-                                self.postfetch.add(c)
+                                self.postfetch.append(c)
                 elif self.isupdate:
                     if isinstance(c.onupdate, schema.ColumnDefault):
                         if isinstance(c.onupdate.arg, sql.ClauseElement):
                             values.append((c, self.process(c.onupdate.arg.self_group())))
-                            self.postfetch.add(c)
+                            self.postfetch.append(c)
                         else:
                             values.append((c, create_bind_param(c, None)))
-                            self.prefetch.add(c)
+                            self.prefetch.append(c)
                     elif isinstance(c.onupdate, schema.PassiveDefault):
-                        self.postfetch.add(c)
+                        self.postfetch.append(c)
         return values
 
     def visit_delete(self, delete_stmt):

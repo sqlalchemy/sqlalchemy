@@ -56,10 +56,11 @@ class O2MTest(ORMTest):
         b1.parent_foo = f
         b2.parent_foo = f
         sess.flush()
-        compare = repr(b1) + repr(b2) + repr(b1.parent_foo) + repr(b2.parent_foo)
+        compare = ','.join([repr(b1), repr(b2), repr(b1.parent_foo), repr(b2.parent_foo)])
         sess.clear()
         l = sess.query(Blub).select()
-        result = repr(l[0]) + repr(l[1]) + repr(l[0].parent_foo) + repr(l[1].parent_foo)
+        result = ','.join([repr(l[0]), repr(l[1]), repr(l[0].parent_foo), repr(l[1].parent_foo)])
+        print compare
         print result
         self.assert_(compare == result)
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')

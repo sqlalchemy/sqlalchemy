@@ -61,7 +61,7 @@ class ClauseSynchronizer(object):
                     source_column = binary.right
             else:
                 if binary.left in foreign_keys:
-                    source_column=binary.right
+                    source_column = binary.right
                     dest_column = binary.left
                 elif binary.right in foreign_keys:
                     source_column = binary.left
@@ -94,15 +94,10 @@ class SyncRule(object):
     """An instruction indicating how to populate the objects on each
     side of a relationship.
 
-    In other words, if table1 column A is joined against table2 column
+    E.g. if table1 column A is joined against table2 column
     B, and we are a one-to-many from table1 to table2, a syncrule
     would say *take the A attribute from object1 and assign it to the
     B attribute on object2*.
-
-    A rule contains the source mapper, the source column, destination
-    column, destination mapper in the case of a one/many relationship,
-    and the integer direction of this mapper relative to the
-    association in the case of a many to many relationship.
     """
 
     def __init__(self, source_mapper, source_column, dest_column, dest_mapper=None, issecondary=None):
@@ -123,26 +118,26 @@ class SyncRule(object):
             self._dest_primary_key = self.dest_mapper is not None and self.dest_column in self.dest_mapper._pks_by_table[self.dest_column.table] and not self.dest_mapper.allow_null_pks
             return self._dest_primary_key
 
-    def execute(self, source, dest, obj, child, clearkeys):
+    def execute(self, source, dest, parent, child, clearkeys):
         if source is None:
             if self.issecondary is False:
-                source = obj
+                source = parent
             elif self.issecondary is True:
                 source = child
         if clearkeys or source is None:
             value = None
             clearkeys = True
         else:
-            value = self.source_mapper._get_attr_by_column(source, self.source_column)
+            value = self.source_mapper._get_state_attr_by_column(source, self.source_column)
         if isinstance(dest, dict):
             dest[self.dest_column.key] = value
         else:
             if clearkeys and self.dest_primary_key():
-                raise exceptions.AssertionError("Dependency rule tried to blank-out primary key column '%s' on instance '%s'" % (str(self.dest_column), mapperutil.instance_str(dest)))
+                raise exceptions.AssertionError("Dependency rule tried to blank-out primary key column '%s' on instance '%s'" % (str(self.dest_column), mapperutil.state_str(dest)))
 
             if logging.is_debug_enabled(self.logger):
-                self.logger.debug("execute() instances: %s(%s)->%s(%s) ('%s')" % (mapperutil.instance_str(source), str(self.source_column), mapperutil.instance_str(dest), str(self.dest_column), value))
-            self.dest_mapper._set_attr_by_column(dest, self.dest_column, value)
+                self.logger.debug("execute() instances: %s(%s)->%s(%s) ('%s')" % (mapperutil.state_str(source), str(self.source_column), mapperutil.state_str(dest), str(self.dest_column), value))
+            self.dest_mapper._set_state_attr_by_column(dest, self.dest_column, value)
 
 SyncRule.logger = logging.class_logger(SyncRule)
 

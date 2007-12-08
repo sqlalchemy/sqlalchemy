@@ -181,8 +181,9 @@ class AttributeImpl(object):
     def get_history(self, state, passive=False):
         current = self.get(state, passive=passive)
         if current is PASSIVE_NORESULT:
-            return None
-        return AttributeHistory(self, state, current)
+            return (None, None, None)
+        else:
+            return _create_history(self, state, current)
         
     def set_callable(self, state, callable_, clear=False):
         """Set a callable function for this attribute on the given object.
@@ -326,8 +327,8 @@ class ScalarAttributeImpl(AttributeImpl):
 
     def check_mutable_modified(self, state):
         if self.mutable_scalars:
-            h = self.get_history(state, passive=True)
-            if h is not None and h.is_modified():
+            (added, unchanged, deleted) = self.get_history(state, passive=True)
+            if added or deleted:
                 state.modified = True
                 return True
             else:
@@ -568,7 +569,6 @@ class CollectionAttributeImpl(AttributeImpl):
             collections.CollectionAdapter(self, state, user_data)
             return getattr(user_data, '_sa_adapter')
 
-
 class GenericBackrefExtension(interfaces.AttributeExtension):
     """An extension which synchronizes a two-way relationship.
 
@@ -612,14 +612,12 @@ class ClassState(object):
 class InstanceState(object):
     """tracks state information at the instance level."""
 
-    __slots__ = 'class_', 'obj', 'dict', 'pending', 'committed_state', 'modified', 'trigger', 'callables', 'parents', 'instance_dict', '_strong_obj', 'expired_attributes'
-    
     def __init__(self, obj):
         self.class_ = obj.__class__
         self.obj = weakref.ref(obj, self.__cleanup)
         self.dict = obj.__dict__
         self.committed_state = {}
-        self.modified = False
+        self.modified = self.strong = False
         self.trigger = None
         self.callables = {}
         self.parents = {}
@@ -681,7 +679,7 @@ class InstanceState(object):
             return False
         
     def __resurrect(self, instance_dict):
-        if self.is_modified():
+        if self.strong or self.is_modified():
             # store strong ref'ed version of the object; will revert
             # to weakref when changes are persisted
             obj = new_instance(self.class_, state=self)
@@ -893,74 +891,46 @@ class WeakInstanceDict(UserDict.UserDict):
 class StrongInstanceDict(dict):
     def all_states(self):
         return [o._state for o in self.values()]
-    
-class AttributeHistory(object):
-    """Calculate the *history* of a particular attribute on a
-    particular instance.
-    """
 
-    def __init__(self, attr, state, current):
-        self.attr = attr
+def _create_history(attr, state, current):
+    if state.committed_state:
+        original = state.committed_state.get(attr.key, NO_VALUE)
+    else:
+        original = NO_VALUE
 
-        # get the "original" value.  if a lazy load was fired when we got
-        # the 'current' value, this "original" was also populated just
-        # now as well (therefore we have to get it second)
-        if state.committed_state:
-            original = state.committed_state.get(attr.key, NO_VALUE)
+    if hasattr(attr, 'get_collection'):
+        if original is NO_VALUE:
+            s = util.IdentitySet([])
         else:
-            original = NO_VALUE
+            s = util.IdentitySet(original)
 
-        if hasattr(attr, 'get_collection'):
-            self._current = current
-
-            if original is NO_VALUE:
-                s = util.IdentitySet([])
-            else:
-                s = util.IdentitySet(original)
-
-            # FIXME: the tests have an assumption on the collection's ordering
-            self._added_items = util.OrderedIdentitySet()
-            self._unchanged_items = util.OrderedIdentitySet()
-            self._deleted_items = util.OrderedIdentitySet()
-            if current:
-                collection = attr.get_collection(state, current)
-                for a in collection:
-                    if a in s:
-                        self._unchanged_items.add(a)
-                    else:
-                        self._added_items.add(a)
-            for a in s:
-                if a not in self._unchanged_items:
-                    self._deleted_items.add(a)
-        else:
-            self._current = [current]
-            if attr.is_equal(current, original) is True:
-                self._unchanged_items = [current]
-                self._added_items = []
-                self._deleted_items = []
-            else:
-                self._added_items = [current]
-                if original is not NO_VALUE and original is not None:
-                    self._deleted_items = [original]
+        _added_items = []
+        _unchanged_items = []
+        _deleted_items = []
+        if current:
+            collection = attr.get_collection(state, current)
+            for a in collection:
+                if a in s:
+                    _unchanged_items.append(a)
                 else:
-                    self._deleted_items = []
-                self._unchanged_items = []
+                    _added_items.append(a)
+        _deleted_items = list(s.difference(_unchanged_items))
 
-    def __iter__(self):
-        return iter(self._current)
-
-    def is_modified(self):
-        return len(self._deleted_items) > 0 or len(self._added_items) > 0
-
-    def added_items(self):
-        return list(self._added_items)
-
-    def unchanged_items(self):
-        return list(self._unchanged_items)
-
-    def deleted_items(self):
-        return list(self._deleted_items)
-
+        return (_added_items, _unchanged_items, _deleted_items)
+    else:
+        if attr.is_equal(current, original) is True:
+            _unchanged_items = [current]
+            _added_items = []
+            _deleted_items = []
+        else:
+            _added_items = [current]
+            if original is not NO_VALUE and original is not None:
+                _deleted_items = [original]
+            else:
+                _deleted_items = []
+            _unchanged_items = []
+        return (_added_items, _unchanged_items, _deleted_items)
+    
 class PendingCollection(object):
     """stores items appended and removed from a collection that has not been loaded yet.
     
@@ -987,30 +957,25 @@ def _managed_attributes(class_):
     
     return chain(*[cl._class_state.attrs.values() for cl in class_.__mro__[:-1] if hasattr(cl, '_class_state')])
 
-def is_modified(instance):
-    return instance._state.is_modified()
+def get_history(state, key, **kwargs):
+    return getattr(state.class_, key).impl.get_history(state, **kwargs)
+get_state_history = get_history
 
-def get_history(instance, key, **kwargs):
-    return getattr(instance.__class__, key).impl.get_history(instance._state, **kwargs)
-
-def get_as_list(instance, key, passive=False):
-    """Return an attribute of the given name from the given instance.
-
-    If the attribute is a scalar, return it as a single-item list,
-    otherwise return a collection based attribute.
-
-    If the attribute's value is to be produced by an unexecuted
-    callable, the callable will only be executed if the given
-    `passive` flag is False.
+def get_as_list(state, key, passive=False):
+    """return an InstanceState attribute as a list, 
+    regardless of it being a scalar or collection-based
+    attribute.
+    
+    returns None if passive=True and the getter returns
+    PASSIVE_NORESULT.
     """
-
-    attr = getattr(instance.__class__, key).impl
-    state = instance._state
+    
+    attr = getattr(state.class_, key).impl
     x = attr.get(state, passive=passive)
     if x is PASSIVE_NORESULT:
-        return []
+        return None
     elif hasattr(attr, 'get_collection'):
-        return list(attr.get_collection(state, x))
+        return attr.get_collection(state, x)
     elif isinstance(x, list):
         return x
     else:

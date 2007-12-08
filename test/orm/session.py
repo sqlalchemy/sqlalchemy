@@ -634,6 +634,7 @@ class SessionTest(AssertMixin):
         assert u in s
         assert a not in s
         s.flush()
+        print "\n".join([repr(x.__dict__) for x in s])
         s.clear()
         assert s.query(User).one().user_id == u.user_id
         assert s.query(Address).first() is None

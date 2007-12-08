@@ -765,16 +765,16 @@ class Session(object):
         
         if attribute_names:
             self._validate_persistent(instance)
-            expire_instance(instance, attribute_names=attribute_names)
+            _expire_state(instance._state, attribute_names=attribute_names)
         else:
             # pre-fetch the full cascade since the expire is going to 
             # remove associations
             cascaded = list(_cascade_iterator('refresh-expire', instance))
             self._validate_persistent(instance)
-            expire_instance(instance, None)
+            _expire_state(instance._state, None)
             for (c, m) in cascaded:
                 self._validate_persistent(c)
-                expire_instance(c, None)
+                _expire_state(c._state, None)
 
     def prune(self):
         """Removes unreferenced instances cached in the identity map.
@@ -799,7 +799,7 @@ class Session(object):
         self._validate_persistent(instance)
         for c, m in [(instance, None)] + list(_cascade_iterator('expunge', instance)):
             if c in self:
-                self.uow._remove_deleted(c)
+                self.uow._remove_deleted(c._state)
                 self._unattach(c)
 
     def save(self, instance, entity_name=None):
@@ -812,7 +812,6 @@ class Session(object):
         The `entity_name` keyword argument will further qualify the
         specific ``Mapper`` used to handle this instance.
         """
-
         self._save_impl(instance, entity_name=entity_name)
         self._cascade_save_or_update(instance)
 
@@ -1052,12 +1051,12 @@ class Session(object):
         result of True.
         """
         
-        return instance in self.uow.new or (hasattr(instance, '_instance_key') and self.identity_map.get(instance._instance_key) is instance)
+        return instance._state in self.uow.new or (hasattr(instance, '_instance_key') and self.identity_map.get(instance._instance_key) is instance)
 
     def __iter__(self):
         """return an iterator of all instances which are pending or persistent within this Session."""
         
-        return iter(list(self.uow.new) + self.uow.identity_map.values())
+        return iter(list(self.uow.new.values()) + self.uow.identity_map.values())
 
     def is_modified(self, instance, include_collections=True, passive=False):
         """return True if the given instance has modified attributes.
@@ -1079,7 +1078,8 @@ class Session(object):
         for attr in attributes._managed_attributes(instance.__class__):
             if not include_collections and hasattr(attr.impl, 'get_collection'):
                 continue
-            if attr.get_history(instance).is_modified():
+            (added, unchanged, deleted) = attr.get_history(instance)
+            if added or deleted:
                 return True
         return False
         
@@ -1097,13 +1097,13 @@ class Session(object):
                      is_modified() method.
                      """)
 
-    deleted = property(lambda s:s.uow.deleted,
+    deleted = property(lambda s:util.IdentitySet(s.uow.deleted.values()),
                        doc="A ``Set`` of all instances marked as 'deleted' within this ``Session``")
 
-    new = property(lambda s:s.uow.new,
+    new = property(lambda s:util.IdentitySet(s.uow.new.values()),
                    doc="A ``Set`` of all instances marked as 'new' within this ``Session``.")
 
-def expire_instance(instance, attribute_names):
+def _expire_state(state, attribute_names):
     """standalone expire instance function. 
     
     installs a callable with the given instance's _state
@@ -1113,13 +1113,13 @@ def expire_instance(instance, attribute_names):
     If the list is None or blank, the entire instance is expired.
     """
     
-    if instance._state.trigger is None:
+    if state.trigger is None:
         def load_attributes(instance, attribute_names):
             if object_session(instance).query(instance.__class__)._get(instance._instance_key, refresh_instance=instance, only_load_props=attribute_names) is None:
                 raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(instance))
-        instance._state.trigger = load_attributes
+        state.trigger = load_attributes
         
-    instance._state.expire_attributes(attribute_names)
+    state.expire_attributes(attribute_names)
     
 register_attribute = unitofwork.register_attribute
 
@@ -1127,7 +1127,7 @@ _sessions = weakref.WeakValueDictionary()
 
 def _cascade_iterator(cascade, instance, **kwargs):
     mapper = _object_mapper(instance)
-    for (o, m) in mapper.cascade_iterator(cascade, instance, **kwargs):
+    for (o, m) in mapper.cascade_iterator(cascade, instance._state, **kwargs):
         yield o, m
 
 def object_session(instance):
@@ -1143,4 +1143,4 @@ def object_session(instance):
 # Lazy initialization to avoid circular imports
 unitofwork.object_session = object_session
 from sqlalchemy.orm import mapper
-mapper.expire_instance = expire_instance
+mapper._expire_state = _expire_state

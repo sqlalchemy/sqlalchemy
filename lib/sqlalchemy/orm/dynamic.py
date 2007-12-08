@@ -13,7 +13,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
     def get(self, state, passive=False):
         if passive:
-            return self.get_history(state, passive=True).added_items()
+            return self._get_collection(state, passive=True).added_items
         else:
             return AppenderQuery(self, state)
 
@@ -23,7 +23,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         state.dict[self.key] = CollectionHistory(self, state)
 
     def get_collection(self, state, user_data=None):
-        return self.get_history(state, passive=True)._added_items
+        return self._get_collection(state, passive=True).added_items
         
     def set(self, state, value, initiator):
         if initiator is self:
@@ -38,6 +38,10 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         raise NotImplementedError()
         
     def get_history(self, state, passive=False):
+        c = self._get_collection(state, passive)
+        return (c.added_items, c.unchanged_items, c.deleted_items)
+        
+    def _get_collection(self, state, passive=False):
         try:
             c = state.dict[self.key]
         except KeyError:
@@ -47,15 +51,15 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             return CollectionHistory(self, state, apply_to=c)
         else:
             return c
-
+        
     def append(self, state, value, initiator, passive=False):
         if initiator is not self:
-            self.get_history(state, passive=True)._added_items.append(value)
+            self._get_collection(state, passive=True).added_items.append(value)
             self.fire_append_event(state, value, initiator)
     
     def remove(self, state, value, initiator, passive=False):
         if initiator is not self:
-            self.get_history(state, passive=True)._deleted_items.append(value)
+            self._get_collection(state, passive=True).deleted_items.append(value)
             self.fire_remove_event(state, value, initiator)
 
             
@@ -82,21 +86,21 @@ class AppenderQuery(Query):
     def __iter__(self):
         sess = self.__session()
         if sess is None:
-            return iter(self.attr.get_history(self.state, passive=True)._added_items)
+            return iter(self.attr._get_collection(self.state, passive=True).added_items)
         else:
             return iter(self._clone(sess))
 
     def __getitem__(self, index):
         sess = self.__session()
         if sess is None:
-            return self.attr.get_history(self.state, passive=True)._added_items.__getitem__(index)
+            return self.attr._get_collection(self.state, passive=True).added_items.__getitem__(index)
         else:
             return self._clone(sess).__getitem__(index)
     
     def count(self):
         sess = self.__session()
         if sess is None:
-            return len(self.attr.get_history(self.state, passive=True)._added_items)
+            return len(self.attr._get_collection(self.state, passive=True).added_items)
         else:
             return self._clone(sess).count()
     
@@ -121,7 +125,7 @@ class AppenderQuery(Query):
             oldlist = list(self)
         else:
             oldlist = []
-        self.attr.get_history(self.state, passive=True).replace(oldlist, collection)
+        self.attr._get_collection(self.state, passive=True).replace(oldlist, collection)
         return oldlist
         
     def append(self, item):
@@ -131,35 +135,23 @@ class AppenderQuery(Query):
         self.attr.remove(self.state, item, None)
 
             
-class CollectionHistory(attributes.AttributeHistory): 
+class CollectionHistory(object): 
     """Overrides AttributeHistory to receive append/remove events directly."""
 
     def __init__(self, attr, state, apply_to=None):
         if apply_to:
-            deleted = util.IdentitySet(apply_to._deleted_items)
-            added = apply_to._added_items
+            deleted = util.IdentitySet(apply_to.deleted_items)
+            added = apply_to.added_items
             coll = AppenderQuery(attr, state).autoflush(False)
-            self._unchanged_items = [o for o in util.IdentitySet(coll) if o not in deleted]
-            self._added_items = apply_to._added_items
-            self._deleted_items = apply_to._deleted_items
+            self.unchanged_items = [o for o in util.IdentitySet(coll) if o not in deleted]
+            self.added_items = apply_to.added_items
+            self.deleted_items = apply_to.deleted_items
         else:
-            self._deleted_items = []
-            self._added_items = []
-            self._unchanged_items = []
+            self.deleted_items = []
+            self.added_items = []
+            self.unchanged_items = []
             
     def replace(self, olditems, newitems):
-        self._added_items = newitems
-        self._deleted_items = olditems
+        self.added_items = newitems
+        self.deleted_items = olditems
         
-    def is_modified(self):
-        return len(self._deleted_items) > 0 or len(self._added_items) > 0
-
-    def added_items(self):
-        return self._added_items
-
-    def unchanged_items(self):
-        return self._unchanged_items
-
-    def deleted_items(self):
-        return self._deleted_items
-    

@@ -136,11 +136,11 @@ class DefaultTest(PersistTest):
     def testinsert(self):
         r = t.insert().execute()
         assert r.lastrow_has_defaults()
-        assert util.Set(r.context.postfetch_cols()) == util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6])
+        assert util.Set(r.context.postfetch_cols) == util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6])
 
         r = t.insert(inline=True).execute()
         assert r.lastrow_has_defaults()
-        assert util.Set(r.context.postfetch_cols()) == util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6])
+        assert util.Set(r.context.postfetch_cols) == util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6])
         
         t.insert().execute()
         t.insert().execute()
