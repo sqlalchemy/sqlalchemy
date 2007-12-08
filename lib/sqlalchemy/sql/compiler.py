@@ -409,13 +409,14 @@ class DefaultCompiler(engine.Compiled):
 
     def _process_anon(self, match):
         (ident, derived) = match.group(1,2)
-        if ('anonymous', ident) in self.generated_ids:
-            return self.generated_ids[('anonymous', ident)]
+        key = ('anonymous', ident)
+        if key in self.generated_ids:
+            return self.generated_ids[key]
         else:
-            anonymous_counter = self.generated_ids.get('anonymous', 1)
+            anonymous_counter = self.generated_ids.get(('anon_counter', derived), 1)
             newname = derived + "_" + str(anonymous_counter)
-            self.generated_ids['anonymous'] = anonymous_counter + 1
-            self.generated_ids[('anonymous', ident)] = newname
+            self.generated_ids[('anon_counter', derived)] = anonymous_counter + 1
+            self.generated_ids[key] = newname
             return newname
     
     def _anonymize(self, name):

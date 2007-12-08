@@ -387,8 +387,8 @@ We'd like to show off some of our operators inside of `select()` constructs.  Bu
     ...     or_(addresses.c.email_address=='wendy@aol.com', addresses.c.email_address=='jack@yahoo.com'),
     ...     not_(users.c.id>5))
     users.name LIKE :users_name_1 AND users.id = addresses.user_id AND 
-    (addresses.email_address = :addresses_email_address_2 OR addresses.email_address = :addresses_email_address_3) 
-    AND users.id <= :users_id_4
+    (addresses.email_address = :addresses_email_address_1 OR addresses.email_address = :addresses_email_address_2) 
+    AND users.id <= :users_id_1
 
 And you can also use the re-jiggered bitwise AND, OR and NOT operators, although because of Python operator precedence you have to watch your parenthesis:
 
@@ -397,8 +397,8 @@ And you can also use the re-jiggered bitwise AND, OR and NOT operators, although
     ...     ((addresses.c.email_address=='wendy@aol.com') | (addresses.c.email_address=='jack@yahoo.com')) \
     ...     & ~(users.c.id>5) # doctest: +NORMALIZE_WHITESPACE
     users.name LIKE :users_name_1 AND users.id = addresses.user_id AND 
-    (addresses.email_address = :addresses_email_address_2 OR addresses.email_address = :addresses_email_address_3) 
-    AND users.id <= :users_id_4
+    (addresses.email_address = :addresses_email_address_1 OR addresses.email_address = :addresses_email_address_2) 
+    AND users.id <= :users_id_1
 
 So with all of this vocabulary, let's select all users who have an email address at AOL or MSN, whose name starts with a letter between "m" and "z", and we'll also generate a column containing their full name combined with their email address.  We will add two new constructs to this statement, `between()` and `label()`.  `between()` produces a BETWEEN clause, and `label()` is used in a column expression to produce labels using the `AS` keyword; its recommended when selecting from expressions that otherwise would not have a name:
 
@@ -511,8 +511,8 @@ Aliases can of course be used for anything which you can SELECT from, including 
     SELECT users.name 
     FROM users, (SELECT users.id AS id, users.name AS name, users.fullname AS fullname 
     FROM users, addresses AS addresses_1, addresses AS addresses_2 
-    WHERE users.id = addresses_1.user_id AND users.id = addresses_2.user_id AND addresses_1.email_address = ? AND addresses_2.email_address = ?) AS anon_5 
-    WHERE users.id = anon_5.id
+    WHERE users.id = addresses_1.user_id AND users.id = addresses_2.user_id AND addresses_1.email_address = ? AND addresses_2.email_address = ?) AS anon_1 
+    WHERE users.id = anon_1.id
     ['jack@msn.com', 'jack@yahoo.com']
     {stop}[(u'jack',)]
     
@@ -619,9 +619,9 @@ So we started small, added one little thing at a time, and at the end we have a 
     >>> print query
     {opensql}SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, addresses_1.id AS addresses_1_id, addresses_1.user_id AS addresses_1_user_id, addresses_1.email_address AS addresses_1_email_address 
     FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id 
-    WHERE users.name = :users_name_2 AND (EXISTS (SELECT addresses_1.id 
+    WHERE users.name = :users_name_1 AND (EXISTS (SELECT addresses_1.id 
     FROM addresses AS addresses_1 
-    WHERE addresses_1.user_id = users.id AND addresses_1.email_address LIKE :addresses_email_address_3)) ORDER BY users.fullname DESC
+    WHERE addresses_1.user_id = users.id AND addresses_1.email_address LIKE :addresses_email_address_1)) ORDER BY users.fullname DESC
 
 One more thing though, with automatic labeling applied as well as anonymous aliasing, how do we retrieve the columns from the rows for this thing ?  The label for the `email_addresses` column is now the generated name `addresses_1_email_address`; and in another statement might be something different !  This is where accessing by result columns by `Column` object becomes very useful:
 
@@ -735,12 +735,12 @@ If we wanted to use our `calculate` statement twice with different bind paramete
     >>> print s
     SELECT users.id, users.name, users.fullname 
     FROM users, (SELECT q, z, r 
-    FROM calculate(:x_1, :y_2)) AS c1, (SELECT q, z, r 
-    FROM calculate(:x_3, :y_4)) AS c2 
+    FROM calculate(:x_1, :y_1)) AS c1, (SELECT q, z, r 
+    FROM calculate(:x_2, :y_2)) AS c2 
     WHERE users.id BETWEEN c1.z AND c2.z
 
     >>> s.compile().params
-    {'y_4': 12, 'y_2': 45, 'x_3': 5, 'x_1': 17}
+    {'x_2': 5, 'y_2': 12, 'y_1': 45, 'x_1': 17}
     
 ### Unions and Other Set Operations {@name=unions}
 

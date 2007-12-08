@@ -1754,7 +1754,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
             self.key = "{ANON %d %s}" % (id(self), key or 'param')
         else:
             self.key = key or "{ANON %d param}" % id(self)
-        self._orig_key = key
+        self._orig_key = key or 'param'
         self.unique = unique
         self.value = value
         self.isoutparam = isoutparam

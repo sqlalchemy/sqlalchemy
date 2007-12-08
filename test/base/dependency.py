@@ -139,7 +139,7 @@ class DependencySortTest(PersistTest):
             node3,
             node4
         ]
-        head = DependencySorter(tuples, allitems).sort()
+        head = DependencySorter(tuples, allitems).sort(ignore_self_cycles=True)
         self.assert_sort(tuples, head)
 
     def testcircular(self):
@@ -156,7 +156,7 @@ class DependencySortTest(PersistTest):
             (node3, node1),
             (node4, node1)
         ]
-        head = DependencySorter(tuples, []).sort(allow_all_cycles=True)
+        head = DependencySorter(tuples, []).sort(allow_cycles=True)
         self.assert_sort(tuples, head)
         
     def testcircular2(self):
@@ -173,13 +173,13 @@ class DependencySortTest(PersistTest):
             (node3, node2),
             (node2, node3)
         ]
-        head = DependencySorter(tuples, []).sort(allow_all_cycles=True)
+        head = DependencySorter(tuples, []).sort(allow_cycles=True)
         self.assert_sort(tuples, head)
     
     def testcircular3(self):
         nodes = {}
         tuples = [('Question', 'Issue'), ('ProviderService', 'Issue'), ('Provider', 'Question'), ('Question', 'Provider'), ('ProviderService', 'Question'), ('Provider', 'ProviderService'), ('Question', 'Answer'), ('Issue', 'Question')]
-        head = DependencySorter(tuples, []).sort(allow_all_cycles=True)
+        head = DependencySorter(tuples, []).sort(allow_cycles=True)
         self.assert_sort(tuples, head)
         
     def testbigsort(self):

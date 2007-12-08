@@ -85,7 +85,7 @@ myothertable.othername FROM mytable, myothertable")
             )
             ,
         "SELECT myid, name, description FROM (SELECT mytable.myid AS myid, mytable.name AS name, mytable.description AS description FROM mytable "\
-        "WHERE mytable.name = :mytable_name_1) WHERE myid = :myid_2")
+        "WHERE mytable.name = :mytable_name_1) WHERE myid = :myid_1")
 
         sq = select([table1])
         self.assert_compile(
@@ -243,9 +243,9 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.assert_compile(select([table2, s]), "SELECT myothertable.otherid, myothertable.othername, (SELECT mytable.myid FROM mytable) AS anon_1 FROM myothertable")
 
         # test expressions against scalar selects
-        self.assert_compile(select([s - literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) - :param_2 AS anon_1")
-        self.assert_compile(select([select([table1.c.name]).as_scalar() + literal('x')]), "SELECT (SELECT mytable.name FROM mytable) || :param_2 AS anon_1")
-        self.assert_compile(select([s > literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) > :param_2 AS anon_1")
+        self.assert_compile(select([s - literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) - :param_1 AS anon_1")
+        self.assert_compile(select([select([table1.c.name]).as_scalar() + literal('x')]), "SELECT (SELECT mytable.name FROM mytable) || :param_1 AS anon_1")
+        self.assert_compile(select([s > literal(8)]), "SELECT (SELECT mytable.myid FROM mytable) > :param_1 AS anon_1")
 
         self.assert_compile(select([select([table1.c.name]).label('foo')]), "SELECT (SELECT mytable.name FROM mytable) AS foo")
 
@@ -304,8 +304,8 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
     def testand(self):
         self.assert_compile(
             select(['*'], and_(table1.c.myid == 12, table1.c.name=='asdf', table2.c.othername == 'foo', "sysdate() = today()")),
-            "SELECT * FROM mytable, myothertable WHERE mytable.myid = :mytable_myid_1 AND mytable.name = :mytable_name_2 "\
-            "AND myothertable.othername = :myothertable_othername_3 AND sysdate() = today()"
+            "SELECT * FROM mytable, myothertable WHERE mytable.myid = :mytable_myid_1 AND mytable.name = :mytable_name_1 "\
+            "AND myothertable.othername = :myothertable_othername_1 AND sysdate() = today()"
         )
 
     def testor(self):
@@ -315,8 +315,10 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                 or_(table2.c.othername=='asdf', table2.c.othername == 'foo', table2.c.otherid == 9),
                 "sysdate() = today()",
             )),
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable, myothertable WHERE mytable.myid = :mytable_myid_1 AND (myothertable.othername = :myothertable_othername_2 OR myothertable.othername = :myothertable_othername_3 OR myothertable.otherid = :myothertable_otherid_4) AND sysdate() = today()",
-            checkparams = {'myothertable_othername_2': 'asdf', 'myothertable_othername_3':'foo', 'myothertable_otherid_4': 9, 'mytable_myid_1': 12}
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable, myothertable "\
+            "WHERE mytable.myid = :mytable_myid_1 AND (myothertable.othername = :myothertable_othername_1 OR "\
+            "myothertable.othername = :myothertable_othername_2 OR myothertable.otherid = :myothertable_otherid_1) AND sysdate() = today()",
+            checkparams = {'myothertable_othername_1': 'asdf', 'myothertable_othername_2':'foo', 'myothertable_otherid_1': 9, 'mytable_myid_1': 12}
         )
 
     def testdistinct(self):
@@ -387,19 +389,19 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
 
         self.assert_compile(
          table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')),
-         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid_1 AND mytable.name != :mytable_name_2"
+         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid_1 AND mytable.name != :mytable_name_1"
         )
 
         self.assert_compile(
          table1.select((table1.c.myid != 12) & ~(table1.c.name.between('jack','john'))),
          "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid_1 AND "\
-         "NOT (mytable.name BETWEEN :mytable_name_2 AND :mytable_name_3)"
+         "NOT (mytable.name BETWEEN :mytable_name_1 AND :mytable_name_2)"
         )
 
         self.assert_compile(
          table1.select((table1.c.myid != 12) & ~and_(table1.c.name=='john', table1.c.name=='ed', table1.c.name=='fred')),
          "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid_1 AND "\
-         "NOT (mytable.name = :mytable_name_2 AND mytable.name = :mytable_name_3 AND mytable.name = :mytable_name_4)"
+         "NOT (mytable.name = :mytable_name_1 AND mytable.name = :mytable_name_2 AND mytable.name = :mytable_name_3)"
         )
 
         self.assert_compile(
@@ -414,7 +416,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         # test the op() function, also that its results are further usable in expressions
         self.assert_compile(
             table1.select(table1.c.myid.op('hoho')(12)==14),
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (mytable.myid hoho :mytable_myid_1) = :param_2"
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (mytable.myid hoho :mytable_myid_1) = :param_1"
         )
 
         # test that clauses can be pickled (operators need to be module-level, etc.)
@@ -644,7 +646,7 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
     def testliteral(self):
         self.assert_compile(select([literal("foo") + literal("bar")], from_obj=[table1]),
-            "SELECT :param_2 || :param_3 AS anon_1 FROM mytable")
+            "SELECT :param_1 || :param_2 AS anon_1 FROM mytable")
 
     def testcalculatedcolumns(self):
          value_tbl = table('values',
@@ -674,7 +676,7 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         """tests the generation of functions using the func keyword"""
         # test an expression with a function
         self.assert_compile(func.lala(3, 4, literal("five"), table1.c.myid) * table2.c.otherid,
-            "lala(:lala_1, :lala_2, :param_3, mytable.myid) * myothertable.otherid")
+            "lala(:lala_1, :lala_2, :param_1, mytable.myid) * myothertable.otherid")
 
         # test it in a SELECT
         self.assert_compile(select([func.count(table1.c.myid)]),
@@ -727,10 +729,10 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         self.assert_compile(s,
         "SELECT users.id, users.name, users.fullname "
         "FROM users, (SELECT q, z, r "
-        "FROM calculate(:x_1, :y_2)) AS c1, (SELECT q, z, r "
-        "FROM calculate(:x_3, :y_4)) AS c2 "
+        "FROM calculate(:x_1, :y_1)) AS c1, (SELECT q, z, r "
+        "FROM calculate(:x_2, :y_2)) AS c2 "
         "WHERE users.id BETWEEN c1.z AND c2.z"
-        , checkparams={'y_2': 45, 'x_1': 17, 'y_4': 12, 'x_3': 5})
+        , checkparams={'y_1': 45, 'x_1': 17, 'y_2': 12, 'x_2': 5})
 
     def testextract(self):
         """test the EXTRACT function"""
@@ -877,8 +879,8 @@ UNION SELECT mytable.myid FROM mytable"
         self.assert_compile(query,
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
 FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid \
-WHERE mytable.name = %(mytable_name_1)s OR mytable.myid = %(mytable_myid_2)s OR \
-myothertable.othername != %(myothertable_othername_3)s OR \
+WHERE mytable.name = %(mytable_name_1)s OR mytable.myid = %(mytable_myid_1)s OR \
+myothertable.othername != %(myothertable_othername_1)s OR \
 EXISTS (select yay from foo where boo = lar)",
             dialect=postgres.dialect()
             )
@@ -972,7 +974,8 @@ EXISTS (select yay from foo where boo = lar)",
         s = select([table1.c.myid]).where(table1.c.myid==12).as_scalar()
         s2 = select([table1, s], table1.c.myid==s)
         self.assert_compile(s2, 
-            "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable WHERE mytable.myid = :mytable_myid_2) AS anon_1 FROM mytable WHERE mytable.myid = (SELECT mytable.myid FROM mytable WHERE mytable.myid = :mytable_myid_2)")
+            "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable WHERE mytable.myid = "\
+            ":mytable_myid_1) AS anon_1 FROM mytable WHERE mytable.myid = (SELECT mytable.myid FROM mytable WHERE mytable.myid = :mytable_myid_1)")
         positional = s2.compile(dialect=sqlite.dialect())
         pp = positional.get_params()
         assert [pp[k] for k in positional.positiontup] == [12, 12]
@@ -1017,25 +1020,25 @@ EXISTS (select yay from foo where boo = lar)",
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([literal('a'), 'b'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, :mytable_myid_2)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, :mytable_myid_1)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([literal('a'), literal('b')])),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, :param_2)")
 
         self.assert_compile(select([table1], table1.c.myid.in_(['a', literal('b')])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid_1, :param_2)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid_1, :param_1)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([literal(1) + 'a'])),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1 + :param_2)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([literal('a') +'a', 'b'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1 || :param_2, :mytable_myid_3)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1 || :param_2, :mytable_myid_1)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([literal('a') + literal('a'), literal('b')])),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1 || :param_2, :param_3)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([1, literal(3) + 4])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid_1, :param_2 + :param_3)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid_1, :param_1 + :param_2)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([literal('a') < 'b'])),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1 < :param_2)")
@@ -1050,10 +1053,10 @@ EXISTS (select yay from foo where boo = lar)",
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, mytable.myid)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([literal('a'), table1.c.myid +'a'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, mytable.myid + :mytable_myid_2)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, mytable.myid + :mytable_myid_1)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([literal(1), 'a' + table1.c.myid])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, :mytable_myid_2 + mytable.myid)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, :mytable_myid_1 + mytable.myid)")
 
         self.assert_compile(select([table1], table1.c.myid.in_([1, 2, 3])),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid_1, :mytable_myid_2, :mytable_myid_3)")
@@ -1082,7 +1085,9 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
                 ),
                 from_obj=[table1.join(table2, table1.c.myid==table2.c.otherid)], order_by=[table1.c.myid]
             ),
-            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid WHERE myothertable.otherid IN (SELECT myothertable.otherid FROM myothertable ORDER BY myothertable.othername  LIMIT 10) ORDER BY mytable.myid"
+            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername FROM mytable "\
+            "JOIN myothertable ON mytable.myid = myothertable.otherid WHERE myothertable.otherid IN (SELECT myothertable.otherid "\
+            "FROM myothertable ORDER BY myothertable.othername  LIMIT 10) ORDER BY mytable.myid"
         )
 
         # test empty in clause
@@ -1156,13 +1161,13 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
         self.assert_compile(table.select((table.c.field + 5) == table.c.field),
             "SELECT op.field FROM op WHERE op.field + :op_field_1 = op.field")
         self.assert_compile(table.select((table.c.field + 5) * 6),
-            "SELECT op.field FROM op WHERE (op.field + :op_field_1) * :param_2")
+            "SELECT op.field FROM op WHERE (op.field + :op_field_1) * :param_1")
         self.assert_compile(table.select((table.c.field * 5) + 6),
-            "SELECT op.field FROM op WHERE op.field * :op_field_1 + :param_2")
+            "SELECT op.field FROM op WHERE op.field * :op_field_1 + :param_1")
         self.assert_compile(table.select(5 + table.c.field.in_([5,6])),
-            "SELECT op.field FROM op WHERE :param_1 + (op.field IN (:op_field_2, :op_field_3))")
+            "SELECT op.field FROM op WHERE :param_1 + (op.field IN (:op_field_1, :op_field_2))")
         self.assert_compile(table.select((5 + table.c.field).in_([5,6])),
-            "SELECT op.field FROM op WHERE :op_field_1 + op.field IN (:param_2, :param_3)")
+            "SELECT op.field FROM op WHERE :op_field_1 + op.field IN (:param_1, :param_2)")
         self.assert_compile(table.select(not_(and_(table.c.field == 5, table.c.field == 7))),
             "SELECT op.field FROM op WHERE NOT (op.field = :op_field_1 AND op.field = :op_field_2)")
         self.assert_compile(table.select(not_(table.c.field == 5)),
@@ -1227,7 +1232,7 @@ class CRUDTest(SQLCompileTest):
         self.assert_compile(update(table1, table1.c.myid ==12), "UPDATE mytable SET myid=:myid WHERE mytable.myid = :mytable_myid_1", params={'myid':18}, checkparams={'myid':18, 'mytable_myid_1':12})
         s = table1.update(table1.c.myid == 12, values = {table1.c.name : 'lala'})
         c = s.compile(column_keys=['mytable_id', 'name'])
-        self.assert_compile(update(table1, table1.c.myid == 12, values = {table1.c.name : table1.c.myid}).values({table1.c.name:table1.c.name + 'foo'}), "UPDATE mytable SET name=(mytable.name || :mytable_name_1), description=:description WHERE mytable.myid = :mytable_myid_2", params = {'description':'test'})
+        self.assert_compile(update(table1, table1.c.myid == 12, values = {table1.c.name : table1.c.myid}).values({table1.c.name:table1.c.name + 'foo'}), "UPDATE mytable SET name=(mytable.name || :mytable_name_1), description=:description WHERE mytable.myid = :mytable_myid_1", params = {'description':'test'})
         self.assert_(str(s) == str(c))
 
     def testupdateexpression(self):
@@ -1237,8 +1242,8 @@ class CRUDTest(SQLCompileTest):
             values = {
             table1.c.name : table1.c.name + "lala",
             table1.c.myid : func.do_stuff(table1.c.myid, literal('hoho'))
-            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :param_1), name=(mytable.name || :mytable_name_2) "
-            "WHERE mytable.myid = hoho(:hoho_3) AND mytable.name = :param_4 || mytable.name || :param_5")
+            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :param_1), name=(mytable.name || :mytable_name_1) "
+            "WHERE mytable.myid = hoho(:hoho_1) AND mytable.name = :param_2 || mytable.name || :param_3")
 
     def testcorrelatedupdate(self):
         # test against a straight text subquery
@@ -1313,13 +1318,13 @@ class SchemaTest(SQLCompileTest):
         self.assert_compile(table4.select(), "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable")
         self.assert_compile(table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi')), 
             "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable WHERE "\
-            "remotetable.datatype_id = :remotetable_datatype_id_1 AND remotetable.value = :remotetable_value_2")
+            "remotetable.datatype_id = :remotetable_datatype_id_1 AND remotetable.value = :remotetable_value_1")
 
         s = table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi'))
         s.use_labels = True
         self.assert_compile(s, "SELECT remotetable.rem_id AS remotetable_rem_id, remotetable.datatype_id AS remotetable_datatype_id, remotetable.value "\
             "AS remotetable_value FROM remote_owner.remotetable WHERE "\
-            "remotetable.datatype_id = :remotetable_datatype_id_1 AND remotetable.value = :remotetable_value_2")
+            "remotetable.datatype_id = :remotetable_datatype_id_1 AND remotetable.value = :remotetable_value_1")
 
     def testalias(self):
         a = alias(table4, 'remtable')

@@ -233,17 +233,17 @@ class ClauseTest(SQLCompileTest):
         s3 = select([s], s.c.col2==s2.c.col2)
 
         self.assert_compile(s3, "SELECT anon_1.col1, anon_1.col2, anon_1.col3 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "\
-        "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :param_2) AS anon_1, "\
-        "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :param_3) AS anon_4 "\
-        "WHERE anon_1.col2 = anon_4.col2")
+        "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :param_1) AS anon_1, "\
+        "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :param_2) AS anon_2 "\
+        "WHERE anon_1.col2 = anon_2.col2")
         
         s = select([t1], t1.c.col1==4).alias()
         s2 = ClauseVisitor().traverse(s, clone=True).alias()
         s3 = select([s], s.c.col2==s2.c.col2)
         self.assert_compile(s3, "SELECT anon_1.col1, anon_1.col2, anon_1.col3 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "\
-        "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :table1_col1_2) AS anon_1, "\
-        "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :table1_col1_3) AS anon_4 "\
-        "WHERE anon_1.col2 = anon_4.col2")
+        "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :table1_col1_1) AS anon_1, "\
+        "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :table1_col1_2) AS anon_2 "\
+        "WHERE anon_1.col2 = anon_2.col2")
         
     def test_alias(self):
         subq = t2.select().alias('subq')
