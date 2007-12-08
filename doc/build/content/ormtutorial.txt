@@ -990,13 +990,13 @@ First some new tables:
     {sql}>>> metadata.create_all(engine) # doctest: +NORMALIZE_WHITESPACE
     PRAGMA table_info("users")
     {}
+    PRAGMA table_info("addresses")
+    {}
     PRAGMA table_info("posts")
     {}
     PRAGMA table_info("keywords")
     {}
     PRAGMA table_info("post_keywords")
-    {}
-    PRAGMA table_info("addresses")
     {}
     CREATE TABLE posts (
         id INTEGER NOT NULL, 

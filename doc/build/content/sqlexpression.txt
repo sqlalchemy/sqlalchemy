@@ -328,19 +328,19 @@ If we use a literal value (a literal meaning, not a SQLAlchemy clause object), w
 
     {python}
     >>> print users.c.id==7
-    users.id = :users_id
+    users.id = :users_id_1
     
 The `7` literal is embedded in `ClauseElement`; we can use the same trick we did with the `Insert` object to see it:
 
     {python}
     >>> (users.c.id==7).compile().params
-    {'users_id': 7}
+    {'users_id_1': 7}
     
 Most Python operators, as it turns out, produce a SQL expression here, like equals, not equals, etc.:
 
     {python}
     >>> print users.c.id != 7
-    users.id != :users_id
+    users.id != :users_id_1
     
     >>> # None converts to IS NULL
     >>> print users.c.name == None
@@ -348,7 +348,7 @@ Most Python operators, as it turns out, produce a SQL expression here, like equa
      
     >>> # reverse works too 
     >>> print 'fred' > users.c.name
-    users.name < :users_name
+    users.name < :users_name_1
     
 If we add two integer columns together, we get an addition expression:
 
@@ -375,7 +375,7 @@ If you have come across an operator which really isn't available, you can always
 
     {python}
     >>> print users.c.name.op('tiddlywinks')('foo')
-    users.name tiddlywinks :users_name
+    users.name tiddlywinks :users_name_1
     
 ## Conjunctions {@name=conjunctions}
 
@@ -386,9 +386,9 @@ We'd like to show off some of our operators inside of `select()` constructs.  Bu
     >>> print and_(users.c.name.like('j%'), users.c.id==addresses.c.user_id, #doctest: +NORMALIZE_WHITESPACE  
     ...     or_(addresses.c.email_address=='wendy@aol.com', addresses.c.email_address=='jack@yahoo.com'),
     ...     not_(users.c.id>5))
-    users.name LIKE :users_name AND users.id = addresses.user_id AND 
-    (addresses.email_address = :addresses_email_address OR addresses.email_address = :addresses_email_address_1) 
-    AND users.id <= :users_id
+    users.name LIKE :users_name_1 AND users.id = addresses.user_id AND 
+    (addresses.email_address = :addresses_email_address_2 OR addresses.email_address = :addresses_email_address_3) 
+    AND users.id <= :users_id_4
 
 And you can also use the re-jiggered bitwise AND, OR and NOT operators, although because of Python operator precedence you have to watch your parenthesis:
 
@@ -396,9 +396,9 @@ And you can also use the re-jiggered bitwise AND, OR and NOT operators, although
     >>> print users.c.name.like('j%') & (users.c.id==addresses.c.user_id) &  \
     ...     ((addresses.c.email_address=='wendy@aol.com') | (addresses.c.email_address=='jack@yahoo.com')) \
     ...     & ~(users.c.id>5) # doctest: +NORMALIZE_WHITESPACE
-    users.name LIKE :users_name AND users.id = addresses.user_id AND 
-    (addresses.email_address = :addresses_email_address OR addresses.email_address = :addresses_email_address_1) 
-    AND users.id <= :users_id
+    users.name LIKE :users_name_1 AND users.id = addresses.user_id AND 
+    (addresses.email_address = :addresses_email_address_2 OR addresses.email_address = :addresses_email_address_3) 
+    AND users.id <= :users_id_4
 
 So with all of this vocabulary, let's select all users who have an email address at AOL or MSN, whose name starts with a letter between "m" and "z", and we'll also generate a column containing their full name combined with their email address.  We will add two new constructs to this statement, `between()` and `label()`.  `between()` produces a BETWEEN clause, and `label()` is used in a column expression to produce labels using the `AS` keyword; its recommended when selecting from expressions that otherwise would not have a name:
 
@@ -511,8 +511,8 @@ Aliases can of course be used for anything which you can SELECT from, including 
     SELECT users.name 
     FROM users, (SELECT users.id AS id, users.name AS name, users.fullname AS fullname 
     FROM users, addresses AS addresses_1, addresses AS addresses_2 
-    WHERE users.id = addresses_1.user_id AND users.id = addresses_2.user_id AND addresses_1.email_address = ? AND addresses_2.email_address = ?) AS anon_3 
-    WHERE users.id = anon_3.id
+    WHERE users.id = addresses_1.user_id AND users.id = addresses_2.user_id AND addresses_1.email_address = ? AND addresses_2.email_address = ?) AS anon_5 
+    WHERE users.id = anon_5.id
     ['jack@msn.com', 'jack@yahoo.com']
     {stop}[(u'jack',)]
     
@@ -530,7 +530,7 @@ Of course you can join on whatever expression you want, such as if we want to jo
 
     {python}
     >>> print users.join(addresses, addresses.c.email_address.like(users.c.name + '%'))
-    users JOIN addresses ON addresses.email_address LIKE users.name || :users_name
+    users JOIN addresses ON addresses.email_address LIKE users.name || :users_name_1
 
 When we create a `select()` construct, SQLAlchemy looks around at the tables we've mentioned and then places them in the FROM clause of the statement.  When we use JOINs however, we know what FROM clause we want, so here we make usage of the `from_obj` keyword argument:
 
@@ -619,9 +619,9 @@ So we started small, added one little thing at a time, and at the end we have a 
     >>> print query
     {opensql}SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, addresses_1.id AS addresses_1_id, addresses_1.user_id AS addresses_1_user_id, addresses_1.email_address AS addresses_1_email_address 
     FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id 
-    WHERE users.name = :users_name AND (EXISTS (SELECT addresses_1.id 
+    WHERE users.name = :users_name_2 AND (EXISTS (SELECT addresses_1.id 
     FROM addresses AS addresses_1 
-    WHERE addresses_1.user_id = users.id AND addresses_1.email_address LIKE :addresses_email_address)) ORDER BY users.fullname DESC
+    WHERE addresses_1.user_id = users.id AND addresses_1.email_address LIKE :addresses_email_address_3)) ORDER BY users.fullname DESC
 
 One more thing though, with automatic labeling applied as well as anonymous aliasing, how do we retrieve the columns from the rows for this thing ?  The label for the `email_addresses` column is now the generated name `addresses_1_email_address`; and in another statement might be something different !  This is where accessing by result columns by `Column` object becomes very useful:
 
@@ -693,13 +693,13 @@ SQL functions are created using the `func` keyword, which generates functions us
     now()
 
     >>> print func.concat('x', 'y')
-    concat(:concat, :concat_1)
+    concat(:param_1, :param_2)
     
 Certain functions are marked as "ANSI" functions, which mean they don't get the parenthesis added after them, such as CURRENT_TIMESTAMP:
 
     {python}
     >>> print func.current_timestamp()
-    current_timestamp
+    CURRENT_TIMESTAMP
     
 Functions are most typically used in the columns clause of a select statement, and can also be labeled as well as given a type.  Labeling a function is recommended so that the result can be targeted in a result row based on a string name, and assigning it a type is required when you need result-set processing to occur, such as for unicode conversion and date conversions.  Below, we use the result function `scalar()` to just read the first column of the first row and then close the result; the label, even though present, is not important in this case:
 
@@ -735,12 +735,12 @@ If we wanted to use our `calculate` statement twice with different bind paramete
     >>> print s
     SELECT users.id, users.name, users.fullname 
     FROM users, (SELECT q, z, r 
-    FROM calculate(:x, :y)) AS c1, (SELECT q, z, r 
-    FROM calculate(:x_1, :y_1)) AS c2 
+    FROM calculate(:x_1, :y_2)) AS c1, (SELECT q, z, r 
+    FROM calculate(:x_3, :y_4)) AS c2 
     WHERE users.id BETWEEN c1.z AND c2.z
 
     >>> s.compile().params
-    {'y': 45, 'x': 17, 'y_1': 12, 'x_1': 5}
+    {'y_4': 12, 'y_2': 45, 'x_3': 5, 'x_1': 17}
     
 ### Unions and Other Set Operations {@name=unions}
 
