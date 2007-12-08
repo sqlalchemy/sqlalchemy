@@ -102,21 +102,29 @@ Or some postgres types:
 
 ### Creating your Own Types {@name=custom}
 
-User-defined types can be created, to support either database-specific types, or customized pre-processing of query parameters as well as post-processing of result set data.  You can make your own classes to perform these operations.  To augment the behavior of a `TypeEngine` type, such as `String`, the `TypeDecorator` class is used:
+User-defined types can be created which can augment the bind parameter and result processing capabilities of the built in types.  This is usually achieved using the `TypeDecorator` class, which "decorates" the behavior of any existing type.  As of version 0.4.2, the new `process_bind_param()` and `process_result_value()` methods should be used:
 
     {python}
     import sqlalchemy.types as types
 
     class MyType(types.TypeDecorator):
-        """basic type that decorates String, prefixes values with "PREFIX:" on 
+        """a type that decorates Unicode, prefixes values with "PREFIX:" on 
         the way in and strips it off on the way out."""
-        impl = types.String
-        def convert_bind_param(self, value, engine):
+        
+        impl = types.Unicode
+        
+        def process_bind_param(self, value, engine):
             return "PREFIX:" + value
-        def convert_result_value(self, value, engine):
-            return value[7:]
             
-The `PickleType` class is an instance of `TypeDecorator` already and can be subclassed directly.
+        def process_result_value(self, value, engine):
+            return value[7:]
+        
+        def copy(self):
+            return MyType(self.impl.length)
+
+Note that the "old" way to process bind params and result values, the `convert_bind_param()` and `convert_result_value()` methods, are still available.  The downside of these is that when using a type which already processes data such as the `Unicode` type, you need to call the superclass version of these methods directly.  Using `process_bind_param()` and `process_result_value()`, user-defined code can return and receive the desired Python data directly.
+
+As of version 0.4.2, `TypeDecorator` should generally be used for any user-defined type which redefines the behavior of another type, including other `TypeDecorator` subclasses such as `PickleType`, and the new `process_...()` methods described above should be used.  
 
 To build a type object from scratch, which will not have a corresponding database-specific implementation, subclass `TypeEngine`:
 
@@ -126,10 +134,13 @@ To build a type object from scratch, which will not have a corresponding databas
     class MyType(types.TypeEngine):
         def __init__(self, precision = 8):
             self.precision = precision
+            
         def get_col_spec(self):
             return "MYTYPE(%s)" % self.precision
+            
         def convert_bind_param(self, value, engine):
             return value
+            
         def convert_result_value(self, value, engine):
             return value
 

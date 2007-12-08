@@ -197,7 +197,10 @@ class TypeDecorator(AbstractType):
         except KeyError:
             pass
 
-        typedesc = self.load_dialect_impl(dialect)
+        if isinstance(self.impl, TypeDecorator):
+            typedesc = self.impl.dialect_impl(dialect)
+        else:
+            typedesc = self.load_dialect_impl(dialect)
         tt = self.copy()
         if not isinstance(tt, self.__class__):
             raise exceptions.AssertionError("Type object %s does not properly implement the copy() method, it must return an object of type %s" % (self, self.__class__))
@@ -211,7 +214,7 @@ class TypeDecorator(AbstractType):
         by default calls dialect.type_descriptor(self.impl), but
         can be overridden to provide different behavior.
         """
-
+        
         return dialect.type_descriptor(self.impl)
 
     def __getattr__(self, key):
@@ -222,11 +225,35 @@ class TypeDecorator(AbstractType):
     def get_col_spec(self):
         return self.impl.get_col_spec()
 
+    def process_bind_param(self, value, dialect):
+        raise NotImplementedError()
+    
+    def process_result_value(self, value, dialect):
+        raise NotImplementedError()
+        
     def bind_processor(self, dialect):
-        return self.impl.bind_processor(dialect)
+        if 'process_bind_param' in self.__class__.__dict__:
+            impl_processor = self.impl.bind_processor(dialect)
+            if impl_processor:
+                def process(value):
+                    return impl_processor(self.process_bind_param(value, dialect))
+                return process
+            else:
+                return self.process_bind_param
+        else:
+            return self.impl.bind_processor(dialect)
 
     def result_processor(self, dialect):
-        return self.impl.result_processor(dialect)
+        if 'process_result_value' in self.__class__.__dict__:
+            impl_processor = self.impl.result_processor(dialect)
+            if impl_processor:
+                def process(value):
+                    return self.process_result_value(impl_processor(value), dialect)
+                return process
+            else:
+                return self.process_result_value
+        else:
+            return self.impl.result_processor(dialect)
 
     def copy(self):
         instance = self.__class__.__new__(self.__class__)

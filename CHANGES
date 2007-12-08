@@ -30,7 +30,13 @@ CHANGES
     
     - bindparam() objects themselves can be used as keys for execute(), i.e.
       statement.execute({bind1:'foo', bind2:'bar'})
-      
+    
+    - added new methods to TypeDecorator, process_bind_param() and
+      process_result_value(), which automatically take advantage of the processing
+      of the underlying type.  Ideal for using with Unicode or Pickletype.
+      TypeDecorator should now be the primary way to augment the behavior of any
+      existing type including other TypeDecorator subclasses such as PickleType.
+        
     - tables with schemas can still be used in sqlite, firebird,
       schema name just gets dropped [ticket:890]
 

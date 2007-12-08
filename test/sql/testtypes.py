@@ -38,6 +38,18 @@ class MyDecoratedType(types.TypeDecorator):
     def copy(self):
         return MyDecoratedType()
 
+class MyNewUnicodeType(types.TypeDecorator):
+    impl = Unicode
+
+    def process_bind_param(self, value, dialect):
+        return "BIND_IN" + value
+
+    def process_result_value(self, value, dialect):
+        return value + "BIND_OUT"
+
+    def copy(self):
+        return MyNewUnicodeType(self.impl.length)
+
 class MyUnicodeType(types.TypeDecorator):
     impl = Unicode
 
@@ -45,18 +57,29 @@ class MyUnicodeType(types.TypeDecorator):
         impl_processor = super(MyUnicodeType, self).bind_processor(dialect) or (lambda value:value)
         
         def process(value):
-            return "UNI_BIND_IN"+ impl_processor(value)
+            return "BIND_IN"+ impl_processor(value)
         return process
 
     def result_processor(self, dialect):
         impl_processor = super(MyUnicodeType, self).result_processor(dialect) or (lambda value:value)
         def process(value):
-            return impl_processor(value) + "UNI_BIND_OUT"
+            return impl_processor(value) + "BIND_OUT"
         return process
 
     def copy(self):
         return MyUnicodeType(self.impl.length)
 
+class MyPickleType(types.TypeDecorator):
+    impl = PickleType
+    
+    def process_bind_param(self, value, dialect):
+        value.stuff = 'this is modified stuff'
+        return value
+    
+    def process_result_value(self, value, dialect):
+        value.stuff = 'this is the right stuff'
+        return value
+        
 class LegacyType(types.TypeEngine):
     def get_col_spec(self):
         return "VARCHAR(100)"
@@ -71,10 +94,10 @@ class LegacyUnicodeType(types.TypeDecorator):
     impl = Unicode
 
     def convert_bind_param(self, value, dialect):
-        return "UNI_BIND_IN" + super(LegacyUnicodeType, self).convert_bind_param(value, dialect)
+        return "BIND_IN" + super(LegacyUnicodeType, self).convert_bind_param(value, dialect)
 
     def convert_result_value(self, value, dialect):
-        return super(LegacyUnicodeType, self).convert_result_value(value, dialect) + "UNI_BIND_OUT"
+        return super(LegacyUnicodeType, self).convert_result_value(value, dialect) + "BIND_OUT"
 
     def copy(self):
         return LegacyUnicodeType(self.impl.length)
@@ -178,17 +201,20 @@ class UserDefinedTest(PersistTest):
     def testprocessing(self):
 
         global users
-        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack')
-        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala')
-        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred')
+        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack', goofy7=u'jack')
+        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala', goofy7=u'lala')
+        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred', goofy7=u'fred')
 
         l = users.select().execute().fetchall()
-        assert l == [
-            (2, 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', u'UNI_BIND_INjackUNI_BIND_OUT', u'UNI_BIND_INjackUNI_BIND_OUT', 'BIND_INjackBIND_OUT'),
-            (3, 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', u'UNI_BIND_INlalaUNI_BIND_OUT', u'UNI_BIND_INlalaUNI_BIND_OUT', 'BIND_INlalaBIND_OUT'),
-            (4, 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', u'UNI_BIND_INfredUNI_BIND_OUT', u'UNI_BIND_INfredUNI_BIND_OUT', 'BIND_INfredBIND_OUT')
-        ]
-
+        for assertstr, row in zip(
+            ["BIND_INjackBIND_OUT", "BIND_INlalaBIND_OUT", "BIND_INfredBIND_OUT"],
+            l
+        ):
+            for col in row[1:]:
+                self.assertEquals(col, assertstr)
+            for col in (row[4], row[5], row[7]):
+                assert isinstance(col, unicode)
+                
     def setUpAll(self):
         global users, metadata
         metadata = MetaData(testbase.db)
@@ -206,6 +232,7 @@ class UserDefinedTest(PersistTest):
             Column('goofy4', MyUnicodeType, nullable = False),
             Column('goofy5', LegacyUnicodeType, nullable = False),
             Column('goofy6', LegacyType, nullable = False),
+            Column('goofy7', MyNewUnicodeType, nullable = False),
 
         )
 
@@ -353,7 +380,8 @@ class BinaryTest(AssertMixin):
         # construct PickleType with non-native pickle module, since cPickle uses relative module
         # loading and confuses this test's parent package 'sql' with the 'sqlalchemy.sql' package relative
         # to the 'types' module
-        Column('pickled', PickleType)
+        Column('pickled', PickleType),
+        Column('mypickle', MyPickleType)
         )
         binary_table.create()
 
@@ -366,25 +394,28 @@ class BinaryTest(AssertMixin):
     def testbinary(self):
         testobj1 = pickleable.Foo('im foo 1')
         testobj2 = pickleable.Foo('im foo 2')
+        testobj3 = pickleable.Foo('im foo 3')
 
         stream1 =self.load_stream('binary_data_one.dat')
         stream2 =self.load_stream('binary_data_two.dat')
-        binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat',    data=stream1, data_slice=stream1[0:100], pickled=testobj1)
+        binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat',    data=stream1, data_slice=stream1[0:100], pickled=testobj1, mypickle=testobj3)
         binary_table.insert().execute(primary_id=2, misc='binary_data_two.dat', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
         binary_table.insert().execute(primary_id=3, misc='binary_data_two.dat', data=None, data_slice=stream2[0:99], pickled=None)
 
         for stmt in (
             binary_table.select(order_by=binary_table.c.primary_id),
-            text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType}, bind=testbase.db)
+            text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType, 'mypickle':MyPickleType}, bind=testbase.db)
         ):
             l = stmt.execute().fetchall()
             print type(stream1), type(l[0]['data']), type(l[0]['data_slice'])
             print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
-            self.assert_(list(stream1) == list(l[0]['data']))
-            self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
-            self.assert_(list(stream2) == list(l[1]['data']))
-            self.assert_(testobj1 == l[0]['pickled'])
-            self.assert_(testobj2 == l[1]['pickled'])
+            self.assertEquals(list(stream1), list(l[0]['data']))
+            self.assertEquals(list(stream1[0:100]), list(l[0]['data_slice']))
+            self.assertEquals(list(stream2), list(l[1]['data']))
+            self.assertEquals(testobj1, l[0]['pickled'])
+            self.assertEquals(testobj2, l[1]['pickled'])
+            self.assertEquals(testobj3.moredata, l[0]['mypickle'].moredata)
+            self.assertEquals(l[0]['mypickle'].stuff, 'this is the right stuff')
 
     def load_stream(self, name, len=12579):
         f = os.path.join(os.path.dirname(testbase.__file__), name)
