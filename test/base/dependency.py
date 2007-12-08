@@ -17,7 +17,7 @@ class DependencySortTest(PersistTest):
                 if tuple[0] is node[0] or tuple[0] in cycles:
                     return
             elif len(tuple) > 1 and tuple[1] is node[0]:
-                assert False, "Tuple not in dependency tree: " + str(tuple)
+                assert False, "Tuple not in dependency tree: " + str(tuple) + " " + str(node)
             for c in node[2]:
                 assert_tuple(tuple, c)
         
@@ -150,7 +150,8 @@ class DependencySortTest(PersistTest):
             (node3, node1),
             (node4, node1)
         ]
-        head = topological.sort_as_tree(tuples, [], with_cycles=True)
+        allitems = [node1, node2, node3, node4]
+        head = topological.sort_as_tree(tuples, allitems, with_cycles=True)
         self.assert_sort(tuples, head)
         
     def testcircular2(self):
