@@ -554,6 +554,7 @@ class Mapper(object):
         def __init__(self, class_, key):
             self.class_ = class_
             self.key = key
+            self.existing_prop = getattr(class_, key, None)
             
         def __getattribute__(self, key):
             cls = object.__getattribute__(self, 'class_')
@@ -671,7 +672,7 @@ class Mapper(object):
         elif isinstance(prop, SynonymProperty):
             prop.instrument = getattr(self.class_, key, None)
             if isinstance(prop.instrument, Mapper._CompileOnAttr):
-                prop.instrument = None
+                prop.instrument = object.__getattribute__(prop.instrument, 'existing_prop')
             if prop.map_column:
                 if not key in self.select_table.c:
                     raise exceptions.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.select_table.description, key))

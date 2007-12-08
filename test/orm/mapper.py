@@ -164,21 +164,31 @@ class MapperTest(MapperSuperTest):
         assert getattr(Foo().__class__, 'user_name').impl is not None
 
     def test_add_property(self):
+        assert_col = []
+        class User(object):
+            def _get_user_name(self):
+                assert_col.append(('get', self._user_name))
+                return self._user_name
+            def _set_user_name(self, name):
+                assert_col.append(('set', name))
+                self._user_name = name
+            user_name = property(_get_user_name, _set_user_name)
+        
         m = mapper(User, users)
         mapper(Address, addresses)
-        m.add_property('user_name', deferred(users.c.user_name))
-        m.add_property('name', synonym('user_name'))
+        m.add_property('_user_name', deferred(users.c.user_name))
+        m.add_property('user_name', synonym('_user_name'))
         m.add_property('addresses', relation(Address))
 
         sess = create_session(transactional=True)
         assert sess.query(User).get(7)
-
-        u = sess.query(User).filter_by(name='jack').one()
+        
+        u = sess.query(User).filter_by(user_name='jack').one()
 
         def go():
             self.assert_result([u], User, user_address_result[0])
             assert u.user_name == 'jack'
-            assert u.name == 'jack'
+            assert assert_col == [('get', 'jack')], str(assert_col)
         self.assert_sql_count(testbase.db, go, 2)
 
         u.name = 'ed'
@@ -415,9 +425,20 @@ class MapperTest(MapperSuperTest):
 
     def test_synonym(self):
         sess = create_session()
+
+        assert_col = []
+        class User(object):
+            def _get_user_name(self):
+                assert_col.append(('get', self.user_name))
+                return self.user_name
+            def _set_user_name(self, name):
+                assert_col.append(('set', name))
+                self.user_name = name
+            uname = property(_get_user_name, _set_user_name)
+
         mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = True),
-            uname = synonym('user_name', proxy=True),
+            uname = synonym('user_name'),
             adlist = synonym('addresses', proxy=True),
             adname = synonym('addresses')
         ))
@@ -430,7 +451,7 @@ class MapperTest(MapperSuperTest):
 
         u = sess.query(User).filter(User.uname=='jack').one()
         self.assert_result(u.adlist, Address, *(user_address_result[0]['addresses'][1]))
-
+        
         addr = sess.query(Address).get_by(address_id=user_address_result[0]['addresses'][1][0]['address_id'])
         u = sess.query(User).filter_by(adname=addr).one()
         u2 = sess.query(User).filter_by(adlist=addr).one()
@@ -439,7 +460,10 @@ class MapperTest(MapperSuperTest):
 
         assert u not in sess.dirty
         u.uname = "some user name"
+        assert len(assert_col) > 0
+        assert assert_col == [('set', 'some user name')], str(assert_col)
         assert u.uname == "some user name"
+        assert assert_col == [('set', 'some user name'), ('get', 'some user name')], str(assert_col)
         assert u.user_name == "some user name"
         assert u in sess.dirty
 

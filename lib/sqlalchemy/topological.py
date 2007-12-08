@@ -166,6 +166,7 @@ class _EdgeCollection(object):
 def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
     nodes = {}
     edges = _EdgeCollection()
+
     for item in list(allitems) + [t[0] for t in tuples] + [t[1] for t in tuples]:
         if id(item) not in nodes:
             node = _Node(item)
