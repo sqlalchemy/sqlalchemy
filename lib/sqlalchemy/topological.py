@@ -76,7 +76,7 @@ class _Node(object):
             str(self.item) + \
             (self.cycles is not None and (" (cycles: " + repr([x for x in self.cycles]) + ")") or "") + \
             "\n" + \
-            ''.join([n.safestr(indent + 1) for n in self.children])
+            ''.join([str(n) for n in self.children])
 
     def __repr__(self):
         return "%s" % (str(self.item))
@@ -253,7 +253,7 @@ def _organize_as_tree(nodes):
                 if (childsubtree.intersection(nodealldeps) or childcycles.intersection(node.dependencies)):
                     # prepend child to nodes children
                     # (append should be fine, but previous implemetation used prepend)
-                    node.children[0:0] = [(child.item, [child.item for n in child.cycles or []], child.children)]
+                    node.children[0:0] = [(child.item, [n.item for n in child.cycles or []], child.children)]
                     # merge childs subtree and cycles
                     subtree.update(childsubtree)
                     cycles.update(childcycles)
