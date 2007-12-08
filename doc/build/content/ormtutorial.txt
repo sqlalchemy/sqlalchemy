@@ -566,6 +566,16 @@ Then apply an **option** to the query, indicating that we'd like `addresses` to 
     
 If you think that query is elaborate, it is !  But SQLAlchemy is just getting started.  Note that when using eager loading, *nothing* changes as far as the ultimate results returned.  The "loading strategy", as its called, is designed to be completely transparent in all cases, and is for optimization purposes only.  Any query criterion you use to load objects, including ordering, limiting, other joins, etc., should return identical results regardless of the combination of lazily- and eagerly- loaded relationships present.
 
+An eagerload targeting across multiple relations can use dot separated names:
+
+    {python}
+    query.options(eagerload('orders'), eagerload('orders.items'), eagerload('orders.items.keywords'))
+    
+To roll up the above three individual `eagerload()` calls into one, use `eagerload_all()`:
+
+    {python}
+    query.options(eagerload_all('orders.items.keywords'))
+    
 ## Querying with Joins {@name=joins}
 
 Which brings us to the next big topic.  What if we want to create joins that *do* change the results ?  For that, another `Query` tornado is coming....
