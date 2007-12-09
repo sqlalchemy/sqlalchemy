@@ -1385,4 +1385,30 @@ Use `passive_deletes=True` to disable child object loading on a DELETE operation
 
 When `passive_deletes` is applied, the `children` relation will not be loaded into memory when an instance of `MyClass` is marked for deletion.  The `cascade="all, delete-orphan"` *will* take effect for instances of `MyOtherClass` which are currently present in the session; however for instances of `MyOtherClass` which are not loaded, SQLAlchemy assumes that "ON DELETE CASCADE" rules will ensure that those rows are deleted by the database and that no foreign key violation will occur.
         
+#### Mutable Primary Keys / Update Cascades {@name=mutablepks}
+
+As of SQLAlchemy 0.4.2, the primary key attributes of an instance can be changed freely, and will be persisted upon flush.  When the primary key of an entity changes, related items which reference the primary key must also be updated as well.  For databases which enforce referential integrity, it's required to use the database's ON UPDATE CASCADE functionality in order to propagate primary key changes.  For those which don't, the `passive_cascades` flag can be set to `False` which instructs SQLAlchemy to issue UPDATE statements individually.  The `passive_cascades` flag can also be `False` in conjunction with ON UPDATE CASCADE functionality, although in that case it issues UPDATE statements unnecessarily.
+
+A typical mutable primary key setup might look like:
+
+    {python}
+    users = Table('users', metadata,
+        Column('username', String(50), primary_key=True),
+        Column('fullname', String(100)))
+        
+    addresses = Table('addresses', metadata,
+        Column('email', String(50), primary_key=True),
+        Column('username', String(50), ForeignKey('users.username', onupdate="cascade")))
+    
+    class User(object):
+        pass
+    class Address(object):
+        pass
+
+    mapper(User, users, properties={
+        'addresses':relation(Address, passive_updates=False)
+    })
+    mapper(Address, addresses)
+    
+passive_updates is set to `True` by default.  Foreign key references to non-primary key columns are supported as well.
 

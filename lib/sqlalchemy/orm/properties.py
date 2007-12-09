@@ -58,6 +58,9 @@ class ColumnProperty(StrategizedProperty):
     def getattr(self, state, column):
         return getattr(state.class_, self.key).impl.get(state)
 
+    def getcommitted(self, state, column):
+        return getattr(state.class_, self.key).impl.get_committed_value(state)
+
     def setattr(self, state, value, column):
         getattr(state.class_, self.key).impl.set(state, value, None)
         
@@ -97,6 +100,10 @@ class CompositeProperty(ColumnProperty):
 
     def getattr(self, state, column):
         obj = getattr(state.class_, self.key).impl.get(state)
+        return self.get_col_value(column, obj)
+
+    def getcommitted(self, state, column):
+        obj = getattr(state.class_, self.key).impl.get_committed_value(state)
         return self.get_col_value(column, obj)
 
     def setattr(self, state, value, column):
@@ -168,7 +175,7 @@ class PropertyLoader(StrategizedProperty):
     of items that correspond to a related database table.
     """
 
-    def __init__(self, argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None, enable_typechecks=True, join_depth=None, strategy_class=None):
+    def __init__(self, argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, passive_updates=True, remote_side=None, enable_typechecks=True, join_depth=None, strategy_class=None):
         self.uselist = uselist
         self.argument = argument
         self.entity_name = entity_name
@@ -185,6 +192,7 @@ class PropertyLoader(StrategizedProperty):
             util.warn_deprecated('foreignkey option is deprecated; see docs for details')
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
+        self.passive_updates = passive_updates
         self.remote_side = util.to_set(remote_side)
         self.enable_typechecks = enable_typechecks
         self._parent_join_cache = {}
@@ -214,9 +222,9 @@ class PropertyLoader(StrategizedProperty):
             # just a string was sent
             if secondary is not None:
                 # reverse primary/secondary in case of a many-to-many
-                self.backref = BackRef(backref, primaryjoin=secondaryjoin, secondaryjoin=primaryjoin)
+                self.backref = BackRef(backref, primaryjoin=secondaryjoin, secondaryjoin=primaryjoin, passive_updates=self.passive_updates)
             else:
-                self.backref = BackRef(backref, primaryjoin=primaryjoin, secondaryjoin=secondaryjoin)
+                self.backref = BackRef(backref, primaryjoin=primaryjoin, secondaryjoin=secondaryjoin, passive_updates=self.passive_updates)
         else:
             self.backref = backref
         self.is_backref = is_backref

@@ -259,7 +259,15 @@ class AttributeImpl(object):
 
     def set(self, state, value, initiator):
         raise NotImplementedError()
-
+    
+    def get_committed_value(self, state):
+        if state.committed_state is not None:
+            if self.key not in state.committed_state:
+                self.get()
+            return state.committed_state.get(self.key)
+        else:
+            return None
+            
     def set_committed_value(self, state, value):
         """set an attribute value on the given instance and 'commit' it.
         

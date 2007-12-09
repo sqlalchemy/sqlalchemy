@@ -27,6 +27,8 @@ def create_dependency_processor(prop):
         return types[prop.direction](prop)
 
 class DependencyProcessor(object):
+    no_dependencies = False
+    
     def __init__(self, prop):
         self.prop = prop
         self.cascade = prop.cascade
@@ -39,6 +41,7 @@ class DependencyProcessor(object):
         self.post_update = prop.post_update
         self.foreign_keys = prop.foreign_keys
         self.passive_deletes = prop.passive_deletes
+        self.passive_updates = prop.passive_updates
         self.enable_typechecks = prop.enable_typechecks
         self.key = prop.key
 
@@ -133,26 +136,6 @@ class DependencyProcessor(object):
         else:
             self.syncrules.compile(self.prop.primaryjoin, foreign_keys=self.foreign_keys)
 
-    def get_object_dependencies(self, state, uowcommit, passive = True):
-        key = ("dependencies", state, self.key, passive)
-        
-        # cache the objects, not the states; the strong reference here
-        # prevents newly loaded objects from being dereferenced during the 
-        # flush process
-        if key in uowcommit.attributes:
-            (added, unchanged, deleted) = uowcommit.attributes[key]
-        else:
-            (added, unchanged, deleted) = attributes.get_history(state, self.key, passive = passive)
-            uowcommit.attributes[key] = (added, unchanged, deleted)
-            
-        if added is None:
-            return (added, unchanged, deleted)
-        else:
-            return (
-                [getattr(c, '_state', None) for c in added],
-                [getattr(c, '_state', None) for c in unchanged],
-                [getattr(c, '_state', None) for c in deleted],
-                )
 
     def _conditional_post_update(self, state, uowcommit, related):
         """Execute a post_update call.
@@ -173,7 +156,10 @@ class DependencyProcessor(object):
                 if x is not None:
                     uowcommit.register_object(state, postupdate=True, post_update_cols=self.syncrules.dest_columns())
                     break
-
+    
+    def _pks_changed(self, uowcommit, state):
+        return self.syncrules.source_changes(uowcommit, state)
+        
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, str(self.prop))
 
@@ -198,7 +184,7 @@ class OneToManyDP(DependencyProcessor):
             # is on.
             if (not self.cascade.delete or self.post_update) and not self.passive_deletes=='all':
                 for state in deplist:
-                    (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=self.passive_deletes)
+                    (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
                     if unchanged or deleted:
                         for child in deleted:
                             if child is not None and self.hasparent(child) is False:
@@ -210,7 +196,7 @@ class OneToManyDP(DependencyProcessor):
                                 self._conditional_post_update(child, uowcommit, [state])
         else:
             for state in deplist:
-                (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=True)
+                (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key, passive=True)
                 if added or deleted:
                     for child in added:
                         self._synchronize(state, child, None, False, uowcommit)
@@ -219,7 +205,12 @@ class OneToManyDP(DependencyProcessor):
                     for child in deleted:
                         if not self.cascade.delete_orphan and not self.hasparent(child):
                             self._synchronize(state, child, None, True, uowcommit)
-
+                            
+                if self._pks_changed(uowcommit, state):
+                    if unchanged:
+                        for child in unchanged:
+                            self._synchronize(state, child, None, False, uowcommit)
+                
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " preprocess_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
 
@@ -228,7 +219,7 @@ class OneToManyDP(DependencyProcessor):
             # the child objects have to have their foreign key to the parent set to NULL
             if not self.post_update and not self.cascade.delete and not self.passive_deletes=='all':
                 for state in deplist:
-                    (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=self.passive_deletes)
+                    (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
                     if unchanged or deleted:
                         for child in deleted:
                             if child is not None and self.hasparent(child) is False:
@@ -238,7 +229,7 @@ class OneToManyDP(DependencyProcessor):
                                 uowcommit.register_object(child)
         else:
             for state in deplist:
-                (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=True)
+                (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=True)
                 if added or deleted:
                     for child in added:
                         if child is not None:
@@ -250,7 +241,13 @@ class OneToManyDP(DependencyProcessor):
                             uowcommit.register_object(child, isdelete=True)
                             for c, m in self.mapper.cascade_iterator('delete', child):
                                 uowcommit.register_object(c._state, isdelete=True)
-
+                if not self.passive_updates and self._pks_changed(uowcommit, state):
+                    if not unchanged:
+                        (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key, passive=False)
+                    if unchanged:
+                        for child in unchanged:
+                            uowcommit.register_object(child)
+                    
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         if child is not None:
             child = getattr(child, '_state', child)
@@ -261,7 +258,50 @@ class OneToManyDP(DependencyProcessor):
         self._verify_canload(child)
         self.syncrules.execute(source, dest, source, child, clearkeys)
 
+class DetectKeySwitch(DependencyProcessor):
+    """a special DP that works for many-to-one relations, fires off for
+    child items who have changed their referenced key."""
+
+    no_dependencies = True
+    
+    def register_dependencies(self, uowcommit):
+        uowcommit.register_processor(self.parent, self, self.mapper)
+        
+    def preprocess_dependencies(self, task, deplist, uowcommit, delete=False):
+        # for non-passive updates, register in the preprocess stage
+        # so that mapper save_obj() gets a hold of changes
+        if not delete and not self.passive_updates:
+            self._process_key_switches(deplist, uowcommit)
+        
+    def process_dependencies(self, task, deplist, uowcommit, delete=False):
+        # for passive updates, register objects in the process stage
+        # so that we avoid ManyToOneDP's registering the object without 
+        # the listonly flag in its own preprocess stage (results in UPDATE)
+        # statements being emitted
+        if not delete and self.passive_updates:
+            self._process_key_switches(deplist, uowcommit)
+    
+    def _process_key_switches(self, deplist, uowcommit):    
+        switchers = util.Set(s for s in deplist if self._pks_changed(uowcommit, s))
+        if switchers:
+            # yes, we're doing a linear search right now through the UOW.  only 
+            # takes effect when primary key values have actually changed.
+            # a possible optimization might be to enhance the "hasparents" capability of
+            # attributes to actually store all parent references, but this introduces
+            # more complicated attribute accounting.
+            for s in [elem for elem in uowcommit.session.identity_map.all_states() 
+                if issubclass(elem.class_, self.parent.class_) and 
+                    self.key in elem.dict and 
+                    elem.dict[self.key]._state in switchers
+                ]:
+                uowcommit.register_object(s, listonly=self.passive_updates)
+                self.syncrules.execute(s.dict[self.key]._state, s, None, None, False)
+                        
 class ManyToOneDP(DependencyProcessor):
+    def __init__(self, prop):
+        DependencyProcessor.__init__(self, prop)
+        self.mapper._dependency_processors.append(DetectKeySwitch(prop))
+        
     def register_dependencies(self, uowcommit):
         if self.post_update:
             if not self.is_backref:
@@ -272,6 +312,7 @@ class ManyToOneDP(DependencyProcessor):
         else:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, self, self.parent)
+            
 
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
@@ -281,12 +322,12 @@ class ManyToOneDP(DependencyProcessor):
                 # before we can DELETE the row
                 for state in deplist:
                     self._synchronize(state, None, None, True, uowcommit)
-                    (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=self.passive_deletes)
+                    (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
                     if added or unchanged or deleted:
                         self._conditional_post_update(state, uowcommit, deleted + unchanged + added)
         else:
             for state in deplist:
-                (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=True)
+                (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=True)
                 if added or deleted or unchanged:
                     for child in added:
                         self._synchronize(state, child, None, False, uowcommit)
@@ -299,7 +340,7 @@ class ManyToOneDP(DependencyProcessor):
         if delete:
             if self.cascade.delete:
                 for state in deplist:
-                    (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=self.passive_deletes)
+                    (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
                     if deleted or unchanged:
                         for child in deleted + unchanged:
                             if child is not None and self.hasparent(child) is False:
@@ -310,13 +351,14 @@ class ManyToOneDP(DependencyProcessor):
             for state in deplist:
                 uowcommit.register_object(state)
                 if self.cascade.delete_orphan:
-                    (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=self.passive_deletes)
+                    (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
                     if deleted:
                         for child in deleted:
                             if self.hasparent(child) is False:
                                 uowcommit.register_object(child, isdelete=True)
                                 for c, m in self.mapper.cascade_iterator('delete', child):
                                     uowcommit.register_object(c._state, isdelete=True)
+
 
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         source = child
@@ -344,7 +386,8 @@ class ManyToManyDP(DependencyProcessor):
         connection = uowcommit.transaction.connection(self.mapper)
         secondary_delete = []
         secondary_insert = []
-
+        secondary_update = []
+        
         if hasattr(self.prop, 'reverse_property'):
             reverse_dep = getattr(self.prop.reverse_property, '_dependency_processor', None)
         else:
@@ -352,7 +395,7 @@ class ManyToManyDP(DependencyProcessor):
             
         if delete:
             for state in deplist:
-                (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=self.passive_deletes)
+                (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
                 if deleted or unchanged:
                     for child in deleted + unchanged:
                         if child is None or (reverse_dep and (reverse_dep, "manytomany", child, state) in uowcommit.attributes):
@@ -363,7 +406,7 @@ class ManyToManyDP(DependencyProcessor):
                         uowcommit.attributes[(self, "manytomany", state, child)] = True
         else:
             for state in deplist:
-                (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit)
+                (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key)
                 if added or deleted:
                     for child in added:
                         if child is None or (reverse_dep and (reverse_dep, "manytomany", child, state) in uowcommit.attributes):
@@ -379,7 +422,13 @@ class ManyToManyDP(DependencyProcessor):
                         self._synchronize(state, child, associationrow, False, uowcommit)
                         uowcommit.attributes[(self, "manytomany", state, child)] = True
                         secondary_delete.append(associationrow)
-
+                        
+                if not self.passive_updates and unchanged and self._pks_changed(uowcommit, state):
+                    for child in unchanged:
+                        associationrow = {}
+                        self.syncrules.update(associationrow, state, child, "old_")
+                        secondary_update.append(associationrow)
+                    
         if secondary_delete:
             secondary_delete.sort()
             # TODO: precompile the delete/insert queries?
@@ -387,7 +436,13 @@ class ManyToManyDP(DependencyProcessor):
             result = connection.execute(statement, secondary_delete)
             if result.supports_sane_multi_rowcount() and result.rowcount != len(secondary_delete):
                 raise exceptions.ConcurrentModificationError("Deleted rowcount %d does not match number of objects deleted %d" % (result.rowcount, len(secondary_delete)))
-
+        
+        if secondary_update:
+            statement = self.secondary.update(sql.and_(*[c == sql.bindparam("old_" + c.key, type_=c.type) for c in self.secondary.c if c.key in associationrow]))
+            result = connection.execute(statement, secondary_update)
+            if result.supports_sane_multi_rowcount() and result.rowcount != len(secondary_update):
+                raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (result.rowcount, len(secondary_update)))
+            
         if secondary_insert:
             statement = self.secondary.insert()
             connection.execute(statement, secondary_insert)
@@ -396,7 +451,7 @@ class ManyToManyDP(DependencyProcessor):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " preprocess_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         if not delete:
             for state in deplist:
-                (added, unchanged, deleted) = self.get_object_dependencies(state, uowcommit, passive=True)
+                (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=True)
                 if deleted:
                     for child in deleted:
                         if self.cascade.delete_orphan and self.hasparent(child) is False:
@@ -405,12 +460,10 @@ class ManyToManyDP(DependencyProcessor):
                                 uowcommit.register_object(c._state, isdelete=True)
 
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
-        dest = associationrow
-        source = None
-        if dest is None:
+        if associationrow is None:
             return
         self._verify_canload(child)
-        self.syncrules.execute(source, dest, state, child, clearkeys)
+        self.syncrules.execute(None, associationrow, state, child, clearkeys)
 
 class AssociationDP(OneToManyDP):
     def __init__(self, *args, **kwargs):

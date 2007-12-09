@@ -59,6 +59,14 @@ CHANGES
      have not, you might notice your apps using a lot fewer queries than
      before in some situations. [ticket:871]
 
+   - mutable primary key support is added. primary key columns can be
+     changed freely, and the identity of the instance will change upon
+     flush. In addition, update cascades of foreign key referents (primary
+     key or not) along relations are supported, either in tandem with the
+     database's ON UPDATE CASCADE (required for DB's like Postgres) or
+     issued directly by the ORM in the form of UPDATE statements, by setting
+     the flag "passive_cascades=False".
+     
    - added "cascade delete" behavior to "dynamic" relations just like
      that of regular relations.  if passive_deletes flag (also just added)
      is not set, a delete of the parent item will trigger a full load of 

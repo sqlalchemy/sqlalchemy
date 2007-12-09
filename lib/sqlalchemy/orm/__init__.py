@@ -170,7 +170,8 @@ def relation(argument, secondary=None, **kwargs):
           indicates the ordering that should be applied when loading these items.
 
         passive_deletes=False
-          Indicates the behavior of delete operations. 
+          Indicates loading behavior during delete operations. 
+          
           A value of True indicates that unloaded child items should not be loaded
           during a delete operation on the parent.  Normally, when a parent
           item is deleted, all child items are loaded so that they can either be
@@ -185,7 +186,29 @@ def relation(argument, secondary=None, **kwargs):
           or error raise scenario is in place on the database side.  Note that
           the foreign key attributes on in-session child objects will not be changed
           after a flush occurs so this is a very special use-case setting.
-
+         
+        passive_updates=True
+          Indicates loading and INSERT/UPDATE/DELETE behavior when the source
+          of a foreign key value changes (i.e. an "on update" cascade), which are
+          typically the primary key columns of the source row.
+          
+          When True, it is assumed that ON UPDATE CASCADE is configured on the
+          foreign key in the database, and that the database will handle propagation of an
+          UPDATE from a source column to dependent rows.  Note that with databases
+          which enforce referential integrity (ie. Postgres, MySQL with InnoDB tables),
+          ON UPDATE CASCADE is required for this operation.  The relation() will 
+          update the value of the attribute on related items which are locally present
+          in the session during a flush.
+          
+          When False, it is assumed that the database does not enforce referential
+          integrity and will not be issuing its own CASCADE operation for an update.
+          The relation() will issue the appropriate UPDATE statements to the database
+          in response to the change of a referenced key, and items locally present
+          in the session during a flush will also be refreshed.  
+          
+          This flag should probably be set to False if primary key changes are expected
+          and the database in use doesn't support CASCADE (i.e. SQLite, MySQL MyISAM tables).
+          
         post_update
           this indicates that the relationship should be handled by a second
           UPDATE statement after an INSERT or before a DELETE. Currently, it also

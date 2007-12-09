@@ -109,7 +109,8 @@ class ColumnLoader(LoaderStrategy):
             def create_statement(instance):
                 params = {}
                 for (c, bind) in param_names:
-                    params[bind] = mapper._get_attr_by_column(instance, c)
+                    # use the "committed" (database) version to get query column values
+                    params[bind] = mapper._get_committed_attr_by_column(instance, c)
                 return (statement, params)
             
             def new_execute(instance, row, isnew, **flags):
@@ -300,7 +301,8 @@ class LazyLoader(AbstractRelationLoader):
         def visit_bindparam(bindparam):
             mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
             if bindparam.key in bind_to_col:
-                bindparam.value = mapper._get_attr_by_column(instance, bind_to_col[bindparam.key])
+                # use the "committed" (database) version to get query column values
+                bindparam.value = mapper._get_committed_attr_by_column(instance, bind_to_col[bindparam.key])
         return visitors.traverse(criterion, clone=True, visit_bindparam=visit_bindparam)
     
     def setup_loader(self, instance, options=None, path=None):
@@ -337,7 +339,8 @@ class LazyLoader(AbstractRelationLoader):
             if self.use_get:
                 params = {}
                 for col, bind in self.lazybinds.iteritems():
-                    params[bind.key] = self.parent._get_attr_by_column(instance, col)
+                    # use the "committed" (database) version to get query column values
+                    params[bind.key] = self.parent._get_committed_attr_by_column(instance, col)
                 ident = []
                 nonnulls = False
                 for primary_key in self.select_mapper.primary_key: 

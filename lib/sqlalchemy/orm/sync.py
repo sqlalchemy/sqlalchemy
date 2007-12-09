@@ -12,7 +12,7 @@ clause that compares column values.
 from sqlalchemy import schema, exceptions, util
 from sqlalchemy.sql import visitors, operators
 from sqlalchemy import logging
-from sqlalchemy.orm import util as mapperutil
+from sqlalchemy.orm import util as mapperutil, attributes
 
 ONETOMANY = 0
 MANYTOONE = 1
@@ -86,10 +86,21 @@ class ClauseSynchronizer(object):
     def dest_columns(self):
         return [r.dest_column for r in self.syncrules if r.dest_column is not None]
 
+    def update(self, dest, parent, child, old_prefix):
+        for rule in self.syncrules:
+            rule.update(dest, parent, child, old_prefix)
+        
     def execute(self, source, dest, obj=None, child=None, clearkeys=None):
         for rule in self.syncrules:
             rule.execute(source, dest, obj, child, clearkeys)
-
+    
+    def source_changes(self, uowcommit, source):
+        for rule in self.syncrules:
+            if rule.source_changes(uowcommit, source):
+                return True
+        else:
+            return False
+            
 class SyncRule(object):
     """An instruction indicating how to populate the objects on each
     side of a relationship.
@@ -117,8 +128,25 @@ class SyncRule(object):
         except AttributeError:
             self._dest_primary_key = self.dest_mapper is not None and self.dest_column in self.dest_mapper._pks_by_table[self.dest_column.table] and not self.dest_mapper.allow_null_pks
             return self._dest_primary_key
-
+    
+    def source_changes(self, uowcommit, source):
+        prop = self.source_mapper._columntoproperty[self.source_column]
+        (added, unchanged, deleted) = uowcommit.get_attribute_history(source, prop.key, passive=True)
+        return bool(added)
+    
+    def update(self, dest, parent, child, old_prefix):
+        if self.issecondary is False:
+            source = parent
+        elif self.issecondary is True:
+            source = child
+        oldvalue = self.source_mapper._get_committed_attr_by_column(source.obj(), self.source_column)
+        value = self.source_mapper._get_state_attr_by_column(source, self.source_column)
+        dest[self.dest_column.key] = value
+        dest[old_prefix + self.dest_column.key] = oldvalue
+        
     def execute(self, source, dest, parent, child, clearkeys):
+        # TODO: break the "dictionary" case into a separate method like 'update' above,
+        # reduce conditionals
         if source is None:
             if self.issecondary is False:
                 source = parent

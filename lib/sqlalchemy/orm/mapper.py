@@ -109,6 +109,7 @@ class Mapper(object):
         self.polymorphic_on = polymorphic_on
         self._eager_loaders = util.Set()
         self._row_translators = {}
+        self._dependency_processors = []
         
         # our 'polymorphic identity', a string name that when located in a result set row
         # indicates this Mapper should be used to construct the object instance for that row.
@@ -917,25 +918,31 @@ class Mapper(object):
             return issubclass(state.class_, self.class_)
         else:
             return state.class_ is self.class_
-    
-    def _get_state_attr_by_column(self, state, column):
+
+    def _get_col_to_prop(self, column):
         try:
-            return self._columntoproperty[column].getattr(state, column)
+            return self._columntoproperty[column]
         except KeyError:
             prop = self.__props.get(column.key, None)
             if prop:
                 raise exceptions.InvalidRequestError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
             else:
                 raise exceptions.InvalidRequestError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
+        
+    def _get_state_attr_by_column(self, state, column):
+        return self._get_col_to_prop(column).getattr(state, column)
     
     def _set_state_attr_by_column(self, state, column, value):
-        return self._columntoproperty[column].setattr(state, value, column)
+        return self._get_col_to_prop(column).setattr(state, value, column)
         
     def _get_attr_by_column(self, obj, column):
-        return self._get_state_attr_by_column(obj._state, column)
+        return self._get_col_to_prop(column).getattr(obj._state, column)
+
+    def _get_committed_attr_by_column(self, obj, column):
+        return self._get_col_to_prop(column).getcommitted(obj._state, column)
         
     def _set_attr_by_column(self, obj, column, value):
-        self._set_state_attr_by_column(obj._state, column, value)
+        self._get_col_to_prop(column).setattr(obj._state, column, value)
 
     def save_obj(self, states, uowtransaction, postupdate=False, post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
@@ -991,9 +998,9 @@ class Mapper(object):
                 if self.__should_log_debug:
                     self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, mapperutil.state_str(state), mapperutil.instance_str(existing)))
                 uowtransaction.set_row_switch(existing)
-            if _state_has_identity(state):
-                if state.dict['_instance_key'] != instance_key:
-                    raise exceptions.FlushError("Can't change the identity of instance %s in session (existing identity: %s; new identity: %s)" % (mapperutil.state_str(state), state.dict['_instance_key'], instance_key))
+#            if _state_has_identity(state):
+#                if state.dict['_instance_key'] != instance_key:
+#                    raise exceptions.FlushError("Can't change the identity of instance %s in session (existing identity: %s; new identity: %s)" % (mapperutil.state_str(state), state.dict['_instance_key'], instance_key))
 
         inserted_objects = util.Set()
         updated_objects = util.Set()
@@ -1054,21 +1061,31 @@ class Mapper(object):
                                 (added, unchanged, deleted) = attributes.get_history(state, prop.key, passive=True)
                                 if added:
                                     hasdata = True
-                        elif col in pks:
-                            params[col._label] = mapper._get_state_attr_by_column(state, col)
                         elif mapper.polymorphic_on is not None and mapper.polymorphic_on.shares_lineage(col):
                             pass
                         else:
                             if post_update_cols is not None and col not in post_update_cols:
+                                if col in pks:
+                                    params[col._label] = mapper._get_state_attr_by_column(state, col)
                                 continue
+                                
                             prop = mapper._columntoproperty[col]
-                            (added, unchanged, deleted) = attributes.get_history(state, prop.key, passive=True)
+                            (added, unchanged, deleted) = uowtransaction.get_attribute_history(state, prop.key, passive=True, cache=False)
+                            #(added, unchanged, deleted) = attributes.get_history(state, prop.key, passive=True)
                             if added:
                                 if isinstance(added[0], sql.ClauseElement):
                                     value_params[col] = added[0]
                                 else:
                                     params[col.key] = prop.get_col_value(col, added[0])
+                                if col in pks:
+                                    if deleted:
+                                        params[col._label] = deleted[0]
+                                    else:
+                                        # row switch logic can reach us here
+                                        params[col._label] = added[0]
                                 hasdata = True
+                            elif col in pks:
+                                params[col._label] = mapper._get_state_attr_by_column(state, col)
                     if hasdata:
                         update.append((state, params, mapper, connection, value_params))
 
@@ -1233,7 +1250,7 @@ class Mapper(object):
                 if 'after_delete' in mapper.extension.methods:
                     mapper.extension.after_delete(mapper, connection, state.obj())
 
-    def register_dependencies(self, uowcommit, *args, **kwargs):
+    def register_dependencies(self, uowcommit):
         """Register ``DependencyProcessor`` instances with a
         ``unitofwork.UOWTransaction``.
 
@@ -1242,8 +1259,10 @@ class Mapper(object):
         """
 
         for prop in self.__props.values():
-            prop.register_dependencies(uowcommit, *args, **kwargs)
-
+            prop.register_dependencies(uowcommit)
+        for dep in self._dependency_processors:
+            dep.register_dependencies(uowcommit)
+            
     def cascade_iterator(self, type, state, recursive=None, halt_on=None):
         """Iterate each element and its mapper in an object graph, 
         for all relations that meet the given cascade rule.

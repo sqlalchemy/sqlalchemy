@@ -114,9 +114,18 @@ class UnitOfWork(object):
         """register the given object as 'clean' (i.e. persistent) within this unit of work, after
         a save operation has taken place."""
 
+        mapper = _state_mapper(state)
+        instance_key = mapper._identity_key_from_state(state)
+        
         if '_instance_key' not in state.dict:
-            mapper = _state_mapper(state)
-            state.dict['_instance_key'] = mapper._identity_key_from_state(state)
+            state.dict['_instance_key'] = instance_key
+            
+        elif state.dict['_instance_key'] != instance_key:
+            # primary key switch
+            self.identity_map[instance_key] = state.obj()
+            del self.identity_map[state.dict['_instance_key']]
+            state.dict['_instance_key'] = instance_key
+            
         if hasattr(state, 'insert_order'):
             delattr(state, 'insert_order')
         self.identity_map[state.dict['_instance_key']] = state.obj()
@@ -269,6 +278,33 @@ class UOWTransaction(object):
         self.attributes = {}
 
         self.logger = logging.instance_logger(self, echoflag=session.echo_uow)
+
+    def get_attribute_history(self, state, key, passive=True, cache=True):
+        hashkey = ("history", state, key)
+
+        # cache the objects, not the states; the strong reference here
+        # prevents newly loaded objects from being dereferenced during the 
+        # flush process
+        if cache and hashkey in self.attributes:
+            (added, unchanged, deleted, cached_passive) = self.attributes[hashkey]
+            # if the cached lookup was "passive" and now we want non-passive, do a non-passive
+            # lookup and re-cache
+            if cached_passive and not passive:
+                (added, unchanged, deleted) = attributes.get_history(state, key, passive=False)
+                self.attributes[hashkey] = (added, unchanged, deleted, passive)
+        else:
+            (added, unchanged, deleted) = attributes.get_history(state, key, passive=passive)
+            self.attributes[hashkey] = (added, unchanged, deleted, passive)
+
+        if added is None:
+            return (added, unchanged, deleted)
+        else:
+            return (
+                [getattr(c, '_state', c) for c in added],
+                [getattr(c, '_state', c) for c in unchanged],
+                [getattr(c, '_state', c) for c in deleted],
+                )
+
         
     def register_object(self, state, isdelete = False, listonly = False, postupdate=False, post_update_cols=None, **kwargs):
         # if object is not in the overall session, do nothing
@@ -378,7 +414,7 @@ class UOWTransaction(object):
         task = self.get_task_by_mapper(mapper)
         targettask = self.get_task_by_mapper(mapperfrom)
         up = UOWDependencyProcessor(processor, targettask)
-        task._dependencies.add(up)
+        task.dependencies.add(up)
         
     def execute(self):
         """Execute this UOWTransaction.
@@ -480,7 +516,7 @@ class UOWTask(object):
         # mapping of InstanceState -> UOWTaskElement
         self._objects = {} 
 
-        self._dependencies = util.Set()
+        self.dependencies = util.Set()
         self.cyclical_dependencies = util.Set()
 
     def polymorphic_tasks(self):
@@ -519,7 +555,7 @@ class UOWTask(object):
         used only for debugging output.
         """
 
-        return not self._objects and not self._dependencies
+        return not self._objects and not self.dependencies
             
     def append(self, state, listonly=False, isdelete=False):
         if state not in self._objects:
@@ -594,8 +630,6 @@ class UOWTask(object):
     polymorphic_todelete_objects = property(lambda self:[rec.state for rec in self.polymorphic_elements
                                           if rec.state is not None and not rec.listonly and rec.isdelete is True])
 
-    dependencies = property(lambda self:self._dependencies)
-    
     polymorphic_dependencies = _polymorphic_collection(lambda task:task.dependencies)
     
     polymorphic_cyclical_dependencies = _polymorphic_collection(lambda task:task.cyclical_dependencies)
@@ -656,7 +690,8 @@ class UOWTask(object):
                     object_to_original_task[state] = subtask
                     for dep in deps_by_targettask.get(subtask, []):
                         # is this dependency involved in one of the cycles ?
-                        if not dependency_in_cycles(dep):
+                        # (don't count the DetectKeySwitch prop)
+                        if dep.processor.no_dependencies or not dependency_in_cycles(dep):
                             continue
                         (processor, targettask) = (dep.processor, dep.targettask)
                         isdelete = taskelement.isdelete
@@ -726,7 +761,7 @@ class UOWTask(object):
         
         # stick the non-circular dependencies onto the new UOWTask
         for d in extradeplist:
-            t._dependencies.add(d)
+            t.dependencies.add(d)
         
         if head is not None:
             make_task_tree(head, t, {})
@@ -741,7 +776,7 @@ class UOWTask(object):
                 for state in t2.elements:
                     localtask.append(obj, t2.listonly, isdelete=t2._objects[state].isdelete)
                 for dep in t2.dependencies:
-                    localtask._dependencies.add(dep)
+                    localtask.dependencies.add(dep)
                 ret.insert(0, localtask)
         
         return ret
@@ -867,7 +902,7 @@ class UOWDependencyProcessor(object):
             self.processor.process_dependencies(self.targettask, [elem.state for elem in self.targettask.polymorphic_todelete_elements if elem.state is not None], trans, delete=True)
 
     def get_object_dependencies(self, state, trans, passive):
-        return self.processor.get_object_dependencies(state, trans, passive=passive)
+        return trans.get_attribute_history(state, self.processor.key, passive=passive)
 
     def whose_dependent_on_who(self, state1, state2):
         """establish which object is operationally dependent amongst a parent/child 

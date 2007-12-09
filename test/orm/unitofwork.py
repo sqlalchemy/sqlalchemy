@@ -458,24 +458,6 @@ class PKTest(ORMTest):
         e.data = 'some more data'
         Session.commit()
 
-    @engines.assert_conns_closed
-    def test_pksimmutable(self):
-        class Entry(object):
-            pass
-        mapper(Entry, table)
-        e = Entry()
-        e.multi_id=5
-        e.multi_rev=5
-        e.name='somename'
-        Session.commit()
-        e.multi_rev=6
-        e.name = 'someothername'
-        try:
-            Session.commit()
-            assert False
-        except exceptions.FlushError, fe:
-            assert str(fe) == "Can't change the identity of instance Entry@%s in session (existing identity: (%s, (5, 5), None); new identity: (%s, (5, 6), None))" % (hex(id(e)), repr(e.__class__), repr(e.__class__)), str(fe)
-            
 class ForeignPKTest(ORMTest):
     """tests mapper detection of the relationship direction when parent/child tables are joined on their
     primary keys"""
