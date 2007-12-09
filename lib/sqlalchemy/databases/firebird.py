@@ -123,6 +123,23 @@ colspecs = {
 }
 
 
+ischema_names = {
+      'SHORT': lambda r: FBSmallInteger(),
+       'LONG': lambda r: FBInteger(),
+       'QUAD': lambda r: FBFloat(),
+      'FLOAT': lambda r: FBFloat(),
+       'DATE': lambda r: FBDate(),
+       'TIME': lambda r: FBTime(),
+       'TEXT': lambda r: FBString(r['FLEN']),
+      'INT64': lambda r: FBNumeric(precision=r['FPREC'], length=r['FSCALE'] * -1), # This generically handles NUMERIC()
+     'DOUBLE': lambda r: FBFloat(),
+  'TIMESTAMP': lambda r: FBDateTime(),
+    'VARYING': lambda r: FBString(r['FLEN']),
+    'CSTRING': lambda r: FBChar(r['FLEN']),
+       'BLOB': lambda r: r['STYPE']==1 and FBText() or FBBinary
+      }
+
+
 def descriptor():
     return {'name':'firebird',
     'description':'Firebird',
@@ -220,33 +237,20 @@ class FBDialect(default.DefaultDialect):
             return False
 
     def reflecttable(self, connection, table, include_columns):
-        #TODO: map these better
-        column_func = {
-            14 : lambda r: sqltypes.String(r['FLEN']), # TEXT
-            7  : lambda r: sqltypes.Integer(), # SHORT
-            8  : lambda r: r['FPREC']==0 and sqltypes.Integer() or sqltypes.Numeric(precision=r['FPREC'], length=r['FSCALE'] * -1),  #INT or NUMERIC
-            9  : lambda r: sqltypes.Float(), # QUAD
-            10 : lambda r: sqltypes.Float(), # FLOAT
-            27 : lambda r: sqltypes.Float(), # DOUBLE
-            35 : lambda r: sqltypes.DateTime(), # TIMESTAMP
-            37 : lambda r: sqltypes.String(r['FLEN']), # VARYING
-            261: lambda r: sqltypes.TEXT(), # BLOB
-            40 : lambda r: sqltypes.Char(r['FLEN']), # CSTRING
-            12 : lambda r: sqltypes.Date(), # DATE
-            13 : lambda r: sqltypes.Time(), # TIME
-            16 : lambda r: sqltypes.Numeric(precision=r['FPREC'], length=r['FSCALE'] * -1)  #INT64
-            }
         tblqry = """
         SELECT DISTINCT R.RDB$FIELD_NAME AS FNAME,
                   R.RDB$NULL_FLAG AS NULL_FLAG,
                   R.RDB$FIELD_POSITION,
-                  F.RDB$FIELD_TYPE AS FTYPE,
+                  T.RDB$TYPE_NAME AS FTYPE,
                   F.RDB$FIELD_SUB_TYPE AS STYPE,
                   F.RDB$FIELD_LENGTH AS FLEN,
                   F.RDB$FIELD_PRECISION AS FPREC,
                   F.RDB$FIELD_SCALE AS FSCALE
         FROM RDB$RELATION_FIELDS R
-             JOIN RDB$FIELDS F ON R.RDB$FIELD_SOURCE=F.RDB$FIELD_NAME
+             JOIN RDB$FIELDS F
+               ON R.RDB$FIELD_SOURCE=F.RDB$FIELD_NAME
+             JOIN RDB$TYPES T
+               ON T.RDB$TYPE=F.RDB$FIELD_TYPE AND T.RDB$FIELD_NAME='RDB$FIELD_TYPE'
         WHERE F.RDB$SYSTEM_FLAG=0 and R.RDB$RELATION_NAME=?
         ORDER BY R.RDB$FIELD_POSITION"""
         keyqry = """
@@ -293,7 +297,7 @@ class FBDialect(default.DefaultDialect):
 
             kw = {}
             # get the data types and lengths
-            coltype = column_func.get(row['FTYPE'], None)
+            coltype = ischema_names.get(row['FTYPE'].rstrip())
             if coltype is None:
                 warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (str(row['FTYPE']), name)))
                 coltype = sqltypes.NULLTYPE

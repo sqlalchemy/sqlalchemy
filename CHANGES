@@ -149,6 +149,8 @@ CHANGES
 
    - MSSQL/PyODBC no longer has a global "set nocount on".
 
+   - Firebird backend does properly reflect domains (partially fixing [ticket:410]).
+
 0.4.1
 -----
 
