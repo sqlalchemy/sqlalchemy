@@ -110,7 +110,9 @@ def produce_test(parent, child, direction):
             somea = A('somea')
             someb = B('someb')
             somec = C('somec')
-            print "APPENDING", parent.__class__.__name__ , "TO", child.__class__.__name__
+            
+            #print "APPENDING", parent.__class__.__name__ , "TO", child.__class__.__name__
+            
             sess.save(parent_obj)
             parent_obj.collection.append(child_obj)
             if direction == ONETOMANY:

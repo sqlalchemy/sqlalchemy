@@ -399,6 +399,10 @@ class PropertyLoader(StrategizedProperty):
         # ensure the "select_mapper", if different from the regular target mapper, is compiled.
         self.mapper.get_select_mapper()._check_compile()
 
+        for inheriting in self.parent.iterate_to_root():
+            if inheriting is not self.parent and inheriting.get_property(self.key, raiseerr=False):
+                warnings.warn(RuntimeWarning("Warning: relation '%s' on mapper '%s' supercedes the same relation on inherited mapper '%s'; this can cause dependency issues during flush" % (self.key, self.parent, inheriting)))
+
         if self.association is not None:
             if isinstance(self.association, type):
                 self.association = mapper.class_mapper(self.association, entity_name=self.entity_name, compile=False)._check_compile()

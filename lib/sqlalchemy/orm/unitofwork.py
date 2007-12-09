@@ -734,7 +734,8 @@ class UOWTask(object):
                                 else:
                                     get_dependency_task(whosdep[0], dep).append(whosdep[1], isdelete=isdelete)
                             else:
-                                get_dependency_task(state, dep).append(obj, isdelete=isdelete)
+                                # TODO: no test coverage here
+                                get_dependency_task(state, dep).append(state, isdelete=isdelete)
 
         head = topological.sort_as_tree(tuples, allobjects)
         
