@@ -132,7 +132,7 @@ class SyncRule(object):
     def source_changes(self, uowcommit, source):
         prop = self.source_mapper._columntoproperty[self.source_column]
         (added, unchanged, deleted) = uowcommit.get_attribute_history(source, prop.key, passive=True)
-        return bool(added)
+        return bool(added and deleted)
     
     def update(self, dest, parent, child, old_prefix):
         if self.issecondary is False:
