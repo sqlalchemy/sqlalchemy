@@ -1771,6 +1771,15 @@ class BooleanColTest(ORMTest):
                 sess.clear()
             self.assertEquals(sess.query(T).filter(T.value==False).all(), [T(value=False, name="t2")])
         
+        t2 = sess.query(T).get(t2.id)
+        t2.value = True
+        sess.flush()
+        self.assertEquals(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"), T(value=True, name="t2"), T(value=True, name="t3")])
+        t2.value = False
+        sess.flush()
+        self.assertEquals(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
+        
+        
 class RowSwitchTest(ORMTest):
     def define_tables(self, metadata):
         global t1, t2, t3, t1t3
