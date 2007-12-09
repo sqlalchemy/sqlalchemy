@@ -122,14 +122,15 @@ class UnitOfWork(object):
             
         elif state.dict['_instance_key'] != instance_key:
             # primary key switch
-            self.identity_map[instance_key] = state.obj()
             del self.identity_map[state.dict['_instance_key']]
             state.dict['_instance_key'] = instance_key
             
         if hasattr(state, 'insert_order'):
             delattr(state, 'insert_order')
+            
         self.identity_map[state.dict['_instance_key']] = state.obj()
         state.commit_all()
+        
         # remove from new last, might be the last strong ref
         self.new.pop(state, None)
 
