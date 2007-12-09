@@ -4,32 +4,33 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey
 from sqlalchemy.orm import mapper, relation, clear_mappers, create_session
 from sqlalchemy.orm.mapper import Mapper
 from testlib import *
+from testlib.fixtures import Base
 
-class A(object):pass
-class B(object):pass
+class A(Base):pass
+class B(Base):pass
 
-class MapperCleanoutTest(AssertMixin):
-    """test that clear_mappers() removes everything related to the class.
-    
-    does not include classes that use the assignmapper extension."""
-
-    def test_mapper_cleanup(self):
-        for x in range(0, 5):
-            self.do_test()
+def profile_memory(func):
+    # run the test 50 times.  if length of gc.get_objects()
+    # keeps growing, assert false
+    def profile(*args):
+        samples = []
+        for x in range(0, 50):
+            func(*args)
             gc.collect()
-            for o in gc.get_objects():
-                if isinstance(o, Mapper):
-                    # the classes in the 'tables' package have assign_mapper called on them
-                    # which is particularly sticky
-                    # if getattr(tables, o.class_.__name__, None) is o.class_:
-                    #    continue
-                    # well really we are just testing our own classes here
-                    if (o.class_ not in [A,B]):
-                        continue
-                    assert False
+            samples.append(len(gc.get_objects()))
+        print "sample gc sizes:", samples
+        # TODO: this test only finds pure "growing" tests
+        for i, x in enumerate(samples):
+            if i < len(samples) - 1 and samples[i+1] <= x:
+                break
+        else:
+            assert False
         assert True
-        
-    def do_test(self):
+    return profile
+
+class MemUsageTest(AssertMixin):
+    
+    def test_session(self):
         metadata = MetaData(testbase.db)
 
         table1 = Table("mytable", metadata, 
@@ -45,32 +46,99 @@ class MapperCleanoutTest(AssertMixin):
     
         metadata.create_all()
 
-
         m1 = mapper(A, table1, properties={
-            "bs":relation(B)
+            "bs":relation(B, cascade="all, delete")
         })
         m2 = mapper(B, table2)
 
         m3 = mapper(A, table1, non_primary=True)
         
-        sess = create_session()
-        a1 = A()
-        a2 = A()
-        a3 = A()
-        a1.bs.append(B())
-        a1.bs.append(B())
-        a3.bs.append(B())
-        for x in [a1,a2,a3]:
-            sess.save(x)
-        sess.flush()
-        sess.clear()
+        @profile_memory
+        def go():
+            sess = create_session()
+            a1 = A(col2="a1")
+            a2 = A(col2="a2")
+            a3 = A(col2="a3")
+            a1.bs.append(B(col2="b1"))
+            a1.bs.append(B(col2="b2"))
+            a3.bs.append(B(col2="b3"))
+            for x in [a1,a2,a3]:
+                sess.save(x)
+            sess.flush()
+            sess.clear()
 
-        alist = sess.query(A).select()
-        for a in alist:
-            print "A", a, "BS", [b for b in a.bs]
-    
+            alist = sess.query(A).all()
+            self.assertEquals(
+                [
+                    A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]), 
+                    A(col2="a2", bs=[]), 
+                    A(col2="a3", bs=[B(col2="b3")])
+                ], 
+                alist)
+
+            for a in alist:
+                sess.delete(a)
+            sess.flush()
+        go()
+        
         metadata.drop_all()
         clear_mappers()
+        
+    def test_mapper_reset(self):
+        metadata = MetaData(testbase.db)
+
+        table1 = Table("mytable", metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(30))
+            )
+
+        table2 = Table("mytable2", metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(30)),
+            Column('col3', Integer, ForeignKey("mytable.col1"))
+            )
+
+        @profile_memory
+        def go():
+            m1 = mapper(A, table1, properties={
+                "bs":relation(B)
+            })
+            m2 = mapper(B, table2)
+
+            m3 = mapper(A, table1, non_primary=True)
+        
+            sess = create_session()
+            a1 = A(col2="a1")
+            a2 = A(col2="a2")
+            a3 = A(col2="a3")
+            a1.bs.append(B(col2="b1"))
+            a1.bs.append(B(col2="b2"))
+            a3.bs.append(B(col2="b3"))
+            for x in [a1,a2,a3]:
+                sess.save(x)
+            sess.flush()
+            sess.clear()
+
+            alist = sess.query(A).all()
+            self.assertEquals(
+                [
+                    A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]), 
+                    A(col2="a2", bs=[]), 
+                    A(col2="a3", bs=[B(col2="b3")])
+                ], 
+                alist)
+        
+            for a in alist:
+                sess.delete(a)
+            sess.flush()
+            clear_mappers()
+        
+        metadata.create_all()
+        try:
+            go()
+        finally:
+            metadata.drop_all()
+
     
 if __name__ == '__main__':
     testbase.main()
