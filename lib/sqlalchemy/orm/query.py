@@ -623,6 +623,19 @@ class Query(object):
         
     
     def from_statement(self, statement):
+        """Execute the given SELECT statement and return results.
+        
+        This method bypasses all internal statement compilation, and the 
+        statement is executed without modification. 
+        
+        The statement argument is either a string, a ``select()`` construct,
+        or a ``text()`` construct, and should return the set of columns
+        appropriate to the entity class represented by this ``Query``.
+        
+        Also see the ``instances()`` method.
+        
+        """
+        
         if isinstance(statement, basestring):
             statement = sql.text(statement)
         q = self._clone()
