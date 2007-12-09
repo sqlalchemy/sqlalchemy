@@ -998,9 +998,6 @@ class Mapper(object):
                 if self.__should_log_debug:
                     self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, mapperutil.state_str(state), mapperutil.instance_str(existing)))
                 uowtransaction.set_row_switch(existing)
-#            if _state_has_identity(state):
-#                if state.dict['_instance_key'] != instance_key:
-#                    raise exceptions.FlushError("Can't change the identity of instance %s in session (existing identity: %s; new identity: %s)" % (mapperutil.state_str(state), state.dict['_instance_key'], instance_key))
 
         inserted_objects = util.Set()
         updated_objects = util.Set()
@@ -1070,8 +1067,7 @@ class Mapper(object):
                                 continue
                                 
                             prop = mapper._columntoproperty[col]
-                            (added, unchanged, deleted) = uowtransaction.get_attribute_history(state, prop.key, passive=True, cache=False)
-                            #(added, unchanged, deleted) = attributes.get_history(state, prop.key, passive=True)
+                            (added, unchanged, deleted) = attributes.get_history(state, prop.key, passive=True)
                             if added:
                                 if isinstance(added[0], sql.ClauseElement):
                                     value_params[col] = added[0]

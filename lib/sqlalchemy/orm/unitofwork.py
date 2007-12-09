@@ -280,13 +280,13 @@ class UOWTransaction(object):
 
         self.logger = logging.instance_logger(self, echoflag=session.echo_uow)
 
-    def get_attribute_history(self, state, key, passive=True, cache=True):
+    def get_attribute_history(self, state, key, passive=True):
         hashkey = ("history", state, key)
 
         # cache the objects, not the states; the strong reference here
         # prevents newly loaded objects from being dereferenced during the 
         # flush process
-        if cache and hashkey in self.attributes:
+        if hashkey in self.attributes:
             (added, unchanged, deleted, cached_passive) = self.attributes[hashkey]
             # if the cached lookup was "passive" and now we want non-passive, do a non-passive
             # lookup and re-cache
