@@ -75,7 +75,7 @@ class MemUsageTest(AssertMixin):
                     A(col2="a3", bs=[B(col2="b3")])
                 ], 
                 alist)
-
+            
             for a in alist:
                 sess.delete(a)
             sess.flush()

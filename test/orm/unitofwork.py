@@ -10,6 +10,8 @@ from testlib import tables, fixtures
 
 """tests unitofwork operations"""
 
+# TODO: convert suite to not use Session.mapper, use fixtures.Base
+# with explicit session.save()
 Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
 mapper = Session.mapper
 
@@ -1732,6 +1734,43 @@ class SaveTest3(ORMTest):
         Session.commit()
         assert t2.count().scalar() == 0
 
+class BooleanColTest(ORMTest):
+    def define_tables(self, metadata):
+        global t
+        t =Table('t1', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('name', String(30)),
+            Column('value', Boolean))
+    
+    def test_boolean(self):
+        # use the regular mapper
+        from sqlalchemy.orm import mapper
+        
+        class T(fixtures.Base):
+            pass
+        mapper(T, t)
+        
+        sess = create_session()
+        t1 = T(value=True, name="t1")
+        t2 = T(value=False, name="t2")
+        t3 = T(value=True, name="t3")
+        sess.save(t1)
+        sess.save(t2)
+        sess.save(t3)
+        
+        sess.flush()
+        
+        for clear in (False, True):
+            if clear:
+                sess.clear()
+            self.assertEquals(sess.query(T).all(), [T(value=True, name="t1"), T(value=False, name="t2"), T(value=True, name="t3")])
+            if clear:
+                sess.clear()
+            self.assertEquals(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
+            if clear:
+                sess.clear()
+            self.assertEquals(sess.query(T).filter(T.value==False).all(), [T(value=False, name="t2")])
+        
 class RowSwitchTest(ORMTest):
     def define_tables(self, metadata):
         global t1, t2, t3, t1t3
