@@ -66,6 +66,15 @@ CHANGES
      database's ON UPDATE CASCADE (required for DB's like Postgres) or
      issued directly by the ORM in the form of UPDATE statements, by setting
      the flag "passive_cascades=False".
+
+   - Query.select_from() now replaces all existing FROM criterion with
+     the given argument; the previous behavior of constructing a list
+     of FROM clauses was generally not useful as is required 
+     filter() calls to create join criterion, and new tables introduced
+     within filter() already add themselves to the FROM clause.  The
+     new behavior allows not just joins from the main table, but select 
+     statements as well.  Filter criterion, order bys, eager load
+     clauses will be "aliased" against the given statement.
      
    - added "cascade delete" behavior to "dynamic" relations just like
      that of regular relations.  if passive_deletes flag (also just added)

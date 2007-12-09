@@ -484,24 +484,11 @@ class EagerLoader(AbstractRelationLoader):
         
         if context.eager_joins:
             towrap = context.eager_joins
-        elif isinstance(localparent.mapped_table, sql.Join):
-            towrap = localparent.mapped_table
         else:
-            # look for the mapper's selectable expressed within the current "from" criterion.
-            # this will locate the selectable inside of any containers it may be a part of (such
-            # as a join).  if its inside of a join, we want to outer join on that join, not the 
-            # selectable.
-            # TODO: slightly hacky way to get at all the froms
-            for fromclause in sql.select(from_obj=context.from_clauses).froms:
-                if fromclause is localparent.mapped_table:
-                    towrap = fromclause
-                    break
-                elif isinstance(fromclause, sql.Join):
-                    if localparent.mapped_table in sql_util.find_tables(fromclause, include_aliases=True):
-                        towrap = fromclause
-                        break
+            if isinstance(context.from_clause, sql.Join):
+                towrap = context.from_clause
             else:
-                raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join onto, for mapped table %s" % (localparent.mapped_table))
+                towrap = localparent.mapped_table
         
         # create AliasedClauses object to build up the eager query.  this is cached after 1st creation.    
         try:

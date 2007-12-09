@@ -617,7 +617,6 @@ class MultiplePathTest(ORMTest):
         create_session().query(T1).join('t2s_1').filter(t2.c.id==5).reset_joinpoint().join('t2s_2', aliased=True).all()
 
 
-
 class SynonymTest(QueryTest):
     keep_mappers = True
     keep_data = True
@@ -760,6 +759,7 @@ class InstancesTest(QueryTest):
     def test_multi_mappers(self):
 
         test_session = create_session()
+
         (user7, user8, user9, user10) = test_session.query(User).all()
         (address1, address2, address3, address4, address5) = test_session.query(Address).all()
 
@@ -900,7 +900,133 @@ class InstancesTest(QueryTest):
 
             assert q.all() == expected
             sess.clear()
-            
+
+
+class SelectFromTest(QueryTest):
+    keep_mappers = False
+    
+    def setup_mappers(self):
+        pass
+        
+    def test_replace_with_select(self):
+        mapper(User, users, properties = {
+            'addresses':relation(Address)
+        })
+        mapper(Address, addresses)
+    
+        sel = users.select(users.c.id.in_([7, 8])).alias()
+        sess = create_session()
+    
+        self.assertEquals(sess.query(User).select_from(sel).all(), [User(id=7), User(id=8)])
+
+        self.assertEquals(sess.query(User).select_from(sel).filter(User.c.id==8).all(), [User(id=8)])
+
+        self.assertEquals(sess.query(User).select_from(sel).order_by(desc(User.name)).all(), [
+            User(name='jack',id=7), User(name='ed',id=8)
+        ])
+
+        self.assertEquals(sess.query(User).select_from(sel).order_by(asc(User.name)).all(), [
+            User(name='ed',id=8), User(name='jack',id=7)
+        ])
+
+    def test_join(self):
+        mapper(User, users, properties = {
+            'addresses':relation(Address)
+        })
+        mapper(Address, addresses)
+
+        sel = users.select(users.c.id.in_([7, 8]))
+        sess = create_session()
+
+        self.assertEquals(sess.query(User).select_from(sel).join('addresses').add_entity(Address).all(), 
+            [
+                (User(name='jack',id=7), Address(user_id=7,email_address='jack@bean.com',id=1)), 
+                (User(name='ed',id=8), Address(user_id=8,email_address='ed@wood.com',id=2)), 
+                (User(name='ed',id=8), Address(user_id=8,email_address='ed@bettyboop.com',id=3)),
+                (User(name='ed',id=8), Address(user_id=8,email_address='ed@lala.com',id=4))
+            ]
+        )
+
+        self.assertEquals(sess.query(User).select_from(sel).join('addresses', aliased=True).add_entity(Address).all(), 
+            [
+                (User(name='jack',id=7), Address(user_id=7,email_address='jack@bean.com',id=1)), 
+                (User(name='ed',id=8), Address(user_id=8,email_address='ed@wood.com',id=2)), 
+                (User(name='ed',id=8), Address(user_id=8,email_address='ed@bettyboop.com',id=3)),
+                (User(name='ed',id=8), Address(user_id=8,email_address='ed@lala.com',id=4))
+            ]
+        )
+
+    def test_more_joins(self):
+        mapper(User, users, properties={
+            'orders':relation(Order, backref='user'), # o2m, m2o
+        })
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items, order_by=items.c.id),  #m2m
+        })
+        mapper(Item, items, properties={
+            'keywords':relation(Keyword, secondary=item_keywords) #m2m
+        })
+        mapper(Keyword, keywords)
+        
+        sel = users.select(users.c.id.in_([7, 8]))
+        sess = create_session()
+        
+        self.assertEquals(sess.query(User).select_from(sel).join(['orders', 'items', 'keywords']).filter(Keyword.name.in_(['red', 'big', 'round'])).all(), [
+            User(name=u'jack',id=7)
+        ])
+
+        self.assertEquals(sess.query(User).select_from(sel).join(['orders', 'items', 'keywords'], aliased=True).filter(Keyword.name.in_(['red', 'big', 'round'])).all(), [
+            User(name=u'jack',id=7)
+        ])
+
+        def go():
+            self.assertEquals(sess.query(User).select_from(sel).options(eagerload_all('orders.items.keywords')).join(['orders', 'items', 'keywords'], aliased=True).filter(Keyword.name.in_(['red', 'big', 'round'])).all(), [
+                User(name=u'jack',orders=[
+                    Order(description=u'order 1',items=[
+                        Item(description=u'item 1',keywords=[Keyword(name=u'red'), Keyword(name=u'big'), Keyword(name=u'round')]), 
+                        Item(description=u'item 2',keywords=[Keyword(name=u'red',id=2), Keyword(name=u'small',id=5), Keyword(name=u'square')]), 
+                        Item(description=u'item 3',keywords=[Keyword(name=u'green',id=3), Keyword(name=u'big',id=4), Keyword(name=u'round',id=6)])
+                    ]), 
+                    Order(description=u'order 3',items=[
+                        Item(description=u'item 3',keywords=[Keyword(name=u'green',id=3), Keyword(name=u'big',id=4), Keyword(name=u'round',id=6)]), 
+                        Item(description=u'item 4',keywords=[],id=4), 
+                        Item(description=u'item 5',keywords=[],id=5)
+                        ]), 
+                    Order(description=u'order 5',items=[Item(description=u'item 5',keywords=[])])])
+                ])
+        self.assert_sql_count(testbase.db, go, 1)
+        
+    def test_replace_with_eager(self):
+        mapper(User, users, properties = {
+            'addresses':relation(Address)
+        })
+        mapper(Address, addresses)
+    
+        sel = users.select(users.c.id.in_([7, 8]))
+        sess = create_session()
+    
+        def go():
+            self.assertEquals(sess.query(User).options(eagerload('addresses')).select_from(sel).all(), 
+                [
+                    User(id=7, addresses=[Address(id=1)]), 
+                    User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)])
+                ]
+            )
+        self.assert_sql_count(testbase.db, go, 1)
+        sess.clear()
+        
+        def go():
+            self.assertEquals(sess.query(User).options(eagerload('addresses')).select_from(sel).filter(User.c.id==8).all(), 
+                [User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)])]
+            )
+        self.assert_sql_count(testbase.db, go, 1)
+        sess.clear()
+
+        def go():
+            self.assertEquals(sess.query(User).options(eagerload('addresses')).select_from(sel)[1], User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)]))
+        self.assert_sql_count(testbase.db, go, 1)
+    
+        
 class CustomJoinTest(QueryTest):
     keep_mappers = False
 

@@ -128,6 +128,21 @@ sq2.sq_myothertable_otherid, sq2.sq_myothertable_othername FROM \
 sq.mytable_description AS sq_mytable_description, sq.myothertable_otherid AS sq_myothertable_otherid, \
 sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") AS sq) AS sq2")
 
+    def test_nested_uselabels(self):
+        """test nested anonymous label generation.  this
+        essentially tests the ANONYMOUS_LABEL regex.
+        """
+        
+        s1 = table1.select()
+        s2 = s1.alias()
+        s3 = select([s2], use_labels=True)
+        s4 = s3.alias()
+        s5 = select([s4], use_labels=True)
+        self.assert_compile(s5, "SELECT anon_1.anon_2_myid AS anon_1_anon_2_myid, anon_1.anon_2_name AS anon_1_anon_2_name, "\
+        "anon_1.anon_2_description AS anon_1_anon_2_description FROM (SELECT anon_2.myid AS anon_2_myid, anon_2.name AS anon_2_name, "\
+        "anon_2.description AS anon_2_description FROM (SELECT mytable.myid AS myid, mytable.name AS name, mytable.description "\
+        "AS description FROM mytable) AS anon_2) AS anon_1")
+        
     def testmssql_noorderbyinsubquery(self):
         """test that the ms-sql dialect removes ORDER BY clauses from subqueries"""
         dialect = mssql.dialect()

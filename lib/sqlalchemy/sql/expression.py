@@ -1611,7 +1611,11 @@ class FromClause(Selectable):
                 return None
             else:
                 raise exceptions.InvalidRequestError("Column instance '%s' is not directly present within selectable '%s'" % (str(column), column.table.description))
-
+        
+        # dont dig around if the column is locally present
+        if self.c.contains_column(column):
+            return column
+            
         col, intersect = None, None
         target_set = column.proxy_set
         for c in self.c + [self.oid_column]:
@@ -2442,10 +2446,12 @@ class Alias(FromClause):
            baseselectable = baseselectable.selectable
        self.original = baseselectable
 
-    def get_children(self, **kwargs):
-        for c in self.c:
-            yield c
-        yield self.selectable
+    def get_children(self, column_collections=True, aliased_selectables=True, **kwargs):
+        if column_collections:
+            for c in self.c:
+                yield c
+        if aliased_selectables:
+            yield self.selectable
 
     def _get_from_objects(self, **modifiers):
         return [self]
