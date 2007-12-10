@@ -790,6 +790,9 @@ class Query(object):
         for instance in context.identity_map.values():
             context.attributes.get(('populating_mapper', id(instance)), object_mapper(instance))._post_instance(context, instance)
 
+        # "refresh_instance" may be loaded from a row which has no primary key columns to identify it.
+        # this occurs during the load of the "joined" table in a joined-table inheritance mapper, and saves
+        # the need to join to the primary table in those cases.
         if context.refresh_instance and context.only_load_props and context.refresh_instance.dict['_instance_key'] in context.identity_map:
             # if refreshing partial instance, do special state commit
             # affecting only the refreshed attributes
