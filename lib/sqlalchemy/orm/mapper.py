@@ -1325,7 +1325,7 @@ class Mapper(object):
 
         # determine identity key 
         if refresh_instance:
-            identitykey = refresh_instance._instance_key
+            identitykey = refresh_instance.dict['_instance_key']
         else:
             identitykey = self.identity_key_from_row(row)
         (session_identity_map, local_identity_map) = (context.session.identity_map, context.identity_map)

@@ -740,7 +740,7 @@ class Session(object):
 
         self._validate_persistent(instance)
             
-        if self.query(instance.__class__)._get(instance._instance_key, refresh_instance=instance, only_load_props=attribute_names) is None:
+        if self.query(instance.__class__)._get(instance._instance_key, refresh_instance=instance._state, only_load_props=attribute_names) is None:
             raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(instance))
 
     def expire(self, instance, attribute_names=None):
@@ -1115,7 +1115,7 @@ def _expire_state(state, attribute_names):
     
     if state.trigger is None:
         def load_attributes(instance, attribute_names):
-            if object_session(instance).query(instance.__class__)._get(instance._instance_key, refresh_instance=instance, only_load_props=attribute_names) is None:
+            if object_session(instance).query(instance.__class__)._get(instance._instance_key, refresh_instance=instance._state, only_load_props=attribute_names) is None:
                 raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(instance))
         state.trigger = load_attributes
         

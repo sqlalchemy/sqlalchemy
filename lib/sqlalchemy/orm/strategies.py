@@ -205,10 +205,10 @@ class DeferredColumnLoader(LoaderStrategy):
 
             if create_statement is None:
                 ident = instance._instance_key[1]
-                session.query(localparent)._get(None, ident=ident, only_load_props=group, refresh_instance=instance)
+                session.query(localparent)._get(None, ident=ident, only_load_props=group, refresh_instance=instance._state)
             else:
                 statement, params = create_statement(instance)
-                session.query(localparent).from_statement(statement).params(params)._get(None, only_load_props=group, refresh_instance=instance)
+                session.query(localparent).from_statement(statement).params(params)._get(None, only_load_props=group, refresh_instance=instance._state)
             return attributes.ATTR_WAS_SET
         return lazyload
                 

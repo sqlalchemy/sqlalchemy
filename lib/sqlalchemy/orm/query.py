@@ -790,11 +790,11 @@ class Query(object):
         for instance in context.identity_map.values():
             context.attributes.get(('populating_mapper', id(instance)), object_mapper(instance))._post_instance(context, instance)
 
-        if context.refresh_instance and context.only_load_props and context.refresh_instance._instance_key in context.identity_map:
+        if context.refresh_instance and context.only_load_props and context.refresh_instance.dict['_instance_key'] in context.identity_map:
             # if refreshing partial instance, do special state commit
             # affecting only the refreshed attributes
-            context.refresh_instance._state.commit(context.only_load_props)
-            del context.identity_map[context.refresh_instance._instance_key]
+            context.refresh_instance.commit(context.only_load_props)
+            del context.identity_map[context.refresh_instance.dict['_instance_key']]
             
         # store new stuff in the identity map
         for instance in context.identity_map.values():
@@ -836,7 +836,7 @@ class Query(object):
         try:
             if lockmode is not None:
                 q = q.with_lockmode(lockmode)
-            q = q._select_context_options(populate_existing=refresh_instance is not None, version_check=(lockmode is not None), only_load_props=only_load_props, refresh_instance=refresh_instance)
+            q = q._select_context_options(populate_existing=bool(refresh_instance), version_check=(lockmode is not None), only_load_props=only_load_props, refresh_instance=refresh_instance)
             q._order_by = None
             # call using all() to avoid LIMIT compilation complexity
             return q.all()[0]
@@ -1198,7 +1198,7 @@ class Query(object):
             self._populate_existing = populate_existing
         if version_check:
             self._version_check = version_check
-        if refresh_instance is not None:
+        if refresh_instance:
             self._refresh_instance = refresh_instance
         if only_load_props:
             self._only_load_props = util.Set(only_load_props)
