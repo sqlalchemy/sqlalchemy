@@ -486,7 +486,29 @@ class ParentTest(QueryTest):
 
 
 class JoinTest(QueryTest):
-
+    
+    def test_getjoinable_tables(self):
+        sess = create_session()
+        
+        sel1 = select([users]).alias()
+        sel2 = select([users], from_obj=users.join(addresses)).alias()
+        
+        j1 = sel1.join(users, sel1.c.id==users.c.id)
+        j2 = j1.join(addresses)
+        
+        for from_obj, assert_cond in (
+            (users, [users]),
+            (users.join(addresses), [users, addresses]),
+            (sel1, [sel1]),
+            (sel2, [sel2]),
+            (sel1.join(users, sel1.c.id==users.c.id), [sel1, users]),
+            (sel2.join(users, sel2.c.id==users.c.id), [sel2, users]),
+            (j2, [j1, j2, sel1, users, addresses])
+            
+        ):
+            ret = set(sess.query(User).select_from(from_obj)._get_joinable_tables())
+            self.assertEquals(ret, set(assert_cond).union([from_obj]), [x.description for x in ret])
+        
     def test_overlapping_paths(self):
         for aliased in (True,False):
             # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
@@ -995,6 +1017,18 @@ class SelectFromTest(QueryTest):
                     Order(description=u'order 5',items=[Item(description=u'item 5',keywords=[])])])
                 ])
         self.assert_sql_count(testbase.db, go, 1)
+
+        sess.clear()
+        sel2 = orders.select(orders.c.id.in_([1,2,3]))
+        self.assertEquals(sess.query(Order).select_from(sel2).join(['items', 'keywords']).filter(Keyword.name == 'red').all(), [
+            Order(description=u'order 1',id=1), 
+            Order(description=u'order 2',id=2), 
+        ])
+        self.assertEquals(sess.query(Order).select_from(sel2).join(['items', 'keywords'], aliased=True).filter(Keyword.name == 'red').all(), [
+            Order(description=u'order 1',id=1), 
+            Order(description=u'order 2',id=2), 
+        ])
+        
         
     def test_replace_with_eager(self):
         mapper(User, users, properties = {
@@ -1026,7 +1060,6 @@ class SelectFromTest(QueryTest):
             self.assertEquals(sess.query(User).options(eagerload('addresses')).select_from(sel)[1], User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)]))
         self.assert_sql_count(testbase.db, go, 1)
     
-        
 class CustomJoinTest(QueryTest):
     keep_mappers = False
 

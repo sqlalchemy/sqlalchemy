@@ -47,7 +47,10 @@ class SelectableTest(AssertMixin):
         j2 = jjj.alias('foo')
         assert j2.corresponding_column(table.c.col1) is j2.c.table1_col1
         
-
+    def testselectontable(self):
+        sel = select([table, table2], use_labels=True)
+        assert sel.corresponding_column(table.c.col1) is sel.c.table1_col1
+        
     def testjoinagainstjoin(self):
         j  = outerjoin(table, table2, table.c.col1==table2.c.col2)
         jj = select([ table.c.col1.label('bar_col1')],from_obj=[j]).alias('foo')

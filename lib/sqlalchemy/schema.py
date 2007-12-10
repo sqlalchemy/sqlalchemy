@@ -493,6 +493,7 @@ class Column(SchemaItem, expression._ColumnClause):
             [repr(self.name)] + [repr(self.type)] +
             [repr(x) for x in self.foreign_keys if x is not None] +
             [repr(x) for x in self.constraints] +
+            [(self.table and "table=<%s>" % self.table.description or "")] +
             ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg])
 
     def _get_parent(self):
@@ -504,12 +505,13 @@ class Column(SchemaItem, expression._ColumnClause):
             raise exceptions.ArgumentError("this Column already has a table!")
         if not self._is_oid:
             self._pre_existing_column = table._columns.get(self.key)
-            table._columns.add(self)
+
+            table._columns.replace(self)
         else:
             self._pre_existing_column = None
             
         if self.primary_key:
-            table.primary_key.add(self)
+            table.primary_key.replace(self)
         elif self.key in table.primary_key:
             raise exceptions.ArgumentError("Trying to redefine primary-key column '%s' as a non-primary-key column on table '%s'" % (self.key, table.fullname))
             # if we think this should not raise an error, we'd instead do this:
@@ -899,18 +901,19 @@ class PrimaryKeyConstraint(Constraint):
         self.table = table
         table.primary_key = self
         for c in self.__colnames:
-            self.append_column(table.c[c])
-
+            self.add(table.c[c])
+    
     def add(self, col):
-        self.append_column(col)
+        self.columns.add(col)
+        col.primary_key=True
+    append_column = add
+    
+    def replace(self, col):
+        self.columns.replace(col)
 
     def remove(self, col):
         col.primary_key=False
         del self.columns[col.key]
-
-    def append_column(self, col):
-        self.columns.add(col)
-        col.primary_key=True
 
     def copy(self):
         return PrimaryKeyConstraint(name=self.name, *[c.key for c in self])

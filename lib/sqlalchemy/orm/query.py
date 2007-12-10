@@ -49,6 +49,7 @@ class Query(object):
         self._autoflush = True
         self._eager_loaders = util.Set(chain(*[mp._eager_loaders for mp in [m for m in self.mapper.iterate_to_root()]]))
         self._attributes = {}
+        self.__joinable_tables = {}
         self._current_path = ()
         self._primary_adapter=None
         self._only_load_props = None
@@ -66,7 +67,13 @@ class Query(object):
         q._statement = q._aliases = q._criterion = None
         q._order_by = q._group_by = q._distinct = False
         return q
-        
+    
+    def _no_statement(self, meth):
+        q = self._clone()
+        if q._statement:
+            raise exceptions.InvalidRequestError("Query.%s() being called on a Query with an existing full statement - can't apply criterion." % meth)
+        return q
+    
     def _clone(self):
         q = Query.__new__(Query)
         q.__dict__ = self.__dict__.copy()
@@ -322,10 +329,10 @@ class Query(object):
         
         if self._aliases is not None:
             criterion = self._aliases.adapt_clause(criterion)
-        elif self._from_obj is not self.table:
+        elif self.table not in self._get_joinable_tables():
             criterion = sql_util.ClauseAdapter(self._from_obj).traverse(criterion)
             
-        q = self._clone()
+        q = self._no_statement("filter")
         if q._criterion is not None:
             q._criterion = q._criterion & criterion
         else:
@@ -341,12 +348,14 @@ class Query(object):
         return self.filter(sql.and_(*clauses))
 
     def _get_joinable_tables(self):
-        currenttables = [self._from_obj]
-        def visit_join(join):
-            currenttables.append(join.left)
-            currenttables.append(join.right)
-        visitors.traverse(self._from_obj, visit_join=visit_join, traverse_options={'column_collections':False, 'aliased_selectables':False})
-        return currenttables
+        if self._from_obj not in self.__joinable_tables:
+            currenttables = [self._from_obj]
+            def visit_join(join):
+                currenttables.append(join.left)
+                currenttables.append(join.right)
+            visitors.traverse(self._from_obj, visit_join=visit_join, traverse_options={'column_collections':False, 'aliased_selectables':False})
+            self.__joinable_tables = {self._from_obj : currenttables}
+        return self.__joinable_tables[self._from_obj]
         
     def _join_to(self, keys, outerjoin=False, start=None, create_aliases=True):
         if start is None:
@@ -416,7 +425,7 @@ class Query(object):
         """
         if self._column_aggregate is not None:
             raise exceptions.InvalidRequestError("Query already contains an aggregate column or function")
-        q = self._clone()
+        q = self._no_statement("aggregate")
         q._column_aggregate = (col, func)
         return q
 
@@ -484,7 +493,7 @@ class Query(object):
     def order_by(self, criterion):
         """apply one or more ORDER BY criterion to the query and return the newly resulting ``Query``"""
 
-        q = self._clone()
+        q = self._no_statement("order_by")
         if q._order_by is False:    
             q._order_by = util.to_list(criterion)
         else:
@@ -494,7 +503,7 @@ class Query(object):
     def group_by(self, criterion):
         """apply one or more GROUP BY criterion to the query and return the newly resulting ``Query``"""
 
-        q = self._clone()
+        q = self._no_statement("group_by")
         if q._group_by is False:    
             q._group_by = util.to_list(criterion)
         else:
@@ -514,7 +523,7 @@ class Query(object):
         if self._aliases is not None:
             criterion = self._aliases.adapt_clause(criterion)
             
-        q = self._clone()
+        q = self._no_statement("having")
         if q._having is not None:
             q._having = q._having & criterion
         else:
@@ -543,7 +552,7 @@ class Query(object):
 
     def _join(self, prop, id, outerjoin, aliased, from_joinpoint):
         (clause, mapper, aliases) = self._join_to(prop, outerjoin=outerjoin, start=from_joinpoint and self._joinpoint or self.mapper, create_aliases=aliased)
-        q = self._clone()
+        q = self._no_statement("join")
         q._from_obj = clause
         q._joinpoint = mapper
         q._aliases = aliases
@@ -568,7 +577,7 @@ class Query(object):
         the root.
         """
 
-        q = self._clone()
+        q = self._no_statement("reset_joinpoint")
         q._joinpoint = q.mapper
         q._aliases = None
         return q
@@ -638,7 +647,7 @@ class Query(object):
         ``Query``.
         """
 
-        new = self._clone()
+        new = self._no_statement("distinct")
         new._distinct = True
         return new
 
@@ -828,7 +837,7 @@ class Query(object):
             if lockmode is not None:
                 q = q.with_lockmode(lockmode)
             q = q._select_context_options(populate_existing=refresh_instance is not None, version_check=(lockmode is not None), only_load_props=only_load_props, refresh_instance=refresh_instance)
-            q = q.order_by(None)
+            q._order_by = None
             # call using all() to avoid LIMIT compilation complexity
             return q.all()[0]
         except IndexError:
@@ -891,23 +900,14 @@ class Query(object):
         whereclause = self._criterion
 
         from_obj = self._from_obj
-        currenttables = self._get_joinable_tables()
-        adapt_criterion = self.table not in currenttables
+        adapt_criterion = self.table not in self._get_joinable_tables()
 
-        if whereclause is not None and (self.mapper is not self.select_mapper):
-            # adapt the given WHERECLAUSE to adjust instances of this query's mapped 
-            # table to be that of our select_table,
-            # which may be the "polymorphic" selectable used by our mapper.
+        if not adapt_criterion and whereclause is not None and (self.mapper is not self.select_mapper):
             whereclause = sql_util.ClauseAdapter(from_obj).traverse(whereclause, stop_on=util.Set([from_obj]))
 
-            # if extra entities, adapt the criterion to those as well
-            for m in self._entities:
-                if isinstance(m, type):
-                    m = mapper.class_mapper(m)
-                if isinstance(m, mapper.Mapper):
-                    sql_util.ClauseAdapter(m.select_table).traverse(whereclause, stop_on=util.Set([m.select_table]))
+        # TODO: mappers added via add_entity(), adapt their queries also, 
+        # if those mappers are polymorphic
 
-        
         order_by = self._order_by
         if order_by is False:
             order_by = self.mapper.order_by
@@ -969,7 +969,7 @@ class Query(object):
             if adapt_criterion:
                 context.primary_columns = [from_obj.corresponding_column(c, raiseerr=False) or c for c in context.primary_columns]
                 cf = [from_obj.corresponding_column(c, raiseerr=False) or c for c in cf]
-                
+
             s2 = sql.select(context.primary_columns + list(cf), whereclause, from_obj=context.from_clause, use_labels=True, correlate=False, order_by=util.to_list(order_by), **self._select_args())
             
             s3 = s2.alias()

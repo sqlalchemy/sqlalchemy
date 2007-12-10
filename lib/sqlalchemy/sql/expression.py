@@ -27,6 +27,7 @@ to stay the same in future releases.
 
 import re
 import datetime
+import warnings
 from sqlalchemy import util, exceptions
 from sqlalchemy.sql import operators, visitors
 from sqlalchemy import types as sqltypes
@@ -1464,6 +1465,27 @@ class ColumnCollection(util.OrderedProperties):
     def __str__(self):
         return repr([str(c) for c in self])
 
+    def replace(self, column):
+        """add the given column to this collection, removing unaliased versions of this column
+           as well as existing columns with the same key.
+        
+            e.g.::
+            
+                t = Table('sometable', Column('col1', Integer))
+                t.replace_unalised(Column('col1', Integer, key='columnone'))
+                
+            will remove the original 'col1' from the collection, and add 
+            the new column under the name 'columnname'.
+            
+           Used by schema.Column to override columns during table reflection.
+        """
+        
+        if column.name in self and column.key != column.name:
+            other = self[column.name]
+            if other.name == other.key:
+                del self[other.name]
+        util.OrderedProperties.__setitem__(self, column.key, column)
+        
     def add(self, column):
         """Add a column to this collection.
 
@@ -1471,14 +1493,18 @@ class ColumnCollection(util.OrderedProperties):
         for this dictionary.
         """
 
-        # Allow an aliased column to replace an unaliased column of the
-        # same name.
-        if column.name in self:
-            other = self[column.name]
-            if other.name == other.key:
-                del self[other.name]
         self[column.key] = column
-
+    
+    def __setitem__(self, key, value):
+        if key in self:
+            # this warning is primarily to catch select() statements which have conflicting
+            # column names in their exported columns collection
+            existing = self[key]
+            if not existing.shares_lineage(value):
+                table = getattr(existing, 'table', None) and existing.table.description
+                warnings.warn(RuntimeWarning("Column %r on table %r being replaced by another column with the same key.  Consider use_labels for select() statements."  % (key, table)))
+        util.OrderedProperties.__setitem__(self, key, value)
+        
     def remove(self, column):
         del self[column.key]
 

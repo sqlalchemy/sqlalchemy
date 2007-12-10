@@ -1232,8 +1232,7 @@ class RequirementsTest(AssertMixin):
         t5 = Table('ht5', metadata,
                    Column('ht1_id', Integer, ForeignKey('ht1.id'),
                           primary_key=True),
-                   Column('ht1_id', Integer, ForeignKey('ht1.id'),
-                          primary_key=True))
+                    )
         t6 = Table('ht6', metadata,
                    Column('ht1a_id', Integer, ForeignKey('ht1.id'),
                           primary_key=True),

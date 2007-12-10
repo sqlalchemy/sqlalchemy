@@ -36,7 +36,10 @@ CHANGES
       of the underlying type.  Ideal for using with Unicode or Pickletype.
       TypeDecorator should now be the primary way to augment the behavior of any
       existing type including other TypeDecorator subclasses such as PickleType.
-        
+
+    - selectables (and others) will issue a warning when two columns in
+      their exported columns collection conflict based on name.
+      
     - tables with schemas can still be used in sqlite, firebird,
       schema name just gets dropped [ticket:890]
 
