@@ -67,8 +67,9 @@ class FBDateTime(sqltypes.DateTime):
             if value is None or isinstance(value, datetime.datetime):
                 return value
             else:
-                return datetime.datetime(year=value.year, month=value.month, 
-                    day=value.day)
+                return datetime.datetime(year=value.year,
+                                         month=value.month,
+                                         day=value.day)
         return process
 
 
@@ -130,13 +131,13 @@ ischema_names = {
       'FLOAT': lambda r: FBFloat(),
        'DATE': lambda r: FBDate(),
        'TIME': lambda r: FBTime(),
-       'TEXT': lambda r: FBString(r['FLEN']),
-      'INT64': lambda r: FBNumeric(precision=r['FPREC'], length=r['FSCALE'] * -1), # This generically handles NUMERIC()
+       'TEXT': lambda r: FBString(r['flen']),
+      'INT64': lambda r: FBNumeric(precision=r['fprec'], length=r['fscale'] * -1), # This generically handles NUMERIC()
      'DOUBLE': lambda r: FBFloat(),
   'TIMESTAMP': lambda r: FBDateTime(),
-    'VARYING': lambda r: FBString(r['FLEN']),
-    'CSTRING': lambda r: FBChar(r['FLEN']),
-       'BLOB': lambda r: r['STYPE']==1 and FBText() or FBBinary
+    'VARYING': lambda r: FBString(r['flen']),
+    'CSTRING': lambda r: FBChar(r['flen']),
+       'BLOB': lambda r: r['stype']==1 and FBText() or FBBinary
       }
 
 
@@ -214,15 +215,19 @@ class FBDialect(default.DefaultDialect):
             return name
 
     def table_names(self, connection, schema):
-        s = "SELECT R.RDB$RELATION_NAME FROM RDB$RELATIONS R WHERE R.RDB$SYSTEM_FLAG=0"
+        s = """
+        SELECT r.rdb$relation_name
+        FROM rdb$relations r
+        WHERE r.rdb$system_flag=0
+        """
         return [self._normalize_name(row[0]) for row in connection.execute(s)]
 
     def has_table(self, connection, table_name, schema=None):
         tblqry = """
         SELECT count(*)
-        FROM RDB$RELATIONS R
-        WHERE R.RDB$RELATION_NAME=?"""
-
+        FROM rdb$relations r
+        WHERE r.rdb$relation_name=?
+        """
         c = connection.execute(tblqry, [self._denormalize_name(table_name)])
         row = c.fetchone()
         if row[0] > 0:
@@ -237,51 +242,51 @@ class FBDialect(default.DefaultDialect):
             return False
 
     def reflecttable(self, connection, table, include_columns):
+        # Query to extract the details of all the fields of the given table
         tblqry = """
-        SELECT DISTINCT R.RDB$FIELD_NAME AS FNAME,
-                  R.RDB$NULL_FLAG AS NULL_FLAG,
-                  R.RDB$FIELD_POSITION,
-                  T.RDB$TYPE_NAME AS FTYPE,
-                  F.RDB$FIELD_SUB_TYPE AS STYPE,
-                  F.RDB$FIELD_LENGTH AS FLEN,
-                  F.RDB$FIELD_PRECISION AS FPREC,
-                  F.RDB$FIELD_SCALE AS FSCALE
-        FROM RDB$RELATION_FIELDS R
-             JOIN RDB$FIELDS F
-               ON R.RDB$FIELD_SOURCE=F.RDB$FIELD_NAME
-             JOIN RDB$TYPES T
-               ON T.RDB$TYPE=F.RDB$FIELD_TYPE AND T.RDB$FIELD_NAME='RDB$FIELD_TYPE'
-        WHERE F.RDB$SYSTEM_FLAG=0 and R.RDB$RELATION_NAME=?
-        ORDER BY R.RDB$FIELD_POSITION"""
+        SELECT DISTINCT r.rdb$field_name AS fname,
+                        r.rdb$null_flag AS null_flag,
+                        t.rdb$type_name AS ftype,
+                        f.rdb$field_sub_type AS stype,
+                        f.rdb$field_length AS flen,
+                        f.rdb$field_precision AS fprec,
+                        f.rdb$field_scale AS fscale
+        FROM rdb$relation_fields r
+             JOIN rdb$fields f ON r.rdb$field_source=f.rdb$field_name
+             JOIN rdb$types t ON t.rdb$type=f.rdb$field_type AND t.rdb$field_name='RDB$FIELD_TYPE'
+        WHERE f.rdb$system_flag=0 AND r.rdb$relation_name=?
+        ORDER BY r.rdb$field_position
+        """
+        # Query to extract the PK/FK constrained fields of the given table
         keyqry = """
-        SELECT SE.RDB$FIELD_NAME SENAME
-        FROM RDB$RELATION_CONSTRAINTS RC
-             JOIN RDB$INDEX_SEGMENTS SE
-               ON RC.RDB$INDEX_NAME=SE.RDB$INDEX_NAME
-        WHERE RC.RDB$CONSTRAINT_TYPE=? AND RC.RDB$RELATION_NAME=?"""
+        SELECT se.rdb$field_name AS fname
+        FROM rdb$relation_constraints rc
+             JOIN rdb$index_segments se ON rc.rdb$index_name=se.rdb$index_name
+        WHERE rc.rdb$constraint_type=? AND rc.rdb$relation_name=?
+        """
+        # Query to extract the details of each UK/FK of the given table
         fkqry = """
-        SELECT RC.RDB$CONSTRAINT_NAME CNAME,
-               CSE.RDB$FIELD_NAME FNAME,
-               IX2.RDB$RELATION_NAME RNAME,
-               SE.RDB$FIELD_NAME SENAME
-        FROM RDB$RELATION_CONSTRAINTS RC
-             JOIN RDB$INDICES IX1
-               ON IX1.RDB$INDEX_NAME=RC.RDB$INDEX_NAME
-             JOIN RDB$INDICES IX2
-               ON IX2.RDB$INDEX_NAME=IX1.RDB$FOREIGN_KEY
-             JOIN RDB$INDEX_SEGMENTS CSE
-               ON CSE.RDB$INDEX_NAME=IX1.RDB$INDEX_NAME
-             JOIN RDB$INDEX_SEGMENTS SE
-               ON SE.RDB$INDEX_NAME=IX2.RDB$INDEX_NAME AND SE.RDB$FIELD_POSITION=CSE.RDB$FIELD_POSITION
-        WHERE RC.RDB$CONSTRAINT_TYPE=? AND RC.RDB$RELATION_NAME=?
-        ORDER BY SE.RDB$INDEX_NAME, SE.RDB$FIELD_POSITION"""
+        SELECT rc.rdb$constraint_name AS cname,
+               cse.rdb$field_name AS fname,
+               ix2.rdb$relation_name AS targetrname,
+               se.rdb$field_name AS targetfname
+        FROM rdb$relation_constraints rc
+             JOIN rdb$indices ix1 ON ix1.rdb$index_name=rc.rdb$index_name
+             JOIN rdb$indices ix2 ON ix2.rdb$index_name=ix1.rdb$foreign_key
+             JOIN rdb$index_segments cse ON cse.rdb$index_name=ix1.rdb$index_name
+             JOIN rdb$index_segments se ON se.rdb$index_name=ix2.rdb$index_name AND se.rdb$field_position=cse.rdb$field_position
+        WHERE rc.rdb$constraint_type=? AND rc.rdb$relation_name=?
+        ORDER BY se.rdb$index_name, se.rdb$field_position
+        """
+
+        tablename = self._denormalize_name(table.name)
 
         # get primary key fields
-        c = connection.execute(keyqry, ["PRIMARY KEY", self._denormalize_name(table.name)])
-        pkfields =[self._normalize_name(r['SENAME']) for r in c.fetchall()]
+        c = connection.execute(keyqry, ["PRIMARY KEY", tablename])
+        pkfields =[self._normalize_name(r['fname']) for r in c.fetchall()]
 
         # get all of the fields for this table
-        c = connection.execute(tblqry, [self._denormalize_name(table.name)])
+        c = connection.execute(tblqry, [tablename])
 
         found_table = False
         while True:
@@ -290,16 +295,16 @@ class FBDialect(default.DefaultDialect):
                 break
             found_table = True
 
-            name = self._normalize_name(row['FNAME'])
+            name = self._normalize_name(row['fname'])
             if include_columns and name not in include_columns:
                 continue
             args = [name]
 
             kw = {}
             # get the data types and lengths
-            coltype = ischema_names.get(row['FTYPE'].rstrip())
+            coltype = ischema_names.get(row['ftype'].rstrip())
             if coltype is None:
-                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (str(row['FTYPE']), name)))
+                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (str(row['ftype']), name)))
                 coltype = sqltypes.NULLTYPE
             else:
                 coltype = coltype(row)
@@ -309,7 +314,7 @@ class FBDialect(default.DefaultDialect):
             kw['primary_key'] = name in pkfields
 
             # is it nullable ?
-            kw['nullable'] = not bool(row['NULL_FLAG'])
+            kw['nullable'] = not bool(row['null_flag'])
 
             table.append_column(schema.Column(*args, **kw))
 
@@ -317,21 +322,21 @@ class FBDialect(default.DefaultDialect):
             raise exceptions.NoSuchTableError(table.name)
 
         # get the foreign keys
-        c = connection.execute(fkqry, ["FOREIGN KEY", self._denormalize_name(table.name)])
+        c = connection.execute(fkqry, ["FOREIGN KEY", tablename])
         fks = {}
         while True:
             row = c.fetchone()
             if not row: break
 
-            cname = self._normalize_name(row['CNAME'])
+            cname = self._normalize_name(row['cname'])
             try:
                 fk = fks[cname]
             except KeyError:
                 fks[cname] = fk = ([], [])
-            rname = self._normalize_name(row['RNAME'])
+            rname = self._normalize_name(row['targetrname'])
             schema.Table(rname, table.metadata, autoload=True, autoload_with=connection)
-            fname = self._normalize_name(row['FNAME'])
-            refspec = rname + '.' + self._normalize_name(row['SENAME'])
+            fname = self._normalize_name(row['fieldname'])
+            refspec = rname + '.' + self._normalize_name(row['targetfname'])
             fk[0].append(fname)
             fk[1].append(refspec)
 
@@ -476,4 +481,3 @@ dialect.schemagenerator = FBSchemaGenerator
 dialect.schemadropper = FBSchemaDropper
 dialect.defaultrunner = FBDefaultRunner
 dialect.preparer = FBIdentifierPreparer
-
