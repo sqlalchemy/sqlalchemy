@@ -5,8 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from sqlalchemy import util, logging
+from sqlalchemy import util, logging, exceptions
 from sqlalchemy.sql import expression
+class_mapper = None
 
 __all__ = ['EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS', 'MapperExtension',
            'MapperProperty', 'PropComparator', 'StrategizedProperty', 
@@ -503,6 +504,14 @@ class MapperOption(object):
 
     def process_query(self, query):
         pass
+    
+    def process_query_conditionally(self, query):
+        """same as process_query(), except that this option may not apply
+        to the given query.  
+        
+        Used when secondary loaders resend existing options to a new 
+        Query."""
+        self.process_query(query)
 
 class ExtensionOption(MapperOption):
     """a MapperOption that applies a MapperExtension to a query operation."""
@@ -520,30 +529,47 @@ class PropertyOption(MapperOption):
     one of its child mappers, identified by a dot-separated key.
     """
 
-    def __init__(self, key):
+    def __init__(self, key, mapper=None):
         self.key = key
-
+        self.mapper = mapper
+        
     def process_query(self, query):
+        self._process(query, True)
+        
+    def process_query_conditionally(self, query):
+        self._process(query, False)
+        
+    def _process(self, query, raiseerr):
         if self._should_log_debug:
             self.logger.debug("applying option to Query, property key '%s'" % self.key)
-        paths = self._get_paths(query)
+        paths = self._get_paths(query, raiseerr)
         if paths:
             self.process_query_property(query, paths)
 
     def process_query_property(self, query, paths):
         pass
 
-    def _get_paths(self, query):
+    def _get_paths(self, query, raiseerr):
         path = None
         l = []
         current_path = list(query._current_path)
         
-        mapper = query.mapper
+        if self.mapper:
+            global class_mapper
+            if class_mapper is None:
+                from sqlalchemy.orm import class_mapper
+            mapper = self.mapper
+            if isinstance(self.mapper, type):
+                mapper = class_mapper(mapper)
+            if mapper is not query.mapper and mapper not in [q[0] for q in query._entities]:
+                raise exceptions.ArgumentError("Can't find entity %s in Query.  Current list: %r" % (str(mapper), [str(m) for m in [query.mapper] + query._entities]))
+        else:
+            mapper = query.mapper
         for token in self.key.split('.'):
             if current_path and token == current_path[1]:
                 current_path = current_path[2:]
                 continue
-            prop = mapper.get_property(token, resolve_synonyms=True, raiseerr=False)
+            prop = mapper.get_property(token, resolve_synonyms=True, raiseerr=raiseerr)
             if prop is None:
                 return []
             path = build_path(mapper, prop.key, path)

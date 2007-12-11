@@ -257,7 +257,7 @@ class MergeTest(AssertMixin):
         except exceptions.InvalidRequestError, e:
             assert "merge() with dont_load=True option does not support objects marked as 'dirty'.  flush() all changes on mapped instances before merging with dont_load=True." in str(e)
             
-        u2 = sess2.query(User).options(eagerload('addresses')).get(7)
+        u2 = sess2.query(User).get(7)
         
         sess3 = create_session()
         u3 = sess3.merge(u2, dont_load=True)

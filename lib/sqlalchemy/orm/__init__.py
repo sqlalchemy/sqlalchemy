@@ -622,15 +622,15 @@ def extension(ext):
 
     return ExtensionOption(ext)
 
-def eagerload(name):
+def eagerload(name, mapper=None):
     """Return a ``MapperOption`` that will convert the property of the given name into an eager load.
 
     Used with ``query.options()``.
     """
 
-    return strategies.EagerLazyOption(name, lazy=False)
+    return strategies.EagerLazyOption(name, lazy=False, mapper=mapper)
 
-def eagerload_all(name):
+def eagerload_all(name, mapper=None):
     """Return a ``MapperOption`` that will convert all properties along the given dot-separated path into an eager load.
     
     For example, this::
@@ -643,16 +643,16 @@ def eagerload_all(name):
     Used with ``query.options()``.
     """
 
-    return strategies.EagerLazyOption(name, lazy=False, chained=True)
+    return strategies.EagerLazyOption(name, lazy=False, chained=True, mapper=mapper)
 
-def lazyload(name):
+def lazyload(name, mapper=None):
     """Return a ``MapperOption`` that will convert the property of the
     given name into a lazy load.
 
     Used with ``query.options()``.
     """
 
-    return strategies.EagerLazyOption(name, lazy=True)
+    return strategies.EagerLazyOption(name, lazy=True, mapper=mapper)
 
 def fetchmode(name, type):
     return strategies.FetchModeOption(name, type)

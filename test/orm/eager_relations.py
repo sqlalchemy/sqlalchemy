@@ -11,9 +11,6 @@ class EagerTest(FixtureTest):
     keep_mappers = False
     keep_data = True
     
-    def setup_mappers(self):
-        pass
-
     def test_basic(self):
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses), lazy=False)
@@ -540,6 +537,76 @@ class EagerTest(FixtureTest):
         q = create_session().query(User)
         l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(Address.user_id==User.id)
         assert fixtures.user_address_result[1:2] == l.all()
+
+class AddEntityTest(FixtureTest):
+    keep_mappers = False
+    keep_data = True
+
+    def _assert_result(self):
+        return [
+            (
+                User(id=7, addresses=[Address(id=1)]),
+                Order(id=1, items=[Item(id=1), Item(id=2), Item(id=3)]),
+            ),
+            (
+                User(id=7, addresses=[Address(id=1)]),
+                Order(id=3, items=[Item(id=3), Item(id=4), Item(id=5)]),
+            ),
+            (
+                User(id=7, addresses=[Address(id=1)]),
+                Order(id=5, items=[Item(id=5)]),
+            ),
+            (
+                 User(id=9, addresses=[Address(id=5)]),
+                 Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)]),
+             ),
+             (
+                  User(id=9, addresses=[Address(id=5)]),
+                  Order(id=4, items=[Item(id=1), Item(id=5)]),
+              )
+        ]
+        
+    def test_basic(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, lazy=False),
+            'orders':relation(Order)
+        })
+        mapper(Address, addresses)
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items, lazy=False)
+        })
+        mapper(Item, items)
+
+
+        sess = create_session()
+        def go():
+            ret = sess.query(User).add_entity(Order).join('orders', aliased=True).all()
+            self.assertEquals(ret, self._assert_result())
+        self.assert_sql_count(testbase.db, go, 1)
+
+    def test_options(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address),
+            'orders':relation(Order)
+        })
+        mapper(Address, addresses)
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items)
+        })
+        mapper(Item, items)
+
+        sess = create_session()
+
+        def go():
+            ret = sess.query(User).options(eagerload('addresses')).add_entity(Order).join('orders', aliased=True).all()
+            self.assertEquals(ret, self._assert_result())
+        self.assert_sql_count(testbase.db, go, 6)
+
+        sess.clear()
+        def go():
+            ret = sess.query(User).options(eagerload('addresses')).add_entity(Order).options(eagerload('items', Order)).join('orders', aliased=True).all()
+            self.assertEquals(ret, self._assert_result())
+        self.assert_sql_count(testbase.db, go, 1)
 
 class SelfReferentialEagerTest(ORMTest):
     def define_tables(self, metadata):

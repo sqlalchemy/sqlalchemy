@@ -78,7 +78,14 @@ CHANGES
      new behavior allows not just joins from the main table, but select 
      statements as well.  Filter criterion, order bys, eager load
      clauses will be "aliased" against the given statement.
-     
+
+   - eagerload(), lazyload(), eagerload_all() take an optional 
+     second class-or-mapper argument, which will select the mapper
+     to apply the option towards.  This can select among other
+     mappers which were added using add_entity().  
+
+   - eagerloading will work with mappers added via add_entity().
+          
    - added "cascade delete" behavior to "dynamic" relations just like
      that of regular relations.  if passive_deletes flag (also just added)
      is not set, a delete of the parent item will trigger a full load of 

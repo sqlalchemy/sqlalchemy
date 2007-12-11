@@ -279,16 +279,26 @@ class Query(object):
         MapperOptions.
         """
         
+        return self._options(False, *args)
+
+    def _conditional_options(self, *args):
+        return self._options(True, *args)
+        
+    def _options(self, conditional, *args):
         q = self._clone()
         # most MapperOptions write to the '_attributes' dictionary,
         # so copy that as well
         q._attributes = q._attributes.copy()
         opts = [o for o in util.flatten_iterator(args)]
         q._with_options = q._with_options + opts
-        for opt in opts:
-            opt.process_query(q)
+        if conditional:
+            for opt in opts:
+                opt.process_query_conditionally(q)
+        else:
+            for opt in opts:
+                opt.process_query(q)
         return q
-
+    
     def with_lockmode(self, mode):
         """Return a new Query object with the specified locking mode."""
         q = self._clone()
@@ -903,6 +913,11 @@ class Query(object):
         whereclause = self._criterion
 
         from_obj = self._from_obj
+        
+        # indicates if the "from" clause of the query does not include 
+        # the normally mapped table, i.e. the user issued select_from(somestatement)
+        # or similar.  all clauses which derive from the mapped table will need to
+        # be adapted to be relative to the user-supplied selectable.
         adapt_criterion = self.table not in self._get_joinable_tables()
 
         if not adapt_criterion and whereclause is not None and (self.mapper is not self.select_mapper):
@@ -947,7 +962,7 @@ class Query(object):
             clauses = self._get_entity_clauses(tup)
             if isinstance(m, mapper.Mapper):
                 for value in m.iterate_properties:
-                    context.exec_with_path(self.select_mapper, value.key, value.setup, context, parentclauses=clauses)
+                    context.exec_with_path(m, value.key, value.setup, context, parentclauses=clauses)
             elif isinstance(m, sql.ColumnElement):
                 if clauses is not None:
                     m = clauses.aliased_column(m)

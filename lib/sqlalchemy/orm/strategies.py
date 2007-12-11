@@ -352,7 +352,7 @@ class LazyLoader(AbstractRelationLoader):
                 if not nonnulls:
                     return None
                 if options:
-                    q = q.options(*options)
+                    q = q._conditional_options(*options)
                 return q.get(ident)
             elif self.order_by is not False:
                 q = q.order_by(self.order_by)
@@ -360,7 +360,7 @@ class LazyLoader(AbstractRelationLoader):
                 q = q.order_by(self.secondary.default_order_by())
 
             if options:
-                q = q.options(*options)
+                q = q._conditional_options(*options)
             q = q.filter(self.lazy_clause(instance))
 
             result = q.all()
@@ -617,8 +617,8 @@ class EagerLoader(AbstractRelationLoader):
 EagerLoader.logger = logging.class_logger(EagerLoader)
 
 class EagerLazyOption(StrategizedOption):
-    def __init__(self, key, lazy=True, chained=False):
-        super(EagerLazyOption, self).__init__(key)
+    def __init__(self, key, lazy=True, chained=False, mapper=None):
+        super(EagerLazyOption, self).__init__(key, mapper)
         self.lazy = lazy
         self.chained = chained
         
