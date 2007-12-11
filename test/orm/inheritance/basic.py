@@ -9,7 +9,6 @@ class O2MTest(ORMTest):
     """deals with inheritance and one-to-many relationships"""
     def define_tables(self, metadata):
         global foo, bar, blub
-        # the 'data' columns are to appease SQLite which cant handle a blank INSERT
         foo = Table('foo', metadata,
             Column('id', Integer, Sequence('foo_seq', optional=True),
                    primary_key=True),
@@ -65,7 +64,76 @@ class O2MTest(ORMTest):
         self.assert_(compare == result)
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
+class CascadeTest(ORMTest):
+    """that cascades on polymorphic relations continue
+    cascading along the path of the instance's mapper, not
+    the base mapper."""
+    
+    def define_tables(self, metadata):
+        global t1, t2, t3, t4
+        t1= Table('t1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30))
+            )
+            
+        t2 = Table('t2', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('t1id', Integer, ForeignKey('t1.id')),
+            Column('type', String(30)),
+            Column('data', String(30))
+        )
+        t3 = Table('t3', metadata, 
+            Column('id', Integer, ForeignKey('t2.id'), primary_key=True),
+            Column('moredata', String(30)))
+            
+        t4 = Table('t4', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('t3id', Integer, ForeignKey('t3.id')),
+            Column('data', String(30)))
+            
+    def test_cascade(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        class T3(T2):
+            pass
+        class T4(fixtures.Base):
+            pass
+        
+        mapper(T1, t1, properties={
+            't2s':relation(T2, cascade="all")
+        })
+        mapper(T2, t2, polymorphic_on=t2.c.type, polymorphic_identity='t2') 
+        mapper(T3, t3, inherits=T2, polymorphic_identity='t3', properties={
+            't4s':relation(T4, cascade="all")
+        })
+        mapper(T4, t4)
+        
+        sess = create_session()
+        t1_1 = T1(data='t1')
 
+        t3_1 = T3(data ='t3', moredata='t3')
+        t2_1 = T2(data='t2')
+
+        t1_1.t2s.append(t2_1)
+        t1_1.t2s.append(t3_1)
+        
+        t4_1 = T4(data='t4')
+        t3_1.t4s.append(t4_1)
+
+        sess.save(t1_1)
+
+        
+        assert t4_1 in sess.new
+        sess.flush()
+        
+        sess.delete(t1_1)
+        assert t4_1 in sess.deleted
+        sess.flush()
+        
+    
+    
 class GetTest(ORMTest):
     def define_tables(self, metadata):
         global foo, bar, blub

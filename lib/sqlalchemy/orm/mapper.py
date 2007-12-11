@@ -1538,8 +1538,8 @@ def has_mapper(object):
 
     return hasattr(object, '_entity_name')
 
-def _state_mapper(state):
-    return state.class_._class_state.mappers[state.dict.get('_entity_name', None)]
+def _state_mapper(state, entity_name=None):
+    return state.class_._class_state.mappers[state.dict.get('_entity_name', entity_name)]
 
 def object_mapper(object, entity_name=None, raiseerror=True):
     """Given an object, return the primary Mapper associated with the object instance.

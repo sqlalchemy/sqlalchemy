@@ -87,6 +87,10 @@ CHANGES
    - also with dynamic, implemented correct count() behavior as well
      as other helper methods.
      
+   - fix to cascades on polymorphic relations, such that cascades
+     from an object to a polymorphic collection continue cascading 
+     along the set of attributes specific to each element in the collection.
+     
    - query.get() and query.load() do not take existing filter or other
      criterion into account; these methods *always* look up the given id
      in the database or return the current instance from the identity map, 

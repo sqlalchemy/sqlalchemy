@@ -13,7 +13,7 @@ to handle flush-time dependency sorting and processing.
 
 from sqlalchemy import sql, schema, util, exceptions, logging
 from sqlalchemy.sql import util as sql_util, visitors, operators, ColumnElement
-from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency
+from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency, object_mapper
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.interfaces import StrategizedProperty, PropComparator, MapperProperty
@@ -365,8 +365,11 @@ class PropertyLoader(StrategizedProperty):
                     if not isinstance(c, self.mapper.class_):
                         raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
                     recursive.add(c)
-                    yield (c, mapper)
-                    for (c2, m) in mapper.cascade_iterator(type, c._state, recursive):
+
+                    # cascade using the mapper local to this object, so that its individual properties are located
+                    instance_mapper = object_mapper(c, entity_name=mapper.entity_name)  
+                    yield (c, instance_mapper)
+                    for (c2, m) in instance_mapper.cascade_iterator(type, c._state, recursive):
                         yield (c2, m)
 
     def _get_target_class(self):
