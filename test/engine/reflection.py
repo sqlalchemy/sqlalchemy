@@ -781,6 +781,23 @@ class SchemaTest(PersistTest):
         table2 = Table('table2', metadata, autoload=True, schema=schema)
         metadata.drop_all()
 
+
+class HasSequenceTest(PersistTest):
+    def setUpAll(self):
+        global metadata, users
+        metadata = MetaData()
+        users = Table('users', metadata,
+                      Column('user_id', Integer, Sequence('user_id_seq'), primary_key=True),
+                      Column('user_name', String(40)),
+                      )
+
+    @testing.supported('firebird', 'postgres', 'oracle')
+    def test_hassequence(self):
+        metadata.create_all(bind=testbase.db)
+        self.assertEqual(testbase.db.dialect.has_sequence(testbase.db, 'user_id_seq'), True)
+        metadata.drop_all(bind=testbase.db)
+        self.assertEqual(testbase.db.dialect.has_sequence(testbase.db, 'user_id_seq'), False)
+
+
 if __name__ == "__main__":
     testbase.main()
-
