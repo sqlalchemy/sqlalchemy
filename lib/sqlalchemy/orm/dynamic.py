@@ -117,7 +117,7 @@ class AppenderQuery(Query):
                 except exceptions.InvalidRequestError:
                     raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (mapperutil.instance_str(instance), self.attr.key))
 
-        return sess.query(self.attr.target_mapper).with_parent(instance)
+        return sess.query(self.attr.target_mapper).with_parent(instance, self.attr.key)
 
     def assign(self, collection):
         instance = self.state.obj()
