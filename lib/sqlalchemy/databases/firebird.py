@@ -10,7 +10,7 @@ import warnings
 
 from sqlalchemy import exceptions, pool, schema, types as sqltypes, util
 from sqlalchemy.engine import base, default
-from sqlalchemy.sql import compiler, text
+from sqlalchemy.sql import compiler, operators as sqloperators, text
 
 
 _initialized_kb = False
@@ -376,6 +376,13 @@ class FBDialect(default.DefaultDialect):
 
 class FBCompiler(compiler.DefaultCompiler):
     """Firebird specific idiosincrasies"""
+
+    # Firebird lacks a builtin modulo operator, but there is
+    # an equivalent function in the ib_udf library.
+    operators = compiler.DefaultCompiler.operators.copy()
+    operators.update({
+        sqloperators.mod : lambda x, y:"mod(%s, %s)" % (x, y)
+        })
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
         # Override to not use the AS keyword which FB 1.5 does not like
