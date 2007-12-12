@@ -8,7 +8,7 @@
 
 from sqlalchemy import sql, util, exceptions, logging
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.sql import visitors
+from sqlalchemy.sql import visitors, expression, operators
 from sqlalchemy.orm import mapper, attributes
 from sqlalchemy.orm.interfaces import LoaderStrategy, StrategizedOption, MapperOption, PropertyOption
 from sqlalchemy.orm import session as sessionlib
@@ -292,6 +292,9 @@ class LazyLoader(AbstractRelationLoader):
         self._register_attribute(self.parent.class_, callable_=lambda i: self.setup_loader(i))
 
     def lazy_clause(self, instance, reverse_direction=False):
+        if instance is None:
+            return self.lazy_none_clause(reverse_direction)
+            
         if not reverse_direction:
             (criterion, lazybinds, rev) = (self.lazywhere, self.lazybinds, self.lazyreverse)
         else:
@@ -305,6 +308,26 @@ class LazyLoader(AbstractRelationLoader):
                 bindparam.value = mapper._get_committed_attr_by_column(instance, bind_to_col[bindparam.key])
         return visitors.traverse(criterion, clone=True, visit_bindparam=visit_bindparam)
     
+    def lazy_none_clause(self, reverse_direction=False):
+        if not reverse_direction:
+            (criterion, lazybinds, rev) = (self.lazywhere, self.lazybinds, self.lazyreverse)
+        else:
+            (criterion, lazybinds, rev) = LazyLoader._create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
+        bind_to_col = dict([(lazybinds[col].key, col) for col in lazybinds])
+
+        def visit_binary(binary):
+            mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
+            if isinstance(binary.left, expression._BindParamClause) and binary.left.key in bind_to_col:
+                # reverse order if the NULL is on the left side
+                binary.left = binary.right
+                binary.right = expression.null()
+                binary.operator = operators.is_
+            elif isinstance(binary.right, expression._BindParamClause) and binary.right.key in bind_to_col:
+                binary.right = expression.null()
+                binary.operator = operators.is_
+        
+        return visitors.traverse(criterion, clone=True, visit_binary=visit_binary)
+        
     def setup_loader(self, instance, options=None, path=None):
         if not mapper.has_mapper(instance):
             return None

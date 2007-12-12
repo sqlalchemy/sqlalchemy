@@ -376,6 +376,11 @@ class FilterTest(QueryTest):
 
         assert [Address(id=1), Address(id=5)] == sess.query(Address).filter(Address.user!=user).all()
 
+        # generates an IS NULL
+        assert [] == sess.query(Address).filter(Address.user == None).all()
+
+        assert [Order(id=5)] == sess.query(Order).filter(Order.address == None).all()
+
 class AggregateTest(QueryTest):
     def test_sum(self):
         sess = create_session()

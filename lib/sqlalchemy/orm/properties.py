@@ -232,7 +232,10 @@ class PropertyLoader(StrategizedProperty):
     class Comparator(PropComparator):
         def __eq__(self, other):
             if other is None:
-                return ~sql.exists([1], self.prop.primaryjoin)
+                if self.prop.uselist:
+                    return ~sql.exists([1], self.prop.primaryjoin)
+                else:
+                    return self.prop._optimized_compare(None)
             elif self.prop.uselist:
                 if not hasattr(other, '__iter__'):
                     raise exceptions.InvalidRequestError("Can only compare a collection to an iterable object.  Use contains().")

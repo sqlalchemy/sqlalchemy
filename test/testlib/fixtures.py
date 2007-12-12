@@ -150,7 +150,7 @@ def install_fixture_data():
         dict(id = 2, user_id = 9, description = 'order 2', isopen=0, address_id=4),
         dict(id = 3, user_id = 7, description = 'order 3', isopen=1, address_id=1),
         dict(id = 4, user_id = 9, description = 'order 4', isopen=1, address_id=4),
-        dict(id = 5, user_id = 7, description = 'order 5', isopen=0, address_id=1)
+        dict(id = 5, user_id = 7, description = 'order 5', isopen=0, address_id=None)
     )
     items.insert().execute(
         dict(id=1, description='item 1'),
