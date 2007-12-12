@@ -1881,6 +1881,14 @@ class MySQLCompiler(compiler.DefaultCompiler):
         else:
             return ""
 
+    def visit_join(self, join, asfrom=False, **kwargs):
+        return ''.join(
+            (self.process(join.left, asfrom=True),
+             (join.isouter and " LEFT OUTER JOIN " or " INNER JOIN "),
+             self.process(join.right, asfrom=True),
+             " ON ",
+             self.process(join.onclause)))
+
     def for_update_clause(self, select):
         if select.for_update == 'read':
              return ' LOCK IN SHARE MODE'
