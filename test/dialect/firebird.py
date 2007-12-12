@@ -27,7 +27,7 @@ class DomainReflectionTest(AssertMixin):
             if not "attempt to store duplicate value" in str(e):
                 raise e
         con.execute('''CREATE TABLE testtable (question int_domain,
-                                               answer str_domain,
+                                               answer str_domain DEFAULT 'no answer',
                                                remark rem_domain,
                                                photo img_domain,
                                                d date,
@@ -51,7 +51,9 @@ class DomainReflectionTest(AssertMixin):
                           set(['question', 'answer', 'remark', 'photo', 'd', 't', 'dt']),
                           "Columns of reflected table didn't equal expected columns")
         self.assertEquals(table.c.question.type.__class__, firebird.FBInteger)
+        self.assertEquals(table.c.question.default.arg.text, "42")
         self.assertEquals(table.c.answer.type.__class__, firebird.FBString)
+        self.assertEquals(table.c.answer.default.arg.text, "'no answer'")
         self.assertEquals(table.c.remark.type.__class__, firebird.FBText)
         self.assertEquals(table.c.photo.type.__class__, firebird.FBBinary)
         # The following assume a Dialect 3 database

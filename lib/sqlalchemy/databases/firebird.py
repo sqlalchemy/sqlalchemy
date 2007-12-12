@@ -8,10 +8,9 @@
 import datetime
 import warnings
 
-from sqlalchemy import util, schema, exceptions, pool
-from sqlalchemy.sql import compiler
-from sqlalchemy.engine import default, base
-from sqlalchemy import types as sqltypes
+from sqlalchemy import exceptions, pool, schema, types as sqltypes, util
+from sqlalchemy.engine import base, default
+from sqlalchemy.sql import compiler, text
 
 
 _initialized_kb = False
@@ -224,13 +223,28 @@ class FBDialect(default.DefaultDialect):
 
     def has_table(self, connection, table_name, schema=None):
         tblqry = """
-        SELECT count(*)
-        FROM rdb$relations r
-        WHERE r.rdb$relation_name=?
+        SELECT 1 FROM rdb$database
+        WHERE EXISTS (SELECT rdb$relation_name
+                      FROM rdb$relations
+                      WHERE rdb$relation_name=?)
         """
         c = connection.execute(tblqry, [self._denormalize_name(table_name)])
         row = c.fetchone()
-        if row[0] > 0:
+        if row is not None:
+            return True
+        else:
+            return False
+
+    def has_sequence(self, connection, sequence_name):
+        genqry = """
+        SELECT 1 FROM rdb$database
+        WHERE EXISTS (SELECT rdb$generator_name
+                      FROM rdb$generators
+                      WHERE rdb$generator_name=?)
+        """
+        c = connection.execute(genqry, [self._denormalize_name(sequence_name)])
+        row = c.fetchone()
+        if row is not None:
             return True
         else:
             return False
@@ -250,7 +264,8 @@ class FBDialect(default.DefaultDialect):
                         f.rdb$field_sub_type AS stype,
                         f.rdb$field_length AS flen,
                         f.rdb$field_precision AS fprec,
-                        f.rdb$field_scale AS fscale
+                        f.rdb$field_scale AS fscale,
+                        COALESCE(r.rdb$default_source, f.rdb$default_source) AS fdefault
         FROM rdb$relation_fields r
              JOIN rdb$fields f ON r.rdb$field_source=f.rdb$field_name
              JOIN rdb$types t ON t.rdb$type=f.rdb$field_type AND t.rdb$field_name='RDB$FIELD_TYPE'
@@ -313,8 +328,14 @@ class FBDialect(default.DefaultDialect):
             # is it a primary key?
             kw['primary_key'] = name in pkfields
 
-            # is it nullable ?
+            # is it nullable?
             kw['nullable'] = not bool(row['null_flag'])
+
+            # does it have a default value?
+            if row['fdefault'] is not None:
+                # the value comes down as "DEFAULT 'value'"
+                defvalue = row['fdefault'][8:]
+                args.append(schema.PassiveDefault(text(defvalue)))
 
             table.append_column(schema.Column(*args, **kw))
 
@@ -335,7 +356,7 @@ class FBDialect(default.DefaultDialect):
                 fks[cname] = fk = ([], [])
             rname = self._normalize_name(row['targetrname'])
             schema.Table(rname, table.metadata, autoload=True, autoload_with=connection)
-            fname = self._normalize_name(row['fieldname'])
+            fname = self._normalize_name(row['fname'])
             refspec = rname + '.' + self._normalize_name(row['targetfname'])
             fk[0].append(fname)
             fk[1].append(refspec)
