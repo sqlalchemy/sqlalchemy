@@ -695,7 +695,7 @@ class CompoundTest(PersistTest):
         found2 = self._fetchall_sorted(e.alias('foo').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.unsupported('mysql', 'sybase')
+    @testing.unsupported('firebird', 'mysql', 'sybase')
     def test_intersect(self):
         i = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -710,7 +710,7 @@ class CompoundTest(PersistTest):
         found2 = self._fetchall_sorted(i.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.unsupported('mysql', 'oracle', 'sybase')
+    @testing.unsupported('firebird', 'mysql', 'oracle', 'sybase')
     def test_except_style1(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -724,7 +724,7 @@ class CompoundTest(PersistTest):
         found = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found, wanted)
 
-    @testing.unsupported('mysql', 'oracle', 'sybase')
+    @testing.unsupported('firebird', 'mysql', 'oracle', 'sybase')
     def test_except_style2(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -741,7 +741,7 @@ class CompoundTest(PersistTest):
         found2 = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.unsupported('sqlite', 'mysql', 'oracle', 'sybase')
+    @testing.unsupported('firebird', 'mysql', 'oracle', 'sqlite', 'sybase')
     def test_except_style3(self):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
         e = except_(
@@ -755,7 +755,7 @@ class CompoundTest(PersistTest):
         self.assertEquals(e.alias('foo').select().execute().fetchall(),
                           [('ccc',)])
 
-    @testing.unsupported('mysql')
+    @testing.unsupported('firebird', 'mysql')
     def test_composite(self):
         u = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -770,7 +770,7 @@ class CompoundTest(PersistTest):
 
         self.assertEquals(found, wanted)
 
-    @testing.unsupported('mysql')
+    @testing.unsupported('firebird', 'mysql')
     def test_composite_alias(self):
         ua = intersect(
             select([t2.c.col3, t2.c.col4]),
