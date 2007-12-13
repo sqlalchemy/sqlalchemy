@@ -45,7 +45,7 @@ class PolymorphicCircularTest(ORMTest):
                 if data is not None:
                     self.data = data
             def __repr__(self):
-                return "%s(%d, %s, %s)" % (self.__class__.__name__, self.id, repr(str(self.name)), repr(self.data))
+                return "%s(%s, %s, %s)" % (self.__class__.__name__, self.id, repr(str(self.name)), repr(self.data))
 
         class Table1B(Table1):
             pass
@@ -60,7 +60,7 @@ class PolymorphicCircularTest(ORMTest):
             def __init__(self, data):
                 self.data = data
             def __repr__(self):
-                return "%s(%d, %s)" % (self.__class__.__name__, self.id, repr(str(self.data)))
+                return "%s(%s, %s)" % (self.__class__.__name__, self.id, repr(str(self.data)))
 
         try:
             # this is how the mapping used to work.  ensure that this raises an error now
