@@ -1,15 +1,24 @@
 import testbase
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exceptions, sql
+from sqlalchemy import databases, exceptions, sql
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
 from testlib import *
 
-# TODO: add a helper function to testlib for this
-from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird, mssql
-dialects = [x.dialect() for x in [sqlite, postgres, mysql, oracle, firebird, mssql]]
+from sqlalchemy.databases import *
+# every dialect in databases.__all__ is expected to pass these tests.
+dialects = [getattr(databases, mod).dialect()
+            for mod in databases.__all__
+            # fixme!
+            if mod not in ('access',)]
+
+# if the configured dialect is out-of-tree or not yet in __all__, include it
+# too.
+if testbase.db.name not in databases.__all__:
+    dialects.append(testbase.db.dialect)
+
 
 class CompileTest(SQLCompileTest):
     def test_compile(self):
@@ -22,7 +31,7 @@ class CompileTest(SQLCompileTest):
             else:
                 self.assert_compile(func.nosuchfunction(), "nosuchfunction()", dialect=dialect)
             self.assert_compile(func.char_length('foo'), "char_length(%s)" % bindtemplate % {'name':'param_1', 'position':1}, dialect=dialect)
-    
+
     def test_constructor(self):
         try:
             func.current_timestamp('somearg')
@@ -41,14 +50,14 @@ class CompileTest(SQLCompileTest):
             assert False
         except TypeError:
             assert True
-    
+
     def test_typing(self):
         assert isinstance(func.coalesce(datetime.date(2007, 10, 5), datetime.date(2005, 10, 15)).type, sqltypes.Date)
 
         assert isinstance(func.coalesce(None, datetime.date(2005, 10, 15)).type, sqltypes.Date)
-        
+
         assert isinstance(func.concat("foo", "bar").type, sqltypes.String)
-        
+
 class ExecuteTest(PersistTest):
 
     def test_standalone_execute(self):
@@ -123,11 +132,10 @@ class ExecuteTest(PersistTest):
             t2.update(values={t2.c.value:func.length("asfdaasdf"), t2.c.stuff:"foo"}).execute()
             print "HI", select([t2.c.value, t2.c.stuff]).execute().fetchone()
             assert select([t2.c.value, t2.c.stuff]).execute().fetchone() == (9, "foo")
-
         finally:
             meta.drop_all()
 
-    @testing.supported('postgres')
+    @testing.fails_on_everything_except('postgres')
     def test_as_from(self):
         # TODO: shouldnt this work on oracle too ?
         x = testbase.db.func.current_date().execute().scalar()
@@ -150,4 +158,3 @@ def exec_sorted(statement, *args, **kw):
 
 if __name__ == '__main__':
     testbase.main()
-    

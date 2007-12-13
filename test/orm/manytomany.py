@@ -141,7 +141,7 @@ class M2MTest(ORMTest):
         Place.mapper = mapper(Place, place, properties = {
             'thingies':relation(mapper(PlaceThingy, place_thingy), lazy=False)
         })
-        
+    
         Transition.mapper = mapper(Transition, transition, properties = dict(
             inputs = relation(Place.mapper, place_output, lazy=False),
             outputs = relation(Place.mapper, place_input, lazy=False),
@@ -158,12 +158,11 @@ class M2MTest(ORMTest):
 
         sess.clear()
         r = sess.query(Transition).select()
-        self.assert_result(r, Transition, 
-            {'name':'transition1', 
-            'inputs' : (Place, [{'name':'place1'}]),
-            'outputs' : (Place, [{'name':'place2'}, {'name':'place3'}])
-            }
-            )    
+        self.assert_unordered_result(r, Transition,
+            {'name': 'transition1',
+            'inputs': (Place, [{'name':'place1'}]),
+            'outputs': (Place, [{'name':'place2'}, {'name':'place3'}])
+            })
 
     def testbidirectional(self):
         """tests a many-to-many backrefs"""

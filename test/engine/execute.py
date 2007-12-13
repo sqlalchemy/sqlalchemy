@@ -12,13 +12,13 @@ class ExecuteTest(PersistTest):
             Column('user_name', VARCHAR(20)),
         )
         metadata.create_all()
-    
+
     def tearDown(self):
         testbase.db.connect().execute(users.delete())
     def tearDownAll(self):
         metadata.drop_all()
-        
-    @testing.supported('sqlite', 'maxdb')
+
+    @testing.fails_on_everything_except('sqlite', 'maxdb')
     def test_raw_qmark(self):
         for conn in (testbase.db, testbase.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (?, ?)", (1,"jack"))
@@ -30,7 +30,8 @@ class ExecuteTest(PersistTest):
             assert res.fetchall() == [(1, "jack"), (2, "fred"), (3, "ed"), (4, "horse"), (5, "barney"), (6, "donkey"), (7, 'sally')]
             conn.execute("delete from users")
 
-    @testing.supported('mysql', 'postgres')
+    @testing.fails_on_everything_except('mysql', 'postgres')
+    # some psycopg2 versions bomb this.
     def test_raw_sprintf(self):
         for conn in (testbase.db, testbase.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%s, %s)", [1,"jack"])
@@ -43,7 +44,8 @@ class ExecuteTest(PersistTest):
 
     # pyformat is supported for mysql, but skipping because a few driver
     # versions have a bug that bombs out on this test. (1.2.2b3, 1.2.2c1, 1.2.2)
-    @testing.supported('postgres')
+    @testing.unsupported('mysql')
+    @testing.fails_on_everything_except('postgres')
     def test_raw_python(self):
         for conn in (testbase.db, testbase.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':1, 'name':'jack'})
@@ -53,7 +55,7 @@ class ExecuteTest(PersistTest):
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
             conn.execute("delete from users")
 
-    @testing.supported('sqlite')
+    @testing.fails_on_everything_except('sqlite')
     def test_raw_named(self):
         for conn in (testbase.db, testbase.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (:id, :name)", {'id':1, 'name':'jack'})
@@ -72,4 +74,4 @@ class ExecuteTest(PersistTest):
                 assert True
 
 if __name__ == "__main__":
-    testbase.main()        
+    testbase.main()

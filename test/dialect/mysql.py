@@ -9,7 +9,8 @@ from testlib import *
 class TypesTest(AssertMixin):
     "Test MySQL column types"
 
-    @testing.supported('mysql')
+    __only_on__ = 'mysql'
+
     def test_basic(self):
         meta1 = MetaData(testbase.db)
         table = Table(
@@ -43,7 +44,6 @@ class TypesTest(AssertMixin):
         finally:
             meta1.drop_all()
 
-    @testing.supported('mysql')
     def test_numeric(self):
         "Exercise type specification and options for numeric types."
 
@@ -177,7 +177,6 @@ class TypesTest(AssertMixin):
             raise
         numeric_table.drop()
 
-    @testing.supported('mysql')
     @testing.exclude('mysql', '<', (4, 1, 1))
     def test_charset(self):
         """Exercise CHARACTER SET and COLLATE-ish options on string types."""
@@ -262,7 +261,6 @@ class TypesTest(AssertMixin):
             raise
         charset_table.drop()
 
-    @testing.supported('mysql')
     @testing.exclude('mysql', '<', (5, 0, 5))
     def test_bit_50(self):
         """Exercise BIT types on 5.0+ (not valid for all engine types)"""
@@ -326,7 +324,6 @@ class TypesTest(AssertMixin):
         finally:
             meta.drop_all()
 
-    @testing.supported('mysql')
     def test_boolean(self):
         """Test BOOL/TINYINT(1) compatability and reflection."""
 
@@ -384,7 +381,6 @@ class TypesTest(AssertMixin):
         finally:
             meta.drop_all()
 
-    @testing.supported('mysql')
     @testing.exclude('mysql', '<', (4, 1, 0))
     def test_timestamp(self):
         """Exercise funky TIMESTAMP default syntax."""
@@ -428,7 +424,6 @@ class TypesTest(AssertMixin):
         finally:
             meta.drop_all()
 
-    @testing.supported('mysql')
     def test_year(self):
         """Exercise YEAR."""
 
@@ -459,7 +454,6 @@ class TypesTest(AssertMixin):
             meta.drop_all()
 
 
-    @testing.supported('mysql')
     def test_set(self):
         """Exercise the SET type."""
 
@@ -517,7 +511,6 @@ class TypesTest(AssertMixin):
         finally:
             meta.drop_all()
 
-    @testing.supported('mysql')
     def test_enum(self):
         """Exercise the ENUM type."""
 
@@ -586,7 +579,6 @@ class TypesTest(AssertMixin):
         self.assert_eq(res, expected)
         enum_table.drop()
 
-    @testing.supported('mysql')
     @testing.exclude('mysql', '>', (3))
     def test_enum_parse(self):
         """More exercises for the ENUM type."""
@@ -616,7 +608,6 @@ class TypesTest(AssertMixin):
         finally:
             enum_table.drop()
 
-    @testing.supported('mysql')
     @testing.exclude('mysql', '<', (5, 0, 0))
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
@@ -679,7 +670,6 @@ class TypesTest(AssertMixin):
         finally:
             m.drop_all()
 
-    @testing.supported('mysql')
     def test_autoincrement(self):
         meta = MetaData(testbase.db)
         try:
@@ -750,11 +740,11 @@ class TypesTest(AssertMixin):
 
 class SQLTest(SQLCompileTest):
     """Tests MySQL-dialect specific compilation."""
-    __dialect__ = testbase.db.dialect
 
-    @testing.supported('mysql')
+    __dialect__ = mysql.dialect()
+
     def test_precolumns(self):
-        dialect = testbase.db.dialect
+        dialect = self.__dialect__
 
         def gen(distinct=None, prefixes=None):
             kw = {}
@@ -785,7 +775,6 @@ class SQLTest(SQLCompileTest):
             gen(True, ['high_priority', sql.text('sql_cache')]),
             'SELECT high_priority sql_cache DISTINCT q')
 
-    @testing.supported('mysql')
     def test_limit(self):
         t = sql.table('t', sql.column('col1'), sql.column('col2'))
 
@@ -801,7 +790,6 @@ class SQLTest(SQLCompileTest):
             "SELECT t.col1, t.col2 FROM t  LIMIT 10, 18446744073709551615"
             )
 
-    @testing.supported('mysql')
     def test_update_limit(self):
         t = sql.table('t', sql.column('col1'), sql.column('col2'))
 
@@ -822,7 +810,6 @@ class SQLTest(SQLCompileTest):
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1"
             )
 
-    @testing.supported('mysql')
     def test_cast(self):
         t = sql.table('t', sql.column('col'))
         m = mysql
@@ -907,7 +894,7 @@ class SQLTest(SQLCompileTest):
 
             (m.MSEnum, "t.col"),
             (m.MSEnum("'1'", "'2'"), "t.col"),
-            (m.MSSet, "t.col"),            
+            (m.MSSet, "t.col"),
             (m.MSSet("'1'", "'2'"), "t.col"),
             ]
 

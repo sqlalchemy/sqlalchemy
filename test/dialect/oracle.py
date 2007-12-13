@@ -2,12 +2,12 @@ import testbase
 from sqlalchemy import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import oracle
-
 from testlib import *
 
 
 class OutParamTest(AssertMixin):
-    @testing.supported('oracle')
+    __only_on__ = 'oracle'
+
     def setUpAll(self):
         testbase.db.execute("""
 create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT number) IS
@@ -19,42 +19,40 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
     end;
         """)
 
-    @testing.supported('oracle')
     def test_out_params(self):
         result = testbase.db.execute(text("begin foo(:x, :y, :z); end;", bindparams=[bindparam('x', Numeric), outparam('y', Numeric), outparam('z', Numeric)]), x=5)
         assert result.out_parameters == {'y':10, 'z':75}, result.out_parameters
         print result.out_parameters
 
-    @testing.supported('oracle')
     def tearDownAll(self):
          testbase.db.execute("DROP PROCEDURE foo")
 
 
 class CompileTest(SQLCompileTest):
     __dialect__ = oracle.OracleDialect()
-    
+
     def test_subquery(self):
         t = table('sometable', column('col1'), column('col2'))
         s = select([t])
         s = select([s.c.col1, s.c.col2])
-        
+
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable)")
 
     def test_limit(self):
         t = table('sometable', column('col1'), column('col2'))
-        
+
         s = select([t]).limit(10).offset(20)
-        
+
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2, "
             "ROW_NUMBER() OVER (ORDER BY sometable.rowid) AS ora_rn FROM sometable) WHERE ora_rn>20 AND ora_rn<=30"
         )
-        
+
         s = select([s.c.col1, s.c.col2])
-        
+
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
             "sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.rowid) AS ora_rn FROM sometable) WHERE ora_rn>20 AND ora_rn<=30)")
 
-        # testing this twice to ensure oracle doesn't modify the original statement 
+        # testing this twice to ensure oracle doesn't modify the original statement
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
             "sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.rowid) AS ora_rn FROM sometable) WHERE ora_rn>20 AND ora_rn<=30)")
 
@@ -64,20 +62,20 @@ class CompileTest(SQLCompileTest):
             "sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.col2) AS ora_rn FROM sometable ORDER BY sometable.col2) WHERE ora_rn>20 AND ora_rn<=30")
 
     def test_outer_join(self):
-        table1 = table('mytable', 
+        table1 = table('mytable',
             column('myid', Integer),
             column('name', String),
             column('description', String),
         )
 
         table2 = table(
-            'myothertable', 
+            'myothertable',
             column('otherid', Integer),
             column('othername', String),
         )
 
         table3 = table(
-            'thirdtable', 
+            'thirdtable',
             column('userid', Integer),
             column('otherstuff', String),
         )
@@ -92,7 +90,7 @@ class CompileTest(SQLCompileTest):
                 ),
                 from_obj = [ outerjoin(table1, table2, table1.c.myid == table2.c.otherid) ]
                 )
-        self.assert_compile(query, 
+        self.assert_compile(query,
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
 FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid(+) AND \
 (mytable.name = :mytable_name_1 OR mytable.myid = :mytable_myid_1 OR \
@@ -101,11 +99,11 @@ myothertable.othername != :myothertable_othername_1 OR EXISTS (select yay from f
 
         query = table1.outerjoin(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
         self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid LEFT OUTER JOIN thirdtable ON thirdtable.userid = myothertable.otherid")
-        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid(+) AND thirdtable.userid(+) = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))    
+        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid(+) AND thirdtable.userid(+) = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))
 
         query = table1.join(table2, table1.c.myid==table2.c.otherid).join(table3, table3.c.userid==table2.c.otherid)
-        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid AND thirdtable.userid = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))    
-    
+        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid AND thirdtable.userid = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))
+
     def test_alias_outer_join(self):
         address_types = table('address_types',
                     column('id'),
@@ -118,7 +116,7 @@ myothertable.othername != :myothertable_othername_1 OR EXISTS (select yay from f
                 column('email_address')
             )
         at_alias = address_types.alias()
-        
+
         s = select([at_alias, addresses]).\
             select_from(addresses.outerjoin(at_alias, addresses.c.address_type_id==at_alias.c.id)).\
             where(addresses.c.user_id==7).\
@@ -129,25 +127,26 @@ myothertable.othername != :myothertable_othername_1 OR EXISTS (select yay from f
             "address_types.rowid")
 
 class TypesTest(SQLCompileTest):
+    __only_on__ = 'oracle'
+
     def test_no_clobs_for_string_params(self):
         """test that simple string params get a DBAPI type of VARCHAR, not CLOB.
-        this is to prevent setinputsizes from setting up cx_oracle.CLOBs on 
+        this is to prevent setinputsizes from setting up cx_oracle.CLOBs on
         string-based bind params [ticket:793]."""
-        
+
         class FakeDBAPI(object):
             def __getattr__(self, attr):
                 return attr
 
         dialect = oracle.OracleDialect()
         dbapi = FakeDBAPI()
-                
+
         b = bindparam("foo", "hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
 
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
-        
-    @testing.supported('oracle')
+
     def test_longstring(self):
         metadata = MetaData(testbase.db)
         testbase.db.execute("""
@@ -155,7 +154,7 @@ class TypesTest(SQLCompileTest):
         (
           ID        NUMERIC(22) PRIMARY KEY,
           ADD_USER  VARCHAR2(20)  NOT NULL
-        )        
+        )
         """)
         try:
             t = Table("z_test", metadata, autoload=True)
@@ -163,7 +162,7 @@ class TypesTest(SQLCompileTest):
             assert t.select().execute().fetchall() == [(1, 'foobar')]
         finally:
             testbase.db.execute("DROP TABLE Z_TEST")
-        
+
 class SequenceTest(SQLCompileTest):
     def test_basic(self):
         seq = Sequence("my_seq_no_schema")
@@ -175,7 +174,7 @@ class SequenceTest(SQLCompileTest):
 
         seq = Sequence("My_Seq", schema="Some_Schema")
         assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
-        
-    
+
+
 if __name__ == '__main__':
     testbase.main()

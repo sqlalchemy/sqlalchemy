@@ -18,6 +18,8 @@ from testlib import *
 class ReflectionTest(AssertMixin):
     """Extra reflection tests."""
 
+    __only_on__ = 'maxdb'
+
     def _test_decimal(self, tabledef):
         """Checks a variety of FIXED usages.
 
@@ -54,7 +56,6 @@ class ReflectionTest(AssertMixin):
             except exceptions.DatabaseError:
                 pass
 
-    @testing.supported('maxdb')
     def test_decimal_fixed_serial(self):
         tabledef = """
         CREATE TABLE dectest (
@@ -66,7 +67,6 @@ class ReflectionTest(AssertMixin):
           """
         return self._test_decimal(tabledef)
 
-    @testing.supported('maxdb')
     def test_decimal_integer_serial(self):
         tabledef = """
         CREATE TABLE dectest (
@@ -78,7 +78,6 @@ class ReflectionTest(AssertMixin):
           """
         return self._test_decimal(tabledef)
 
-    @testing.supported('maxdb')
     def test_decimal_implicit_serial(self):
         tabledef = """
         CREATE TABLE dectest (
@@ -90,7 +89,6 @@ class ReflectionTest(AssertMixin):
           """
         return self._test_decimal(tabledef)
 
-    @testing.supported('maxdb')
     def test_decimal_smallint_serial(self):
         tabledef = """
         CREATE TABLE dectest (
@@ -102,7 +100,6 @@ class ReflectionTest(AssertMixin):
           """
         return self._test_decimal(tabledef)
 
-    @testing.supported('maxdb')
     def test_decimal_sa_types_1(self):
         tabledef = Table('dectest', MetaData(),
                          Column('id', Integer, primary_key=True),
@@ -112,7 +109,6 @@ class ReflectionTest(AssertMixin):
                          Column('i1', Integer))
         return self._test_decimal(tabledef)
 
-    @testing.supported('maxdb')
     def test_decimal_sa_types_2(self):
         tabledef = Table('dectest', MetaData(),
                          Column('id', Integer, primary_key=True),
@@ -122,7 +118,6 @@ class ReflectionTest(AssertMixin):
                          Column('i1', Integer))
         return self._test_decimal(tabledef)
 
-    @testing.supported('maxdb')
     def test_decimal_sa_types_3(self):
         tabledef = Table('dectest', MetaData(),
                          Column('id', Integer, primary_key=True),
@@ -132,7 +127,6 @@ class ReflectionTest(AssertMixin):
                          Column('i1', Integer))
         return self._test_decimal(tabledef)
 
-    @testing.supported('maxdb')
     def test_assorted_type_aliases(self):
         """Ensures that aliased types are reflected properly."""
 
@@ -179,8 +173,9 @@ class DBAPITest(AssertMixin):
 
     If any of these fail, that's good- the bug is fixed!
     """
-    
-    @testing.supported('maxdb')
+
+    __only_on__ = 'maxdb'
+
     def test_dbapi_breaks_sequences(self):
         con = testbase.db.connect().connection
 
@@ -199,7 +194,6 @@ class DBAPITest(AssertMixin):
         finally:
             cr.execute('DROP SEQUENCE busto')
 
-    @testing.supported('maxdb')
     def test_dbapi_breaks_mod_binds(self):
         con = testbase.db.connect().connection
 
@@ -217,7 +211,6 @@ class DBAPITest(AssertMixin):
         # OK
         cr.execute('SELECT MOD(?, 2) FROM DUAL', [3])
 
-    @testing.supported('maxdb')
     def test_dbapi_breaks_close(self):
         dialect = testbase.db.dialect
         cargs, ckw = dialect.create_connect_args(testbase.db.url)
@@ -238,7 +231,6 @@ class DBAPITest(AssertMixin):
         except dialect.dbapi.DatabaseError:
             self.assert_(True)
 
-    @testing.supported('maxdb')
     def test_modulo_operator(self):
         st = str(select([sql.column('col') % 5]).compile(testbase.db))
         self.assertEquals(st, 'SELECT mod(col, ?) FROM DUAL')

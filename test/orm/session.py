@@ -12,15 +12,15 @@ import pickle
 class SessionTest(AssertMixin):
     def setUpAll(self):
         tables.create()
-        
+
     def tearDownAll(self):
         tables.drop()
-        
+
     def tearDown(self):
         SessionCls.close_all()
         tables.delete()
         clear_mappers()
-        
+
     def setUp(self):
         pass
 
@@ -80,7 +80,7 @@ class SessionTest(AssertMixin):
 
         # then see if expunge fails
         session.expunge(u)
-    
+
     @engines.close_open_connections
     def test_binds_from_expression(self):
         """test that Session can extract Table objects from ClauseElements and match them to tables."""
@@ -88,7 +88,7 @@ class SessionTest(AssertMixin):
         sess = Session()
         sess.execute(users.insert(), params=dict(user_id=1, user_name='ed'))
         assert sess.execute(users.select()).fetchall() == [(1, 'ed')]
-        
+
         mapper(Address, addresses)
         mapper(User, users, properties={
             'addresses':relation(Address, backref=backref("user", cascade="all"), cascade="all")
@@ -97,7 +97,7 @@ class SessionTest(AssertMixin):
         sess.execute(users.insert(), params=dict(user_id=2, user_name='fred'))
         assert sess.execute(users.select()).fetchall() == [(1, 'ed'), (2, 'fred')]
         sess.close()
-        
+
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
     @engines.close_open_connections
     def test_transaction(self):
@@ -105,7 +105,7 @@ class SessionTest(AssertMixin):
         mapper(User, users)
         conn1 = testbase.db.connect()
         conn2 = testbase.db.connect()
-        
+
         sess = create_session(transactional=True, bind=conn1)
         u = User()
         sess.save(u)
@@ -116,7 +116,7 @@ class SessionTest(AssertMixin):
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
         sess.close()
-        
+
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
     @engines.close_open_connections
     def test_autoflush(self):
@@ -124,7 +124,7 @@ class SessionTest(AssertMixin):
         mapper(User, users)
         conn1 = testbase.db.connect()
         conn2 = testbase.db.connect()
-        
+
         sess = create_session(bind=conn1, transactional=True, autoflush=True)
         u = User()
         u.user_name='ed'
@@ -137,7 +137,7 @@ class SessionTest(AssertMixin):
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
         sess.close()
-        
+
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
     @engines.close_open_connections
     def test_autoflush_unbound(self):
@@ -160,14 +160,14 @@ class SessionTest(AssertMixin):
         except:
             sess.rollback()
             raise
-            
+
     @engines.close_open_connections
     def test_autoflush_2(self):
         class User(object):pass
         mapper(User, users)
         conn1 = testbase.db.connect()
         conn2 = testbase.db.connect()
-        
+
         sess = create_session(bind=conn1, transactional=True, autoflush=True)
         u = User()
         u.user_name='ed'
@@ -184,7 +184,7 @@ class SessionTest(AssertMixin):
         mapper(User, users, properties={
             'addresses':relation(Address)
         })
-        
+
         sess = create_session(transactional=True, autoflush=True)
         u = sess.query(User).get(8)
         newad = Address()
@@ -198,8 +198,8 @@ class SessionTest(AssertMixin):
         assert u.user_name == 'ed'
         assert len(u.addresses) == 3
         assert newad not in u.addresses
-        
-        
+
+
     @engines.close_open_connections
     def test_external_joined_transaction(self):
         class User(object):pass
@@ -207,7 +207,7 @@ class SessionTest(AssertMixin):
         conn = testbase.db.connect()
         trans = conn.begin()
         sess = create_session(bind=conn, transactional=True, autoflush=True)
-        sess.begin() 
+        sess.begin()
         u = User()
         sess.save(u)
         sess.flush()
@@ -216,7 +216,8 @@ class SessionTest(AssertMixin):
         assert len(sess.query(User).select()) == 0
         sess.close()
 
-    @testing.supported('postgres', 'mysql')
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
     @engines.close_open_connections
     def test_external_nested_transaction(self):
         class User(object):pass
@@ -228,20 +229,21 @@ class SessionTest(AssertMixin):
             u1 = User()
             sess.save(u1)
             sess.flush()
-        
-            sess.begin_nested()  
+
+            sess.begin_nested()
             u2 = User()
             sess.save(u2)
             sess.flush()
             sess.rollback()
-        
-            trans.commit() 
+
+            trans.commit()
             assert len(sess.query(User).select()) == 1
         except:
             conn.close()
             raise
-    
-    @testing.supported('postgres', 'mysql')
+
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
     @engines.close_open_connections
     def test_heavy_nesting(self):
         session = create_session(bind=testbase.db)
@@ -250,7 +252,7 @@ class SessionTest(AssertMixin):
         session.connection().execute("insert into users (user_name) values ('user1')")
 
         session.begin()
-        
+
         session.begin_nested()
 
         session.connection().execute("insert into users (user_name) values ('user2')")
@@ -262,9 +264,10 @@ class SessionTest(AssertMixin):
 
         session.commit()
         assert session.connection().execute("select count(1) from users").scalar() == 2
-        
-    
-    @testing.supported('postgres', 'mysql')
+
+
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def test_twophase(self):
         # TODO: mock up a failure condition here
@@ -273,7 +276,7 @@ class SessionTest(AssertMixin):
         class Address(object):pass
         mapper(User, users)
         mapper(Address, addresses)
-        
+
         engine2 = create_engine(testbase.db.url)
         sess = create_session(transactional=False, autoflush=False, twophase=True)
         sess.bind_mapper(User, testbase.db)
@@ -288,12 +291,12 @@ class SessionTest(AssertMixin):
         engine2.dispose()
         assert users.count().scalar() == 1
         assert addresses.count().scalar() == 1
-        
+
     def test_joined_transaction(self):
         class User(object):pass
         mapper(User, users)
         sess = create_session(transactional=True, autoflush=True)
-        sess.begin()  
+        sess.begin()
         u = User()
         sess.save(u)
         sess.flush()
@@ -302,7 +305,8 @@ class SessionTest(AssertMixin):
         assert len(sess.query(User).select()) == 0
         sess.close()
 
-    @testing.supported('postgres', 'mysql')
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def test_nested_transaction(self):
         class User(object):pass
@@ -320,13 +324,14 @@ class SessionTest(AssertMixin):
         sess.save(u2)
         sess.flush()
 
-        sess.rollback() 
-    
+        sess.rollback()
+
         sess.commit()
         assert len(sess.query(User).select()) == 1
         sess.close()
 
-    @testing.supported('postgres', 'mysql')
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def test_nested_autotrans(self):
         class User(object):pass
@@ -341,8 +346,8 @@ class SessionTest(AssertMixin):
         u2 = User()
         sess.save(u2)
         sess.flush()
-        
-        sess.rollback() 
+
+        sess.rollback()
 
         sess.commit()
         assert len(sess.query(User).select()) == 1
@@ -360,25 +365,25 @@ class SessionTest(AssertMixin):
         sess.save(u)
         sess.flush()
         assert transaction.get_or_add(testbase.db) is transaction.get_or_add(c) is c
-        
+
         try:
             transaction.add(testbase.db.connect())
             assert False
-        except exceptions.InvalidRequestError, e: 
+        except exceptions.InvalidRequestError, e:
             assert str(e) == "Session already has a Connection associated for the given Connection's Engine"
 
         try:
             transaction.get_or_add(testbase.db.connect())
             assert False
-        except exceptions.InvalidRequestError, e: 
+        except exceptions.InvalidRequestError, e:
             assert str(e) == "Session already has a Connection associated for the given Connection's Engine"
 
         try:
             transaction.add(testbase.db)
             assert False
-        except exceptions.InvalidRequestError, e: 
+        except exceptions.InvalidRequestError, e:
             assert str(e) == "Session already has a Connection associated for the given Engine"
-            
+
         transaction.rollback()
         assert len(sess.query(User).select()) == 0
         sess.close()
@@ -405,7 +410,7 @@ class SessionTest(AssertMixin):
         assert c.scalar("select count(1) from users") == 1
         c.execute("delete from users")
         assert c.scalar("select count(1) from users") == 0
-        
+
         c = testbase.db.connect()
 
         trans = c.begin()
@@ -417,16 +422,16 @@ class SessionTest(AssertMixin):
         trans.commit()
         assert not c.in_transaction()
         assert c.scalar("select count(1) from users") == 1
-        
-        
+
+
     @engines.close_open_connections
     def test_save_update_delete(self):
-        
+
         s = create_session()
         class User(object):
             pass
         mapper(User, users)
-        
+
         user = User()
 
         try:
@@ -440,13 +445,13 @@ class SessionTest(AssertMixin):
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Instance 'User@%s' is not persisted" % hex(id(user))
-            
+
         s.save(user)
         s.flush()
         user = s.query(User).one()
         s.expunge(user)
         assert user not in s
-        
+
         # modify outside of session, assert changes remain/get saved
         user.user_name = "fred"
         s.update(user)
@@ -457,54 +462,54 @@ class SessionTest(AssertMixin):
         assert s.query(User).count() == 1
         user = s.query(User).one()
         assert user.user_name == 'fred'
-        
+
         # ensure its not dirty if no changes occur
         s.clear()
         assert user not in s
         s.update(user)
         assert user in s
         assert user not in s.dirty
-        
+
         try:
             s.save(user)
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Instance 'User@%s' is already persistent" % hex(id(user))
-    
+
         s2 = create_session()
         try:
             s2.delete(user)
             assert False
         except exceptions.InvalidRequestError, e:
             assert "is already attached to session" in str(e)
-            
+
         u2 = s2.query(User).get(user.user_id)
         try:
             s.delete(u2)
             assert False
         except exceptions.InvalidRequestError, e:
             assert "already persisted with a different identity" in str(e)
-    
+
         s.delete(user)
         s.flush()
         assert user not in s
         assert s.query(User).count() == 0
-        
+
     def test_is_modified(self):
         s = create_session()
         class User(object):pass
         class Address(object):pass
-        
+
         mapper(User, users, properties={'addresses':relation(Address)})
         mapper(Address, addresses)
-        
+
         # save user
         u = User()
         u.user_name = 'fred'
         s.save(u)
         s.flush()
         s.clear()
-        
+
         user = s.query(User).one()
         assert user not in s.dirty
         assert not s.is_modified(user)
@@ -517,21 +522,21 @@ class SessionTest(AssertMixin):
         s.flush()
         assert user not in s.dirty
         assert not s.is_modified(user)
-        
+
         a = Address()
         user.addresses.append(a)
         assert user in s.dirty
         assert s.is_modified(user)
         assert not s.is_modified(user, include_collections=False)
-        
-        
+
+
     def test_weak_ref(self):
         """test the weak-referencing identity map, which strongly-references modified items."""
-        
+
         s = create_session()
         class User(object):pass
         mapper(User, users)
-        
+
         # save user
         s.save(User())
         s.flush()
@@ -541,26 +546,26 @@ class SessionTest(AssertMixin):
         gc.collect()
         assert len(s.identity_map) == 0
         assert len(s.identity_map.data) == 0
-        
+
         user = s.query(User).one()
         user.user_name = 'fred'
         user = None
         gc.collect()
         assert len(s.identity_map) == 1
         assert len(s.identity_map.data) == 1
-        
+
         s.flush()
         gc.collect()
         assert len(s.identity_map) == 0
         assert len(s.identity_map.data) == 0
-        
+
         assert s.query(User).one().user_name == 'fred'
-        
+
     def test_strong_ref(self):
         s = create_session(weak_identity_map=False)
         class User(object):pass
         mapper(User, users)
-        
+
         # save user
         s.save(User())
         s.flush()
@@ -620,7 +625,7 @@ class SessionTest(AssertMixin):
         s.flush()
         self.assert_(s.prune() == 0)
         self.assert_(len(s.identity_map) == 0)
-        
+
     def test_no_save_cascade(self):
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
@@ -638,15 +643,15 @@ class SessionTest(AssertMixin):
         s.clear()
         assert s.query(User).one().user_id == u.user_id
         assert s.query(Address).first() is None
-        
+
         clear_mappers()
-        
+
         tables.delete()
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
             addresses=relation(Address, cascade="all", backref=backref("user", cascade="none"))
         ))
-        
+
         s = create_session()
         u = User()
         a = Address()
@@ -693,7 +698,7 @@ class SessionTest(AssertMixin):
         self._assert_key(key, (User, (1,), None))
         key = s.identity_key(User, row=row, entity_name="en")
         self._assert_key(key, (User, (1,), "en"))
-        
+
     def test_extension(self):
         mapper(User, users)
         log = []
@@ -714,9 +719,9 @@ class SessionTest(AssertMixin):
         u = User()
         sess.save(u)
         sess.flush()
-        
+
         assert log == ['before_flush', 'after_flush', 'before_commit', 'after_commit', 'after_flush_postexec']
-        
+
         log = []
         sess = create_session(transactional=True, extension=MyExt())
         u = User()
@@ -732,56 +737,56 @@ class SessionTest(AssertMixin):
         log = []
         sess.commit()
         assert log == ['before_commit', 'after_commit']
-    
+
     def test_pickled_update(self):
         mapper(User, users)
         sess1 = create_session()
         sess2 = create_session()
-        
+
         u1 = User()
         sess1.save(u1)
-        
+
         try:
             sess2.save(u1)
             assert False
         except exceptions.InvalidRequestError, e:
             assert "already attached to session" in str(e)
-            
+
         u2 = pickle.loads(pickle.dumps(u1))
-        
+
         sess2.save(u2)
-        
+
     def test_duplicate_update(self):
         mapper(User, users)
         Session = sessionmaker()
-        sess = Session()        
+        sess = Session()
 
         u1 = User()
         sess.save(u1)
         sess.flush()
         assert u1.user_id is not None
-        
+
         sess.expunge(u1)
-        
+
         assert u1 not in sess
-        
+
         u2 = sess.query(User).get(u1.user_id)
         assert u2 is not None and u2 is not u1
         assert u2 in sess
-        
+
         self.assertRaises(Exception, lambda: sess.update(u1))
 
         sess.expunge(u2)
         assert u2 not in sess
-        
+
         u1.user_name = "John"
         u2.user_name = "Doe"
 
         sess.update(u1)
         assert u1 in sess
-        
+
         sess.flush()
-        
+
         sess.clear()
 
         u3 = sess.query(User).get(u1.user_id)
@@ -791,14 +796,14 @@ class ScopedSessionTest(ORMTest):
 
     def define_tables(self, metadata):
         global table, table2
-        table = Table('sometable', metadata, 
+        table = Table('sometable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)))
-        table2 = Table('someothertable', metadata, 
+        table2 = Table('someothertable', metadata,
             Column('id', Integer, primary_key=True),
             Column('someid', None, ForeignKey('sometable.id'))
             )
-    
+
     def test_basic(self):
         Session = scoped_session(sessionmaker())
 
@@ -816,18 +821,18 @@ class ScopedSessionTest(ORMTest):
         Session.save(s)
         Session.commit()
         Session.remove()
-        
+
         assert SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]) == Session.query(SomeObject).one()
-        
-        
+
+
 class ScopedMapperTest(PersistTest):
     def setUpAll(self):
         global metadata, table, table2
         metadata = MetaData(testbase.db)
-        table = Table('sometable', metadata, 
+        table = Table('sometable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)))
-        table2 = Table('someothertable', metadata, 
+        table2 = Table('someothertable', metadata,
             Column('id', Integer, primary_key=True),
             Column('someid', None, ForeignKey('sometable.id'))
             )
@@ -837,9 +842,9 @@ class ScopedMapperTest(PersistTest):
         global SomeObject, SomeOtherObject
         class SomeObject(object):pass
         class SomeOtherObject(object):pass
-        
+
         global Session
-        
+
         Session = scoped_session(create_session)
         Session.mapper(SomeObject, table, properties={
             'options':relation(SomeOtherObject)
@@ -856,7 +861,7 @@ class ScopedMapperTest(PersistTest):
 
     def tearDownAll(self):
         metadata.drop_all()
-        
+
     def tearDown(self):
         for table in metadata.table_iterator(reverse=True):
             table.delete().execute()
@@ -878,12 +883,12 @@ class ScopedMapperTest(PersistTest):
             pass
         Session.mapper(Bar, table2, extension=[ext])
         assert hasattr(Bar, 'query')
-        
+
         class Baz(object):
             pass
         Session.mapper(Baz, table2, extension=ext)
         assert hasattr(Baz, 'query')
-        
+
     def test_validating_constructor(self):
         s2 = SomeObject(someid=12)
         s3 = SomeOtherObject(someid=123, bogus=345)
@@ -910,42 +915,42 @@ class ScopedMapperTest(PersistTest):
 class ScopedMapperTest2(ORMTest):
     def define_tables(self, metadata):
         global table, table2
-        table = Table('sometable', metadata, 
+        table = Table('sometable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
             Column('type', String(30))
-            
+
             )
-        table2 = Table('someothertable', metadata, 
+        table2 = Table('someothertable', metadata,
             Column('id', Integer, primary_key=True),
             Column('someid', None, ForeignKey('sometable.id')),
             Column('somedata', String(30)),
             )
-    
+
     def test_inheritance(self):
         def expunge_list(l):
             for x in l:
                 Session.expunge(x)
             return l
-            
+
         class BaseClass(fixtures.Base):
             pass
         class SubClass(BaseClass):
             pass
-        
+
         Session = scoped_session(sessionmaker())
         Session.mapper(BaseClass, table, polymorphic_identity='base', polymorphic_on=table.c.type)
         Session.mapper(SubClass, table2, polymorphic_identity='sub', inherits=BaseClass)
-        
+
         b = BaseClass(data='b1')
         s =  SubClass(data='s1', somedata='somedata')
         Session.commit()
         Session.clear()
-        
+
         assert expunge_list([BaseClass(data='b1'), SubClass(data='s1', somedata='somedata')]) == BaseClass.query.all()
         assert expunge_list([SubClass(data='s1', somedata='somedata')]) == SubClass.query.all()
-        
-        
 
-if __name__ == "__main__":    
+
+
+if __name__ == "__main__":
     testbase.main()

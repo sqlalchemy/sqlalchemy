@@ -9,12 +9,13 @@ from testlib import *
 
 
 class TestTypes(AssertMixin):
-    @testing.supported('sqlite')
+    __only_on__ = 'sqlite'
+
     def test_date(self):
         meta = MetaData(testbase.db)
         t = Table('testdate', meta,
                   Column('id', Integer, primary_key=True),
-                  Column('adate', Date), 
+                  Column('adate', Date),
                   Column('adatetime', DateTime))
         meta.create_all()
         try:
@@ -22,17 +23,18 @@ class TestTypes(AssertMixin):
             d2 = datetime.datetime(2007, 10, 30)
 
             t.insert().execute(adate=str(d1), adatetime=str(d2))
-            
+
             self.assert_(t.select().execute().fetchall()[0] ==
                          (1, datetime.date(2007, 10, 30),
                           datetime.datetime(2007, 10, 30)))
-            
+
         finally:
             meta.drop_all()
 
 
 class DialectTest(AssertMixin):
-    @testing.supported('sqlite')
+    __only_on__ = 'sqlite'
+
     def test_extra_reserved_words(self):
         """Tests reserved words in identifiers.
 
@@ -45,7 +47,7 @@ class DialectTest(AssertMixin):
         meta = MetaData(testbase.db)
         t = Table('reserved', meta,
                   Column('safe', Integer),
-                  Column('true', Integer), 
+                  Column('true', Integer),
                   Column('false', Integer),
                   Column('column', Integer))
 
@@ -56,7 +58,6 @@ class DialectTest(AssertMixin):
         finally:
             meta.drop_all()
 
-    @testing.supported('sqlite')
     def test_quoted_identifiers(self):
         """Tests autoload of tables created with quoted column names."""
 
@@ -89,6 +90,8 @@ class DialectTest(AssertMixin):
 class InsertTest(AssertMixin):
     """Tests inserts and autoincrement."""
 
+    __only_on__ = 'sqlite'
+
     # empty insert (i.e. INSERT INTO table DEFAULT VALUES)
     # fails as recently as sqlite 3.3.6.  passes on 3.4.1.  this syntax
     # is nowhere to be found in the sqlite3 documentation or changelog, so can't
@@ -106,14 +109,12 @@ class InsertTest(AssertMixin):
         finally:
             table.drop()
 
-    @testing.supported('sqlite')
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk1(self):
         self._test_empty_insert(
             Table('a', MetaData(testbase.db),
                   Column('id', Integer, primary_key=True)))
 
-    @testing.supported('sqlite')
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk2(self):
         self.assertRaises(
@@ -123,7 +124,6 @@ class InsertTest(AssertMixin):
                   Column('x', Integer, primary_key=True),
                   Column('y', Integer, primary_key=True)))
 
-    @testing.supported('sqlite')
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk3(self):
         self.assertRaises(
@@ -134,7 +134,6 @@ class InsertTest(AssertMixin):
                   Column('y', Integer, PassiveDefault('123'),
                          primary_key=True)))
 
-    @testing.supported('sqlite')
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk4(self):
         self._test_empty_insert(
@@ -142,14 +141,12 @@ class InsertTest(AssertMixin):
                   Column('x', Integer, primary_key=True),
                   Column('y', Integer, PassiveDefault('123'))))
 
-    @testing.supported('sqlite')
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_nopk1(self):
         self._test_empty_insert(
             Table('e', MetaData(testbase.db),
                   Column('id', Integer)))
-    
-    @testing.supported('sqlite')
+
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_nopk2(self):
         self._test_empty_insert(
@@ -157,7 +154,6 @@ class InsertTest(AssertMixin):
                   Column('x', Integer),
                   Column('y', Integer)))
 
-    @testing.supported('sqlite')
     def test_inserts_with_spaces(self):
         tbl = Table('tbl', MetaData('sqlite:///'),
                   Column('with space', Integer),
@@ -172,6 +168,7 @@ class InsertTest(AssertMixin):
 
         finally:
             tbl.drop()
-          
+
+
 if __name__ == "__main__":
     testbase.main()

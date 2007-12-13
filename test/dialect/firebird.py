@@ -5,17 +5,12 @@ from sqlalchemy.exceptions import ProgrammingError
 from sqlalchemy.sql import table, column
 from testlib import *
 
-class BasicTest(AssertMixin):
-    # A simple import of the database/ module should work on all systems.
-    def test_import(self):
-        # we got this far, right?
-        return True
-
 
 class DomainReflectionTest(AssertMixin):
     "Test Firebird domains"
 
-    @testing.supported('firebird')
+    __only_on__ = 'firebird'
+
     def setUpAll(self):
         con = testbase.db.connect()
         try:
@@ -34,7 +29,6 @@ class DomainReflectionTest(AssertMixin):
                                                t time,
                                                dt timestamp)''')
 
-    @testing.supported('firebird')
     def tearDownAll(self):
         con = testbase.db.connect()
         con.execute('DROP TABLE testtable')
@@ -43,7 +37,6 @@ class DomainReflectionTest(AssertMixin):
         con.execute('DROP DOMAIN rem_domain')
         con.execute('DROP DOMAIN img_domain')
 
-    @testing.supported('firebird')
     def test_table_is_reflected(self):
         metadata = MetaData(testbase.db)
         table = Table('testtable', metadata, autoload=True)
@@ -74,11 +67,11 @@ class CompileTest(SQLCompileTest):
         self.assert_compile(func.foo(1, 2), "foo(:foo_1, :foo_2)")
         self.assert_compile(func.current_time(), "CURRENT_TIME")
         self.assert_compile(func.foo(), "foo")
-        
+
         m = MetaData()
         t = Table('sometable', m, Column('col1', Integer), Column('col2', Integer))
         self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) FROM sometable")
 
-        
+
 if __name__ == '__main__':
     testbase.main()

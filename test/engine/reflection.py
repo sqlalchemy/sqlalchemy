@@ -491,23 +491,6 @@ class ReflectionTest(PersistTest):
         finally:
             table.drop()
 
-    @testing.supported('mssql')
-    def testidentity(self):
-        meta = MetaData(testbase.db)
-        table = Table(
-            'identity_test', meta,
-            Column('col1', Integer, Sequence('fred', 2, 3), primary_key=True)
-        )
-        table.create()
-
-        meta2 = MetaData(testbase.db)
-        try:
-            table2 = Table('identity_test', meta2, autoload=True)
-            assert table2.c['col1'].sequence.start == 2
-            assert table2.c['col1'].sequence.increment == 3
-        finally:
-            table.drop()
-
     @testing.unsupported('oracle')
     def testreserved(self):
         # check a table that uses an SQL reserved name doesn't cause an error
@@ -755,31 +738,37 @@ class SchemaTest(PersistTest):
             assert buf.index("CREATE TABLE someschema.table1") > -1
             assert buf.index("CREATE TABLE someschema.table2") > -1
 
-    @testing.supported('maxdb', 'mysql', 'postgres')
+    @testing.unsupported('sqlite', 'firebird')
+    # fixme: revisit these below.
+    @testing.fails_on('oracle', 'mssql', 'sybase', 'access')
     def test_explicit_default_schema(self):
         engine = testbase.db
-        schema = engine.dialect.get_default_schema_name(engine)
 
         if testing.against('mysql'):
             schema = testbase.db.url.database
         elif testing.against('postgres'):
             schema = 'public'
+        else:
+            schema = engine.dialect.get_default_schema_name(engine)
 
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(engine)
         table1 = Table('table1', metadata,
-            Column('col1', Integer, primary_key=True),
-            schema=schema)
+                       Column('col1', Integer, primary_key=True),
+                       schema=schema)
         table2 = Table('table2', metadata,
-            Column('col1', Integer, primary_key=True),
-            Column('col2', Integer, ForeignKey('%s.table1.col1' % schema)),
-            schema=schema)
-        metadata.create_all()
-        metadata.create_all(checkfirst=True)
-        metadata.clear()
+                       Column('col1', Integer, primary_key=True),
+                       Column('col2', Integer,
+                              ForeignKey('%s.table1.col1' % schema)),
+                       schema=schema)
+        try:
+            metadata.create_all()
+            metadata.create_all(checkfirst=True)
+            metadata.clear()
 
-        table1 = Table('table1', metadata, autoload=True, schema=schema)
-        table2 = Table('table2', metadata, autoload=True, schema=schema)
-        metadata.drop_all()
+            table1 = Table('table1', metadata, autoload=True, schema=schema)
+            table2 = Table('table2', metadata, autoload=True, schema=schema)
+        finally:
+            metadata.drop_all()
 
 
 class HasSequenceTest(PersistTest):
@@ -791,7 +780,7 @@ class HasSequenceTest(PersistTest):
                       Column('user_name', String(40)),
                       )
 
-    @testing.supported('firebird', 'postgres', 'oracle')
+    @testing.unsupported('sqlite', 'mysql', 'mssql', 'access', 'sybase')
     def test_hassequence(self):
         metadata.create_all(bind=testbase.db)
         self.assertEqual(testbase.db.dialect.has_sequence(testbase.db, 'user_id_seq'), True)

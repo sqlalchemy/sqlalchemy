@@ -264,19 +264,11 @@ class QueryTest(PersistTest):
         r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
 
-    @testing.supported('mssql')
-    @testing.fails_on('maxdb')
-    def test_select_limit_nooffset(self):
-        try:
-            r = users.select(limit=3, offset=2, order_by=[users.c.user_id]).execute().fetchall()
-            assert False # InvalidRequestError should have been raised
-        except exceptions.InvalidRequestError:
-            pass
-
-    @testing.unsupported('mysql')
+    @testing.exclude('mysql', '<', (5, 0, 0))
     def test_scalar_select(self):
         """test that scalar subqueries with labels get their type propigated to the result set."""
-        # mysql and/or mysqldb has a bug here, type isnt propigated for scalar subquery.
+        # mysql and/or mysqldb has a bug here, type isn't propagated for scalar
+        # subquery.
         datetable = Table('datetable', metadata,
             Column('id', Integer, primary_key=True),
             Column('today', DateTime))
@@ -481,60 +473,6 @@ class QueryTest(PersistTest):
             r.close()
         finally:
             shadowed.drop(checkfirst=True)
-
-    @testing.supported('mssql')
-    def test_fetchid_trigger(self):
-        meta = MetaData(testbase.db)
-        t1 = Table('t1', meta,
-                Column('id', Integer, Sequence('fred', 100, 1), primary_key=True),
-                Column('descr', String(200)))
-        t2 = Table('t2', meta,
-                Column('id', Integer, Sequence('fred', 200, 1), primary_key=True),
-                Column('descr', String(200)))
-        meta.create_all()
-        con = testbase.db.connect()
-        con.execute("""create trigger paj on t1 for insert as
-            insert into t2 (descr) select descr from inserted""")
-
-        try:
-            tr = con.begin()
-            r = con.execute(t2.insert(), descr='hello')
-            self.assert_(r.last_inserted_ids() == [200])
-            r = con.execute(t1.insert(), descr='hello')
-            self.assert_(r.last_inserted_ids() == [100])
-
-        finally:
-            tr.commit()
-            con.execute("""drop trigger paj""")
-            meta.drop_all()
-
-    @testing.supported('mssql')
-    def test_insertid_schema(self):
-        meta = MetaData(testbase.db)
-        con = testbase.db.connect()
-        con.execute('create schema paj')
-        tbl = Table('test', meta, Column('id', Integer, primary_key=True), schema='paj')
-        tbl.create()
-        try:
-            tbl.insert().execute({'id':1})
-        finally:
-            tbl.drop()
-            con.execute('drop schema paj')
-
-    @testing.supported('mssql')
-    def test_insertid_reserved(self):
-        meta = MetaData(testbase.db)
-        table = Table(
-            'select', meta,
-            Column('col', Integer, primary_key=True)
-        )
-        table.create()
-
-        meta2 = MetaData(testbase.db)
-        try:
-            table.insert().execute(col=7)
-        finally:
-            table.drop()
 
     @testing.fails_on('maxdb')
     def test_in_filtering(self):

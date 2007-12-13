@@ -53,14 +53,6 @@ class GenerativeQueryTest(PersistTest):
         assert list(query[-5:]) == orig[-5:]
         assert query[10:20][5] == orig[10:20][5]
 
-    @testing.supported('mssql')
-    def test_slice_mssql(self):
-        sess = create_session(bind=testbase.db)
-        query = sess.query(Foo)
-        orig = query.all()
-        assert list(query[:10]) == orig[:10]
-        assert list(query[:10]) == orig[:10]
-
     def test_aggregate(self):
         sess = create_session(bind=testbase.db)
         query = sess.query(Foo)
@@ -70,23 +62,26 @@ class GenerativeQueryTest(PersistTest):
         assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).first() == 29
         assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).one() == 29
 
-    @testing.unsupported('mysql')
     def test_aggregate_1(self):
-        # this one fails in mysql as the result comes back as a string
+        if (testing.against('mysql') and
+            testbase.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma')):
+            return
+
         query = create_session(bind=testbase.db).query(Foo)
         assert query.filter(foo.c.bar<30).sum(foo.c.bar) == 435
 
-    @testing.unsupported('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.fails_on('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_2(self):
         query = create_session(bind=testbase.db).query(Foo)
         assert query.filter(foo.c.bar<30).avg(foo.c.bar) == 14.5
 
-    @testing.supported('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.fails_on_everything_except('sqlite', 'postgres', 'mysql',
+                                        'firebird', 'mssql')
     def test_aggregate_2_int(self):
         query = create_session(bind=testbase.db).query(Foo)
         assert int(query.filter(foo.c.bar<30).avg(foo.c.bar)) == 14
 
-    @testing.unsupported('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.fails_on('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_3(self):
         query = create_session(bind=testbase.db).query(Foo)
         assert query.filter(foo.c.bar<30).apply_avg(foo.c.bar).first() == 14.5
@@ -206,7 +201,7 @@ class RelationsTest(AssertMixin):
         })
         session = create_session(bind=testbase.db)
         query = session.query(tables.User)
-        x = query.select_from([tables.users.outerjoin(tables.orders).outerjoin(tables.orderitems)]).\
+        x = query.select_from(tables.users.outerjoin(tables.orders).outerjoin(tables.orderitems)).\
             filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
         print x.compile()
         self.assert_result(list(x), tables.User, *tables.user_result[1:3])
