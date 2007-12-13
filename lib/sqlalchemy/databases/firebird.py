@@ -422,6 +422,12 @@ class FBCompiler(compiler.DefaultCompiler):
         """Already taken care of in the `get_select_precolumns` method."""
         return ""
 
+    def function_string(self, func):
+        """Use the ``strlen`` UDF for the ``length`` function."""
+        if func.name == 'length':
+            return "strlen%(expr)s"
+        return super(FBCompiler, self).function_string(func)
+
 
 class FBSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):

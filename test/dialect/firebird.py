@@ -73,5 +73,27 @@ class CompileTest(SQLCompileTest):
         self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) FROM sometable")
 
 
+class StrLenTest(PersistTest):
+    # On FB the length() function is implemented by an external UDF,
+    # strlen().  Various SA tests fail because they pass a parameter
+    # to it, and that does not work (it always results the maximum
+    # string length the UDF was declared to accept).
+    # This test checks that at least it works ok in other cases.
+
+    def test_strlen(self):
+        meta = MetaData(testbase.db)
+        t = Table('t1', meta,
+            Column('id', Integer, Sequence('t1idseq'), primary_key=True),
+            Column('name', String(10))
+        )
+        meta.create_all()
+        try:
+            t.insert(values=dict(name='dante')).execute()
+            t.insert(values=dict(name='alighieri')).execute()
+            select([func.count(t.c.id)],func.length(t.c.name)==5).execute().fetchone()[0] == 1
+        finally:
+            meta.drop_all()
+
+
 if __name__ == '__main__':
     testbase.main()
