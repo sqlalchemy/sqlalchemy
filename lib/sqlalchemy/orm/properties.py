@@ -150,7 +150,7 @@ class SynonymProperty(MapperProperty):
 
     def do_init(self):
         class_ = self.parent.class_
-        aliased_property = self.parent.get_property(self.key, resolve_synonyms=True)
+        aliased_property = self.parent._get_property(self.key, resolve_synonyms=True)
         self.logger.info("register managed attribute %s on class %s" % (self.key, class_.__name__))
         if self.instrument is None:
             class SynonymProp(object):
@@ -396,23 +396,23 @@ class PropertyLoader(StrategizedProperty):
 
     def _determine_targets(self):
         if isinstance(self.argument, type):
-            self.mapper = mapper.class_mapper(self.argument, entity_name=self.entity_name, compile=False)._check_compile()
+            self.mapper = mapper.class_mapper(self.argument, entity_name=self.entity_name, compile=False)
         elif isinstance(self.argument, mapper.Mapper):
-            self.mapper = self.argument._check_compile()
+            self.mapper = self.argument
         else:
             raise exceptions.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
 
         # ensure the "select_mapper", if different from the regular target mapper, is compiled.
-        self.mapper.get_select_mapper()._check_compile()
+        self.mapper.get_select_mapper()
 
         if not self.parent.concrete:
             for inheriting in self.parent.iterate_to_root():
-                if inheriting is not self.parent and inheriting.get_property(self.key, raiseerr=False):
+                if inheriting is not self.parent and inheriting._get_property(self.key, raiseerr=False):
                     warnings.warn(RuntimeWarning("Warning: relation '%s' on mapper '%s' supercedes the same relation on inherited mapper '%s'; this can cause dependency issues during flush" % (self.key, self.parent, inheriting)))
 
         if self.association is not None:
             if isinstance(self.association, type):
-                self.association = mapper.class_mapper(self.association, entity_name=self.entity_name, compile=False)._check_compile()
+                self.association = mapper.class_mapper(self.association, entity_name=self.entity_name, compile=False)
 
         self.target = self.mapper.mapped_table
         self.select_mapper = self.mapper.get_select_mapper()
@@ -650,7 +650,7 @@ class PropertyLoader(StrategizedProperty):
 
             if self.backref is not None:
                 self.backref.compile(self)
-        elif not mapper.class_mapper(self.parent.class_).get_property(self.key, raiseerr=False):
+        elif not mapper.class_mapper(self.parent.class_, compile=False)._get_property(self.key, raiseerr=False):
             raise exceptions.ArgumentError("Attempting to assign a new relation '%s' to a non-primary mapper on class '%s'.  New relations can only be added to the primary mapper, i.e. the very first mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
 
         super(PropertyLoader, self).do_init()
@@ -727,7 +727,7 @@ class BackRef(object):
         self.prop = prop
         
         mapper = prop.mapper.primary_mapper()
-        if mapper.get_property(self.key, raiseerr=False) is None:
+        if mapper._get_property(self.key, raiseerr=False) is None:
             pj = self.kwargs.pop('primaryjoin', None)
             sj = self.kwargs.pop('secondaryjoin', None)
 
@@ -742,8 +742,8 @@ class BackRef(object):
                                       
             mapper._compile_property(self.key, relation);
 
-            prop.reverse_property = mapper.get_property(self.key)
-            mapper.get_property(self.key).reverse_property = prop
+            prop.reverse_property = mapper._get_property(self.key)
+            mapper._get_property(self.key).reverse_property = prop
 
         else:
             raise exceptions.ArgumentError("Error creating backref '%s' on relation '%s': property of that name exists on mapper '%s'" % (self.key, prop, mapper))

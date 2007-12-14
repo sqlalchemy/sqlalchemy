@@ -232,10 +232,7 @@ class AttributesTest(PersistTest):
         x = Foo()
         x._state.commit_all()
         x.col2.append(bar4)
-        (added, unchanged, deleted) = attributes.get_history(x._state, 'col2')
-        
-        self.assertEquals(set(unchanged), set([bar1, bar2, bar3]))
-        self.assertEquals(added, [bar4])
+        self.assertEquals(attributes.get_history(x._state, 'col2'), ([bar4], [bar1, bar2, bar3], []))
         
     def test_parenttrack(self):    
         class Foo(object):pass
@@ -729,19 +726,19 @@ class HistoryTest(PersistTest):
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([there], [hi], []))
         f._state.commit(['someattr'])
 
-        self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set(), set([there, hi]), set()))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [hi, there], []))
 
         f.someattr.remove(there)
-        self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set(), set([hi]), set([there])))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [hi], [there]))
         
         f.someattr.append(old)
         f.someattr.append(new)
-        self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set([new, old]), set([hi]), set([there])))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([old, new], [hi], [there]))
         f._state.commit(['someattr'])
-        self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set(), set([new, old, hi]), set()))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [hi, old, new], []))
         
         f.someattr.pop(0)
-        self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set(), set([new, old]), set([hi])))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [old, new], [hi]))
         
         # case 2.  object with direct settings (similar to a load operation)
         f = Foo()
@@ -755,7 +752,7 @@ class HistoryTest(PersistTest):
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([old], [new], []))
 
         f._state.commit(['someattr'])
-        self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set([]), set([old, new]), set([])))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [new, old], []))
 
         f = Foo()
         collection = attributes.init_collection(f, 'someattr')
@@ -791,10 +788,118 @@ class HistoryTest(PersistTest):
 
         b2 = Bar()
         f1.bars.append(b2)
-        self.assertEquals(tuple([set(x) for x in attributes.get_history(f1._state, 'bars')]), (set([b1, b2]), set([]), set([])))
+        self.assertEquals(attributes.get_history(f1._state, 'bars'), ([b1, b2], [], []))
         self.assertEquals(attributes.get_history(b1._state, 'foo'), ([f1], [], []))
         self.assertEquals(attributes.get_history(b2._state, 'foo'), ([f1], [], []))
+    
+    def test_lazy_backref_collections(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        lazy_load = []
+        def lazyload(instance):
+            def load():
+                return lazy_load
+            return load
+            
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+        attributes.register_attribute(Foo, 'bars', uselist=True, extension=attributes.GenericBackrefExtension('foo'), trackparent=True, callable_=lazyload, useobject=True)
+        attributes.register_attribute(Bar, 'foo', uselist=False, extension=attributes.GenericBackrefExtension('bars'), trackparent=True, useobject=True)
+
+        bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
+        lazy_load = [bar1, bar2, bar3]
+
+        f = Foo()
+        bar4 = Bar()
+        bar4.foo = f
+        self.assertEquals(attributes.get_history(f._state, 'bars'), ([bar4], [bar1, bar2, bar3], []))
         
+        lazy_load = None
+        f = Foo()
+        bar4 = Bar()
+        bar4.foo = f
+        self.assertEquals(attributes.get_history(f._state, 'bars'), ([bar4], [], []))
+
+        lazy_load = [bar1, bar2, bar3]
+        f._state.trigger = lazyload(f)
+        f._state.expire_attributes(['bars'])
+        self.assertEquals(attributes.get_history(f._state, 'bars'), ([], [bar1, bar2, bar3], []))
+        
+    def test_collections_via_lazyload(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        lazy_load = []
+        def lazyload(instance):
+            def load():
+                return lazy_load
+            return load
+            
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+        attributes.register_attribute(Foo, 'bars', uselist=True, callable_=lazyload, trackparent=True, useobject=True)
+        
+        bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
+        lazy_load = [bar1, bar2, bar3]
+
+        f = Foo()
+        f.bars = []
+        self.assertEquals(attributes.get_history(f._state, 'bars'), ([], [], [bar1, bar2, bar3]))
+        
+        f = Foo()
+        f.bars.append(bar4)
+        self.assertEquals(attributes.get_history(f._state, 'bars'), ([bar4], [bar1, bar2, bar3], []) )
+
+        f = Foo()
+        f.bars.remove(bar2)
+        self.assertEquals(attributes.get_history(f._state, 'bars'), ([], [bar1, bar3], [bar2]))
+        f.bars.append(bar4)
+        self.assertEquals(attributes.get_history(f._state, 'bars'), ([bar4], [bar1, bar3], [bar2]))
+
+        f = Foo()
+        del f.bars[1]
+        self.assertEquals(attributes.get_history(f._state, 'bars'), ([], [bar1, bar3], [bar2]))
+    
+        lazy_load = None
+        f = Foo()
+        f.bars.append(bar2)
+        self.assertEquals(attributes.get_history(f._state, 'bars'), ([bar2], [], []))
+        
+    def test_scalar_via_lazyload(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        lazy_load = None
+        def lazyload(instance):
+            def load():
+                return lazy_load
+            return load
+            
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+        attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, trackparent=True, useobject=True)
+        bar1, bar2 = [Bar(id=1), Bar(id=2)]
+        lazy_load = bar1
+
+        f = Foo()
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([], [bar1], []))
+        
+        f = Foo()
+        f.bar = None
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([None], [], [bar1]))
+
+        f = Foo()
+        f.bar = bar2
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([bar2], [], [bar1]))
+        f.bar = bar1
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([], [bar1], []))
     
 if __name__ == "__main__":
     testbase.main()

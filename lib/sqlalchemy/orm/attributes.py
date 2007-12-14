@@ -429,11 +429,9 @@ class CollectionAttributeImpl(AttributeImpl):
                 return _create_history(self, state, current)
 
     def fire_append_event(self, state, value, initiator):
-        if self.key not in state.committed_state:
-            if self.key in state.dict:
-                state.committed_state[self.key] = self.copy(state.dict[self.key])
-            else:
-                state.committed_state[self.key] = NO_VALUE
+        if self.key not in state.committed_state and self.key in state.dict:
+            state.committed_state[self.key] = self.copy(state.dict[self.key])
+
         state.modified = True
 
         if self.trackparent and value is not None:
@@ -443,18 +441,13 @@ class CollectionAttributeImpl(AttributeImpl):
             ext.append(instance, value, initiator or self)
 
     def fire_pre_remove_event(self, state, initiator):
-        if self.key not in state.committed_state:
-            if self.key in state.dict:
-                state.committed_state[self.key] = self.copy(state.dict[self.key])
-            else:
-                state.committed_state[self.key] = NO_VALUE
+        if self.key not in state.committed_state and self.key in state.dict:
+            state.committed_state[self.key] = self.copy(state.dict[self.key])
 
     def fire_remove_event(self, state, value, initiator):
-        if self.key not in state.committed_state:
-            if self.key in state.dict:
-                state.committed_state[self.key] = self.copy(state.dict[self.key])
-            else:
-                state.committed_state[self.key] = NO_VALUE
+        if self.key not in state.committed_state and self.key in state.dict:
+            state.committed_state[self.key] = self.copy(state.dict[self.key])
+                
         state.modified = True
 
         if self.trackparent and value is not None:
@@ -492,12 +485,6 @@ class CollectionAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
-        if self.key not in state.committed_state:
-            if self.key in state.dict:
-                state.committed_state[self.key] = self.copy(state.dict[self.key])
-            else:
-                state.committed_state[self.key] = NO_VALUE
-                
         collection = self.get_collection(state, passive=passive)
         if collection is PASSIVE_NORESULT:
             state.get_pending(self.key).append(value)
@@ -508,12 +495,6 @@ class CollectionAttributeImpl(AttributeImpl):
     def remove(self, state, value, initiator, passive=False):
         if initiator is self:
             return
-
-        if self.key not in state.committed_state:
-            if self.key in state.dict:
-                state.committed_state[self.key] = self.copy(state.dict[self.key])
-            else:
-                state.committed_state[self.key] = NO_VALUE
 
         collection = self.get_collection(state, passive=passive)
         if collection is PASSIVE_NORESULT:
@@ -533,12 +514,6 @@ class CollectionAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
-        if self.key not in state.committed_state:
-            if self.key in state.dict:
-                state.committed_state[self.key] = self.copy(state.dict[self.key])
-            else:
-                state.committed_state[self.key] = NO_VALUE
-
         # we need a CollectionAdapter to adapt the incoming value to an
         # assignable iterable.  pulling a new collection first so that
         # an adaptation exception does not trigger a lazy load of the
@@ -547,6 +522,8 @@ class CollectionAttributeImpl(AttributeImpl):
         new_values = list(new_collection.adapt_like_to_iterable(value))
 
         old = self.get(state)
+        state.committed_state[self.key] = self.copy(old)
+        
         old_collection = self.get_collection(state, old)
 
         idset = util.IdentitySet
@@ -576,16 +553,30 @@ class CollectionAttributeImpl(AttributeImpl):
         """
 
         collection, user_data = self._build_collection(state)
-        self._load_collection(state, value or [], emit_events=False,
-                              collection=collection)
-        value = user_data
 
-        if state.committed_state is not None:
-            state.commit_attr(self, value)
-        # remove per-instance callable, if any
+        if value:
+            for item in value:
+                collection.append_without_event(item)
+
         state.callables.pop(self.key, None)
-        state.dict[self.key] = value
-        return value
+        state.dict[self.key] = user_data
+
+        if self.key in state.pending:
+            # pending items.  commit loaded data, add/remove new data
+            state.committed_state[self.key] = list(value or [])
+            added = state.pending[self.key].added_items
+            removed = state.pending[self.key].deleted_items
+            for item in added:
+                collection.append_without_event(item)
+            for item in removed:
+                collection.remove_without_event(item)
+            del state.pending[self.key]
+        elif self.key in state.committed_state:
+            # no pending items.  remove committed state if any.
+            # (this can occur with an expired attribute)
+            del state.committed_state[self.key]
+
+        return user_data
 
     def _build_collection(self, state):
         """build a new, blank collection and return it wrapped in a CollectionAdapter."""
@@ -594,34 +585,12 @@ class CollectionAttributeImpl(AttributeImpl):
         collection = collections.CollectionAdapter(self, state, user_data)
         return collection, user_data
 
-    def _load_collection(self, state, values, emit_events=True, collection=None):
-        """given an empty CollectionAdapter, load the collection with current values.
-        
-        Loads the collection from lazy callables in all cases.
-        """
-        
-        collection = collection or self.get_collection(state)
-        if values is None:
-            return
-
-        appender = emit_events and collection.append_with_event or collection.append_without_event
-        
-        if self.key in state.pending:
-            # move 'pending' items into the newly loaded collection
-            added = state.pending[self.key].added_items
-            removed = state.pending[self.key].deleted_items
-            for item in values:
-                if item not in removed:
-                    appender(item)
-            for item in added:
-                appender(item)
-            del state.pending[self.key]
-        else:
-            for item in values:
-                appender(item)
-
     def get_collection(self, state, user_data=None, passive=False):
-        """retrieve the CollectionAdapter associated with the given state."""
+        """retrieve the CollectionAdapter associated with the given state.
+        
+        Creates a new CollectionAdapter if one does not exist.
+        
+        """
         
         if user_data is None:
             user_data = self.get(state, passive=passive)

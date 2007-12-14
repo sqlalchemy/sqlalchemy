@@ -481,7 +481,7 @@ class MapperStub(object):
     """
 
     __metaclass__ = util.ArgSingleton
-
+    
     def __init__(self, parent, mapper, key):
         self.mapper = mapper
         self.base_mapper = self

@@ -310,11 +310,14 @@ class NonPKCascadeTest(ORMTest):
         sess.flush()
         a1 = u1.addresses[0]
         
+        self.assertEquals(select([addresses.c.username]).execute().fetchall(), [('jack',), ('jack',)])
+        
         assert sess.get(Address, a1.id) is u1.addresses[0]
 
         u1.username = 'ed'
         sess.flush()
         assert u1.addresses[0].username == 'ed'
+        self.assertEquals(select([addresses.c.username]).execute().fetchall(), [('ed',), ('ed',)])
 
         sess.clear()
         self.assertEquals([Address(username='ed'), Address(username='ed')], sess.query(Address).all())
@@ -329,13 +332,18 @@ class NonPKCascadeTest(ORMTest):
             self.assert_sql_count(testbase.db, go, 1) # test passive_updates=True; update user
         sess.clear()
         assert User(username='jack', addresses=[Address(username='jack'), Address(username='jack')]) == sess.get(User, u1.id)
-
+        sess.clear()
+        
         u1 = sess.get(User, u1.id)
         u1.addresses = []
         u1.username = 'fred'
         sess.flush()
         sess.clear()
-        assert sess.get(Address, a1.id).username is None
+        a1 = sess.get(Address, a1.id)
+        self.assertEquals(a1.username, None)
+
+        self.assertEquals(select([addresses.c.username]).execute().fetchall(), [(None,), (None,)])
+
         u1 = sess.get(User, u1.id)
         self.assertEquals(User(username='fred', fullname='jack'), u1)
 

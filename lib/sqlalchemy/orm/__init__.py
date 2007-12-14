@@ -592,9 +592,8 @@ def compile_mappers():
     This is equivalent to calling ``compile()`` on any individual mapper.
     """
 
-    if not _mapper_registry:
-        return
-    _mapper_registry.values()[0][0].compile()
+    for m in list(_mapper_registry):
+        m.compile()
 
 def clear_mappers():
     """Remove all mappers that have been created thus far.
@@ -604,11 +603,8 @@ def clear_mappers():
     """
     mapperlib._COMPILE_MUTEX.acquire()
     try:
-        for mapper in chain(*_mapper_registry.values()):
+        for mapper in _mapper_registry:
             mapper.dispose()
-        _mapper_registry.clear()
-        from sqlalchemy.orm import dependency
-        dependency.MapperStub.dispose(dependency.MapperStub)
     finally:
         mapperlib._COMPILE_MUTEX.release()
         

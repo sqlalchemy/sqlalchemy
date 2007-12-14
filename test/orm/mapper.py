@@ -163,6 +163,19 @@ class MapperTest(MapperSuperTest):
         mapper(Foo, addresses, inherits=User)
         assert getattr(Foo().__class__, 'user_name').impl is not None
 
+    def test_compileon_getprops(self):
+        m =mapper(User, users)
+        
+        assert not m.compiled
+        assert list(m.iterate_properties)
+        assert m.compiled
+        clear_mappers()
+        
+        m= mapper(User, users)
+        assert not m.compiled
+        assert m.get_property('user_name')
+        assert m.compiled
+        
     def test_add_property(self):
         assert_col = []
         class User(object):

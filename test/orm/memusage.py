@@ -182,7 +182,73 @@ class MemUsageTest(AssertMixin):
             for a in alist:
                 sess.delete(a)
             sess.flush()
-            clear_mappers()
+            
+            # dont need to clear_mappers()
+            del B
+            del A
+
+        metadata.create_all()
+        try:
+            go()
+        finally:
+            metadata.drop_all()
+
+    def test_with_manytomany(self):
+        metadata = MetaData(testbase.db)
+
+        table1 = Table("mytable", metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(30))
+            )
+
+        table2 = Table("mytable2", metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(30)),
+            )
+        
+        table3 = Table('t1tot2', metadata,
+            Column('t1', Integer, ForeignKey('mytable.col1')),
+            Column('t2', Integer, ForeignKey('mytable2.col1')),
+            )
+
+        @profile_memory
+        def go():
+            class A(Base):
+                pass
+            class B(Base):
+                pass
+
+            mapper(A, table1, properties={
+                'bs':relation(B, secondary=table3, backref='as')
+            })
+            mapper(B, table2)
+
+            sess = create_session()
+            a1 = A(col2='a1')
+            a2 = A(col2='a2')
+            b1 = B(col2='b1')
+            b2 = B(col2='b2')
+            a1.bs.append(b1)
+            a2.bs.append(b2)
+            for x in [a1,a2]:
+                sess.save(x)
+            sess.flush()
+            sess.clear()
+
+            alist = sess.query(A).all()
+            self.assertEquals(
+                [
+                    A(bs=[B(col2='b1')]), A(bs=[B(col2='b2')])
+                ], 
+                alist)
+
+            for a in alist:
+                sess.delete(a)
+            sess.flush()
+
+            # dont need to clear_mappers()
+            del B
+            del A
 
         metadata.create_all()
         try:

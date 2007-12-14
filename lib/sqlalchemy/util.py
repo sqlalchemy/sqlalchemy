@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import itertools, sys, warnings, sets
+import itertools, sys, warnings, sets, weakref
 import __builtin__
 
 from sqlalchemy import exceptions, logging
@@ -113,7 +113,7 @@ def flatten_iterator(x):
             yield elem
 
 class ArgSingleton(type):
-    instances = {}
+    instances = weakref.WeakValueDictionary()
 
     def dispose(cls):
         for key in list(ArgSingleton.instances):

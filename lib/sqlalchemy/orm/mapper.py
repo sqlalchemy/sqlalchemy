@@ -183,7 +183,14 @@ class Mapper(object):
                 return False
 
     def get_property(self, key, resolve_synonyms=False, raiseerr=True):
-        """return MapperProperty with the given key."""
+        """return a MapperProperty associated with the given key."""
+        
+        self.compile()
+        return self._get_property(key, resolve_synonyms=resolve_synonyms, raiseerr=raiseerr)
+
+    def _get_property(self, key, resolve_synonyms=False, raiseerr=True):
+        """private in-compilation version of get_property()."""
+        
         prop = self.__props.get(key, None)
         if resolve_synonyms:
             while isinstance(prop, SynonymProperty):
@@ -193,6 +200,7 @@ class Mapper(object):
         return prop
     
     def iterate_properties(self):
+        self.compile()
         return self.__props.itervalues()
     iterate_properties = property(iterate_properties, doc="returns an iterator of all MapperProperty objects.")
     
@@ -200,11 +208,15 @@ class Mapper(object):
         raise NotImplementedError("Public collection of MapperProperty objects is provided by the get_property() and iterate_properties accessors.")
     properties = property(properties)
     
+    compiled = property(lambda self:self.__props_init, doc="return True if this mapper is compiled")
+    
     def dispose(self):
         # disaable any attribute-based compilation
         self.__props_init = True
-        if hasattr(self.class_, 'c'):
+        try:
             del self.class_.c
+        except AttributeError:
+            pass
         if not self.non_primary and self.entity_name in self._class_state.mappers:
             del self._class_state.mappers[self.entity_name]
         if not self._class_state.mappers:
@@ -221,24 +233,16 @@ class Mapper(object):
             # double-check inside mutex
             if self.__props_init:
                 return self
+                
             # initialize properties on all mappers
-            for mapper in chain(*_mapper_registry.values()):
+            for mapper in list(_mapper_registry):
                 if not mapper.__props_init:
                     mapper.__initialize_properties()
-
-            # if we're not primary, compile us
-            if self.non_primary:
-                self.__initialize_properties()
 
             return self
         finally:
             _COMPILE_MUTEX.release()
 
-    def _check_compile(self):
-        if self.non_primary and not self.__props_init:
-            self.__initialize_properties()
-        return self
-        
     def __initialize_properties(self):
         """Call the ``init()`` method on all ``MapperProperties``
         attached to this mapper.
@@ -727,6 +731,7 @@ class Mapper(object):
 
         if self.non_primary:
             self._class_state = self.class_._class_state
+            _mapper_registry[self] = True
             return
 
         if not self.non_primary and '_class_state' in self.class_.__dict__ and (self.entity_name in self.class_._class_state.mappers):
@@ -743,15 +748,9 @@ class Mapper(object):
         attributes.register_class(self.class_, extra_init=extra_init, on_exception=on_exception)
         
         self._class_state = self.class_._class_state
-        if self._class_state not in _mapper_registry:
-            _mapper_registry[self._class_state] = []
+        _mapper_registry[self] = True
 
-        _COMPILE_MUTEX.acquire()
-        try:
-            _mapper_registry[self._class_state].append(self)
-            self.class_._class_state.mappers[self.entity_name] = self
-        finally:
-            _COMPILE_MUTEX.release()
+        self.class_._class_state.mappers[self.entity_name] = self
 
         for ext in util.to_list(self.extension, []):
             ext.instrument_class(self, self.class_)
