@@ -138,7 +138,24 @@ CHANGES
      mapper.pks_by_table, mapper.cascade_callable(), 
      MapperProperty.cascade_callable(), mapper.canload(),
      mapper._mapper_registry, attributes.AttributeManager
-     
+
+   - Assigning an incompatible collection type to a relation attribute now
+     raises TypeError instead of sqlalchemy's ArgumentError.
+
+   - Bulk assignment of a MappedCollection now raises an error if a key in the
+     incoming dictionary does not match the key that the collection's keyfunc
+     would use for that value. [ticket:886]
+
+   - Custom collections can now specify a @converter method to translate
+     objects used in "bulk" assignment into a stream of values, as in::
+
+        obj.col = [newval1, newval2]
+        # or
+        obj.dictcol = {'foo': newval1, 'bar': newval2}
+
+     The MappedCollection uses this hook to ensure that incoming key/value
+     pairs are sane from the collection's perspective.
+
    - fixed endless loop issue when using lazy="dynamic" on both 
      sides of a bi-directional relationship [ticket:872]
 
@@ -171,7 +188,7 @@ CHANGES
 
    - fixed bug which could arise when using session.begin_nested() in conjunction
      with more than one level deep of enclosing session.begin() statements
-     
+
 - dialects
 
    - MSSQL/PyODBC no longer has a global "set nocount on".

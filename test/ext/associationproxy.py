@@ -288,13 +288,13 @@ class CustomDictTest(DictTest):
         try:
             p1._children = []
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(True)
 
         try:
             p1._children = None
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(True)
 
         self.assertRaises(TypeError, set, [p1.children])
@@ -404,13 +404,13 @@ class SetTest(_CollectionOperations):
         try:
             p1._children = []
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(True)
 
         try:
             p1._children = None
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(True)
 
         self.assertRaises(TypeError, set, [p1.children])

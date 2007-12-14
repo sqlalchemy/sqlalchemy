@@ -193,6 +193,30 @@ def duck_type_collection(specimen, default=None):
     else:
         return default
 
+def dictlike_iteritems(dictlike):
+    """Return a (key, value) iterator for almost any dict-like object."""
+
+    if hasattr(dictlike, 'iteritems'):
+        return dictlike.iteritems()
+    elif hasattr(dictlike, 'items'):
+        return iter(dictlike.items())
+
+    getter = getattr(dictlike, '__getitem__', getattr(dictlike, 'get', None))
+    if getter is None:
+        raise TypeError(
+            "Object '%r' is not dict-like" % dictlike)
+
+    if hasattr(dictlike, 'iterkeys'):
+        def iterator():
+            for key in dictlike.iterkeys():
+                yield key, getter(key)
+        return iterator()
+    elif hasattr(dictlike, 'keys'):
+        return iter([(key, getter(key)) for key in dictlike.keys()])
+    else:
+        raise TypeError(
+            "Object '%r' is not dict-like" % dictlike)
+
 def assert_arg_type(arg, argtype, name):
     if isinstance(arg, argtype):
         return arg

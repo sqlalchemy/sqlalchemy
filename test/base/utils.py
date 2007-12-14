@@ -14,7 +14,7 @@ class OrderedDictTest(PersistTest):
 
         self.assert_(o.keys() == ['a', 'b', 'snack', 'c'])
         self.assert_(o.values() == [1, 2, 'attack', 3])
-    
+
         o.pop('snack')
 
         self.assert_(o.keys() == ['a', 'b', 'c'])
@@ -49,7 +49,7 @@ class ColumnCollectionTest(PersistTest):
             assert False
         except exceptions.ArgumentError, e:
             assert str(e) == "__contains__ requires a string argument"
-            
+
     def test_compare(self):
         cc1 = sql.ColumnCollection()
         cc2 = sql.ColumnCollection()
@@ -66,23 +66,24 @@ class ColumnCollectionTest(PersistTest):
 class ArgSingletonTest(unittest.TestCase):
     def test_cleanout(self):
         util.ArgSingleton.instances.clear()
-        
+
         class MyClass(object):
             __metaclass__ = util.ArgSingleton
             def __init__(self, x, y):
                 self.x = x
                 self.y = y
-        
+
         m1 = MyClass(3, 4)
         m2 = MyClass(1, 5)
         m3 = MyClass(3, 4)
         assert m1 is m3
         assert m2 is not m3
         assert len(util.ArgSingleton.instances) == 2
-        
+
         m1 = m2 = m3 = None
         MyClass.dispose(MyClass)
         assert len(util.ArgSingleton.instances) == 0
+
 
 class ImmutableSubclass(str):
     pass
@@ -220,6 +221,77 @@ class IdentitySetTest(unittest.TestCase):
 
         self.assertRaises(TypeError, cmp, ids)
         self.assertRaises(TypeError, hash, ids)
+
+
+class DictlikeIteritemsTest(unittest.TestCase):
+    baseline = set([('a', 1), ('b', 2), ('c', 3)])
+
+    def _ok(self, instance):
+        iterator = util.dictlike_iteritems(instance)
+        self.assertEquals(set(iterator), self.baseline)
+
+    def _notok(self, instance):
+        self.assertRaises(TypeError,
+                          util.dictlike_iteritems,
+                          instance)
+
+    def test_dict(self):
+        d = dict(a=1,b=2,c=3)
+        self._ok(d)
+
+    def test_subdict(self):
+        class subdict(dict):
+            pass
+        d = subdict(a=1,b=2,c=3)
+        self._ok(d)
+
+    def test_UserDict(self):
+        import UserDict
+        d = UserDict.UserDict(a=1,b=2,c=3)
+        self._ok(d)
+
+    def test_object(self):
+        self._notok(object())
+
+    def test_duck_1(self):
+        class duck1(object):
+            def iteritems(duck):
+                return iter(self.baseline)
+        self._ok(duck1())
+
+    def test_duck_2(self):
+        class duck2(object):
+            def items(duck):
+                return list(self.baseline)
+        self._ok(duck2())
+
+    def test_duck_3(self):
+        class duck3(object):
+            def iterkeys(duck):
+                return iter(['a', 'b', 'c'])
+            def __getitem__(duck, key):
+                return dict(a=1,b=2,c=3).get(key)
+        self._ok(duck3())
+
+    def test_duck_4(self):
+        class duck4(object):
+            def iterkeys(duck):
+                return iter(['a', 'b', 'c'])
+        self._notok(duck4())
+
+    def test_duck_5(self):
+        class duck5(object):
+            def keys(duck):
+                return ['a', 'b', 'c']
+            def get(duck, key):
+                return dict(a=1,b=2,c=3).get(key)
+        self._ok(duck5())
+
+    def test_duck_6(self):
+        class duck6(object):
+            def keys(duck):
+                return ['a', 'b', 'c']
+        self._notok(duck6())
 
 
 if __name__ == "__main__":

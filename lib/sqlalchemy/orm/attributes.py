@@ -476,29 +476,22 @@ class CollectionAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
-        setting_type = util.duck_type_collection(value)
-
-        if value is None or setting_type != self.collection_interface:
-            raise exceptions.ArgumentError(
-                "Incompatible collection type on assignment: %s is not %s-like" %
-                (type(value).__name__, self.collection_interface.__name__))
-
-        if hasattr(value, '_sa_adapter'):
-            value = list(getattr(value, '_sa_adapter'))
-        elif setting_type == dict:
-            value = value.values()
+        # we need a CollectionAdapter to adapt the incoming value to an
+        # assignable iterable.  pulling a new collection first so that
+        # an adaptation exception does not trigger a lazy load of the
+        # old collection.
+        new_collection, user_data = self._build_collection(state)
+        new_values = list(new_collection.adapt_like_to_iterable(value))
 
         old = self.get(state)
         old_collection = self.get_collection(state, old)
-        
-        new_collection, user_data = self._build_collection(state)
 
         idset = util.IdentitySet
-        constants = idset(old_collection or []).intersection(value or [])
-        additions = idset(value or []).difference(constants)
+        constants = idset(old_collection or []).intersection(new_values or [])
+        additions = idset(new_values or []).difference(constants)
         removals  = idset(old_collection or []).difference(constants)
 
-        for member in value or []:
+        for member in new_values or ():
             if member in additions:
                 new_collection.append_with_event(member)
             elif member in constants:
