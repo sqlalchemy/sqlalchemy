@@ -4,19 +4,77 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""
+Firebird backend
+================
+
+This module implements the Firebird backend, thru the kinterbasdb_
+DBAPI module.
+
+Firebird dialects
+-----------------
+
+Firebird offers two distinct dialects_ (not to be confused with the
+SA ``Dialect`` thing):
+
+dialect 1
+  This is the old syntax and behaviour, inherited from Interbase pre-6.0.
+
+dialect 3
+  This is the newer and supported syntax, introduced in Interbase 6.0.
+
+From the user point of view, the biggest change is in date/time
+handling: under dialect 1, there's a single kind of field, ``DATE``
+with a synonim ``DATETIME``, that holds a `timestamp` value, that is a
+date with hour, minute, second. Under dialect 3 there are three kinds,
+a ``DATE`` that holds a date, a ``TIME`` that holds a *time of the
+day* value and a ``TIMESTAMP``, equivalent to the old ``DATE``.
+
+The problem is that the dialect of a Firebird database is a property
+of the database itself [#]_ (that is, any single database has been
+created with one dialect or the other: there is no way to change the
+after creation). SQLAlchemy has a single instance of the class that
+controls all the connections to a particular kind of database, so it
+cannot easily differentiate between the two modes, and in particular
+it **cannot** simultaneously talk with two distinct Firebird databases
+with different dialects.
+
+By default this module is biased toward dialect 3, but you can easily
+tweak it to handle dialect 1 if needed::
+
+  from sqlalchemy import types as sqltypes
+  from sqlalchemy.databases.firebird import FBCompiler, FBDate, colspecs, ischema_names
+
+  # Change the name of the function ``length`` to use the UDF version
+  # instead of ``char_length``
+  FBCompiler.LENGTH_FUNCTION_NAME = 'strlen'
+
+  # Adjust the mapping of the timestamp kind
+  ischema_names['TIMESTAMP'] = FBDate
+  colspecs[sqltypes.DateTime] = FBDate,
+
+
+.. [#] Well, that is not the whole story, as the client may still ask
+       a different (lower) dialect...
+
+.. _dialects: http://mc-computing.com/Databases/Firebird/SQL_Dialect.html
+.. _kinterbasdb: http://sourceforge.net/projects/kinterbasdb
+"""
+
 
 import datetime
 import warnings
 
-from sqlalchemy import exceptions, pool, schema, types as sqltypes, util
+from sqlalchemy import exceptions, pool, schema, types as sqltypes, sql, util
 from sqlalchemy.engine import base, default
-from sqlalchemy.sql import compiler, operators as sqloperators, text
 
 
 _initialized_kb = False
 
 
 class FBNumeric(sqltypes.Numeric):
+    """Handle ``NUMERIC(precision,length)`` datatype."""
+
     def get_col_spec(self):
         if self.precision is None:
             return "NUMERIC"
@@ -40,6 +98,8 @@ class FBNumeric(sqltypes.Numeric):
 
 
 class FBFloat(sqltypes.Float):
+    """Handle ``FLOAT(precision)`` datatype."""
+
     def get_col_spec(self):
         if not self.precision:
             return "FLOAT"
@@ -48,16 +108,22 @@ class FBFloat(sqltypes.Float):
 
 
 class FBInteger(sqltypes.Integer):
+    """Handle ``INTEGER`` datatype."""
+
     def get_col_spec(self):
         return "INTEGER"
 
 
 class FBSmallInteger(sqltypes.Smallinteger):
+    """Handle ``SMALLINT`` datatype."""
+
     def get_col_spec(self):
         return "SMALLINT"
 
 
 class FBDateTime(sqltypes.DateTime):
+    """Handle ``TIMESTAMP`` datatype."""
+
     def get_col_spec(self):
         return "TIMESTAMP"
 
@@ -73,36 +139,50 @@ class FBDateTime(sqltypes.DateTime):
 
 
 class FBDate(sqltypes.DateTime):
+    """Handle ``DATE`` datatype."""
+
     def get_col_spec(self):
         return "DATE"
 
 
 class FBTime(sqltypes.Time):
+    """Handle ``TIME`` datatype."""
+
     def get_col_spec(self):
         return "TIME"
 
 
 class FBText(sqltypes.TEXT):
+    """Handle ``BLOB SUB_TYPE 1`` datatype (aka *textual* blob)."""
+
     def get_col_spec(self):
         return "BLOB SUB_TYPE 1"
 
 
 class FBString(sqltypes.String):
+    """Handle ``VARCHAR(length)`` datatype."""
+
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
 
 
 class FBChar(sqltypes.CHAR):
+    """Handle ``CHAR(length)`` datatype."""
+
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
 
 
 class FBBinary(sqltypes.Binary):
+    """Handle ``BLOB SUB_TYPE 0`` datatype (aka *binary* blob)."""
+
     def get_col_spec(self):
         return "BLOB SUB_TYPE 0"
 
 
 class FBBoolean(sqltypes.Boolean):
+    """Handle boolean values as a ``SMALLINT`` datatype."""
+
     def get_col_spec(self):
         return "SMALLINT"
 
@@ -136,7 +216,7 @@ ischema_names = {
   'TIMESTAMP': lambda r: FBDateTime(),
     'VARYING': lambda r: FBString(r['flen']),
     'CSTRING': lambda r: FBChar(r['flen']),
-       'BLOB': lambda r: r['stype']==1 and FBText() or FBBinary
+       'BLOB': lambda r: r['stype']==1 and FBText() or FBBinary()
       }
 
 
@@ -156,6 +236,8 @@ class FBExecutionContext(default.DefaultExecutionContext):
 
 
 class FBDialect(default.DefaultDialect):
+    """Firebird dialect"""
+
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
     max_identifier_length = 31
@@ -195,6 +277,8 @@ class FBDialect(default.DefaultDialect):
         return sqltypes.adapt_type(typeobj, colspecs)
 
     def _normalize_name(self, name):
+        """Convert the name to lowercase if it is possible"""
+
         # Remove trailing spaces: FB uses a CHAR() type,
         # that is padded with spaces
         name = name and name.rstrip()
@@ -206,6 +290,8 @@ class FBDialect(default.DefaultDialect):
             return name
 
     def _denormalize_name(self, name):
+        """Revert a *normalized* name to its uppercase equivalent"""
+
         if name is None:
             return None
         elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower()):
@@ -214,6 +300,8 @@ class FBDialect(default.DefaultDialect):
             return name
 
     def table_names(self, connection, schema):
+        """Return a list of *normalized* table names omitting system relations."""
+
         s = """
         SELECT r.rdb$relation_name
         FROM rdb$relations r
@@ -222,6 +310,8 @@ class FBDialect(default.DefaultDialect):
         return [self._normalize_name(row[0]) for row in connection.execute(s)]
 
     def has_table(self, connection, table_name, schema=None):
+        """Return ``True`` if the given table exists, ignoring the `schema`."""
+
         tblqry = """
         SELECT 1 FROM rdb$database
         WHERE EXISTS (SELECT rdb$relation_name
@@ -236,6 +326,8 @@ class FBDialect(default.DefaultDialect):
             return False
 
     def has_sequence(self, connection, sequence_name):
+        """Return ``True`` if the given sequence (generator) exists."""
+
         genqry = """
         SELECT 1 FROM rdb$database
         WHERE EXISTS (SELECT rdb$generator_name
@@ -335,7 +427,7 @@ class FBDialect(default.DefaultDialect):
             if row['fdefault'] is not None:
                 # the value comes down as "DEFAULT 'value'"
                 defvalue = row['fdefault'][8:]
-                args.append(schema.PassiveDefault(text(defvalue)))
+                args.append(schema.PassiveDefault(sql.text(defvalue)))
 
             table.append_column(schema.Column(*args, **kw))
 
@@ -374,14 +466,14 @@ class FBDialect(default.DefaultDialect):
         connection.commit(True)
 
 
-class FBCompiler(compiler.DefaultCompiler):
+class FBCompiler(sql.compiler.DefaultCompiler):
     """Firebird specific idiosincrasies"""
 
     # Firebird lacks a builtin modulo operator, but there is
     # an equivalent function in the ib_udf library.
-    operators = compiler.DefaultCompiler.operators.copy()
+    operators = sql.compiler.DefaultCompiler.operators.copy()
     operators.update({
-        sqloperators.mod : lambda x, y:"mod(%s, %s)" % (x, y)
+        sql.operators.mod : lambda x, y:"mod(%s, %s)" % (x, y)
         })
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
@@ -420,16 +512,25 @@ class FBCompiler(compiler.DefaultCompiler):
 
     def limit_clause(self, select):
         """Already taken care of in the `get_select_precolumns` method."""
+
         return ""
 
+    LENGTH_FUNCTION_NAME = 'char_length'
     def function_string(self, func):
-        """Use the ``strlen`` UDF for the ``length`` function."""
+        """Substitute the ``length`` function.
+
+        On newer FB there is a ``char_length`` function, while older
+        ones need the ``strlen`` UDF.
+        """
+
         if func.name == 'length':
-            return "strlen%(expr)s"
+            return self.LENGTH_FUNCTION_NAME + '%(expr)s'
         return super(FBCompiler, self).function_string(func)
 
 
-class FBSchemaGenerator(compiler.SchemaGenerator):
+class FBSchemaGenerator(sql.compiler.SchemaGenerator):
+    """Firebird syntactic idiosincrasies"""
+
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
         colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
@@ -444,18 +545,28 @@ class FBSchemaGenerator(compiler.SchemaGenerator):
         return colspec
 
     def visit_sequence(self, sequence):
+        """Generate a ``CREATE GENERATOR`` statement for the sequence."""
+
         self.append("CREATE GENERATOR %s" % self.preparer.format_sequence(sequence))
         self.execute()
 
 
-class FBSchemaDropper(compiler.SchemaDropper):
+class FBSchemaDropper(sql.compiler.SchemaDropper):
+    """Firebird syntactic idiosincrasies"""
+
     def visit_sequence(self, sequence):
+        """Generate a ``DROP GENERATOR`` statement for the sequence."""
+
         self.append("DROP GENERATOR %s" % self.preparer.format_sequence(sequence))
         self.execute()
 
 
 class FBDefaultRunner(base.DefaultRunner):
+    """Firebird specific idiosincrasies"""
+
     def visit_sequence(self, seq):
+        """Get the next value from the sequence using ``gen_id()``."""
+
         return self.execute_string("SELECT gen_id(%s, 1) FROM rdb$database" % \
             self.dialect.identifier_preparer.format_sequence(seq))
 
@@ -501,7 +612,9 @@ RESERVED_WORDS = util.Set(
      "whenever", "where", "while", "with", "work", "write", "year", "yearday" ])
 
 
-class FBIdentifierPreparer(compiler.IdentifierPreparer):
+class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
+    """Install Firebird specific reserved words."""
+
     reserved_words = RESERVED_WORDS
 
     def __init__(self, dialect):
