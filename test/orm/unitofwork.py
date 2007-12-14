@@ -762,10 +762,10 @@ class DefaultTest(ORMTest):
         mapper(Hoho, default_table)
         h1 = Hoho()
         Session.commit()
-        self.assert_(h1.foober == 'im foober')
+        self.assertEquals(h1.foober, 'im foober')
         h1.counter = 19
         Session.commit()
-        self.assert_(h1.foober == 'im the update')
+        self.assertEquals(h1.foober, 'im the update')
 
 class OneToManyTest(ORMTest):
     metadata = tables.metadata

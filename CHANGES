@@ -78,10 +78,23 @@ CHANGES
      new behavior allows not just joins from the main table, but select 
      statements as well.  Filter criterion, order bys, eager load
      clauses will be "aliased" against the given statement.
-
+  
+   - this month's refactoring of attribute instrumentation changes
+     the "copy-on-load" behavior we've had since midway through 0.3
+     with "copy-on-modify" in most cases.  This takes a sizable chunk
+     of latency out of load operations and overall does less work
+     as only attributes which are actually modified get their 
+     "committed state" copied.  Only "mutable scalar" attributes
+     (i.e. a pickled object or other mutable item), the reason for 
+     the copy-on-load change in the first place, retain the old 
+     behavior.
+     
    - query.filter(SomeClass.somechild == None), when comparing
      a many-to-one property to None, properly generates "id IS NULL"
      including that the NULL is on the right side.
+
+   - query.order_by() takes into account aliased joins, i.e.
+     query.join('orders', aliased=True).order_by(Order.id)
      
    - eagerload(), lazyload(), eagerload_all() take an optional 
      second class-or-mapper argument, which will select the mapper

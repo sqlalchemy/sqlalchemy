@@ -174,6 +174,9 @@ class AliasedClauses(object):
     def adapt_clause(self, clause):
         return sql_util.ClauseAdapter(self.alias).traverse(clause, clone=True)
     
+    def adapt_list(self, clauses):
+        return sql_util.ClauseAdapter(self.alias).copy_and_process(clauses)
+        
     def _create_row_adapter(self):
         """Return a callable which, 
         when passed a RowProxy, will return a new dict-like object

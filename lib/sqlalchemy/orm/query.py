@@ -8,11 +8,13 @@ from sqlalchemy import sql, util, exceptions, logging
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import expression, visitors, operators
 from sqlalchemy.orm import mapper, object_mapper
+from sqlalchemy.orm.mapper import _state_mapper
 from sqlalchemy.orm import util as mapperutil
 from itertools import chain
 import warnings
 
 __all__ = ['Query', 'QueryContext']
+
 
 class Query(object):
     """Encapsulates the object-fetching operations provided by Mappers."""
@@ -504,6 +506,11 @@ class Query(object):
         """apply one or more ORDER BY criterion to the query and return the newly resulting ``Query``"""
 
         q = self._no_statement("order_by")
+        
+        if self._aliases is not None:
+            criterion = [expression._literal_as_text(o) for o in util.to_list(criterion) or []]
+            criterion = self._aliases.adapt_list(criterion)
+        
         if q._order_by is False:    
             q._order_by = util.to_list(criterion)
         else:
@@ -737,23 +744,31 @@ class Query(object):
             result.close()
 
     def instances(self, cursor, *mappers_or_columns, **kwargs):
-        """Return a list of mapped instances corresponding to the rows
-        in a given *cursor* (i.e. ``ResultProxy``).
-        
-        The \*mappers_or_columns and \**kwargs arguments are deprecated.
-        To add instances or columns to the results, use add_entity()
-        and add_column().
-        """
-
         session = self.session
 
         context = kwargs.pop('querycontext', None)
         if context is None:
             context = QueryContext(self)
-
-        process = []
+        
+        context.runid = _new_runid()
+        
         mappers_or_columns = tuple(self._entities) + mappers_or_columns
-        if mappers_or_columns:
+        tuples = bool(mappers_or_columns)
+
+        if self._primary_adapter:
+            def main(context, row):
+                return self.select_mapper._instance(context, self._primary_adapter(row), None, 
+                    extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance
+                )
+        else:
+            def main(context, row):
+                return self.select_mapper._instance(context, row, None, 
+                    extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance
+                )
+        
+        if tuples:
+            process = []
+            process.append(main)
             for tup in mappers_or_columns:
                 if isinstance(tup, tuple):
                     (m, alias, alias_id) = tup
@@ -761,63 +776,46 @@ class Query(object):
                 else:
                     clauses = alias = alias_id = None
                     m = tup
+
                 if isinstance(m, type):
                     m = mapper.class_mapper(m)
+
                 if isinstance(m, mapper.Mapper):
                     def x(m):
                         row_adapter = clauses is not None and clauses.row_decorator or (lambda row: row)
-                        appender = []
                         def proc(context, row):
-                            if not m._instance(context, row_adapter(row), appender):
-                                appender.append(None)
-                        process.append((proc, appender))
+                            return m._instance(context, row_adapter(row), None)
+                        process.append(proc)
                     x(m)
                 elif isinstance(m, (sql.ColumnElement, basestring)):
                     def y(m):
                         row_adapter = clauses is not None and clauses.row_decorator or (lambda row: row)
-                        res = []
                         def proc(context, row):
-                            res.append(row_adapter(row)[m])
-                        process.append((proc, res))
+                            return row_adapter(row)[m]
+                        process.append(proc)
                     y(m)
                 else:
                     raise exceptions.InvalidRequestError("Invalid column expression '%r'" % m)
-                    
-            result = []
+
+        context.progress = util.Set()    
+        if tuples:
+            rows = util.OrderedSet()
+            for row in cursor.fetchall():
+                rows.add(tuple(proc(context, row) for proc in process))
         else:
-            result = util.UniqueAppender([])
-        
-        primary_mapper_args = dict(extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance)
-        
-        for row in cursor.fetchall():
-            if self._primary_adapter:
-                self.select_mapper._instance(context, self._primary_adapter(row), result, **primary_mapper_args)
-            else:
-                self.select_mapper._instance(context, row, result, **primary_mapper_args)
-            for proc in process:
-                proc[0](context, row)
+            rows = util.UniqueAppender([])
+            for row in cursor.fetchall():
+                rows.append(main(context, row))
 
-        for instance in context.identity_map.values():
-            context.attributes.get(('populating_mapper', id(instance)), object_mapper(instance))._post_instance(context, instance)
-
-        # "refresh_instance" may be loaded from a row which has no primary key columns to identify it.
-        # this occurs during the load of the "joined" table in a joined-table inheritance mapper, and saves
-        # the need to join to the primary table in those cases.
-        if context.refresh_instance and context.only_load_props and context.refresh_instance.dict['_instance_key'] in context.identity_map:
-            # if refreshing partial instance, do special state commit
-            # affecting only the refreshed attributes
+        if context.refresh_instance and context.only_load_props and context.refresh_instance in context.progress:
             context.refresh_instance.commit(context.only_load_props)
-            del context.identity_map[context.refresh_instance.dict['_instance_key']]
-            
-        # store new stuff in the identity map
-        for instance in context.identity_map.values():
-            session._register_persistent(instance)
-        
-        if mappers_or_columns:
-            return list(util.OrderedSet(zip(*([result] + [o[1] for o in process]))))
-        else:
-            return result.data
+            context.progress.remove(context.refresh_instance)
 
+        for ii in context.progress:
+            context.attributes.get(('populating_mapper', ii), _state_mapper(ii))._post_instance(context, ii)
+            ii.commit_all()
+
+        return list(rows)
 
     def _get(self, key=None, ident=None, refresh_instance=None, lockmode=None, only_load_props=None):
         lockmode = lockmode or self._lockmode
@@ -1323,7 +1321,6 @@ class QueryContext(object):
         self.version_check = query._version_check
         self.only_load_props = query._only_load_props
         self.refresh_instance = query._refresh_instance
-        self.identity_map = {}
         self.path = ()
         self.primary_columns = []
         self.secondary_columns = []
@@ -1339,4 +1336,16 @@ class QueryContext(object):
             return func(*args, **kwargs)
         finally:
             self.path = oldpath
+
+_runid = 1
+_id_lock = util.threading.Lock()
+
+def _new_runid():
+    global _runid
+    _id_lock.acquire()
+    try:
+        _runid += 1
+        return _runid
+    finally:
+        _id_lock.release()
 

@@ -1207,8 +1207,8 @@ class MapperExtensionTest(MapperSuperTest):
         sess.flush()
         sess.delete(u)
         sess.flush()
-        assert methods == set(['load', 'append_result', 'before_delete', 'create_instance', 'translate_row', 'get',
-                'after_delete', 'after_insert', 'before_update', 'before_insert', 'after_update', 'populate_instance'])
+        self.assertEquals(methods, set(['load', 'before_delete', 'create_instance', 'translate_row', 'get',
+                'after_delete', 'after_insert', 'before_update', 'before_insert', 'after_update', 'populate_instance']))
 
 
 class RequirementsTest(AssertMixin):

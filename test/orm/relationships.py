@@ -344,6 +344,7 @@ class RelationTest3(PersistTest):
 
         s.save(j1)
         s.save(j2)
+        
         s.flush()
 
         s.clear()
@@ -366,10 +367,10 @@ class RelationTest4(ORMTest):
         tableA = Table("A", metadata,
             Column("id",Integer,primary_key=True),
             Column("foo",Integer,),
-            )
+            test_needs_fk=True)
         tableB = Table("B",metadata,
                 Column("id",Integer,ForeignKey("A.id"),primary_key=True),
-                )
+                test_needs_fk=True)
     def test_no_delete_PK_AtoB(self):
         """test that A cant be deleted without B because B would have no PK value"""
         class A(object):pass
@@ -406,26 +407,6 @@ class RelationTest4(ORMTest):
         sess.flush()
         b1.a = None
         try:
-            sess.flush()
-            assert False
-        except exceptions.AssertionError, e:
-            assert str(e).startswith("Dependency rule tried to blank-out primary key column 'B.id' on instance ")
-
-    def test_no_nullPK_BtoA(self):
-        class A(object):pass
-        class B(object):pass
-        mapper(B, tableB, properties={
-            'a':relation(A, cascade="save-update")
-        })
-        mapper(A, tableA)
-        b1 = B()
-        b1.a = None
-        sess = create_session()
-        sess.save(b1)
-        try:
-            # this raises an error as of r3695.  in that rev, the attributes package was modified so that a
-            # setting of "None" shows up as a change, which in turn fires off dependency.py and then triggers
-            # the rule.
             sess.flush()
             assert False
         except exceptions.AssertionError, e:

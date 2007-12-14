@@ -603,8 +603,7 @@ class EagerLoader(AbstractRelationLoader):
                         # so that we further descend into properties
                         self.select_mapper._instance(selectcontext, decorated_row, None)
                 else:
-                    appender_key = ('appender', id(instance), self.key)
-                    if isnew or appender_key not in selectcontext.attributes:
+                    if isnew or self.key not in instance._state.appenders:
                         # appender_key can be absent from selectcontext.attributes with isnew=False
                         # when self-referential eager loading is used; the same instance may be present
                         # in two distinct sets of result columns
@@ -615,10 +614,9 @@ class EagerLoader(AbstractRelationLoader):
                         collection = attributes.init_collection(instance, self.key)
                         appender = util.UniqueAppender(collection, 'append_without_event')
 
-                        # store it in the "scratch" area, which is local to this load operation.
-                        selectcontext.attributes[appender_key] = appender
+                        instance._state.appenders[self.key] = appender
                     
-                    result_list = selectcontext.attributes[appender_key]
+                    result_list = instance._state.appenders[self.key]
                     if self._should_log_debug:
                         self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
 

@@ -575,7 +575,7 @@ class CollectionAdapter(object):
             self.attr.fire_append_event(self.owner_state, item, initiator)
 
     def fire_remove_event(self, item, initiator=None):
-        """Notify that a entity has entered the collection.
+        """Notify that a entity has been removed from the collection.
 
         Initiator is the InstrumentedAttribute that initiated the membership
         mutation, and should be left as None unless you are passing along
@@ -585,6 +585,15 @@ class CollectionAdapter(object):
         if initiator is not False and item is not None:
             self.attr.fire_remove_event(self.owner_state, item, initiator)
 
+    def fire_pre_remove_event(self, initiator=None):
+        """Notify that an entity is about to be removed from the collection.
+        
+        Only called if the entity cannot be removed after calling 
+        fire_remove_event().
+        """
+        
+        self.attr.fire_pre_remove_event(self.owner_state, initiator=initiator)
+        
     def __getstate__(self):
         return { 'key': self.attr.key,
                  'owner_state': self.owner_state,
@@ -838,6 +847,13 @@ def __del(collection, item, _sa_initiator=None):
         if executor:
             getattr(executor, 'fire_remove_event')(item, _sa_initiator)
 
+def __before_delete(collection, _sa_initiator=None):
+    """Special method to run 'commit existing value' methods"""
+
+    executor = getattr(collection, '_sa_adapter', None)
+    if executor:
+        getattr(executor, 'fire_pre_remove_event')(_sa_initiator)
+    
 def _list_decorators():
     """Hand-turned instrumentation wrappers that can decorate any list-like
     class."""
@@ -862,6 +878,7 @@ def _list_decorators():
     def remove(fn):
         def remove(self, value, _sa_initiator=None):
             # testlib.pragma exempt:__eq__
+            __before_delete(self, _sa_initiator)
             fn(self, value)
             __del(self, value, _sa_initiator)
         _tidy(remove)
@@ -953,6 +970,7 @@ def _list_decorators():
 
     def pop(fn):
         def pop(self, index=-1):
+            __before_delete(self)
             item = fn(self, index)
             __del(self, item)
             return item
@@ -1011,6 +1029,7 @@ def _dict_decorators():
 
     def popitem(fn):
         def popitem(self):
+            __before_delete(self)
             item = fn(self)
             __del(self, item[1])
             return item
@@ -1098,6 +1117,7 @@ def _set_decorators():
 
     def pop(fn):
         def pop(self):
+            __before_delete(self)
             item = fn(self)
             __del(self, item)
             return item

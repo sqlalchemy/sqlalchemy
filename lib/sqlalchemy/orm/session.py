@@ -1015,11 +1015,6 @@ class Session(object):
         self._attach(instance)
         self.uow.register_deleted(instance)
 
-    def _register_persistent(self, instance):
-        instance._sa_session_id = self.hash_key
-        self.identity_map[instance._instance_key] = instance
-        instance._state.commit_all()
-
     def _attach(self, instance):
         old_id = getattr(instance, '_sa_session_id', None)
         if old_id != self.hash_key:

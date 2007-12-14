@@ -87,7 +87,7 @@ class ExpireTest(FixtureTest):
 
         orders.update(id=3).execute(description='order 3 modified')
         assert o.isopen == 1
-        assert o._state.committed_state['description'] == 'order 3 modified'
+        assert o._state.dict['description'] == 'order 3 modified'
         def go():
             sess.flush()
         self.assert_sql_count(testbase.db, go, 0)
@@ -158,14 +158,14 @@ class ExpireTest(FixtureTest):
         sess.expire(o, attribute_names=['description'])
         assert 'id' in o.__dict__
         assert 'description' not in o.__dict__
-        assert o._state.committed_state['isopen'] == 1
+        assert o._state.dict['isopen'] == 1
         
         orders.update(orders.c.id==3).execute(description='order 3 modified')
         
         def go():
             assert o.description == 'order 3 modified'
         self.assert_sql_count(testbase.db, go, 1)
-        assert o._state.committed_state['description'] == 'order 3 modified'
+        assert o._state.dict['description'] == 'order 3 modified'
         
         o.isopen = 5
         sess.expire(o, attribute_names=['description'])
@@ -178,7 +178,7 @@ class ExpireTest(FixtureTest):
             assert o.description == 'order 3 modified'
         self.assert_sql_count(testbase.db, go, 1)
         assert o.__dict__['isopen'] == 5
-        assert o._state.committed_state['description'] == 'order 3 modified'
+        assert o._state.dict['description'] == 'order 3 modified'
         assert o._state.committed_state['isopen'] == 1
 
         sess.flush()

@@ -17,13 +17,27 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         else:
             return AppenderQuery(self, state)
 
-    def commit_to_state(self, state, value=attributes.NO_VALUE):
-        # we have our own AttributeHistory therefore dont need CommittedState
-        # instead, we reset the history stored on the attribute
-        state.dict[self.key] = CollectionHistory(self, state)
-
     def get_collection(self, state, user_data=None):
         return self._get_collection(state, passive=True).added_items
+
+    def fire_append_event(self, state, value, initiator):
+        state.modified = True
+
+        if self.trackparent and value is not None:
+            self.sethasparent(value._state, True)
+        instance = state.obj()
+        for ext in self.extensions:
+            ext.append(instance, value, initiator or self)
+
+    def fire_remove_event(self, state, value, initiator):
+        state.modified = True
+
+        if self.trackparent and value is not None:
+            self.sethasparent(value._state, False)
+
+        instance = state.obj()
+        for ext in self.extensions:
+            ext.remove(instance, value, initiator or self)
         
     def set(self, state, value, initiator):
         if initiator is self:

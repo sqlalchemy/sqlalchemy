@@ -8,6 +8,8 @@ from testlib import *
 from testlib.tables import *
 from testlib import fixtures, tables
 import pickle
+import gc
+
 
 class SessionTest(AssertMixin):
     def setUpAll(self):
@@ -534,32 +536,36 @@ class SessionTest(AssertMixin):
         """test the weak-referencing identity map, which strongly-references modified items."""
 
         s = create_session()
-        class User(object):pass
+        class User(fixtures.Base):pass
         mapper(User, users)
 
-        # save user
-        s.save(User())
+        s.save(User(user_name='ed'))
         s.flush()
+        assert not s.dirty
+
         user = s.query(User).one()
-        user = None
-        import gc
+        del user
         gc.collect()
         assert len(s.identity_map) == 0
         assert len(s.identity_map.data) == 0
 
         user = s.query(User).one()
         user.user_name = 'fred'
-        user = None
+        del user
         gc.collect()
         assert len(s.identity_map) == 1
         assert len(s.identity_map.data) == 1
+        assert len(s.dirty) == 1
 
         s.flush()
         gc.collect()
-        assert len(s.identity_map) == 0
-        assert len(s.identity_map.data) == 0
+        assert not s.dirty
+        assert not s.identity_map
+        assert not s.identity_map.data
 
-        assert s.query(User).one().user_name == 'fred'
+        user = s.query(User).one()
+        assert user.user_name == 'fred'
+        assert s.identity_map
 
     def test_strong_ref(self):
         s = create_session(weak_identity_map=False)

@@ -545,24 +545,44 @@ class AddEntityTest(FixtureTest):
     def _assert_result(self):
         return [
             (
-                User(id=7, addresses=[Address(id=1)]),
-                Order(id=1, items=[Item(id=1), Item(id=2), Item(id=3)]),
+                User(id=7, 
+                    addresses=[Address(id=1)]
+                ),
+                Order(id=1, 
+                    items=[Item(id=1), Item(id=2), Item(id=3)]
+                ),
             ),
             (
-                User(id=7, addresses=[Address(id=1)]),
-                Order(id=3, items=[Item(id=3), Item(id=4), Item(id=5)]),
+                User(id=7, 
+                    addresses=[Address(id=1)]
+                ),
+                Order(id=3, 
+                    items=[Item(id=3), Item(id=4), Item(id=5)]
+                ),
             ),
             (
-                User(id=7, addresses=[Address(id=1)]),
-                Order(id=5, items=[Item(id=5)]),
+                User(id=7, 
+                    addresses=[Address(id=1)]
+                ),
+                Order(id=5, 
+                    items=[Item(id=5)]
+                ),
             ),
             (
-                 User(id=9, addresses=[Address(id=5)]),
-                 Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)]),
+                 User(id=9, 
+                    addresses=[Address(id=5)]
+                ),
+                 Order(id=2, 
+                    items=[Item(id=1), Item(id=2), Item(id=3)]
+                ),
              ),
              (
-                  User(id=9, addresses=[Address(id=5)]),
-                  Order(id=4, items=[Item(id=1), Item(id=5)]),
+                  User(id=9, 
+                    addresses=[Address(id=5)]
+                ),
+                  Order(id=4, 
+                    items=[Item(id=1), Item(id=5)]
+                ),
               )
         ]
         
@@ -573,14 +593,14 @@ class AddEntityTest(FixtureTest):
         })
         mapper(Address, addresses)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, lazy=False)
+            'items':relation(Item, secondary=order_items, lazy=False, order_by=items.c.id)
         })
         mapper(Item, items)
 
 
         sess = create_session()
         def go():
-            ret = sess.query(User).add_entity(Order).join('orders', aliased=True).all()
+            ret = sess.query(User).add_entity(Order).join('orders', aliased=True).order_by(User.id).order_by(Order.id).all()
             self.assertEquals(ret, self._assert_result())
         self.assert_sql_count(testbase.db, go, 1)
 
@@ -591,20 +611,20 @@ class AddEntityTest(FixtureTest):
         })
         mapper(Address, addresses)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items)
+            'items':relation(Item, secondary=order_items, order_by=items.c.id)
         })
         mapper(Item, items)
 
         sess = create_session()
 
         def go():
-            ret = sess.query(User).options(eagerload('addresses')).add_entity(Order).join('orders', aliased=True).all()
+            ret = sess.query(User).options(eagerload('addresses')).add_entity(Order).join('orders', aliased=True).order_by(User.id).order_by(Order.id).all()
             self.assertEquals(ret, self._assert_result())
         self.assert_sql_count(testbase.db, go, 6)
 
         sess.clear()
         def go():
-            ret = sess.query(User).options(eagerload('addresses')).add_entity(Order).options(eagerload('items', Order)).join('orders', aliased=True).all()
+            ret = sess.query(User).options(eagerload('addresses')).add_entity(Order).options(eagerload('items', Order)).join('orders', aliased=True).order_by(User.id).order_by(Order.id).all()
             self.assertEquals(ret, self._assert_result())
         self.assert_sql_count(testbase.db, go, 1)
 

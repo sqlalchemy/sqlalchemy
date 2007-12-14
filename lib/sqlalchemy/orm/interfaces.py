@@ -383,7 +383,7 @@ class MapperProperty(object):
         level (as opposed to the individual instance level).
         """
 
-        return self.parent._is_primary_mapper()
+        return not self.parent.non_primary
 
     def merge(self, session, source, dest):
         """Merge the attribute represented by this ``MapperProperty``
