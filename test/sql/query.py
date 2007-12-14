@@ -264,7 +264,7 @@ class QueryTest(PersistTest):
         r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
 
-    @testing.exclude('mysql', '<', (5, 0, 0))
+    @testing.exclude('mysql', '<', (5, 1, 0))
     def test_scalar_select(self):
         """test that scalar subqueries with labels get their type propigated to the result set."""
         # mysql and/or mysqldb has a bug here, type isn't propagated for scalar

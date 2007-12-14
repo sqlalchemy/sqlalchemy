@@ -965,7 +965,7 @@ class SelectFromTest(QueryTest):
         sel = users.select(users.c.id.in_([7, 8]))
         sess = create_session()
 
-        self.assertEquals(sess.query(User).select_from(sel).join('addresses').add_entity(Address).all(), 
+        self.assertEquals(sess.query(User).select_from(sel).join('addresses').add_entity(Address).order_by(User.id).order_by(Address.id).all(), 
             [
                 (User(name='jack',id=7), Address(user_id=7,email_address='jack@bean.com',id=1)), 
                 (User(name='ed',id=8), Address(user_id=8,email_address='ed@wood.com',id=2)), 
@@ -974,7 +974,7 @@ class SelectFromTest(QueryTest):
             ]
         )
 
-        self.assertEquals(sess.query(User).select_from(sel).join('addresses', aliased=True).add_entity(Address).all(), 
+        self.assertEquals(sess.query(User).select_from(sel).join('addresses', aliased=True).add_entity(Address).order_by(User.id).order_by(Address.id).all(), 
             [
                 (User(name='jack',id=7), Address(user_id=7,email_address='jack@bean.com',id=1)), 
                 (User(name='ed',id=8), Address(user_id=8,email_address='ed@wood.com',id=2)), 
@@ -991,7 +991,7 @@ class SelectFromTest(QueryTest):
             'items':relation(Item, secondary=order_items, order_by=items.c.id),  #m2m
         })
         mapper(Item, items, properties={
-            'keywords':relation(Keyword, secondary=item_keywords) #m2m
+            'keywords':relation(Keyword, secondary=item_keywords, order_by=keywords.c.id) #m2m
         })
         mapper(Keyword, keywords)
         
