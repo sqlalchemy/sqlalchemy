@@ -316,6 +316,13 @@ class UnicodeTest(AssertMixin):
     
     def testassert(self):
         import warnings
+
+        warnings.filterwarnings("always", r".*non-unicode bind")
+        
+        # test that data still goes in if warning is emitted....
+        unicode_table.insert().execute(unicode_varchar='im not unicode')
+        assert select([unicode_table.c.unicode_varchar]).execute().fetchall() == [('im not unicode', )]
+        
         warnings.filterwarnings("error", r".*non-unicode bind")
         
         try:
@@ -323,7 +330,7 @@ class UnicodeTest(AssertMixin):
             assert False
         except RuntimeWarning, e:
             assert str(e) == "Unicode type received non-unicode bind param value 'im not unicode'", str(e)
-        
+
         unicode_engine = engines.utf8_engine(options={'convert_unicode':True, 'assert_unicode':True})
         try:
             try:

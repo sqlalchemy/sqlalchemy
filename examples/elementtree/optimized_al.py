@@ -137,12 +137,12 @@ class ElementTreeMarshal(object):
     def __set__(self, document, element):
         def traverse(node):
             n = _Node()
-            n.tag = node.tag
-            n.text = node.text
-            n.tail = node.tail
+            n.tag = unicode(node.tag)
+            n.text = unicode(node.text)
+            n.tail = unicode(node.tail)
             document._nodes.append(n)
             n.children = [traverse(n2) for n2 in node]
-            n.attributes = [_Attribute(k, v) for k, v in node.attrib.iteritems()]
+            n.attributes = [_Attribute(unicode(k), unicode(v)) for k, v in node.attrib.iteritems()]
             return n
 
         traverse(element.getroot())
@@ -184,9 +184,9 @@ print document
 
 # manually search for a document which contains "/somefile/header/field1:hi"
 print "\nManual search for /somefile/header/field1=='hi':", line
-d = session.query(Document).join('_nodes', aliased=True).filter(and_(_Node.parent_id==None, _Node.tag=='somefile')).\
-    join('children', aliased=True, from_joinpoint=True).filter(_Node.tag=='header').\
-    join('children', aliased=True, from_joinpoint=True).filter(and_(_Node.tag=='field1', _Node.text=='hi')).\
+d = session.query(Document).join('_nodes', aliased=True).filter(and_(_Node.parent_id==None, _Node.tag==u'somefile')).\
+    join('children', aliased=True, from_joinpoint=True).filter(_Node.tag==u'header').\
+    join('children', aliased=True, from_joinpoint=True).filter(and_(_Node.tag==u'field1', _Node.text==u'hi')).\
     one()
 print d
 
@@ -213,10 +213,10 @@ def find_document(path, compareto):
     return query.options(lazyload('_nodes')).filter(_Node.text==compareto).all()
 
 for path, compareto in (
-        ('/somefile/header/field1', 'hi'),
-        ('/somefile/field1', 'hi'),
-        ('/somefile/header/field2', 'there'),
-        ('/somefile/header/field2[@attr=foo]', 'there')
+        (u'/somefile/header/field1', u'hi'),
+        (u'/somefile/field1', u'hi'),
+        (u'/somefile/header/field2', u'there'),
+        (u'/somefile/header/field2[@attr=foo]', u'there')
     ):
     print "\nDocuments containing '%s=%s':" % (path, compareto), line
     print [d.filename for d in find_document(path, compareto)]

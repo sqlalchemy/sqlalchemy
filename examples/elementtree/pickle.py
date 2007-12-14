@@ -22,8 +22,8 @@ logging.basicConfig()
 
 from elementtree import ElementTree
 
-meta = MetaData()
-meta.engine = 'sqlite://'
+engine = create_engine('sqlite://')
+meta = MetaData(engine)
 
 # stores a top level record of an XML document.  
 # the "element" column will store the ElementTree document as a BLOB.

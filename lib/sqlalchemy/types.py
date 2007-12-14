@@ -348,7 +348,8 @@ class String(Concatenable, TypeEngine):
                     return value.encode(dialect.encoding)
                 elif assert_unicode and not isinstance(value, (unicode, NoneType)):
                     if assert_unicode == 'warn':
-                        warnings.warn(RuntimeWarning("Unicode type received non-unicode bind param value %r" % value))                        
+                        warnings.warn(RuntimeWarning("Unicode type received non-unicode bind param value %r" % value))
+                        return value
                     else:
                         raise exceptions.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
                 else:
