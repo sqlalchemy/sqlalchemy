@@ -53,7 +53,7 @@ class TreeNode(object):
             c._set_root(root)
 
     def append(self, node):
-        if isinstance(node, str):
+        if isinstance(node, basestring):
             node = TreeNode(node)
         node._set_root(self.root)
         self.children.set(node)
@@ -110,7 +110,7 @@ class TreeLoader(MapperExtension):
         else:
             if isnew or selectcontext.populate_existing:
                 key = mapper.identity_key_from_primary_key(instance.parent_id)
-                parentnode = selectcontext.identity_map[key]
+                parentnode = selectcontext.session.identity_map[key]
                 parentnode.children.set(instance)
         return False
 

@@ -431,7 +431,7 @@ class CollectionAttributeImpl(AttributeImpl):
     def fire_append_event(self, state, value, initiator):
         if self.key not in state.committed_state and self.key in state.dict:
             state.committed_state[self.key] = self.copy(state.dict[self.key])
-
+            
         state.modified = True
 
         if self.trackparent and value is not None:
@@ -957,12 +957,13 @@ def _create_history(attr, state, current):
     original = state.committed_state.get(attr.key, NEVER_SET)
 
     if hasattr(attr, 'get_collection'):
+        current = attr.get_collection(state, current)
         if original is NO_VALUE:
             return (list(current), [], [])
         elif original is NEVER_SET:
             return ([], list(current), [])
         else:
-            collection = util.OrderedIdentitySet(attr.get_collection(state, current))
+            collection = util.OrderedIdentitySet(current)
             s = util.OrderedIdentitySet(original)
             return (list(collection.difference(s)), list(collection.intersection(s)), list(s.difference(collection)))
     else:

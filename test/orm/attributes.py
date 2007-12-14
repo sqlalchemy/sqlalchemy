@@ -696,6 +696,36 @@ class HistoryTest(PersistTest):
         f._state.commit(['someattr'])
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [old], []))
 
+    def test_dict_collections(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        from sqlalchemy.orm.collections import attribute_mapped_collection
+            
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'someattr', uselist=True, useobject=True, typecallable=attribute_mapped_collection('name'))
+
+        hi = Bar(name='hi')
+        there = Bar(name='there')
+        old = Bar(name='old')
+        new = Bar(name='new')
+
+        f = Foo()
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [], []))
+
+        f.someattr['hi'] = hi
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([hi], [], []))
+
+        f.someattr['there'] = there
+        self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set([hi, there]), set([]), set([])))
+        
+        f._state.commit(['someattr'])
+        self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set([]), set([hi, there]), set([])))
+
+
+
     def test_object_collections_mutate(self):
         class Foo(fixtures.Base):
             pass
