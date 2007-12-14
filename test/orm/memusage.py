@@ -139,6 +139,57 @@ class MemUsageTest(AssertMixin):
         finally:
             metadata.drop_all()
 
+    def test_with_inheritance(self):
+        metadata = MetaData(testbase.db)
+
+        table1 = Table("mytable", metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(30))
+            )
+
+        table2 = Table("mytable2", metadata, 
+            Column('col1', Integer, ForeignKey('mytable.col1'), primary_key=True),
+            Column('col3', String(30)),
+            )
+
+        @profile_memory
+        def go():
+            class A(Base):
+                pass
+            class B(A):
+                pass
+            
+            mapper(A, table1, polymorphic_on=table1.c.col2, polymorphic_identity='a')
+            mapper(B, table2, inherits=A, polymorphic_identity='b')
+            
+            sess = create_session()
+            a1 = A()
+            a2 = A()
+            b1 = B(col3='b1')
+            b2 = B(col3='b2')
+            for x in [a1,a2,b1, b2]:
+                sess.save(x)
+            sess.flush()
+            sess.clear()
+
+            alist = sess.query(A).all()
+            self.assertEquals(
+                [
+                    A(), A(), B(col3='b1'), B(col3='b2')
+                ], 
+                alist)
+
+            for a in alist:
+                sess.delete(a)
+            sess.flush()
+            clear_mappers()
+
+        metadata.create_all()
+        try:
+            go()
+        finally:
+            metadata.drop_all()
+
     
 if __name__ == '__main__':
     testbase.main()
