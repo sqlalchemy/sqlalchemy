@@ -287,7 +287,7 @@ class ExecutionContext(object):
       Connection may have close_with_result=True set, in which case it can
       only be used once.
 
-   dialect
+    dialect
       dialect which created this ExecutionContext.
 
     cursor
@@ -413,7 +413,6 @@ class ExecutionContext(object):
     def lastrow_has_defaults(self):
         """Return True if the last INSERT or UPDATE row contained 
         inlined or database-side defaults.
-
         """
 
         raise NotImplementedError()
@@ -474,7 +473,7 @@ class Compiled(object):
     def construct_params(self, params):
         """Return the bind params for this compiled object.
 
-        params is a dict of string/object pairs whos 
+        `params` is a dict of string/object pairs whos 
         values will override bind values compiled in
         to the statement.
         """
@@ -551,7 +550,7 @@ class Connection(Connectable):
             raise exceptions.InvalidRequestError("This Connection is closed")
 
     def _branch(self):
-        """return a new Connection which references this Connection's 
+        """Return a new Connection which references this Connection's 
         engine and connection; but does not have close_with_result enabled,
         and also whose close() method does nothing.
 
@@ -946,7 +945,7 @@ class Transaction(object):
     is_active = property(lambda s:s._is_active)
 
     def close(self):
-        """close this transaction.
+        """Close this transaction.
 
         If this transaction is the base transaction in a begin/commit
         nesting, the transaction will rollback().  Otherwise, the
