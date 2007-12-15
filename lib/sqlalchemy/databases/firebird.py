@@ -486,12 +486,16 @@ class FBDialect(default.DefaultDialect):
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name))
 
     def do_execute(self, cursor, statement, parameters, **kwargs):
+        # kinterbase does not accept a None, but wants an empty list
+        # when there are no arguments.
         cursor.execute(statement, parameters or [])
 
     def do_rollback(self, connection):
+        # Use the retaining feature, that keeps the transaction going
         connection.rollback(True)
 
     def do_commit(self, connection):
+        # Use the retaining feature, that keeps the transaction going
         connection.commit(True)
 
 
@@ -532,11 +536,11 @@ class FBCompiler(sql.compiler.DefaultCompiler):
 
         result = ""
         if select._limit:
-            result += " FIRST %d "  % select._limit
+            result += "FIRST %d "  % select._limit
         if select._offset:
-            result +=" SKIP %d "  %  select._offset
+            result +="SKIP %d "  %  select._offset
         if select._distinct:
-            result += " DISTINCT "
+            result += "DISTINCT "
         return result
 
     def limit_clause(self, select):
