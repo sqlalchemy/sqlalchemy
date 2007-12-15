@@ -73,14 +73,17 @@ class CompileTest(SQLCompileTest):
         self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) FROM sometable")
 
 
-class StrLenTest(PersistTest):
-    # On FB the length() function is implemented by an external UDF,
-    # strlen().  Various SA tests fail because they pass a parameter
-    # to it, and that does not work (it always results the maximum
-    # string length the UDF was declared to accept).
-    # This test checks that at least it works ok in other cases.
+class MiscFBTests(PersistTest):
 
+    __only_on__ = 'firebird'
+    
     def test_strlen(self):
+        # On FB the length() function is implemented by an external
+        # UDF, strlen().  Various SA tests fail because they pass a
+        # parameter to it, and that does not work (it always results
+        # the maximum string length the UDF was declared to accept).
+        # This test checks that at least it works ok in other cases.
+        
         meta = MetaData(testbase.db)
         t = Table('t1', meta,
             Column('id', Integer, Sequence('t1idseq'), primary_key=True),
@@ -94,6 +97,9 @@ class StrLenTest(PersistTest):
         finally:
             meta.drop_all()
 
+    def test_server_version_info(self):
+        version = testbase.db.dialect.server_version_info(testbase.db.connect())
+        assert len(version) == 3, "Got strange version info: %s" % repr(version)
 
 if __name__ == '__main__':
     testbase.main()

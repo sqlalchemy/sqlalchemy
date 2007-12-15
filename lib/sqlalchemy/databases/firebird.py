@@ -43,15 +43,21 @@ By default this module is biased toward dialect 3, but you can easily
 tweak it to handle dialect 1 if needed::
 
   from sqlalchemy import types as sqltypes
-  from sqlalchemy.databases.firebird import FBCompiler, FBDate, colspecs, ischema_names
-
-  # Change the name of the function ``length`` to use the UDF version
-  # instead of ``char_length``
-  FBCompiler.LENGTH_FUNCTION_NAME = 'strlen'
+  from sqlalchemy.databases.firebird import FBDate, colspecs, ischema_names
 
   # Adjust the mapping of the timestamp kind
   ischema_names['TIMESTAMP'] = FBDate
   colspecs[sqltypes.DateTime] = FBDate,
+
+Other aspects may be version-specific. You can use the ``server_version_info()`` method
+on the ``FBDialect`` class to do whatever is needed::
+
+  from sqlalchemy.databases.firebird import FBCompiler
+
+  if engine.dialect.server_version_info(connection) < (2,0):
+      # Change the name of the function ``length`` to use the UDF version
+      # instead of ``char_length``
+      FBCompiler.LENGTH_FUNCTION_NAME = 'strlen'
 
 
 .. [#] Well, that is not the whole story, as the client may still ask
@@ -275,6 +281,29 @@ class FBDialect(default.DefaultDialect):
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
+
+    def server_version_info(self, connection):
+        """Get the version of the Firebird server used by a connection.
+
+        Returns a tuple of (`major`, `minor`, `build`), three integers
+        representing the version of the attached server.
+        """
+
+        # This is the simpler approach (the other uses the services api),
+        # that for backward compatibility reasons returns a string like
+        #   LI-V6.3.3.12981 Firebird 2.0
+        # where the first version is a fake one resembling the old
+        # Interbase signature. This is more than enough for our purposes,
+        # as this is mainly (only?) used by the testsuite.
+
+        from re import match
+
+        fbconn = connection.connection.connection
+        version = fbconn.server_version
+        m = match('\w+-V(\d+)\.(\d+)\.(\d+)\.(\d+) \w+ (\d+)\.(\d+)', version)
+        if not m:
+            raise exceptions.AssertionError("Could not determine version from string '%s'" % version)
+        return tuple([int(x) for x in m.group(5, 6, 4)])
 
     def _normalize_name(self, name):
         """Convert the name to lowercase if it is possible"""
