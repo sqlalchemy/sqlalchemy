@@ -59,6 +59,25 @@ on the ``FBDialect`` class to do whatever is needed::
       # instead of ``char_length``
       FBCompiler.LENGTH_FUNCTION_NAME = 'strlen'
 
+Pooling connections
+-------------------
+
+The default strategy used by SQLAlchemy to pool the database connections
+in particular cases may raise an ``OperationalError`` with a message
+`"object XYZ is in use"`. This happens on Firebird when there are two
+connections to the database, one is using, or has used, a particular table
+and the other tries to drop or alter the same table. To garantee DDL
+operations success Firebird recommend doing them as the single connected user.
+
+In case your SA application effectively needs to do DDL operations while other
+connections are active, the following setting may alleviate the problem::
+
+  from sqlalchemy import pool
+  from sqlalchemy.databases.firebird import dialect
+
+  # Force SA to use a single connection per thread
+  dialect.poolclass = pool.SingletonThreadPool
+
 
 .. [#] Well, that is not the whole story, as the client may still ask
        a different (lower) dialect...
@@ -71,7 +90,7 @@ on the ``FBDialect`` class to do whatever is needed::
 import datetime
 import warnings
 
-from sqlalchemy import exceptions, pool, schema, types as sqltypes, sql, util
+from sqlalchemy import exceptions, schema, types as sqltypes, sql, util
 from sqlalchemy.engine import base, default
 
 
@@ -655,7 +674,6 @@ class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
 
 
 dialect = FBDialect
-dialect.poolclass = pool.SingletonThreadPool
 dialect.statement_compiler = FBCompiler
 dialect.schemagenerator = FBSchemaGenerator
 dialect.schemadropper = FBSchemaDropper

@@ -206,7 +206,17 @@ CHANGES
 
    - MSSQL/PyODBC no longer has a global "set nocount on".
 
-   - Firebird backend does properly reflect domains (partially fixing [ticket:410]).
+   - Firebird backend
+
+     - does properly reflect domains (partially fixing [ticket:410]) and
+       PassiveDefaults
+
+     - reverted to use default poolclass (was set to SingletonThreadPool in
+       0.4.0 [3562] for test purposes)
+
+     - map func.length() to 'char_length' (easily overridable with the UDF
+       'strlen' on old versions of Firebird)
+
 
 0.4.1
 -----
