@@ -28,6 +28,7 @@ to stay the same in future releases.
 import re
 import datetime
 import warnings
+from itertools import chain
 from sqlalchemy import util, exceptions
 from sqlalchemy.sql import operators, visitors
 from sqlalchemy import types as sqltypes
@@ -864,6 +865,13 @@ class ClauseElement(object):
         
         return c
 
+    def _cloned_set(self):
+        f = self
+        while f is not None:
+            yield f
+            f = getattr(f, '_is_clone_of', None)
+    _cloned_set = property(_cloned_set)
+
     def _get_from_objects(self, **modifiers):
         """Return objects represented in this ``ClauseElement`` that
         should be added to the ``FROM`` list of a query, when this
@@ -1543,7 +1551,8 @@ class FromClause(Selectable):
 
     __visit_name__ = 'fromclause'
     named_with_column=False
-
+    _hide_froms = []
+    
     def __init__(self):
         self.oid_column = None
         
@@ -1588,7 +1597,7 @@ class FromClause(Selectable):
 
         An example would be an Alias of a Table is derived from that Table.
         """
-        return fromclause is self
+        return fromclause in util.Set(self._cloned_set)
 
     def replace_selectable(self, old, alias):
       """replace all occurences of FromClause 'old' with the given Alias object, returning a copy of this ``FromClause``."""
@@ -1649,22 +1658,6 @@ class FromClause(Selectable):
         return getattr(self, 'name', self.__class__.__name__ + " object")
     description = property(description)
 
-    def _aggregate_hide_froms(self, **modifiers):
-        """Return a list of ``FROM`` clause elements which this ``FromClause`` replaces, taking into account
-        the element which this element was cloned from (and so on until the orginal is reached).
-        """
-        
-        s = self
-        while s is not None:
-            for h in s._hide_froms(**modifiers):
-                yield h
-            s = getattr(s, '_is_clone_of', None)
-            
-    def _hide_froms(self, **modifiers):
-        """Return a list of ``FROM`` clause elements which this ``FromClause`` replaces."""
-
-        return []
-    
     def _clone_from_clause(self):
         # delete all the "generated" collections of columns for a
         # newly cloned FromClause, so that they will be re-derived
@@ -2230,6 +2223,7 @@ class Join(FromClause):
     def __init__(self, left, right, onclause=None, isouter = False):
         self.left = _selectable(left)
         self.right = _selectable(right).self_group()
+        
         self.oid_column = self.left.oid_column
         if onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
@@ -2303,7 +2297,7 @@ class Join(FromClause):
         self.right = clone(self.right)
         self.onclause = clone(self.onclause)
         self.__folded_equivalents = None
-
+        
     def get_children(self, **kwargs):
         return self.left, self.right, self.onclause
 
@@ -2409,9 +2403,10 @@ class Join(FromClause):
 
         return self.select(use_labels=True, correlate=False).alias(name)
 
-    def _hide_froms(self, **modifiers):
-        return self.left._get_from_objects(**modifiers) + self.right._get_from_objects(**modifiers)
-
+    def _hide_froms(self):
+        return chain(*[x.left._get_from_objects() + x.right._get_from_objects() for x in self._cloned_set])
+    _hide_froms = property(_hide_froms)
+    
     def _get_from_objects(self, **modifiers):
         return [self] + self.onclause._get_from_objects(**modifiers) + self.left._get_from_objects(**modifiers) + self.right._get_from_objects(**modifiers)
 
@@ -2450,6 +2445,8 @@ class Alias(FromClause):
     description = property(description)
     
     def is_derived_from(self, fromclause):
+        if fromclause in util.Set(self._cloned_set):
+            return True
         return self.selectable.is_derived_from(fromclause)
 
     def supports_execution(self):
@@ -2527,12 +2524,10 @@ class _FromGrouping(FromClause):
         self.elem = elem
 
     columns = c = property(lambda s:s.elem.columns)
-
+    _hide_froms = property(lambda s:s.elem._hide_froms)
+    
     def get_children(self, **kwargs):
         return self.elem,
-
-    def _hide_froms(self, **modifiers):
-        return self.elem._hide_froms(**modifiers)
 
     def _copy_internals(self, clone=_clone):
         self.elem = clone(self.elem)
@@ -3066,7 +3061,6 @@ class Select(_SelectBaseMixin, FromClause):
         """
 
         froms = util.OrderedSet()
-        hide_froms = util.Set()
 
         for col in self._raw_columns:
             froms.update(col._get_from_objects())
@@ -3078,14 +3072,13 @@ class Select(_SelectBaseMixin, FromClause):
             froms.update(self._froms)
  
         for f in froms:
-            hide_froms.update(f._aggregate_hide_froms())
-        froms = froms.difference(hide_froms)
+            froms.difference_update(f._hide_froms)
         
         if len(froms) > 1:
             if self.__correlate:
-                froms = froms.difference(self.__correlate)
+                froms.difference_update(self.__correlate)
             if self._should_correlate and existing_froms is not None:
-                froms = froms.difference(existing_froms)
+                froms.difference_update(existing_froms)
                 
             if not froms:
                 raise exceptions.InvalidRequestError("Select statement '%s' is overcorrelated; returned no 'from' clauses" % str(self.__dont_correlate()))
@@ -3129,6 +3122,9 @@ class Select(_SelectBaseMixin, FromClause):
     inner_columns = property(_get_inner_columns, doc="""a collection of all ColumnElement expressions which would be rendered into the columns clause of the resulting SELECT statement.""")
 
     def is_derived_from(self, fromclause):
+        if self in util.Set(fromclause._cloned_set):
+            return True
+        
         for f in self.locate_all_froms():
             if f.is_derived_from(fromclause):
                 return True

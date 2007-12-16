@@ -71,6 +71,9 @@ class AbstractClauseProcessor(object):
     
     __traverse_options__ = {'column_collections':False}
     
+    def __init__(self, stop_on=None):
+        self.stop_on = stop_on
+    
     def convert_element(self, elem):
         """Define the *conversion* method for this ``AbstractClauseProcessor``."""
 
@@ -92,13 +95,14 @@ class AbstractClauseProcessor(object):
         setattr(tail, attr, visitor)
         return self
 
-    def copy_and_process(self, list_, stop_on=None):
+    def copy_and_process(self, list_):
         """Copy the given list to a new list, with each element traversed individually."""
         
         list_ = list(list_)
-        stop_on = util.Set()
+        stop_on = util.Set(self.stop_on or [])
+        cloned = {}
         for i in range(0, len(list_)):
-            list_[i] = self.traverse(list_[i], stop_on=stop_on)
+            list_[i] = self._traverse(list_[i], stop_on, cloned, _clone_toplevel=True)
         return list_
 
     def _convert_element(self, elem, stop_on, cloned):
@@ -116,13 +120,11 @@ class AbstractClauseProcessor(object):
             cloned[elem] = elem._clone()
         return cloned[elem]
         
-    def traverse(self, elem, clone=True, stop_on=None):
+    def traverse(self, elem, clone=True):
         if not clone:
             raise exceptions.ArgumentError("AbstractClauseProcessor 'clone' argument must be True")
         
-        if stop_on is None:
-            stop_on = util.Set()
-        return self._traverse(elem, stop_on, {}, _clone_toplevel=True)
+        return self._traverse(elem, util.Set(self.stop_on or []), {}, _clone_toplevel=True)
         
     def _traverse(self, elem, stop_on, cloned, _clone_toplevel=False):
         if elem in stop_on:
@@ -178,6 +180,7 @@ class ClauseAdapter(AbstractClauseProcessor):
     """
 
     def __init__(self, selectable, include=None, exclude=None, equivalents=None):
+        AbstractClauseProcessor.__init__(self, [selectable])
         self.selectable = selectable
         self.include = include
         self.exclude = exclude

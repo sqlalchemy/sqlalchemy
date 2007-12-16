@@ -172,6 +172,9 @@ CHANGES
    - fixed endless loop issue when using lazy="dynamic" on both 
      sides of a bi-directional relationship [ticket:872]
 
+   - more fixes to the LIMIT/OFFSET aliasing applied with Query + eagerloads,
+     in this case when mapped against a select statement [ticket:904]
+     
    - fix to self-referential eager loading such that if the same mapped
      instance appears in two or more distinct sets of columns in the same
      result set, its eagerly loaded collection will be populated regardless

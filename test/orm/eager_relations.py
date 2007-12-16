@@ -418,6 +418,23 @@ class EagerTest(FixtureTest):
             )
         ] == l.all()
 
+    def test_limit_4(self):
+        # tests the LIMIT/OFFSET aliasing on a mapper against a select.   original issue from ticket #904
+        sel = select([users, addresses.c.email_address], users.c.id==addresses.c.user_id).alias('useralias')
+        mapper(User, sel, properties={
+            'orders':relation(Order, primaryjoin=sel.c.id==orders.c.user_id, lazy=False)
+        })
+        mapper(Order, orders)
+        
+        sess = create_session()
+        self.assertEquals(sess.query(User).first(), 
+            User(name=u'jack',orders=[
+                Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1), 
+                Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3), 
+                Order(address_id=None,description=u'order 5',isopen=0,user_id=7,id=5)],
+            email_address=u'jack@bean.com',id=7)
+        )
+        
     def test_one_to_many_scalar(self):
         mapper(User, users, properties = dict(
             address = relation(mapper(Address, addresses), lazy=False, uselist=False)

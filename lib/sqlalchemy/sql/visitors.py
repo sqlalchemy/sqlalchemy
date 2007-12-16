@@ -37,18 +37,17 @@ class ClauseVisitor(object):
                 meth(obj, **kwargs)
             v = getattr(v, '_next', None)
         
-    def iterate(self, obj, stop_on=None):
+    def iterate(self, obj):
         stack = [obj]
         traversal = []
         while len(stack) > 0:
             t = stack.pop()
-            if stop_on is None or t not in stop_on:
-                yield t
-                traversal.insert(0, t)
-                for c in t.get_children(**self.__traverse_options__):
-                    stack.append(c)
+            yield t
+            traversal.insert(0, t)
+            for c in t.get_children(**self.__traverse_options__):
+                stack.append(c)
     
-    def traverse(self, obj, stop_on=None, clone=False):
+    def traverse(self, obj, clone=False):
         
         if clone:
             cloned = {}
@@ -60,17 +59,15 @@ class ClauseVisitor(object):
                 return cloned[obj]
             
             obj = do_clone(obj)
-            
         stack = [obj]
         traversal = []
         while len(stack) > 0:
             t = stack.pop()
-            if stop_on is None or t not in stop_on:
-                traversal.insert(0, t)
-                if clone:
-                    t._copy_internals(clone=do_clone)
-                for c in t.get_children(**self.__traverse_options__):
-                    stack.append(c)
+            traversal.insert(0, t)
+            if clone:
+                t._copy_internals(clone=do_clone)
+            for c in t.get_children(**self.__traverse_options__):
+                stack.append(c)
         for target in traversal:
             v = self
             while v is not None:

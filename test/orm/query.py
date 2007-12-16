@@ -955,6 +955,10 @@ class SelectFromTest(QueryTest):
         self.assertEquals(sess.query(User).select_from(sel).order_by(asc(User.name)).all(), [
             User(name='ed',id=8), User(name='jack',id=7)
         ])
+        
+        self.assertEquals(sess.query(User).select_from(sel).options(eagerload('addresses')).first(), 
+            User(name='jack', addresses=[Address(id=1)])
+        )
 
     def test_join(self):
         mapper(User, users, properties = {

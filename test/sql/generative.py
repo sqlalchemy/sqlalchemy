@@ -269,7 +269,22 @@ class ClauseTest(SQLCompileTest):
                 
         self.assert_compile(Vis().traverse(s, clone=True), "SELECT * FROM table1 WHERE table1.col1 = table2.col1 AND table1.col2 = :table1_col2_1")
 
-    def test_clause_adapter(self):
+class ClauseAdapterTest(SQLCompileTest):
+    def setUpAll(self):
+        global t1, t2
+        t1 = table("table1", 
+            column("col1"),
+            column("col2"),
+            column("col3"),
+            )
+        t2 = table("table2", 
+            column("col1"),
+            column("col2"),
+            column("col3"),
+            )
+            
+
+    def test_table_to_alias(self):
         
         t1alias = t1.alias('t1alias')
         
@@ -302,7 +317,7 @@ class ClauseTest(SQLCompileTest):
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t1), clone=True), "SELECT * FROM table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t2), clone=True), "SELECT * FROM table1 AS t1alias WHERE t1alias.col1 = t2alias.col2")
     
-    def test_selfreferential(self):
+    def test_include_exclude(self):
         m = MetaData()
         a=Table( 'a',m,
           Column( 'id',    Integer, primary_key=True),
@@ -319,10 +334,7 @@ class ClauseTest(SQLCompileTest):
         
         assert str(e) == "a_1.id = a.xxx_id"
 
-    def test_joins(self):
-        """test that ClauseAdapter can target a Join object, replace it, and not dig into the sub-joins after
-        replacing."""
-        
+    def test_join_to_alias(self):
         metadata = MetaData()
         a = Table('a', metadata,
             Column('id', Integer, primary_key=True))
@@ -359,6 +371,42 @@ class ClauseTest(SQLCompileTest):
                                 "c JOIN (SELECT a.id AS a_id, b.id AS b_id, b.aid AS b_aid FROM a LEFT OUTER JOIN b ON a.id = b.aid) "
                                 "ON b_id = c.bid) AS foo"
                                 " LEFT OUTER JOIN d ON foo.a_id = d.aid")
+    
+    def test_derived_from(self):
+        assert select([t1]).is_derived_from(t1)
+        assert not select([t2]).is_derived_from(t1)
+        assert not t1.is_derived_from(select([t1]))
+        assert t1.alias().is_derived_from(t1)
+        
+        
+        s1 = select([t1, t2]).alias('foo')
+        s2 = select([s1]).limit(5).offset(10).alias()
+        assert s2.is_derived_from(s1)
+        s2 = s2._clone()
+        assert s2.is_derived_from(s1)
+        
+    def test_aliasedselect_to_aliasedselect(self):
+        # original issue from ticket #904
+        s1 = select([t1]).alias('foo')
+        s2 = select([s1]).limit(5).offset(10).alias()
+
+        self.assert_compile(sql_util.ClauseAdapter(s2).traverse(s1), 
+            "SELECT foo.col1, foo.col2, foo.col3 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo  LIMIT 5 OFFSET 10")
+        
+        j = s1.outerjoin(t2, s1.c.col1==t2.c.col1)
+        self.assert_compile(sql_util.ClauseAdapter(s2).traverse(j).select(), 
+            "SELECT anon_1.col1, anon_1.col2, anon_1.col3, table2.col1, table2.col2, table2.col3 FROM "\
+            "(SELECT foo.col1 AS col1, foo.col2 AS col2, foo.col3 AS col3 FROM "\
+            "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo  LIMIT 5 OFFSET 10) AS anon_1 "\
+            "LEFT OUTER JOIN table2 ON anon_1.col1 = table2.col1")
+
+        talias = t1.alias('bar')
+        j = s1.outerjoin(talias, s1.c.col1==talias.c.col1)
+        self.assert_compile(sql_util.ClauseAdapter(s2).traverse(j).select(), 
+            "SELECT anon_1.col1, anon_1.col2, anon_1.col3, bar.col1, bar.col2, bar.col3 FROM "\
+            "(SELECT foo.col1 AS col1, foo.col2 AS col2, foo.col3 AS col3 FROM "\
+            "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo  LIMIT 5 OFFSET 10) AS anon_1 "\
+            "LEFT OUTER JOIN table1 AS bar ON anon_1.col1 = bar.col1")
         
         
 class SelectTest(SQLCompileTest):
