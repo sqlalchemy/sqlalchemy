@@ -540,6 +540,9 @@ class HistoryTest(PersistTest):
 
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['there'], []))
 
+        del f.someattr
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [], ['there']))
+        
         # case 2.  object with direct dictionary settings (similar to a load operation)
         f = Foo()
         f.__dict__['someattr'] = 'new'
@@ -625,6 +628,9 @@ class HistoryTest(PersistTest):
         f._state.commit(['someattr'])
 
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['there'], []))
+
+        del f.someattr
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([None], [], ['there']))
 
         # case 2.  object with direct dictionary settings (similar to a load operation)
         f = Foo()

@@ -256,6 +256,9 @@ class ScalarAttributeImpl(AttributeImpl):
     accepts_global_callable = True
     
     def delete(self, state):
+        if self.key not in state.committed_state:
+            state.committed_state[self.key] = state.dict.get(self.key, NO_VALUE)
+
         del state.dict[self.key]
         state.modified=True
 
@@ -968,7 +971,11 @@ def _create_history(attr, state, current):
             return (list(collection.difference(s)), list(collection.intersection(s)), list(s.difference(collection)))
     else:
         if current is NO_VALUE:
-            return ([], [], [])
+            if original not in [None, NEVER_SET, NO_VALUE]:
+                deleted = [original]
+            else:
+                deleted = []
+            return ([], [], deleted)
         elif original is NO_VALUE:
             return ([current], [], [])
         elif original is NEVER_SET or attr.is_equal(current, original) is True:   # dont let ClauseElement expressions here trip things up
