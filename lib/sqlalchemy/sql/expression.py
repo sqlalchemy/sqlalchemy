@@ -873,21 +873,6 @@ class ClauseElement(object):
 
         raise NotImplementedError(repr(self))
 
-    def _aggregate_hide_froms(self, **modifiers):
-        """Return a list of ``FROM`` clause elements which this ``ClauseElement`` replaces, taking into account
-        previous ClauseElements which this ClauseElement is a clone of."""
-        
-        s = self
-        while s is not None:
-            for h in s._hide_froms(**modifiers):
-                yield h
-            s = getattr(s, '_is_clone_of', None)
-            
-    def _hide_froms(self, **modifiers):
-        """Return a list of ``FROM`` clause elements which this ``ClauseElement`` replaces."""
-
-        return []
-
     def unique_params(self, *optionaldict, **kwargs):
         """Return a copy with ``bindparam()`` elments replaced.
 
@@ -1663,6 +1648,22 @@ class FromClause(Selectable):
         """
         return getattr(self, 'name', self.__class__.__name__ + " object")
     description = property(description)
+
+    def _aggregate_hide_froms(self, **modifiers):
+        """Return a list of ``FROM`` clause elements which this ``FromClause`` replaces, taking into account
+        the element which this element was cloned from (and so on until the orginal is reached).
+        """
+        
+        s = self
+        while s is not None:
+            for h in s._hide_froms(**modifiers):
+                yield h
+            s = getattr(s, '_is_clone_of', None)
+            
+    def _hide_froms(self, **modifiers):
+        """Return a list of ``FROM`` clause elements which this ``FromClause`` replaces."""
+
+        return []
     
     def _clone_from_clause(self):
         # delete all the "generated" collections of columns for a
@@ -2218,9 +2219,6 @@ class _Exists(_UnaryExpression):
         e.element = self.element.where(clause).self_group()
         return e
 
-    def _hide_froms(self, **modifiers):
-        return self._get_from_objects(**modifiers)
-
 class Join(FromClause):
     """represent a ``JOIN`` construct between two ``FromClause`` elements.
 
@@ -2504,9 +2502,6 @@ class _ColumnElementAdapter(ColumnElement):
     def get_children(self, **kwargs):
         return self.elem,
 
-    def _hide_froms(self, **modifiers):
-        return self.elem._hide_froms(**modifiers)
-
     def _get_from_objects(self, **modifiers):
         return self.elem._get_from_objects(**modifiers)
 
@@ -2585,9 +2580,6 @@ class _Label(ColumnElement):
 
     def _get_from_objects(self, **modifiers):
         return self.obj._get_from_objects(**modifiers)
-
-    def _hide_froms(self, **modifiers):
-        return self.obj._hide_froms(**modifiers)
 
     def _make_proxy(self, selectable, name = None):
         if isinstance(self.obj, (Selectable, ColumnElement)):
@@ -3077,7 +3069,6 @@ class Select(_SelectBaseMixin, FromClause):
         hide_froms = util.Set()
 
         for col in self._raw_columns:
-            hide_froms.update(col._aggregate_hide_froms())
             froms.update(col._get_from_objects())
 
         if self._whereclause is not None:
@@ -3085,9 +3076,9 @@ class Select(_SelectBaseMixin, FromClause):
 
         if self._froms:
             froms.update(self._froms)
-            for elem in self._froms:
-                hide_froms.update(elem._aggregate_hide_froms())
-        
+ 
+        for f in froms:
+            hide_froms.update(f._aggregate_hide_froms())
         froms = froms.difference(hide_froms)
         
         if len(froms) > 1:
