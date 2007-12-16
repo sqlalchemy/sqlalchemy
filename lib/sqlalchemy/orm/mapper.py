@@ -1131,7 +1131,7 @@ class Mapper(object):
             for state, connection in updated_objects:
                 for mapper in _state_mapper(state).iterate_to_root():
                     if 'after_update' in mapper.extension.methods:
-                        mapper.extension.after_update(mapper, connection, state)
+                        mapper.extension.after_update(mapper, connection, state.obj())
     
     def _postfetch(self, connection, table, state, resultproxy, params, value_params):
         """After an ``INSERT`` or ``UPDATE``, assemble newly generated
