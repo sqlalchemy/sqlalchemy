@@ -1656,8 +1656,17 @@ class BufferedColumnResultProxy(ResultProxy):
     _process_row = BufferedColumnRow
 
     def _get_col(self, row, key):
-        rec = self._key_cache[key]
-        return row[rec[2]]
+        try:
+            rec = self._key_cache[key]
+            return row[rec[2]]
+        except TypeError:
+            # the 'slice' use case is very infrequent,
+            # so we use an exception catch to reduce conditionals in _get_col
+            if isinstance(key, slice):
+                indices = key.indices(len(row))
+                return tuple([self._get_col(row, i) for i in xrange(*indices)])
+            else:
+                raise
 
     def fetchall(self):
         l = []

@@ -73,11 +73,13 @@ class MyPickleType(types.TypeDecorator):
     impl = PickleType
     
     def process_bind_param(self, value, dialect):
-        value.stuff = 'this is modified stuff'
+        if value:
+            value.stuff = 'this is modified stuff'
         return value
     
     def process_result_value(self, value, dialect):
-        value.stuff = 'this is the right stuff'
+        if value:
+            value.stuff = 'this is the right stuff'
         return value
         
 class LegacyType(types.TypeEngine):

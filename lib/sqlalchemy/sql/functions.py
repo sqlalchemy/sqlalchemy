@@ -67,6 +67,9 @@ class localtimestamp(AnsiFunction):
 class session_user(AnsiFunction):
     __return_type__ = sqltypes.String
 
+class sysdate(AnsiFunction):
+    __return_type__ = sqltypes.DateTime
+
 class user(AnsiFunction):
     __return_type__ = sqltypes.String
 

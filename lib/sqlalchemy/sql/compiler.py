@@ -90,6 +90,7 @@ FUNCTIONS = {
     functions.current_user: 'CURRENT_USER', 
     functions.localtime: 'LOCALTIME', 
     functions.localtimestamp: 'LOCALTIMESTAMP',
+    functions.sysdate: 'sysdate',
     functions.session_user :'SESSION_USER', 
     functions.user: 'USER'
 }
