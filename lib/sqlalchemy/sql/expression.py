@@ -896,6 +896,7 @@ class ClauseElement(object):
         """
 
         return self._params(True, optionaldict, kwargs)
+        
     def params(self, *optionaldict, **kwargs):
         """Return a copy with ``bindparam()`` elments replaced.
 
@@ -917,13 +918,12 @@ class ClauseElement(object):
         elif len(optionaldict) > 1:
             raise exceptions.ArgumentError("params() takes zero or one positional dictionary argument")
 
-        class Vis(visitors.ClauseVisitor):
-            def visit_bindparam(self, bind):
-                if bind.key in kwargs:
-                    bind.value = kwargs[bind.key]
-                if unique:
-                    bind._convert_to_unique()
-        return Vis().traverse(self, clone=True)
+        def visit_bindparam(bind):
+            if bind.key in kwargs:
+                bind.value = kwargs[bind.key]
+            if unique:
+                bind._convert_to_unique()
+        return visitors.traverse(self, visit_bindparam=visit_bindparam, clone=True)
 
     def compare(self, other):
         """Compare this ClauseElement to the given ClauseElement.
@@ -1157,46 +1157,6 @@ class ColumnOperators(Operators):
 
     def __truediv__(self, other):
         return self.operate(operators.truediv, other)
-
-# precedence ordering for common operators.  if an operator is not
-# present in this list, it will be parenthesized when grouped against
-# other operators
-_smallest = object()
-_largest = object()
-
-PRECEDENCE = {
-    operators.from_:15,
-    operators.mul:7,
-    operators.div:7,
-    operators.mod:7,
-    operators.add:6,
-    operators.sub:6,
-    operators.concat_op:6,
-    operators.ilike_op:5,
-    operators.notilike_op:5,
-    operators.like_op:5,
-    operators.notlike_op:5,
-    operators.in_op:5,
-    operators.notin_op:5,
-    operators.is_:5,
-    operators.isnot:5,
-    operators.eq:5,
-    operators.ne:5,
-    operators.gt:5,
-    operators.lt:5,
-    operators.ge:5,
-    operators.le:5,
-    operators.between_op:5,
-    operators.distinct_op:5,
-    operators.inv:5,
-    operators.and_:3,
-    operators.or_:2,
-    operators.comma_op:-1,
-    operators.as_:-1,
-    operators.exists:0,
-    _smallest: -1000,
-    _largest: 1000
-}
 
 class _CompareMixin(ColumnOperators):
     """Defines comparison and math operations for ``ClauseElement`` instances."""
@@ -1599,8 +1559,8 @@ class FromClause(Selectable):
     def replace_selectable(self, old, alias):
       """replace all occurences of FromClause 'old' with the given Alias object, returning a copy of this ``FromClause``."""
 
-      from sqlalchemy.sql import util
-      return util.ClauseAdapter(alias).traverse(self, clone=True)
+      from sqlalchemy.sql.util import ClauseAdapter
+      return ClauseAdapter(alias).traverse(self, clone=True)
 
     def corresponding_column(self, column, require_embedded=False):
         """Given a ``ColumnElement``, return the exported ``ColumnElement``
@@ -1861,8 +1821,6 @@ class _TextClause(ClauseElement):
             return None
     type = property(type)
 
-    columns = []
-
     def _copy_internals(self, clone=_clone):
         self.bindparams = dict([(b.key, clone(b)) for b in self.bindparams.values()])
 
@@ -1936,7 +1894,7 @@ class ClauseList(ClauseElement):
         return f
 
     def self_group(self, against=None):
-        if self.group and self.operator != against and PRECEDENCE.get(self.operator, PRECEDENCE[_smallest]) <= PRECEDENCE.get(against, PRECEDENCE[_largest]):
+        if self.group and self.operator != against and operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
             return self
@@ -1976,8 +1934,10 @@ class _CalculatedClause(ColumnElement):
             self.clause_expr = clauses.self_group()
         else:
             self.clause_expr = clauses
-
-    key = property(lambda self:self.name or "_calc_")
+    
+    def key(self):
+        return self.name or '_calc_'
+    key = property(key)
 
     def _copy_internals(self, clone=_clone):
         self.clause_expr = clone(self.clause_expr)
@@ -2025,9 +1985,14 @@ class _Function(_CalculatedClause, FromClause):
         args = [_literal_as_binds(c, self.name) for c in clauses]
         self.clause_expr = ClauseList(operator=operators.comma_op, group_contents=True, *args).self_group()
         self.type = sqltypes.to_instance(kwargs.get('type_', None))
-        
-    key = property(lambda self:self.name)
-    columns = property(lambda self:[self])
+    
+    def key(self):
+        return self.name
+    key = property(key)
+    
+    def columns(self):
+        return [self]
+    columns = property(columns)
 
     def _copy_internals(self, clone=_clone):
         _CalculatedClause._copy_internals(self, clone=clone)
@@ -2103,7 +2068,7 @@ class _UnaryExpression(ColumnElement):
             return super(_UnaryExpression, self)._negate()
 
     def self_group(self, against):
-        if self.operator and PRECEDENCE.get(self.operator, PRECEDENCE[_smallest]) <= PRECEDENCE.get(against, PRECEDENCE[_largest]):
+        if self.operator and operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
             return self
@@ -2140,8 +2105,7 @@ class _BinaryExpression(ColumnElement):
                 self.left.compare(other.left) and
                 self.right.compare(other.right) or
                 (
-                    self.operator in [operators.eq, operators.ne,
-                                      operators.add, operators.mul] and
+                    operators.is_commutative(self.operator) and
                     self.left.compare(other.right) and
                     self.right.compare(other.left)
                 )
@@ -2151,7 +2115,7 @@ class _BinaryExpression(ColumnElement):
     def self_group(self, against=None):
         # use small/large defaults for comparison so that unknown
         # operators are always parenthesized
-        if self.operator != against and (PRECEDENCE.get(self.operator, PRECEDENCE[_smallest]) <= PRECEDENCE.get(against, PRECEDENCE[_largest])):
+        if self.operator != against and operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
             return self

@@ -223,8 +223,10 @@ class Table(SchemaItem, expression.TableClause):
         # initialize all the column, etc. objects.  done after
         # reflection to allow user-overrides
         self._init_items(*args)
-
-    key = property(lambda self:_get_table_key(self.name, self.schema))
+    
+    def key(self):
+        return _get_table_key(self.name, self.schema)
+    key = property(key)
     
     def _export_columns(self, columns=None):
         # override FromClause's collection initialization logic; Table implements it differently
@@ -235,7 +237,10 @@ class Table(SchemaItem, expression.TableClause):
             self.constraints.remove(self._primary_key)
         self._primary_key = pk
         self.constraints.add(pk)
-    primary_key = property(lambda s:s._primary_key, _set_primary_key)
+
+    def primary_key(self):
+        return self._primary_key
+    primary_key = property(primary_key, _set_primary_key)
 
     def __repr__(self):
         return "Table(%s)" % ', '.join(
@@ -435,9 +440,7 @@ class Column(SchemaItem, expression._ColumnClause):
             self._info = kwargs.pop('info')
         if kwargs:
             raise exceptions.ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
-
-    columns = property(lambda self:[self])
-
+    
     def __str__(self):
         if self.table is not None:
             if self.table.named_with_column:
