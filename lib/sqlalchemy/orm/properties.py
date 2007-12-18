@@ -12,10 +12,11 @@ to handle flush-time dependency sorting and processing.
 """
 
 from sqlalchemy import sql, schema, util, exceptions, logging
-from sqlalchemy.sql import util as sql_util, visitors, operators, ColumnElement
+from sqlalchemy.sql.util import ClauseAdapter, ColumnsInClause
+from sqlalchemy.sql import visitors, operators, ColumnElement
 from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency, object_mapper
 from sqlalchemy.orm import session as sessionlib
-from sqlalchemy.orm import util as mapperutil
+from sqlalchemy.orm.util import CascadeOptions
 from sqlalchemy.orm.interfaces import StrategizedProperty, PropComparator, MapperProperty
 from sqlalchemy.exceptions import ArgumentError
 import warnings
@@ -201,13 +202,13 @@ class PropertyLoader(StrategizedProperty):
         self.strategy_class = strategy_class
 
         if cascade is not None:
-            self.cascade = mapperutil.CascadeOptions(cascade)
+            self.cascade = CascadeOptions(cascade)
         else:
             if private:
                 util.warn_deprecated('private option is deprecated; see docs for details')
-                self.cascade = mapperutil.CascadeOptions("all, delete-orphan")
+                self.cascade = CascadeOptions("all, delete-orphan")
             else:
-                self.cascade = mapperutil.CascadeOptions("save-update, merge")
+                self.cascade = CascadeOptions("save-update, merge")
         
         if self.passive_deletes == 'all' and ("delete" in self.cascade or "delete-orphan" in self.cascade):
             raise exceptions.ArgumentError("Can't set passive_deletes='all' in conjunction with 'delete' or 'delete-orphan' cascade")
@@ -312,8 +313,10 @@ class PropertyLoader(StrategizedProperty):
     
     def _optimized_compare(self, value, value_is_parent=False):
         return self._get_strategy(strategies.LazyLoader).lazy_clause(value, reverse_direction=not value_is_parent)
-        
-    private = property(lambda s:s.cascade.delete_orphan)
+    
+    def private(self):
+        return self.cascade.delete_orphan
+    private = property(private)
 
     def create_strategy(self):
         if self.strategy_class:
@@ -456,7 +459,7 @@ class PropertyLoader(StrategizedProperty):
         # to the "polymorphic" selectable as needed).  since this is an API change, put an explicit check/
         # error message in case its the "old" way.
         if self.loads_polymorphic:
-            vis = sql_util.ColumnsInClause(self.mapper.select_table)
+            vis = ColumnsInClause(self.mapper.select_table)
             vis.traverse(self.primaryjoin)
             if self.secondaryjoin:
                 vis.traverse(self.secondaryjoin)
@@ -469,12 +472,12 @@ class PropertyLoader(StrategizedProperty):
 
         def col_is_part_of_mappings(col):
             if self.secondary is None:
-                return self.parent.mapped_table.corresponding_column(col, raiseerr=False) is not None or \
-                    self.target.corresponding_column(col, raiseerr=False) is not None
+                return self.parent.mapped_table.corresponding_column(col) is not None or \
+                    self.target.corresponding_column(col) is not None
             else:
-                return self.parent.mapped_table.corresponding_column(col, raiseerr=False) is not None or \
-                    self.target.corresponding_column(col, raiseerr=False) is not None or \
-                    self.secondary.corresponding_column(col, raiseerr=False) is not None
+                return self.parent.mapped_table.corresponding_column(col) is not None or \
+                    self.target.corresponding_column(col) is not None or \
+                    self.secondary.corresponding_column(col) is not None
 
         if self.foreign_keys:
             self._opposite_side = util.Set()
@@ -597,13 +600,13 @@ class PropertyLoader(StrategizedProperty):
             target_equivalents = self.mapper._get_equivalent_columns()
 
             if self.secondaryjoin:
-                self.polymorphic_secondaryjoin = sql_util.ClauseAdapter(self.mapper.select_table).traverse(self.secondaryjoin, clone=True)
+                self.polymorphic_secondaryjoin = ClauseAdapter(self.mapper.select_table).traverse(self.secondaryjoin, clone=True)
                 self.polymorphic_primaryjoin = self.primaryjoin
             else:
                 if self.direction is sync.ONETOMANY:
-                    self.polymorphic_primaryjoin = sql_util.ClauseAdapter(self.mapper.select_table, include=self.foreign_keys, equivalents=target_equivalents).traverse(self.primaryjoin, clone=True)
+                    self.polymorphic_primaryjoin = ClauseAdapter(self.mapper.select_table, include=self.foreign_keys, equivalents=target_equivalents).traverse(self.primaryjoin, clone=True)
                 elif self.direction is sync.MANYTOONE:
-                    self.polymorphic_primaryjoin = sql_util.ClauseAdapter(self.mapper.select_table, exclude=self.foreign_keys, equivalents=target_equivalents).traverse(self.primaryjoin, clone=True)
+                    self.polymorphic_primaryjoin = ClauseAdapter(self.mapper.select_table, exclude=self.foreign_keys, equivalents=target_equivalents).traverse(self.primaryjoin, clone=True)
                 self.polymorphic_secondaryjoin = None
 
             # load "polymorphic" versions of the columns present in "remote_side" - this is
@@ -612,7 +615,7 @@ class PropertyLoader(StrategizedProperty):
                 if self.secondary and self.secondary.columns.contains_column(c):
                     continue
                 for equiv in [c] + (c in target_equivalents and list(target_equivalents[c]) or []): 
-                    corr = self.mapper.select_table.corresponding_column(equiv, raiseerr=False)
+                    corr = self.mapper.select_table.corresponding_column(equiv)
                     if corr:
                         self.remote_side.add(corr)
                         break
@@ -686,11 +689,11 @@ class PropertyLoader(StrategizedProperty):
             if polymorphic_parent:
                 # adapt the "parent" side of our join condition to the "polymorphic" select of the parent
                 if self.direction is sync.ONETOMANY:
-                    primaryjoin = sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
+                    primaryjoin = ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
                 elif self.direction is sync.MANYTOONE:
-                    primaryjoin = sql_util.ClauseAdapter(parent.select_table, include=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
+                    primaryjoin = ClauseAdapter(parent.select_table, include=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
                 elif self.secondaryjoin:
-                    primaryjoin = sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
+                    primaryjoin = ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
 
             if secondaryjoin is not None:
                 if secondary and not primary:

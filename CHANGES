@@ -73,6 +73,18 @@ CHANGES
      issued directly by the ORM in the form of UPDATE statements, by setting
      the flag "passive_cascades=False".
 
+   - new synonym() behavior: an attribute will be placed on the mapped
+     class, if one does not exist already, in all cases. if a property
+     already exists on the class, the synonym will decorate the property
+     with the appropriate comparison operators so that it can be used in in
+     column expressions just like any other mapped attribute (i.e. usable in
+     filter(), etc.) the "proxy=True" flag is deprecated and no longer means
+     anything. Additionally, the flag "map_column=True" will automatically
+     generate a ColumnProperty corresponding to the name of the synonym,
+     i.e.: 'somename':synonym('_somename', map_column=True) will map the
+     column named 'somename' to the attribute '_somename'. See the example
+     in the mapper docs. [ticket:801]
+
    - Query.select_from() now replaces all existing FROM criterion with
      the given argument; the previous behavior of constructing a list
      of FROM clauses was generally not useful as is required 
@@ -130,18 +142,6 @@ CHANGES
      disregarding any existing filter, join, group_by or other criterion
      which has been configured. [ticket:893]
           
-   - new synonym() behavior: an attribute will be placed on the mapped
-     class, if one does not exist already, in all cases. if a property
-     already exists on the class, the synonym will decorate the property
-     with the appropriate comparison operators so that it can be used in in
-     column expressions just like any other mapped attribute (i.e. usable in
-     filter(), etc.) the "proxy=True" flag is deprecated and no longer means
-     anything. Additionally, the flag "map_column=True" will automatically
-     generate a ColumnProperty corresponding to the name of the synonym,
-     i.e.: 'somename':synonym('_somename', map_column=True) will map the
-     column named 'somename' to the attribute '_somename'. See the example
-     in the mapper docs. [ticket:801]
-
    - added support for version_id_col in conjunction with inheriting mappers.
      version_id_col is typically set on the base mapper in an inheritance
      relationship where it takes effect for all inheriting mappers. 
@@ -159,7 +159,8 @@ CHANGES
      mapper.get_attr_by_column(), mapper.set_attr_by_column(), 
      mapper.pks_by_table, mapper.cascade_callable(), 
      MapperProperty.cascade_callable(), mapper.canload(),
-     mapper._mapper_registry, attributes.AttributeManager
+     mapper.save_obj(), mapper.delete_obj(), mapper._mapper_registry, 
+     attributes.AttributeManager
 
    - Assigning an incompatible collection type to a relation attribute now
      raises TypeError instead of sqlalchemy's ArgumentError.

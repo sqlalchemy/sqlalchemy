@@ -543,12 +543,6 @@ class Connection(Connectable):
         self.__savepoint_seq = 0
         self.__branch = _branch
 
-    def _get_connection(self):
-        try:
-            return self.__connection
-        except AttributeError:
-            raise exceptions.InvalidRequestError("This Connection is closed")
-
     def _branch(self):
         """Return a new Connection which references this Connection's 
         engine and connection; but does not have close_with_result enabled,
@@ -559,16 +553,35 @@ class Connection(Connectable):
         """
         return Connection(self.engine, self.__connection, _branch=True)
 
-    dialect = property(lambda s:s.engine.dialect, doc="Dialect used by this Connection.")
-    connection = property(_get_connection, doc="The underlying DB-API connection managed by this Connection.")
-    should_close_with_result = property(lambda s:s.__close_with_result, doc="Indicates if this Connection should be closed when a corresponding ResultProxy is closed; this is essentially an auto-release mode.")
+    def dialect(self):
+        "Dialect used by this Connection."
+        
+        return self.engine.dialect
+    dialect = property(dialect)
+    
+    def connection(self):
+        "The underlying DB-API connection managed by this Connection."
 
-    info = property(lambda s: s._get_connection().info,
-                    doc=("A collection of per-DB-API connection instance "
-                         "properties."))
-    properties = property(lambda s: s._get_connection().info,
-                          doc=("An alias for the .info collection, will be "
-                               "removed in 0.5."))
+        try:
+            return self.__connection
+        except AttributeError:
+            raise exceptions.InvalidRequestError("This Connection is closed")
+    connection = property(connection)
+    
+    def should_close_with_result(self):
+        """Indicates if this Connection should be closed when a corresponding
+        ResultProxy is closed; this is essentially an auto-release mode.
+        """
+
+        return self.__close_with_result
+    should_close_with_result = property(should_close_with_result)
+
+    def info(self):
+        """A collection of per-DB-API connection instance properties."""
+        return self.connection.info
+    info = property(info)
+
+    properties = property(info, doc="""An alias for the .info collection, will be removed in 0.5.""")
 
     def connect(self):
         """Returns self.
@@ -940,9 +953,15 @@ class Transaction(object):
         self._connection = connection
         self._parent = parent or self
         self._is_active = True
+    
+    def connection(self):
+        "The Connection object referenced by this Transaction"
+        return self._connection
+    connection = property(connection)
 
-    connection = property(lambda s:s._connection, doc="The Connection object referenced by this Transaction")
-    is_active = property(lambda s:s._is_active)
+    def is_active(self):
+        return self._is_active
+    is_active = property(is_active)
 
     def close(self):
         """Close this transaction.
@@ -1041,7 +1060,12 @@ class Engine(Connectable):
         self.engine = self
         self.logger = logging.instance_logger(self, echoflag=echo)
 
-    name = property(lambda s:sys.modules[s.dialect.__module__].descriptor()['name'], doc="String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``.")
+    def name(self):
+        "String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``."
+        
+        return sys.modules[self.dialect.__module__].descriptor()['name']
+    name = property(name)
+    
     echo = logging.echo_property()
     
     def __repr__(self):
@@ -1068,10 +1092,9 @@ class Engine(Connectable):
         finally:
             connection.close()
 
-    def _func(self):
+    def func(self):
         return expression._FunctionGenerator(bind=self)
-
-    func = property(_func)
+    func = property(func)
 
     def text(self, text, *args, **kwargs):
         """Return a sql.text() object for performing literal queries."""
@@ -1321,14 +1344,20 @@ class ResultProxy(object):
             self._rowcount = context.get_rowcount()
             self.close()
 
-    def _get_rowcount(self):
+    def rowcount(self):
         if self._rowcount is not None:
             return self._rowcount
         else:
             return self.context.get_rowcount()
-    rowcount = property(_get_rowcount)
-    lastrowid = property(lambda s:s.cursor.lastrowid)
-    out_parameters = property(lambda s:s.context.out_parameters)
+    rowcount = property(rowcount)
+    
+    def lastrowid(self):
+        return self.cursor.lastrowid
+    lastrowid = property(lastrowid)
+    
+    def out_parameters(self):
+        return self.context.out_parameters
+    out_parameters = property(out_parameters)
 
     def _init_metadata(self):
         self.__props = {}
@@ -1423,7 +1452,9 @@ class ResultProxy(object):
             if self.connection.should_close_with_result:
                 self.connection.close()
 
-    keys = property(lambda s:s.__keys)
+    def keys(self):
+        return self.__keys
+    keys = property(keys)
 
     def _has_key(self, row, key):
         try:

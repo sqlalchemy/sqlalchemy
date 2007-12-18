@@ -915,7 +915,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
             # translate for schema-qualified table aliases
             t = self._schema_aliased_table(column.table)
             if t is not None:
-                return self.process(t.corresponding_column(column))
+                return self.process(expression._corresponding_column_or_error(t, column))
         return super(MSSQLCompiler, self).visit_column(column, **kwargs)
 
     def visit_binary(self, binary, **kwargs):

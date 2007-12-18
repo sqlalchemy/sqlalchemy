@@ -93,7 +93,9 @@ class TLConnection(base.Connection):
         self.__session = session
         self.__opencount = 1
 
-    session = property(lambda s:s.__session)
+    def session(self):
+        return self.__session
+    session = property(session)
 
     def _increment_connect(self):
         self.__opencount += 1
@@ -132,8 +134,13 @@ class TLTransaction(base.Transaction):
         self._trans = trans
         self._session = session
 
-    connection = property(lambda s:s._trans.connection)
-    is_active = property(lambda s:s._trans.is_active)
+    def connection(self):
+        return self._trans.connection
+    connection = property(connection)
+    
+    def is_active(self):
+        return self._trans.is_active
+    is_active = property(is_active)
 
     def rollback(self):
         self._session.rollback()
@@ -168,12 +175,13 @@ class TLEngine(base.Engine):
         super(TLEngine, self).__init__(*args, **kwargs)
         self.context = util.ThreadLocal()
 
-    def _session(self):
+    def session(self):
+        "Returns the current thread's TLSession"
         if not hasattr(self.context, 'session'):
             self.context.session = TLSession(self)
         return self.context.session
 
-    session = property(_session, doc="Returns the current thread's TLSession")
+    session = property(session)
 
     def contextual_connect(self, **kwargs):
         """Return a TLConnection which is thread-locally scoped."""

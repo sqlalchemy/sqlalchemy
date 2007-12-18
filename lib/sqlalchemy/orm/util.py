@@ -154,7 +154,7 @@ class AliasedClauses(object):
         """return the aliased version of the given column, creating a new label for it if not already
         present in this AliasedClauses."""
 
-        conv = self.alias.corresponding_column(column, raiseerr=False)
+        conv = self.alias.corresponding_column(column)
         if conv:
             return conv
 
@@ -199,13 +199,13 @@ def create_row_adapter(from_, to, equivalent_columns=None):
     
     map = {}
     for c in to.c:
-        corr = from_.corresponding_column(c, raiseerr=False)
+        corr = from_.corresponding_column(c)
         if corr:
             map[c] = corr
         elif equivalent_columns:
             if c in equivalent_columns:
                 for c2 in equivalent_columns[c]:
-                    corr = from_.corresponding_column(c2, raiseerr=False)
+                    corr = from_.corresponding_column(c2)
                     if corr:
                         map[c] = corr
                         break

@@ -253,7 +253,7 @@ class OneToManyDP(DependencyProcessor):
             child = getattr(child, '_state', child)
         source = state
         dest = child
-        if dest is None or (not self.post_update and uowcommit.state_is_deleted(dest)):
+        if dest is None or (not self.post_update and uowcommit.is_deleted(dest)):
             return
         self._verify_canload(child)
         self.syncrules.execute(source, dest, source, child, clearkeys)
@@ -363,7 +363,7 @@ class ManyToOneDP(DependencyProcessor):
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         source = child
         dest = state
-        if dest is None or (not self.post_update and uowcommit.state_is_deleted(dest)):
+        if dest is None or (not self.post_update and uowcommit.is_deleted(dest)):
             return
         self._verify_canload(child)
         self.syncrules.execute(source, dest, dest, child, clearkeys)
@@ -491,13 +491,13 @@ class MapperStub(object):
     def polymorphic_iterator(self):
         return iter([self])
         
-    def register_dependencies(self, uowcommit):
+    def _register_dependencies(self, uowcommit):
         pass
 
-    def save_obj(self, *args, **kwargs):
+    def _save_obj(self, *args, **kwargs):
         pass
 
-    def delete_obj(self, *args, **kwargs):
+    def _delete_obj(self, *args, **kwargs):
         pass
 
     def primary_mapper(self):

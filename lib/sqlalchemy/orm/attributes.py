@@ -276,8 +276,10 @@ class ScalarAttributeImpl(AttributeImpl):
 
         state.dict[self.key] = value
         state.modified=True
-
-    type = property(lambda self: self.property.columns[0].type)
+    
+    def type(self):
+        self.property.columns[0].type
+    type = property(type)
 
 class MutableScalarAttributeImpl(ScalarAttributeImpl):
     """represents a scalar value-holding InstrumentedAttribute, which can detect

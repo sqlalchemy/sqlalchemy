@@ -663,14 +663,14 @@ class Session(object):
             q = q.add_entity(ent)
         return q
 
-    def _sql(self):
+    def sql(self):
         class SQLProxy(object):
             def __getattr__(self, key):
                 def call(*args, **kwargs):
                     kwargs[engine] = self.engine
                     return getattr(sql, key)(*args, **kwargs)
 
-    sql = property(_sql)
+    sql = property(sql)
 
     def _autoflush(self):
         if self.autoflush and (self.transaction is None or self.transaction.autoflush):
@@ -1079,26 +1079,35 @@ class Session(object):
                 return True
         return False
 
-    dirty = property(lambda s:s.uow.locate_dirty(),
-                     doc="""A ``Set`` of all instances marked as 'dirty' within this ``Session``.
+    def dirty(self):
+        """Return a ``Set`` of all instances marked as 'dirty' within this ``Session``.
 
-                     Note that the 'dirty' state here is 'optimistic'; most attribute-setting or collection
-                     modification operations will mark an instance as 'dirty' and place it in this set,
-                     even if there is no net change to the attribute's value.  At flush time, the value
-                     of each attribute is compared to its previously saved value,
-                     and if there's no net change, no SQL operation will occur (this is a more expensive
-                     operation so it's only done at flush time).
+        Note that the 'dirty' state here is 'optimistic'; most attribute-setting or collection
+        modification operations will mark an instance as 'dirty' and place it in this set,
+        even if there is no net change to the attribute's value.  At flush time, the value
+        of each attribute is compared to its previously saved value,
+        and if there's no net change, no SQL operation will occur (this is a more expensive
+        operation so it's only done at flush time).
 
-                     To check if an instance has actionable net changes to its attributes, use the
-                     is_modified() method.
-                     """)
+        To check if an instance has actionable net changes to its attributes, use the
+        is_modified() method.
+        """
 
-    deleted = property(lambda s:util.IdentitySet(s.uow.deleted.values()),
-                       doc="A ``Set`` of all instances marked as 'deleted' within this ``Session``")
+        return self.uow.locate_dirty()
+    dirty = property(dirty)
 
-    new = property(lambda s:util.IdentitySet(s.uow.new.values()),
-                   doc="A ``Set`` of all instances marked as 'new' within this ``Session``.")
+    def deleted(self):
+        "Return a ``Set`` of all instances marked as 'deleted' within this ``Session``"
+        
+        return util.IdentitySet(self.uow.deleted.values())
+    deleted = property(deleted)
 
+    def new(self):
+        "Return a ``Set`` of all instances marked as 'new' within this ``Session``."
+        
+        return util.IdentitySet(self.uow.new.values())
+    new = property(new)
+    
 def _expire_state(state, attribute_names):
     """Standalone expire instance function.
 

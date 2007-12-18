@@ -164,11 +164,6 @@ class UnitOfWork(object):
 
     def flush(self, session, objects=None):
         """create a dependency tree of all pending SQL operations within this unit of work and execute."""
-        
-        # this context will track all the objects we want to save/update/delete,
-        # and organize a hierarchical dependency structure.  it also handles
-        # communication with the mappers and relationships to fire off SQL
-        # and synchronize attributes between related objects.
 
         dirty = [x for x in self.identity_map.all_states()
             if x.modified
@@ -325,35 +320,30 @@ class UOWTransaction(object):
         else:
             task.append(state, listonly, isdelete=isdelete, **kwargs)
 
-    def set_row_switch(self, obj):
+    def set_row_switch(self, state):
         """mark a deleted object as a 'row switch'.
         
         this indicates that an INSERT statement elsewhere corresponds to this DELETE;
         the INSERT is converted to an UPDATE and the DELETE does not occur.
         """
-        mapper = object_mapper(obj)
+        mapper = _state_mapper(state)
         task = self.get_task_by_mapper(mapper)
-        taskelement = task._objects[obj._state]
+        taskelement = task._objects[state]
         taskelement.isdelete = "rowswitch"
         
     def unregister_object(self, obj):
         """remove an object from its parent UOWTask.
         
-        called by mapper.save_obj() when an 'identity switch' is detected, so that
+        called by mapper._save_obj() when an 'identity switch' is detected, so that
         no further operations occur upon the instance."""
         mapper = object_mapper(obj)
         task = self.get_task_by_mapper(mapper)
         if obj._state in task._objects:
             task.delete(obj._state)
 
-    def is_deleted(self, obj):
-        """return true if the given object is marked as deleted within this UOWTransaction."""
+    def is_deleted(self, state):
+        """return true if the given state is marked as deleted within this UOWTransaction."""
         
-        mapper = object_mapper(obj)
-        task = self.get_task_by_mapper(mapper)
-        return task.is_deleted(obj._state)
-
-    def state_is_deleted(self, state):
         mapper = _state_mapper(state)
         task = self.get_task_by_mapper(mapper)
         return task.is_deleted(state)
@@ -375,11 +365,11 @@ class UOWTransaction(object):
                 base_task = self.tasks[base_mapper]
             else:
                 self.tasks[base_mapper] = base_task = UOWTask(self, base_mapper)
-                base_mapper.register_dependencies(self)
+                base_mapper._register_dependencies(self)
 
             if mapper not in self.tasks:
                 self.tasks[mapper] = task = UOWTask(self, mapper, base_task=base_task)
-                mapper.register_dependencies(self)
+                mapper._register_dependencies(self)
             else:
                 task = self.tasks[mapper]
                 
@@ -581,7 +571,7 @@ class UOWTask(object):
         # postupdates are UPDATED immeditely (for now)
         # convert post_update_cols list to a Set so that __hashcode__ is used to compare columns
         # instead of __eq__
-        self.mapper.save_obj([state], self.uowtransaction, postupdate=True, post_update_cols=util.Set(post_update_cols))
+        self.mapper._save_obj([state], self.uowtransaction, postupdate=True, post_update_cols=util.Set(post_update_cols))
 
     def delete(self, obj):
         """remove the given object from this UOWTask, if present."""
@@ -940,10 +930,10 @@ class UOWExecutor(object):
                 self.execute_delete_steps(trans, task)
 
     def save_objects(self, trans, task):
-        task.mapper.save_obj(task.polymorphic_tosave_objects, trans)
+        task.mapper._save_obj(task.polymorphic_tosave_objects, trans)
 
     def delete_objects(self, trans, task):
-        task.mapper.delete_obj(task.polymorphic_todelete_objects, trans)
+        task.mapper._delete_obj(task.polymorphic_todelete_objects, trans)
 
     def execute_dependency(self, trans, dep, isdelete):
         dep.execute(trans, isdelete)

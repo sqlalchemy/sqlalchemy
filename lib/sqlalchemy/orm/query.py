@@ -983,8 +983,8 @@ class Query(object):
                     cf.update(sql_util.find_columns(o))
 
             if adapt_criterion:
-                context.primary_columns = [from_obj.corresponding_column(c, raiseerr=False) or c for c in context.primary_columns]
-                cf = [from_obj.corresponding_column(c, raiseerr=False) or c for c in cf]
+                context.primary_columns = [from_obj.corresponding_column(c) or c for c in context.primary_columns]
+                cf = [from_obj.corresponding_column(c) or c for c in cf]
 
             s2 = sql.select(context.primary_columns + list(cf), whereclause, from_obj=context.from_clause, use_labels=True, correlate=False, order_by=util.to_list(order_by), **self._select_args())
             
@@ -1004,7 +1004,7 @@ class Query(object):
             statement.append_order_by(*context.eager_order_by)
         else:
             if adapt_criterion:
-                context.primary_columns = [from_obj.corresponding_column(c, raiseerr=False) or c for c in context.primary_columns]
+                context.primary_columns = [from_obj.corresponding_column(c) or c for c in context.primary_columns]
                 self._primary_adapter = mapperutil.create_row_adapter(from_obj, self.table)
 
             if adapt_criterion or self._distinct:

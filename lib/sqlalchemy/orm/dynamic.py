@@ -93,9 +93,9 @@ class AppenderQuery(Query):
         else:
             return sess
     
-    def _get_session(self):
+    def session(self):
         return self.__session()
-    session = property(_get_session)
+    session = property(session)
     
     def __iter__(self):
         sess = self.__session()

@@ -198,10 +198,10 @@ class ClauseAdapter(AbstractClauseProcessor):
         if self.exclude is not None:
             if col in self.exclude:
                 return None
-        newcol = self.selectable.corresponding_column(col, raiseerr=False, require_embedded=True)
+        newcol = self.selectable.corresponding_column(col, require_embedded=True)
         if newcol is None and self.equivalents is not None and col in self.equivalents:
             for equiv in self.equivalents[col]:
-                newcol = self.selectable.corresponding_column(equiv, raiseerr=False, require_embedded=True)
+                newcol = self.selectable.corresponding_column(equiv, require_embedded=True)
                 if newcol:
                     return newcol
         return newcol

@@ -7,11 +7,10 @@
 import weakref, warnings
 from itertools import chain
 from sqlalchemy import sql, util, exceptions, logging
-from sqlalchemy.sql import expression, visitors, operators
-from sqlalchemy.sql import util as sqlutil
-from sqlalchemy.orm import util as mapperutil
-from sqlalchemy.orm.util import ExtensionCarrier, create_row_adapter
+from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
+from sqlalchemy.sql.expression import _corresponding_column_or_error
 from sqlalchemy.orm import sync, attributes
+from sqlalchemy.orm.util import ExtensionCarrier, create_row_adapter, state_str, instance_str
 from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, PropComparator
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', '_mapper_registry']
@@ -337,7 +336,7 @@ class Mapper(object):
                 self.inherits._add_polymorphic_mapping(self.polymorphic_identity, self)
                 if self.polymorphic_on is None:
                     if self.inherits.polymorphic_on is not None:
-                        self.polymorphic_on = self.mapped_table.corresponding_column(self.inherits.polymorphic_on, raiseerr=False)
+                        self.polymorphic_on = self.mapped_table.corresponding_column(self.inherits.polymorphic_on)
                     else:
                         raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
 
@@ -440,10 +439,10 @@ class Mapper(object):
             primary_key = expression.ColumnSet()
 
             for col in (self.primary_key_argument or self._pks_by_table[self.mapped_table]):
-                c = self.mapped_table.corresponding_column(col, raiseerr=False)
+                c = self.mapped_table.corresponding_column(col)
                 if c is None:
                     for cc in self._equivalent_columns[col]:
-                        c = self.mapped_table.corresponding_column(cc, raiseerr=False)
+                        c = self.mapped_table.corresponding_column(cc)
                         if c is not None:
                             break
                     else:
@@ -462,7 +461,7 @@ class Mapper(object):
                         break
                     for cc in c.foreign_keys:
                         cc = cc.column
-                        c2 = self.mapped_table.corresponding_column(cc, raiseerr=False)
+                        c2 = self.mapped_table.corresponding_column(cc)
                         if c2 is not None:
                             c = c2
                             tried.add(c)
@@ -651,7 +650,7 @@ class Mapper(object):
             elif prop is None:
                 mapped_column = []
                 for c in columns:
-                    mc = self.mapped_table.corresponding_column(c, raiseerr=False)
+                    mc = self.mapped_table.corresponding_column(c)
                     if not mc:
                         raise exceptions.ArgumentError("Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(c))
                     mapped_column.append(mc)
@@ -664,7 +663,7 @@ class Mapper(object):
 
         if isinstance(prop, ColumnProperty):
             # relate the mapper's "select table" to the given ColumnProperty
-            col = self.select_table.corresponding_column(prop.columns[0], raiseerr=False)
+            col = self.select_table.corresponding_column(prop.columns[0])
             # col might not be present! the selectable given to the mapper need not include "deferred"
             # columns (included in zblog tests)
             if col is None:
@@ -713,10 +712,10 @@ class Mapper(object):
             if self._init_properties is not None:
                 for key, prop in self._init_properties.iteritems():
                     if expression.is_column(prop):
-                        props[key] = self.select_table.corresponding_column(prop)
+                        props[key] = _corresponding_column_or_error(self.select_table, prop)
                     elif (isinstance(prop, list) and expression.is_column(prop[0])):
-                        props[key] = [self.select_table.corresponding_column(c) for c in prop]
-            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, _polymorphic_map=self.polymorphic_map, polymorphic_on=self.select_table.corresponding_column(self.polymorphic_on), primary_key=self.primary_key_argument)
+                        props[key] = [_corresponding_column_or_error(self.select_table, c) for c in prop]
+            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, _polymorphic_map=self.polymorphic_map, polymorphic_on=_corresponding_column_or_error(self.select_table, self.polymorphic_on), primary_key=self.primary_key_argument)
 
     def _compile_class(self):
         """If this mapper is to be a primary mapper (i.e. the
@@ -919,27 +918,27 @@ class Mapper(object):
     def _set_attr_by_column(self, obj, column, value):
         self._get_col_to_prop(column).setattr(obj._state, column, value)
 
-    def save_obj(self, states, uowtransaction, postupdate=False, post_update_cols=None, single=False):
+    def _save_obj(self, states, uowtransaction, postupdate=False, post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
 
         This is called within the context of a UOWTransaction during a
         flush operation.
 
-        `save_obj` issues SQL statements not just for instances mapped
+        `_save_obj` issues SQL statements not just for instances mapped
         directly by this mapper, but for instances mapped by all
         inheriting mappers as well.  This is to maintain proper insert
         ordering among a polymorphic chain of instances. Therefore
-        save_obj is typically called only on a *base mapper*, or a
+        _save_obj is typically called only on a *base mapper*, or a
         mapper which does not inherit from any other mapper.
         """
 
         if self.__should_log_debug:
-            self.__log_debug("save_obj() start, " + (single and "non-batched" or "batched"))
+            self.__log_debug("_save_obj() start, " + (single and "non-batched" or "batched"))
 
-        # if batch=false, call save_obj separately for each object
+        # if batch=false, call _save_obj separately for each object
         if not single and not self.batch:
             for state in states:
-                self.save_obj([state], uowtransaction, postupdate=postupdate, post_update_cols=post_update_cols, single=True)
+                self._save_obj([state], uowtransaction, postupdate=postupdate, post_update_cols=post_update_cols, single=True)
             return
 
         # if session has a connection callable, 
@@ -970,11 +969,11 @@ class Mapper(object):
             mapper = _state_mapper(state)
             instance_key = mapper._identity_key_from_state(state)
             if not postupdate and not has_identity and instance_key in uowtransaction.uow.identity_map:
-                existing = uowtransaction.uow.identity_map[instance_key]
+                existing = uowtransaction.uow.identity_map[instance_key]._state
                 if not uowtransaction.is_deleted(existing):
-                    raise exceptions.FlushError("New instance %s with identity key %s conflicts with persistent instance %s" % (mapperutil.state_str(state), str(instance_key), mapperutil.instance_str(existing)))
+                    raise exceptions.FlushError("New instance %s with identity key %s conflicts with persistent instance %s" % (state_str(state), str(instance_key), state_str(existing)))
                 if self.__should_log_debug:
-                    self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, mapperutil.state_str(state), mapperutil.instance_str(existing)))
+                    self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, state_str(state), state_str(existing)))
                 uowtransaction.set_row_switch(existing)
 
         inserted_objects = util.Set()
@@ -997,7 +996,7 @@ class Mapper(object):
                 instance_key = mapper._identity_key_from_state(state)
 
                 if self.__should_log_debug:
-                    self.__log_debug("save_obj() table '%s' instance %s identity %s" % (table.name, mapperutil.state_str(state), str(instance_key)))
+                    self.__log_debug("_save_obj() table '%s' instance %s identity %s" % (table.name, state_str(state), str(instance_key)))
 
                 isinsert = not instance_key in uowtransaction.uow.identity_map and not postupdate and not has_identity
                 params = {}
@@ -1153,7 +1152,7 @@ class Mapper(object):
         if deferred_props:
             _expire_state(state, deferred_props)
 
-    def delete_obj(self, states, uowtransaction):
+    def _delete_obj(self, states, uowtransaction):
         """Issue ``DELETE`` statements for a list of objects.
 
         This is called within the context of a UOWTransaction during a
@@ -1161,7 +1160,7 @@ class Mapper(object):
         """
 
         if self.__should_log_debug:
-            self.__log_debug("delete_obj() start")
+            self.__log_debug("_delete_obj() start")
 
         if 'connection_callable' in uowtransaction.mapper_flush_opts:
             connection_callable = uowtransaction.mapper_flush_opts['connection_callable']
@@ -1223,7 +1222,7 @@ class Mapper(object):
                 if 'after_delete' in mapper.extension.methods:
                     mapper.extension.after_delete(mapper, connection, state.obj())
 
-    def register_dependencies(self, uowcommit):
+    def _register_dependencies(self, uowcommit):
         """Register ``DependencyProcessor`` instances with a
         ``unitofwork.UOWTransaction``.
 
@@ -1303,7 +1302,7 @@ class Mapper(object):
             state = instance._state
 
             if self.__should_log_debug:
-                self.__log_debug("_instance(): using existing instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
+                self.__log_debug("_instance(): using existing instance %s identity %s" % (instance_str(instance), str(identitykey)))
 
             isnew = state.runid != context.runid
             currentload = not isnew
@@ -1337,7 +1336,7 @@ class Mapper(object):
                 instance = attributes.new_instance(self.class_)
                 
             if self.__should_log_debug:
-                self.__log_debug("_instance(): created new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
+                self.__log_debug("_instance(): created new instance %s identity %s" % (instance_str(instance), str(identitykey)))
             
             state = instance._state    
             instance._entity_name = self.entity_name
@@ -1460,7 +1459,7 @@ class Mapper(object):
         statement = sql.select(needs_tables, cond, use_labels=True)
         def post_execute(instance, **flags):
             if self.__should_log_debug:
-                self.__log_debug("Post query loading instance " + mapperutil.instance_str(instance))
+                self.__log_debug("Post query loading instance " + instance_str(instance))
 
             identitykey = self.identity_key_from_instance(instance)
 

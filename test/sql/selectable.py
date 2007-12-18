@@ -24,6 +24,7 @@ table2 = Table('table2', metadata,
 
 class SelectableTest(AssertMixin):
     def testdistance(self):
+        # same column three times
         s = select([table.c.col1.label('c2'), table.c.col1, table.c.col1.label('c1')])
 
         # didnt do this yet...col.label().make_proxy() has same "distance" as col.make_proxy() so far
@@ -50,6 +51,9 @@ class SelectableTest(AssertMixin):
     def testselectontable(self):
         sel = select([table, table2], use_labels=True)
         assert sel.corresponding_column(table.c.col1) is sel.c.table1_col1
+        assert sel.corresponding_column(table.c.col1, require_embedded=True) is sel.c.table1_col1
+        assert table.corresponding_column(sel.c.table1_col1) is table.c.col1
+        assert table.corresponding_column(sel.c.table1_col1, require_embedded=True) is None
         
     def testjoinagainstjoin(self):
         j  = outerjoin(table, table2, table.c.col1==table2.c.col2)
