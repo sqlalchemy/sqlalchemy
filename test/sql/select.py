@@ -60,7 +60,7 @@ class SelectTest(SQLCompileTest):
         assert hasattr(table1.select(), 'c')
         assert not hasattr(table1.c.myid.self_group(), 'columns')
         assert hasattr(table1.select().self_group(), 'columns')
-        assert not hasattr(table1.select().as_scalar().self_group(), 'columns')
+        assert not hasattr(select([table1.c.myid]).as_scalar().self_group(), 'columns')
         assert not hasattr(table1.c.myid, 'columns')
         assert not hasattr(table1.c.myid, 'c')
         assert not hasattr(table1.select().c.myid, 'c')
@@ -245,6 +245,19 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
 
 
     def test_scalar_select(self):
+        try:
+            s = select([table1.c.myid, table1.c.name]).as_scalar()
+            assert False
+        except exceptions.InvalidRequestError, err:
+            assert str(err) == "Scalar select can only be created from a Select object that has exactly one column expression.", str(err)
+        
+        try:
+            # generic function which will look at the type of expression
+            func.coalesce(select([table1.c.myid]))
+            assert False
+        except exceptions.InvalidRequestError, err:
+            assert str(err) == "Select objects don't have a type.  Call as_scalar() on this Select object to return a 'scalar' version of this Select.", str(err)
+        
         s = select([table1.c.myid], scalar=True, correlate=False)
         self.assert_compile(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) AS anon_1 FROM mytable")
 

@@ -208,20 +208,22 @@ class AttributeImpl(object):
         try:
             return state.dict[self.key]
         except KeyError:
-            callable_ = self._get_callable(state)
-            if callable_ is not None:
-                if passive:
-                    return PASSIVE_NORESULT
-                value = callable_()
-                if value is not ATTR_WAS_SET:
-                    return self.set_committed_value(state, value)
-                else:
-                    if self.key not in state.dict:
-                        return self.get(state, passive=passive)
-                    return state.dict[self.key]
-            else:
-                # Return a new, empty value
-                return self.initialize(state)
+            # if no history, check for lazy callables, etc.
+            if self.key not in state.committed_state:
+                callable_ = self._get_callable(state)
+                if callable_ is not None:
+                    if passive:
+                        return PASSIVE_NORESULT
+                    value = callable_()
+                    if value is not ATTR_WAS_SET:
+                        return self.set_committed_value(state, value)
+                    else:
+                        if self.key not in state.dict:
+                            return self.get(state, passive=passive)
+                        return state.dict[self.key]
+
+            # Return a new, empty value
+            return self.initialize(state)
 
     def append(self, state, value, initiator, passive=False):
         self.set(state, value, initiator)
@@ -767,9 +769,11 @@ class InstanceState(object):
                 self.dict.pop(attr.impl.key, None)
                 self.callables[attr.impl.key] = self.__fire_trigger
                 self.expired_attributes.add(attr.impl.key)
+            self.committed_state = {}
         else:
             for key in attribute_names:
                 self.dict.pop(key, None)
+                self.committed_state.pop(key, None)
 
                 if not getattr(self.class_, key).impl.accepts_global_callable:
                     continue

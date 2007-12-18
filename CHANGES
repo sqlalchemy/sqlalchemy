@@ -28,6 +28,9 @@ CHANGES
       names.  Generated bind params now have the form "<paramname>_<num>",
       whereas before only the second bind of the same name would have this form.
     
+    - select().as_scalar() will raise an exception if the select does not have
+      exactly one expression in its columns clause.
+      
     - bindparam() objects themselves can be used as keys for execute(), i.e.
       statement.execute({bind1:'foo', bind2:'bar'})
     
@@ -88,6 +91,12 @@ CHANGES
      (i.e. a pickled object or other mutable item), the reason for 
      the copy-on-load change in the first place, retain the old 
      behavior.
+   
+   - a slight behavioral change to attributes is, del'ing an attribute
+     does *not* cause the lazyloader of that attribute to fire off again;
+     the "del" makes the effective value of the attribute "None".  To
+     re-trigger the "loader" for an attribute, use 
+     session.expire(instance, [attrname]).
      
    - query.filter(SomeClass.somechild == None), when comparing
      a many-to-one property to None, properly generates "id IS NULL"

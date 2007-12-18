@@ -905,8 +905,46 @@ class HistoryTest(PersistTest):
         f = Foo()
         f.bars.append(bar2)
         self.assertEquals(attributes.get_history(f._state, 'bars'), ([bar2], [], []))
-        
+
     def test_scalar_via_lazyload(self):
+        class Foo(fixtures.Base):
+            pass
+
+        lazy_load = None
+        def lazyload(instance):
+            def load():
+                return lazy_load
+            return load
+
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, useobject=False)
+        lazy_load = "hi"
+
+        # with scalar non-object, the lazy callable is only executed on gets, not history 
+        # operations
+        
+        f = Foo()
+        self.assertEquals(f.bar, "hi")
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([], ["hi"], []))
+
+        f = Foo()
+        f.bar = None
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([None], [], []))
+
+        f = Foo()
+        f.bar = "there"
+        self.assertEquals(attributes.get_history(f._state, 'bar'), (["there"], [], []))
+        f.bar = "hi"
+        self.assertEquals(attributes.get_history(f._state, 'bar'), (["hi"], [], []))
+
+        f = Foo()
+        self.assertEquals(f.bar, "hi")
+        del f.bar
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([], [], ["hi"]))
+        assert f.bar is None
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([None], [], ["hi"]))
+        
+    def test_scalar_object_via_lazyload(self):
         class Foo(fixtures.Base):
             pass
         class Bar(fixtures.Base):
@@ -924,6 +962,9 @@ class HistoryTest(PersistTest):
         bar1, bar2 = [Bar(id=1), Bar(id=2)]
         lazy_load = bar1
 
+        # with scalar object, the lazy callable is only executed on gets and history 
+        # operations
+
         f = Foo()
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([], [bar1], []))
         
@@ -937,5 +978,12 @@ class HistoryTest(PersistTest):
         f.bar = bar1
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([], [bar1], []))
     
+        f = Foo()
+        self.assertEquals(f.bar, bar1)
+        del f.bar
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([None], [], [bar1]))
+        assert f.bar is None
+        self.assertEquals(attributes.get_history(f._state, 'bar'), ([None], [], [bar1]))
+        
 if __name__ == "__main__":
     testbase.main()

@@ -807,15 +807,13 @@ A summary of all operators usable on relations:
         [5]
         {stop}[]
 
-    a comparison to `None` also generates a negated EXISTS clause:
+    a comparison to `None` also generates an IS NULL clause for a many-to-one relation:
 
         {python}
         {sql}>>> session.query(Address).filter(Address.user==None).all()
         SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
         FROM addresses 
-        WHERE NOT (EXISTS (SELECT 1 
-        FROM users 
-        WHERE users.id = addresses.user_id)) ORDER BY addresses.oid
+        WHERE addresses.user_id IS NULL ORDER BY addresses.oid
         []
         {stop}[]
 

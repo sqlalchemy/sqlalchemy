@@ -1398,9 +1398,8 @@ class ColumnElement(ClauseElement, _CompareMixin):
     docstring for more details.
     """
     
-    def __init__(self):
-        self.primary_key = False
-        self.foreign_keys = []
+    primary_key = False
+    foreign_keys = []
 
     def base_columns(self):
         if hasattr(self, '_base_columns'):
@@ -1557,7 +1556,6 @@ class FromClause(Selectable):
         self.oid_column = None
         
     def _get_from_objects(self, **modifiers):
-        # this could also be [self], at the moment it doesnt matter to the Select object
         return []
 
     def default_order_by(self):
@@ -2486,7 +2484,6 @@ class _ColumnElementAdapter(ColumnElement):
     """
 
     def __init__(self, elem):
-        ColumnElement.__init__(self)
         self.elem = elem
         self.type = getattr(elem, 'type', None)
 
@@ -2900,8 +2897,11 @@ class _ScalarSelect(_Grouping):
     __visit_name__ = 'grouping'
 
     def __init__(self, elem):
-        super(_ScalarSelect, self).__init__(elem)
-        self.type = list(elem.inner_columns)[0].type
+        self.elem = elem
+        cols = list(elem.inner_columns)
+        if len(cols) != 1:
+            raise exceptions.InvalidRequestError("Scalar select can only be created from a Select object that has exactly one column expression.")
+        self.type = cols[0].type
 
     def _no_cols(self):
         raise exceptions.InvalidRequestError("Scalar Select expression has no columns; use this object directly within a column-level expression.")
@@ -3086,6 +3086,10 @@ class Select(_SelectBaseMixin, FromClause):
 
     froms = property(_get_display_froms, doc="""Return a list of all FromClause elements which will be applied to the FROM clause of the resulting statement.""")
 
+    def type(self):
+        raise exceptions.InvalidRequestError("Select objects don't have a type.  Call as_scalar() on this Select object to return a 'scalar' version of this Select.")
+    type = property(type)
+    
     def locate_all_froms(self):
         """return a Set of all FromClause elements referenced by this Select.  
         
