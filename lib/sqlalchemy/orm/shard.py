@@ -1,3 +1,10 @@
+"""Defines a rudimental 'horizontal sharding' system which allows a 
+Session to distribute queries and persistence operations across multiple 
+databases.
+
+For a usage example, see the example ``examples/sharding/attribute_shard.py``.
+
+"""
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.query import Query
 from sqlalchemy import exceptions, util

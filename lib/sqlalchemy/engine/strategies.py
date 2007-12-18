@@ -1,10 +1,13 @@
 """Strategies for creating new instances of Engine types.
 
-By default there are two, one which is the "thread-local" strategy,
-one which is the "plain" strategy.
+These are semi-private implementation classes which 
+provide the underlying behavior for the "strategy" keyword argument 
+available on [sqlalchemy.engine#create_engine()].
+Current available options are ``plain``, ``threadlocal``, and
+``mock``.
 
-New strategies can be added via constructing a new EngineStrategy
-object which will add itself to the list of available strategies.
+New strategies can be added via new ``EngineStrategy``
+classes.
 """
 
 

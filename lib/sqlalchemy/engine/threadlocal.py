@@ -1,11 +1,12 @@
-from sqlalchemy import util
-from sqlalchemy.engine import base
-
 """Provides a thread-local transactional wrapper around the root Engine class.
 
-Provides begin/commit methods on the engine itself which correspond to
-a thread-local transaction.
+The ``threadlocal`` module is invoked when using the ``strategy="threadlocal"`` flag
+with [sqlalchemy.engine#create_engine()].  This module is semi-private and is 
+invoked automatically when the threadlocal engine strategy is used.
 """
+
+from sqlalchemy import util
+from sqlalchemy.engine import base
 
 class TLSession(object):
     def __init__(self, engine):

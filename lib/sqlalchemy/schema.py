@@ -6,15 +6,23 @@
 
 """The schema module provides the building blocks for database metadata.
 
-This means all the entities within a SQL database that we might want
-to look at, modify, or create and delete are described by these
-objects, in a database-agnostic way.
+Each element within this module describes a database entity 
+which can be created and dropped, or is otherwise part of such an entity.
+Examples include tables, columns, sequences, and indexes.
 
-A structure of SchemaItems also provides a *visitor* interface which is
-the primary method by which other methods operate upon the schema.
-The SQL package extends this structure with its own clause-specific
-objects as well as the visitor interface, so that the schema package
-*plugs in* to the SQL package.
+All entities are subclasses of [sqlalchemy.schema#SchemaItem], and as 
+defined in this module they are intended to be agnostic of any 
+vendor-specific constructs.
+
+A collection of entities are grouped into a unit called [sqlalchemy.schema#MetaData].
+MetaData serves as a logical grouping of schema elements, and can also
+be associated with an actual database connection such that operations 
+involving the contained elements can contact the database as needed.
+
+Two of the elements here also build upon their "syntactic" counterparts,
+which are defined in [sqlalchemy.sql.expression#], specifically [sqlalchemy.schema#Table]
+and [sqlalchemy.schema#Column].  Since these objects are part of the
+SQL expression language, they are usable as components in SQL expressions.
 """
 
 import re, inspect

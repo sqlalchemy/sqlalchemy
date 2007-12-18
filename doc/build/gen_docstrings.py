@@ -4,7 +4,7 @@ import re
 
 from sqlalchemy import schema, types, engine, sql, pool, orm, exceptions, databases, interfaces
 from sqlalchemy.sql import compiler, expression
-from sqlalchemy.engine import default, strategies, threadlocal
+from sqlalchemy.engine import default, strategies, threadlocal, url
 import sqlalchemy.orm.shard
 import sqlalchemy.ext.sessioncontext as sessioncontext
 import sqlalchemy.ext.selectresults as selectresults
@@ -24,16 +24,16 @@ def make_all_docs():
     objects = [
         make_doc(obj=engine),
         make_doc(obj=default),
-        make_doc(obj=engine.url),
+        make_doc(obj=strategies),
         make_doc(obj=threadlocal),
+        make_doc(obj=url),
         make_doc(obj=exceptions),
+        make_doc(obj=interfaces),
+        make_doc(obj=pool),
         make_doc(obj=schema),
         #make_doc(obj=sql,include_all_classes=True),
         make_doc(obj=compiler),
         make_doc(obj=expression,include_all_classes=True),
-        make_doc(obj=interfaces),
-        make_doc(obj=pool),
-        make_doc(obj=strategies),
         make_doc(obj=types),
         make_doc(obj=orm),
         make_doc(obj=orm.collections, classes=[orm.collections.collection,

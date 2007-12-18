@@ -4,7 +4,14 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-__all__ = [ 'TypeEngine', 'TypeDecorator',
+"""defines genericized SQL types, each represented by a subclass of 
+[sqlalchemy.types#AbstractType].  Dialects define further subclasses of these 
+types.
+
+For more information see the SQLAlchemy documentation on types.
+
+"""
+__all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'FLOAT',
             'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB',
             'BOOLEAN', 'SMALLINT', 'DATE', 'TIME',

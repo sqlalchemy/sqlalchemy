@@ -5,9 +5,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-The mapper package provides object-relational functionality, building upon
-the schema and sql packages and tying operations to class properties and
-constructors.
+Functional constructs for ORM configuration.
+
+See the SQLAlchemy object relational tutorial and mapper configuration 
+documentation for an overview of how this module is used.
 """
 
 from sqlalchemy import util as sautil

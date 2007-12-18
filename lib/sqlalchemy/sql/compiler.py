@@ -4,7 +4,19 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""SQL expression compilation routines and DDL implementations."""
+"""Base SQL and DDL compiler implementations.
+
+Provides the [sqlalchemy.sql.compiler#DefaultCompiler] class, which is
+responsible for generating all SQL query strings, as well as 
+[sqlalchemy.sql.compiler#SchemaGenerator] and [sqlalchemy.sql.compiler#SchemaDropper]
+which issue CREATE and DROP DDL for tables, sequences, and indexes.
+
+The elements in this module are used by public-facing constructs like
+[sqlalchemy.sql.expression#ClauseElement] and [sqlalchemy.engine#Engine].
+While dialect authors will want to be familiar with this module for the purpose of
+creating database-specific compilers and schema generators, the module 
+is otherwise internal to SQLAlchemy.
+"""
 
 import string, re
 from sqlalchemy import schema, engine, util, exceptions

@@ -4,11 +4,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Defines a set of mapper.MapperProperty objects, including basic
-column properties as well as relationships.  The objects rely upon the
-LoaderStrategy objects in the strategies.py module to handle load
-operations.  PropertyLoader also relies upon the dependency.py module
-to handle flush-time dependency sorting and processing.
+"""MapperProperty implementations.  
+
+This is a private module which defines the behavior of
+invidual ORM-mapped attributes.
 """
 
 from sqlalchemy import sql, schema, util, exceptions, logging

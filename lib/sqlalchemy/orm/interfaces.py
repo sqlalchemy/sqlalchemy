@@ -4,7 +4,15 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""Semi-private implementation objects which form the basis
+of ORM-mapped attributes, query options and mapper extension.
 
+Defines the [sqlalchemy.orm.interfaces#MapperExtension] class,
+which can be end-user subclassed to add event-based functionality
+to mappers.  The remainder of this module is generally private to the
+ORM.
+
+"""
 from sqlalchemy import util, logging, exceptions
 from sqlalchemy.sql import expression
 class_mapper = None

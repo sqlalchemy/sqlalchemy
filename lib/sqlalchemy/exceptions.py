@@ -3,7 +3,10 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
+"""Exceptions used with SQLAlchemy.
 
+The base exception class is SQLAlchemyError.  Exceptions which are raised as a result
+of DBAPI exceptions are all subclasses of [sqlalchemy.exceptions#DBAPIError]."""
 
 class SQLAlchemyError(Exception):
     """Generic error class."""

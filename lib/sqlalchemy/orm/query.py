@@ -4,6 +4,17 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""Defines the [sqlalchemy.orm.query#Query] class, the central
+construct used by the ORM to construct database queries.
+
+The ``Query`` class should not be confused with the [sqlalchemy.sql.expression#Select]
+class, which defines database SELECT operations at the SQL (non-ORM) level.
+``Query`` differs from ``Select`` in that it returns ORM-mapped objects and interacts
+with an ORM session, whereas the ``Select`` construct interacts directly with the database
+to return iterable result sets.
+"""
+
+
 from sqlalchemy import sql, util, exceptions, logging
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import expression, visitors, operators

@@ -4,6 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""Defines the [sqlalchemy.orm.mapper#Mapper] class, the central configurational
+unit which associates a class with a database table.
+
+This is a semi-private module; the main configurational API of the ORM is 
+avaiable in [sqlalchemy.orm#].
+"""
+
 import weakref, warnings
 from itertools import chain
 from sqlalchemy import sql, util, exceptions, logging
@@ -37,7 +44,7 @@ class Mapper(object):
     columns.
 
     Instances of this class should be constructed via the
-    ``sqlalchemy.orm.mapper()`` function.
+    [sqlalchemy.orm#mapper()] function.
     """
 
     def __init__(self,

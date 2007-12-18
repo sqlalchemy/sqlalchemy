@@ -4,6 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""Provides the Session class and related utilities."""
+
+
 import weakref
 from sqlalchemy import util, exceptions, sql, engine
 from sqlalchemy.orm import unitofwork, query, attributes, util as mapperutil
@@ -320,6 +323,9 @@ class Session(object):
 
     def __init__(self, bind=None, autoflush=True, transactional=False, twophase=False, echo_uow=False, weak_identity_map=True, binds=None, extension=None):
         """Construct a new Session.
+        
+        A session is usually constructed using the [sqlalchemy.orm#create_session()] function, 
+        or its more "automated" variant [sqlalchemy.orm#sessionmaker()].
 
         autoflush
             When ``True``, all query operations will issue a ``flush()`` call to this

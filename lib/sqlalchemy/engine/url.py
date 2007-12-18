@@ -1,4 +1,10 @@
-"""Provides URL facilities for specifying database connections."""
+"""Provides the [sqlalchemy.engine.url#URL] class which encapsulates
+information about a database connection specification.
+
+The URL object is created automatically when [sqlalchemy.engine#create_engine()] is called
+with a string argument; alternatively, the URL is a public-facing construct which can
+be used directly and is also accepted directly by ``create_engine()``.
+"""
 
 import re, cgi, sys, urllib
 from sqlalchemy import exceptions

@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-"""Basic components for SQL execution and interfacing with DB-API..
+"""Basic components for SQL execution and interfacing with DB-API.
 
 Defines the basic components used to interface DB-API modules with
 higher-level statement-construction, connection-management, execution
