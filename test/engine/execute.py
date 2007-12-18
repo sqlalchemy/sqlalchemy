@@ -26,7 +26,7 @@ class ExecuteTest(PersistTest):
             conn.execute("insert into users (user_id, user_name) values (?, ?)", [3,"ed"], [4,"horse"])
             conn.execute("insert into users (user_id, user_name) values (?, ?)", (5,"barney"), (6,"donkey"))
             conn.execute("insert into users (user_id, user_name) values (?, ?)", 7, 'sally')
-            res = conn.execute("select * from users")
+            res = conn.execute("select * from users order by user_id")
             assert res.fetchall() == [(1, "jack"), (2, "fred"), (3, "ed"), (4, "horse"), (5, "barney"), (6, "donkey"), (7, 'sally')]
             conn.execute("delete from users")
 
@@ -38,7 +38,7 @@ class ExecuteTest(PersistTest):
             conn.execute("insert into users (user_id, user_name) values (%s, %s)", [2,"ed"], [3,"horse"])
             conn.execute("insert into users (user_id, user_name) values (%s, %s)", 4, 'sally')
             conn.execute("insert into users (user_id) values (%s)", 5)
-            res = conn.execute("select * from users")
+            res = conn.execute("select * from users order by user_id")
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally'), (5, None)]
             conn.execute("delete from users")
 
@@ -51,7 +51,7 @@ class ExecuteTest(PersistTest):
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':1, 'name':'jack'})
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':2, 'name':'ed'}, {'id':3, 'name':'horse'})
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", id=4, name='sally')
-            res = conn.execute("select * from users")
+            res = conn.execute("select * from users order by user_id")
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
             conn.execute("delete from users")
 
@@ -61,7 +61,7 @@ class ExecuteTest(PersistTest):
             conn.execute("insert into users (user_id, user_name) values (:id, :name)", {'id':1, 'name':'jack'})
             conn.execute("insert into users (user_id, user_name) values (:id, :name)", {'id':2, 'name':'ed'}, {'id':3, 'name':'horse'})
             conn.execute("insert into users (user_id, user_name) values (:id, :name)", id=4, name='sally')
-            res = conn.execute("select * from users")
+            res = conn.execute("select * from users order by user_id")
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
             conn.execute("delete from users")
 
