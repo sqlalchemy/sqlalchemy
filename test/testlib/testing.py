@@ -430,8 +430,7 @@ class AssertMixin(PersistTest):
     def assert_sql(self, db, callable_, list, with_sequences=None):
         global testdata
         testdata = TestData()
-        if with_sequences is not None and (config.db.name == 'postgres' or
-                                           config.db.name == 'oracle'):
+        if with_sequences is not None and config.db.name in ('firebird', 'oracle', 'postgres'):
             testdata.set_assert_list(self, with_sequences)
         else:
             testdata.set_assert_list(self, list)
