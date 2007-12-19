@@ -42,7 +42,10 @@ def Table(*args, **kw):
             if isinstance(ref, schema.Column):
                 name = ref.table.name
             else:
-                name = unpack(ref)[-2]
+                # take just the table name: on FB there cannot be
+                # a schema, so the first element is always the
+                # table name, possibly followed by the field name
+                name = unpack(ref)[0]
             print name, table_name
             if name == table_name:
                 if fk.ondelete is None:
