@@ -150,7 +150,7 @@ class MSDateTime_adodbapi(MSDateTime):
         def process(value):
             # adodbapi will return datetimes with empty time values as datetime.date() objects.
             # Promote them back to full datetime.datetime()
-            if value and not hasattr(value, 'second'):
+            if value and isinstance(value, datetime.date):
                 return datetime.datetime(value.year, value.month, value.day)
             return value
         return process
@@ -158,7 +158,7 @@ class MSDateTime_adodbapi(MSDateTime):
 class MSDateTime_pyodbc(MSDateTime):
     def bind_processor(self, dialect):
         def process(value):
-            if value and not hasattr(value, 'second'):
+            if value and isinstance(value, datetime.date):
                 return datetime.datetime(value.year, value.month, value.day)
             else:
                 return value
@@ -167,7 +167,7 @@ class MSDateTime_pyodbc(MSDateTime):
 class MSDate_pyodbc(MSDate):
     def bind_processor(self, dialect):
         def process(value):
-            if value and not hasattr(value, 'second'):
+            if value and isinstance(value, datetime.date):
                 return datetime.datetime(value.year, value.month, value.day)
             else:
                 return value
@@ -176,7 +176,7 @@ class MSDate_pyodbc(MSDate):
     def result_processor(self, dialect):
         def process(value):
             # pyodbc returns SMALLDATETIME values as datetime.datetime(). truncate it back to datetime.date()
-            if value and hasattr(value, 'second'):
+            if value and isinstance(value, datetime.datetime):
                 return value.date()
             else:
                 return value
@@ -186,7 +186,7 @@ class MSDate_pymssql(MSDate):
     def result_processor(self, dialect):
         def process(value):
             # pymssql will return SMALLDATETIME values as datetime.datetime(), truncate it back to datetime.date()
-            if value and hasattr(value, 'second'):
+            if value and isinstance(value, datetime.datetime):
                 return value.date()
             else:
                 return value
@@ -599,13 +599,13 @@ class MSSQLDialect(default.DefaultDialect):
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
                 
-            table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
+            table.append_column(schema.Column(name, coltype, nullable=nullable, autoincrement=False, *colargs))
         
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
 
         # We also run an sp_columns to check for identity columns:
-        cursor = connection.execute("sp_columns %s" % self.identifier_preparer.format_table(table))
+        cursor = connection.execute("sp_columns @table_name = '%s', @table_owner = '%s'" % (table.name, current_schema))
         ic = None
         while True:
             row = cursor.fetchone()
@@ -614,6 +614,7 @@ class MSSQLDialect(default.DefaultDialect):
             col_name, type_name = row[3], row[5]
             if type_name.endswith("identity"):
                 ic = table.c[col_name]
+                ic.autoincrement = True
                 # setup a psuedo-sequence to represent the identity attribute - we interpret this at table.create() time as the identity attribute
                 ic.sequence = schema.Sequence(ic.name + '_identity')
                 # MSSQL: only one identity per table allowed
@@ -693,6 +694,10 @@ class MSSQLDialect_pymssql(MSSQLDialect):
     def __init__(self, **params):
         super(MSSQLDialect_pymssql, self).__init__(**params)
         self.use_scope_identity = True
+
+        # pymssql understands only ascii
+        if self.convert_unicode:
+            self.encoding = params.get('encoding', 'ascii')
 
     def do_rollback(self, connection):
         # pymssql throws an error on repeated rollbacks. Ignore it.
@@ -824,6 +829,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
 class MSSQLDialect_adodbapi(MSSQLDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
+    supports_unicode = sys.maxunicode == 65535
     supports_unicode_statements = True
 
     def import_dbapi(cls):
