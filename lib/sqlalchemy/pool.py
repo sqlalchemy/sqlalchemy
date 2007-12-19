@@ -208,7 +208,12 @@ class _ConnectionRecord(object):
         if self.connection is not None:
             if self.__pool._should_log_info:
                 self.__pool.log("Closing connection %s" % repr(self.connection))
-            self.connection.close()
+            try:
+                self.connection.close()
+            except:
+                if self.__pool._should_log_info:
+                    self.__pool.log("Exception closing connection %s" % repr(self.connection))
+                
 
     def invalidate(self, e=None):
         if self.__pool._should_log_info:

@@ -13,6 +13,15 @@ CHANGES
       knows that its return type is a Date. We only have a few functions
       represented so far but will continue to add to the system [ticket:615]
 
+    - auto-reconnect support improved; a Connection can now automatically
+      reconnect after its underlying connection is invalidated, without
+      needing to connect() again from the engine.  This allows an ORM session
+      bound to a single Connection to not need a reconnect.
+      Open transactions on the Connection must be rolled back after an invalidation 
+      of the underlying connection else an error is raised.  Also fixed
+      bug where disconnect detect was not being called for cursor(), rollback(),
+      or commit().
+      
     - added new flag to String and create_engine(),
       assert_unicode=(True|False|'warn'|None). Defaults to `False` or `None` on
       create_engine() and String, `'warn'` on the Unicode type. When `True`,

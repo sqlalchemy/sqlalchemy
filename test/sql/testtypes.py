@@ -342,7 +342,7 @@ class UnicodeTest(AssertMixin):
                 assert str(e) == "Unicode type received non-unicode bind param value 'im not unicode'"
         finally:
             unicode_engine.dispose()
-        
+
     @testing.unsupported('oracle')
     def testblanks(self):
         unicode_table.insert().execute(unicode_varchar=u'')

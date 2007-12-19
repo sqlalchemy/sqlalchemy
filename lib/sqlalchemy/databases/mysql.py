@@ -1527,8 +1527,12 @@ class MySQLDialect(default.DefaultDialect):
         connection.ping()
 
     def is_disconnect(self, e):
-        return isinstance(e, self.dbapi.OperationalError) and \
-               e.args[0] in (2006, 2013, 2014, 2045, 2055)
+        if isinstance(e, self.dbapi.OperationalError):
+            return e.args[0] in (2006, 2013, 2014, 2045, 2055)
+        elif isinstance(e, self.dbapi.InterfaceError):  # if underlying connection is closed, this is the error you get
+            return "(0, '')" in str(e)
+        else:
+            return False
 
     def get_default_schema_name(self, connection):
         try:

@@ -68,7 +68,31 @@ def close_open_connections(fn):
     decorated.__name__ = fn.__name__
     return decorated
 
+class ReconnectFixture(object):
+    def __init__(self, dbapi):
+        self.dbapi = dbapi
+        self.connections = []
+    
+    def __getattr__(self, key):
+        return getattr(self.dbapi, key)
 
+    def connect(self, *args, **kwargs):
+        conn = self.dbapi.connect(*args, **kwargs)
+        self.connections.append(conn)
+        return conn
+
+    def shutdown(self):
+        for c in list(self.connections):
+            c.close()
+        self.connections = []
+        
+def reconnecting_engine(url=None, options=None):
+    url = url or config.db_url
+    dbapi = config.db.dialect.dbapi
+    engine = testing_engine(url, {'module':ReconnectFixture(dbapi)})
+    engine.test_shutdown = engine.dialect.dbapi.shutdown
+    return engine
+    
 def testing_engine(url=None, options=None):
     """Produce an engine configured by --options with optional overrides."""
     
@@ -109,3 +133,5 @@ def utf8_engine(url=None, options=None):
             url = str(url)
 
     return testing_engine(url, options)
+
+

@@ -237,6 +237,9 @@ class SQLiteDialect(default.DefaultDialect):
     def oid_column_name(self, column):
         return "oid"
     
+    def is_disconnect(self, e):
+        return isinstance(e, self.dbapi.ProgrammingError) and "Cannot operate on a closed database." in str(e)
+
     def table_names(self, connection, schema):
         s = "SELECT name FROM sqlite_master WHERE type='table'"
         return [row[0] for row in connection.execute(s)]
