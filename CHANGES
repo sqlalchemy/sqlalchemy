@@ -226,7 +226,12 @@ CHANGES
 
 - dialects
 
-   - MSSQL/PyODBC no longer has a global "set nocount on".
+   - MSSQL
+      - PyODBC no longer has a global "set nocount on".
+      - Fix non-identity integer PKs on autload [ticket:824]
+      - Better support for convert_unicode [ticket:839]
+      - Less strict date conversion for pyodbc/adodbapi [ticket:842]
+      - Schema-qualified tables / autoload [ticket:901]
 
    - Firebird backend
 
