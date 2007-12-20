@@ -616,6 +616,13 @@ class DateTest(AssertMixin):
             self.assert_(x.adate.__class__ == datetime.date)
             self.assert_(x.adatetime.__class__ == datetime.datetime)
 
+            t.delete().execute()
+            
+            # test mismatched date/datetime
+            t.insert().execute(adate=d2, adatetime=d2)
+            self.assertEquals(select([t.c.adate, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, d2)])
+            self.assertEquals(select([t.c.adate, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, d2)])
+            
         finally:
             t.drop(checkfirst=True)
 

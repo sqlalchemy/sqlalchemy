@@ -50,7 +50,7 @@ class DateTimeMixin(object):
                 # pass string values thru
                 return value
             elif value is not None:
-                if getattr(value, 'microsecond', None) is not None:
+                if self.__microsecond__ and getattr(value, 'microsecond', None) is not None:
                     return value.strftime(self.__format__ + "." + str(value.microsecond))
                 else:
                     return value.strftime(self.__format__)
@@ -70,6 +70,7 @@ class DateTimeMixin(object):
 
 class SLDateTime(DateTimeMixin,sqltypes.DateTime):
     __format__ = "%Y-%m-%d %H:%M:%S"
+    __microsecond__ = True
     
     def get_col_spec(self):
         return "TIMESTAMP"
@@ -82,6 +83,7 @@ class SLDateTime(DateTimeMixin,sqltypes.DateTime):
         
 class SLDate(DateTimeMixin, sqltypes.Date):
     __format__ = "%Y-%m-%d"
+    __microsecond__ = False
 
     def get_col_spec(self):
         return "DATE"
@@ -94,6 +96,7 @@ class SLDate(DateTimeMixin, sqltypes.Date):
         
 class SLTime(DateTimeMixin, sqltypes.Time):
     __format__ = "%H:%M:%S"
+    __microsecond__ = True
 
     def get_col_spec(self):
         return "TIME"
