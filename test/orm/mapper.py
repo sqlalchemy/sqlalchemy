@@ -1131,83 +1131,73 @@ class NoLoadTest(MapperSuperTest):
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             )
 
-class MapperExtensionTest(MapperSuperTest):
+class MapperExtensionTest(PersistTest):
     def setUpAll(self):
         tables.create()
-    def tearDownAll(self):
-        tables.drop()
-    def tearDown(self):
-        clear_mappers()
-        tables.delete()
-    def setUp(self):
-        tables.data()
-
-    def test_create_instance(self):
-        class Ext(MapperExtension):
-            def create_instance(self, *args, **kwargs):
-                return User()
-        m = mapper(Address, addresses)
-        m = mapper(User, users, extension=Ext(), properties = dict(
-            addresses = relation(Address, lazy=True),
-        ))
-
-        q = create_session().query(m)
-        l = q.select();
-        self.assert_result(l, User, *user_address_result)
-
-    def test_methods(self):
-        """test that common user-defined methods get called."""
-
-        methods = set()
+        
+        global methods, Ext
+        
+        methods = []
+        
         class Ext(MapperExtension):
             def load(self, query, *args, **kwargs):
-                methods.add('load')
+                methods.append('load')
                 return EXT_CONTINUE
 
             def get(self, query, *args, **kwargs):
-                methods.add('get')
+                methods.append('get')
                 return EXT_CONTINUE
 
             def translate_row(self, mapper, context, row):
-                methods.add('translate_row')
+                methods.append('translate_row')
                 return EXT_CONTINUE
 
             def create_instance(self, mapper, selectcontext, row, class_):
-                methods.add('create_instance')
+                methods.append('create_instance')
                 return EXT_CONTINUE
 
             def append_result(self, mapper, selectcontext, row, instance, result, **flags):
-                methods.add('append_result')
+                methods.append('append_result')
                 return EXT_CONTINUE
 
             def populate_instance(self, mapper, selectcontext, row, instance, **flags):
-                methods.add('populate_instance')
+                methods.append('populate_instance')
                 return EXT_CONTINUE
 
             def before_insert(self, mapper, connection, instance):
-                methods.add('before_insert')
+                methods.append('before_insert')
                 return EXT_CONTINUE
 
             def after_insert(self, mapper, connection, instance):
-                methods.add('after_insert')
+                methods.append('after_insert')
                 return EXT_CONTINUE
 
             def before_update(self, mapper, connection, instance):
-                methods.add('before_update')
+                methods.append('before_update')
                 return EXT_CONTINUE
 
             def after_update(self, mapper, connection, instance):
-                methods.add('after_update')
+                methods.append('after_update')
                 return EXT_CONTINUE
 
             def before_delete(self, mapper, connection, instance):
-                methods.add('before_delete')
+                methods.append('before_delete')
                 return EXT_CONTINUE
 
             def after_delete(self, mapper, connection, instance):
-                methods.add('after_delete')
+                methods.append('after_delete')
                 return EXT_CONTINUE
 
+    def tearDown(self):
+        clear_mappers()
+        methods[:] = []
+        tables.delete()
+    
+    def tearDownAll(self):
+        tables.drop()
+            
+    def test_basic(self):
+        """test that common user-defined methods get called."""
         mapper(User, users, extension=Ext())
         sess = create_session()
         u = User()
@@ -1220,10 +1210,54 @@ class MapperExtensionTest(MapperSuperTest):
         sess.flush()
         sess.delete(u)
         sess.flush()
-        self.assertEquals(methods, set(['load', 'before_delete', 'create_instance', 'translate_row', 'get',
-                'after_delete', 'after_insert', 'before_update', 'before_insert', 'after_update', 'populate_instance']))
+        self.assertEquals(methods, ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'get', 
+            'translate_row', 'create_instance', 'populate_instance', 'before_update', 'after_update', 'before_delete', 'after_delete'])
 
+    def test_inheritance(self):
+        # test using inheritance
+        class AdminUser(User):
+            pass
+            
+        mapper(User, users, extension=Ext())
+        mapper(AdminUser, addresses, inherits=User)
+        
+        sess = create_session()
+        am = AdminUser()
+        sess.save(am)
+        sess.flush()
+        am = sess.query(AdminUser).load(am.user_id)
+        sess.clear()
+        am = sess.query(AdminUser).get(am.user_id)
+        am.user_name = 'foobar'
+        sess.flush()
+        sess.delete(am)
+        sess.flush()
+        self.assertEquals(methods, ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'get', 
+            'translate_row', 'create_instance', 'populate_instance', 'before_update', 'after_update', 'before_delete', 'after_delete'])
 
+    def test_inheritance_with_dupes(self):
+        # test using inheritance, same extension on both mappers
+        class AdminUser(User):
+            pass
+
+        ext = Ext()
+        mapper(User, users, extension=ext)
+        mapper(AdminUser, addresses, inherits=User, extension=ext)
+
+        sess = create_session()
+        am = AdminUser()
+        sess.save(am)
+        sess.flush()
+        am = sess.query(AdminUser).load(am.user_id)
+        sess.clear()
+        am = sess.query(AdminUser).get(am.user_id)
+        am.user_name = 'foobar'
+        sess.flush()
+        sess.delete(am)
+        sess.flush()
+        self.assertEquals(methods, ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'get', 
+            'translate_row', 'create_instance', 'populate_instance', 'before_update', 'after_update', 'before_delete', 'after_delete'])
+        
 class RequirementsTest(AssertMixin):
     """Tests the contract for user classes."""
 

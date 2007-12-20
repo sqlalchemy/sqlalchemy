@@ -82,6 +82,24 @@ CHANGES
      issued directly by the ORM in the form of UPDATE statements, by setting
      the flag "passive_cascades=False".
 
+   - inheriting mappers now inherit the MapperExtensions of their parent
+     mapper directly, so that all methods for a particular MapperExtension
+     are called for subclasses as well.  As always, any MapperExtension 
+     can return either EXT_CONTINUE to continue extension processing
+     or EXT_STOP to stop processing.  The order of mapper resolution is:
+     <extensions declared on the classes mapper> <extensions declared on the
+     classes' parent mapper> <globally declared extensions>.
+     
+     Note that if you instantiate the same extension class separately 
+     and then apply it individually for two mappers in the same inheritance 
+     chain, the extension will be applied twice to the inheriting class,
+     and each method will be called twice.
+     
+     To apply a mapper extension explicitly to each inheriting class but
+     have each method called only once per operation, use the same 
+     instance of the extension for both mappers.
+     [ticket:490]
+     
    - new synonym() behavior: an attribute will be placed on the mapped
      class, if one does not exist already, in all cases. if a property
      already exists on the class, the synonym will decorate the property

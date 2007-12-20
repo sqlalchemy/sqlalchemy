@@ -153,8 +153,8 @@ class Mapper(object):
         self.__should_log_debug = logging.is_debug_enabled(self.logger)
         
         self._compile_class()
-        self._compile_extensions()
         self._compile_inheritance()
+        self._compile_extensions()
         self._compile_tables()
         self._compile_properties()
         self._compile_pks()
@@ -281,12 +281,19 @@ class Mapper(object):
             for ext_obj in util.to_list(extension):
                 # local MapperExtensions have already instrumented the class
                 extlist.add(ext_obj)
-
-        for ext in global_extensions:
-            if isinstance(ext, type):
-                ext = ext()
-            extlist.add(ext)
-            ext.instrument_class(self, self.class_)
+        
+        if self.inherits is not None:
+            for ext in self.inherits.extension:
+                if ext not in extlist:
+                    extlist.add(ext)
+                    ext.instrument_class(self, self.class_)
+        else:
+            for ext in global_extensions:
+                if isinstance(ext, type):
+                    ext = ext()
+                if ext not in extlist:
+                    extlist.add(ext)
+                    ext.instrument_class(self, self.class_)
             
         self.extension = ExtensionCarrier()
         for ext in extlist:
@@ -960,14 +967,13 @@ class Mapper(object):
         if not postupdate:
             # call before_XXX extensions
             for state, connection, has_identity in tups:
+                mapper = _state_mapper(state)
                 if not has_identity:
-                    for mapper in _state_mapper(state).iterate_to_root():
-                        if 'before_insert' in mapper.extension.methods:
-                            mapper.extension.before_insert(mapper, connection, state.obj())
+                    if 'before_insert' in mapper.extension.methods:
+                        mapper.extension.before_insert(mapper, connection, state.obj())
                 else:
-                    for mapper in _state_mapper(state).iterate_to_root():
-                        if 'before_update' in mapper.extension.methods:
-                            mapper.extension.before_update(mapper, connection, state.obj())
+                    if 'before_update' in mapper.extension.methods:
+                        mapper.extension.before_update(mapper, connection, state.obj())
 
         for state, connection, has_identity in tups:
             # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
@@ -1131,13 +1137,14 @@ class Mapper(object):
         if not postupdate:
             # call after_XXX extensions
             for state, connection in inserted_objects:
-                for mapper in _state_mapper(state).iterate_to_root():
-                    if 'after_insert' in mapper.extension.methods:
-                        mapper.extension.after_insert(mapper, connection, state.obj())
+                mapper = _state_mapper(state)
+                if 'after_insert' in mapper.extension.methods:
+                    mapper.extension.after_insert(mapper, connection, state.obj())
+
             for state, connection in updated_objects:
-                for mapper in _state_mapper(state).iterate_to_root():
-                    if 'after_update' in mapper.extension.methods:
-                        mapper.extension.after_update(mapper, connection, state.obj())
+                mapper = _state_mapper(state)
+                if 'after_update' in mapper.extension.methods:
+                    mapper.extension.after_update(mapper, connection, state.obj())
     
     def _postfetch(self, connection, table, state, resultproxy, params, value_params):
         """After an ``INSERT`` or ``UPDATE``, assemble newly generated
@@ -1177,9 +1184,9 @@ class Mapper(object):
             tups = [(state, connection) for state in states]
 
         for (state, connection) in tups:
-            for mapper in _state_mapper(state).iterate_to_root():
-                if 'before_delete' in mapper.extension.methods:
-                    mapper.extension.before_delete(mapper, connection, state.obj())
+            mapper = _state_mapper(state)
+            if 'before_delete' in mapper.extension.methods:
+                mapper.extension.before_delete(mapper, connection, state.obj())
 
         deleted_objects = util.Set()
         table_to_mapper = {}
@@ -1225,9 +1232,9 @@ class Mapper(object):
                     raise exceptions.ConcurrentModificationError("Deleted rowcount %d does not match number of objects deleted %d" % (c.rowcount, len(del_objects)))
 
         for state, connection in deleted_objects:
-            for mapper in _state_mapper(state).iterate_to_root():
-                if 'after_delete' in mapper.extension.methods:
-                    mapper.extension.after_delete(mapper, connection, state.obj())
+            mapper = _state_mapper(state)
+            if 'after_delete' in mapper.extension.methods:
+                mapper.extension.after_delete(mapper, connection, state.obj())
 
     def _register_dependencies(self, uowcommit):
         """Register ``DependencyProcessor`` instances with a
