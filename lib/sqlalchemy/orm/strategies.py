@@ -120,7 +120,7 @@ class DeferredColumnLoader(LoaderStrategy):
     def init_class_attribute(self):
         self.is_class_level = True
         self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
-        sessionlib.register_attribute(self.parent.class_, self.key, uselist=False, useobject=False, callable_=self.setup_loader, copy_function=self.columns[0].type.copy_value, compare_function=self.columns[0].type.compare_values, mutable_scalars=self.columns[0].type.is_mutable(), comparator=self.parent_property.comparator)
+        sessionlib.register_attribute(self.parent.class_, self.key, uselist=False, useobject=False, callable_=self.class_level_loader, copy_function=self.columns[0].type.copy_value, compare_function=self.columns[0].type.compare_values, mutable_scalars=self.columns[0].type.is_mutable(), comparator=self.parent_property.comparator)
 
     def setup_query(self, context, only_load_props=None, **kwargs):
         if \
@@ -128,8 +128,8 @@ class DeferredColumnLoader(LoaderStrategy):
             (only_load_props and self.key in only_load_props):
             
             self.parent_property._get_strategy(ColumnLoader).setup_query(context, **kwargs)
-        
-    def setup_loader(self, instance, props=None, create_statement=None):
+    
+    def class_level_loader(self, instance, props=None):
         if not mapper.has_mapper(instance):
             return None
             
@@ -143,6 +143,9 @@ class DeferredColumnLoader(LoaderStrategy):
         if prop is not self.parent_property:
             return prop._get_strategy(DeferredColumnLoader).setup_loader(instance)
 
+        return LoadDeferredColumns(instance, self.key, props)
+        
+    def setup_loader(self, instance, props=None, create_statement=None):
         return LoadDeferredColumns(instance, self.key, props, optimizing_statement=create_statement)
                 
 DeferredColumnLoader.logger = logging.class_logger(DeferredColumnLoader)
@@ -150,7 +153,7 @@ DeferredColumnLoader.logger = logging.class_logger(DeferredColumnLoader)
 class LoadDeferredColumns(object):
     """callable, serializable loader object used by DeferredColumnLoader"""
     
-    def __init__(self, instance, key, keys, optimizing_statement):
+    def __init__(self, instance, key, keys, optimizing_statement=None):
         self.instance = instance
         self.key = key
         self.keys = keys
@@ -275,7 +278,7 @@ class LazyLoader(AbstractRelationLoader):
 
     def init_class_attribute(self):
         self.is_class_level = True
-        self._register_attribute(self.parent.class_, callable_=lambda i: self.setup_loader(i))
+        self._register_attribute(self.parent.class_, callable_=self.class_level_loader)
 
     def lazy_clause(self, instance, reverse_direction=False):
         if instance is None:
@@ -314,7 +317,7 @@ class LazyLoader(AbstractRelationLoader):
         
         return visitors.traverse(criterion, clone=True, visit_binary=visit_binary)
         
-    def setup_loader(self, instance, options=None, path=None):
+    def class_level_loader(self, instance, options=None, path=None):
         if not mapper.has_mapper(instance):
             return None
 
@@ -328,6 +331,9 @@ class LazyLoader(AbstractRelationLoader):
         if prop is not self.parent_property:
             return prop._get_strategy(LazyLoader).setup_loader(instance)
         
+        return LoadLazyAttribute(instance, self.key, options, path)
+
+    def setup_loader(self, instance, options=None, path=None):
         return LoadLazyAttribute(instance, self.key, options, path)
 
     def create_row_processor(self, selectcontext, mapper, row):
