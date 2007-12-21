@@ -51,6 +51,32 @@ class NaturalPKTest(ORMTest):
         sess.clear()
         u1 = sess.query(User).get('ed')
         self.assertEquals(User(username='ed', fullname='jack'), u1)
+
+    def test_expiry(self):
+        mapper(User, users)
+
+        sess = create_session()
+        u1 = User(username='jack', fullname='jack')
+
+        sess.save(u1)
+        sess.flush()
+        assert sess.get(User, 'jack') is u1
+
+        users.update(values={u1.c.username:'jack'}).execute(username='ed')
+        
+        try:
+            # expire/refresh works off of primary key.  the PK is gone
+            # in this case so theres no way to look it up.  criterion-
+            # based session invalidation could solve this [ticket:911]
+            sess.expire(u1)
+            u1.username
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert "Could not refresh instance" in str(e)
+
+        sess.clear()
+        assert sess.get(User, 'jack') is None
+        assert sess.get(User, 'ed').fullname == 'jack'
     
     @testing.unsupported('sqlite','mysql')
     def test_onetomany_passive(self):
