@@ -26,6 +26,7 @@ def suite():
         'orm.relationships',
         'orm.association',
         'orm.merge',
+        'orm.pickled',
         'orm.memusage',
         
         'orm.cycles',

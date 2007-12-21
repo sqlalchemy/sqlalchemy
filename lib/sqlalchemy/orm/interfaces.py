@@ -15,6 +15,7 @@ ORM.
 """
 from sqlalchemy import util, logging, exceptions
 from sqlalchemy.sql import expression
+from itertools import chain
 class_mapper = None
 
 __all__ = ['EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS', 'MapperExtension',
@@ -505,7 +506,27 @@ def build_path(mapper, key, prev=None):
         return prev + (mapper.base_mapper, key)
     else:
         return (mapper.base_mapper, key)
-        
+
+def serialize_path(path):
+    if path is None:
+        return None
+
+    return [
+        (mapper.class_, mapper.entity_name, key)
+        for mapper, key in [(path[i], path[i+1]) for i in range(0, len(path)-1, 2)]
+    ]
+    
+def deserialize_path(path):
+    if path is None:
+        return None
+
+    global class_mapper
+    if class_mapper is None:
+        from sqlalchemy.orm import class_mapper
+
+    return tuple(
+        chain(*[(class_mapper(cls, entity), key) for cls, entity, key in path])
+    )
 
 class MapperOption(object):
     """Describe a modification to a Query."""

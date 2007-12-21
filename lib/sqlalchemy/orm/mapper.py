@@ -758,7 +758,7 @@ class Mapper(object):
         def on_exception(class_, oldinit, instance, args, kwargs):
             util.warn_exception(self.extension.init_failed, self, class_, oldinit, instance, args, kwargs)
 
-        attributes.register_class(self.class_, extra_init=extra_init, on_exception=on_exception)
+        attributes.register_class(self.class_, extra_init=extra_init, on_exception=on_exception, deferred_scalar_loader=_load_scalar_attributes)
         
         self._class_state = self.class_._class_state
         _mapper_registry[self] = True
@@ -1358,42 +1358,22 @@ class Mapper(object):
             instance._sa_session_id = context.session.hash_key
             session_identity_map[identitykey] = instance
         
-        if currentload or context.populate_existing or self.always_refresh or state.trigger:
+        if currentload or context.populate_existing or self.always_refresh:
             if isnew:
                 state.runid = context.runid
-                state.trigger = None
                 context.progress.add(state)
-
+                
             if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                 self.populate_instance(context, instance, row, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew)
-        
+
+        elif getattr(state, 'expired_attributes', None):
+            if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=state.expired_attributes, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+                self.populate_instance(context, instance, row, only_load_props=state.expired_attributes, instancekey=identitykey, isnew=isnew)
+            
         if result is not None and ('append_result' not in extension.methods or extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE):
             result.append(instance)
             
         return instance
-                
-    def _deferred_inheritance_condition(self, base_mapper, needs_tables):
-        def visit_binary(binary):
-            leftcol = binary.left
-            rightcol = binary.right
-            if leftcol is None or rightcol is None:
-                return
-            if leftcol.table not in needs_tables:
-                binary.left = sql.bindparam(None, None, type_=binary.right.type)
-                param_names.append((leftcol, binary.left))
-            elif rightcol not in needs_tables:
-                binary.right = sql.bindparam(None, None, type_=binary.right.type)
-                param_names.append((rightcol, binary.right))
-
-        allconds = []
-        param_names = []
-
-        for mapper in self.iterate_to_root():
-            if mapper is base_mapper:
-                break
-            allconds.append(visitors.traverse(mapper.inherit_condition, clone=True, visit_binary=visit_binary))
-        
-        return sql.and_(*allconds), param_names
 
     def translate_row(self, tomapper, row):
         """Translate the column keys of a row into a new or proxied
@@ -1451,7 +1431,10 @@ class Mapper(object):
             populators = new_populators
         else:
             populators = existing_populators
-                
+
+        if only_load_props:
+            populators = [p for p in populators if p[0] in only_load_props]
+            
         for (key, populator) in populators:
             selectcontext.exec_with_path(self, key, populator, instance, row, ispostselect=ispostselect, isnew=isnew, **flags)
             
@@ -1464,26 +1447,75 @@ class Mapper(object):
             p(state.obj())
 
     def _get_poly_select_loader(self, selectcontext, row):
-        # 'select' or 'union'+col not present
+        """set up attribute loaders for 'select' and 'deferred' polymorphic loading.
+        
+        this loading uses a second SELECT statement to load additional tables,
+        either immediately after loading the main table or via a deferred attribute trigger.
+        """
+        
         (hosted_mapper, needs_tables) = selectcontext.attributes.get(('polymorphic_fetch', self), (None, None))
-        if hosted_mapper is None or not needs_tables or hosted_mapper.polymorphic_fetch == 'deferred':
+        
+        if hosted_mapper is None or not needs_tables:
             return
         
         cond, param_names = self._deferred_inheritance_condition(hosted_mapper, needs_tables)
         statement = sql.select(needs_tables, cond, use_labels=True)
-        def post_execute(instance, **flags):
-            if self.__should_log_debug:
-                self.__log_debug("Post query loading instance " + instance_str(instance))
+        
+        if hosted_mapper.polymorphic_fetch == 'select':
+            def post_execute(instance, **flags):
+                if self.__should_log_debug:
+                    self.__log_debug("Post query loading instance " + instance_str(instance))
 
-            identitykey = self.identity_key_from_instance(instance)
+                identitykey = self.identity_key_from_instance(instance)
 
-            params = {}
-            for c, bind in param_names:
-                params[bind] = self._get_attr_by_column(instance, c)
-            row = selectcontext.session.connection(self).execute(statement, params).fetchone()
-            self.populate_instance(selectcontext, instance, row, isnew=False, instancekey=identitykey, ispostselect=True)
+                params = {}
+                for c, bind in param_names:
+                    params[bind] = self._get_attr_by_column(instance, c)
+                row = selectcontext.session.connection(self).execute(statement, params).fetchone()
+                self.populate_instance(selectcontext, instance, row, isnew=False, instancekey=identitykey, ispostselect=True)
+            return post_execute
+        elif hosted_mapper.polymorphic_fetch == 'deferred':
+            from sqlalchemy.orm.strategies import DeferredColumnLoader
+            
+            def post_execute(instance, **flags):
+                def create_statement(instance):
+                    params = {}
+                    for (c, bind) in param_names:
+                        # use the "committed" (database) version to get query column values
+                        params[bind] = self._get_committed_attr_by_column(instance, c)
+                    return (statement, params)
+                
+                props = [prop for prop in [self._get_col_to_prop(col) for col in statement.inner_columns] if prop.key not in instance.__dict__]
+                keys = [p.key for p in props]
+                for prop in props:
+                    strategy = prop._get_strategy(DeferredColumnLoader)
+                    instance._state.set_callable(prop.key, strategy.setup_loader(instance, props=keys, create_statement=create_statement))
+            return post_execute
+        else:
+            return None
 
-        return post_execute
+    def _deferred_inheritance_condition(self, base_mapper, needs_tables):
+        def visit_binary(binary):
+            leftcol = binary.left
+            rightcol = binary.right
+            if leftcol is None or rightcol is None:
+                return
+            if leftcol.table not in needs_tables:
+                binary.left = sql.bindparam(None, None, type_=binary.right.type)
+                param_names.append((leftcol, binary.left))
+            elif rightcol not in needs_tables:
+                binary.right = sql.bindparam(None, None, type_=binary.right.type)
+                param_names.append((rightcol, binary.right))
+
+        allconds = []
+        param_names = []
+
+        for mapper in self.iterate_to_root():
+            if mapper is base_mapper:
+                break
+            allconds.append(visitors.traverse(mapper.inherit_condition, clone=True, visit_binary=visit_binary))
+
+        return sql.and_(*allconds), param_names
             
 Mapper.logger = logging.class_logger(Mapper)
 
@@ -1500,6 +1532,16 @@ def has_mapper(object):
     """
 
     return hasattr(object, '_entity_name')
+
+object_session = None
+
+def _load_scalar_attributes(instance, attribute_names):
+    global object_session
+    if not object_session:
+        from sqlalchemy.orm.session import object_session
+        
+    if object_session(instance).query(object_mapper(instance))._get(instance._instance_key, refresh_instance=instance._state, only_load_props=attribute_names) is None:
+        raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % instance_str(instance))
 
 def _state_mapper(state, entity_name=None):
     return state.class_._class_state.mappers[state.dict.get('_entity_name', entity_name)]

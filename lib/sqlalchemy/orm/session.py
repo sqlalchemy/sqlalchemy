@@ -1113,7 +1113,7 @@ class Session(object):
         
         return util.IdentitySet(self.uow.new.values())
     new = property(new)
-    
+
 def _expire_state(state, attribute_names):
     """Standalone expire instance function.
 
@@ -1123,12 +1123,6 @@ def _expire_state(state, attribute_names):
 
     If the list is None or blank, the entire instance is expired.
     """
-
-    if state.trigger is None:
-        def load_attributes(instance, attribute_names):
-            if object_session(instance).query(instance.__class__)._get(instance._instance_key, refresh_instance=instance._state, only_load_props=attribute_names) is None:
-                raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(instance))
-        state.trigger = load_attributes
 
     state.expire_attributes(attribute_names)
 

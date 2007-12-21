@@ -87,7 +87,9 @@ class MapperTest(MapperSuperTest):
         a = s.query(Address).from_statement(select([addresses.c.address_id, addresses.c.user_id])).first()
         assert a.user_id == 7
         assert a.address_id == 1
-        assert a.email_address is None
+        # email address auto-defers
+        assert 'email_addres' not in a.__dict__
+        assert a.email_address == 'jack@bean.com'
 
     def test_badconstructor(self):
         """test that if the construction of a mapped class fails, the instnace does not get placed in the session"""

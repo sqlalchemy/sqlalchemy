@@ -284,8 +284,10 @@ def instance_str(instance):
 
 def state_str(state):
     """Return a string describing an instance."""
-
-    return state.class_.__name__ + "@" + hex(id(state.obj()))
+    if state is None:
+        return "None"
+    else:
+        return state.class_.__name__ + "@" + hex(id(state.obj()))
 
 def attribute_str(instance, attribute):
     return instance_str(instance) + "." + attribute

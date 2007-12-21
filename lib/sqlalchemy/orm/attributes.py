@@ -255,12 +255,13 @@ class AttributeImpl(object):
 class ScalarAttributeImpl(AttributeImpl):
     """represents a scalar value-holding InstrumentedAttribute."""
 
-    accepts_global_callable = True
+    accepts_scalar_loader = True
     
     def delete(self, state):
         if self.key not in state.committed_state:
             state.committed_state[self.key] = state.dict.get(self.key, NO_VALUE)
 
+        # TODO: catch key errors, convert to attributeerror?
         del state.dict[self.key]
         state.modified=True
 
@@ -327,7 +328,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     Adds events to delete/set operations.
     """
 
-    accepts_global_callable = False
+    accepts_scalar_loader = False
 
     def __init__(self, class_, key, callable_, trackparent=False, extension=None, copy_function=None, compare_function=None, **kwargs):
         super(ScalarObjectAttributeImpl, self).__init__(class_, key,
@@ -338,6 +339,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         
     def delete(self, state):
         old = self.get(state)
+        # TODO: catch key errors, convert to attributeerror?
         del state.dict[self.key]
         self.fire_remove_event(state, old, self)
 
@@ -404,7 +406,7 @@ class CollectionAttributeImpl(AttributeImpl):
     CollectionAdapter, a "view" onto that object that presents consistent
     bag semantics to the orm layer independent of the user data implementation.
     """
-    accepts_global_callable = False
+    accepts_scalar_loader = False
     
     def __init__(self, class_, key, callable_, typecallable=None, trackparent=False, extension=None, copy_function=None, compare_function=None, **kwargs):
         super(CollectionAttributeImpl, self).__init__(class_, 
@@ -479,6 +481,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
         collection = self.get_collection(state)
         collection.clear_with_event()
+        # TODO: catch key errors, convert to attributeerror?
         del state.dict[self.key]
 
     def initialize(self, state):
@@ -648,7 +651,7 @@ class ClassState(object):
         self.mappers = {}
         self.attrs = {}
         self.has_mutable_scalars = False
-        
+
 class InstanceState(object):
     """tracks state information at the instance level."""
 
@@ -658,7 +661,6 @@ class InstanceState(object):
         self.dict = obj.__dict__
         self.committed_state = {}
         self.modified = False
-        self.trigger = None
         self.callables = {}
         self.parents = {}
         self.pending = {}
@@ -735,7 +737,7 @@ class InstanceState(object):
             return None
             
     def __getstate__(self):
-        return {'committed_state':self.committed_state, 'pending':self.pending, 'parents':self.parents, 'modified':self.modified, 'instance':self.obj()}
+        return {'committed_state':self.committed_state, 'pending':self.pending, 'parents':self.parents, 'modified':self.modified, 'instance':self.obj(), 'expired_attributes':getattr(self, 'expired_attributes', None), 'callables':self.callables}
     
     def __setstate__(self, state):
         self.committed_state = state['committed_state']
@@ -745,43 +747,62 @@ class InstanceState(object):
         self.obj = weakref.ref(state['instance'])
         self.class_ = self.obj().__class__
         self.dict = self.obj().__dict__
-        self.callables = {}
-        self.trigger = None
-    
+        self.callables = state['callables']
+        self.runid = None
+        self.appenders = {}
+        if state['expired_attributes'] is not None:
+            self.expire_attributes(state['expired_attributes'])
+
     def initialize(self, key):
         getattr(self.class_, key).impl.initialize(self)
         
     def set_callable(self, key, callable_):
         self.dict.pop(key, None)
         self.callables[key] = callable_
-    
-    def __fire_trigger(self):
+
+    def __call__(self):
+        """__call__ allows the InstanceState to act as a deferred 
+        callable for loading expired attributes, which is also
+        serializable.
+        """
         instance = self.obj()
-        self.trigger(instance, [k for k in self.expired_attributes if k not in self.dict])
+        self.class_._class_state.deferred_scalar_loader(instance, [k for k in self.expired_attributes if k not in self.committed_state])
         for k in self.expired_attributes:
             self.callables.pop(k, None)
         self.expired_attributes.clear()
         return ATTR_WAS_SET
     
+    def unmodified(self):
+        """a set of keys which have no uncommitted changes"""
+
+        return util.Set([
+            attr.impl.key for attr in _managed_attributes(self.class_) if
+            attr.impl.key not in self.committed_state
+            and (not hasattr(attr.impl, 'commit_to_state') or not attr.impl.check_mutable_modified(self))
+        ])
+    unmodified = property(unmodified)
+    
     def expire_attributes(self, attribute_names):
         if not hasattr(self, 'expired_attributes'):
             self.expired_attributes = util.Set()
+            
         if attribute_names is None:
             for attr in _managed_attributes(self.class_):
                 self.dict.pop(attr.impl.key, None)
-                self.callables[attr.impl.key] = self.__fire_trigger
-                self.expired_attributes.add(attr.impl.key)
+
+                if attr.impl.accepts_scalar_loader:
+                    self.callables[attr.impl.key] = self
+                    self.expired_attributes.add(attr.impl.key)
+
             self.committed_state = {}
         else:
             for key in attribute_names:
                 self.dict.pop(key, None)
                 self.committed_state.pop(key, None)
 
-                if not getattr(self.class_, key).impl.accepts_global_callable:
-                    continue
-
-                self.callables[key] = self.__fire_trigger
-                self.expired_attributes.add(key)
+                if getattr(self.class_, key).impl.accepts_scalar_loader:
+                    self.callables[key] = self
+                    self.expired_attributes.add(key)
                 
     def reset(self, key):
         """remove the given attribute and any callables associated with it."""
@@ -1081,7 +1102,7 @@ def _init_class_state(class_):
     if not '_class_state' in class_.__dict__:
         class_._class_state = ClassState()
     
-def register_class(class_, extra_init=None, on_exception=None):
+def register_class(class_, extra_init=None, on_exception=None, deferred_scalar_loader=None):
     # do a sweep first, this also helps some attribute extensions
     # (like associationproxy) become aware of themselves at the 
     # class level
@@ -1089,6 +1110,7 @@ def register_class(class_, extra_init=None, on_exception=None):
         getattr(class_, key, None)
 
     _init_class_state(class_)
+    class_._class_state.deferred_scalar_loader=deferred_scalar_loader
     
     oldinit = None
     doinit = False

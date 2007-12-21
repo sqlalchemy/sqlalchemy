@@ -95,6 +95,65 @@ class AttributesTest(PersistTest):
         self.assert_(o4.mt2[0].a == 'abcde')
         self.assert_(o4.mt2[0].b is None)
 
+    def test_deferred(self):
+        class Foo(object):pass
+        
+        data = {'a':'this is a', 'b':12}
+        def loader(instance, keys):
+            for k in keys:
+                instance.__dict__[k] = data[k]
+            return attributes.ATTR_WAS_SET
+            
+        attributes.register_class(Foo, deferred_scalar_loader=loader)
+        attributes.register_attribute(Foo, 'a', uselist=False, useobject=False)
+        attributes.register_attribute(Foo, 'b', uselist=False, useobject=False)
+        
+        f = Foo()
+        f._state.expire_attributes(None)
+        self.assertEquals(f.a, "this is a")
+        self.assertEquals(f.b, 12)
+        
+        f.a = "this is some new a"
+        f._state.expire_attributes(None)
+        self.assertEquals(f.a, "this is a")
+        self.assertEquals(f.b, 12)
+
+        f._state.expire_attributes(None)
+        f.a = "this is another new a"
+        self.assertEquals(f.a, "this is another new a")
+        self.assertEquals(f.b, 12)
+
+        f._state.expire_attributes(None)
+        self.assertEquals(f.a, "this is a")
+        self.assertEquals(f.b, 12)
+
+        del f.a
+        self.assertEquals(f.a, None)
+        self.assertEquals(f.b, 12)
+        
+        f._state.commit_all()
+        self.assertEquals(f.a, None)
+        self.assertEquals(f.b, 12)
+
+    def test_deferred_pickleable(self):
+        data = {'a':'this is a', 'b':12}
+        def loader(instance, keys):
+            for k in keys:
+                instance.__dict__[k] = data[k]
+            return attributes.ATTR_WAS_SET
+            
+        attributes.register_class(MyTest, deferred_scalar_loader=loader)
+        attributes.register_attribute(MyTest, 'a', uselist=False, useobject=False)
+        attributes.register_attribute(MyTest, 'b', uselist=False, useobject=False)
+        
+        m = MyTest()
+        m._state.expire_attributes(None)
+        assert 'a' not in m.__dict__
+        m2 = pickle.loads(pickle.dumps(m))
+        assert 'a' not in m2.__dict__
+        self.assertEquals(m2.a, "this is a")
+        self.assertEquals(m2.b, 12)
+        
     def test_list(self):
         class User(object):pass
         class Address(object):pass
@@ -860,7 +919,6 @@ class HistoryTest(PersistTest):
         self.assertEquals(attributes.get_history(f._state, 'bars'), ([bar4], [], []))
 
         lazy_load = [bar1, bar2, bar3]
-        f._state.trigger = lazyload(f)
         f._state.expire_attributes(['bars'])
         self.assertEquals(attributes.get_history(f._state, 'bars'), ([], [bar1, bar2, bar3], []))
         

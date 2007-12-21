@@ -47,7 +47,6 @@ __all__ = [
     'subquery', 'table', 'text', 'union', 'union_all', 'update', ]
 
 
-BIND_PARAMS = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
 
 def desc(column):
     """Return a descending ``ORDER BY`` clause element.
@@ -1795,6 +1794,8 @@ class _TextClause(ClauseElement):
 
     __visit_name__ = 'textclause'
 
+    _bind_params_regex = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
+
     def __init__(self, text = "", bind=None, bindparams=None, typemap=None):
         self._bind = bind
         self.bindparams = {}
@@ -1809,7 +1810,7 @@ class _TextClause(ClauseElement):
 
         # scan the string and search for bind parameter names, add them
         # to the list of bindparams
-        self.text = BIND_PARAMS.sub(repl, text)
+        self.text = self._bind_params_regex.sub(repl, text)
         if bindparams is not None:
             for b in bindparams:
                 self.bindparams[b.key] = b

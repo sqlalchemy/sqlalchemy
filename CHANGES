@@ -99,7 +99,14 @@ CHANGES
      have each method called only once per operation, use the same 
      instance of the extension for both mappers.
      [ticket:490]
+
+   - columns which are missing from a Query's select statement
+     now get automatically deferred during load.
      
+   - improved support for pickling of mapped entities.  Per-instance
+     lazy/deferred/expired callables are now serializable so that
+     they serialize and deserialize with _state. 
+       
    - new synonym() behavior: an attribute will be placed on the mapped
      class, if one does not exist already, in all cases. if a property
      already exists on the class, the synonym will decorate the property
