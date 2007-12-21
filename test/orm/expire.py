@@ -84,6 +84,20 @@ class ExpireTest(FixtureTest):
 
         assert o.description is None
         
+        o.isopen=15
+        sess.expire(o, ['isopen', 'description'])
+        o.description = 'some new description'
+        sess.query(Order).all()
+        assert o.isopen == 1
+        assert o.description == 'some new description'
+        
+        sess.expire(o, ['isopen', 'description'])
+        sess.query(Order).all()
+        del o.isopen
+        def go():
+            assert o.isopen is None
+        self.assert_sql_count(testbase.db, go, 0)
+        
     def test_expire_committed(self):
         """test that the committed state of the attribute receives the most recent DB data"""
         mapper(Order, orders)

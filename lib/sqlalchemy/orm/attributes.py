@@ -766,7 +766,7 @@ class InstanceState(object):
         serializable.
         """
         instance = self.obj()
-        self.class_._class_state.deferred_scalar_loader(instance, [k for k in self.expired_attributes if k not in self.committed_state])
+        self.class_._class_state.deferred_scalar_loader(instance, [k for k in self.expired_attributes if k in self.unmodified])
         for k in self.expired_attributes:
             self.callables.pop(k, None)
         self.expired_attributes.clear()
