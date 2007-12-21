@@ -54,6 +54,12 @@ class PickleTest(FixtureTest):
         sess2.update(u2)
         self.assertEquals(u2.name, 'ed')
         self.assertEquals(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
+
+        u2 = pickle.loads(pickle.dumps(u1))
+        sess2 = create_session()
+        u2 = sess2.merge(u2, dont_load=True)
+        self.assertEquals(u2.name, 'ed')
+        self.assertEquals(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
         
     def test_instance_deferred_cols(self):
         mapper(User, users, properties={
@@ -76,11 +82,22 @@ class PickleTest(FixtureTest):
         sess2 = create_session()
         sess2.update(u2)
         self.assertEquals(u2.name, 'ed')
-        assert 'addresses' not in u1.__dict__
+        assert 'addresses' not in u2.__dict__
         ad = u2.addresses[0]
         assert 'email_address' not in ad.__dict__
         self.assertEquals(ad.email_address, 'ed@bar.com')
         self.assertEquals(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
+
+        u2 = pickle.loads(pickle.dumps(u1))
+        sess2 = create_session()
+        u2 = sess2.merge(u2, dont_load=True)
+        self.assertEquals(u2.name, 'ed')
+        assert 'addresses' not in u2.__dict__
+        ad = u2.addresses[0]
+        assert 'email_address' in ad.__dict__  # mapper options dont transmit over merge() right now
+        self.assertEquals(ad.email_address, 'ed@bar.com')
+        self.assertEquals(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
+
 
 class PolymorphicDeferredTest(ORMTest):
     def define_tables(self, metadata):

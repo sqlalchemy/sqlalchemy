@@ -65,8 +65,13 @@ class ColumnProperty(StrategizedProperty):
         getattr(state.class_, self.key).impl.set(state, value, None)
         
     def merge(self, session, source, dest, dont_load, _recursive):
-        setattr(dest, self.key, getattr(source, self.key, None))
-
+        value = attributes.get_as_list(source._state, self.key, passive=True)
+        if value:
+            setattr(dest, self.key, value[0])
+        else:
+            # TODO: lazy callable should merge to the new instance
+            dest._state.expire_attributes([self.key])
+            
     def get_col_value(self, column, value):
         return value
 
@@ -334,6 +339,8 @@ class PropertyLoader(StrategizedProperty):
 
     def merge(self, session, source, dest, dont_load, _recursive):
         if not "merge" in self.cascade:
+            # TODO: lazy callable should merge to the new instance
+            dest._state.expire_attributes([self.key])
             return
         instances = attributes.get_as_list(source._state, self.key, passive=True)
         if not instances:
