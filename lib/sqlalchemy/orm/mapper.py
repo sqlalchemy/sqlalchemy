@@ -347,7 +347,7 @@ class Mapper(object):
                 self._synchronizer = None
                 self.mapped_table = self.local_table
             if self.polymorphic_identity is not None:
-                self.inherits._add_polymorphic_mapping(self.polymorphic_identity, self)
+                self.inherits.polymorphic_map[self.polymorphic_identity] = self
                 if self.polymorphic_on is None:
                     if self.inherits.polymorphic_on is not None:
                         self.polymorphic_on = self.mapped_table.corresponding_column(self.inherits.polymorphic_on)
@@ -377,23 +377,11 @@ class Mapper(object):
             if self.polymorphic_identity is not None:
                 if self.polymorphic_on is None:
                     raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
-                self._add_polymorphic_mapping(self.polymorphic_identity, self)
+                self.polymorphic_map[self.polymorphic_identity] = self
             self._identity_class = self.class_
             
         if self.mapped_table is None:
             raise exceptions.ArgumentError("Mapper '%s' does not have a mapped_table specified.  (Are you using the return value of table.create()?  It no longer has a return value.)" % str(self))
-
-        # convert polymorphic class associations to mappers
-        for key in self.polymorphic_map.keys():
-            if isinstance(self.polymorphic_map[key], type):
-                self.polymorphic_map[key] = class_mapper(self.polymorphic_map[key])
-
-    def _add_polymorphic_mapping(self, key, class_or_mapper, entity_name=None):
-        """Add a Mapper to our *polymorphic map*."""
-
-        if isinstance(class_or_mapper, type):
-            class_or_mapper = class_mapper(class_or_mapper, entity_name=entity_name)
-        self.polymorphic_map[key] = class_or_mapper
 
     def _compile_tables(self):
         # summary of the various Selectable units:
@@ -569,6 +557,7 @@ class Mapper(object):
     
     class _CompileOnAttr(PropComparator):
         """placeholder class attribute which fires mapper compilation on access"""
+
         def __init__(self, class_, key):
             self.class_ = class_
             self.key = key
