@@ -1366,12 +1366,12 @@ class Mapper(object):
             if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                 self.populate_instance(context, instance, row, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew)
 
-        elif getattr(state, 'expired_attributes', None):
-            # TODO: dont base this off of 'expired_attrbutes' - base it off of unloaded attrs, possibly
-            # based on the state.callables collection.  
-            attrs = state.expired_attributes.intersection(state.unmodified)
-            if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
-                self.populate_instance(context, instance, row, only_load_props=attrs, instancekey=identitykey, isnew=isnew)
+#       NOTYET: populate attributes on non-loading instances which have been expired, deferred, etc.
+#        elif getattr(state, 'expired_attributes', None):   # TODO: base off total set of unloaded attributes, not just exp
+#            attrs = state.expired_attributes.intersection(state.unmodified)
+#            if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+#                self.populate_instance(context, instance, row, only_load_props=attrs, instancekey=identitykey, isnew=isnew)
+#            context.partials.add((state, attrs))  <-- allow query.instances to commit the subset of attrs
             
         if result is not None and ('append_result' not in extension.methods or extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE):
             result.append(instance)
@@ -1412,8 +1412,6 @@ class Mapper(object):
             existing_populators = []
             post_processors = []
             for prop in self.__props.values():
-                if only_load_props and prop.key not in only_load_props:
-                    continue
                 (newpop, existingpop, post_proc) = selectcontext.exec_with_path(self, prop.key, prop.create_row_processor, selectcontext, self, row)
                 if newpop is not None:
                     new_populators.append((prop.key, newpop))
