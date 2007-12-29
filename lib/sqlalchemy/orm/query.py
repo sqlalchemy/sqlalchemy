@@ -855,11 +855,11 @@ class Query(object):
                     raise exceptions.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join(["'%s'" % str(c) for c in self.primary_key_columns]))
             q = q.params(params)
             
+        if lockmode is not None:
+            q = q.with_lockmode(lockmode)
+        q = q._select_context_options(populate_existing=bool(refresh_instance), version_check=(lockmode is not None), only_load_props=only_load_props, refresh_instance=refresh_instance)
+        q._order_by = None
         try:
-            if lockmode is not None:
-                q = q.with_lockmode(lockmode)
-            q = q._select_context_options(populate_existing=bool(refresh_instance), version_check=(lockmode is not None), only_load_props=only_load_props, refresh_instance=refresh_instance)
-            q._order_by = None
             # call using all() to avoid LIMIT compilation complexity
             return q.all()[0]
         except IndexError:
