@@ -1281,9 +1281,9 @@ class Mapper(object):
             if ret is not EXT_CONTINUE:
                 row = ret
 
-        if not refresh_instance and not skip_polymorphic and self.polymorphic_on is not None:
+        if not refresh_instance and not skip_polymorphic and self.polymorphic_on:
             discriminator = row[self.polymorphic_on]
-            if discriminator is not None:
+            if discriminator:
                 mapper = self.polymorphic_map[discriminator]
                 if mapper is not self:
                     if ('polymorphic_fetch', mapper) not in context.attributes:
