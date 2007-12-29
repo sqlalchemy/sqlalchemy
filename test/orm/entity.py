@@ -83,11 +83,16 @@ class EntityTest(AssertMixin):
         assert address2.select().execute().fetchall() == [(a1.address_id, u2.user_id, 'a2@foo.com')]
 
         ctx.current.clear()
-        u1list = ctx.current.query(User, entity_name='user1').select()
-        u2list = ctx.current.query(User, entity_name='user2').select()
+        u1list = ctx.current.query(User, entity_name='user1').all()
+        u2list = ctx.current.query(User, entity_name='user2').all()
         assert len(u1list) == len(u2list) == 1
         assert u1list[0] is not u2list[0]
         assert len(u1list[0].addresses) == len(u2list[0].addresses) == 1
+
+        u1 = ctx.current.query(User, entity_name='user1').first()
+        ctx.current.refresh(u1)
+        ctx.current.expire(u1)
+
 
     def testcascade(self):
         """same as testbasic but relies on session cascading"""

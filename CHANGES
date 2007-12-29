@@ -249,6 +249,9 @@ CHANGES
    - fixed bug which could arise when using session.begin_nested() in conjunction
      with more than one level deep of enclosing session.begin() statements
 
+   - fixed session.refresh() with instance that has custom entity_name 
+     [ticket:914]
+     
 - dialects
 
    - sqlite SLDate type will not erroneously render "microseconds" portion 
