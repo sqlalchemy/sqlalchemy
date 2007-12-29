@@ -1125,15 +1125,14 @@ class Mapper(object):
 
         if not postupdate:
             # call after_XXX extensions
-            for state, connection in inserted_objects:
+            for state, connection, has_identity in tups:
                 mapper = _state_mapper(state)
-                if 'after_insert' in mapper.extension.methods:
-                    mapper.extension.after_insert(mapper, connection, state.obj())
-
-            for state, connection in updated_objects:
-                mapper = _state_mapper(state)
-                if 'after_update' in mapper.extension.methods:
-                    mapper.extension.after_update(mapper, connection, state.obj())
+                if not has_identity:
+                    if 'after_insert' in mapper.extension.methods:
+                        mapper.extension.after_insert(mapper, connection, state.obj())
+                else:
+                    if 'after_update' in mapper.extension.methods:
+                        mapper.extension.after_update(mapper, connection, state.obj())
     
     def _postfetch(self, connection, table, state, resultproxy, params, value_params):
         """After an ``INSERT`` or ``UPDATE``, assemble newly generated

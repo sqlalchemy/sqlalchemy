@@ -1237,6 +1237,28 @@ class MapperExtensionTest(PersistTest):
         self.assertEquals(methods, ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'get', 
             'translate_row', 'create_instance', 'populate_instance', 'before_update', 'after_update', 'before_delete', 'after_delete'])
 
+    def test_after_with_no_changes(self):
+        # test that after_update is called even if no cols were updated
+        
+        mapper(Item, orderitems, extension=Ext() , properties={
+            'keywords':relation(Keyword, secondary=itemkeywords)
+        })
+        mapper(Keyword, keywords, extension=Ext() )
+        
+        sess = create_session()
+        i1 = Item()
+        k1 = Keyword('blue')
+        sess.save(i1)
+        sess.save(k1)
+        sess.flush()
+        self.assertEquals(methods, ['before_insert', 'after_insert', 'before_insert', 'after_insert'])
+
+        methods[:] = []
+        i1.keywords.append(k1)
+        sess.flush()
+        self.assertEquals(methods, ['before_update', 'after_update'])
+        
+        
     def test_inheritance_with_dupes(self):
         # test using inheritance, same extension on both mappers
         class AdminUser(User):

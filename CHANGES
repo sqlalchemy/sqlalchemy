@@ -100,6 +100,11 @@ CHANGES
      instance of the extension for both mappers.
      [ticket:490]
 
+   - MapperExtension.before_update() and after_update() are now called
+     symmetrically; previously, an instance that had no modified column
+     attributes (but had a relation() modification) could be called with 
+     before_update() but not after_update() [ticket:907]
+     
    - columns which are missing from a Query's select statement
      now get automatically deferred during load.
      
