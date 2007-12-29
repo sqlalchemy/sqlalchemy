@@ -118,15 +118,19 @@ class _ScopedExt(MapperExtension):
             class_.query = query()
         
     def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
+        if self.save_on_init:
+            entity_name = kwargs.pop('_sa_entity_name', None)
+            session = kwargs.pop('_sa_session', None)
         if not isinstance(oldinit, types.MethodType):
             for key, value in kwargs.items():
                 if self.validate:
                     if not mapper.get_property(key, resolve_synonyms=False, raiseerr=False):
                         raise exceptions.ArgumentError("Invalid __init__ argument: '%s'" % key)
                 setattr(instance, key, value)
+            kwargs.clear()
         if self.save_on_init:
-            session = kwargs.pop('_sa_session', self.context.registry())
-            session._save_impl(instance, entity_name=kwargs.pop('_sa_entity_name', None))
+            session = session or self.context.registry()
+            session._save_impl(instance, entity_name=entity_name)
         return EXT_CONTINUE
 
     def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):

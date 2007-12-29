@@ -348,7 +348,7 @@ class FlushTest(ORMTest):
         )
         admin_mapper = mapper(Admin, admins, inherits=user_mapper)
         sess = create_session()
-        adminrole = Role('admin')
+        adminrole = Role()
         sess.save(adminrole)
         sess.flush()
 

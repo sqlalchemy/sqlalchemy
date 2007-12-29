@@ -894,7 +894,7 @@ class ScopedMapperTest(PersistTest):
             pass
         Session.mapper(Baz, table2, extension=ext)
         assert hasattr(Baz, 'query')
-
+    
     def test_validating_constructor(self):
         s2 = SomeObject(someid=12)
         s3 = SomeOtherObject(someid=123, bogus=345)

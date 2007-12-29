@@ -107,7 +107,13 @@ CHANGES
      
    - columns which are missing from a Query's select statement
      now get automatically deferred during load.
-   
+
+   - mapped classes which extend "object" and do not provide an 
+     __init__() method will now raise TypeError if non-empty *args 
+     or **kwargs are present at instance construction time (and are 
+     not consumed by any extensions such as the scoped_session mapper), 
+     consistent with the behavior of normal Python classes [ticket:908]
+     
    - fixed Query bug when filter_by() compares a relation against None
      [ticket:899]
      

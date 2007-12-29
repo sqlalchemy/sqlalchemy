@@ -140,6 +140,30 @@ class MapperTest(MapperSuperTest):
         except Exception, e:
             assert e is ex
 
+        clear_mappers()
+        
+        # test that TypeError is raised for illegal constructor args,
+        # whether or not explicit __init__ is present [ticket:908]
+        class Foo(object):
+            def __init__(self):
+                pass
+        class Bar(object):
+            pass
+                
+        mapper(Foo, users)
+        mapper(Bar, addresses)
+        try:
+            Foo(x=5)
+            assert False
+        except TypeError:
+            assert True
+
+        try:
+            Bar(x=5)
+            assert False
+        except TypeError:
+            assert True
+
     def test_props(self):
         m = mapper(User, users, properties = {
             'addresses' : relation(mapper(Address, addresses))
@@ -1247,7 +1271,7 @@ class MapperExtensionTest(PersistTest):
         
         sess = create_session()
         i1 = Item()
-        k1 = Keyword('blue')
+        k1 = Keyword()
         sess.save(i1)
         sess.save(k1)
         sess.flush()

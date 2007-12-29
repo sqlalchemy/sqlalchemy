@@ -83,9 +83,9 @@ class InheritTest2(ORMTest):
             Column('bar_id', Integer, ForeignKey('bar.bid')))
 
     def testget(self):
-        class Foo(object):pass
-        def __init__(self, data=None):
-            self.data = data
+        class Foo(object):
+            def __init__(self, data=None):
+                self.data = data
         class Bar(Foo):pass
 
         mapper(Foo, foo)
@@ -128,7 +128,7 @@ class InheritTest2(ORMTest):
         sess.flush()
         sess.clear()
 
-        l = sess.query(Bar).select()
+        l = sess.query(Bar).all()
         print l[0]
         print l[0].foos
         self.assert_unordered_result(l, Bar,
@@ -191,7 +191,7 @@ class InheritTest3(ORMTest):
         sess.flush()
         compare = repr(b) + repr(sorted([repr(o) for o in b.foos]))
         sess.clear()
-        l = sess.query(Bar).select()
+        l = sess.query(Bar).all()
         print repr(l[0]) + repr(l[0].foos)
         found = repr(l[0]) + repr(sorted([repr(o) for o in l[0].foos]))
         self.assertEqual(found, compare)
@@ -233,11 +233,11 @@ class InheritTest3(ORMTest):
         blubid = bl1.id
         sess.clear()
 
-        l = sess.query(Blub).select()
+        l = sess.query(Blub).all()
         print l
         self.assert_(repr(l[0]) == compare)
         sess.clear()
-        x = sess.query(Blub).get_by(id=blubid)
+        x = sess.query(Blub).filter_by(id=blubid).one()
         print x
         self.assert_(repr(x) == compare)
 

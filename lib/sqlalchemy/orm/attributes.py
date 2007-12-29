@@ -1121,14 +1121,19 @@ def register_class(class_, extra_init=None, on_exception=None, deferred_scalar_l
         if extra_init:
             extra_init(class_, oldinit, instance, args, kwargs)
 
-        if doinit:
-            try:
+        try:
+            if doinit:
                 oldinit(instance, *args, **kwargs)
-            except:
-                if on_exception:
-                    on_exception(class_, oldinit, instance, args, kwargs)
-                raise
-    
+            elif args or kwargs:
+                # simulate error message raised by object(), but don't copy
+                # the text verbatim
+                raise TypeError("default constructor for object() takes no parameters")
+        except:
+            if on_exception:
+                on_exception(class_, oldinit, instance, args, kwargs)
+            raise
+                
+            
     # override oldinit
     oldinit = class_.__init__
     if oldinit is None or not hasattr(oldinit, '_oldinit'):
