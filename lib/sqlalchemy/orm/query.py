@@ -1348,7 +1348,7 @@ class QueryContext(object):
         finally:
             self.path = oldpath
 
-_runid = 1
+_runid = 1L
 _id_lock = util.threading.Lock()
 
 def _new_runid():
