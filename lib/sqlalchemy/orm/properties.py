@@ -309,7 +309,10 @@ class PropertyLoader(StrategizedProperty):
     def compare(self, op, value, value_is_parent=False):
         if op == operators.eq:
             if value is None:
-                return ~sql.exists([1], self.prop.mapper.mapped_table, self.prop.primaryjoin)
+                if self.uselist:
+                    return ~sql.exists([1], self.primaryjoin)
+                else:
+                    return self._optimized_compare(None, value_is_parent=value_is_parent)
             else:
                 return self._optimized_compare(value, value_is_parent=value_is_parent)
         else:

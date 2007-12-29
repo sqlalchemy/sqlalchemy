@@ -107,6 +107,9 @@ CHANGES
      
    - columns which are missing from a Query's select statement
      now get automatically deferred during load.
+   
+   - fixed Query bug when filter_by() compares a relation against None
+     [ticket:899]
      
    - improved support for pickling of mapped entities.  Per-instance
      lazy/deferred/expired callables are now serializable so that

@@ -381,6 +381,17 @@ class FilterTest(QueryTest):
 
         assert [Order(id=5)] == sess.query(Order).filter(Order.address == None).all()
 
+    def test_filter_by(self):
+        sess = create_session()
+        user = sess.query(User).get(8)
+        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(Address).filter_by(user=user).all()
+
+        # many to one generates IS NULL
+        assert [] == sess.query(Address).filter_by(user = None).all()
+
+        # one to many generates WHERE NOT EXISTS
+        assert [User(name='chuck')] == sess.query(User).filter_by(addresses = None).all()
+        
 class AggregateTest(QueryTest):
     def test_sum(self):
         sess = create_session()
@@ -471,6 +482,10 @@ class ParentTest(QueryTest):
         o = sess.query(Order).with_parent(u1).filter(orders.c.id>2).all()
         assert [Order(description="order 3"), Order(description="order 5")] == o
 
+        # test against None for parent? this can't be done with the current API since we don't know
+        # what mapper to use
+        #assert sess.query(Order).with_parent(None, property='addresses').all() == [Order(description="order 5")]
+        
     def test_noparent(self):
         sess = create_session()
         q = sess.query(User)
