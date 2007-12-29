@@ -732,7 +732,7 @@ class Connection(Connectable):
         try:
             self.engine.dialect.do_begin(self.connection)
         except Exception, e:
-            raise self.__handle_dbapi_exception(e, None, None, None)
+            raise self._handle_dbapi_exception(e, None, None, None)
 
     def _rollback_impl(self):
         if not self.closed and not self.invalidated and self.__connection.is_valid:
@@ -742,7 +742,7 @@ class Connection(Connectable):
                 self.engine.dialect.do_rollback(self.connection)
                 self.__transaction = None
             except Exception, e:
-                raise self.__handle_dbapi_exception(e, None, None, None)
+                raise self._handle_dbapi_exception(e, None, None, None)
         else:
             self.__transaction = None
 
@@ -753,7 +753,7 @@ class Connection(Connectable):
             self.engine.dialect.do_commit(self.connection)
             self.__transaction = None
         except Exception, e:
-            raise self.__handle_dbapi_exception(e, None, None, None)
+            raise self._handle_dbapi_exception(e, None, None, None)
         
     def _savepoint_impl(self, name=None):
         if name is None:
@@ -912,25 +912,32 @@ class Connection(Connectable):
         else:
             self._cursor_execute(context.cursor, context.statement, context.parameters[0], context=context)
 
-    def __handle_dbapi_exception(self, e, statement, parameters, cursor):
-        if not isinstance(e, self.dialect.dbapi.Error):
-            return e
-        is_disconnect = self.dialect.is_disconnect(e)
-        if is_disconnect:
-            self.invalidate(e)
-            self.engine.dispose()
-        if cursor:
-            cursor.close()
-        self._autorollback()
-        if self.__close_with_result:
-            self.close()
-        return exceptions.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect)
+    def _handle_dbapi_exception(self, e, statement, parameters, cursor):
+        if getattr(self, '_reentrant_error', False):
+            return exceptions.DBAPIError.instance(None, None, e)
+        self._reentrant_error = True
+        try:
+            if not isinstance(e, self.dialect.dbapi.Error):
+                return e
+            is_disconnect = self.dialect.is_disconnect(e)
+            if is_disconnect:
+                self.invalidate(e)
+                self.engine.dispose()
+            else:
+                if cursor:
+                    cursor.close()
+                self._autorollback()
+                if self.__close_with_result:
+                    self.close()
+            return exceptions.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect)
+        finally:
+            del self._reentrant_error
         
     def __create_execution_context(self, **kwargs):
         try:
             return self.engine.dialect.create_execution_context(connection=self, **kwargs)
         except Exception, e:
-            raise self.__handle_dbapi_exception(e, kwargs.get('statement', None), kwargs.get('parameters', None), None)
+            raise self._handle_dbapi_exception(e, kwargs.get('statement', None), kwargs.get('parameters', None), None)
 
     def _cursor_execute(self, cursor, statement, parameters, context=None):
         if self.engine._should_log_info:
@@ -939,7 +946,7 @@ class Connection(Connectable):
         try:
             self.dialect.do_execute(cursor, statement, parameters, context=context)
         except Exception, e:
-            raise self.__handle_dbapi_exception(e, statement, parameters, cursor)
+            raise self._handle_dbapi_exception(e, statement, parameters, cursor)
 
     def _cursor_executemany(self, cursor, statement, parameters, context=None):
         if self.engine._should_log_info:
@@ -948,7 +955,7 @@ class Connection(Connectable):
         try:
             self.dialect.do_executemany(cursor, statement, parameters, context=context)
         except Exception, e:
-            raise self.__handle_dbapi_exception(e, statement, parameters, cursor)
+            raise self._handle_dbapi_exception(e, statement, parameters, cursor)
 
     # poor man's multimethod/generic function thingy
     executors = {

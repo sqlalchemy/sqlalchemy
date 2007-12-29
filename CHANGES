@@ -270,7 +270,10 @@ CHANGES
 
    - sqlite SLDate type will not erroneously render "microseconds" portion 
      of a datetime or time object.
-     
+   
+   - oracle
+      - added disconnect detection support for Oracle
+   
    - MSSQL
       - PyODBC no longer has a global "set nocount on".
       - Fix non-identity integer PKs on autload [ticket:824]

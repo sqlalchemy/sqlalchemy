@@ -1,6 +1,6 @@
 import testbase
 import sys, weakref
-from sqlalchemy import create_engine, exceptions
+from sqlalchemy import create_engine, exceptions, select
 from testlib import *
 
 
@@ -65,7 +65,7 @@ class MockReconnectTest(PersistTest):
         conn = db.connect()
         
         # connection works
-        conn.execute("SELECT 1")
+        conn.execute(select([1]))
         
         # create a second connection within the pool, which we'll ensure also goes away
         conn2 = db.connect()
@@ -78,7 +78,7 @@ class MockReconnectTest(PersistTest):
         dbapi.shutdown()
 
         try:
-            conn.execute("SELECT 1")
+            conn.execute(select([1]))
             assert False
         except exceptions.DBAPIError:
             pass
@@ -96,7 +96,7 @@ class MockReconnectTest(PersistTest):
         assert len(dbapi.connections) == 0
         
         conn =db.connect()
-        conn.execute("SELECT 1")
+        conn.execute(select([1]))
         conn.close()
         assert len(dbapi.connections) == 1
     
@@ -106,7 +106,7 @@ class MockReconnectTest(PersistTest):
         dbapi.shutdown()
 
         try:
-            conn.execute("SELECT 1")
+            conn.execute(select([1]))
             assert False
         except exceptions.DBAPIError:
             pass
@@ -118,7 +118,7 @@ class MockReconnectTest(PersistTest):
         assert trans.is_active
 
         try:
-            conn.execute("SELECT 1")
+            conn.execute(select([1]))
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Can't reconnect until invalid transaction is rolled back"
@@ -136,7 +136,7 @@ class MockReconnectTest(PersistTest):
         trans.rollback()
         assert not trans.is_active
         
-        conn.execute("SELECT 1")
+        conn.execute(select([1]))
         assert not conn.invalidated
         
         assert len(dbapi.connections) == 1
@@ -144,7 +144,7 @@ class MockReconnectTest(PersistTest):
     def test_conn_reusable(self):
         conn = db.connect()
         
-        conn.execute("SELECT 1")
+        conn.execute(select([1]))
 
         assert len(dbapi.connections) == 1
         
@@ -152,7 +152,7 @@ class MockReconnectTest(PersistTest):
 
         # raises error
         try:
-            conn.execute("SELECT 1")
+            conn.execute(select([1]))
             assert False
         except exceptions.DBAPIError:
             pass
@@ -164,7 +164,7 @@ class MockReconnectTest(PersistTest):
         assert len(dbapi.connections) == 0
             
         # test reconnects
-        conn.execute("SELECT 1")
+        conn.execute(select([1]))
         assert not conn.invalidated
         assert len(dbapi.connections) == 1
         
@@ -180,13 +180,13 @@ class RealReconnectTest(PersistTest):
     def test_reconnect(self):
         conn = engine.connect()
 
-        self.assertEquals(conn.execute("SELECT 1").scalar(), 1) 
+        self.assertEquals(conn.execute(select([1])).scalar(), 1) 
         assert not conn.closed
 
         engine.test_shutdown()
 
         try:
-            conn.execute("SELECT 1")
+            conn.execute(select([1]))
             assert False
         except exceptions.DBAPIError, e:
             if not e.connection_invalidated:
@@ -196,32 +196,32 @@ class RealReconnectTest(PersistTest):
         assert conn.invalidated
 
         assert conn.invalidated
-        self.assertEquals(conn.execute("SELECT 1").scalar(), 1) 
+        self.assertEquals(conn.execute(select([1])).scalar(), 1) 
         assert not conn.invalidated
 
         # one more time
         engine.test_shutdown()
         try:
-            conn.execute("SELECT 1")
+            conn.execute(select([1]))
             assert False
         except exceptions.DBAPIError, e:
             if not e.connection_invalidated:
                 raise
         assert conn.invalidated
-        self.assertEquals(conn.execute("SELECT 1").scalar(), 1) 
+        self.assertEquals(conn.execute(select([1])).scalar(), 1) 
         assert not conn.invalidated
 
         conn.close()
     
     def test_close(self):
         conn = engine.connect()
-        self.assertEquals(conn.execute("SELECT 1").scalar(), 1) 
+        self.assertEquals(conn.execute(select([1])).scalar(), 1) 
         assert not conn.closed
 
         engine.test_shutdown()
 
         try:
-            conn.execute("SELECT 1")
+            conn.execute(select([1]))
             assert False
         except exceptions.DBAPIError, e:
             if not e.connection_invalidated:
@@ -229,20 +229,20 @@ class RealReconnectTest(PersistTest):
 
         conn.close()
         conn = engine.connect()
-        self.assertEquals(conn.execute("SELECT 1").scalar(), 1) 
+        self.assertEquals(conn.execute(select([1])).scalar(), 1) 
         
     def test_with_transaction(self):
         conn = engine.connect()
 
         trans = conn.begin()
 
-        self.assertEquals(conn.execute("SELECT 1").scalar(), 1) 
+        self.assertEquals(conn.execute(select([1])).scalar(), 1) 
         assert not conn.closed
 
         engine.test_shutdown()
 
         try:
-            conn.execute("SELECT 1")
+            conn.execute(select([1]))
             assert False
         except exceptions.DBAPIError, e:
             if not e.connection_invalidated:
@@ -253,7 +253,7 @@ class RealReconnectTest(PersistTest):
         assert trans.is_active
 
         try:
-            conn.execute("SELECT 1")
+            conn.execute(select([1]))
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Can't reconnect until invalid transaction is rolled back"
@@ -272,7 +272,7 @@ class RealReconnectTest(PersistTest):
         assert not trans.is_active
 
         assert conn.invalidated
-        self.assertEquals(conn.execute("SELECT 1").scalar(), 1) 
+        self.assertEquals(conn.execute(select([1])).scalar(), 1) 
         assert not conn.invalidated
         
         

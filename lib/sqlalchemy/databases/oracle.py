@@ -311,6 +311,12 @@ class OracleDialect(default.DefaultDialect):
 
         return ([], opts)
 
+    def is_disconnect(self, e):
+        if isinstance(e, self.dbapi.InterfaceError):
+            return "not connected" in str(e)
+        else:
+            return "ORA-03114" in str(e) or "ORA-03113" in str(e)
+
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 

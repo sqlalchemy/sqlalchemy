@@ -334,7 +334,10 @@ class DefaultExecutionContext(base.ExecutionContext):
                dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                if dbtype is not None:
                     inputsizes.append(dbtype)
-            self.cursor.setinputsizes(*inputsizes)
+            try:
+                self.cursor.setinputsizes(*inputsizes)
+            except Exception, e:
+                raise self._connection._handle_dbapi_exception(e, None, None, None)
         else:
             inputsizes = {}
             for key in self.compiled.bind_names.values():
@@ -342,7 +345,10 @@ class DefaultExecutionContext(base.ExecutionContext):
                 dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                 if dbtype is not None:
                     inputsizes[key.encode(self.dialect.encoding)] = dbtype
-            self.cursor.setinputsizes(**inputsizes)
+            try:
+                self.cursor.setinputsizes(**inputsizes)
+            except Exception, e:
+                raise self._connection._handle_dbapi_exception(e, None, None, None)
 
     def __process_defaults(self):
         """generate default values for compiled insert/update statements,
