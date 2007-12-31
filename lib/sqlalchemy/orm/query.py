@@ -929,8 +929,10 @@ class Query(object):
         # be adapted to be relative to the user-supplied selectable.
         adapt_criterion = self.table not in self._get_joinable_tables()
 
+        # adapt for poylmorphic mapper
+        # TODO: generalize the polymorphic mapper adaption to that of the select_from() adaption
         if not adapt_criterion and whereclause is not None and (self.mapper is not self.select_mapper):
-            whereclause = sql_util.ClauseAdapter(from_obj).traverse(whereclause)
+            whereclause = sql_util.ClauseAdapter(from_obj, equivalents=self.select_mapper._get_equivalent_columns()).traverse(whereclause)
 
         # TODO: mappers added via add_entity(), adapt their queries also, 
         # if those mappers are polymorphic

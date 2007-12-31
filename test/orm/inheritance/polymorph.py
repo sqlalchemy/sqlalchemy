@@ -269,6 +269,10 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         assert getattr(dilbert, person_attribute_name) == 'dilbert'
         session.clear()
         
+        dilbert = session.query(Person).filter(Person.person_id==dilbert.person_id).one()
+        assert getattr(dilbert, person_attribute_name) == 'dilbert'
+        session.clear()
+        
         id = c.company_id
         def go():
             c = session.query(Company).get(id)
