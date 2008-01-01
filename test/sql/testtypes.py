@@ -50,6 +50,18 @@ class MyNewUnicodeType(types.TypeDecorator):
     def copy(self):
         return MyNewUnicodeType(self.impl.length)
 
+class MyNewIntType(types.TypeDecorator):
+    impl = Integer
+
+    def process_bind_param(self, value, dialect):
+        return value * 10
+
+    def process_result_value(self, value, dialect):
+        return value * 10
+
+    def copy(self):
+        return MyNewIntType()
+
 class MyUnicodeType(types.TypeDecorator):
     impl = Unicode
 
@@ -203,17 +215,20 @@ class UserDefinedTest(PersistTest):
     def testprocessing(self):
 
         global users
-        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack', goofy7=u'jack')
-        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala', goofy7=u'lala')
-        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred', goofy7=u'fred')
+        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack', goofy7=u'jack', goofy8=12)
+        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala', goofy7=u'lala', goofy8=15)
+        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred', goofy7=u'fred', goofy8=9)
 
         l = users.select().execute().fetchall()
-        for assertstr, row in zip(
+        for assertstr, assertint, row in zip(
             ["BIND_INjackBIND_OUT", "BIND_INlalaBIND_OUT", "BIND_INfredBIND_OUT"],
+            [1200, 1500, 900],
             l
+            
         ):
-            for col in row[1:]:
+            for col in row[1:8]:
                 self.assertEquals(col, assertstr)
+            self.assertEquals(row[8], assertint)
             for col in (row[4], row[5], row[7]):
                 assert isinstance(col, unicode)
                 
@@ -235,6 +250,7 @@ class UserDefinedTest(PersistTest):
             Column('goofy5', LegacyUnicodeType, nullable = False),
             Column('goofy6', LegacyType, nullable = False),
             Column('goofy7', MyNewUnicodeType, nullable = False),
+            Column('goofy8', MyNewIntType, nullable = False),
 
         )
 

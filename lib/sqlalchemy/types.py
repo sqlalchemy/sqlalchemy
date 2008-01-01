@@ -246,7 +246,9 @@ class TypeDecorator(AbstractType):
                     return impl_processor(self.process_bind_param(value, dialect))
                 return process
             else:
-                return self.process_bind_param
+                def process(value):
+                    return self.process_bind_param(value, dialect)
+                return process
         else:
             return self.impl.bind_processor(dialect)
 
@@ -258,7 +260,9 @@ class TypeDecorator(AbstractType):
                     return self.process_result_value(impl_processor(value), dialect)
                 return process
             else:
-                return self.process_result_value
+                def process(value):
+                    return self.process_result_value(value, dialect)
+                return process
         else:
             return self.impl.result_processor(dialect)
 
