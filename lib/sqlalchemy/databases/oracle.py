@@ -95,11 +95,9 @@ class OracleText(sqltypes.TEXT):
 
     def result_processor(self, dialect):
         super_process = super(OracleText, self).result_processor(dialect)
+        lob = dialect.dbapi.LOB
         def process(value):
-            if value is None:
-                return None
-            elif hasattr(value, 'read'):
-                # cx_oracle doesnt seem to be consistent with CLOB returning LOB or str
+            if isinstance(value, lob):
                 if super_process:
                     return super_process(value.read())
                 else:
@@ -130,11 +128,12 @@ class OracleBinary(sqltypes.Binary):
         return None
 
     def result_processor(self, dialect):
+        lob = dialect.dbapi.LOB
         def process(value):
-            if value is None:
-                return None
-            else:
+            if isinstance(value, lob):
                 return value.read()
+            else:
+                return value
         return process
         
 class OracleBoolean(sqltypes.Boolean):

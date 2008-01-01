@@ -147,6 +147,15 @@ class TypesTest(SQLCompileTest):
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
 
+    def test_reflect_raw(self):
+        types_table = Table(
+        'all_types', MetaData(testbase.db),
+            Column('owner', String(30), primary_key=True),
+            Column('type_name', String(30), primary_key=True),
+            autoload=True,
+            )
+        [[row[k] for k in row.keys()] for row in types_table.select().execute().fetchall()]
+
     def test_longstring(self):
         metadata = MetaData(testbase.db)
         testbase.db.execute("""

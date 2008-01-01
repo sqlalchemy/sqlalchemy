@@ -273,6 +273,8 @@ CHANGES
    
    - oracle
       - added disconnect detection support for Oracle
+      - some cleanup to binary/raw types so that cx_oracle.LOB is detected
+        on an ad-hoc basis [ticket:902]
    
    - MSSQL
       - PyODBC no longer has a global "set nocount on".

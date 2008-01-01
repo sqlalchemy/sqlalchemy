@@ -40,13 +40,15 @@ class DefaultTest(PersistTest):
         currenttime = func.current_date(type_=Date, bind=db)
 
         if is_oracle:
-            ts = db.func.trunc(func.sysdate(), literal_column("'DAY'")).scalar()
+            ts = db.scalar(select([func.trunc(func.sysdate(), literal_column("'DAY'"), type_=Date).label('today')]))
+            assert isinstance(ts, datetime.date) and not isinstance(ts, datetime.datetime)
             f = select([func.length('abcdef')], bind=db).scalar()
             f2 = select([func.length('abcdefghijk')], bind=db).scalar()
             # TODO: engine propigation across nested functions not working
-            currenttime = func.trunc(currenttime, literal_column("'DAY'"), bind=db)
+            currenttime = func.trunc(currenttime, literal_column("'DAY'"), bind=db, type_=Date)
             def1 = currenttime
-            def2 = func.trunc(text("sysdate"), literal_column("'DAY'"))
+            def2 = func.trunc(text("sysdate"), literal_column("'DAY'"), type_=Date)
+
             deftype = Date
         elif use_function_defaults:
             f = select([func.length('abcdef')], bind=db).scalar()
@@ -146,10 +148,10 @@ class DefaultTest(PersistTest):
         t.insert().execute()
         t.insert().execute()
 
-        ctexec = currenttime.scalar()
+        ctexec = select([currenttime.label('now')], bind=testbase.db).scalar()
         l = t.select().execute()
         today = datetime.date.today()
-        self.assert_(l.fetchall() == [
+        self.assertEquals(l.fetchall(), [
             (51, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today),
             (52, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today),
             (53, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today),
