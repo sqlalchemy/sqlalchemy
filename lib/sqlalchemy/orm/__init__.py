@@ -604,7 +604,7 @@ def clear_mappers():
     """
     mapperlib._COMPILE_MUTEX.acquire()
     try:
-        for mapper in _mapper_registry:
+        for mapper in list(_mapper_registry):
             mapper.dispose()
     finally:
         mapperlib._COMPILE_MUTEX.release()
