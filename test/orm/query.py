@@ -443,7 +443,27 @@ class DistinctTest(QueryTest):
             ] == q.all()
         self.assert_sql_count(testbase.db, go, 1)
         
-    
+
+class YieldTest(QueryTest):
+    def test_basic(self):
+        import gc
+        sess = create_session()
+        q = iter(sess.query(User).yield_per(1).from_statement("select * from users"))
+
+        ret = []
+        self.assertEquals(len(sess.identity_map), 0)
+        ret.append(q.next())
+        ret.append(q.next())
+        self.assertEquals(len(sess.identity_map), 2)
+        ret.append(q.next())
+        ret.append(q.next())
+        self.assertEquals(len(sess.identity_map), 4)
+        try:
+            q.next()
+            assert False
+        except StopIteration:
+            pass
+        
 class TextTest(QueryTest):
     def test_fulltext(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users").all()
