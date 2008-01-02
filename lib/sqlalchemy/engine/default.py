@@ -337,7 +337,8 @@ class DefaultExecutionContext(base.ExecutionContext):
             try:
                 self.cursor.setinputsizes(*inputsizes)
             except Exception, e:
-                raise self._connection._handle_dbapi_exception(e, None, None, None)
+                self._connection._handle_dbapi_exception(e, None, None, None)
+                raise
         else:
             inputsizes = {}
             for key in self.compiled.bind_names.values():
@@ -348,7 +349,8 @@ class DefaultExecutionContext(base.ExecutionContext):
             try:
                 self.cursor.setinputsizes(**inputsizes)
             except Exception, e:
-                raise self._connection._handle_dbapi_exception(e, None, None, None)
+                self._connection._handle_dbapi_exception(e, None, None, None)
+                raise
 
     def __process_defaults(self):
         """generate default values for compiled insert/update statements,

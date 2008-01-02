@@ -239,7 +239,7 @@ class TypeDecorator(AbstractType):
         raise NotImplementedError()
         
     def bind_processor(self, dialect):
-        if 'process_bind_param' in self.__class__.__dict__:
+        if self.__class__.process_bind_param.func_code is not TypeDecorator.process_bind_param.func_code:
             impl_processor = self.impl.bind_processor(dialect)
             if impl_processor:
                 def process(value):
@@ -253,7 +253,7 @@ class TypeDecorator(AbstractType):
             return self.impl.bind_processor(dialect)
 
     def result_processor(self, dialect):
-        if 'process_result_value' in self.__class__.__dict__:
+        if self.__class__.process_result_value.func_code is not TypeDecorator.process_result_value.func_code:
             impl_processor = self.impl.result_processor(dialect)
             if impl_processor:
                 def process(value):

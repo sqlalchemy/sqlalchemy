@@ -218,8 +218,8 @@ class DefaultCompiler(engine.Compiled):
             return pd
         else:
             return dict([(self.bind_names[bindparam], bindparam.value) for bindparam in self.bind_names])
-
-    params = property(lambda self:self.construct_params(), doc="""return a dictionary of bind parameter keys and values""")
+    
+    params = property(construct_params)
         
     def default_from(self):
         """Called when a SELECT statement has no froms, and no FROM clause is to be appended.

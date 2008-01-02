@@ -9,112 +9,6 @@ from sqlalchemy.databases import mssql, oracle, mysql, postgres, firebird
 from testlib import *
 
 
-class MyType(types.TypeEngine):
-    def get_col_spec(self):
-        return "VARCHAR(100)"
-    def bind_processor(self, dialect):
-        def process(value):
-            return "BIND_IN"+ value
-        return process
-    def result_processor(self, dialect):
-        def process(value):
-            return value + "BIND_OUT"
-        return process
-    def adapt(self, typeobj):
-        return typeobj()
-
-class MyDecoratedType(types.TypeDecorator):
-    impl = String
-    def bind_processor(self, dialect):
-        impl_processor = super(MyDecoratedType, self).bind_processor(dialect) or (lambda value:value)
-        def process(value):
-            return "BIND_IN"+ impl_processor(value)
-        return process
-    def result_processor(self, dialect):
-        impl_processor = super(MyDecoratedType, self).result_processor(dialect) or (lambda value:value)
-        def process(value):
-            return impl_processor(value) + "BIND_OUT"
-        return process
-    def copy(self):
-        return MyDecoratedType()
-
-class MyNewUnicodeType(types.TypeDecorator):
-    impl = Unicode
-
-    def process_bind_param(self, value, dialect):
-        return "BIND_IN" + value
-
-    def process_result_value(self, value, dialect):
-        return value + "BIND_OUT"
-
-    def copy(self):
-        return MyNewUnicodeType(self.impl.length)
-
-class MyNewIntType(types.TypeDecorator):
-    impl = Integer
-
-    def process_bind_param(self, value, dialect):
-        return value * 10
-
-    def process_result_value(self, value, dialect):
-        return value * 10
-
-    def copy(self):
-        return MyNewIntType()
-
-class MyUnicodeType(types.TypeDecorator):
-    impl = Unicode
-
-    def bind_processor(self, dialect):
-        impl_processor = super(MyUnicodeType, self).bind_processor(dialect) or (lambda value:value)
-        
-        def process(value):
-            return "BIND_IN"+ impl_processor(value)
-        return process
-
-    def result_processor(self, dialect):
-        impl_processor = super(MyUnicodeType, self).result_processor(dialect) or (lambda value:value)
-        def process(value):
-            return impl_processor(value) + "BIND_OUT"
-        return process
-
-    def copy(self):
-        return MyUnicodeType(self.impl.length)
-
-class MyPickleType(types.TypeDecorator):
-    impl = PickleType
-    
-    def process_bind_param(self, value, dialect):
-        if value:
-            value.stuff = 'this is modified stuff'
-        return value
-    
-    def process_result_value(self, value, dialect):
-        if value:
-            value.stuff = 'this is the right stuff'
-        return value
-        
-class LegacyType(types.TypeEngine):
-    def get_col_spec(self):
-        return "VARCHAR(100)"
-    def convert_bind_param(self, value, dialect):
-        return "BIND_IN"+ value
-    def convert_result_value(self, value, dialect):
-        return value + "BIND_OUT"
-    def adapt(self, typeobj):
-        return typeobj()
-
-class LegacyUnicodeType(types.TypeDecorator):
-    impl = Unicode
-
-    def convert_bind_param(self, value, dialect):
-        return "BIND_IN" + super(LegacyUnicodeType, self).convert_bind_param(value, dialect)
-
-    def convert_result_value(self, value, dialect):
-        return super(LegacyUnicodeType, self).convert_result_value(value, dialect) + "BIND_OUT"
-
-    def copy(self):
-        return LegacyUnicodeType(self.impl.length)
 
 class AdaptTest(PersistTest):
     def testadapt(self):
@@ -149,6 +43,11 @@ class AdaptTest(PersistTest):
 
     def testoracletext(self):
         dialect = oracle.OracleDialect()
+        class MyDecoratedType(types.TypeDecorator):
+            impl = String
+            def copy(self):
+                return MyDecoratedType()
+            
         col = Column('', MyDecoratedType)
         dialect_type = col.type.dialect_impl(dialect)
         assert isinstance(dialect_type.impl, oracle.OracleText), repr(dialect_type.impl)
@@ -215,25 +114,129 @@ class UserDefinedTest(PersistTest):
     def testprocessing(self):
 
         global users
-        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack', goofy7=u'jack', goofy8=12)
-        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala', goofy7=u'lala', goofy8=15)
-        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred', goofy7=u'fred', goofy8=9)
+        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack', goofy7=u'jack', goofy8=12, goofy9=12)
+        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala', goofy7=u'lala', goofy8=15, goofy9=15)
+        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred', goofy7=u'fred', goofy8=9, goofy9=9)
 
         l = users.select().execute().fetchall()
-        for assertstr, assertint, row in zip(
+        for assertstr, assertint, assertint2, row in zip(
             ["BIND_INjackBIND_OUT", "BIND_INlalaBIND_OUT", "BIND_INfredBIND_OUT"],
             [1200, 1500, 900],
+            [1800, 2250, 1350],
             l
             
         ):
             for col in row[1:8]:
                 self.assertEquals(col, assertstr)
             self.assertEquals(row[8], assertint)
+            self.assertEquals(row[9], assertint2)
             for col in (row[4], row[5], row[7]):
                 assert isinstance(col, unicode)
                 
     def setUpAll(self):
         global users, metadata
+
+        class MyType(types.TypeEngine):
+            def get_col_spec(self):
+                return "VARCHAR(100)"
+            def bind_processor(self, dialect):
+                def process(value):
+                    return "BIND_IN"+ value
+                return process
+            def result_processor(self, dialect):
+                def process(value):
+                    return value + "BIND_OUT"
+                return process
+            def adapt(self, typeobj):
+                return typeobj()
+
+        class MyDecoratedType(types.TypeDecorator):
+            impl = String
+            def bind_processor(self, dialect):
+                impl_processor = super(MyDecoratedType, self).bind_processor(dialect) or (lambda value:value)
+                def process(value):
+                    return "BIND_IN"+ impl_processor(value)
+                return process
+            def result_processor(self, dialect):
+                impl_processor = super(MyDecoratedType, self).result_processor(dialect) or (lambda value:value)
+                def process(value):
+                    return impl_processor(value) + "BIND_OUT"
+                return process
+            def copy(self):
+                return MyDecoratedType()
+
+        class MyNewUnicodeType(types.TypeDecorator):
+            impl = Unicode
+
+            def process_bind_param(self, value, dialect):
+                return "BIND_IN" + value
+
+            def process_result_value(self, value, dialect):
+                return value + "BIND_OUT"
+
+            def copy(self):
+                return MyNewUnicodeType(self.impl.length)
+
+        class MyNewIntType(types.TypeDecorator):
+            impl = Integer
+
+            def process_bind_param(self, value, dialect):
+                return value * 10
+
+            def process_result_value(self, value, dialect):
+                return value * 10
+
+            def copy(self):
+                return MyNewIntType()
+
+        class MyNewIntSubClass(MyNewIntType):
+            def process_result_value(self, value, dialect):
+                return value * 15
+
+            def copy(self):
+                return MyNewIntSubClass()
+
+        class MyUnicodeType(types.TypeDecorator):
+            impl = Unicode
+
+            def bind_processor(self, dialect):
+                impl_processor = super(MyUnicodeType, self).bind_processor(dialect) or (lambda value:value)
+
+                def process(value):
+                    return "BIND_IN"+ impl_processor(value)
+                return process
+
+            def result_processor(self, dialect):
+                impl_processor = super(MyUnicodeType, self).result_processor(dialect) or (lambda value:value)
+                def process(value):
+                    return impl_processor(value) + "BIND_OUT"
+                return process
+
+            def copy(self):
+                return MyUnicodeType(self.impl.length)
+
+        class LegacyType(types.TypeEngine):
+            def get_col_spec(self):
+                return "VARCHAR(100)"
+            def convert_bind_param(self, value, dialect):
+                return "BIND_IN"+ value
+            def convert_result_value(self, value, dialect):
+                return value + "BIND_OUT"
+            def adapt(self, typeobj):
+                return typeobj()
+
+        class LegacyUnicodeType(types.TypeDecorator):
+            impl = Unicode
+
+            def convert_bind_param(self, value, dialect):
+                return "BIND_IN" + super(LegacyUnicodeType, self).convert_bind_param(value, dialect)
+
+            def convert_result_value(self, value, dialect):
+                return super(LegacyUnicodeType, self).convert_result_value(value, dialect) + "BIND_OUT"
+
+            def copy(self):
+                return LegacyUnicodeType(self.impl.length)
+
         metadata = MetaData(testbase.db)
         users = Table('type_users', metadata,
             Column('user_id', Integer, primary_key = True),
@@ -251,6 +254,7 @@ class UserDefinedTest(PersistTest):
             Column('goofy6', LegacyType, nullable = False),
             Column('goofy7', MyNewUnicodeType, nullable = False),
             Column('goofy8', MyNewIntType, nullable = False),
+            Column('goofy9', MyNewIntSubClass, nullable = False),
 
         )
 
@@ -396,7 +400,21 @@ class UnicodeTest(AssertMixin):
 
 class BinaryTest(AssertMixin):
     def setUpAll(self):
-        global binary_table
+        global binary_table, MyPickleType
+
+        class MyPickleType(types.TypeDecorator):
+            impl = PickleType
+
+            def process_bind_param(self, value, dialect):
+                if value:
+                    value.stuff = 'this is modified stuff'
+                return value
+
+            def process_result_value(self, value, dialect):
+                if value:
+                    value.stuff = 'this is the right stuff'
+                return value
+
         binary_table = Table('binary_table', MetaData(testbase.db),
         Column('primary_id', Integer, Sequence('binary_id_seq', optional=True), primary_key=True),
         Column('data', Binary),

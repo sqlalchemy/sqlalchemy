@@ -732,7 +732,8 @@ class Connection(Connectable):
         try:
             self.engine.dialect.do_begin(self.connection)
         except Exception, e:
-            raise self._handle_dbapi_exception(e, None, None, None)
+            self._handle_dbapi_exception(e, None, None, None)
+            raise
 
     def _rollback_impl(self):
         if not self.closed and not self.invalidated and self.__connection.is_valid:
@@ -742,7 +743,8 @@ class Connection(Connectable):
                 self.engine.dialect.do_rollback(self.connection)
                 self.__transaction = None
             except Exception, e:
-                raise self._handle_dbapi_exception(e, None, None, None)
+                self._handle_dbapi_exception(e, None, None, None)
+                raise
         else:
             self.__transaction = None
 
@@ -753,7 +755,8 @@ class Connection(Connectable):
             self.engine.dialect.do_commit(self.connection)
             self.__transaction = None
         except Exception, e:
-            raise self._handle_dbapi_exception(e, None, None, None)
+            self._handle_dbapi_exception(e, None, None, None)
+            raise
         
     def _savepoint_impl(self, name=None):
         if name is None:
@@ -914,11 +917,11 @@ class Connection(Connectable):
 
     def _handle_dbapi_exception(self, e, statement, parameters, cursor):
         if getattr(self, '_reentrant_error', False):
-            return exceptions.DBAPIError.instance(None, None, e)
+            raise exceptions.DBAPIError.instance(None, None, e)
         self._reentrant_error = True
         try:
             if not isinstance(e, self.dialect.dbapi.Error):
-                return e
+                return
             is_disconnect = self.dialect.is_disconnect(e)
             if is_disconnect:
                 self.invalidate(e)
@@ -929,7 +932,7 @@ class Connection(Connectable):
                 self._autorollback()
                 if self.__close_with_result:
                     self.close()
-            return exceptions.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect)
+            raise exceptions.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect)
         finally:
             del self._reentrant_error
         
@@ -937,7 +940,8 @@ class Connection(Connectable):
         try:
             return self.engine.dialect.create_execution_context(connection=self, **kwargs)
         except Exception, e:
-            raise self._handle_dbapi_exception(e, kwargs.get('statement', None), kwargs.get('parameters', None), None)
+            self._handle_dbapi_exception(e, kwargs.get('statement', None), kwargs.get('parameters', None), None)
+            raise
 
     def _cursor_execute(self, cursor, statement, parameters, context=None):
         if self.engine._should_log_info:
@@ -946,7 +950,8 @@ class Connection(Connectable):
         try:
             self.dialect.do_execute(cursor, statement, parameters, context=context)
         except Exception, e:
-            raise self._handle_dbapi_exception(e, statement, parameters, cursor)
+            self._handle_dbapi_exception(e, statement, parameters, cursor)
+            raise
 
     def _cursor_executemany(self, cursor, statement, parameters, context=None):
         if self.engine._should_log_info:
@@ -955,7 +960,8 @@ class Connection(Connectable):
         try:
             self.dialect.do_executemany(cursor, statement, parameters, context=context)
         except Exception, e:
-            raise self._handle_dbapi_exception(e, statement, parameters, cursor)
+            self._handle_dbapi_exception(e, statement, parameters, cursor)
+            raise
 
     # poor man's multimethod/generic function thingy
     executors = {
