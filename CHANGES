@@ -14,7 +14,13 @@ CHANGES
       loaded collection will get cleared out if it's referenced in more than
       one batch, and in all cases attributes will be overwritten on instances
       that occur in more than one batch.
-      
+
+- dialects
+
+    - PostgreSQL
+       - Fixed the missing call to subtype result processor for the PGArray
+         type. [ticket:913]
+
 0.4.2
 -----
 - sql

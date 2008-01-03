@@ -138,7 +138,7 @@ class PGArray(sqltypes.Concatenable, sqltypes.TypeEngine):
         return process
         
     def result_processor(self, dialect):
-        item_proc = self.item_type.bind_processor(dialect)
+        item_proc = self.item_type.result_processor(dialect)
         def process(value):
             if value is None:
                 return value

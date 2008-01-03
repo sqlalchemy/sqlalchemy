@@ -658,7 +658,7 @@ class ArrayTest(AssertMixin):
         arrtable = Table('arrtable', metadata,
             Column('id', Integer, primary_key=True),
             Column('intarr', postgres.PGArray(Integer)),
-            Column('strarr', postgres.PGArray(String), nullable=False)
+            Column('strarr', postgres.PGArray(String(convert_unicode=True)), nullable=False)
         )
         metadata.create_all()
     def tearDownAll(self):
@@ -693,6 +693,15 @@ class ArrayTest(AssertMixin):
         results = select([arrtable.c.intarr + [4,5,6]]).execute().fetchall()
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0][0], [1,2,3,4,5,6])
+        arrtable.delete().execute()
+
+    def test_array_subtype_resultprocessor(self):
+        arrtable.insert().execute(intarr=[4,5,6], strarr=[[u'm\xe4\xe4'], [u'm\xf6\xf6']])
+        arrtable.insert().execute(intarr=[1,2,3], strarr=[u'm\xe4\xe4', u'm\xf6\xf6'])
+        results = arrtable.select(order_by=[arrtable.c.intarr]).execute().fetchall()
+        self.assertEquals(len(results), 2)
+        self.assertEquals(results[0]['strarr'], [u'm\xe4\xe4', u'm\xf6\xf6'])
+        self.assertEquals(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
         arrtable.delete().execute()
 
 if __name__ == "__main__":
