@@ -443,6 +443,12 @@ class CollectionsTest(PersistTest):
             control |= values
             assert_eq()
 
+            # cover self-assignment short-circuit
+            values = set([e, creator(), creator()])
+            obj.attr |= values
+            control |= values
+            assert_eq()
+
             try:
                 direct |= [e, creator()]
                 assert False
@@ -483,6 +489,11 @@ class CollectionsTest(PersistTest):
             control -= values
             assert_eq()
 
+            values = set([creator()])
+            obj.attr -= values
+            control -= values
+            assert_eq()
+
             try:
                 direct -= [e, creator()]
                 assert False
@@ -516,6 +527,11 @@ class CollectionsTest(PersistTest):
 
             values.update(set([e, creator()]))
             direct &= values
+            control &= values
+            assert_eq()
+
+            values.update(set([creator()]))
+            obj.attr &= values
             control &= values
             assert_eq()
 
@@ -566,6 +582,11 @@ class CollectionsTest(PersistTest):
 
             values = set()
             direct ^= values
+            control ^= values
+            assert_eq()
+
+            values = set([creator()])
+            obj.attr ^= values
             control ^= values
             assert_eq()
 
