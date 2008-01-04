@@ -363,11 +363,11 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
 
         self.assert_compile(
-            select([func.count(table1.c.myid.distinct())]), "SELECT count(DISTINCT mytable.myid) FROM mytable"
+            select([func.count(table1.c.myid.distinct())]), "SELECT count(DISTINCT mytable.myid) AS count_1 FROM mytable"
         )
 
         self.assert_compile(
-            select([func.count(distinct(table1.c.myid))]), "SELECT count(DISTINCT mytable.myid) FROM mytable"
+            select([func.count(distinct(table1.c.myid))]), "SELECT count(DISTINCT mytable.myid) AS count_1 FROM mytable"
         )
 
     def testoperators(self):
@@ -491,14 +491,14 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
     def testgroupby(self):
         self.assert_compile(
             select([table2.c.othername, func.count(table2.c.otherid)], group_by = [table2.c.othername]),
-            "SELECT myothertable.othername, count(myothertable.otherid) FROM myothertable GROUP BY myothertable.othername"
+            "SELECT myothertable.othername, count(myothertable.otherid) AS count_1 FROM myothertable GROUP BY myothertable.othername"
         )
 
 
     def testgroupby_and_orderby(self):
         self.assert_compile(
             select([table2.c.othername, func.count(table2.c.otherid)], group_by = [table2.c.othername], order_by = [table2.c.othername]),
-            "SELECT myothertable.othername, count(myothertable.otherid) FROM myothertable GROUP BY myothertable.othername ORDER BY myothertable.othername"
+            "SELECT myothertable.othername, count(myothertable.otherid) AS count_1 FROM myothertable GROUP BY myothertable.othername ORDER BY myothertable.othername"
         )
 
     def testforupdate(self):
@@ -708,16 +708,16 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
         # test it in a SELECT
         self.assert_compile(select([func.count(table1.c.myid)]),
-            "SELECT count(mytable.myid) FROM mytable")
+            "SELECT count(mytable.myid) AS count_1 FROM mytable")
 
         # test a "dotted" function name
         self.assert_compile(select([func.foo.bar.lala(table1.c.myid)]),
-            "SELECT foo.bar.lala(mytable.myid) FROM mytable")
+            "SELECT foo.bar.lala(mytable.myid) AS lala_1 FROM mytable")
 
         # test the bind parameter name with a "dotted" function name is only the name
         # (limits the length of the bind param name)
         self.assert_compile(select([func.foo.bar.lala(12)]),
-            "SELECT foo.bar.lala(:lala_1)")
+            "SELECT foo.bar.lala(:lala_2) AS lala_1")
 
         # test a dotted func off the engine itself
         self.assert_compile(func.lala.hoho(7), "lala.hoho(:hoho_1)")
@@ -764,9 +764,9 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
     def testextract(self):
         """test the EXTRACT function"""
-        self.assert_compile(select([extract("month", table3.c.otherstuff)]), "SELECT extract(month FROM thirdtable.otherstuff) FROM thirdtable")
+        self.assert_compile(select([extract("month", table3.c.otherstuff)]), "SELECT extract(month FROM thirdtable.otherstuff) AS extract_1 FROM thirdtable")
 
-        self.assert_compile(select([extract("day", func.to_date("03/20/2005", "MM/DD/YYYY"))]), "SELECT extract(day FROM to_date(:to_date_1, :to_date_2))")
+        self.assert_compile(select([extract("day", func.to_date("03/20/2005", "MM/DD/YYYY"))]), "SELECT extract(day FROM to_date(:to_date_1, :to_date_2)) AS extract_1")
 
     def testjoin(self):
         self.assert_compile(
@@ -861,7 +861,7 @@ FROM myothertable ORDER BY myid \
                     table1.select(table1.c.name=='name1')
                 )
                 ,
-                "SELECT mytable.myid, mytable.name, max(mytable.description) FROM mytable \
+                "SELECT mytable.myid, mytable.name, max(mytable.description) AS max_1 FROM mytable \
 WHERE mytable.name = :mytable_name_1 GROUP BY mytable.myid, mytable.name UNION SELECT mytable.myid, mytable.name, mytable.description \
 FROM mytable WHERE mytable.name = :mytable_name_2"
             )
@@ -1325,7 +1325,7 @@ class InlineDefaultTest(SQLCompileTest):
             Column('col2', Integer, default=select([func.coalesce(func.max(foo.c.id))])),
             )
 
-        self.assert_compile(t.insert(inline=True, values={}), "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), (SELECT coalesce(max(foo.id)) FROM foo))")
+        self.assert_compile(t.insert(inline=True, values={}), "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), (SELECT coalesce(max(foo.id)) AS coalesce_1 FROM foo))")
 
     def test_update(self):
         m = MetaData()
@@ -1338,7 +1338,7 @@ class InlineDefaultTest(SQLCompileTest):
             Column('col3', String(30))
             )
 
-        self.assert_compile(t.update(inline=True, values={'col3':'foo'}), "UPDATE test SET col1=foo(:foo_1), col2=(SELECT coalesce(max(foo.id)) FROM foo), col3=:col3")
+        self.assert_compile(t.update(inline=True, values={'col3':'foo'}), "UPDATE test SET col1=foo(:foo_1), col2=(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM foo), col3=:col3")
 
 class SchemaTest(SQLCompileTest):
     def testselect(self):
