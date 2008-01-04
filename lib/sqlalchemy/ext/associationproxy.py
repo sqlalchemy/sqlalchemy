@@ -176,8 +176,9 @@ class AssociationProxy(object):
                 self._scalar_set(target, values)
         else:
             proxy = self.__get__(obj, None)
-            proxy.clear()
-            self._set(proxy, values)
+            if proxy is not values:
+                proxy.clear()
+                self._set(proxy, values)
 
     def __delete__(self, obj):
         delattr(obj, self.key)
@@ -653,7 +654,12 @@ class _AssociationSet(object):
         for value in other:
             self.add(value)
 
-    __ior__ = update
+    def __ior__(self, other):
+        if util.duck_type_collection(other) is not set:
+            return NotImplemented
+        for value in other:
+            self.add(value)
+        return self
 
     def _set(self):
         return util.Set(iter(self))
@@ -672,7 +678,12 @@ class _AssociationSet(object):
         for value in other:
             self.discard(value)
 
-    __isub__ = difference_update
+    def __isub__(self, other):
+        if util.duck_type_collection(other) is not set:
+            return NotImplemented
+        for value in other:
+            self.discard(value)
+        return self
 
     def intersection(self, other):
         return util.Set(self).intersection(other)
@@ -689,7 +700,18 @@ class _AssociationSet(object):
         for value in add:
             self.add(value)
 
-    __iand__ = intersection_update
+    def __iand__(self, other):
+        if util.duck_type_collection(other) is not set:
+            return NotImplemented
+        want, have = self.intersection(other), util.Set(self)
+
+        remove, add = have - want, want - have
+
+        for value in remove:
+            self.remove(value)
+        for value in add:
+            self.add(value)
+        return self
 
     def symmetric_difference(self, other):
         return util.Set(self).symmetric_difference(other)
@@ -706,7 +728,18 @@ class _AssociationSet(object):
         for value in add:
             self.add(value)
 
-    __ixor__ = symmetric_difference_update
+    def __ixor__(self, other):
+        if util.duck_type_collection(other) is not set:
+            return NotImplemented
+        want, have = self.symmetric_difference(other), util.Set(self)
+
+        remove, add = have - want, want - have
+
+        for value in remove:
+            self.remove(value)
+        for value in add:
+            self.add(value)
+        return self
 
     def issubset(self, other):
         return util.Set(self).issubset(other)

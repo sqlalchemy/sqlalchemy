@@ -1138,7 +1138,17 @@ def _set_decorators():
                     self.add(item)
         _tidy(update)
         return update
-    __ior__ = update
+
+    def __ior__(fn):
+        def __ior__(self, value):
+            if sautil.duck_type_collection(value) is not set:
+                return NotImplemented
+            for item in value:
+                if item not in self:
+                    self.add(item)
+            return self
+        _tidy(__ior__)
+        return __ior__
 
     def difference_update(fn):
         def difference_update(self, value):
@@ -1146,7 +1156,16 @@ def _set_decorators():
                 self.discard(item)
         _tidy(difference_update)
         return difference_update
-    __isub__ = difference_update
+
+    def __isub__(fn):
+        def __isub__(self, value):
+            if sautil.duck_type_collection(value) is not set:
+                return NotImplemented
+            for item in value:
+                self.discard(item)
+            return self
+        _tidy(__isub__)
+        return __isub__
 
     def intersection_update(fn):
         def intersection_update(self, other):
@@ -1159,7 +1178,21 @@ def _set_decorators():
                 self.add(item)
         _tidy(intersection_update)
         return intersection_update
-    __iand__ = intersection_update
+
+    def __iand__(fn):
+        def __iand__(self, other):
+            if sautil.duck_type_collection(other) is not set:
+                return NotImplemented
+            want, have = self.intersection(other), sautil.Set(self)
+            remove, add = have - want, want - have
+
+            for item in remove:
+                self.remove(item)
+            for item in add:
+                self.add(item)
+            return self
+        _tidy(__iand__)
+        return __iand__
 
     def symmetric_difference_update(fn):
         def symmetric_difference_update(self, other):
@@ -1172,7 +1205,21 @@ def _set_decorators():
                 self.add(item)
         _tidy(symmetric_difference_update)
         return symmetric_difference_update
-    __ixor__ = symmetric_difference_update
+
+    def __ixor__(fn):
+        def __ixor__(self, other):
+            if sautil.duck_type_collection(other) is not set:
+                return NotImplemented
+            want, have = self.symmetric_difference(other), sautil.Set(self)
+            remove, add = have - want, want - have
+
+            for item in remove:
+                self.remove(item)
+            for item in add:
+                self.add(item)
+            return self
+        _tidy(__ixor__)
+        return __ixor__
 
     l = locals().copy()
     l.pop('_tidy')

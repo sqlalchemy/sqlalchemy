@@ -485,6 +485,38 @@ class SetTest(_CollectionOperations):
                         print 'got', repr(p.children)
                         raise
 
+        # in-place mutations
+        for op in ('|=', '-=', '&=', '^='):
+            for base in (['a', 'b', 'c'], []):
+                for other in (set(['a','b','c']), set(['a','b','c','d']),
+                              set(['a']), set(['a','b']),
+                              set(['c','d']), set(['e', 'f', 'g']),
+                              set()):
+                    p = Parent('p')
+                    p.children = base[:]
+                    control = set(base[:])
+
+                    exec "p.children %s other" % op
+                    exec "control %s other" % op
+
+                    try:
+                        self.assert_(p.children == control)
+                    except:
+                        print 'Test %s %s %s:' % (set(base), op, other)
+                        print 'want', repr(control)
+                        print 'got', repr(p.children)
+                        raise
+
+                    p = self.roundtrip(p)
+
+                    try:
+                        self.assert_(p.children == control)
+                    except:
+                        print 'Test %s %s %s:' % (base, op, other)
+                        print 'want', repr(control)
+                        print 'got', repr(p.children)
+                        raise
+
 
 class CustomSetTest(SetTest):
     def __init__(self, *args, **kw):

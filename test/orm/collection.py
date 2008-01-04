@@ -74,12 +74,12 @@ class CollectionsTest(PersistTest):
 
         adapter.append_with_event(e1)
         assert_eq()
-        
+
         adapter.append_without_event(e2)
         assert_ne()
         canary.data.add(e2)
         assert_eq()
-        
+
         adapter.remove_without_event(e2)
         assert_ne()
         canary.data.remove(e2)
@@ -91,7 +91,7 @@ class CollectionsTest(PersistTest):
     def _test_list(self, typecallable, creator=entity_maker):
         class Foo(object):
             pass
-        
+
         canary = Canary()
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', True, extension=canary,
@@ -106,7 +106,7 @@ class CollectionsTest(PersistTest):
             self.assert_(set(direct) == canary.data)
             self.assert_(set(adapter) == canary.data)
             self.assert_(direct == control)
-        
+
         # assume append() is available for list tests
         e = creator()
         direct.append(e)
@@ -122,7 +122,7 @@ class CollectionsTest(PersistTest):
             e = creator()
             direct.append(e)
             control.append(e)
-            
+
             e = creator()
             direct[0] = e
             control[0] = e
@@ -174,7 +174,7 @@ class CollectionsTest(PersistTest):
             e = creator()
             direct.append(e)
             control.append(e)
-            
+
             direct.remove(e)
             control.remove(e)
             assert_eq()
@@ -204,7 +204,7 @@ class CollectionsTest(PersistTest):
             direct[1::2] = values
             control[1::2] = values
             assert_eq()
-            
+
         if hasattr(direct, '__delslice__'):
             for i in range(1, 4):
                 e = creator()
@@ -212,7 +212,7 @@ class CollectionsTest(PersistTest):
                 control.append(e)
 
             del direct[-1:]
-            del control[-1:] 
+            del control[-1:]
             assert_eq()
 
             del direct[1:2]
@@ -321,7 +321,7 @@ class CollectionsTest(PersistTest):
                 return self.data == other
             def __repr__(self):
                 return 'ListLike(%s)' % repr(self.data)
-            
+
         self._test_adapter(ListLike)
         self._test_list(ListLike)
         self._test_list_bulk(ListLike)
@@ -348,7 +348,7 @@ class CollectionsTest(PersistTest):
                 return self.data == other
             def __repr__(self):
                 return 'ListIsh(%s)' % repr(self.data)
-            
+
         self._test_adapter(ListIsh)
         self._test_list(ListIsh)
         self._test_list_bulk(ListIsh)
@@ -382,7 +382,7 @@ class CollectionsTest(PersistTest):
             for item in list(direct):
                 direct.remove(item)
             control.clear()
-        
+
         # assume add() is available for list tests
         addall(creator())
 
@@ -420,16 +420,34 @@ class CollectionsTest(PersistTest):
             direct.discard(e)
             self.assert_(e not in canary.removed)
             assert_eq()
-            
+
         if hasattr(direct, 'update'):
+            zap()
             e = creator()
             addall(e)
-            
+
             values = set([e, creator(), creator()])
 
             direct.update(values)
             control.update(values)
             assert_eq()
+
+        if hasattr(direct, '__ior__'):
+            zap()
+            e = creator()
+            addall(e)
+
+            values = set([e, creator(), creator()])
+
+            direct |= values
+            control |= values
+            assert_eq()
+
+            try:
+                direct |= [e, creator()]
+                assert False
+            except TypeError:
+                assert True
 
         if hasattr(direct, 'clear'):
             addall(creator(), creator())
@@ -439,6 +457,7 @@ class CollectionsTest(PersistTest):
 
         if hasattr(direct, 'difference_update'):
             zap()
+            e = creator()
             addall(creator(), creator())
             values = set([creator()])
 
@@ -449,6 +468,26 @@ class CollectionsTest(PersistTest):
             direct.difference_update(values)
             control.difference_update(values)
             assert_eq()
+
+        if hasattr(direct, '__isub__'):
+            zap()
+            e = creator()
+            addall(creator(), creator())
+            values = set([creator()])
+
+            direct -= values
+            control -= values
+            assert_eq()
+            values.update(set([e, creator()]))
+            direct -= values
+            control -= values
+            assert_eq()
+
+            try:
+                direct -= [e, creator()]
+                assert False
+            except TypeError:
+                assert True
 
         if hasattr(direct, 'intersection_update'):
             zap()
@@ -464,6 +503,27 @@ class CollectionsTest(PersistTest):
             direct.intersection_update(values)
             control.intersection_update(values)
             assert_eq()
+
+        if hasattr(direct, '__iand__'):
+            zap()
+            e = creator()
+            addall(e, creator(), creator())
+            values = set(control)
+
+            direct &= values
+            control &= values
+            assert_eq()
+
+            values.update(set([e, creator()]))
+            direct &= values
+            control &= values
+            assert_eq()
+
+            try:
+                direct &= [e, creator()]
+                assert False
+            except TypeError:
+                assert True
 
         if hasattr(direct, 'symmetric_difference_update'):
             zap()
@@ -486,6 +546,34 @@ class CollectionsTest(PersistTest):
             direct.symmetric_difference_update(values)
             control.symmetric_difference_update(values)
             assert_eq()
+
+        if hasattr(direct, '__ixor__'):
+            zap()
+            e = creator()
+            addall(e, creator(), creator())
+
+            values = set([e, creator()])
+            direct ^= values
+            control ^= values
+            assert_eq()
+
+            e = creator()
+            addall(e)
+            values = set([e])
+            direct ^= values
+            control ^= values
+            assert_eq()
+
+            values = set()
+            direct ^= values
+            control ^= values
+            assert_eq()
+
+            try:
+                direct ^= [e, creator()]
+                assert False
+            except TypeError:
+                assert True
 
     def _test_set_bulk(self, typecallable, creator=entity_maker):
         class Foo(object):
@@ -513,7 +601,7 @@ class CollectionsTest(PersistTest):
         self.assert_(obj.attr == set([e2]))
         self.assert_(e1 in canary.removed)
         self.assert_(e2 in canary.added)
- 
+
         e3 = creator()
         real_set = set([e3])
         obj.attr = real_set
@@ -521,7 +609,7 @@ class CollectionsTest(PersistTest):
         self.assert_(obj.attr == set([e3]))
         self.assert_(e2 in canary.removed)
         self.assert_(e3 in canary.added)
-       
+
         e4 = creator()
         try:
             obj.attr = [e4]
@@ -620,7 +708,7 @@ class CollectionsTest(PersistTest):
             for item in list(adapter):
                 direct.remove(item)
             control.clear()
-        
+
         # assume an 'set' method is available for tests
         addall(creator())
 
@@ -655,7 +743,7 @@ class CollectionsTest(PersistTest):
             direct.clear()
             control.clear()
             assert_eq()
-            
+
             direct.clear()
             control.clear()
             assert_eq()
@@ -678,7 +766,7 @@ class CollectionsTest(PersistTest):
             zap()
             e = creator()
             addall(e)
-            
+
             direct.popitem()
             control.popitem()
             assert_eq()
@@ -907,7 +995,7 @@ class CollectionsTest(PersistTest):
     def _test_object(self, typecallable, creator=entity_maker):
         class Foo(object):
             pass
-        
+
         canary = Canary()
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', True, extension=canary,
@@ -933,7 +1021,7 @@ class CollectionsTest(PersistTest):
         direct.zark(e)
         control.remove(e)
         assert_eq()
-        
+
         e = creator()
         direct.maybe_zark(e)
         control.discard(e)
@@ -1035,7 +1123,7 @@ class CollectionsTest(PersistTest):
             @collection.removes_return()
             def pop(self, key):
                 return self.data.pop()
-            
+
             @collection.iterator
             def __iter__(self):
                 return iter(self.data)
@@ -1136,14 +1224,14 @@ class CollectionsTest(PersistTest):
         col1.append(e3)
         self.assert_(e3 not in canary.data)
         self.assert_(collections.collection_adapter(col1) is None)
-        
+
         obj.attr[0] = e3
         self.assert_(e3 in canary.data)
 
 class DictHelpersTest(ORMTest):
     def define_tables(self, metadata):
         global parents, children, Parent, Child
-        
+
         parents = Table('parents', metadata,
                         Column('id', Integer, primary_key=True),
                         Column('label', String))
@@ -1170,7 +1258,7 @@ class DictHelpersTest(ORMTest):
             'children': relation(Child, collection_class=collection_class,
                                  cascade="all, delete-orphan")
             })
-        
+
         p = Parent()
         p.children['foo'] = Child('foo', 'value')
         p.children['bar'] = Child('bar', 'value')
@@ -1187,15 +1275,15 @@ class DictHelpersTest(ORMTest):
 
         collections.collection_adapter(p.children).append_with_event(
             Child('foo', 'newvalue'))
-        
+
         session.flush()
         session.clear()
-        
+
         p = session.query(Parent).get(pid)
-        
+
         self.assert_(set(p.children.keys()) == set(['foo', 'bar']))
         self.assert_(p.children['foo'].id != cid)
-        
+
         self.assert_(len(list(collections.collection_adapter(p.children))) == 2)
         session.flush()
         session.clear()
@@ -1205,7 +1293,7 @@ class DictHelpersTest(ORMTest):
 
         collections.collection_adapter(p.children).remove_with_event(
             p.children['foo'])
-        
+
         self.assert_(len(list(collections.collection_adapter(p.children))) == 1)
         session.flush()
         session.clear()
@@ -1220,7 +1308,7 @@ class DictHelpersTest(ORMTest):
 
         p = session.query(Parent).get(pid)
         self.assert_(len(list(collections.collection_adapter(p.children))) == 0)
-        
+
 
     def _test_composite_mapped(self, collection_class):
         mapper(Child, children)
@@ -1228,7 +1316,7 @@ class DictHelpersTest(ORMTest):
             'children': relation(Child, collection_class=collection_class,
                                  cascade="all, delete-orphan")
             })
-        
+
         p = Parent()
         p.children[('foo', '1')] = Child('foo', '1', 'value 1')
         p.children[('foo', '2')] = Child('foo', '2', 'value 2')
@@ -1238,7 +1326,7 @@ class DictHelpersTest(ORMTest):
         session.flush()
         pid = p.id
         session.clear()
-        
+
         p = session.query(Parent).get(pid)
 
         self.assert_(set(p.children.keys()) == set([('foo', '1'), ('foo', '2')]))
@@ -1246,17 +1334,17 @@ class DictHelpersTest(ORMTest):
 
         collections.collection_adapter(p.children).append_with_event(
             Child('foo', '1', 'newvalue'))
-        
+
         session.flush()
         session.clear()
-        
+
         p = session.query(Parent).get(pid)
-        
+
         self.assert_(set(p.children.keys()) == set([('foo', '1'), ('foo', '2')]))
         self.assert_(p.children[('foo', '1')].id != cid)
-        
+
         self.assert_(len(list(collections.collection_adapter(p.children))) == 2)
-        
+
     def test_mapped_collection(self):
         collection_class = collections.mapped_collection(lambda c: c.a)
         self._test_scalar_mapped(collection_class)
