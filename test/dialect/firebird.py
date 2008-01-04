@@ -70,7 +70,7 @@ class CompileTest(SQLCompileTest):
 
         m = MetaData()
         t = Table('sometable', m, Column('col1', Integer), Column('col2', Integer))
-        self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) FROM sometable")
+        self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) AS max_1 FROM sometable")
 
 
 class MiscFBTests(PersistTest):
