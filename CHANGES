@@ -13,7 +13,12 @@ CHANGES
 
 - orm
     - Fixed cascades on a += assignment to a list-based relation.
-
+    
+    - synonyms can now be created against props that don't exist yet,
+      which are later added via add_property().  This commonly includes
+      backrefs. (i.e. you can make synonyms for backrefs without
+      worrying about the order of operations) [ticket:919]
+      
 - ext
     - '+', '*', '+=' and '*=' support for association proxied lists.
 

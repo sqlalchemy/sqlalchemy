@@ -77,10 +77,16 @@ class ProxiedAttribute(InstrumentedAttribute):
         
     def __init__(self, key, user_prop, comparator=None):
         self.user_prop = user_prop
-        self.comparator = comparator
+        self._comparator = comparator
         self.key = key
         self.impl = ProxiedAttribute.ProxyImpl(key)
-
+    
+    def comparator(self):
+        if callable(self._comparator):
+            self._comparator = self._comparator()
+        return self._comparator
+    comparator = property(comparator)
+    
     def __get__(self, instance, owner):
         if instance is None:
             self.user_prop.__get__(instance, owner)                

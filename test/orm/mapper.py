@@ -260,6 +260,59 @@ class MapperTest(MapperSuperTest):
         assert u.user_name == 'jack'
         u.user_name = 'jacko'
         assert m._columntoproperty[users.c.user_name] is m.get_property('_user_name')
+    
+    def test_synonym_replaces_backref(self):
+        assert_calls = []
+        class Address(object):
+            def _get_user(self):
+                assert_calls.append("get")
+                return self._user
+            def _set_user(self, user):
+                assert_calls.append("set")
+                self._user = user
+            user = property(_get_user, _set_user)
+        
+        # synonym is created against nonexistent prop
+        mapper(Address, addresses, properties={
+            'user':synonym('_user')
+        })
+        compile_mappers()
+        
+        # later, backref sets up the prop
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref='_user')
+        })
+
+        sess = create_session()
+        u1 = sess.query(User).get(7)
+        u2 = sess.query(User).get(8)
+        # comparaison ops need to work
+        a1 = sess.query(Address).filter(Address.user==u1).one()
+        assert a1.address_id == 1
+        a1.user = u2
+        assert a1.user is u2
+        self.assertEquals(assert_calls, ["set", "get"])
+    
+    def test_self_ref_syn(self):
+        t = Table('nodes', MetaData(),
+            Column('id', Integer, primary_key=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')))
+            
+        class Node(object):
+            pass
+            
+        mapper(Node, t, properties={
+            '_children':relation(Node, backref=backref('_parent', remote_side=t.c.id)),
+            'children':synonym('_children'),
+            'parent':synonym('_parent')
+        })
+        
+        n1 = Node()
+        n2 = Node()
+        n1.children.append(n2)
+        assert n2.parent is n2._parent is n1
+        assert n1.children[0] is n1._children[0] is n2
+        self.assertEquals(str(Node.parent == n2), ":param_1 = nodes.parent_id")
         
     def test_illegal_non_primary(self):
         mapper(User, users)

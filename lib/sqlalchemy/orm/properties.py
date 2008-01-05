@@ -155,7 +155,8 @@ class SynonymProperty(MapperProperty):
 
     def do_init(self):
         class_ = self.parent.class_
-        aliased_property = self.parent._get_property(self.key, resolve_synonyms=True)
+        def comparator():
+            return self.parent._get_property(self.key, resolve_synonyms=True).comparator
         self.logger.info("register managed attribute %s on class %s" % (self.key, class_.__name__))
         if self.instrument is None:
             class SynonymProp(object):
@@ -169,7 +170,7 @@ class SynonymProperty(MapperProperty):
                     return getattr(obj, self.name)
             self.instrument = SynonymProp()
             
-        sessionlib.register_attribute(class_, self.key, uselist=False, proxy_property=self.instrument, useobject=False, comparator=aliased_property.comparator)
+        sessionlib.register_attribute(class_, self.key, uselist=False, proxy_property=self.instrument, useobject=False, comparator=comparator)
 
     def merge(self, session, source, dest, _recursive):
         pass
