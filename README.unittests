@@ -1,101 +1,179 @@
+=====================
 SQLALCHEMY UNIT TESTS
-----------------------
+=====================
 
 SETUP
 -----
-To run unit tests (assuming unix-style commandline, adjust as needed for windows):
+Python 2.4 or greater is required, as the unit tests use decorators.  SQLite
+support is required.
 
-Python 2.4 or greater is required since the unit tests use decorators.
+The 'test' directory must be on the PYTHONPATH.
 
-cd into the SQLAlchemy distribution directory.
+cd into the SQLAlchemy distribution directory
 
-Set up the PYTHONPATH.  In bash:
+In bash:
 
-    export PYTHONPATH=./test/
+    $ export PYTHONPATH=./test/
 
 On windows:
 
-    set PYTHONPATH=test\
+    C:\sa\> set PYTHONPATH=test\
 
-The unittest framework will automatically prepend the lib directory to
-sys.path.  This forces the local version of SQLAlchemy to be used,
-bypassing any setuptools-installed installations (setuptools places
-.egg files ahead of plain directories, even if on PYTHONPATH,
-unfortunately).
+    Adjust any other use Unix-style paths in this README as needed.
+
+The unittest framework will automatically prepend the lib/ directory to
+sys.path.  This forces the local version of SQLAlchemy to be used, bypassing
+any setuptools-installed installations (setuptools places .egg files ahead of
+plain directories, even if on PYTHONPATH, unfortunately).
+
 
 RUNNING ALL TESTS
 -----------------
 To run all tests:
 
-    python test/alltests.py
+    $ python test/alltests.py
 
-COMMAND LINE OPTIONS
---------------------
-Help is available via:
-
-    python test/alltests.py --help
-
-    usage: alltests.py [options] [tests...]
-    
-    options:
-      -h, --help            show this help message and exit
-      --dburi=DBURI         database uri (overrides --db)
-      --db=DB               prefab database uri (sqlite, sqlite_file, postgres,
-                            mysql, oracle, oracle8, mssql)
-      --mockpool            use mock pool
-      --verbose             enable stdout echoing/printing
-      --log-info=LOG_INFO   turn on info logging for <LOG> (multiple OK)
-      --log-debug=LOG_DEBUG
-                            turn on debug logging for <LOG> (multiple OK)
-      --quiet               suppress unittest output
-      --nothreadlocal       dont use thread-local mod
-      --enginestrategy=ENGINESTRATEGY
-                engine strategy (plain or threadlocal, defaults to SA
-                default)
-      --coverage            Dump a full coverage report after running    
-
-NON-SQLITE DATABASES
---------------------
-The prefab database connections expect to log in to localhost on the
-default port as user "scott", password "tiger", database "test" (where
-applicable).  E.g. for postgresql the this translates to 
-"postgres://scott:tiger@127.0.0.1:5432/test".
 
 RUNNING INDIVIDUAL TESTS
 -------------------------
-Any unittest module can be run directly from the module file (same commandline options):
+Any unittest module can be run directly from the module file:
 
     python test/orm/mapper.py
 
-Additionally, to run a speciic test within the module, specify it as ClassName.methodname:
+To run a specific test within the module, specify it as ClassName.methodname:
 
     python test/orm/mapper.py MapperTest.testget
 
+
+COMMAND LINE OPTIONS
+--------------------
+Help is available via --help
+
+    $ python test/alltests.py --help
+
+    usage: alltests.py [options] [tests...]
+
+    Options:
+      -h, --help            show this help message and exit
+      --verbose             enable stdout echoing/printing
+      --quiet               suppress output
+    [...]
+
+Command line options can applied to alltests.py or any individual test module.
+Many are available.  The most commonly used are '--db' and '--dburi'.
+
+
+DATABASE TARGETS
+----------------
+
+Tests will target an in-memory SQLite database by default.  To test against
+another database, use the --dburi option with any standard SQLAlchemy URL:
+
+    --dburi=postgres://user:password@localhost/test
+
+Use an empty database and a database user with general DBA privileges.  The
+test suite will be creating and dropping many tables and other DDL, and
+preexisting tables will interfere with the tests
+
+If you'll be running the tests frequently, database aliases can save a lot of
+typing.  The --dbs option lists the built-in aliases and their matching URLs:
+
+    $ python test/alltests.py --dbs
+    Available --db options (use --dburi to override)
+               mysql    mysql://scott:tiger@127.0.0.1:3306/test
+              oracle    oracle://scott:tiger@127.0.0.1:1521
+            postgres    postgres://scott:tiger@127.0.0.1:5432/test
+    [...]
+
+To run tests against an aliased database:
+
+    $ python test/alltests.py --db=postgres
+
+To customize the URLs with your own users or hostnames, make a simple .ini
+file called `test.cfg` at the top level of the SQLAlchemy source distribution
+or a `.satest.cfg` in your home directory:
+
+    [db]
+    postgres=postgres://myuser:mypass@localhost/mydb
+
+Your custom entries will override the defaults and you'll see them reflected
+in the output of --dbs.
+
+
 CONFIGURING LOGGING
----------------------
-Logging is now available via Python's logging package.  Any area of SQLAlchemy can be logged 
-through the unittest interface, such as:
+-------------------
+SQLAlchemy logs its activity and debugging through Python's logging package.
+Any log target can be directed to the console with command line options, such
+as:
 
-Log mapper configuration, connection pool checkouts, and SQL statement execution:
+    $ python test/orm/unitofwork.py --log-info=sqlalchemy.orm.mapper \
+      --log-debug=sqlalchemy.pool --log-info=sqlalchemy.engine
 
-    python test/orm/unitofwork.py --log-info=sqlalchemy.orm.mapper --log-debug=sqlalchemy.pool --log-info=sqlalchemy.engine
+This would log mapper configuration, connection pool checkouts, and SQL
+statement execution.
+
 
 BUILT-IN COVERAGE REPORTING
 ------------------------------
-Coverage is now integrated through the coverage.py module, included in the './test/' directory.  Running the test suite with
-the --coverage switch will generate a local file ".coverage" containing coverage details, and a report will be printed
-to standard output with an overview of the coverage gathered from the last unittest run (the file is deleted between runs).
+Coverage is tracked with coverage.py module, included in the './test/'
+directory.  Running the test suite with the --coverage switch will generate a
+local file ".coverage" containing coverage details, and a report will be
+printed to standard output with an overview of the coverage gathered from the
+last unittest run (the file is deleted between runs).
 
-After the suite has been run with --coverage, an annotated version of any source file can be generated
-marking statements that are executed with > and statements that are missed with !, by running the coverage.py
-utility with the "-a" (annotate) option, such as: 
+After the suite has been run with --coverage, an annotated version of any
+source file can be generated, marking statements that are executed with > and
+statements that are missed with !, by running the coverage.py utility with the
+"-a" (annotate) option, such as:
 
-    python ./test/coverage.py -a ./lib/sqlalchemy/sql.py
+    $ python ./test/coverage.py -a ./lib/sqlalchemy/sql.py
 
-which will create a new annotated file ./lib/sqlalchemy/sql.py,cover .  Pretty cool !
+This will create a new annotated file ./lib/sqlalchemy/sql.py,cover. Pretty
+cool!
+
+
+TESTING NEW DIALECTS
+--------------------
+
+You can use the SQLAlchemy test suite to test any new database dialect in
+development.  All possible database features will be exercised by default.
+Test decorators are provided that can exclude unsupported tests for a
+particular dialect.  You'll see them all over the source, feel free to add
+your dialect to them or apply new decorations to existing tests as required.
+
+It's fine to start out with very broad exclusions, e.g. "2-phase commit is not
+supported on this database" and later refine that as needed "2-phase commit is
+not available until server version 8".
+
+To be considered for inclusion in the SQLAlchemy distribution, a dialect must
+be integrated with the standard test suite.  Dialect-specific tests can be
+placed in the 'dialects/' directory.  Comprehensive testing of
+database-specific column types and their proper reflection are a very good
+place to start.
+
+When working through the tests, start with 'engine' and 'sql' tests.  'engine'
+performs a wide range of transaction tests that might deadlock on a brand-new
+dialect- try disabling those if you're having problems and revisit them later.
+
+Once the 'sql' tests are passing, the 'orm' tests should pass as well, modulo
+any adjustments needed for SQL features the ORM uses that might not be
+available in your database.  But if an 'orm' test requires changes to your
+dialect or the SQLAlchemy core to pass, there's a test missing in 'sql'!  Any
+time you can spend boiling down the problem to it's essential sql roots and
+adding a 'sql' test will be much appreciated.
+
+The test suite is very effective at illuminating bugs and inconsistencies in
+an underlying DB-API (or database!) implementation.  Workarounds are almost
+always possible.  If you hit a wall, join us on the mailing list or, better,
+IRC!
+
 
 TIPS
 ----
-When running the tests on postgres, postgres gets slower and slower each time you run the tests.  
-This seems to be related to the constant creation/dropping of tables.  Running a "VACUUM FULL" 
-on the database will speed it up again.
+Postgres: The tests require an 'alt_schema' and 'alt_schema2' to be present in
+the testing database.
+
+Postgres: When running the tests on postgres, postgres can get slower and
+slower each time you run the tests.  This seems to be related to the constant
+creation/dropping of tables.  Running a "VACUUM FULL" on the database will
+speed it up again.
