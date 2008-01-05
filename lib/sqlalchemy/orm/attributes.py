@@ -1122,7 +1122,8 @@ def register_class(class_, extra_init=None, on_exception=None, deferred_scalar_l
     doinit = False
 
     def init(instance, *args, **kwargs):
-        instance._state = InstanceState(instance)
+        if not hasattr(instance, '_state'):
+            instance._state = InstanceState(instance)
 
         if extra_init:
             extra_init(class_, oldinit, instance, args, kwargs)

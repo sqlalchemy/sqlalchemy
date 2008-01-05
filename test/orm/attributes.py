@@ -249,6 +249,25 @@ class AttributesTest(PersistTest):
         assert x.element2 == 'this is the shared attr'
         assert y.element2 == 'this is the shared attr'
 
+    def test_no_double_state(self):
+        states = set()
+        class Foo(object):
+            def __init__(self):
+                states.add(self._state)
+        class Bar(Foo):
+            def __init__(self):
+                states.add(self._state)
+                Foo.__init__(self)
+        
+        
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+        
+        b = Bar()
+        self.assertEquals(len(states), 1)
+        self.assertEquals(list(states)[0].obj(), b)
+        
+
     def test_inheritance2(self):
         """test that the attribute manager can properly traverse the managed attributes of an object,
         if the object is of a descendant class with managed attributes in the parent class"""

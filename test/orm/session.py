@@ -798,6 +798,23 @@ class SessionTest(AssertMixin):
         u3 = sess.query(User).get(u1.user_id)
         assert u3 is not u1 and u3 is not u2 and u3.user_name == u1.user_name
 
+    def test_no_double_save(self):
+        sess = create_session()
+        class Foo(object):
+            def __init__(self):
+                sess.save(self)
+        class Bar(Foo):
+            def __init__(self):
+                sess.save(self)
+                Foo.__init__(self)
+        mapper(Foo, users)
+        mapper(Bar, users)
+
+        b = Bar()
+        assert b in sess
+        assert len(list(sess)) == 1
+        
+        
 class ScopedSessionTest(ORMTest):
 
     def define_tables(self, metadata):
@@ -894,7 +911,7 @@ class ScopedMapperTest(PersistTest):
             pass
         Session.mapper(Baz, table2, extension=ext)
         assert hasattr(Baz, 'query')
-    
+
     def test_validating_constructor(self):
         s2 = SomeObject(someid=12)
         s3 = SomeOtherObject(someid=123, bogus=345)

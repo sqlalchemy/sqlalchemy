@@ -4,8 +4,14 @@ CHANGES
 0.4.3
 -----
 - orm
-    - Added very rudimentary yielding iterator behavior to Query.  Call
-      query.yield_per(<number of rows>) and evaluate the Query in an
+    - fixed fairly critical bug whereby the same instance could be listed
+      more than once in the unitofwork.new collection; most typically
+      reproduced when using a combination of inheriting mappers and 
+      ScopedSession.mapper, as the multiple __init__ calls per instance
+      could save() the object with distinct _state objects
+      
+    - added very rudimentary yielding iterator behavior to Query.  Call
+      query.yield_per(<number of rows>) and evaluate the Query in an 
       iterative context; every collection of N rows will be packaged up
       and yielded.  Use this method with extreme caution since it does
       not attempt to reconcile eagerly loaded collections across
