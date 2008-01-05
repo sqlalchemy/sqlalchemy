@@ -189,6 +189,44 @@ class _CollectionOperations(PersistTest):
 
         self.assertRaises(TypeError, set, [p1.children])
 
+        p1.children *= 0
+        after = []
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children += ['a', 'b']
+        after = ['a', 'b']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children *= 1
+        after = ['a', 'b']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children *= 2
+        after = ['a', 'b', 'a', 'b']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children = ['a']
+        after = ['a']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        self.assert_((p1.children * 2) == ['a', 'a'])
+        self.assert_((2 * p1.children) == ['a', 'a'])
+        self.assert_((p1.children * 0) == [])
+        self.assert_((0 * p1.children) == [])
+
+        self.assert_((p1.children + ['a']) == ['a', 'a'])
+        self.assert_((['a'] + p1.children) == ['a', 'a'])
+
+        try:
+            p1.children + 123
+            assert False
+        except TypeError:
+            assert True
 
 class DefaultTest(_CollectionOperations):
     def __init__(self, *args, **kw):

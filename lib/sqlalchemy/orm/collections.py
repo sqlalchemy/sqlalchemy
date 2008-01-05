@@ -968,6 +968,16 @@ def _list_decorators():
         _tidy(extend)
         return extend
 
+    def __iadd__(fn):
+        def __iadd__(self, iterable):
+            # list.__iadd__ takes any iterable and seems to let TypeError raise
+            # as-is instead of returning NotImplemented
+            for value in iterable:
+                self.append(value)
+            return self
+        _tidy(__iadd__)
+        return __iadd__
+
     def pop(fn):
         def pop(self, index=-1):
             __before_delete(self)
@@ -976,6 +986,11 @@ def _list_decorators():
             return item
         _tidy(pop)
         return pop
+
+    # __imul__ : not wrapping this.  all members of the collection are already
+    # present, so no need to fire appends... wrapping it with an explicit
+    # decorator is still possible, so events on *= can be had if they're
+    # desired.  hard to imagine a use case for __imul__, though.
 
     l = locals().copy()
     l.pop('_tidy')

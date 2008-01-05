@@ -5,7 +5,11 @@ CHANGES
 0.4.2b
 ------
 
+- orm
+    - Fixed cascades on a += assignment to a list-based relation.
 
+- ext
+    - '+', '*', '+=' and '*=' support for association proxied lists.
 
 0.4.2a
 ------

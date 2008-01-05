@@ -230,6 +230,31 @@ class CollectionsTest(PersistTest):
             control.extend(values)
             assert_eq()
 
+        if hasattr(direct, '__iadd__'):
+            values = [creator(), creator(), creator()]
+
+            direct += values
+            control += values
+            assert_eq()
+
+            direct += []
+            control += []
+            assert_eq()
+
+            values = [creator(), creator()]
+            obj.attr += values
+            control += values
+            assert_eq()
+
+        if hasattr(direct, '__imul__'):
+            direct *= 2
+            control *= 2
+            assert_eq()
+
+            obj.attr *= 2
+            control *= 2
+            assert_eq()
+
     def _test_list_bulk(self, typecallable, creator=entity_maker):
         class Foo(object):
             pass

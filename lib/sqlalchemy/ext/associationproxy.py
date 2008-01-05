@@ -402,6 +402,37 @@ class _AssociationList(object):
     def __ge__(self, other): return list(self) >= other
     def __cmp__(self, other): return cmp(list(self), other)
 
+    def __add__(self, iterable):
+        try:
+            other = list(iterable)
+        except TypeError:
+            return NotImplemented
+        return list(self) + other
+    __radd__ = __add__
+
+    def __mul__(self, n):
+        if not isinstance(n, int):
+            return NotImplemented
+        return list(self) * n
+    __rmul__ = __mul__
+
+    def __iadd__(self, iterable):
+        self.extend(iterable)
+        return self
+
+    def __imul__(self, n):
+        # unlike a regular list *=, proxied __imul__ will generate unique
+        # backing objects for each copy.  *= on proxied lists is a bit of
+        # a stretch anyhow, and this interpretation of the __imul__ contract
+        # is more plausibly useful than copying the backing objects.
+        if not isinstance(n, int):
+            return NotImplemented
+        if n == 0:
+            self.clear()
+        elif n > 1:
+            self.extend(list(self) * (n - 1))
+        return self
+
     def copy(self):
         return list(self)
 
