@@ -1055,6 +1055,14 @@ class ClauseElement(object):
         else:
             return _UnaryExpression(self.self_group(against=operators.inv), operator=operators.inv, negate=None)
 
+    def __repr__(self):
+        friendly = getattr(self, 'description', None)
+        if friendly is None:
+            return object.__repr__(self)
+        else:
+            return '<%s.%s at 0x%x; %s>' % (
+                self.__module__, self.__class__.__name__, id(self), friendly)
+
 
 class Operators(object):
     def __and__(self, other):
