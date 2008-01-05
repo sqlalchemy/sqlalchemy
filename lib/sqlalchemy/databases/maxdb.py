@@ -353,7 +353,7 @@ colspecs = {
     sqltypes.String: MaxString,
     sqltypes.Binary: MaxBlob,
     sqltypes.Boolean: MaxBoolean,
-    sqltypes.TEXT: MaxText,
+    sqltypes.Text: MaxText,
     sqltypes.CHAR: MaxChar,
     sqltypes.TIMESTAMP: MaxTimestamp,
     sqltypes.BLOB: MaxBlob,

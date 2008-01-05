@@ -107,7 +107,7 @@ class SLTime(DateTimeMixin, sqltypes.Time):
             return tup and datetime.time(*tup[3:7])
         return process
         
-class SLText(sqltypes.TEXT):
+class SLText(sqltypes.Text):
     def get_col_spec(self):
         return "TEXT"
 
@@ -152,7 +152,7 @@ colspecs = {
     sqltypes.String : SLString,
     sqltypes.Binary : SLBinary,
     sqltypes.Boolean : SLBoolean,
-    sqltypes.TEXT : SLText,
+    sqltypes.Text : SLText,
     sqltypes.CHAR: SLChar,
 }
 

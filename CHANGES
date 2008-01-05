@@ -4,6 +4,12 @@ CHANGES
 
 0.4.2b
 ------
+- sql
+    - changed name of TEXT to Text since its a "generic" type; TEXT name is
+      deprecated until 0.5.  The "upgrading" behavior of String to Text 
+      when no length is present is also deprecated until 0.5; will issue a
+      warning when used for CREATE TABLE statements (String with no length
+      for SQL expression purposes is still fine) [ticket:912]
 
 - orm
     - Fixed cascades on a += assignment to a list-based relation.

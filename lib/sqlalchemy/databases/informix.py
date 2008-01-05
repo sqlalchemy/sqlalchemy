@@ -150,7 +150,7 @@ colspecs = {
     sqltypes.String : InfoString,
     sqltypes.Binary : InfoBinary,
     sqltypes.Boolean : InfoBoolean,
-    sqltypes.TEXT : InfoText,
+    sqltypes.Text : InfoText,
     sqltypes.CHAR: InfoChar,
 }
 

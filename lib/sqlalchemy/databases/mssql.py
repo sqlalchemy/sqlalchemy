@@ -192,7 +192,7 @@ class MSDate_pymssql(MSDate):
                 return value
         return process
         
-class MSText(sqltypes.TEXT):
+class MSText(sqltypes.Text):
     def get_col_spec(self):
         if self.dialect.text_as_varchar:
             return "VARCHAR(max)"            
@@ -380,7 +380,7 @@ class MSSQLDialect(default.DefaultDialect):
         sqltypes.String : MSString,
         sqltypes.Binary : MSBinary,
         sqltypes.Boolean : MSBoolean,
-        sqltypes.TEXT : MSText,
+        sqltypes.Text : MSText,
         sqltypes.CHAR: MSChar,
         sqltypes.NCHAR: MSNChar,
         sqltypes.TIMESTAMP: MSTimeStamp,

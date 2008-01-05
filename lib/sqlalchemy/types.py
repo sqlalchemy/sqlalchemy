@@ -12,12 +12,13 @@ For more information see the SQLAlchemy documentation on types.
 
 """
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
-            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'FLOAT',
+            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'Text', 'FLOAT',
             'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB',
             'BOOLEAN', 'SMALLINT', 'DATE', 'TIME',
             'String', 'Integer', 'SmallInteger','Smallinteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
             'Boolean', 'Unicode', 'PickleType', 'Interval',
+            'type_map'
             ]
 
 import inspect
@@ -25,7 +26,7 @@ import datetime as dt
 import warnings
 
 from sqlalchemy import exceptions
-from sqlalchemy.util import pickle, Decimal as _python_Decimal
+from sqlalchemy.util import pickle, Decimal as _python_Decimal, warn_deprecated
 NoneType = type(None)
 
 class _UserTypeAdapter(type):
@@ -155,7 +156,7 @@ class AbstractType(object):
                       for k in inspect.getargspec(self.__init__)[0][1:]]))
 
 class TypeEngine(AbstractType):
-    def dialect_impl(self, dialect):
+    def dialect_impl(self, dialect, **kwargs):
         try:
             return self._impl_dict[dialect]
         except AttributeError:
@@ -196,7 +197,7 @@ class TypeDecorator(AbstractType):
             raise exceptions.AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
         self.impl = self.__class__.impl(*args, **kwargs)
 
-    def dialect_impl(self, dialect):
+    def dialect_impl(self, dialect, **kwargs):
         try:
             return self._impl_dict[dialect]
         except AttributeError:
@@ -340,6 +341,15 @@ class Concatenable(object):
             return op
 
 class String(Concatenable, TypeEngine):
+    """A sized string type.
+    
+    Usually corresponds to VARCHAR.  Can also take Python unicode objects
+    and encode to the database's encoding in bind params (and the reverse for 
+    result sets.)
+    
+    a String with no length will adapt itself automatically to a Text 
+    object at the dialect level (this behavior is deprecated in 0.4).
+    """
     def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
         self.length = length
         self.convert_unicode = convert_unicode
@@ -380,13 +390,19 @@ class String(Concatenable, TypeEngine):
         else:
             return None
 
+    def dialect_impl(self, dialect, **kwargs):
+        _for_ddl = kwargs.pop('_for_ddl', False)
+        if self.length is None:
+            warn_deprecated("Using String type with no length for CREATE TABLE is deprecated; use the Text type explicitly")
+        return TypeEngine.dialect_impl(self, dialect, **kwargs)
+        
     def get_search_list(self):
         l = super(String, self).get_search_list()
         # if we are String or Unicode with no length,
-        # return TEXT as the highest-priority type
+        # return Text as the highest-priority type
         # to be adapted by the dialect
         if self.length is None and l[0] in (String, Unicode):
-            return (TEXT,) + l
+            return (Text,) + l
         else:
             return l
 
@@ -394,6 +410,8 @@ class String(Concatenable, TypeEngine):
         return dbapi.STRING
 
 class Unicode(String):
+    """A synonym for String(length, convert_unicode=True, assert_unicode='warn')."""
+    
     def __init__(self, length=None, **kwargs):
         kwargs['convert_unicode'] = True
         kwargs['assert_unicode'] = 'warn'
@@ -413,6 +431,8 @@ class SmallInteger(Integer):
 Smallinteger = SmallInteger
 
 class Numeric(TypeEngine):
+    """Numeric datatype, usually resolves to DECIMAL or NUMERIC."""
+    
     def __init__(self, precision=10, length=2, asdecimal=True):
         self.precision = precision
         self.length = length
@@ -634,7 +654,8 @@ class Interval(TypeDecorator):
             return process
 
 class FLOAT(Float): pass
-class TEXT(String): pass
+class Text(String): pass
+TEXT = Text
 class NUMERIC(Numeric): pass
 class DECIMAL(Numeric): pass
 class INT(Integer): pass
@@ -644,7 +665,7 @@ class TIMESTAMP(DateTime): pass
 class DATETIME(DateTime): pass
 class DATE(Date): pass
 class TIME(Time): pass
-class CLOB(TEXT): pass
+class CLOB(Text): pass
 class VARCHAR(String): pass
 class CHAR(String): pass
 class NCHAR(Unicode): pass
@@ -652,3 +673,18 @@ class BLOB(Binary): pass
 class BOOLEAN(Boolean): pass
 
 NULLTYPE = NullType()
+
+# using VARCHAR/NCHAR so that we dont get the genericized "String"
+# type which usually resolves to TEXT/CLOB
+type_map = {
+    str : VARCHAR,
+    unicode : NCHAR,
+    int : Integer,
+    float : Numeric,
+    dt.date : Date,
+    dt.datetime : DateTime,
+    dt.time : Time,
+    dt.timedelta : Interval,
+    type(None): NullType
+}
+

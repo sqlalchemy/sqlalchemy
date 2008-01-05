@@ -295,7 +295,7 @@ class SybaseTime_pyodbc(sqltypes.Time):
             return datetime.datetime(1970, 1, 1, value.hour, value.minute, value.second, value.microsecond)
         return process
 
-class SybaseText(sqltypes.TEXT):
+class SybaseText(sqltypes.Text):
     def get_col_spec(self):
         return "TEXT"            
 
@@ -425,7 +425,7 @@ class SybaseSQLDialect(default.DefaultDialect):
         sqltypes.String : SybaseString,
         sqltypes.Binary : SybaseBinary,
         sqltypes.Boolean : SybaseBoolean,
-        sqltypes.TEXT : SybaseText,
+        sqltypes.Text : SybaseText,
         sqltypes.CHAR : SybaseChar,
         sqltypes.TIMESTAMP : SybaseTimeStamp,
         sqltypes.FLOAT : SybaseFloat,

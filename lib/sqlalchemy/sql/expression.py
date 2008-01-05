@@ -1729,26 +1729,11 @@ class _BindParamClause(ClauseElement, _CompareMixin):
         self.shortname = shortname
 
         if type_ is None:
-            self.type = self.type_map.get(type(value), sqltypes.NullType)()
+            self.type = sqltypes.type_map.get(type(value), sqltypes.NullType)()
         elif isinstance(type_, type):
             self.type = type_()
         else:
             self.type = type_
-
-    # TODO: move to types module, obviously
-    # using VARCHAR/NCHAR so that we dont get the genericized "String"
-    # type which usually resolves to TEXT/CLOB
-    type_map = {
-        str : sqltypes.VARCHAR,
-        unicode : sqltypes.NCHAR,
-        int : sqltypes.Integer,
-        float : sqltypes.Numeric,
-        datetime.date : sqltypes.Date,
-        datetime.datetime : sqltypes.DateTime,
-        datetime.time : sqltypes.Time,
-        datetime.timedelta : sqltypes.Interval,
-        type(None):sqltypes.NullType
-    }
 
     def _clone(self):
         c = ClauseElement._clone(self)

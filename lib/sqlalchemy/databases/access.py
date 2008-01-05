@@ -64,7 +64,7 @@ class AcDate(types.Date):
     def get_col_spec(self):
         return "DATETIME"
 
-class AcText(types.TEXT):
+class AcText(types.Text):
     def get_col_spec(self):
         return "MEMO"
 
@@ -172,7 +172,7 @@ class AccessDialect(default.DefaultDialect):
         types.String : AcString,
         types.Binary : AcBinary,
         types.Boolean : AcBoolean,
-        types.TEXT : AcText,
+        types.Text : AcText,
         types.CHAR: AcChar,
         types.TIMESTAMP: AcTimeStamp,
     }

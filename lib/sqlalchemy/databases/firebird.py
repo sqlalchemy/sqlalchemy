@@ -177,7 +177,7 @@ class FBTime(sqltypes.Time):
         return "TIME"
 
 
-class FBText(sqltypes.TEXT):
+class FBText(sqltypes.Text):
     """Handle ``BLOB SUB_TYPE 1`` datatype (aka *textual* blob)."""
 
     def get_col_spec(self):
@@ -223,7 +223,7 @@ colspecs = {
     sqltypes.String : FBString,
     sqltypes.Binary : FBBinary,
     sqltypes.Boolean : FBBoolean,
-    sqltypes.TEXT : FBText,
+    sqltypes.Text : FBText,
     sqltypes.CHAR: FBChar,
 }
 

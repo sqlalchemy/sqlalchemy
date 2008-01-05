@@ -89,7 +89,7 @@ class PGInterval(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "INTERVAL"
 
-class PGText(sqltypes.TEXT):
+class PGText(sqltypes.Text):
     def get_col_spec(self):
         return "TEXT"
 
@@ -166,7 +166,7 @@ colspecs = {
     sqltypes.String : PGString,
     sqltypes.Binary : PGBinary,
     sqltypes.Boolean : PGBoolean,
-    sqltypes.TEXT : PGText,
+    sqltypes.Text : PGText,
     sqltypes.CHAR: PGChar,
 }
 

@@ -86,7 +86,7 @@ class OracleString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
 
-class OracleText(sqltypes.TEXT):
+class OracleText(sqltypes.Text):
     def get_dbapi_type(self, dbapi):
         return dbapi.CLOB
 
@@ -169,7 +169,7 @@ colspecs = {
     sqltypes.String : OracleString,
     sqltypes.Binary : OracleBinary,
     sqltypes.Boolean : OracleBoolean,
-    sqltypes.TEXT : OracleText,
+    sqltypes.Text : OracleText,
     sqltypes.TIMESTAMP : OracleTimestamp,
     sqltypes.CHAR: OracleChar,
 }

@@ -685,7 +685,7 @@ class MSYear(sqltypes.TypeEngine):
         else:
             return "YEAR(%s)" % self.length
 
-class MSText(_StringType, sqltypes.TEXT):
+class MSText(_StringType, sqltypes.Text):
     """MySQL TEXT type, for text up to 2^16 characters."""
 
     def __init__(self, length=None, **kwargs):
@@ -724,7 +724,7 @@ class MSText(_StringType, sqltypes.TEXT):
         """
 
         _StringType.__init__(self, **kwargs)
-        sqltypes.TEXT.__init__(self, length,
+        sqltypes.Text.__init__(self, length,
                                kwargs.get('convert_unicode', False), kwargs.get('assert_unicode', None))
 
     def get_col_spec(self):
@@ -1318,7 +1318,7 @@ colspecs = {
     sqltypes.String: MSString,
     sqltypes.Binary: MSBlob,
     sqltypes.Boolean: MSBoolean,
-    sqltypes.TEXT: MSText,
+    sqltypes.Text: MSText,
     sqltypes.CHAR: MSChar,
     sqltypes.NCHAR: MSNChar,
     sqltypes.TIMESTAMP: MSTimeStamp,
