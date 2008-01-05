@@ -1,17 +1,49 @@
-SQLAlchemy is licensed under an MIT-style license (see LICENSE).
-Other incorporated projects may be licensed under different licenses.
-All licenses allow for non-commercial and commercial use.
+SQLAlchemy
+++++++++++
 
-To install:
+The Python SQL Toolkit and Object Relational Mapper
 
-	python setup.py install
+Requirements
+------------
 
-SVN checkouts also include setup.cfg file allowing setuptools to create 
-an svn-tagged build.  
+SQLAlchemy requires Python 2.3 or higher.  One or more DB-API implementations
+are also required for database access.  See docs/intro.html for more
+information on supported DB-API implementations.
 
-Documentation is available in HTML format in the ./doc/ directory.
+Installing
+----------
 
-Information running unit tests is in README.unittests.	
+To install::
 
-good luck !
-	
+  python setup.py install
+
+To use without installation, include the ``lib`` directory in your Python
+path.
+
+Package Contents
+----------------
+
+  doc/
+     HTML documentation, including tutorials and API reference.
+
+  examples/
+     Fully commented and executable implementations for a variety of tasks.
+
+  lib/
+     SQLAlchemy.
+
+  test/
+     Unit tests for SQLAlchemy.  See ``README.unittests`` for more
+     information.
+
+Help
+----
+
+Mailing lists, wiki, and more are available on-line at
+http://www.sqlalchemy.org.
+
+License
+-------
+
+SQLAlchemy is distributed under the `MIT license
+<http://www.opensource.org/licenses/mit-license.php>`_.
