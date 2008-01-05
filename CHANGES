@@ -1,7 +1,7 @@
 =======
 CHANGES
 =======
-0.4.3
+0.4.2a
 -----
 - orm
     - fixed fairly critical bug whereby the same instance could be listed
