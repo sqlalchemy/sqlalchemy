@@ -4,6 +4,7 @@ import unittest
 def suite():
     modules_to_test = (
         'orm.inheritance.basic',
+        'orm.inheritance.query',
         'orm.inheritance.manytomany',
         'orm.inheritance.single',
         'orm.inheritance.concrete',

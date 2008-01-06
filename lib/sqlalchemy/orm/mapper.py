@@ -665,8 +665,7 @@ class Mapper(object):
                     return
 
         if isinstance(prop, ColumnProperty):
-            # relate the mapper's "select table" to the given ColumnProperty
-            col = self.select_table.corresponding_column(prop.columns[0])
+            col = self.mapped_table.corresponding_column(prop.columns[0])
             # col might not be present! the selectable given to the mapper need not include "deferred"
             # columns (included in zblog tests)
             if col is None:
@@ -681,9 +680,9 @@ class Mapper(object):
             if isinstance(prop.instrument, Mapper._CompileOnAttr):
                 prop.instrument = object.__getattribute__(prop.instrument, 'existing_prop')
             if prop.map_column:
-                if not key in self.select_table.c:
-                    raise exceptions.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.select_table.description, key))
-                self._compile_property(prop.name, ColumnProperty(self.select_table.c[key]), init=init, setparent=setparent)    
+                if not key in self.mapped_table.c:
+                    raise exceptions.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.mapped_table.description, key))
+                self._compile_property(prop.name, ColumnProperty(self.mapped_table.c[key]), init=init, setparent=setparent)    
         self.__props[key] = prop
 
         if setparent:
@@ -1484,6 +1483,8 @@ class Mapper(object):
             return None
 
     def _deferred_inheritance_condition(self, base_mapper, needs_tables):
+        base_mapper = base_mapper.primary_mapper()
+        
         def visit_binary(binary):
             leftcol = binary.left
             rightcol = binary.right
