@@ -687,7 +687,7 @@ class InstanceState(object):
             return
         
         instance_dict = instance_dict()
-        if instance_dict is None:
+        if instance_dict is None or instance_dict._mutex is None:
             return
 
         # the mutexing here is based on the assumption that gc.collect()
@@ -695,17 +695,11 @@ class InstanceState(object):
         # which is normally operating upon the instance dict.
         instance_dict._mutex.acquire()
         try:
-            # if instance_dict de-refed us, or it called our
-            # _resurrect, return.  again setting local copy
-            # to avoid the rug being pulled in between
-            id2 = self.instance_dict
-            if id2 is None or id2() is None or self.obj() is not None:
-                return
-            
             try:
                 self.__resurrect(instance_dict)
             except:
-                # catch GC exceptions
+                # catch app cleanup exceptions.  no other way around this
+                # without warnings being produced
                 pass
         finally:
             instance_dict._mutex.release()
