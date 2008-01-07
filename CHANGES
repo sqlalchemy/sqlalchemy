@@ -38,10 +38,15 @@ CHANGES
     - the "columns" collection on a mapper/mapped class (i.e. 'c')
       is against the mapped table, not the select_table in the 
       case of polymorphic "union" loading (this shouldn't be 
-      noticeable)
+      noticeable).
       
 - ext
     - '+', '*', '+=' and '*=' support for association proxied lists.
+
+- dialects
+    - mssql - narrowed down the test for "date"/"datetime" in MSDate/
+      MSDateTime subclasses so that incoming "datetime" objects don't
+      get mis-interpreted as "date" objects and vice versa, [ticket:923]
 
 0.4.2a
 ------
