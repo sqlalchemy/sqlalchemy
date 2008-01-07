@@ -129,18 +129,18 @@ class MSTime(sqltypes.Time):
 
     def bind_processor(self, dialect):
         def process(value):
-            if isinstance(value, datetime.datetime):
+            if type(value) is datetime.datetime:
                 value = datetime.datetime.combine(self.__zero_date, value.time())
-            elif isinstance(value, datetime.time):
+            elif type(value) is datetime.time:
                 value = datetime.datetime.combine(self.__zero_date, value)
             return value
         return process
     
     def result_processor(self, dialect):
         def process(value):
-            if isinstance(value, datetime.datetime):
+            if type(value) is datetime.datetime:
                 return value.time()
-            elif isinstance(value, datetime.date):
+            elif type(value) is datetime.date:
                 return datetime.time(0, 0, 0)
             return value
         return process
@@ -150,7 +150,7 @@ class MSDateTime_adodbapi(MSDateTime):
         def process(value):
             # adodbapi will return datetimes with empty time values as datetime.date() objects.
             # Promote them back to full datetime.datetime()
-            if value and isinstance(value, datetime.date):
+            if type(value) is datetime.date:
                 return datetime.datetime(value.year, value.month, value.day)
             return value
         return process
@@ -158,38 +158,34 @@ class MSDateTime_adodbapi(MSDateTime):
 class MSDateTime_pyodbc(MSDateTime):
     def bind_processor(self, dialect):
         def process(value):
-            if value and isinstance(value, datetime.date):
+            if type(value) is datetime.date:
                 return datetime.datetime(value.year, value.month, value.day)
-            else:
-                return value
+            return value
         return process
         
 class MSDate_pyodbc(MSDate):
     def bind_processor(self, dialect):
         def process(value):
-            if value and isinstance(value, datetime.date):
+            if type(value) is datetime.date:
                 return datetime.datetime(value.year, value.month, value.day)
-            else:
-                return value
+            return value
         return process
     
     def result_processor(self, dialect):
         def process(value):
             # pyodbc returns SMALLDATETIME values as datetime.datetime(). truncate it back to datetime.date()
-            if value and isinstance(value, datetime.datetime):
+            if type(value) is datetime.datetime:
                 return value.date()
-            else:
-                return value
+            return value
         return process
         
 class MSDate_pymssql(MSDate):
     def result_processor(self, dialect):
         def process(value):
             # pymssql will return SMALLDATETIME values as datetime.datetime(), truncate it back to datetime.date()
-            if value and isinstance(value, datetime.datetime):
+            if type(value) is datetime.datetime:
                 return value.date()
-            else:
-                return value
+            return value
         return process
         
 class MSText(sqltypes.Text):
