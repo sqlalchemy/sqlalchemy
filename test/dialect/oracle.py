@@ -59,7 +59,7 @@ class CompileTest(SQLCompileTest):
         s = select([t]).limit(10).offset(20).order_by(t.c.col2)
 
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.col2) AS ora_rn FROM sometable ORDER BY sometable.col2) WHERE ora_rn>20 AND ora_rn<=30")
+            "sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.col2) AS ora_rn FROM sometable) WHERE ora_rn>20 AND ora_rn<=30")
 
     def test_outer_join(self):
         table1 = table('mytable',

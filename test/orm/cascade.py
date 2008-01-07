@@ -263,6 +263,15 @@ class M2OCascadeTest(AssertMixin):
         assert p not in ctx.current
         assert e not in ctx.current
 
+    def testorphan3(self):
+        """test that double assignment doesn't accidentally reset the 'parent' flag."""
+        
+        jack = ctx.current.query(User).get_by(user_name='jack')
+        newpref = Pref("newpref")
+        jack.pref = newpref
+        jack.pref = newpref
+        ctx.current.flush()
+        
 
 
 class M2MCascadeTest(AssertMixin):

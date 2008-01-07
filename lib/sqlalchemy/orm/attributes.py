@@ -251,8 +251,7 @@ class AttributeImpl(object):
     def set_committed_value(self, state, value):
         """set an attribute value on the given instance and 'commit' it."""
 
-        if state.committed_state is not None:
-            state.commit_attr(self, value)
+        state.commit_attr(self, value)
         # remove per-instance callable, if any
         state.callables.pop(self.key, None)
         state.dict[self.key] = value
@@ -395,7 +394,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if self.trackparent:
             if value is not None:
                 self.sethasparent(value._state, True)
-            if previous is not None:
+            if previous is not value and previous is not None:
                 self.sethasparent(previous._state, False)
 
         instance = state.obj()
@@ -544,7 +543,8 @@ class CollectionAttributeImpl(AttributeImpl):
         if old is value:
             return
 
-        state.committed_state[self.key] = self.copy(old)
+        if self.key not in state.committed_state:
+            state.committed_state[self.key] = self.copy(old)
 
         old_collection = self.get_collection(state, old)
 

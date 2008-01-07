@@ -2815,7 +2815,7 @@ class _SelectBaseMixin(object):
         form of this method instead to prevent this issue.
         """
 
-        if clauses == [None]:
+        if len(clauses) == 1 and clauses[0] is None:
             self._order_by_clause = ClauseList()
         else:
             if getattr(self, '_order_by_clause', None):
@@ -2833,7 +2833,7 @@ class _SelectBaseMixin(object):
         form of this method instead to prevent this issue.
         """
 
-        if clauses == [None]:
+        if len(clauses) == 1 and clauses[0] is None:
             self._group_by_clause = ClauseList()
         else:
             if getattr(self, '_group_by_clause', None):

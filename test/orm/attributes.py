@@ -337,6 +337,14 @@ class AttributesTest(PersistTest):
         
         b2.element = None
         assert not attributes.has_parent(Bar, f2, 'element')
+        
+        # test that double assignment doesn't accidentally reset the 'parent' flag.
+        b3 = Bar()
+        f4 = Foo()
+        b3.element = f4
+        assert attributes.has_parent(Bar, f4, 'element')
+        b3.element = f4
+        assert attributes.has_parent(Bar, f4, 'element')
 
     def test_mutablescalars(self):
         """test detection of changes on mutable scalar items"""
@@ -450,11 +458,6 @@ class BackrefTest(PersistTest):
         c.students = [s1, s2, s3]
         self.assert_(s2.courses == [c])
         self.assert_(s1.courses == [c])
-        print "--------------------------------"
-        print s1
-        print s1.courses
-        print c
-        print c.students
         s1.courses.remove(c)
         self.assert_(c.students == [s2,s3])        
     
@@ -766,6 +769,12 @@ class HistoryTest(PersistTest):
         f._state.commit(['someattr'])
 
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [there], []))
+        
+        f.someattr = [hi]
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([hi], [], [there]))
+
+        f.someattr = [old, new]
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([old, new], [], [there]))
 
         # case 2.  object with direct settings (similar to a load operation)
         f = Foo()
@@ -807,8 +816,6 @@ class HistoryTest(PersistTest):
         
         f._state.commit(['someattr'])
         self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set([]), set([hi, there]), set([])))
-
-
 
     def test_object_collections_mutate(self):
         class Foo(fixtures.Base):
@@ -872,12 +879,20 @@ class HistoryTest(PersistTest):
         collection = attributes.init_collection(f, 'someattr')
         collection.append_without_event(new)
         f._state.commit_all()
-        print f._state.dict
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [new], []))
         
         f.id = 1
         f.someattr.remove(new)
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [], [new]))
+        
+        # case 3.  mixing appends with sets
+        f = Foo()
+        f.someattr.append(hi)
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([hi], [], []))
+        f.someattr.append(there)
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([hi, there], [], []))
+        f.someattr = [there]
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([there], [], []))
         
     def test_collections_via_backref(self):
         class Foo(fixtures.Base):

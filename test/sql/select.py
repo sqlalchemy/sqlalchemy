@@ -487,6 +487,17 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             table2.select(order_by = [table2.c.otherid, table2.c.othername.desc()]),
             "SELECT myothertable.otherid, myothertable.othername FROM myothertable ORDER BY myothertable.otherid, myothertable.othername DESC"
         )
+        
+        # generative order_by
+        self.assert_compile(
+            table2.select().order_by(table2.c.otherid).order_by(table2.c.othername.desc()), 
+            "SELECT myothertable.otherid, myothertable.othername FROM myothertable ORDER BY myothertable.otherid, myothertable.othername DESC"
+        )
+
+        self.assert_compile(
+            table2.select().order_by(table2.c.otherid).order_by(table2.c.othername.desc()).order_by(None), 
+            "SELECT myothertable.otherid, myothertable.othername FROM myothertable"
+        )
 
     def testgroupby(self):
         self.assert_compile(
@@ -494,6 +505,17 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             "SELECT myothertable.othername, count(myothertable.otherid) AS count_1 FROM myothertable GROUP BY myothertable.othername"
         )
 
+        # generative group by
+        self.assert_compile(
+            select([table2.c.othername, func.count(table2.c.otherid)]).group_by(table2.c.othername),
+            "SELECT myothertable.othername, count(myothertable.otherid) AS count_1 FROM myothertable GROUP BY myothertable.othername"
+        )
+
+        self.assert_compile(
+            select([table2.c.othername, func.count(table2.c.otherid)]).group_by(table2.c.othername).group_by(None),
+            "SELECT myothertable.othername, count(myothertable.otherid) AS count_1 FROM myothertable"
+        )
+        
 
     def testgroupby_and_orderby(self):
         self.assert_compile(

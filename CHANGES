@@ -10,10 +10,21 @@ CHANGES
       when no length is present is also deprecated until 0.5; will issue a
       warning when used for CREATE TABLE statements (String with no length
       for SQL expression purposes is still fine) [ticket:912]
-
+    
+    - generative select.order_by(None) / group_by(None) was not managing to 
+      reset order by/group by criterion, fixed [ticket:924]
+      
 - orm
     - suppressing *all* errors in InstanceState.__cleanup() now.  
-    
+
+    - fixed an attribute history bug whereby assigning a new collection
+      to a collection-based attribute which already had pending changes
+      would generate incorrect history [ticket:922]
+      
+    - fixed delete-orphan cascade bug whereby setting the same
+      object twice to a scalar attribute could log it as an orphan
+      [ticket:925]
+      
     - Fixed cascades on a += assignment to a list-based relation.
     
     - synonyms can now be created against props that don't exist yet,
