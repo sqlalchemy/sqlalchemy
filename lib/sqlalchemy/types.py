@@ -654,7 +654,10 @@ class Interval(TypeDecorator):
             return process
 
 class FLOAT(Float): pass
-class Text(String): pass
+class Text(String):
+    def dialect_impl(self, dialect, **kwargs):
+        return TypeEngine.dialect_impl(self, dialect, **kwargs)
+    
 TEXT = Text
 class NUMERIC(Numeric): pass
 class DECIMAL(Numeric): pass

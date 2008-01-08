@@ -1,14 +1,19 @@
 =======
 CHANGES
 =======
-
-0.4.2c
+0.4.2r3
 ------
-
+- general
+    - sub version numbering scheme changed to suite setuptools version
+      number rules
+- sql
+    - Text type is properly exported now and does not raise a warning
+      on DDL create
+      
 - dialects
     - Fixed reflection of mysql empty string column defaults.
 
-0.4.2b
+0.4.2b  (0.4.2r2)
 ------
 - sql
     - changed name of TEXT to Text since its a "generic" type; TEXT name is
@@ -54,7 +59,7 @@ CHANGES
       MSDateTime subclasses so that incoming "datetime" objects don't
       get mis-interpreted as "date" objects and vice versa, [ticket:923]
 
-0.4.2a
+0.4.2a   (0.4.2r1)
 ------
 
 - orm
