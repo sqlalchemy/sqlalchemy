@@ -2898,7 +2898,8 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         _SelectBaseMixin.__init__(self, **kwargs)
 
         for s in self.selects:
-            self.oid_column = self._proxy_column(s.oid_column)
+            if s.oid_column:
+                self.oid_column = self._proxy_column(s.oid_column)
 
 
     def self_group(self, against=None):

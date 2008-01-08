@@ -10,6 +10,9 @@ CHANGES
     - Text type is properly exported now and does not raise a warning
       on DDL create
       
+    - fixed bug in union() so that select() statements which don't derive
+      from FromClause objects can be unioned
+      
 - dialects
     - Fixed reflection of mysql empty string column defaults.
 

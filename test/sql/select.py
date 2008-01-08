@@ -888,6 +888,15 @@ WHERE mytable.name = :mytable_name_1 GROUP BY mytable.myid, mytable.name UNION S
 FROM mytable WHERE mytable.name = :mytable_name_2"
             )
 
+            self.assert_compile(
+                union(
+                    select([literal(100).label('value')]),
+                    select([literal(200).label('value')])
+                    ),
+                    "SELECT :param_1 AS value UNION SELECT :param_2 AS value"
+            )
+
+
     def test_compound_select_grouping(self):
             self.assert_compile(
                 union_all(
