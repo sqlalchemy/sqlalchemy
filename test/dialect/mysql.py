@@ -585,7 +585,6 @@ class TypesTest(AssertMixin):
 
         # MySQL 3.23 can't handle an ENUM of ''....
 
-        db = testbase.db
         enum_table = Table('mysql_enum', MetaData(testbase.db),
             Column('e1', mysql.MSEnum("'a'")),
             Column('e2', mysql.MSEnum("''")),
@@ -607,6 +606,25 @@ class TypesTest(AssertMixin):
                 assert t.c.e5.type.enums == ["", "'a'", "b'b", "'"]
         finally:
             enum_table.drop()
+
+    def test_default_reflection(self):
+        """Test reflection of column defaults."""
+
+        def_table = Table('mysql_def', MetaData(testbase.db),
+            Column('c1', String(10), PassiveDefault('')),
+            Column('c2', String(10), PassiveDefault('0')),
+            Column('c3', String(10), PassiveDefault('abc')))
+
+        try:
+            def_table.create()
+            reflected = Table('mysql_def', MetaData(testbase.db),
+                              autoload=True)
+            for t in def_table, reflected:
+                assert t.c.c1.default.arg == ''
+                assert t.c.c2.default.arg == '0'
+                assert t.c.c3.default.arg == 'abc'
+        finally:
+            def_table.drop()
 
     @testing.exclude('mysql', '<', (5, 0, 0))
     def test_type_reflection(self):

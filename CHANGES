@@ -1,8 +1,12 @@
 =======
 CHANGES
 =======
+
 0.4.2c
 ------
+
+- dialects
+    - Fixed reflection of mysql empty string column defaults.
 
 0.4.2b
 ------
@@ -12,10 +16,10 @@ CHANGES
       when no length is present is also deprecated until 0.5; will issue a
       warning when used for CREATE TABLE statements (String with no length
       for SQL expression purposes is still fine) [ticket:912]
-    
+
     - generative select.order_by(None) / group_by(None) was not managing to 
       reset order by/group by criterion, fixed [ticket:924]
-      
+
 - orm
     - suppressing *all* errors in InstanceState.__cleanup() now.  
 

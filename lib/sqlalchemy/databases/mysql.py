@@ -2332,7 +2332,7 @@ class MySQLSchemaReflector(object):
             r'(?: +COLLATE +(P<collate>\w+))?'
             r'(?: +(?P<notnull>NOT NULL))?'
             r'(?: +DEFAULT +(?P<default>'
-              r'(?:NULL|\x27(?:\x27\x27|[^\x27])+\x27|\w+)'
+              r'(?:NULL|\x27(?:\x27\x27|[^\x27])*\x27|\w+)'
               r'(?:ON UPDATE \w+)?'
             r'))?'
             r'(?: +(?P<autoincr>AUTO_INCREMENT))?'
