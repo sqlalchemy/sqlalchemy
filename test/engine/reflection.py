@@ -7,6 +7,7 @@ from sqlalchemy import types as sqltypes
 from testlib import *
 from testlib import engines
 
+
 class ReflectionTest(PersistTest):
 
     @testing.exclude('mysql', '<', (4, 1, 1))
@@ -24,7 +25,7 @@ class ReflectionTest(PersistTest):
             deftype = Integer
 
         if use_string_defaults:
-            deftype2 = String
+            deftype2 = Text
             defval2 = "im a default"
             deftype3 = Date
             if testing.against('oracle'):
@@ -44,12 +45,12 @@ class ReflectionTest(PersistTest):
             Column('user_name', VARCHAR(20), nullable = False),
             Column('test1', CHAR(5), nullable = False),
             Column('test2', FLOAT(5), nullable = False),
-            Column('test3', TEXT),
+            Column('test3', Text),
             Column('test4', DECIMAL, nullable = False),
             Column('test5', TIMESTAMP),
             Column('parent_user_id', Integer, ForeignKey('engine_users.user_id')),
             Column('test6', DateTime, nullable = False),
-            Column('test7', String),
+            Column('test7', Text),
             Column('test8', Binary),
             Column('test_passivedefault', deftype, PassiveDefault(defval)),
             Column('test_passivedefault2', Integer, PassiveDefault("5")),

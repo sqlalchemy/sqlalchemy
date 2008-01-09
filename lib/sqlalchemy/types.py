@@ -392,7 +392,7 @@ class String(Concatenable, TypeEngine):
 
     def dialect_impl(self, dialect, **kwargs):
         _for_ddl = kwargs.pop('_for_ddl', False)
-        if self.length is None:
+        if _for_ddl and self.length is None:
             warn_deprecated("Using String type with no length for CREATE TABLE is deprecated; use the Text type explicitly")
         return TypeEngine.dialect_impl(self, dialect, **kwargs)
         

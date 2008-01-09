@@ -286,7 +286,7 @@ class DefaultCompiler(engine.Compiled):
         return index.name
 
     def visit_typeclause(self, typeclause, **kwargs):
-        return typeclause.type.dialect_impl(self.dialect, _for_ddl=True).get_col_spec()
+        return typeclause.type.dialect_impl(self.dialect).get_col_spec()
 
     def visit_textclause(self, textclause, **kwargs):
         if textclause.typemap is not None:

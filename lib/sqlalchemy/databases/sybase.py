@@ -827,7 +827,7 @@ class SybaseSQLSchemaGenerator(compiler.SchemaGenerator):
             #colspec += " numeric(30,0) IDENTITY"
             colspec += " Integer IDENTITY"
         else:
-            colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
+            colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=True).get_col_spec()
             
         if not column.nullable:
             colspec += " NOT NULL"

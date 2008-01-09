@@ -31,7 +31,7 @@ import sys, warnings
 # py2.5 absolute imports will fix....
 logging = __import__('logging')
 
-
+# why is this in the "logging" module?
 class SADeprecationWarning(DeprecationWarning):
     pass
     

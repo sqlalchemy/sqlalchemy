@@ -8,7 +8,8 @@ CHANGES
       number rules
 - sql
     - Text type is properly exported now and does not raise a warning
-      on DDL create
+      on DDL create; String types with no length only raise warnings during
+      CREATE TABLE [ticket:912]
       
     - fixed bug in union() so that select() statements which don't derive
       from FromClause objects can be unioned

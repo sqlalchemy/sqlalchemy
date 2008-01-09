@@ -660,7 +660,40 @@ class DateTest(AssertMixin):
         finally:
             t.drop(checkfirst=True)
 
+class StringTest(AssertMixin):
+    def test_nolen_string_deprecated(self):
+        metadata = MetaData(testbase.db)
+        foo =Table('foo', metadata, 
+            Column('one', String))
 
+        import warnings
+        from sqlalchemy.logging import SADeprecationWarning
+
+        warnings.filterwarnings("error", r"Using String type with no length.*")
+
+        # no warning
+        select([func.count("*")], bind=testbase.db).execute()
+
+        try:
+            # warning during CREATE
+            foo.create()
+            assert False
+        except SADeprecationWarning, e:
+            assert "Using String type with no length" in str(e)
+        
+        bar = Table('bar', metadata, Column('one', String(40)))
+
+        try:
+            # no warning
+            bar.create()
+
+            # no warning for non-lengthed string
+            select([func.count("*")], from_obj=bar).execute()
+        finally:
+            bar.drop()
+            warnings.filterwarnings("always", r"Using String type with no length.*")
+            
+            
 class NumericTest(AssertMixin):
     def setUpAll(self):
         global numeric_table, metadata

@@ -115,7 +115,7 @@ class PGArray(sqltypes.Concatenable, sqltypes.TypeEngine):
             item_type = item_type()
         self.item_type = item_type
         
-    def dialect_impl(self, dialect):
+    def dialect_impl(self, dialect, **kwargs):
         impl = self.__class__.__new__(self.__class__)
         impl.__dict__.update(self.__dict__)
         impl.item_type = self.item_type.dialect_impl(dialect)
@@ -694,7 +694,7 @@ class PGSchemaGenerator(compiler.SchemaGenerator):
             else:
                 colspec += " SERIAL"
         else:
-            colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
+            colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=True).get_col_spec()
             default = self.get_column_default_string(column)
             if default is not None:
                 colspec += " DEFAULT " + default
