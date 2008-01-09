@@ -19,16 +19,16 @@ class testcase(PersistTest):
         class Person(ActiveMapper):
             class mapping:
                 __version_id_col__ = 'row_version'
-                full_name   = column(String)
-                first_name  = column(String)
-                middle_name = column(String)
-                last_name   = column(String)
+                full_name   = column(String(128))
+                first_name  = column(String(128))
+                middle_name = column(String(128))
+                last_name   = column(String(128))
                 birth_date  = column(DateTime)
-                ssn         = column(String)
-                gender      = column(String)
-                home_phone  = column(String)
-                cell_phone  = column(String)
-                work_phone  = column(String)
+                ssn         = column(String(128))
+                gender      = column(String(128))
+                home_phone  = column(String(128))
+                cell_phone  = column(String(128))
+                work_phone  = column(String(128))
                 row_version = column(Integer, default=0)
                 prefs_id    = column(Integer, foreign_key=ForeignKey('preferences.id'))
                 addresses   = one_to_many('Address', colname='person_id', backref='person', order_by=['state', 'city', 'postal_code'])
@@ -50,7 +50,7 @@ class testcase(PersistTest):
             class mapping:
                 __table__        = 'preferences'
                 favorite_color   = column(String(128))
-                personality_type = column(String)
+                personality_type = column(String(128))
 
         class Address(ActiveMapper):
             class mapping:
@@ -59,10 +59,10 @@ class testcase(PersistTest):
                 # then ActiveMapper will not add an integer primary key
                 # for you.
                 id          = column(Integer, primary_key=True)
-                type        = column(String)
-                address_1   = column(String)
-                city        = column(String)
-                state       = column(String)
+                type        = column(String(128))
+                address_1   = column(String(128))
+                city        = column(String(128))
+                state       = column(String(128))
                 postal_code = column(String(128))
                 person_id   = column(Integer, foreign_key=ForeignKey('person.id'))
 

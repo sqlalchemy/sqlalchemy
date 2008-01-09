@@ -41,13 +41,13 @@ class _CollectionOperations(PersistTest):
 
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
-                              Column('name', String))
+                              Column('name', String(128)))
         children_table = Table('Children', metadata,
                                Column('id', Integer, primary_key=True),
                                Column('parent_id', Integer,
                                       ForeignKey('Parent.id')),
-                               Column('foo', String),
-                               Column('name', String))
+                               Column('foo', String(128)),
+                               Column('name', String(128)))
 
         class Parent(object):
             children = association_proxy('_children', 'name')
@@ -592,14 +592,14 @@ class ScalarTest(PersistTest):
 
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
-                              Column('name', String))
+                              Column('name', String(128)))
         children_table = Table('Children', metadata,
                                Column('id', Integer, primary_key=True),
                                Column('parent_id', Integer,
                                       ForeignKey('Parent.id')),
-                               Column('foo', String),
-                               Column('bar', String),
-                               Column('baz', String))
+                               Column('foo', String(128)),
+                               Column('bar', String(128)),
+                               Column('baz', String(128)))
 
         class Parent(object):
             foo = association_proxy('child', 'foo')
@@ -709,13 +709,13 @@ class LazyLoadTest(PersistTest):
 
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
-                              Column('name', String))
+                              Column('name', String(128)))
         children_table = Table('Children', metadata,
                                Column('id', Integer, primary_key=True),
                                Column('parent_id', Integer,
                                       ForeignKey('Parent.id')),
-                               Column('foo', String),
-                               Column('name', String))
+                               Column('foo', String(128)),
+                               Column('name', String(128)))
 
         class Parent(object):
             children = association_proxy('_children', 'name')

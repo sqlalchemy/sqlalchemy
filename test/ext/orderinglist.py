@@ -54,13 +54,13 @@ class OrderingListTest(PersistTest):
         metadata = MetaData(testbase.db)
         slides_table = Table('test_Slides', metadata,
                              Column('id', Integer, primary_key=True),
-                             Column('name', String))
+                             Column('name', String(128)))
         bullets_table = Table('test_Bullets', metadata,
                               Column('id', Integer, primary_key=True),
                               Column('slide_id', Integer,
                                      ForeignKey('test_Slides.id')),
                               Column('position', Integer),
-                              Column('text', String))
+                              Column('text', String(128)))
 
         class Slide(object):
             def __init__(self, name):
