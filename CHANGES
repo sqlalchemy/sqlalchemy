@@ -5,72 +5,90 @@ CHANGES
 0.4.2p3
 ------
 - general
-    - sub version numbering scheme changed to suite setuptools version
-      number rules
-- sql
-    - Text type is properly exported now and does not raise a warning
-      on DDL create; String types with no length only raise warnings during
-      CREATE TABLE [ticket:912]
+    - sub version numbering scheme changed to suite
+      setuptools version number rules; easy_install -u
+      should now get this version over 0.4.2.
       
-    - fixed bug in union() so that select() statements which don't derive
-      from FromClause objects can be unioned
+- sql
+    - Text type is properly exported now and does not
+      raise a warning on DDL create; String types with no
+      length only raise warnings during CREATE TABLE
+      [ticket:912]
+
+    - new UnicodeText type is added, to specify an
+      encoded, unlengthed Text type
+      
+    - fixed bug in union() so that select() statements
+      which don't derive from FromClause objects can be
+      unioned
 
 - orm
-    - fixed bug with session.dirty when using "mutable scalars" 
-      (such as PickleTypes)
+    - fixed bug with session.dirty when using "mutable
+      scalars" (such as PickleTypes)
       
-    - added a more descriptive error message when flushing on a 
-      relation() that has non-locally-mapped columns in its primary or
-      secondary join condition
+    - added a more descriptive error message when flushing
+      on a relation() that has non-locally-mapped columns
+      in its primary or secondary join condition
       
 - dialects
-    - Fixed reflection of mysql empty string column defaults.
+    - Fixed reflection of mysql empty string column
+      defaults.
 
 0.4.2b  (0.4.2p2)
 ------
 - sql
-    - changed name of TEXT to Text since its a "generic" type; TEXT name is
-      deprecated until 0.5.  The "upgrading" behavior of String to Text 
-      when no length is present is also deprecated until 0.5; will issue a
-      warning when used for CREATE TABLE statements (String with no length
-      for SQL expression purposes is still fine) [ticket:912]
+    - changed name of TEXT to Text since its a "generic"
+      type; TEXT name is deprecated until 0.5. The
+      "upgrading" behavior of String to Text when no
+      length is present is also deprecated until 0.5; will
+      issue a warning when used for CREATE TABLE
+      statements (String with no length for SQL expression
+      purposes is still fine) [ticket:912]
 
-    - generative select.order_by(None) / group_by(None) was not managing to 
-      reset order by/group by criterion, fixed [ticket:924]
+    - generative select.order_by(None) / group_by(None)
+      was not managing to reset order by/group by
+      criterion, fixed [ticket:924]
 
 - orm
-    - suppressing *all* errors in InstanceState.__cleanup() now.  
+    - suppressing *all* errors in
+      InstanceState.__cleanup() now.
 
-    - fixed an attribute history bug whereby assigning a new collection
-      to a collection-based attribute which already had pending changes
-      would generate incorrect history [ticket:922]
+    - fixed an attribute history bug whereby assigning a
+      new collection to a collection-based attribute which
+      already had pending changes would generate incorrect
+      history [ticket:922]
       
-    - fixed delete-orphan cascade bug whereby setting the same
-      object twice to a scalar attribute could log it as an orphan
-      [ticket:925]
+    - fixed delete-orphan cascade bug whereby setting the
+      same object twice to a scalar attribute could log it
+      as an orphan [ticket:925]
       
-    - Fixed cascades on a += assignment to a list-based relation.
+    - Fixed cascades on a += assignment to a list-based
+      relation.
     
-    - synonyms can now be created against props that don't exist yet,
-      which are later added via add_property().  This commonly includes
-      backrefs. (i.e. you can make synonyms for backrefs without
-      worrying about the order of operations) [ticket:919]
+    - synonyms can now be created against props that don't
+      exist yet, which are later added via add_property().
+      This commonly includes backrefs. (i.e. you can make
+      synonyms for backrefs without worrying about the
+      order of operations) [ticket:919]
 
-    - fixed bug which could occur with polymorphic "union" mapper
-      which falls back to "deferred" loading of inheriting tables
+    - fixed bug which could occur with polymorphic "union"
+      mapper which falls back to "deferred" loading of
+      inheriting tables
       
-    - the "columns" collection on a mapper/mapped class (i.e. 'c')
-      is against the mapped table, not the select_table in the 
-      case of polymorphic "union" loading (this shouldn't be 
-      noticeable).
+    - the "columns" collection on a mapper/mapped class
+      (i.e. 'c') is against the mapped table, not the
+      select_table in the case of polymorphic "union"
+      loading (this shouldn't be noticeable).
       
 - ext
-    - '+', '*', '+=' and '*=' support for association proxied lists.
+    - '+', '*', '+=' and '*=' support for association
+      proxied lists.
 
 - dialects
-    - mssql - narrowed down the test for "date"/"datetime" in MSDate/
-      MSDateTime subclasses so that incoming "datetime" objects don't
-      get mis-interpreted as "date" objects and vice versa, [ticket:923]
+    - mssql - narrowed down the test for "date"/"datetime"
+      in MSDate/ MSDateTime subclasses so that incoming
+      "datetime" objects don't get mis-interpreted as
+      "date" objects and vice versa, [ticket:923]
 
 0.4.2a   (0.4.2p1)
 ------
