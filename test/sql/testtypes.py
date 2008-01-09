@@ -47,7 +47,7 @@ class AdaptTest(PersistTest):
             impl = String
             def copy(self):
                 return MyDecoratedType()
-            
+
         col = Column('', MyDecoratedType)
         dialect_type = col.type.dialect_impl(dialect)
         assert isinstance(dialect_type.impl, oracle.OracleText), repr(dialect_type.impl)
@@ -82,21 +82,25 @@ class AdaptTest(PersistTest):
             (oracle_dialect, VARCHAR(), oracle.OracleString),
             (oracle_dialect, String(50), oracle.OracleString),
             (oracle_dialect, Unicode(), oracle.OracleText),
+            (oracle_dialect, UnicodeText(), oracle.OracleText),
             (oracle_dialect, NCHAR(), oracle.OracleString),
             (mysql_dialect, String(), mysql.MSText),
             (mysql_dialect, VARCHAR(), mysql.MSString),
             (mysql_dialect, String(50), mysql.MSString),
             (mysql_dialect, Unicode(), mysql.MSText),
+            (mysql_dialect, UnicodeText(), mysql.MSText),
             (mysql_dialect, NCHAR(), mysql.MSNChar),
             (postgres_dialect, String(), postgres.PGText),
             (postgres_dialect, VARCHAR(), postgres.PGString),
             (postgres_dialect, String(50), postgres.PGString),
             (postgres_dialect, Unicode(), postgres.PGText),
+            (postgres_dialect, UnicodeText(), postgres.PGText),
             (postgres_dialect, NCHAR(), postgres.PGString),
             (firebird_dialect, String(), firebird.FBText),
             (firebird_dialect, VARCHAR(), firebird.FBString),
             (firebird_dialect, String(50), firebird.FBString),
             (firebird_dialect, Unicode(), firebird.FBText),
+            (firebird_dialect, UnicodeText(), firebird.FBText),
             (firebird_dialect, NCHAR(), firebird.FBString),
         ]:
             assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
@@ -124,7 +128,7 @@ class UserDefinedTest(PersistTest):
             [1200, 1500, 900],
             [1800, 2250, 1350],
             l
-            
+
         ):
             for col in row[1:8]:
                 self.assertEquals(col, assertstr)
@@ -132,7 +136,7 @@ class UserDefinedTest(PersistTest):
             self.assertEquals(row[9], assertint2)
             for col in (row[4], row[5], row[7]):
                 assert isinstance(col, unicode)
-                
+
     def setUpAll(self):
         global users, metadata
 
@@ -304,7 +308,7 @@ class UnicodeTest(AssertMixin):
         unicode_table = Table('unicode_table', metadata,
             Column('id', Integer, Sequence('uni_id_seq', optional=True), primary_key=True),
             Column('unicode_varchar', Unicode(250)),
-            Column('unicode_text', Unicode),
+            Column('unicode_text', UnicodeText),
             Column('plain_varchar', String(250))
             )
         unicode_table.create()
@@ -330,30 +334,34 @@ class UnicodeTest(AssertMixin):
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
         if isinstance(x['plain_varchar'], unicode):
             # SQLLite and MSSQL return non-unicode data as unicode
-            self.assert_(testbase.db.name in ('sqlite', 'mssql'))
+            self.assert_(testing.against('sqlite', 'mssql'))
             self.assert_(x['plain_varchar'] == unicodedata)
             print "it's %s!" % testbase.db.name
         else:
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
-    
+
     def testassert(self):
         import warnings
 
         warnings.filterwarnings("always", r".*non-unicode bind")
-        
-        # test that data still goes in if warning is emitted....
-        unicode_table.insert().execute(unicode_varchar='im not unicode')
-        assert select([unicode_table.c.unicode_varchar]).execute().fetchall() == [('im not unicode', )]
-        
-        warnings.filterwarnings("error", r".*non-unicode bind")
-        
-        try:
-            unicode_table.insert().execute(unicode_varchar='im not unicode')
-            assert False
-        except RuntimeWarning, e:
-            assert str(e) == "Unicode type received non-unicode bind param value 'im not unicode'", str(e)
 
-        unicode_engine = engines.utf8_engine(options={'convert_unicode':True, 'assert_unicode':True})
+        ## test that data still goes in if warning is emitted....
+        unicode_table.insert().execute(unicode_varchar='not unicode')
+        assert (select([unicode_table.c.unicode_varchar]).execute().fetchall()
+                == [('not unicode', )])
+
+        warnings.filterwarnings("error", r".*non-unicode bind")
+        try:
+            try:
+                unicode_table.insert().execute(unicode_varchar='not unicode')
+                assert False
+            except RuntimeWarning, e:
+                assert str(e) == "Unicode type received non-unicode bind param value 'not unicode'", str(e)
+        finally:
+            warnings.filterwarnings("always", r".*non-unicode bind")
+
+        unicode_engine = engines.utf8_engine(options={'convert_unicode':True,
+                                                      'assert_unicode':True})
         try:
             try:
                 unicode_engine.execute(unicode_table.insert(), plain_varchar='im not unicode')
@@ -363,7 +371,7 @@ class UnicodeTest(AssertMixin):
         finally:
             unicode_engine.dispose()
 
-    @testing.unsupported('oracle')
+    @testing.fails_on('oracle')
     def testblanks(self):
         unicode_table.insert().execute(unicode_varchar=u'')
         assert select([unicode_table.c.unicode_varchar]).scalar() == u''
@@ -482,40 +490,40 @@ class ExpressionTest(AssertMixin):
                 return process
             def adapt_operator(self, op):
                 return {operators.add:operators.sub, operators.sub:operators.add}.get(op, op)
-                
+
         meta = MetaData(testbase.db)
-        test_table = Table('test', meta, 
+        test_table = Table('test', meta,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
             Column('timestamp', Date),
             Column('value', MyCustomType))
-        
+
         meta.create_all()
-        
+
         test_table.insert().execute({'id':1, 'data':'somedata', 'timestamp':datetime.date(2007, 10, 15), 'value':25})
-        
+
     def tearDownAll(self):
         meta.drop_all()
-    
+
     def test_control(self):
         assert testbase.db.execute("select value from test").scalar() == 250
-        
+
         assert test_table.select().execute().fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
-        
+
     def test_bind_adapt(self):
         expr = test_table.c.timestamp == bindparam("thedate")
         assert expr.right.type.__class__ == test_table.c.timestamp.type.__class__
-        
+
         assert testbase.db.execute(test_table.select().where(expr), {"thedate":datetime.date(2007, 10, 15)}).fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
 
         expr = test_table.c.value == bindparam("somevalue")
         assert expr.right.type.__class__ == test_table.c.value.type.__class__
         assert testbase.db.execute(test_table.select().where(expr), {"somevalue":25}).fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
-        
+
 
     def test_operator_adapt(self):
         """test type-based overloading of operators"""
-        
+
         # test string concatenation
         expr = test_table.c.data + "somedata"
         assert testbase.db.execute(select([expr])).scalar() == "somedatasomedata"
@@ -526,7 +534,7 @@ class ExpressionTest(AssertMixin):
         # test custom operator conversion
         expr = test_table.c.value + 40
         assert expr.type.__class__ is test_table.c.value.type.__class__
-        
+
         # + operator converted to -
         # value is calculated as: (250 - (40 * 10)) / 10 == -15
         assert testbase.db.execute(select([expr.label('foo')])).scalar() == -15
@@ -534,7 +542,7 @@ class ExpressionTest(AssertMixin):
         # this one relies upon anonymous labeling to assemble result
         # processing rules on the column.
         assert testbase.db.execute(select([expr])).scalar() == -15
-        
+
 class DateTest(AssertMixin):
     def setUpAll(self):
         global users_with_date, insert_data
@@ -651,19 +659,19 @@ class DateTest(AssertMixin):
             self.assert_(x.adatetime.__class__ == datetime.datetime)
 
             t.delete().execute()
-            
+
             # test mismatched date/datetime
             t.insert().execute(adate=d2, adatetime=d2)
             self.assertEquals(select([t.c.adate, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, d2)])
             self.assertEquals(select([t.c.adate, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, d2)])
-            
+
         finally:
             t.drop(checkfirst=True)
 
 class StringTest(AssertMixin):
     def test_nolen_string_deprecated(self):
         metadata = MetaData(testbase.db)
-        foo =Table('foo', metadata, 
+        foo =Table('foo', metadata,
             Column('one', String))
 
         import warnings
@@ -680,7 +688,7 @@ class StringTest(AssertMixin):
             assert False
         except SADeprecationWarning, e:
             assert "Using String type with no length" in str(e)
-        
+
         bar = Table('bar', metadata, Column('one', String(40)))
 
         try:
@@ -692,8 +700,8 @@ class StringTest(AssertMixin):
         finally:
             bar.drop()
             warnings.filterwarnings("always", r"Using String type with no length.*")
-            
-            
+
+
 class NumericTest(AssertMixin):
     def setUpAll(self):
         global numeric_table, metadata

@@ -4,8 +4,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""defines genericized SQL types, each represented by a subclass of 
-[sqlalchemy.types#AbstractType].  Dialects define further subclasses of these 
+"""defines genericized SQL types, each represented by a subclass of
+[sqlalchemy.types#AbstractType].  Dialects define further subclasses of these
 types.
 
 For more information see the SQLAlchemy documentation on types.
@@ -17,7 +17,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
             'BOOLEAN', 'SMALLINT', 'DATE', 'TIME',
             'String', 'Integer', 'SmallInteger','Smallinteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
-            'Boolean', 'Unicode', 'PickleType', 'Interval',
+            'Boolean', 'Unicode', 'UnicodeText', 'PickleType', 'Interval',
             'type_map'
             ]
 
@@ -222,7 +222,7 @@ class TypeDecorator(AbstractType):
         by default calls dialect.type_descriptor(self.impl), but
         can be overridden to provide different behavior.
         """
-        
+
         return dialect.type_descriptor(self.impl)
 
     def __getattr__(self, key):
@@ -235,10 +235,10 @@ class TypeDecorator(AbstractType):
 
     def process_bind_param(self, value, dialect):
         raise NotImplementedError()
-    
+
     def process_result_value(self, value, dialect):
         raise NotImplementedError()
-        
+
     def bind_processor(self, dialect):
         if self.__class__.process_bind_param.func_code is not TypeDecorator.process_bind_param.func_code:
             impl_processor = self.impl.bind_processor(dialect)
@@ -342,12 +342,12 @@ class Concatenable(object):
 
 class String(Concatenable, TypeEngine):
     """A sized string type.
-    
+
     Usually corresponds to VARCHAR.  Can also take Python unicode objects
-    and encode to the database's encoding in bind params (and the reverse for 
+    and encode to the database's encoding in bind params (and the reverse for
     result sets.)
-    
-    a String with no length will adapt itself automatically to a Text 
+
+    a String with no length will adapt itself automatically to a Text
     object at the dialect level (this behavior is deprecated in 0.4).
     """
     def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
@@ -395,7 +395,7 @@ class String(Concatenable, TypeEngine):
         if _for_ddl and self.length is None:
             warn_deprecated("Using String type with no length for CREATE TABLE is deprecated; use the Text type explicitly")
         return TypeEngine.dialect_impl(self, dialect, **kwargs)
-        
+
     def get_search_list(self):
         l = super(String, self).get_search_list()
         # if we are String or Unicode with no length,
@@ -409,13 +409,25 @@ class String(Concatenable, TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
 
+class Text(String):
+    def dialect_impl(self, dialect, **kwargs):
+        return TypeEngine.dialect_impl(self, dialect, **kwargs)
+
 class Unicode(String):
     """A synonym for String(length, convert_unicode=True, assert_unicode='warn')."""
-    
+
     def __init__(self, length=None, **kwargs):
         kwargs['convert_unicode'] = True
         kwargs['assert_unicode'] = 'warn'
         super(Unicode, self).__init__(length=length, **kwargs)
+
+class UnicodeText(Text):
+    """A synonym for Text(convert_unicode=True, assert_unicode='warn')."""
+
+    def __init__(self, length=None, **kwargs):
+        kwargs['convert_unicode'] = True
+        kwargs['assert_unicode'] = 'warn'
+        super(UnicodeText, self).__init__(length=length, **kwargs)
 
 class Integer(TypeEngine):
     """Integer datatype."""
@@ -426,13 +438,11 @@ class Integer(TypeEngine):
 class SmallInteger(Integer):
     """Smallint datatype."""
 
-    pass
-
 Smallinteger = SmallInteger
 
 class Numeric(TypeEngine):
     """Numeric datatype, usually resolves to DECIMAL or NUMERIC."""
-    
+
     def __init__(self, precision=10, length=2, asdecimal=True):
         self.precision = precision
         self.length = length
@@ -654,10 +664,7 @@ class Interval(TypeDecorator):
             return process
 
 class FLOAT(Float): pass
-class Text(String):
-    def dialect_impl(self, dialect, **kwargs):
-        return TypeEngine.dialect_impl(self, dialect, **kwargs)
-    
+
 TEXT = Text
 class NUMERIC(Numeric): pass
 class DECIMAL(Numeric): pass
@@ -690,4 +697,3 @@ type_map = {
     dt.timedelta : Interval,
     type(None): NullType
 }
-

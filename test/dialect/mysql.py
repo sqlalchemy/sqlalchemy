@@ -1,5 +1,5 @@
 import testbase
-import sets
+import sets, warnings
 from sqlalchemy import *
 from sqlalchemy import sql, exceptions
 from sqlalchemy.databases import mysql
@@ -632,6 +632,11 @@ class TypesTest(AssertMixin):
         specs = [( String(), mysql.MSText(), ),
                  ( String(1), mysql.MSString(1), ),
                  ( String(3), mysql.MSString(3), ),
+                 ( Text(), mysql.MSText(), ),
+                 ( Unicode(), mysql.MSText(), ),
+                 ( Unicode(1), mysql.MSString(1), ),
+                 ( Unicode(3), mysql.MSString(3), ),
+                 ( UnicodeText(), mysql.MSText(), ),
                  ( mysql.MSChar(1), ),
                  ( mysql.MSChar(3), ),
                  ( NCHAR(2), mysql.MSChar(2), ),
@@ -660,7 +665,13 @@ class TypesTest(AssertMixin):
         m = MetaData(db)
         t_table = Table('mysql_types', m, *columns)
         try:
-            m.create_all()
+            try:
+                warnings.filterwarnings('ignore',
+                                        'Using String type with no length.*')
+                m.create_all()
+            finally:
+                warnings.filterwarnings("always",
+                                        'Using String type with no length.*')
 
             m2 = MetaData(db)
             rt = Table('mysql_types', m2, autoload=True)
@@ -876,6 +887,7 @@ class SQLTest(SQLCompileTest):
 
             (String, "CAST(t.col AS CHAR)"),
             (Unicode, "CAST(t.col AS CHAR)"),
+            (UnicodeText, "CAST(t.col AS CHAR)"),
             (VARCHAR, "CAST(t.col AS CHAR)"),
             (NCHAR, "CAST(t.col AS CHAR)"),
             (CHAR, "CAST(t.col AS CHAR)"),

@@ -7,9 +7,9 @@
 import inspect
 from sqlalchemy.types import \
     BLOB, BOOLEAN, CHAR, CLOB, DATE, DATETIME, DECIMAL, FLOAT, INT, \
-    NCHAR, NUMERIC, SMALLINT, TEXT, Text, TIME, TIMESTAMP, VARCHAR, \
+    NCHAR, NUMERIC, SMALLINT, TEXT, TIME, TIMESTAMP, VARCHAR, \
     Binary, Boolean, Date, DateTime, Float, Integer, Interval, Numeric, \
-    PickleType, SmallInteger, String, Time, Unicode
+    PickleType, SmallInteger, String, Text, Time, Unicode, UnicodeText
 
 from sqlalchemy.sql import \
     func, modifier, text, literal, literal_column, null, alias, \
