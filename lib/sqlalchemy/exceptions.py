@@ -46,7 +46,10 @@ class InvalidRequestError(SQLAlchemyError):
     This error generally corresponds to runtime state errors.
     """
 
-
+class UnmappedColumnError(InvalidRequestError):
+    """A mapper was asked to return mapped information about a column 
+    which it does not map"""
+    
 class NoSuchTableError(InvalidRequestError):
     """SQLAlchemy was asked to load a table's definition from the
     database, but the table doesn't exist.

@@ -117,7 +117,7 @@ class SyncRule(object):
         self.issecondary = issecondary
         self.dest_mapper = dest_mapper
         self.dest_column = dest_column
-
+        
         #print "SyncRule", source_mapper, source_column, dest_column, dest_mapper
 
     def dest_primary_key(self):
@@ -129,8 +129,17 @@ class SyncRule(object):
             self._dest_primary_key = self.dest_mapper is not None and self.dest_column in self.dest_mapper._pks_by_table[self.dest_column.table] and not self.dest_mapper.allow_null_pks
             return self._dest_primary_key
     
+    def _raise_col_to_prop(self, isdest):
+        if isdest:
+            raise exceptions.UnmappedColumnError("Can't execute sync rule for destination column '%s'; mapper '%s' does not map this column.  Try using an explicit `foreign_keys` collection which does not include this column (or use a viewonly=True relation)." % (self.dest_column, self.dest_mapper))
+        else:
+            raise exceptions.UnmappedColumnError("Can't execute sync rule for source column '%s'; mapper '%s' does not map this column.  Try using an explicit `foreign_keys` collection which does not include destination column '%s' (or use a viewonly=True relation)." % (self.source_column, self.source_mapper, self.dest_column))
+                
     def source_changes(self, uowcommit, source):
-        prop = self.source_mapper._columntoproperty[self.source_column]
+        try:
+            prop = self.source_mapper._get_col_to_prop(self.source_column)
+        except exceptions.UnmappedColumnError:
+            self._raise_col_to_prop(False)
         (added, unchanged, deleted) = uowcommit.get_attribute_history(source, prop.key, passive=True)
         return bool(added and deleted)
     
@@ -139,8 +148,11 @@ class SyncRule(object):
             source = parent
         elif self.issecondary is True:
             source = child
-        oldvalue = self.source_mapper._get_committed_attr_by_column(source.obj(), self.source_column)
-        value = self.source_mapper._get_state_attr_by_column(source, self.source_column)
+        try:
+            oldvalue = self.source_mapper._get_committed_attr_by_column(source.obj(), self.source_column)
+            value = self.source_mapper._get_state_attr_by_column(source, self.source_column)
+        except exceptions.UnmappedColumnError:
+            self._raise_col_to_prop(False)
         dest[self.dest_column.key] = value
         dest[old_prefix + self.dest_column.key] = oldvalue
         
@@ -156,7 +168,10 @@ class SyncRule(object):
             value = None
             clearkeys = True
         else:
-            value = self.source_mapper._get_state_attr_by_column(source, self.source_column)
+            try:
+                value = self.source_mapper._get_state_attr_by_column(source, self.source_column)
+            except exceptions.UnmappedColumnError:
+                self._raise_col_to_prop(False)
         if isinstance(dest, dict):
             dest[self.dest_column.key] = value
         else:
@@ -165,7 +180,10 @@ class SyncRule(object):
 
             if logging.is_debug_enabled(self.logger):
                 self.logger.debug("execute() instances: %s(%s)->%s(%s) ('%s')" % (mapperutil.state_str(source), str(self.source_column), mapperutil.state_str(dest), str(self.dest_column), value))
-            self.dest_mapper._set_state_attr_by_column(dest, self.dest_column, value)
+            try:
+                self.dest_mapper._set_state_attr_by_column(dest, self.dest_column, value)
+            except exceptions.UnmappedColumnError:
+                self._raise_col_to_prop(True)
 
 SyncRule.logger = logging.class_logger(SyncRule)
 

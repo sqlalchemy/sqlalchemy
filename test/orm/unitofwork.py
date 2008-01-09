@@ -272,6 +272,7 @@ class MutableTypesTest(ORMTest):
         f2 = Session.query(Foo).get_by(id=f1.id)
         assert f2.data == f1.data
         f2.data.y = 19
+        assert f2 in Session.dirty
         Session.commit()
         Session.close()
         f3 = Session.query(Foo).get_by(id=f1.id)

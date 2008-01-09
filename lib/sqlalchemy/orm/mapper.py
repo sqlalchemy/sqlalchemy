@@ -901,9 +901,9 @@ class Mapper(object):
         except KeyError:
             prop = self.__props.get(column.key, None)
             if prop:
-                raise exceptions.InvalidRequestError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
+                raise exceptions.UnmappedColumnError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
             else:
-                raise exceptions.InvalidRequestError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
+                raise exceptions.UnmappedColumnError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
         
     def _get_state_attr_by_column(self, state, column):
         return self._get_col_to_prop(column).getattr(state, column)

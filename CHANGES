@@ -13,6 +13,14 @@ CHANGES
       
     - fixed bug in union() so that select() statements which don't derive
       from FromClause objects can be unioned
+
+- orm
+    - fixed bug with session.dirty when using "mutable scalars" 
+      (such as PickleTypes)
+      
+    - added a more descriptive error message when flushing on a 
+      relation() that has non-locally-mapped columns in its primary or
+      secondary join condition
       
 - dialects
     - Fixed reflection of mysql empty string column defaults.

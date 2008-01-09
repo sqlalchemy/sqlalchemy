@@ -158,7 +158,7 @@ class UnitOfWork(object):
             if x._state not in self.deleted 
             and (
                 x._state.modified
-                or (x.__class__._class_state.has_mutable_scalars and x.state.is_modified())
+                or (x.__class__._class_state.has_mutable_scalars and x._state.is_modified())
             )
             ])
 
