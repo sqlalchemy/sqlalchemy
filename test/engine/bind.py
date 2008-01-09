@@ -2,6 +2,7 @@
 including the deprecated versions of these arguments"""
 
 import testbase
+import warnings
 from sqlalchemy import *
 from sqlalchemy import engine, exceptions
 from testlib import *
@@ -10,7 +11,7 @@ from testlib import *
 class BindTest(PersistTest):
     def test_create_drop_explicit(self):
         metadata = MetaData()
-        table = Table('test_table', metadata,   
+        table = Table('test_table', metadata,
             Column('foo', Integer))
         for bind in (
             testbase.db,
@@ -26,10 +27,10 @@ class BindTest(PersistTest):
                 table.create(*args[0], **args[1])
                 table.drop(*args[0], **args[1])
                 assert not table.exists(*args[0], **args[1])
-    
+
     def test_create_drop_err(self):
         metadata = MetaData()
-        table = Table('test_table', metadata,   
+        table = Table('test_table', metadata,
             Column('foo', Integer))
 
         for meth in [
@@ -44,16 +45,16 @@ class BindTest(PersistTest):
                 assert False
             except exceptions.InvalidRequestError, e:
                 assert str(e)  == "This SchemaItem is not connected to any Engine or Connection."
-        
+
     def test_create_drop_bound(self):
-        
+
         for meta in (MetaData,ThreadLocalMetaData):
             for bind in (
                 testbase.db,
                 testbase.db.connect()
             ):
                 metadata = meta()
-                table = Table('test_table', metadata,   
+                table = Table('test_table', metadata,
                 Column('foo', Integer))
                 metadata.bind = bind
                 assert metadata.bind is table.bind is bind
@@ -65,10 +66,12 @@ class BindTest(PersistTest):
                 assert not table.exists()
 
                 metadata = meta()
-                table = Table('test_table', metadata,   
+                table = Table('test_table', metadata,
                     Column('foo', Integer))
 
+                testing.squelch_deprecation(metadata.connect)
                 metadata.connect(bind)
+
                 assert metadata.bind is table.bind is bind
                 metadata.create_all()
                 assert table.exists()
@@ -90,7 +93,7 @@ class BindTest(PersistTest):
                     ([], {'bind':bind}),
                 ):
                     metadata = MetaData(*args[0], **args[1])
-                    table = Table('test_table', metadata,   
+                    table = Table('test_table', metadata,
                         Column('foo', Integer))
                     assert metadata.bind is table.bind is bind
                     metadata.create_all()
@@ -105,7 +108,7 @@ class BindTest(PersistTest):
 
     def test_implicit_execution(self):
         metadata = MetaData()
-        table = Table('test_table', metadata,   
+        table = Table('test_table', metadata,
             Column('foo', Integer),
             test_needs_acid=True,
             )
@@ -124,11 +127,11 @@ class BindTest(PersistTest):
             assert conn.execute("select count(1) from test_table").scalar() == 0
         finally:
             metadata.drop_all(bind=conn)
-            
+
 
     def test_clauseelement(self):
         metadata = MetaData()
-        table = Table('test_table', metadata,   
+        table = Table('test_table', metadata,
             Column('foo', Integer))
         metadata.create_all(bind=testbase.db)
         try:
@@ -162,11 +165,11 @@ class BindTest(PersistTest):
             if isinstance(bind, engine.Connection):
                 bind.close()
             metadata.drop_all(bind=testbase.db)
-    
+
     def test_session(self):
         from sqlalchemy.orm import create_session, mapper
         metadata = MetaData()
-        table = Table('test_table', metadata,   
+        table = Table('test_table', metadata,
             Column('foo', Integer, Sequence('foo_seq', optional=True), primary_key=True),
             Column('data', String(30)))
         class Foo(object):
@@ -174,7 +177,7 @@ class BindTest(PersistTest):
         mapper(Foo, table)
         metadata.create_all(bind=testbase.db)
         try:
-            for bind in (testbase.db, 
+            for bind in (testbase.db,
                 testbase.db.connect()
                 ):
                 try:
@@ -191,7 +194,7 @@ class BindTest(PersistTest):
 
                 if isinstance(bind, engine.Connection):
                     bind.close()
-                    
+
             sess = create_session()
             f = Foo()
             sess.save(f)
@@ -204,7 +207,7 @@ class BindTest(PersistTest):
             if isinstance(bind, engine.Connection):
                 bind.close()
             metadata.drop_all(bind=testbase.db)
-        
-               
+
+
 if __name__ == '__main__':
     testbase.main()

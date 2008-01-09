@@ -27,22 +27,22 @@ class RelationTest(PersistTest):
         metadata = MetaData()
         tbl_a = Table("tbl_a", metadata,
             Column("id", Integer, primary_key=True),
-            Column("name", String),
+            Column("name", String(128)),
         )
         tbl_b = Table("tbl_b", metadata,
             Column("id", Integer, primary_key=True),
-            Column("name", String),
+            Column("name", String(128)),
         )
         tbl_c = Table("tbl_c", metadata,
             Column("id", Integer, primary_key=True),
             Column("tbl_a_id", Integer, ForeignKey("tbl_a.id"), nullable=False),
-            Column("name", String),
+            Column("name", String(128)),
         )
         tbl_d = Table("tbl_d", metadata,
             Column("id", Integer, primary_key=True),
             Column("tbl_c_id", Integer, ForeignKey("tbl_c.id"), nullable=False),
             Column("tbl_b_id", Integer, ForeignKey("tbl_b.id")),
-            Column("name", String),
+            Column("name", String(128)),
         )
     def setUp(self):
         global session
@@ -254,7 +254,7 @@ class RelationTest3(PersistTest):
             Column("jobno", Unicode(15), primary_key=True),
             Column("pagename", Unicode(30), primary_key=True),
             Column("comment_id", Integer, primary_key=True, autoincrement=False),
-            Column("content", Unicode),
+            Column("content", UnicodeText),
             ForeignKeyConstraint(["jobno", "pagename"], ["pages.jobno", "pages.pagename"])
         )
 
@@ -580,7 +580,7 @@ class RelationTest5(ORMTest):
             session.save(li)
         session.flush()
         session.clear()
-        newcon = session.query(Container).selectfirst()
+        newcon = session.query(Container).first()
         assert con.policyNum == newcon.policyNum
         assert len(newcon.lineItems) == 10
         for old, new in zip(con.lineItems, newcon.lineItems):

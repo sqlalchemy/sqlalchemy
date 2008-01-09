@@ -1280,14 +1280,14 @@ class DictHelpersTest(ORMTest):
 
         parents = Table('parents', metadata,
                         Column('id', Integer, primary_key=True),
-                        Column('label', String))
+                        Column('label', String(128)))
         children = Table('children', metadata,
                          Column('id', Integer, primary_key=True),
                          Column('parent_id', Integer, ForeignKey('parents.id'),
                                 nullable=False),
-                         Column('a', String),
-                         Column('b', String),
-                         Column('c', String))
+                         Column('a', String(128)),
+                         Column('b', String(128)),
+                         Column('c', String(128)))
 
         class Parent(object):
             def __init__(self, label=None):

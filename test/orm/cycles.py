@@ -853,7 +853,7 @@ class SelfReferentialPostUpdateTest2(AssertMixin):
         metadata = MetaData(testbase.db)
         a_table = Table("a", metadata,
                 Column("id", Integer(), primary_key=True),
-                Column("fui", String()),
+                Column("fui", String(128)),
                 Column("b", Integer(), ForeignKey("a.id")),
             )
         a_table.create()

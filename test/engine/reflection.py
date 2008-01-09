@@ -1,5 +1,5 @@
 import testbase
-import pickle, StringIO, unicodedata
+import pickle, StringIO, unicodedata, warnings
 
 from sqlalchemy import *
 from sqlalchemy import exceptions
@@ -183,34 +183,45 @@ class ReflectionTest(PersistTest):
             assert len(a4.constraints) == 2
         finally:
             meta.drop_all()
-    
+
     def test_unknown_types(self):
         meta = MetaData(testbase.db)
-        t = Table("test", meta, 
+        t = Table("test", meta,
             Column('foo', DateTime))
-            
+
         import sys
         dialect_module = sys.modules[testbase.db.dialect.__module__]
-        
-        # we're relying on the presence of "ischema_names" in the 
+
+        # we're relying on the presence of "ischema_names" in the
         # dialect module, else we can't test this.  we need to be able
         # to get the dialect to not be aware of some type so we temporarily
         # monkeypatch.  not sure what a better way for this could be,
         # except for an established dialect hook or dialect-specific tests
         if not hasattr(dialect_module, 'ischema_names'):
             return
-        
+
         ischema_names = dialect_module.ischema_names
         t.create()
         dialect_module.ischema_names = {}
         try:
-            m2 = MetaData(testbase.db)
-            t2 = Table("test", m2, autoload=True)
-            assert t2.c.foo.type.__class__ == sqltypes.NullType
+            try:
+                warnings.filterwarnings('error', 'Did not recognize type')
+                m2 = MetaData(testbase.db)
+                t2 = Table("test", m2, autoload=True)
+                assert False
+            except RuntimeWarning:
+                assert True
+
+            warnings.filterwarnings('ignore', 'Did not recognize type')
+            m3 = MetaData(testbase.db)
+            t3 = Table("test", m3, autoload=True)
+            assert t3.c.foo.type.__class__ == sqltypes.NullType
+
         finally:
             dialect_module.ischema_names = ischema_names
+            warnings.filterwarnings('always', 'Did not recognize type')
             t.drop()
-            
+
     def test_override_fkandpkcol(self):
         """test that you can override columns which contain foreign keys to other reflected tables,
         where the foreign key column is also a primary key column"""
@@ -316,7 +327,7 @@ class ReflectionTest(PersistTest):
         slots_table = Table('slots', metadata,
             Column('slot_id', Integer, primary_key=True),
             Column('pkg_id', Integer, ForeignKey('pkgs.pkg_id')),
-            Column('slot', String),
+            Column('slot', String(128)),
             )
         try:
             metadata.create_all()
@@ -676,7 +687,7 @@ class UnicodeTest(PersistTest):
 
     def test_basic(self):
         try:
-            # the 'convert_unicode' should not get in the way of the reflection 
+            # the 'convert_unicode' should not get in the way of the reflection
             # process.  reflecttable for oracle, postgres (others?) expect non-unicode
             # strings in result sets/bind params
             bind = engines.utf8_engine(options={'convert_unicode':True})
@@ -710,7 +721,7 @@ class UnicodeTest(PersistTest):
 
 
 class SchemaTest(PersistTest):
-    
+
     # this test should really be in the sql tests somewhere, not engine
     def test_iteration(self):
         metadata = MetaData()

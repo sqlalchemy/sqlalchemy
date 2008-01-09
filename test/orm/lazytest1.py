@@ -9,13 +9,13 @@ class LazyTest(AssertMixin):
         metadata = MetaData(testbase.db)
         info_table = Table('infos', metadata,
         	Column('pk', Integer, primary_key=True),
-        	Column('info', String))
+        	Column('info', String(128)))
 
         data_table = Table('data', metadata,
         	Column('data_pk', Integer, primary_key=True),
         	Column('info_pk', Integer, ForeignKey(info_table.c.pk)),
         	Column('timeval', Integer),
-        	Column('data_val', String))
+        	Column('data_val', String(128)))
 
         rel_table = Table('rels', metadata,
         	Column('rel_pk', Integer, primary_key=True),

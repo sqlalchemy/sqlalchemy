@@ -845,7 +845,7 @@ class Mapper(object):
 
         import sqlalchemy.orm.query
         return sqlalchemy.orm.Query(self, session).instances(cursor, *mappers, **kwargs)
-    instances = util.deprecated(instances, False)
+    instances = util.deprecated(instances, add_deprecation_to_docstring=False)
 
     def identity_key_from_row(self, row):
         """Return an identity-map key for use in storing/retrieving an

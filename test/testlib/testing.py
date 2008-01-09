@@ -208,6 +208,19 @@ def rowset(results):
 
     return set([tuple(row) for row in results])
 
+
+def squelch_deprecation(callable_):
+    _set_deprecation(callable_, False)
+
+def enable_deprecation(callable_):
+    _set_deprecation(callable_, True)
+
+def _set_deprecation(callable_, state):
+    if hasattr(callable_, 'im_func'):
+        callable_ = callable_.im_func
+    assert hasattr(callable_, 'warn'), 'Callable is not deprecated'
+    setattr(callable_, 'warn', state)
+
 class TestData(object):
     """Tracks SQL expressions as they are executed via an instrumented ExecutionContext."""
 

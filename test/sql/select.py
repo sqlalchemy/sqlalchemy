@@ -132,7 +132,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         """test nested anonymous label generation.  this
         essentially tests the ANONYMOUS_LABEL regex.
         """
-        
+
         s1 = table1.select()
         s2 = s1.alias()
         s3 = select([s2], use_labels=True)
@@ -142,7 +142,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         "anon_1.anon_2_description AS anon_1_anon_2_description FROM (SELECT anon_2.myid AS anon_2_myid, anon_2.name AS anon_2_name, "\
         "anon_2.description AS anon_2_description FROM (SELECT mytable.myid AS myid, mytable.name AS name, mytable.description "\
         "AS description FROM mytable) AS anon_2) AS anon_1")
-        
+
     def testmssql_noorderbyinsubquery(self):
         """test that the ms-sql dialect removes ORDER BY clauses from subqueries"""
         dialect = mssql.dialect()
@@ -250,14 +250,14 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             assert False
         except exceptions.InvalidRequestError, err:
             assert str(err) == "Scalar select can only be created from a Select object that has exactly one column expression.", str(err)
-        
+
         try:
             # generic function which will look at the type of expression
             func.coalesce(select([table1.c.myid]))
             assert False
         except exceptions.InvalidRequestError, err:
             assert str(err) == "Select objects don't have a type.  Call as_scalar() on this Select object to return a 'scalar' version of this Select.", str(err)
-        
+
         s = select([table1.c.myid], scalar=True, correlate=False)
         self.assert_compile(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) AS anon_1 FROM mytable")
 
@@ -487,15 +487,15 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             table2.select(order_by = [table2.c.otherid, table2.c.othername.desc()]),
             "SELECT myothertable.otherid, myothertable.othername FROM myothertable ORDER BY myothertable.otherid, myothertable.othername DESC"
         )
-        
+
         # generative order_by
         self.assert_compile(
-            table2.select().order_by(table2.c.otherid).order_by(table2.c.othername.desc()), 
+            table2.select().order_by(table2.c.otherid).order_by(table2.c.othername.desc()),
             "SELECT myothertable.otherid, myothertable.othername FROM myothertable ORDER BY myothertable.otherid, myothertable.othername DESC"
         )
 
         self.assert_compile(
-            table2.select().order_by(table2.c.otherid).order_by(table2.c.othername.desc()).order_by(None), 
+            table2.select().order_by(table2.c.otherid).order_by(table2.c.othername.desc()).order_by(None),
             "SELECT myothertable.otherid, myothertable.othername FROM myothertable"
         )
 
@@ -515,7 +515,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             select([table2.c.othername, func.count(table2.c.otherid)]).group_by(table2.c.othername).group_by(None),
             "SELECT myothertable.othername, count(myothertable.otherid) AS count_1 FROM myothertable"
         )
-        
+
 
     def testgroupby_and_orderby(self):
         self.assert_compile(
@@ -1015,11 +1015,13 @@ EXISTS (select yay from foo where boo = lar)",
                 self.assert_compile(stmt, expected_positional_stmt, dialect=sqlite.dialect())
                 nonpositional = stmt.compile()
                 positional = stmt.compile(dialect=sqlite.dialect())
+                testing.squelch_deprecation(positional.get_params)
                 pp = positional.get_params()
                 assert [pp[k] for k in positional.positiontup] == expected_default_params_list
                 assert nonpositional.get_params(**test_param_dict) == expected_test_params_dict, "expected :%s got %s" % (str(expected_test_params_dict), str(nonpositional.get_params(**test_param_dict)))
                 pp = positional.get_params(**test_param_dict)
                 assert [pp[k] for k in positional.positiontup] == expected_test_params_list
+                testing.enable_deprecation(positional.get_params)
 
         # check that params() doesnt modify original statement
         s = select([table1], or_(table1.c.myid==bindparam('myid'), table2.c.otherid==bindparam('myotherid')))
@@ -1032,13 +1034,15 @@ EXISTS (select yay from foo where boo = lar)",
         # test using same 'unique' param object twice in one compile
         s = select([table1.c.myid]).where(table1.c.myid==12).as_scalar()
         s2 = select([table1, s], table1.c.myid==s)
-        self.assert_compile(s2, 
+        self.assert_compile(s2,
             "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable WHERE mytable.myid = "\
             ":mytable_myid_1) AS anon_1 FROM mytable WHERE mytable.myid = (SELECT mytable.myid FROM mytable WHERE mytable.myid = :mytable_myid_1)")
         positional = s2.compile(dialect=sqlite.dialect())
+        testing.squelch_deprecation(positional.get_params)
         pp = positional.get_params()
+        testing.enable_deprecation(positional.get_params)
         assert [pp[k] for k in positional.positiontup] == [12, 12]
-        
+
         # check that conflicts with "unique" params are caught
         s = select([table1], or_(table1.c.myid==7, table1.c.myid==bindparam('mytable_myid_1')))
         try:
@@ -1206,10 +1210,10 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
         import datetime
         table = Table('dt', metadata,
             Column('date', Date))
-        self.assert_compile(table.select(table.c.date.between(datetime.date(2006,6,1), datetime.date(2006,6,5))), 
+        self.assert_compile(table.select(table.c.date.between(datetime.date(2006,6,1), datetime.date(2006,6,5))),
             "SELECT dt.date FROM dt WHERE dt.date BETWEEN :dt_date_1 AND :dt_date_2", checkparams={'dt_date_1':datetime.date(2006,6,1), 'dt_date_2':datetime.date(2006,6,5)})
 
-        self.assert_compile(table.select(sql.between(table.c.date, datetime.date(2006,6,1), datetime.date(2006,6,5))), 
+        self.assert_compile(table.select(sql.between(table.c.date, datetime.date(2006,6,1), datetime.date(2006,6,5))),
             "SELECT dt.date FROM dt WHERE dt.date BETWEEN :param_1 AND :param_2", checkparams={'param_1':datetime.date(2006,6,1), 'param_2':datetime.date(2006,6,5)})
 
     def test_operator_precedence(self):
@@ -1375,7 +1379,7 @@ class SchemaTest(SQLCompileTest):
     def testselect(self):
         # these tests will fail with the MS-SQL compiler since it will alias schema-qualified tables
         self.assert_compile(table4.select(), "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable")
-        self.assert_compile(table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi')), 
+        self.assert_compile(table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi')),
             "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable WHERE "\
             "remotetable.datatype_id = :remotetable_datatype_id_1 AND remotetable.value = :remotetable_value_1")
 

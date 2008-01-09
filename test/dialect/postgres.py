@@ -24,8 +24,8 @@ class CompileTest(SQLCompileTest):
         dialect = postgres.dialect()
         table1 = table('mytable',
             column('myid', Integer),
-            column('name', String),
-            column('description', String),
+            column('name', String(128)),
+            column('description', String(128)),
         )
 
         u = update(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
@@ -42,8 +42,8 @@ class CompileTest(SQLCompileTest):
         dialect = postgres.dialect()
         table1 = table('mytable',
             column('myid', Integer),
-            column('name', String),
-            column('description', String),
+            column('name', String(128)),
+            column('description', String(128)),
         )
 
         i = insert(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])

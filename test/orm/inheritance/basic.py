@@ -57,7 +57,7 @@ class O2MTest(ORMTest):
         sess.flush()
         compare = ','.join([repr(b1), repr(b2), repr(b1.parent_foo), repr(b2.parent_foo)])
         sess.clear()
-        l = sess.query(Blub).select()
+        l = sess.query(Blub).all()
         result = ','.join([repr(l[0]), repr(l[1]), repr(l[0].parent_foo), repr(l[1].parent_foo)])
         print compare
         print result
@@ -308,8 +308,8 @@ class EagerLazyTest(ORMTest):
 
         sess = create_session()
         q = sess.query(Bar)
-        self.assert_(len(q.selectfirst().lazy) == 1)
-        self.assert_(len(q.selectfirst().eager) == 1)
+        self.assert_(len(q.first().lazy) == 1)
+        self.assert_(len(q.first().eager) == 1)
 
 
 class FlushTest(ORMTest):
@@ -588,18 +588,18 @@ class SyncCompileTest(ORMTest):
 
         _a_table = Table('a', metadata,
            Column('id', Integer, primary_key=True),
-           Column('data1', String)
+           Column('data1', String(128))
         )
 
         _b_table = Table('b', metadata,
            Column('a_id', Integer, ForeignKey('a.id'), primary_key=True),
-           Column('data2', String)
+           Column('data2', String(128))
         )
 
         _c_table = Table('c', metadata,
         #   Column('a_id', Integer, ForeignKey('b.a_id'), primary_key=True), #works
            Column('b_a_id', Integer, ForeignKey('b.a_id'), primary_key=True),
-           Column('data3', String)
+           Column('data3', String(128))
         )
 
     def test_joins(self):

@@ -3,16 +3,12 @@ import warnings
 from sqlalchemy import *
 from sqlalchemy import exceptions
 from sqlalchemy.orm import create_session, clear_mappers, relation, class_mapper
-import sqlalchemy.ext.assignmapper
+from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy.ext.sessioncontext import SessionContext
 from testlib import *
 
-def assign_mapper(*args, **kw):
-    try:
-        warnings.filterwarnings('ignore', 'assign_mapper is deprecated')
-        sqlalchemy.ext.assignmapper.assign_mapper(*args, **kw)
-    finally:
-        warnings.filterwarnings('always', 'assign_mapper is deprecated')
+
+testing.squelch_deprecation(assign_mapper)
 
 class AssignMapperTest(PersistTest):
     def setUpAll(self):

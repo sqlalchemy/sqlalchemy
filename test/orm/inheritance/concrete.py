@@ -7,18 +7,18 @@ class ConcreteTest(ORMTest):
     def define_tables(self, metadata):
         global managers_table, engineers_table, companies
 
-        companies = Table('companies', metadata, 
+        companies = Table('companies', metadata,
            Column('id', Integer, primary_key=True),
            Column('name', String(50)))
-        
-        managers_table = Table('managers', metadata, 
+
+        managers_table = Table('managers', metadata,
             Column('employee_id', Integer, primary_key=True),
             Column('name', String(50)),
             Column('manager_data', String(50)),
             Column('company_id', Integer, ForeignKey('companies.id'))
         )
 
-        engineers_table = Table('engineers', metadata, 
+        engineers_table = Table('engineers', metadata,
             Column('employee_id', Integer, primary_key=True),
             Column('name', String(50)),
             Column('engineer_info', String(50)),
@@ -61,10 +61,10 @@ class ConcreteTest(ORMTest):
         session.flush()
         session.clear()
 
-        print set([repr(x) for x in session.query(Employee).select()])
-        assert set([repr(x) for x in session.query(Employee).select()]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
-        assert set([repr(x) for x in session.query(Manager).select()]) == set(["Manager Tom knows how to manage things"])
-        assert set([repr(x) for x in session.query(Engineer).select()]) == set(["Engineer Kurt knows how to hack"])
+        print set([repr(x) for x in session.query(Employee).all()])
+        assert set([repr(x) for x in session.query(Employee).all()]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
+        assert set([repr(x) for x in session.query(Manager).all()]) == set(["Manager Tom knows how to manage things"])
+        assert set([repr(x) for x in session.query(Engineer).all()]) == set(["Engineer Kurt knows how to hack"])
 
     def test_relation(self):
         class Employee(object):
@@ -114,7 +114,7 @@ class ConcreteTest(ORMTest):
             c2 = session.query(Company).get(c.id)
             assert set([repr(x) for x in c2.employees]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
         self.assert_sql_count(testbase.db, go, 1)
-        
+
 
 
 if __name__ == '__main__':

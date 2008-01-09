@@ -1344,11 +1344,16 @@ class Query(object):
 
         return self._legacy_filter_by(*args, **params).one()
 
-for deprecated_method in ['list', 'scalar', 'count_by',
-                          'select_whereclause', 'get_by', 'select_by', 'join_by', 'selectfirst',
-                          'selectone', 'select', 'execute', 'select_statement', 'select_text',
-                          'join_to', 'join_via', 'selectfirst_by', 'selectone_by']:
-    setattr(Query, deprecated_method, util.deprecated(getattr(Query, deprecated_method), False))
+
+for deprecated_method in ('list', 'scalar', 'count_by',
+                          'select_whereclause', 'get_by', 'select_by',
+                          'join_by', 'selectfirst', 'selectone', 'select',
+                          'execute', 'select_statement', 'select_text',
+                          'join_to', 'join_via', 'selectfirst_by',
+                          'selectone_by'):
+    setattr(Query, deprecated_method,
+            util.deprecated(getattr(Query, deprecated_method),
+                            add_deprecation_to_docstring=False))
 
 Query.logger = logging.class_logger(Query)
 

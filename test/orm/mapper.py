@@ -328,8 +328,8 @@ class MapperTest(MapperSuperTest):
     def test_propfilters(self):
         t = Table('person', MetaData(),
                   Column('id', Integer, primary_key=True),
-                  Column('type', String),
-                  Column('name', String),
+                  Column('type', String(128)),
+                  Column('name', String(128)),
                   Column('employee_number', Integer),
                   Column('boss_id', Integer, ForeignKey('person.id')),
                   Column('vendor_id', Integer))

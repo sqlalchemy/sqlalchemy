@@ -1,7 +1,7 @@
 from sqlalchemy import util, exceptions
 import types
 from sqlalchemy.orm import mapper, Query
-    
+
 def _monkeypatch_query_method(name, ctx, class_):
     def do(self, *args, **kwargs):
         query = Query(class_, session=ctx.current)
@@ -11,7 +11,7 @@ def _monkeypatch_query_method(name, ctx, class_):
         do.__name__ = name
     except:
         pass
-    if not hasattr(class_, name): 
+    if not hasattr(class_, name):
         setattr(class_, name, classmethod(do))
 
 def _monkeypatch_session_method(name, ctx, class_):
@@ -22,11 +22,10 @@ def _monkeypatch_session_method(name, ctx, class_):
         do.__name__ = name
     except:
         pass
-    if not hasattr(class_, name): 
+    if not hasattr(class_, name):
         setattr(class_, name, do)
-        
+
 def assign_mapper(ctx, class_, *args, **kwargs):
-    util.warn_deprecated("assign_mapper is deprecated. Use scoped_session() instead.")
     extension = kwargs.pop('extension', None)
     if extension is not None:
         extension = util.to_list(extension)
@@ -35,26 +34,32 @@ def assign_mapper(ctx, class_, *args, **kwargs):
         extension = ctx.mapper_extension
 
     validate = kwargs.pop('validate', False)
-    
+
     if not isinstance(getattr(class_, '__init__'), types.MethodType):
         def __init__(self, **kwargs):
              for key, value in kwargs.items():
                  if validate:
-                     if not self.mapper.get_property(key, resolve_synonyms=False, raiseerr=False):
-                         raise exceptions.ArgumentError("Invalid __init__ argument: '%s'" % key)
+                     if not self.mapper.get_property(key,
+                                                     resolve_synonyms=False,
+                                                     raiseerr=False):
+                         raise exceptions.ArgumentError(
+                             "Invalid __init__ argument: '%s'" % key)
                  setattr(self, key, value)
         class_.__init__ = __init__
-    
+
     class query(object):
         def __getattr__(self, key):
             return getattr(ctx.current.query(class_), key)
         def __call__(self):
             return ctx.current.query(class_)
 
-    if not hasattr(class_, 'query'): 
+    if not hasattr(class_, 'query'):
         class_.query = query()
-    
-    for name in ('get', 'filter', 'filter_by', 'select', 'select_by', 'selectfirst', 'selectfirst_by', 'selectone', 'selectone_by', 'get_by', 'join_to', 'join_via', 'count', 'count_by', 'options', 'instances'):
+
+    for name in ('get', 'filter', 'filter_by', 'select', 'select_by',
+                 'selectfirst', 'selectfirst_by', 'selectone', 'selectone_by',
+                 'get_by', 'join_to', 'join_via', 'count', 'count_by',
+                 'options', 'instances'):
         _monkeypatch_query_method(name, ctx, class_)
     for name in ('refresh', 'expire', 'delete', 'expunge', 'update'):
         _monkeypatch_session_method(name, ctx, class_)
@@ -63,3 +68,5 @@ def assign_mapper(ctx, class_, *args, **kwargs):
     class_.mapper = m
     return m
 
+assign_mapper = util.deprecated(
+    assign_mapper, "assign_mapper is deprecated. Use scoped_session() instead.")

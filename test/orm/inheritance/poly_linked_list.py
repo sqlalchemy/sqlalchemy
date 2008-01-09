@@ -166,7 +166,7 @@ class PolymorphicCircularTest(ORMTest):
 
         # clear and query forwards
         sess.clear()
-        node = sess.query(Table1).selectfirst(Table1.c.id==t.id)
+        node = sess.query(Table1).filter(Table1.c.id==t.id).first()
         assertlist = []
         while (node):
             assertlist.append(node)
@@ -178,7 +178,7 @@ class PolymorphicCircularTest(ORMTest):
 
         # clear and query backwards
         sess.clear()
-        node = sess.query(Table1).selectfirst(Table1.c.id==obj.id)
+        node = sess.query(Table1).filter(Table1.c.id==obj.id).first()
         assertlist = []
         while (node):
             assertlist.insert(0, node)

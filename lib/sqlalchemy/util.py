@@ -833,12 +833,27 @@ class ScopedRegistry(object):
 def warn_deprecated(msg):
     warnings.warn(logging.SADeprecationWarning(msg), stacklevel=3)
 
-def deprecated(func, add_deprecation_to_docstring=True):
+def deprecated(func, message=None, add_deprecation_to_docstring=True):
+    if message is not None:
+        warning = message % dict(func=func.__name__)
+    else:
+        warning = "Call to deprecated function %s" % func.__name__
+
     def func_with_warning(*args, **kwargs):
-        warnings.warn(logging.SADeprecationWarning("Call to deprecated function %s" % func.__name__),
-                      stacklevel=2)
+        if self.warn:
+            warnings.warn(logging.SADeprecationWarning(warning),
+                          stacklevel=2)
         return func(*args, **kwargs)
-    func_with_warning.__doc__ = (add_deprecation_to_docstring and 'Deprecated.\n' or '') + str(func.__doc__)
+    func_with_warning.warn = True
+    self = func_with_warning
+
+    doc = func.__doc__ is not None and func.__doc__ or ''
+
+    if add_deprecation_to_docstring:
+        header = message is not None and warning or 'Deprecated.'
+        doc = '\n'.join((header.rstrip(), doc))
+
+    func_with_warning.__doc__ = doc
     func_with_warning.__dict__.update(func.__dict__)
     try:
         func_with_warning.__name__ = func.__name__
