@@ -20,7 +20,7 @@ class informix_cursor(object):
     def __init__( self , con ):
         self.__cursor = con.cursor()
         self.rowcount = 0
-    
+
     def offset( self , n ):
         if n > 0:
             self.fetchmany( n )
@@ -29,13 +29,13 @@ class informix_cursor(object):
                 self.rowcount = 0
         else:
             self.rowcount = self.__cursor.rowcount
-            
+
     def execute( self , sql , params ):
         if params is None or len( params ) == 0:
             params = []
-        
+
         return self.__cursor.execute( sql , params )
-    
+
     def __getattr__( self , name ):
         if name not in ( 'offset' , '__cursor' , 'rowcount' , '__del__' , 'execute' ):
             return getattr( self.__cursor , name )
@@ -46,7 +46,7 @@ class InfoNumeric(sqltypes.Numeric):
             return 'NUMERIC'
         else:
             return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
-    
+
 class InfoInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -62,7 +62,7 @@ class InfoDate(sqltypes.Date):
 class InfoDateTime(sqltypes.DateTime ):
     def get_col_spec(self):
         return "DATETIME YEAR TO SECOND"
-    
+
     def bind_processor(self, dialect):
         def process(value):
             if value is not None:
@@ -70,7 +70,7 @@ class InfoDateTime(sqltypes.DateTime ):
                     value = value.replace( microsecond = 0 )
             return value
         return process
-        
+
 class InfoTime(sqltypes.Time ):
     def get_col_spec(self):
         return "DATETIME HOUR TO SECOND"
@@ -82,15 +82,15 @@ class InfoTime(sqltypes.Time ):
                     value = value.replace( microsecond = 0 )
             return value
         return process
-        
+
     def result_processor(self, dialect):
         def process(value):
             if isinstance( value , datetime.datetime ):
                 return value.time()
             else:
-                return value        
+                return value
         return process
-        
+
 class InfoText(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(255)"
@@ -98,7 +98,7 @@ class InfoText(sqltypes.String):
 class InfoString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
-    
+
     def bind_processor(self, dialect):
         def process(value):
             if value == '':
@@ -106,27 +106,27 @@ class InfoString(sqltypes.String):
             else:
                 return value
         return process
-        
+
 class InfoChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
-        
+
 class InfoBinary(sqltypes.Binary):
     def get_col_spec(self):
         return "BYTE"
-        
+
 class InfoBoolean(sqltypes.Boolean):
     default_type = 'NUM'
     def get_col_spec(self):
         return "SMALLINT"
-        
+
     def result_processor(self, dialect):
         def process(value):
             if value is None:
                 return None
             return value and True or False
         return process
-    
+
     def bind_processor(self, dialect):
         def process(value):
             if value is True:
@@ -138,7 +138,7 @@ class InfoBoolean(sqltypes.Boolean):
             else:
                 return value and True or False
         return process
-        
+
 colspecs = {
     sqltypes.Integer : InfoInteger,
     sqltypes.Smallinteger : InfoSmallInteger,
@@ -156,26 +156,26 @@ colspecs = {
 
 
 ischema_names = {
-    0   : InfoString,       # CHAR  
+    0   : InfoString,       # CHAR
     1   : InfoSmallInteger, # SMALLINT
-    2   : InfoInteger,      # INT     
+    2   : InfoInteger,      # INT
     3   : InfoNumeric,      # Float
     3   : InfoNumeric,      # SmallFloat
-    5   : InfoNumeric,      # DECIMAL 
+    5   : InfoNumeric,      # DECIMAL
     6   : InfoInteger,      # Serial
-    7   : InfoDate,         # DATE    
+    7   : InfoDate,         # DATE
     8   : InfoNumeric,      # MONEY
     10  : InfoDateTime,     # DATETIME
-    11  : InfoBinary,       # BYTE    
-    12  : InfoText,         # TEXT    
-    13  : InfoString,       # VARCHAR 
-    15  : InfoString,       # NCHAR  
-    16  : InfoString,       # NVARCHAR  
+    11  : InfoBinary,       # BYTE
+    12  : InfoText,         # TEXT
+    13  : InfoString,       # VARCHAR
+    15  : InfoString,       # NCHAR
+    16  : InfoString,       # NVARCHAR
     17  : InfoInteger,      # INT8
     18  : InfoInteger,      # Serial8
     43  : InfoString,       # LVARCHAR
-    -1  : InfoBinary,       # BLOB    
-    -1  : InfoText,         # CLOB    
+    -1  : InfoBinary,       # BLOB
+    -1  : InfoText,         # CLOB
 }
 
 def descriptor():
@@ -204,11 +204,11 @@ class InfoExecutionContext(default.DefaultExecutionContext):
 
     def create_cursor( self ):
         return informix_cursor( self.connection.connection )
-        
+
 class InfoDialect(default.DefaultDialect):
     # for informix 7.31
     max_identifier_length = 18
-    
+
     def __init__(self, use_ansi=True,**kwargs):
         self.use_ansi = use_ansi
         default.DefaultDialect.__init__(self, **kwargs)
@@ -229,7 +229,7 @@ class InfoDialect(default.DefaultDialect):
         cu = connect.cursor()
         cu.execute( 'SET LOCK MODE TO WAIT' )
         #cu.execute( 'SET ISOLATION TO REPEATABLE READ' )
-    
+
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
@@ -238,20 +238,20 @@ class InfoDialect(default.DefaultDialect):
             dsn = '%s@%s' % ( url.database , url.host )
         else:
             dsn = url.database
-        
+
         if url.username:
             opt = { 'user':url.username , 'password': url.password }
         else:
             opt = {}
-            
+
         return ([dsn,], opt )
-        
+
     def create_execution_context(self , *args, **kwargs):
         return InfoExecutionContext(self, *args, **kwargs)
-        
+
     def oid_column_name(self,column):
         return "rowid"
-    
+
     def table_names(self, connection, schema):
         s = "select tabname from systables"
         return [row[0] for row in connection.execute(s)]
@@ -259,7 +259,7 @@ class InfoDialect(default.DefaultDialect):
     def has_table(self, connection, table_name,schema=None):
         cursor = connection.execute("""select tabname from systables where tabname=?""", table_name.lower() )
         return bool( cursor.fetchone() is not None )
-        
+
     def reflecttable(self, connection, table, include_columns):
         c = connection.execute ("select distinct OWNER from systables where tabname=?", table.name.lower() )
         rows = c.fetchall()
@@ -278,12 +278,12 @@ class InfoDialect(default.DefaultDialect):
                     raise exceptions.AssertionError("There are multiple tables with name %s in the schema, you must specifie owner"%table.name)
 
         c = connection.execute ("""select colname , coltype , collength , t3.default , t1.colno from syscolumns as t1 , systables as t2 , OUTER sysdefaults as t3
-                                    where t1.tabid = t2.tabid and t2.tabname=? and t2.owner=? 
+                                    where t1.tabid = t2.tabid and t2.tabname=? and t2.owner=?
                                       and t3.tabid = t2.tabid and t3.colno = t1.colno
                                     order by t1.colno""", table.name.lower(), owner )
         rows = c.fetchall()
-        
-        if not rows: 
+
+        if not rows:
             raise exceptions.NoSuchTableError(table.name)
 
         for name , colattr , collength , default , colno in rows:
@@ -293,11 +293,11 @@ class InfoDialect(default.DefaultDialect):
 
             # in 7.31, coltype = 0x000
             #                       ^^-- column type
-            #                      ^-- 1 not null , 0 null 
+            #                      ^-- 1 not null , 0 null
             nullable , coltype = divmod( colattr , 256 )
             if coltype not in ( 0 , 13 ) and default:
                 default = default.split()[-1]
-            
+
             if coltype == 0 or coltype == 13: # char , varchar
                 coltype = ischema_names.get(coltype, InfoString)(collength)
                 if default:
@@ -313,26 +313,26 @@ class InfoDialect(default.DefaultDialect):
                 except KeyError:
                     warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
                     coltype = sqltypes.NULLTYPE
-            
+
             colargs = []
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
-            
+
             table.append_column(schema.Column(name, coltype, nullable = (nullable == 0), *colargs))
 
         # FK
-        c = connection.execute("""select t1.constrname as cons_name , t1.constrtype as cons_type , 
-                                         t4.colname as local_column , t7.tabname as remote_table , 
-                                         t6.colname as remote_column 
-                                    from sysconstraints as t1 , systables as t2 , 
-                                         sysindexes as t3 , syscolumns as t4 , 
-                                         sysreferences as t5 , syscolumns as t6 , systables as t7 , 
+        c = connection.execute("""select t1.constrname as cons_name , t1.constrtype as cons_type ,
+                                         t4.colname as local_column , t7.tabname as remote_table ,
+                                         t6.colname as remote_column
+                                    from sysconstraints as t1 , systables as t2 ,
+                                         sysindexes as t3 , syscolumns as t4 ,
+                                         sysreferences as t5 , syscolumns as t6 , systables as t7 ,
                                          sysconstraints as t8 , sysindexes as t9
                                    where t1.tabid = t2.tabid and t2.tabname=? and t2.owner=? and t1.constrtype = 'R'
                                      and t3.tabid = t2.tabid and t3.idxname = t1.idxname
                                      and t4.tabid = t2.tabid and t4.colno = t3.part1
                                      and t5.constrid = t1.constrid and t8.constrid = t5.primary
-                                     and t6.tabid = t5.ptabid and t6.colno = t9.part1 and t9.idxname = t8.idxname 
+                                     and t6.tabid = t5.ptabid and t6.colno = t9.part1 and t9.idxname = t8.idxname
                                      and t7.tabid = t5.ptabid""", table.name.lower(), owner )
         rows = c.fetchall()
         fks = {}
@@ -348,15 +348,15 @@ class InfoDialect(default.DefaultDialect):
                 fk[0].append(local_column)
             if refspec not in fk[1]:
                 fk[1].append(refspec)
-                
+
         for name, value in fks.iteritems():
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1] , None ))
-        
+
         # PK
-        c = connection.execute("""select t1.constrname as cons_name , t1.constrtype as cons_type , 
-                                         t4.colname as local_column 
-                                    from sysconstraints as t1 , systables as t2 , 
-                                         sysindexes as t3 , syscolumns as t4 
+        c = connection.execute("""select t1.constrname as cons_name , t1.constrtype as cons_type ,
+                                         t4.colname as local_column
+                                    from sysconstraints as t1 , systables as t2 ,
+                                         sysindexes as t3 , syscolumns as t4
                                    where t1.tabid = t2.tabid and t2.tabname=? and t2.owner=? and t1.constrtype = 'P'
                                      and t3.tabid = t2.tabid and t3.idxname = t1.idxname
                                      and t4.tabid = t2.tabid and t4.colno = t3.part1""", table.name.lower(), owner )
@@ -365,17 +365,17 @@ class InfoDialect(default.DefaultDialect):
             table.primary_key.add( table.c[local_column] )
 
 class InfoCompiler(compiler.DefaultCompiler):
-    """Info compiler modifies the lexical structure of Select statements to work under 
+    """Info compiler modifies the lexical structure of Select statements to work under
     non-ANSI configured Oracle databases, if the use_ansi flag is False."""
     def __init__(self, dialect, statement, parameters=None, **kwargs):
         self.limit = 0
         self.offset = 0
-        
+
         compiler.DefaultCompiler.__init__( self , dialect , statement , parameters , **kwargs )
-    
+
     def default_from(self):
         return " from systables where tabname = 'systables' "
-    
+
     def get_select_precolumns( self , select ):
         s = select._distinct and "DISTINCT " or ""
         # only has limit
@@ -385,27 +385,27 @@ class InfoCompiler(compiler.DefaultCompiler):
         else:
             s += ""
         return s
-    
+
     def visit_select(self, select):
         if select._offset:
             self.offset = select._offset
             self.limit  = select._limit or 0
         # the column in order by clause must in select too
-        
+
         def __label( c ):
             try:
                 return c._label.lower()
             except:
                 return ''
-        
-        # TODO: dont modify the original select, generate a new one        
+
+        # TODO: dont modify the original select, generate a new one
         a = [ __label(c) for c in select._raw_columns ]
         for c in select.order_by_clause.clauses:
             if ( __label(c) not in a ) and getattr( c , 'name' , '' ) != 'oid':
                 select.append_column( c )
-        
+
         return compiler.DefaultCompiler.visit_select(self, select)
-        
+
     def limit_clause(self, select):
         return ""
 
@@ -418,7 +418,7 @@ class InfoCompiler(compiler.DefaultCompiler):
             return "CURRENT YEAR TO SECOND"
         else:
             return compiler.DefaultCompiler.visit_function( self , func )
-            
+
     def visit_clauselist(self, list):
         try:
             li = [ c for c in list.clauses if c.name != 'oid' ]
@@ -434,41 +434,41 @@ class InfoSchemaGenerator(compiler.SchemaGenerator):
             colspec += " SERIAL"
             self.has_serial = True
         else:
-            colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=True).get_col_spec()
+            colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
             default = self.get_column_default_string(column)
             if default is not None:
                 colspec += " DEFAULT " + default
-        
+
         if not column.nullable:
             colspec += " NOT NULL"
-        
+
         return colspec
-        
+
     def post_create_table(self, table):
         if hasattr( self , 'has_serial' ):
             del self.has_serial
         return ''
-    
+
     def visit_primary_key_constraint(self, constraint):
         # for informix 7.31 not support constraint name
         name = constraint.name
         constraint.name = None
         super(InfoSchemaGenerator, self).visit_primary_key_constraint(constraint)
         constraint.name = name
-    
+
     def visit_unique_constraint(self, constraint):
         # for informix 7.31 not support constraint name
         name = constraint.name
         constraint.name = None
         super(InfoSchemaGenerator, self).visit_unique_constraint(constraint)
         constraint.name = name
-        
+
     def visit_foreign_key_constraint( self , constraint ):
         if constraint.name is not None:
             constraint.use_alter = True
         else:
             super( InfoSchemaGenerator , self ).visit_foreign_key_constraint( constraint )
-        
+
     def define_foreign_key(self, constraint):
         # for informix 7.31 not support constraint name
         if constraint.use_alter:
@@ -490,7 +490,7 @@ class InfoSchemaGenerator(compiler.SchemaGenerator):
 class InfoIdentifierPreparer(compiler.IdentifierPreparer):
     def __init__(self, dialect):
         super(InfoIdentifierPreparer, self).__init__(dialect, initial_quote="'")
-    
+
     def _requires_quotes(self, value):
         return False
 

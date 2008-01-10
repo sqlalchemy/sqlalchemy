@@ -20,7 +20,7 @@
   Note that the start & increment values for sequences are optional
   and will default to 1,1.
 
-* Support for ``SET IDENTITY_INSERT ON`` mode (automagic on / off for 
+* Support for ``SET IDENTITY_INSERT ON`` mode (automagic on / off for
   ``INSERT`` s)
 
 * Support for auto-fetching of ``@@IDENTITY/@@SCOPE_IDENTITY()`` on ``INSERT``
@@ -34,7 +34,7 @@ Known issues / TODO:
 
 * pymssql has problems with binary and unicode data that this module
   does **not** work around
-  
+
 """
 
 import datetime, random, warnings, re, sys, operator
@@ -44,7 +44,7 @@ from sqlalchemy.sql import compiler, expression, operators as sqlops
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
 from sqlalchemy.util import Decimal as _python_Decimal
-    
+
 MSSQL_RESERVED_WORDS = util.Set(['function'])
 
 class MSNumeric(sqltypes.Numeric):
@@ -67,9 +67,9 @@ class MSNumeric(sqltypes.Numeric):
                 # Not sure that this exception is needed
                 return value
             else:
-                return str(value) 
+                return str(value)
         return process
-        
+
     def get_col_spec(self):
         if self.precision is None:
             return "NUMERIC"
@@ -87,7 +87,7 @@ class MSFloat(sqltypes.Float):
                 return str(value)
             return None
         return process
-        
+
 class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -123,7 +123,7 @@ class MSTime(sqltypes.Time):
 
     def __init__(self, *a, **kw):
         super(MSTime, self).__init__(False)
-    
+
     def get_col_spec(self):
         return "DATETIME"
 
@@ -135,7 +135,7 @@ class MSTime(sqltypes.Time):
                 value = datetime.datetime.combine(self.__zero_date, value)
             return value
         return process
-    
+
     def result_processor(self, dialect):
         def process(value):
             if type(value) is datetime.datetime:
@@ -144,7 +144,7 @@ class MSTime(sqltypes.Time):
                 return datetime.time(0, 0, 0)
             return value
         return process
-        
+
 class MSDateTime_adodbapi(MSDateTime):
     def result_processor(self, dialect):
         def process(value):
@@ -154,7 +154,7 @@ class MSDateTime_adodbapi(MSDateTime):
                 return datetime.datetime(value.year, value.month, value.day)
             return value
         return process
-        
+
 class MSDateTime_pyodbc(MSDateTime):
     def bind_processor(self, dialect):
         def process(value):
@@ -162,7 +162,7 @@ class MSDateTime_pyodbc(MSDateTime):
                 return datetime.datetime(value.year, value.month, value.day)
             return value
         return process
-        
+
 class MSDate_pyodbc(MSDate):
     def bind_processor(self, dialect):
         def process(value):
@@ -170,7 +170,7 @@ class MSDate_pyodbc(MSDate):
                 return datetime.datetime(value.year, value.month, value.day)
             return value
         return process
-    
+
     def result_processor(self, dialect):
         def process(value):
             # pyodbc returns SMALLDATETIME values as datetime.datetime(). truncate it back to datetime.date()
@@ -178,7 +178,7 @@ class MSDate_pyodbc(MSDate):
                 return value.date()
             return value
         return process
-        
+
 class MSDate_pymssql(MSDate):
     def result_processor(self, dialect):
         def process(value):
@@ -187,11 +187,11 @@ class MSDate_pymssql(MSDate):
                 return value.date()
             return value
         return process
-        
+
 class MSText(sqltypes.Text):
     def get_col_spec(self):
         if self.dialect.text_as_varchar:
-            return "VARCHAR(max)"            
+            return "VARCHAR(max)"
         else:
             return "TEXT"
 
@@ -238,7 +238,7 @@ class MSBoolean(sqltypes.Boolean):
                 return None
             return value and True or False
         return process
-    
+
     def bind_processor(self, dialect):
         def process(value):
             if value is True:
@@ -250,27 +250,27 @@ class MSBoolean(sqltypes.Boolean):
             else:
                 return value and True or False
         return process
-        
+
 class MSTimeStamp(sqltypes.TIMESTAMP):
     def get_col_spec(self):
         return "TIMESTAMP"
-        
+
 class MSMoney(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "MONEY"
-        
+
 class MSSmallMoney(MSMoney):
     def get_col_spec(self):
         return "SMALLMONEY"
-        
+
 class MSUniqueIdentifier(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "UNIQUEIDENTIFIER"
-        
+
 class MSVariant(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "SQL_VARIANT"
-        
+
 def descriptor():
     return {'name':'mssql',
     'description':'MSSQL',
@@ -297,7 +297,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
     def pre_exec(self):
         """MS-SQL has a special mode for inserting non-NULL values
         into IDENTITY columns.
-        
+
         Activate it if the feature is turned on and needed.
         """
         if self.compiled.isinsert:
@@ -328,7 +328,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
         and fetch recently inserted IDENTIFY values (works only for
         one column).
         """
-        
+
         if self.compiled.isinsert and self.HASIDENT and not self.IINSERT:
             if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
                 if self.dialect.use_scope_identity:
@@ -339,17 +339,17 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                 self._last_inserted_ids = [int(row[0])] + self._last_inserted_ids[1:]
                 # print "LAST ROW ID", self._last_inserted_ids
         super(MSSQLExecutionContext, self).post_exec()
-    
+
     _ms_is_select = re.compile(r'\s*(?:SELECT|sp_columns)',
                                re.I | re.UNICODE)
-    
+
     def returns_rows_text(self, statement):
         return self._ms_is_select.match(statement) is not None
 
 
-class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):    
+class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):
     def pre_exec(self):
-        """where appropriate, issue "select scope_identity()" in the same statement"""                
+        """where appropriate, issue "select scope_identity()" in the same statement"""
         super(MSSQLExecutionContext_pyodbc, self).pre_exec()
         if self.compiled.isinsert and self.HASIDENT and (not self.IINSERT) \
                 and len(self.parameters) == 1 and self.dialect.use_scope_identity:
@@ -418,7 +418,7 @@ class MSSQLDialect(default.DefaultDialect):
             return dialect(*args, **kwargs)
         else:
             return object.__new__(cls, *args, **kwargs)
-                
+
     def __init__(self, auto_identity_insert=True, **params):
         super(MSSQLDialect, self).__init__(**params)
         self.auto_identity_insert = auto_identity_insert
@@ -442,7 +442,7 @@ class MSSQLDialect(default.DefaultDialect):
             else:
                 raise ImportError('No DBAPI module detected for MSSQL - please install pyodbc, pymssql, or adodbapi')
     dbapi = classmethod(dbapi)
-    
+
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
         opts.update(url.query)
@@ -477,20 +477,20 @@ class MSSQLDialect(default.DefaultDialect):
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
-            
+
     def do_execute(self, cursor, statement, params, context=None, **kwargs):
         if params == {}:
             params = ()
         try:
             super(MSSQLDialect, self).do_execute(cursor, statement, params, context=context, **kwargs)
-        finally:        
+        finally:
             if context.IINSERT:
                 cursor.execute("SET IDENTITY_INSERT %s OFF" % self.identifier_preparer.format_table(context.compiled.statement.table))
-         
+
     def do_executemany(self, cursor, statement, params, context=None, **kwargs):
         try:
             super(MSSQLDialect, self).do_executemany(cursor, statement, params, context=context, **kwargs)
-        finally:        
+        finally:
             if context.IINSERT:
                 cursor.execute("SET IDENTITY_INSERT %s OFF" % self.identifier_preparer.format_table(context.compiled.statement.table))
 
@@ -511,7 +511,7 @@ class MSSQLDialect(default.DefaultDialect):
     def raw_connection(self, connection):
         """Pull the raw pymmsql connection out--sensative to "pool.ConnectionFairy" and pymssql.pymssqlCnx Classes"""
         try:
-            # TODO: probably want to move this to individual dialect subclasses to 
+            # TODO: probably want to move this to individual dialect subclasses to
             # save on the exception throw + simplify
             return connection.connection.__dict__['_pymssqlCnx__cnx']
         except:
@@ -536,14 +536,14 @@ class MSSQLDialect(default.DefaultDialect):
                        and sql.and_(columns.c.table_name==tablename, columns.c.table_schema==current_schema)
                        or columns.c.table_name==tablename,
                    )
-        
+
         c = connection.execute(s)
         row  = c.fetchone()
         return row is not None
-        
+
     def reflecttable(self, connection, table, include_columns):
         import sqlalchemy.databases.information_schema as ischema
-        
+
         # Get base columns
         if table.schema is not None:
             current_schema = table.schema
@@ -556,7 +556,7 @@ class MSSQLDialect(default.DefaultDialect):
                        and sql.and_(columns.c.table_name==table.name, columns.c.table_schema==current_schema)
                        or columns.c.table_name==table.name,
                    order_by=[columns.c.ordinal_position])
-        
+
         c = connection.execute(s)
         found_table = False
         while True:
@@ -565,9 +565,9 @@ class MSSQLDialect(default.DefaultDialect):
                 break
             found_table = True
             (name, type, nullable, charlen, numericprec, numericscale, default) = (
-                row[columns.c.column_name], 
-                row[columns.c.data_type], 
-                row[columns.c.is_nullable] == 'YES', 
+                row[columns.c.column_name],
+                row[columns.c.data_type],
+                row[columns.c.is_nullable] == 'YES',
                 row[columns.c.character_maximum_length],
                 row[columns.c.numeric_precision],
                 row[columns.c.numeric_scale],
@@ -582,21 +582,21 @@ class MSSQLDialect(default.DefaultDialect):
                     args.append(a)
             coltype = self.ischema_names.get(type, None)
             if coltype == MSString and charlen == -1:
-                coltype = MSText()                
+                coltype = MSText()
             else:
                 if coltype is None:
                     warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (type, name)))
                     coltype = sqltypes.NULLTYPE
-                    
+
                 elif coltype in (MSNVarchar, AdoMSNVarchar) and charlen == -1:
                     args[0] = None
                 coltype = coltype(*args)
             colargs= []
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
-                
+
             table.append_column(schema.Column(name, coltype, nullable=nullable, autoincrement=False, *colargs))
-        
+
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
 
@@ -631,7 +631,7 @@ class MSSQLDialect(default.DefaultDialect):
         # Add constraints
         RR = self.uppercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
         TC = self.uppercase_table(ischema.constraints)        #information_schema.table_constraints
-        C  = self.uppercase_table(ischema.pg_key_constraints).alias('C') #information_schema.constraint_column_usage: the constrained column 
+        C  = self.uppercase_table(ischema.pg_key_constraints).alias('C') #information_schema.constraint_column_usage: the constrained column
         R  = self.uppercase_table(ischema.pg_key_constraints).alias('R') #information_schema.constraint_column_usage: the referenced column
 
         # Primary key constraints
@@ -672,7 +672,7 @@ class MSSQLDialect(default.DefaultDialect):
 class MSSQLDialect_pymssql(MSSQLDialect):
     supports_sane_rowcount = False
     max_identifier_length = 30
-    
+
     def import_dbapi(cls):
         import pymssql as module
         # pymmsql doesn't have a Binary method.  we use string
@@ -680,7 +680,7 @@ class MSSQLDialect_pymssql(MSSQLDialect):
         module.Binary = lambda st: str(st)
         return module
     import_dbapi = classmethod(import_dbapi)
-    
+
     colspecs = MSSQLDialect.colspecs.copy()
     colspecs[sqltypes.Date] = MSDate_pymssql
 
@@ -723,7 +723,7 @@ class MSSQLDialect_pymssql(MSSQLDialect):
 ##    This code is leftover from the initial implementation, for reference
 ##    def do_begin(self, connection):
 ##        """implementations might want to put logic here for turning autocommit on/off, etc."""
-##        pass  
+##        pass
 
 ##    def do_rollback(self, connection):
 ##        """implementations might want to put logic here for turning autocommit on/off, etc."""
@@ -740,7 +740,7 @@ class MSSQLDialect_pymssql(MSSQLDialect):
 
 ##    def do_commit(self, connection):
 ##        """implementations might want to put logic here for turning autocommit on/off, etc.
-##            do_commit is set for pymmsql connections--ADO seems to handle transactions without any issue 
+##            do_commit is set for pymmsql connections--ADO seems to handle transactions without any issue
 ##        """
 ##        # ADO Uses Implicit Transactions.
 ##        # This is very pymssql specific.  We use this instead of its commit, because it hangs on failed rollbacks.
@@ -757,7 +757,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
     # PyODBC unicode is broken on UCS-4 builds
     supports_unicode = sys.maxunicode == 65535
     supports_unicode_statements = supports_unicode
-    
+
     def __init__(self, **params):
         super(MSSQLDialect_pyodbc, self).__init__(**params)
         # whether use_scope_identity will work depends on the version of pyodbc
@@ -766,12 +766,12 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
             self.use_scope_identity = hasattr(pyodbc.Cursor, 'nextset')
         except:
             pass
-        
+
     def import_dbapi(cls):
         import pyodbc as module
         return module
     import_dbapi = classmethod(import_dbapi)
-    
+
     colspecs = MSSQLDialect.colspecs.copy()
     if supports_unicode:
         colspecs[sqltypes.Unicode] = AdoMSNVarchar
@@ -883,10 +883,10 @@ class MSSQLCompiler(compiler.DefaultCompiler):
             raise exceptions.InvalidRequestError('MSSQL does not support LIMIT with an offset')
         return s
 
-    def limit_clause(self, select):    
+    def limit_clause(self, select):
         # Limit in mssql is after the select keyword
         return ""
-            
+
     def _schema_aliased_table(self, table):
         if getattr(table, 'schema', None) is not None:
             if table not in self.tablealiases:
@@ -894,7 +894,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
             return self.tablealiases[table]
         else:
             return None
-            
+
     def visit_table(self, table, mssql_aliased=False, **kwargs):
         if mssql_aliased:
             return super(MSSQLCompiler, self).visit_table(table, **kwargs)
@@ -905,7 +905,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
             return self.process(alias, mssql_aliased=True, **kwargs)
         else:
             return super(MSSQLCompiler, self).visit_table(table, **kwargs)
- 
+
     def visit_alias(self, alias, **kwargs):
         # translate for schema-qualified table aliases
         self.tablealiases[alias.original] = alias
@@ -956,8 +956,8 @@ class MSSQLCompiler(compiler.DefaultCompiler):
 
 class MSSQLSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
-        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect, _for_ddl=True).get_col_spec()
-        
+        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
+
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if (not getattr(column.table, 'has_sequence', False)) and column.primary_key and \
                 column.autoincrement and isinstance(column.type, sqltypes.Integer) and not column.foreign_keys:
@@ -974,7 +974,7 @@ class MSSQLSchemaGenerator(compiler.SchemaGenerator):
             default = self.get_column_default_string(column)
             if default is not None:
                 colspec += " DEFAULT " + default
-        
+
         return colspec
 
 class MSSQLSchemaDropper(compiler.SchemaDropper):

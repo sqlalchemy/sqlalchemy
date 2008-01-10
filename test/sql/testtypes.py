@@ -1,6 +1,6 @@
 import testbase
 import pickleable
-import datetime, os
+import datetime, os, re
 from sqlalchemy import *
 from sqlalchemy import types, exceptions
 from sqlalchemy.sql import operators
@@ -688,6 +688,7 @@ class StringTest(AssertMixin):
             assert False
         except SADeprecationWarning, e:
             assert "Using String type with no length" in str(e)
+            assert re.search(r'\bone\b', str(e))
 
         bar = Table('bar', metadata, Column('one', String(40)))
 

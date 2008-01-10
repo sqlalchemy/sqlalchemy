@@ -9,7 +9,7 @@
 Sybase database backend.
 
 Known issues / TODO:
-  
+
  * Uses the mx.ODBC driver from egenix (version 2.1.0)
  * The current version of sqlalchemy.databases.sybase only supports
    mx.ODBC.Windows (other platforms such as mx.ODBC.unixODBC still need
@@ -38,11 +38,11 @@ __all__ = [
     'SybaseNumeric', 'SybaseFloat', 'SybaseInteger', 'SybaseBigInteger',
     'SybaseTinyInteger', 'SybaseSmallInteger',
     'SybaseDateTime_mxodbc', 'SybaseDateTime_pyodbc',
-    'SybaseDate_mxodbc', 'SybaseDate_pyodbc', 
-    'SybaseTime_mxodbc', 'SybaseTime_pyodbc', 
+    'SybaseDate_mxodbc', 'SybaseDate_pyodbc',
+    'SybaseTime_mxodbc', 'SybaseTime_pyodbc',
     'SybaseText', 'SybaseString', 'SybaseChar', 'SybaseBinary',
-    'SybaseBoolean', 'SybaseTimeStamp', 'SybaseMoney', 'SybaseSmallMoney', 
-    'SybaseUniqueIdentifier', 
+    'SybaseBoolean', 'SybaseTimeStamp', 'SybaseMoney', 'SybaseSmallMoney',
+    'SybaseUniqueIdentifier',
     ]
 
 
@@ -162,7 +162,7 @@ class SybaseTypeError(sqltypes.TypeEngine):
         def process(value):
             raise exceptions.NotSupportedError("Data type not supported", [value])
         return process
-        
+
     def get_col_spec(self):
         raise exceptions.NotSupportedError("Data type not supported")
 
@@ -180,7 +180,7 @@ class SybaseFloat(sqltypes.FLOAT, SybaseNumeric):
     def __init__(self, precision = 10, asdecimal = False, length = 2, **kwargs):
         super(sqltypes.FLOAT, self).__init__(precision, asdecimal, **kwargs)
         self.length = length
-    
+
     def get_col_spec(self):
         # if asdecimal is True, handle same way as SybaseNumeric
         if self.asdecimal:
@@ -198,7 +198,7 @@ class SybaseFloat(sqltypes.FLOAT, SybaseNumeric):
         if self.asdecimal:
             return SybaseNumeric.result_processor(self, dialect)
         return process
-        
+
 class SybaseInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -221,7 +221,7 @@ class SybaseDateTime_mxodbc(sqltypes.DateTime):
 
     def get_col_spec(self):
         return "DATETIME"
-        
+
 class SybaseDateTime_pyodbc(sqltypes.DateTime):
     def __init__(self, *a, **kw):
         super(SybaseDateTime_pyodbc, self).__init__(False)
@@ -242,7 +242,7 @@ class SybaseDateTime_pyodbc(sqltypes.DateTime):
             if value is None:
                 return None
             return value
-        return process    
+        return process
 
 class SybaseDate_mxodbc(sqltypes.Date):
     def __init__(self, *a, **kw):
@@ -261,10 +261,10 @@ class SybaseDate_pyodbc(sqltypes.Date):
 class SybaseTime_mxodbc(sqltypes.Time):
     def __init__(self, *a, **kw):
         super(SybaseTime_mxodbc, self).__init__(False)
-    
+
     def get_col_spec(self):
         return "DATETIME"
-            
+
     def result_processor(self, dialect):
         def process(value):
             if value is None:
@@ -276,10 +276,10 @@ class SybaseTime_mxodbc(sqltypes.Time):
 class SybaseTime_pyodbc(sqltypes.Time):
     def __init__(self, *a, **kw):
         super(SybaseTime_pyodbc, self).__init__(False)
-        
+
     def get_col_spec(self):
         return "DATETIME"
-    
+
     def result_processor(self, dialect):
         def process(value):
             if value is None:
@@ -287,7 +287,7 @@ class SybaseTime_pyodbc(sqltypes.Time):
             # Convert the datetime.datetime back to datetime.time
             return datetime.time(value.hour, value.minute, value.second, value.microsecond)
         return process
-    
+
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -297,7 +297,7 @@ class SybaseTime_pyodbc(sqltypes.Time):
 
 class SybaseText(sqltypes.Text):
     def get_col_spec(self):
-        return "TEXT"            
+        return "TEXT"
 
 class SybaseString(sqltypes.String):
     def get_col_spec(self):
@@ -321,7 +321,7 @@ class SybaseBoolean(sqltypes.Boolean):
                 return None
             return value and True or False
         return process
-    
+
     def bind_processor(self, dialect):
         def process(value):
             if value is True:
@@ -333,23 +333,23 @@ class SybaseBoolean(sqltypes.Boolean):
             else:
                 return value and True or False
         return process
-        
+
 class SybaseTimeStamp(sqltypes.TIMESTAMP):
     def get_col_spec(self):
         return "TIMESTAMP"
-        
+
 class SybaseMoney(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "MONEY"
-        
+
 class SybaseSmallMoney(SybaseMoney):
     def get_col_spec(self):
         return "SMALLMONEY"
-        
+
 class SybaseUniqueIdentifier(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "UNIQUEIDENTIFIER"
-        
+
 def descriptor():
     return {'name':'sybase',
     'description':'SybaseSQL',
@@ -364,18 +364,18 @@ class SybaseSQLExecutionContext(default.DefaultExecutionContext):
     pass
 
 class SybaseSQLExecutionContext_mxodbc(SybaseSQLExecutionContext):
-    
+
     def __init__(self, dialect, connection, compiled=None, statement=None, parameters=None):
         super(SybaseSQLExecutionContext_mxodbc, self).__init__(dialect, connection, compiled, statement, parameters)
-    
+
     def pre_exec(self):
         super(SybaseSQLExecutionContext_mxodbc, self).pre_exec()
-        
+
     def post_exec(self):
         if self.compiled.isinsert:
             table = self.compiled.statement.table
             # get the inserted values of the primary key
-            
+
             # get any sequence IDs first (using @@identity)
             self.cursor.execute("SELECT @@identity AS lastrowid")
             row = self.cursor.fetchone()
@@ -392,15 +392,15 @@ class SybaseSQLExecutionContext_mxodbc(SybaseSQLExecutionContext):
 class SybaseSQLExecutionContext_pyodbc(SybaseSQLExecutionContext):
     def __init__(self, dialect, connection, compiled=None, statement=None, parameters=None):
         super(SybaseSQLExecutionContext_pyodbc, self).__init__(dialect, connection, compiled, statement, parameters)
-    
+
     def pre_exec(self):
         super(SybaseSQLExecutionContext_pyodbc, self).pre_exec()
-        
+
     def post_exec(self):
         if self.compiled.isinsert:
             table = self.compiled.statement.table
             # get the inserted values of the primary key
-            
+
             # get any sequence IDs first (using @@identity)
             self.cursor.execute("SELECT @@identity AS lastrowid")
             row = self.cursor.fetchone()
@@ -474,13 +474,13 @@ class SybaseSQLDialect(default.DefaultDialect):
             return dialect(*args, **kwargs)
         else:
             return object.__new__(cls, *args, **kwargs)
-                
+
     def __init__(self, **params):
         super(SybaseSQLDialect, self).__init__(**params)
         self.text_as_varchar = False
         # FIXME: what is the default schema for sybase connections (DBA?) ?
         self.set_default_schema_name("dba")
-        
+
     def dbapi(cls, module_name=None):
         if module_name:
             try:
@@ -497,7 +497,7 @@ class SybaseSQLDialect(default.DefaultDialect):
             else:
                 raise ImportError('No DBAPI module detected for SybaseSQL - please install mxodbc')
     dbapi = classmethod(dbapi)
-    
+
     def create_execution_context(self, *args, **kwargs):
         return SybaseSQLExecutionContext(self, *args, **kwargs)
 
@@ -531,7 +531,7 @@ class SybaseSQLDialect(default.DefaultDialect):
 
     def table_names(self, connection, schema):
         """Ignore the schema and the charset for now."""
-        s = sql.select([tables.c.table_name], 
+        s = sql.select([tables.c.table_name],
                        sql.not_(tables.c.table_name.like("SYS%")) and
                        tables.c.creator >= 100
                        )
@@ -541,7 +541,7 @@ class SybaseSQLDialect(default.DefaultDialect):
     def has_table(self, connection, tablename, schema=None):
         # FIXME: ignore schemas for sybase
         s = sql.select([tables.c.table_name], tables.c.table_name == tablename)
-        
+
         c = connection.execute(s)
         row = c.fetchone()
         print "has_table: " + tablename + ": " + str(bool(row is not None))
@@ -554,7 +554,7 @@ class SybaseSQLDialect(default.DefaultDialect):
         else:
             current_schema = self.get_default_schema_name(connection)
 
-        s = sql.select([columns, domains], tables.c.table_name==table.name, from_obj=[columns.join(tables).join(domains)], order_by=[columns.c.column_id])    
+        s = sql.select([columns, domains], tables.c.table_name==table.name, from_obj=[columns.join(tables).join(domains)], order_by=[columns.c.column_id])
 
         c = connection.execute(s)
         found_table = False
@@ -566,7 +566,7 @@ class SybaseSQLDialect(default.DefaultDialect):
             found_table = True
             (name, type, nullable, charlen, numericprec, numericscale, default, primary_key, max_identity, table_id, column_id) = (
                 row[columns.c.column_name],
-                row[domains.c.domain_name], 
+                row[domains.c.domain_name],
                 row[columns.c.nulls] == 'Y',
                 row[columns.c.width],
                 row[domains.c.precision],
@@ -630,17 +630,17 @@ class SybaseSQLDialect(default.DefaultDialect):
         for primary_table in foreignKeys.keys():
             #table.append_constraint(schema.ForeignKeyConstraint(['%s.%s'%(foreign_table, foreign_column)], ['%s.%s'%(primary_table,primary_column)]))
             table.append_constraint(schema.ForeignKeyConstraint(foreignKeys[primary_table][0], foreignKeys[primary_table][1]))
-               
+
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
 
 
-class SybaseSQLDialect_mxodbc(SybaseSQLDialect):    
+class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
     def __init__(self, **params):
         super(SybaseSQLDialect_mxodbc, self).__init__(**params)
 
         self.dbapi_type_map = {'getdate' : SybaseDate_mxodbc()}
-        
+
     def import_dbapi(cls):
         #import mx.ODBC.Windows as module
         import mxODBC as module
@@ -653,10 +653,10 @@ class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
     colspecs[sqltypes.DateTime] = SybaseDateTime_mxodbc
 
     ischema_names = SybaseSQLDialect.ischema_names.copy()
-    ischema_names['time'] = SybaseTime_mxodbc    
-    ischema_names['date'] = SybaseDate_mxodbc    
-    ischema_names['datetime'] = SybaseDateTime_mxodbc    
-    ischema_names['smalldatetime'] = SybaseDateTime_mxodbc    
+    ischema_names['time'] = SybaseTime_mxodbc
+    ischema_names['date'] = SybaseDate_mxodbc
+    ischema_names['datetime'] = SybaseDateTime_mxodbc
+    ischema_names['smalldatetime'] = SybaseDateTime_mxodbc
 
     def is_disconnect(self, e):
         # FIXME: optimize
@@ -744,7 +744,7 @@ class SybaseSQLCompiler(compiler.DefaultCompiler):
     operators.update({
         sql_operators.mod: lambda x, y: "MOD(%s, %s)" % (x, y),
     })
-    
+
     def bindparam_string(self, name):
         res = super(SybaseSQLCompiler, self).bindparam_string(name)
         if name.lower().startswith('literal'):
@@ -767,7 +767,7 @@ class SybaseSQLCompiler(compiler.DefaultCompiler):
             s += "START AT %s " % (select._offset+1,)
         return s
 
-    def limit_clause(self, select):    
+    def limit_clause(self, select):
         # Limit in sybase is after the select keyword
         return ""
 
@@ -816,7 +816,7 @@ class SybaseSQLSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
 
         colspec = self.preparer.format_column(column)
-        
+
         if (not getattr(column.table, 'has_sequence', False)) and column.primary_key and \
                 column.autoincrement and isinstance(column.type, sqltypes.Integer):
             if column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional):
@@ -827,8 +827,8 @@ class SybaseSQLSchemaGenerator(compiler.SchemaGenerator):
             #colspec += " numeric(30,0) IDENTITY"
             colspec += " Integer IDENTITY"
         else:
-            colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=True).get_col_spec()
-            
+            colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
+
         if not column.nullable:
             colspec += " NOT NULL"
 

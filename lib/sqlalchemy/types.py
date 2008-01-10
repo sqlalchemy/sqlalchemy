@@ -26,7 +26,8 @@ import datetime as dt
 import warnings
 
 from sqlalchemy import exceptions
-from sqlalchemy.util import pickle, Decimal as _python_Decimal, warn_deprecated
+from sqlalchemy.util import pickle, Decimal as _python_Decimal
+import sqlalchemy.util as util
 NoneType = type(None)
 
 class _UserTypeAdapter(type):
@@ -393,7 +394,11 @@ class String(Concatenable, TypeEngine):
     def dialect_impl(self, dialect, **kwargs):
         _for_ddl = kwargs.pop('_for_ddl', False)
         if _for_ddl and self.length is None:
-            warn_deprecated("Using String type with no length for CREATE TABLE is deprecated; use the Text type explicitly")
+            label = util.to_ascii(_for_ddl is True and
+                                  '' or (' for column "%s"' % str(_for_ddl)))
+            util.warn_deprecated(
+                "Using String type with no length for CREATE TABLE "
+                "is deprecated; use the Text type explicitly" + label)
         return TypeEngine.dialect_impl(self, dialect, **kwargs)
 
     def get_search_list(self):

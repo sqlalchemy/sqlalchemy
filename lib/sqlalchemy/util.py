@@ -100,6 +100,16 @@ def to_set(x):
     else:
         return x
 
+def to_ascii(x):
+    """Convert Unicode or a string with unknown encoding into ASCII."""
+
+    if isinstance(x, str):
+        return x.encode('string_escape')
+    elif isinstance(x, unicode):
+        return x.encode('unicode_escape')
+    else:
+        raise TypeError
+
 def flatten_iterator(x):
     """Given an iterator of which further sub-elements may also be
     iterators, flatten the sub-elements into a single iterator.

@@ -16,7 +16,7 @@ from sqlalchemy.sql import compiler
 
 
 SELECT_REGEXP = re.compile(r'\s*(?:SELECT|PRAGMA)', re.I | re.UNICODE)
-    
+
 class SLNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
         type_ = self.asdecimal and str or float
@@ -57,7 +57,7 @@ class DateTimeMixin(object):
             else:
                 return None
         return process
-        
+
     def _cvt(self, value, dialect):
         if value is None:
             return None
@@ -71,7 +71,7 @@ class DateTimeMixin(object):
 class SLDateTime(DateTimeMixin,sqltypes.DateTime):
     __format__ = "%Y-%m-%d %H:%M:%S"
     __microsecond__ = True
-    
+
     def get_col_spec(self):
         return "TIMESTAMP"
 
@@ -80,7 +80,7 @@ class SLDateTime(DateTimeMixin,sqltypes.DateTime):
             tup = self._cvt(value, dialect)
             return tup and datetime.datetime(*tup)
         return process
-        
+
 class SLDate(DateTimeMixin, sqltypes.Date):
     __format__ = "%Y-%m-%d"
     __microsecond__ = False
@@ -93,7 +93,7 @@ class SLDate(DateTimeMixin, sqltypes.Date):
             tup = self._cvt(value, dialect)
             return tup and datetime.date(*tup[0:3])
         return process
-        
+
 class SLTime(DateTimeMixin, sqltypes.Time):
     __format__ = "%H:%M:%S"
     __microsecond__ = True
@@ -106,7 +106,7 @@ class SLTime(DateTimeMixin, sqltypes.Time):
             tup = self._cvt(value, dialect)
             return tup and datetime.time(*tup[3:7])
         return process
-        
+
 class SLText(sqltypes.Text):
     def get_col_spec(self):
         return "TEXT"
@@ -133,14 +133,14 @@ class SLBoolean(sqltypes.Boolean):
                 return None
             return value and 1 or 0
         return process
-    
+
     def result_processor(self, dialect):
         def process(value):
             if value is None:
                 return None
             return value and True or False
         return process
-        
+
 colspecs = {
     sqltypes.Integer : SLInteger,
     sqltypes.Smallinteger : SLSmallInteger,
@@ -171,7 +171,7 @@ ischema_names = {
     'DATETIME' : SLDateTime,
     'DATE' : SLDate,
     'BLOB' : SLBinary,
-    'BOOL': SLBoolean, 
+    'BOOL': SLBoolean,
     'BOOLEAN': SLBoolean,
 }
 
@@ -190,11 +190,11 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
 
     def returns_rows_text(self, statement):
         return SELECT_REGEXP.match(statement)
-        
+
 class SQLiteDialect(default.DefaultDialect):
     supports_alter = False
     supports_unicode_statements = True
-    
+
     def __init__(self, **kwargs):
         default.DefaultDialect.__init__(self, default_paramstyle='qmark', **kwargs)
         def vers(num):
@@ -204,7 +204,7 @@ class SQLiteDialect(default.DefaultDialect):
             if sqlite_ver < (2,1,'3'):
                 warnings.warn(RuntimeWarning("The installed version of pysqlite2 (%s) is out-dated, and will cause errors in some cases.  Version 2.1.3 or greater is recommended." % '.'.join([str(subver) for subver in sqlite_ver])))
         self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
-        
+
     def dbapi(cls):
         try:
             from pysqlite2 import dbapi2 as sqlite
@@ -239,7 +239,7 @@ class SQLiteDialect(default.DefaultDialect):
 
     def oid_column_name(self, column):
         return "oid"
-    
+
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.ProgrammingError) and "Cannot operate on a closed database." in str(e)
 
@@ -283,7 +283,7 @@ class SQLiteDialect(default.DefaultDialect):
             except KeyError:
                 warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
                 coltype = sqltypes.NullType
-                
+
             if args is not None:
                 args = re.findall(r'(\d+)', args)
                 coltype = coltype(*[int(a) for a in args])
@@ -386,7 +386,7 @@ class SQLiteCompiler(compiler.DefaultCompiler):
 class SQLiteSchemaGenerator(compiler.SchemaGenerator):
 
     def get_column_specification(self, column, **kwargs):
-        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect, _for_ddl=True).get_col_spec()
+        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -438,4 +438,3 @@ dialect.statement_compiler = SQLiteCompiler
 dialect.schemagenerator = SQLiteSchemaGenerator
 dialect.schemadropper = SQLiteSchemaDropper
 dialect.preparer = SQLiteIdentifierPreparer
-
