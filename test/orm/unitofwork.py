@@ -682,20 +682,21 @@ class DefaultTest(ORMTest):
     def define_tables(self, metadata):
         db = testbase.db
         use_string_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle') or db.engine.__module__.endswith('sqlite')
-
+        global hohoval, althohoval
+        
         if use_string_defaults:
             hohotype = String(30)
-            self.hohoval = "im hoho"
-            self.althohoval = "im different hoho"
+            hohoval = "im hoho"
+            althohoval = "im different hoho"
         else:
             hohotype = Integer
-            self.hohoval = 9
-            self.althohoval = 15
+            hohoval = 9
+            althohoval = 15
 
         global default_table
         default_table = Table('default_test', metadata,
         Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
-        Column('hoho', hohotype, PassiveDefault(str(self.hohoval))),
+        Column('hoho', hohotype, PassiveDefault(str(hohoval))),
         Column('counter', Integer, default=func.length("1234567")),
         Column('foober', String(30), default="im foober", onupdate="im the update")
         )
@@ -705,19 +706,19 @@ class DefaultTest(ORMTest):
         class Hoho(object):pass
         mapper(Hoho, default_table)
 
-        h1 = Hoho(hoho=self.althohoval)
+        h1 = Hoho(hoho=althohoval)
         h2 = Hoho(counter=12)
-        h3 = Hoho(hoho=self.althohoval, counter=12)
+        h3 = Hoho(hoho=althohoval, counter=12)
         h4 = Hoho()
         h5 = Hoho(foober='im the new foober')
         Session.commit()
 
-        self.assert_(h1.hoho==self.althohoval)
-        self.assert_(h3.hoho==self.althohoval)
+        self.assert_(h1.hoho==althohoval)
+        self.assert_(h3.hoho==althohoval)
 
         def go():
             # test deferred load of attribues, one select per instance
-            self.assert_(h2.hoho==h4.hoho==h5.hoho==self.hohoval)
+            self.assert_(h2.hoho==h4.hoho==h5.hoho==hohoval)
         self.assert_sql_count(testbase.db, go, 3)
 
         def go():
@@ -736,14 +737,24 @@ class DefaultTest(ORMTest):
 
         (h1, h2, h3, h4, h5) = l
 
-        self.assert_(h1.hoho==self.althohoval)
-        self.assert_(h3.hoho==self.althohoval)
-        self.assert_(h2.hoho==h4.hoho==h5.hoho==self.hohoval)
+        self.assert_(h1.hoho==althohoval)
+        self.assert_(h3.hoho==althohoval)
+        self.assert_(h2.hoho==h4.hoho==h5.hoho==hohoval)
         self.assert_(h3.counter == h2.counter == 12)
         self.assert_(h1.counter ==  h4.counter==h5.counter==7)
         self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
         self.assert_(h5.foober=='im the new foober')
 
+    def test_eager_defaults(self):
+        class Hoho(object):pass
+        mapper(Hoho, default_table, eager_defaults=True)
+        h1 = Hoho()
+        Session.commit()
+        
+        def go():
+            self.assert_(h1.hoho==hohoval)
+        self.assert_sql_count(testbase.db, go, 0)
+        
     def test_insert_nopostfetch(self):
         # populates the PassiveDefaults explicitly so there is no "post-update"
         class Hoho(object):pass

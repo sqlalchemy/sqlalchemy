@@ -1153,7 +1153,6 @@ class Mapper(object):
                 self._set_state_attr_by_column(state, c, params[c.key])
         
         if deferred_props:
-            # TODO: need a unit test for this functionality
             if self.eager_defaults:
                 _instance_key = self._identity_key_from_state(state)
                 state.dict['_instance_key'] = _instance_key
