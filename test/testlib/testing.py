@@ -3,11 +3,11 @@
 # monkeypatches unittest.TestLoader.suiteClass at import time
 
 import testbase
-import itertools, unittest, re, sys, os, operator
+import itertools, unittest, re, sys, os, operator, warnings
 from cStringIO import StringIO
 import testlib.config as config
 sql, MetaData, clear_mappers, Session, util = None, None, None, None, None
-
+salogging = None
 
 __all__ = ('PersistTest', 'AssertMixin', 'ORMTest', 'SQLCompileTest')
 
@@ -169,6 +169,57 @@ def _server_version(bind=None):
         bind = config.db
     return bind.dialect.server_version_info(bind.contextual_connect())
 
+def uses_deprecated(*messages):
+    """Mark a test as immune from fatal deprecation warnings.
+
+    With no arguments, squelches all SADeprecationWarning failures.
+    Or pass one or more strings; these will be matched to the root
+    of the warning description by warnings.filterwarnings().
+
+    As a special case, you may pass a function name prefixed with //
+    and it will be re-written as needed to match the standard warning
+    verbiage emitted by the sqlalchemy.util.deprecated decorator.
+    """
+
+    def decorate(fn):
+        def safe(*args, **kw):
+            global salogging
+            if salogging is None:
+                from sqlalchemy import logging as salogging
+
+            if not messages:
+                filters = [dict(action='ignore',
+                                category=salogging.SADeprecationWarning)]
+            else:
+                filters = [dict(action='ignore',
+                                message=message,
+                                category=salogging.SADeprecationWarning)
+                           for message in
+                           [ (m.startswith('//') and
+                              ('Call to deprecated function ' + m[2:]) or m)
+                             for m in messages] ]
+
+            for f in filters:
+                warnings.filterwarnings(**f)
+            try:
+                return fn(*args, **kw)
+            finally:
+                resetwarnings()
+        try:
+            safe.__name__ = fn.name
+        except:
+            pass
+        return safe
+    return decorate
+
+def resetwarnings():
+    """Reset warning behavior to testing defaults."""
+
+    global salogging
+    if salogging is None:
+        from sqlalchemy import logging as salogging
+    warnings.resetwarnings()
+    warnings.filterwarnings('error', category=salogging.SADeprecationWarning)
 
 def against(*queries):
     """Boolean predicate, compares to testing database configuration.
@@ -208,18 +259,6 @@ def rowset(results):
 
     return set([tuple(row) for row in results])
 
-
-def squelch_deprecation(callable_):
-    _set_deprecation(callable_, False)
-
-def enable_deprecation(callable_):
-    _set_deprecation(callable_, True)
-
-def _set_deprecation(callable_, state):
-    if hasattr(callable_, 'im_func'):
-        callable_ = callable_.im_func
-    assert hasattr(callable_, 'warn'), 'Callable is not deprecated'
-    setattr(callable_, 'warn', state)
 
 class TestData(object):
     """Tracks SQL expressions as they are executed via an instrumented ExecutionContext."""
@@ -533,7 +572,7 @@ class TTestSuite(unittest.TestSuite):
     """A TestSuite with once per TestCase setUpAll() and tearDownAll()"""
 
     def __init__(self, tests=()):
-        if len(tests) >0 and isinstance(tests[0], PersistTest):
+        if len(tests) > 0 and isinstance(tests[0], PersistTest):
             self._initTest = tests[0]
         else:
             self._initTest = None
@@ -570,6 +609,7 @@ class TTestSuite(unittest.TestSuite):
                         _server_version())
                     return True
             try:
+                resetwarnings()
                 init.setUpAll()
             except:
                 # skip tests if global setup fails
@@ -578,9 +618,11 @@ class TTestSuite(unittest.TestSuite):
                     result.addError(test, ex)
                 return False
         try:
+            resetwarnings()
             return self.do_run(result)
         finally:
             try:
+                resetwarnings()
                 if init is not None:
                     init.tearDownAll()
             except:

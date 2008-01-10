@@ -132,7 +132,7 @@ class O2MCascadeTest(AssertMixin):
         """test that unloaded collections are still included in a delete-cascade by default."""
 
         sess = create_session()
-        u = sess.query(tables.User).get_by(user_name='ed')
+        u = sess.query(tables.User).filter_by(user_name='ed').one()
         # assert 'addresses' collection not loaded
         assert 'addresses' not in u.__dict__
         sess.delete(u)
@@ -185,6 +185,7 @@ class M2OCascadeTest(AssertMixin):
         clear_mappers()
         metadata.drop_all()
 
+    @testing.uses_deprecated('SessionContext')
     def setUpAll(self):
         global ctx, data, metadata, User, Pref, Extra
         ctx = SessionContext(create_session)
@@ -238,7 +239,7 @@ class M2OCascadeTest(AssertMixin):
 
     @testing.fails_on('maxdb')
     def testorphan(self):
-        jack = ctx.current.query(User).get_by(user_name='jack')
+        jack = ctx.current.query(User).filter_by(user_name='jack').one()
         p = jack.pref
         e = jack.pref.extra[0]
         jack.pref = None
@@ -248,7 +249,7 @@ class M2OCascadeTest(AssertMixin):
 
     @testing.fails_on('maxdb')
     def testorphan2(self):
-        jack = ctx.current.query(User).get_by(user_name='jack')
+        jack = ctx.current.query(User).filter_by(user_name='jack').one()
         p = jack.pref
         e = jack.pref.extra[0]
         ctx.current.clear()
@@ -265,13 +266,13 @@ class M2OCascadeTest(AssertMixin):
 
     def testorphan3(self):
         """test that double assignment doesn't accidentally reset the 'parent' flag."""
-        
-        jack = ctx.current.query(User).get_by(user_name='jack')
+
+        jack = ctx.current.query(User).filter_by(user_name='jack').one()
         newpref = Pref("newpref")
         jack.pref = newpref
         jack.pref = newpref
         ctx.current.flush()
-        
+
 
 
 class M2MCascadeTest(AssertMixin):

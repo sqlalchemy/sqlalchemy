@@ -64,11 +64,11 @@ class RelationTest(PersistTest):
 
         D.mapper = mapper(D, tbl_d)
         C.mapper = mapper(C, tbl_c, properties=dict(
-            d_rows=relation(D, private=True, backref="c_row"),
+            d_rows=relation(D, cascade="all, delete-orphan", backref="c_row"),
         ))
         B.mapper = mapper(B, tbl_b)
         A.mapper = mapper(A, tbl_a, properties=dict(
-            c_rows=relation(C, private=True, backref="a_row"),
+            c_rows=relation(C, cascade="all, delete-orphan", backref="a_row"),
         ))
         D.mapper.add_property("b_row", relation(B))
 
@@ -133,8 +133,11 @@ class RelationTest2(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
 
+    @testing.uses_deprecated('foreignkey option')
+    # TODO: fixme!
     def testexplicit(self):
         """test with mappers that have fairly explicit join conditions"""
+
         class Company(object):
             pass
         class Employee(object):
@@ -181,6 +184,8 @@ class RelationTest2(PersistTest):
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
 
+    @testing.uses_deprecated('foreignkey option')
+    # TODO: fixme!
     def testimplicit(self):
         """test with mappers that have the most minimal arguments"""
         class Company(object):
@@ -295,7 +300,7 @@ class RelationTest3(PersistTest):
         mapper(Page, pages, properties={
             'job': relation(Job, backref=backref('pages', cascade="all, delete-orphan", order_by=pages.c.pagename)),
             'currentversion': relation(PageVersion,
-                            foreignkey=pages.c.current_version,
+                            foreign_keys=[pages.c.current_version],
                             primaryjoin=and_(pages.c.jobno==pageversions.c.jobno,
                                              pages.c.pagename==pageversions.c.pagename,
                                              pages.c.current_version==pageversions.c.version),
@@ -348,14 +353,14 @@ class RelationTest3(PersistTest):
         s.flush()
 
         s.clear()
-        j = s.query(Job).get_by(jobno=u'somejob')
+        j = s.query(Job).filter_by(jobno=u'somejob').one()
         oldp = list(j.pages)
         j.pages = []
 
         s.flush()
 
         s.clear()
-        j = s.query(Job).get_by(jobno=u'somejob2')
+        j = s.query(Job).filter_by(jobno=u'somejob2').one()
         j.pages[1].current_version = 12
         s.delete(j)
         s.flush()

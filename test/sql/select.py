@@ -243,7 +243,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable ORDER BY (SELECT myothertable.otherid FROM myothertable WHERE mytable.myid = myothertable.otherid) DESC"
         )
 
-
+    @testing.uses_deprecated('scalar option')
     def test_scalar_select(self):
         try:
             s = select([table1.c.myid, table1.c.name]).as_scalar()
@@ -944,6 +944,7 @@ EXISTS (select yay from foo where boo = lar)",
             dialect=postgres.dialect()
             )
 
+    @testing.uses_deprecated('//get_params')
     def testbindparam(self):
         for (
              stmt,
@@ -1015,13 +1016,11 @@ EXISTS (select yay from foo where boo = lar)",
                 self.assert_compile(stmt, expected_positional_stmt, dialect=sqlite.dialect())
                 nonpositional = stmt.compile()
                 positional = stmt.compile(dialect=sqlite.dialect())
-                testing.squelch_deprecation(positional.get_params)
                 pp = positional.get_params()
                 assert [pp[k] for k in positional.positiontup] == expected_default_params_list
                 assert nonpositional.get_params(**test_param_dict) == expected_test_params_dict, "expected :%s got %s" % (str(expected_test_params_dict), str(nonpositional.get_params(**test_param_dict)))
                 pp = positional.get_params(**test_param_dict)
                 assert [pp[k] for k in positional.positiontup] == expected_test_params_list
-                testing.enable_deprecation(positional.get_params)
 
         # check that params() doesnt modify original statement
         s = select([table1], or_(table1.c.myid==bindparam('myid'), table2.c.otherid==bindparam('myotherid')))
@@ -1038,9 +1037,8 @@ EXISTS (select yay from foo where boo = lar)",
             "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable WHERE mytable.myid = "\
             ":mytable_myid_1) AS anon_1 FROM mytable WHERE mytable.myid = (SELECT mytable.myid FROM mytable WHERE mytable.myid = :mytable_myid_1)")
         positional = s2.compile(dialect=sqlite.dialect())
-        testing.squelch_deprecation(positional.get_params)
+
         pp = positional.get_params()
-        testing.enable_deprecation(positional.get_params)
         assert [pp[k] for k in positional.positiontup] == [12, 12]
 
         # check that conflicts with "unique" params are caught
@@ -1157,6 +1155,7 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
         self.assert_compile(select([table1], table1.c.myid.in_([])),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (CASE WHEN (mytable.myid IS NULL) THEN NULL ELSE 0 END = 1)")
 
+    @testing.uses_deprecated('passing in_')
     def test_in_deprecated_api(self):
         self.assert_compile(select([table1], table1.c.myid.in_('abc')),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid_1)")

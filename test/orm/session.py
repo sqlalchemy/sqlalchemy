@@ -215,7 +215,7 @@ class SessionTest(AssertMixin):
         sess.flush()
         sess.commit() # commit does nothing
         trans.rollback() # rolls back
-        assert len(sess.query(User).select()) == 0
+        assert len(sess.query(User).all()) == 0
         sess.close()
 
     @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
@@ -239,7 +239,7 @@ class SessionTest(AssertMixin):
             sess.rollback()
 
             trans.commit()
-            assert len(sess.query(User).select()) == 1
+            assert len(sess.query(User).all()) == 1
         except:
             conn.close()
             raise
@@ -304,7 +304,7 @@ class SessionTest(AssertMixin):
         sess.flush()
         sess.commit() # commit does nothing
         sess.rollback() # rolls back
-        assert len(sess.query(User).select()) == 0
+        assert len(sess.query(User).all()) == 0
         sess.close()
 
     @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
@@ -329,7 +329,7 @@ class SessionTest(AssertMixin):
         sess.rollback()
 
         sess.commit()
-        assert len(sess.query(User).select()) == 1
+        assert len(sess.query(User).all()) == 1
         sess.close()
 
     @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
@@ -352,7 +352,7 @@ class SessionTest(AssertMixin):
         sess.rollback()
 
         sess.commit()
-        assert len(sess.query(User).select()) == 1
+        assert len(sess.query(User).all()) == 1
         sess.close()
 
     @engines.close_open_connections
@@ -387,7 +387,7 @@ class SessionTest(AssertMixin):
             assert str(e) == "Session already has a Connection associated for the given Engine"
 
         transaction.rollback()
-        assert len(sess.query(User).select()) == 0
+        assert len(sess.query(User).all()) == 0
         sess.close()
 
     def test_bound_connection_transactional(self):

@@ -397,7 +397,7 @@ class SequenceTest(PersistTest):
         )
         sometable = Table( 'Manager', metadata,
                Column('obj_id', Integer, Sequence('obj_id_seq'), ),
-               Column('name', String, ),
+               Column('name', String(128)),
                Column('id', Integer, Sequence('Manager_id_seq', optional=True),
                       primary_key=True),
            )

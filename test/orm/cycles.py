@@ -4,11 +4,12 @@ from sqlalchemy.orm import *
 from testlib import *
 from testlib.tables import *
 
-"""test cyclical mapper relationships.  Many of the assertions are provided
-via running with postgres, which is strict about foreign keys.
+"""
+Tests cyclical mapper relationships.
 
-we might want to try an automated generate of much of this, all combos of T1<->T2, with 
-o2m or m2o between them, and a third T3 with o2m/m2o to one/both T1/T2.
+We might want to try an automated generate of much of this, all combos of
+T1<->T2, with o2m or m2o between them, and a third T3 with o2m/m2o to one/both
+T1/T2.
 """
 
 
@@ -18,13 +19,13 @@ class Tester(object):
         print repr(self) + " (%d)" % (id(self))
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, repr(self.data))
-        
+
 class SelfReferentialTest(AssertMixin):
     """tests a self-referential mapper, with an additional list of child objects."""
     def setUpAll(self):
         global t1, t2, metadata
         metadata = MetaData(testbase.db)
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
             Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('parent_c1', Integer, ForeignKey('t1.c1')),
             Column('data', String(20))
@@ -39,7 +40,7 @@ class SelfReferentialTest(AssertMixin):
         metadata.drop_all()
     def setUp(self):
         clear_mappers()
-    
+
     def testsingle(self):
         class C1(Tester):
             pass
@@ -54,13 +55,13 @@ class SelfReferentialTest(AssertMixin):
         sess.flush()
         sess.delete(a)
         sess.flush()
-    
+
     def testmanytooneonly(self):
         """test that the circular dependency sort can assemble a many-to-one dependency processor
         when only the object on the "many" side is actually in the list of modified objects.
         this requires that the circular sort add the other side of the relation into the UOWTransaction
         so that the dependency operation can be tacked onto it.
-        
+
         This also affects inheritance relationships since they rely upon circular sort as well.
         """
         class C1(Tester):
@@ -79,16 +80,16 @@ class SelfReferentialTest(AssertMixin):
         sess.save(c2)
         sess.flush()
         assert c2.parent_c1==c1.c1
-        
+
     def testcycle(self):
         class C1(Tester):
             pass
         class C2(Tester):
             pass
-        
+
         m1 = mapper(C1, t1, properties = {
             'c1s' : relation(C1, cascade="all"),
-            'c2s' : relation(mapper(C2, t2), private=True)
+            'c2s' : relation(mapper(C2, t2), cascade="all, delete-orphan")
         })
 
         a = C1('head c1')
@@ -101,7 +102,7 @@ class SelfReferentialTest(AssertMixin):
         sess = create_session( )
         sess.save(a)
         sess.flush()
-        
+
         sess.delete(a)
         sess.flush()
 
@@ -132,7 +133,7 @@ class SelfReferentialNoPKTest(AssertMixin):
         s.save(t1)
         s.flush()
         s.clear()
-        t = s.query(TT).get_by(id=t1.id)
+        t = s.query(TT).filter_by(id=t1.id).one()
         assert t.children[0].parent_uuid == t1.uuid
     def testlazyclause(self):
         class TT(object):
@@ -147,10 +148,10 @@ class SelfReferentialNoPKTest(AssertMixin):
         s.flush()
         s.clear()
 
-        t = s.query(TT).get_by(id=t2.id)
+        t = s.query(TT).filter_by(id=t2.id).one()
         assert t.uuid == t2.uuid
         assert t.parent.uuid == t1.uuid
-        
+
 class InheritTestOne(AssertMixin):
     def setUpAll(self):
         global parent, child1, child2, meta
@@ -203,12 +204,12 @@ class InheritTestOne(AssertMixin):
         session.flush()
         session.clear()
 
-        c1 = session.query(Child1).get_by(child1_data="qwerty")
+        c1 = session.query(Child1).filter_by(child1_data="qwerty").one()
         c2 = Child2()
         c2.child1 = c1
         c2.child2_data = "asdfgh"
         session.save(c2)
-        # the flush will fail if the UOW does not set up a many-to-one DP 
+        # the flush will fail if the UOW does not set up a many-to-one DP
         # attached to a task corresponding to c1, since "child1_id" is not nullable
         session.flush()
 
@@ -218,18 +219,18 @@ class InheritTestTwo(ORMTest):
     create duplicate entries in the final sort"""
     def define_tables(self, metadata):
         global a, b, c
-        a = Table('a', metadata, 
+        a = Table('a', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
             Column('cid', Integer, ForeignKey('c.id')),
             )
 
-        b = Table('b', metadata, 
+        b = Table('b', metadata,
             Column('id', Integer, ForeignKey("a.id"), primary_key=True),
             Column('data', String(30)),
             )
 
-        c = Table('c', metadata, 
+        c = Table('c', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
             Column('aid', Integer, ForeignKey('a.id', use_alter=True, name="foo")),
@@ -255,7 +256,7 @@ class InheritTestTwo(ORMTest):
         cobj = C()
         sess.save(cobj)
         sess.flush()
-        
+
 
 class BiDirectionalManyToOneTest(ORMTest):
     def define_tables(self, metadata):
@@ -276,12 +277,12 @@ class BiDirectionalManyToOneTest(ORMTest):
             Column('t1id', Integer, ForeignKey('t1.id'), nullable=False),
             Column('t2id', Integer, ForeignKey('t2.id'), nullable=False),
             )
-            
+
     def test_reflush(self):
         class T1(object):pass
         class T2(object):pass
         class T3(object):pass
-        
+
         mapper(T1, t1, properties={
             't2':relation(T2, primaryjoin=t1.c.t2id==t2.c.id)
         })
@@ -292,13 +293,13 @@ class BiDirectionalManyToOneTest(ORMTest):
             't1':relation(T1),
             't2':relation(T2)
         })
-        
+
         o1 = T1()
         o1.t2 = T2()
         sess = create_session()
         sess.save(o1)
         sess.flush()
-        
+
         # the bug here is that the dependency sort comes up with T1/T2 in a cycle, but there
         # are no T1/T2 objects to be saved.  therefore no "cyclical subtree" gets generated,
         # and one or the other of T1/T2 gets lost, and processors on T3 dont fire off.
@@ -308,7 +309,7 @@ class BiDirectionalManyToOneTest(ORMTest):
         o3.t2 = o1.t2
         sess.save(o3)
         sess.flush()
-        
+
 
     def test_reflush_2(self):
         """a variant on test_reflush()"""
@@ -345,19 +346,19 @@ class BiDirectionalManyToOneTest(ORMTest):
         o3b.t1 = o1a
         o3b.t2 = o2a
         sess.save(o3b)
-        
+
         o3 = T3()
         o3.t1 = o1
         o3.t2 = o1.t2
         sess.save(o3)
         sess.flush()
-            
+
 class BiDirectionalOneToManyTest(AssertMixin):
     """tests two mappers with a one-to-many relation to each other."""
     def setUpAll(self):
         global t1, t2, metadata
         metadata = MetaData(testbase.db)
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
             Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1'))
         )
@@ -373,7 +374,7 @@ class BiDirectionalOneToManyTest(AssertMixin):
     def testcycle(self):
         class C1(object):pass
         class C2(object):pass
-        
+
         m2 = mapper(C2, t2, properties={
             'c1s': relation(C1, primaryjoin=t2.c.c1==t1.c.c2, uselist=True)
         })
@@ -398,7 +399,7 @@ class BiDirectionalOneToManyTest2(AssertMixin):
     def setUpAll(self):
         global t1, t2, t3, metadata
         metadata = MetaData(testbase.db)
-        t1 = Table('t1', metadata, 
+        t1 = Table('t1', metadata,
             Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1')),
         )
@@ -406,25 +407,25 @@ class BiDirectionalOneToManyTest2(AssertMixin):
             Column('c1', Integer, Sequence('t2c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer, ForeignKey('t1.c1', use_alter=True, name='t1c1_fq')),
         )
-        t3 = Table('t1_data', metadata, 
+        t3 = Table('t1_data', metadata,
             Column('c1', Integer, Sequence('t1dc1_id_seq', optional=True), primary_key=True),
             Column('t1id', Integer, ForeignKey('t1.c1')),
             Column('data', String(20)))
         metadata.create_all()
-        
+
     def tearDown(self):
         clear_mappers()
 
     def tearDownAll(self):
         metadata.drop_all()
-        
+
     def testcycle(self):
         class C1(object):pass
         class C2(object):pass
         class C1Data(object):
             def __init__(self, data=None):
                 self.data = data
-                
+
         m2 = mapper(C2, t2, properties={
             'c1s': relation(C1, primaryjoin=t2.c.c1==t1.c.c2, uselist=True)
         })
@@ -432,7 +433,7 @@ class BiDirectionalOneToManyTest2(AssertMixin):
             'c2s' : relation(C2, primaryjoin=t1.c.c1==t2.c.c2, uselist=True),
             'data' : relation(mapper(C1Data, t3))
         })
-        
+
         a = C1()
         b = C2()
         c = C1()
@@ -460,7 +461,7 @@ class OneToManyManyToOneTest(AssertMixin):
     def setUpAll(self):
         global metadata
         metadata = MetaData(testbase.db)
-        global person    
+        global person
         global ball
         ball = Table('ball', metadata,
          Column('id', Integer, Sequence('ball_id_seq', optional=True), primary_key=True),
@@ -474,15 +475,15 @@ class OneToManyManyToOneTest(AssertMixin):
          )
 
         metadata.create_all()
-        
+
     def tearDownAll(self):
         metadata.drop_all()
-        
+
     def tearDown(self):
         clear_mappers()
 
     def testcycle(self):
-        """this test has a peculiar aspect in that it doesnt create as many dependent 
+        """this test has a peculiar aspect in that it doesnt create as many dependent
         relationships as the other tests, and revealed a small glitch in the circular dependency sorting."""
         class Person(object):
          pass
@@ -517,7 +518,7 @@ class OneToManyManyToOneTest(AssertMixin):
 
         Ball.mapper = mapper(Ball, ball)
         Person.mapper = mapper(Person, person, properties= dict(
-         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, remote_side=ball.c.person_id, post_update=False, private=True),
+         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, remote_side=ball.c.person_id, post_update=False, cascade="all, delete-orphan"),
          favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, remote_side=person.c.favorite_ball_id, post_update=True),
          )
         )
@@ -532,7 +533,7 @@ class OneToManyManyToOneTest(AssertMixin):
         sess = create_session()
         sess.save(b)
         sess.save(p)
-        
+
         self.assert_sql(testbase.db, lambda: sess.flush(), [
             (
                 "INSERT INTO person (favorite_ball_id, data) VALUES (:favorite_ball_id, :data)",
@@ -558,7 +559,7 @@ class OneToManyManyToOneTest(AssertMixin):
                 "UPDATE person SET favorite_ball_id=:favorite_ball_id WHERE person.id = :person_id",
                 lambda ctx:{'favorite_ball_id':p.favorateBall.id,'person_id':p.id}
             )
-        ], 
+        ],
         with_sequences= [
                 (
                     "INSERT INTO person (id, favorite_ball_id, data) VALUES (:id, :favorite_ball_id, :data)",
@@ -580,7 +581,7 @@ class OneToManyManyToOneTest(AssertMixin):
                     "INSERT INTO ball (id, person_id, data) VALUES (:id, :person_id, :data)",
                     lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id, 'data':'some data'}
                 ),
-                # heres the post update 
+                # heres the post update
                 (
                     "UPDATE person SET favorite_ball_id=:favorite_ball_id WHERE person.id = :person_id",
                     lambda ctx:{'favorite_ball_id':p.favorateBall.id,'person_id':p.id}
@@ -606,7 +607,7 @@ class OneToManyManyToOneTest(AssertMixin):
 
 
         ])
-        
+
     def testpostupdate_o2m(self):
         """tests a cycle between two rows, with a post_update on the one-to-many"""
         class Person(object):
@@ -619,7 +620,7 @@ class OneToManyManyToOneTest(AssertMixin):
 
         Ball.mapper = mapper(Ball, ball)
         Person.mapper = mapper(Person, person, properties= dict(
-         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, remote_side=ball.c.person_id, private=True, post_update=True, backref='person'),
+         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, remote_side=ball.c.person_id, cascade="all, delete-orphan", post_update=True, backref='person'),
          favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, remote_side=person.c.favorite_ball_id),
          )
         )
@@ -758,10 +759,10 @@ class SelfReferentialPostUpdateTest(AssertMixin):
         node_table.create()
     def tearDownAll(self):
         node_table.drop()
-    
+
     def testbasic(self):
         """test that post_update only fires off when needed.
-        
+
         this test case used to produce many superfluous update statements, particularly upon delete"""
         class Node(object):
             def __init__(self, path=''):
@@ -799,7 +800,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
                 parent.children[-1].next_sibling = child
                 child.prev_sibling = parent.children[-1]
             parent.children.append(child)
-        
+
         def remove_child(parent, child):
             child.parent = None
             node = child.next_sibling
@@ -860,9 +861,9 @@ class SelfReferentialPostUpdateTest2(AssertMixin):
     def tearDownAll(self):
         a_table.drop()
     def testbasic(self):
-        """test that post_update remembers to be involved in update operations as well, 
+        """test that post_update remembers to be involved in update operations as well,
         since it replaces the normal dependency processing completely [ticket:413]"""
-        class a(object): 
+        class a(object):
             def __init__(self, fui):
                 self.fui = fui
 
@@ -882,12 +883,11 @@ class SelfReferentialPostUpdateTest2(AssertMixin):
         # to fire off anyway
         session.save(f2)
         session.flush()
-        
+
         session.clear()
         f1 = session.query(a).get(f1.id)
         f2 = session.query(a).get(f2.id)
         assert f2.foo is f1
-        
-if __name__ == "__main__":
-    testbase.main()        
 
+if __name__ == "__main__":
+    testbase.main()

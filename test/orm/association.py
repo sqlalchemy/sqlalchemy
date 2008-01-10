@@ -5,6 +5,7 @@ from sqlalchemy.orm import *
 from testlib import *
 
 class AssociationTest(PersistTest):
+    @testing.uses_deprecated('association option')
     def setUpAll(self):
         global items, item_keywords, keywords, metadata, Item, Keyword, KeywordAssociation
         metadata = MetaData(testbase.db)
@@ -122,6 +123,7 @@ class AssociationTest(PersistTest):
         print loaded
         self.assert_(saved == loaded)
 
+    @testing.uses_deprecated('association option')
     def testdelete(self):
         sess = create_session()
         item1 = Item('item1')

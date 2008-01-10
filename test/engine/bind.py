@@ -2,7 +2,6 @@
 including the deprecated versions of these arguments"""
 
 import testbase
-import warnings
 from sqlalchemy import *
 from sqlalchemy import engine, exceptions
 from testlib import *
@@ -46,6 +45,7 @@ class BindTest(PersistTest):
             except exceptions.InvalidRequestError, e:
                 assert str(e)  == "This SchemaItem is not connected to any Engine or Connection."
 
+    @testing.uses_deprecated('//connect')
     def test_create_drop_bound(self):
 
         for meta in (MetaData,ThreadLocalMetaData):
@@ -69,7 +69,6 @@ class BindTest(PersistTest):
                 table = Table('test_table', metadata,
                     Column('foo', Integer))
 
-                testing.squelch_deprecation(metadata.connect)
                 metadata.connect(bind)
 
                 assert metadata.bind is table.bind is bind

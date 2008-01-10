@@ -275,7 +275,7 @@ class QueryTest(PersistTest):
         datetable.create()
         try:
             datetable.insert().execute(id=1, today=datetime.datetime(2006, 5, 12, 12, 0, 0))
-            s = select([datetable.alias('x').c.today], scalar=True)
+            s = select([datetable.alias('x').c.today]).as_scalar()
             s2 = select([datetable.c.id, s.label('somelabel')])
             #print s2.c.somelabel.type
             assert isinstance(s2.execute().fetchone()['somelabel'], datetime.datetime)

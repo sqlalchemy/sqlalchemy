@@ -11,7 +11,7 @@ from query import QueryTest
 class LazyTest(FixtureTest):
     keep_mappers = False
     keep_data = True
-    
+
     def test_basic(self):
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses), lazy=True)
@@ -20,10 +20,11 @@ class LazyTest(FixtureTest):
         q = sess.query(User)
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(users.c.id == 7).all()
 
+    @testing.uses_deprecated('SessionContext')
     def test_bindstosession(self):
         """test that lazy loaders use the mapper's contextual session if the parent instance
         is not in a session, and that an error is raised if no contextual session"""
-        
+
         from sqlalchemy.ext.sessioncontext import SessionContext
         ctx = SessionContext(create_session)
         m = mapper(User, users, properties = dict(
@@ -57,21 +58,21 @@ class LazyTest(FixtureTest):
         assert [
             User(id=7, addresses=[
                 Address(id=1)
-            ]), 
+            ]),
             User(id=8, addresses=[
                 Address(id=3, email_address='ed@bettyboop.com'),
                 Address(id=4, email_address='ed@lala.com'),
                 Address(id=2, email_address='ed@wood.com')
-            ]), 
+            ]),
             User(id=9, addresses=[
                 Address(id=5)
-            ]), 
+            ]),
             User(id=10, addresses=[])
         ] == q.all()
-        
+
     def test_orderby_secondary(self):
         """tests that a regular mapper select on a single table can order by a relation to a second table"""
-        
+
         mapper(Address, addresses)
 
         mapper(User, users, properties = dict(
@@ -84,13 +85,13 @@ class LazyTest(FixtureTest):
                 Address(id=2, email_address='ed@wood.com'),
                 Address(id=3, email_address='ed@bettyboop.com'),
                 Address(id=4, email_address='ed@lala.com'),
-            ]), 
+            ]),
             User(id=9, addresses=[
                 Address(id=5)
-            ]), 
+            ]),
             User(id=7, addresses=[
                 Address(id=1)
-            ]), 
+            ]),
         ] == l
 
     def test_orderby_desc(self):
@@ -103,15 +104,15 @@ class LazyTest(FixtureTest):
         assert [
             User(id=7, addresses=[
                 Address(id=1)
-            ]), 
+            ]),
             User(id=8, addresses=[
                 Address(id=2, email_address='ed@wood.com'),
                 Address(id=4, email_address='ed@lala.com'),
                 Address(id=3, email_address='ed@bettyboop.com'),
-            ]), 
+            ]),
             User(id=9, addresses=[
                 Address(id=5)
-            ]), 
+            ]),
             User(id=10, addresses=[])
         ] == sess.query(User).all()
 
@@ -128,10 +129,10 @@ class LazyTest(FixtureTest):
         assert getattr(User, 'addresses').hasparent(user.addresses[0], optimistic=True)
         assert not class_mapper(Address)._is_orphan(user.addresses[0])
 
-        
+
     def test_limit(self):
         """test limit operations combined with lazy-load relationships."""
-        
+
         mapper(Item, items)
         mapper(Order, orders, properties={
             'items':relation(Item, secondary=order_items, lazy=True)
@@ -147,7 +148,7 @@ class LazyTest(FixtureTest):
         if testing.against('maxdb', 'mssql'):
             l = q.limit(2).all()
             assert fixtures.user_all_result[:2] == l
-        else:        
+        else:
             l = q.limit(2).offset(1).all()
             assert fixtures.user_all_result[1:3] == l
 
@@ -185,7 +186,7 @@ class LazyTest(FixtureTest):
         closedorders = alias(orders, 'closedorders')
 
         mapper(Address, addresses)
-        
+
         mapper(User, users, properties = dict(
             addresses = relation(Address, lazy = True),
             open_orders = relation(mapper(Order, openorders, entity_name='open'), primaryjoin = and_(openorders.c.isopen == 1, users.c.id==openorders.c.user_id), lazy=True),
@@ -213,9 +214,9 @@ class LazyTest(FixtureTest):
                 closed_orders = [Order(id=2)]
             ),
             User(id=10)
-        
+
         ] == q.all()
-        
+
         sess = create_session()
         user = sess.query(User).get(7)
         assert [Order(id=1), Order(id=5)] == create_session().query(Order, entity_name='closed').with_parent(user, property='closed_orders').all()
@@ -227,7 +228,7 @@ class LazyTest(FixtureTest):
         mapper(Item, items, properties = dict(
                 keywords = relation(Keyword, secondary=item_keywords, lazy=True),
         ))
-        
+
         q = create_session().query(Item)
         assert fixtures.item_keyword_result == q.all()
 
@@ -244,21 +245,21 @@ class LazyTest(FixtureTest):
             mapper(Address, addresses, properties = dict(
                 user = relation(mapper(User, users), lazy=True, primaryjoin=pj)
             ))
-        
+
             sess = create_session()
-        
+
             # load address
             a1 = sess.query(Address).filter_by(email_address="ed@wood.com").one()
-        
+
             # load user that is attached to the address
             u1 = sess.query(User).get(8)
-        
+
             def go():
                 # lazy load of a1.user should get it from the session
                 assert a1.user is u1
             self.assert_sql_count(testbase.db, go, 0)
             clear_mappers()
-        
+
     def test_many_to_one(self):
         mapper(Address, addresses, properties = dict(
             user = relation(mapper(User, users), lazy=True)
@@ -268,11 +269,11 @@ class LazyTest(FixtureTest):
         a = q.filter(addresses.c.id==1).one()
 
         assert a.user is not None
-        
+
         u1 = sess.query(User).get(7)
-        
+
         assert a.user is u1
-    
+
     def test_backrefs_dont_lazyload(self):
         mapper(User, users, properties={
             'addresses':relation(Address, backref='user')
@@ -302,11 +303,11 @@ class LazyTest(FixtureTest):
             ad2.user = u1
             assert ad2.user is u1
         self.assert_sql_count(testbase.db, go, 0)
-        
+
         def go():
             assert ad2 in u1.addresses
         self.assert_sql_count(testbase.db, go, 1)
-            
+
 class M2OGetTest(FixtureTest):
     keep_mappers = False
     keep_data = True

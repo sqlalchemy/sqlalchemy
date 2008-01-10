@@ -42,7 +42,7 @@ class HistoryTest(ORMTest):
         s.commit()
 
         s.close()
-        u = s.query(m).select()[0]
+        u = s.query(m).all()[0]
         print u.addresses[0].user
 
 class VersioningTest(ORMTest):
@@ -184,7 +184,7 @@ class UnicodeTest(ORMTest):
         t1.t2s.append(Test2())
         Session.commit()
         Session.close()
-        t1 = Session.query(Test).get_by(id=t1.id)
+        t1 = Session.query(Test).filter_by(id=t1.id).one()
         assert len(t1.t2s) == 2
 
 class UnicodeSchemaTest(ORMTest):
@@ -269,13 +269,13 @@ class MutableTypesTest(ORMTest):
         f1.data = pickleable.Bar(4,5)
         Session.commit()
         Session.close()
-        f2 = Session.query(Foo).get_by(id=f1.id)
+        f2 = Session.query(Foo).filter_by(id=f1.id).one()
         assert f2.data == f1.data
         f2.data.y = 19
         assert f2 in Session.dirty
         Session.commit()
         Session.close()
-        f3 = Session.query(Foo).get_by(id=f1.id)
+        f3 = Session.query(Foo).filter_by(id=f1.id).one()
         print f2.data, f3.data
         assert f3.data != f1.data
         assert f3.data == pickleable.Bar(4, 19)
@@ -321,7 +321,7 @@ class MutableTypesTest(ORMTest):
 
         Session.close()
 
-        f2 = Session.query(Foo).get_by(id=f1.id)
+        f2 = Session.query(Foo).filter_by(id=f1.id).one()
 
         def go():
             Session.commit()
@@ -333,7 +333,7 @@ class MutableTypesTest(ORMTest):
         self.assert_sql_count(testbase.db, go, 1)
 
         Session.close()
-        f3 = Session.query(Foo).get_by(id=f1.id)
+        f3 = Session.query(Foo).filter_by(id=f1.id).one()
         print f2.data, f3.data
         assert (f3.data.x, f3.data.y) == (4,19)
 
@@ -1063,7 +1063,7 @@ class SaveTest(ORMTest):
         u.addresses.append(Address())
         Session.commit()
         Session.close()
-        ulist = Session.query(m1).select()
+        ulist = Session.query(m1).all()
         u1 = ulist[0]
         u1.user_name = 'newname'
         Session.commit()
@@ -1085,7 +1085,7 @@ class SaveTest(ORMTest):
         au = AddressUser()
         Session.commit()
         Session.close()
-        l = Session.query(AddressUser).selectone()
+        l = Session.query(AddressUser).one()
         self.assert_(l.user_id == au.user_id and l.address_id == au.address_id)
 
     def test_deferred(self):
@@ -1425,7 +1425,7 @@ class ManyToManyTest(ORMTest):
             item.item_name = elem['item_name']
             item.keywords = []
             if elem['keywords'][1]:
-                klist = Session.query(keywordmapper).select(keywords.c.name.in_([e['name'] for e in elem['keywords'][1]]))
+                klist = Session.query(keywordmapper).filter(keywords.c.name.in_([e['name'] for e in elem['keywords'][1]]))
             else:
                 klist = []
             khash = {}
@@ -1441,7 +1441,7 @@ class ManyToManyTest(ORMTest):
 
         Session.commit()
 
-        l = Session.query(m).select(items.c.item_name.in_([e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
+        l = Session.query(m).filter(items.c.item_name.in_([e['item_name'] for e in data[1:]])).order_by(items.c.item_name).all()
         self.assert_result(l, *data)
 
         objects[4].item_name = 'item4updated'

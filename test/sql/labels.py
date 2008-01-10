@@ -15,7 +15,7 @@ class LabelTypeTest(PersistTest):
             Column('col1', Integer),
             Column('col2', Float))
         assert isinstance(t.c.col1.label('hi').type, Integer)
-        assert isinstance(select([t.c.col2], scalar=True).label('lala').type, Float)
+        assert isinstance(select([t.c.col2]).as_scalar().label('lala').type, Float)
 
 class LongLabelsTest(SQLCompileTest):
     def setUpAll(self):

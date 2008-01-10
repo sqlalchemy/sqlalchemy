@@ -840,12 +840,9 @@ def deprecated(func, message=None, add_deprecation_to_docstring=True):
         warning = "Call to deprecated function %s" % func.__name__
 
     def func_with_warning(*args, **kwargs):
-        if self.warn:
-            warnings.warn(logging.SADeprecationWarning(warning),
-                          stacklevel=2)
+        warnings.warn(logging.SADeprecationWarning(warning),
+                      stacklevel=2)
         return func(*args, **kwargs)
-    func_with_warning.warn = True
-    self = func_with_warning
 
     doc = func.__doc__ is not None and func.__doc__ or ''
 
