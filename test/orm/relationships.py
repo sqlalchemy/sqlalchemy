@@ -133,9 +133,7 @@ class RelationTest2(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.uses_deprecated('foreignkey option')
-    # TODO: fixme!
-    def testexplicit(self):
+    def test_explicit(self):
         """test with mappers that have fairly explicit join conditions"""
 
         class Company(object):
@@ -155,7 +153,8 @@ class RelationTest2(PersistTest):
                     employee_tbl.c.emp_id==employee_tbl.c.reports_to_id,
                     employee_tbl.c.company_id==employee_tbl.c.company_id
                 ),
-                foreignkey=[employee_tbl.c.company_id, employee_tbl.c.emp_id],
+                remote_side=[employee_tbl.c.emp_id, employee_tbl.c.company_id],
+                foreign_keys=[employee_tbl.c.reports_to_id],
                 backref='employees')
         })
 
@@ -184,9 +183,7 @@ class RelationTest2(PersistTest):
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
 
-    @testing.uses_deprecated('foreignkey option')
-    # TODO: fixme!
-    def testimplicit(self):
+    def test_implicit(self):
         """test with mappers that have the most minimal arguments"""
         class Company(object):
             pass
@@ -201,7 +198,8 @@ class RelationTest2(PersistTest):
         mapper(Employee, employee_tbl, properties= {
             'company':relation(Company, backref='employees'),
             'reports_to':relation(Employee,
-                foreignkey=[employee_tbl.c.company_id, employee_tbl.c.emp_id],
+                remote_side=[employee_tbl.c.emp_id, employee_tbl.c.company_id],
+                foreign_keys=[employee_tbl.c.reports_to_id],
                 backref='employees')
         })
 
