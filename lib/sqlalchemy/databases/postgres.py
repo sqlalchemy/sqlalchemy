@@ -31,6 +31,10 @@ from sqlalchemy import types as sqltypes
 class PGInet(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "INET"
+    
+class PGMacAddr(sqltypes.TypeEngine):
+    def get_col_spec(self):
+        return "MACADDR"
 
 class PGNumeric(sqltypes.Numeric):
     def get_col_spec(self):
@@ -181,6 +185,7 @@ ischema_names = {
     'float' : PGFloat,
     'real' : PGFloat,
     'inet': PGInet,
+    'macaddr': PGMacAddr,
     'double precision' : PGFloat,
     'timestamp' : PGDateTime,
     'timestamp with time zone' : PGDateTime,

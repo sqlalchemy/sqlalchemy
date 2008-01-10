@@ -5,7 +5,10 @@ CHANGES
 0.4.2p4
 ------
 
-
+- dialects
+    - finally added PGMacAddr type to postgres 
+      [ticket:580]
+    
 0.4.2p3
 ------
 - general
