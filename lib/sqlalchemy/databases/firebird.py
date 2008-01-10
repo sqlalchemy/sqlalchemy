@@ -392,6 +392,8 @@ class FBDialect(default.DefaultDialect):
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):
             return 'Unable to complete network request to host' in str(e)
+        elif isinstance(e, self.dbapi.ProgrammingError):
+            return 'Invalid connection state' in str(e)
         else:
             return False
 
