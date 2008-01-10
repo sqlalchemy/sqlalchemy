@@ -8,6 +8,12 @@ CHANGES
     - proper error message is raised when trying to 
       access expired instance attributes with no session
       present
+    
+    - added a mapper() flag "eager_defaults"; when set to
+      True, defaults that are generated during an INSERT
+      or UPDATE operation are post-fetched immediately, 
+      instead of being deferred until later.  This mimics
+      the old 0.3 behavior.
       
 - dialects
     - finally added PGMacAddr type to postgres 

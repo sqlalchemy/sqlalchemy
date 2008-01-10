@@ -407,8 +407,12 @@ class SequenceTest(PersistTest):
     def testseqnonpk(self):
         """test sequences fire off as defaults on non-pk columns"""
 
-        sometable.insert().execute(name="somename")
-        sometable.insert().execute(name="someother")
+        result = sometable.insert().execute(name="somename")
+        assert 'id' in result.postfetch_cols()
+        
+        result = sometable.insert().execute(name="someother")
+        assert 'id' in result.postfetch_cols()
+
         sometable.insert().execute(
             {'name':'name3'},
             {'name':'name4'}
