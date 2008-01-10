@@ -129,8 +129,8 @@ class ReflectionTest(PersistTest):
             meta.drop_all()
 
     def test_override_create_fkcols(self):
-        """test that you can override columns and create new foreign keys to other reflected tables.
-        this is common with MySQL MyISAM tables."""
+        """test that you can override columns and create new foreign keys to other reflected tables
+        which have no foreign keys.  this is common with MySQL MyISAM tables."""
 
         meta = MetaData(testbase.db)
         users = Table('users', meta,
@@ -183,6 +183,7 @@ class ReflectionTest(PersistTest):
             assert len(a4.constraints) == 2
         finally:
             meta.drop_all()
+
 
     def test_unknown_types(self):
         meta = MetaData(testbase.db)
@@ -299,6 +300,25 @@ class ReflectionTest(PersistTest):
             assert [c.parent for c in a2.c.user_id.foreign_keys] == [a2.c.user_id]
             assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
             assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
+
+            meta2 = MetaData(testbase.db)
+            u2 = Table('users', meta2, 
+                Column('id', Integer, primary_key=True),
+                autoload=True)
+            a2 = Table('addresses', meta2,
+                Column('id', Integer, primary_key=True),
+                Column('user_id',Integer, ForeignKey('users.id')),
+                autoload=True)
+
+            assert len(a2.foreign_keys) == 1
+            assert len(a2.c.user_id.foreign_keys) == 1
+            assert len(a2.constraints) == 2
+            assert [c.parent for c in a2.foreign_keys] == [a2.c.user_id]
+            assert [c.parent for c in a2.c.user_id.foreign_keys] == [a2.c.user_id]
+            assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
+            assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
+
+
         finally:
             meta.drop_all()
 

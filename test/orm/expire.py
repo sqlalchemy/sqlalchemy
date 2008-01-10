@@ -64,6 +64,18 @@ class ExpireTest(FixtureTest):
         sess.clear()
         assert sess.query(User).get(7).name == 'somenewname'
     
+    def test_no_session(self):
+        mapper(User, users)
+        sess = create_session()
+        u = sess.query(User).get(7)
+        
+        sess.expire(u, attribute_names=['name'])
+        sess.expunge(u)
+        try:
+            u.name
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Instance <class 'testlib.fixtures.User'> is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed"
+        
     def test_expire_preserves_changes(self):
         """test that the expire load operation doesn't revert post-expire changes"""
         

@@ -4,7 +4,11 @@ CHANGES
 
 0.4.2p4
 ------
-
+- orm
+    - proper error message is raised when trying to 
+      access expired instance attributes with no session
+      present
+      
 - dialects
     - finally added PGMacAddr type to postgres 
       [ticket:580]

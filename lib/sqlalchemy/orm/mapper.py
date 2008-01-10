@@ -1529,8 +1529,16 @@ def _load_scalar_attributes(instance, attribute_names):
     global object_session
     if not object_session:
         from sqlalchemy.orm.session import object_session
+
+    session = object_session(instance)
+    mapper = object_mapper(instance)
+    if not session:
+        try:
+            session = mapper.get_session()
+        except exceptions.InvalidRequestError:
+            raise exceptions.InvalidRequestError("Instance %s is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed" % (instance.__class__))
         
-    if object_session(instance).query(object_mapper(instance))._get(instance._instance_key, refresh_instance=instance._state, only_load_props=attribute_names) is None:
+    if session.query(mapper)._get(instance._instance_key, refresh_instance=instance._state, only_load_props=attribute_names) is None:
         raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % instance_str(instance))
 
 def _state_mapper(state, entity_name=None):
