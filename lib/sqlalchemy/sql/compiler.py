@@ -79,7 +79,7 @@ OPERATORS =  {
     operators.concat_op : '||',
     operators.like_op : 'LIKE',
     operators.notlike_op : 'NOT LIKE',
-    operators.ilike_op : 'ILIKE',
+    operators.ilike_op : lambda x, y: "lower(%s) LIKE lower(%s)" % (x, y),
     operators.notilike_op : 'NOT ILIKE',
     operators.between_op : 'BETWEEN',
     operators.in_op : 'IN',

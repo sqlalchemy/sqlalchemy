@@ -451,6 +451,8 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         clause = (table1.c.myid == 12) & table1.c.myid.between(15, 20) & table1.c.myid.like('hoho')
         assert str(clause) == str(util.pickle.loads(util.pickle.dumps(clause)))
 
+        
+
     def testextracomparisonoperators(self):
         self.assert_compile(
             table1.select(table1.c.name.contains('jo')),
@@ -522,6 +524,11 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             select([table2.c.othername, func.count(table2.c.otherid)], group_by = [table2.c.othername], order_by = [table2.c.othername]),
             "SELECT myothertable.othername, count(myothertable.otherid) AS count_1 FROM myothertable GROUP BY myothertable.othername ORDER BY myothertable.othername"
         )
+
+    def testilike(self):
+        stmt = table1.select(table1.c.name.ilike('%something%'))
+        self.assert_compile(stmt, "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE lower(mytable.name) LIKE :mytable_name_1")
+        self.assert_compile(stmt, "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name ILIKE %(mytable_name_1)s", dialect=postgres.PGDialect())
 
     def testforupdate(self):
         self.assert_compile(table1.select(table1.c.myid==7, for_update=True), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid_1 FOR UPDATE")

@@ -28,7 +28,7 @@ class QueryTest(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
 
-    def testinsert(self):
+    def test_insert(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         assert users.count().scalar() == 1
 
@@ -40,7 +40,7 @@ class QueryTest(PersistTest):
         )
         assert users.select().execute().fetchall() == [(7, 'jack'), (8, 'ed'), (9, None)]
 
-    def testupdate(self):
+    def test_update(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         assert users.count().scalar() == 1
 
@@ -128,7 +128,7 @@ class QueryTest(PersistTest):
             finally:
                 table.drop()
 
-    def testrowiteration(self):
+    def test_row_iteration(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'ed')
         users.insert().execute(user_id = 9, user_name = 'fred')
@@ -147,6 +147,23 @@ class QueryTest(PersistTest):
         for row in r.fetchmany(size=2):
             l.append(row)
         self.assert_(len(l) == 2, "fetchmany(size=2) got %s rows" % len(l))
+
+    def test_ilike(self):
+        users.insert().execute(
+            {'user_id':1, 'user_name':'one'},
+            {'user_id':2, 'user_name':'TwO'},
+            {'user_id':3, 'user_name':'ONE'},
+            {'user_id':4, 'user_name':'OnE'},
+        )
+
+        self.assertEquals(select([users.c.user_id]).where(users.c.user_name.ilike('one')).execute().fetchall(), [(1, ), (3, ), (4, )])
+
+        self.assertEquals(select([users.c.user_id]).where(users.c.user_name.ilike('TWO')).execute().fetchall(), [(2, )])
+
+        if testing.against('postgres'):
+            self.assertEquals(select([users.c.user_id]).where(users.c.user_name.like('one')).execute().fetchall(), [(1, )])
+            self.assertEquals(select([users.c.user_id]).where(users.c.user_name.like('TWO')).execute().fetchall(), [])
+
 
     def test_compiled_execute(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
@@ -229,7 +246,7 @@ class QueryTest(PersistTest):
         a_eq(prep(r"(\:that$other)"), "(:that$other)")
         a_eq(prep(r".\:that$ :other."), ".:that$ ?.")
 
-    def testdelete(self):
+    def test_delete(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
         print repr(users.select().execute().fetchall())
@@ -238,7 +255,7 @@ class QueryTest(PersistTest):
 
         print repr(users.select().execute().fetchall())
 
-    def testselectlimit(self):
+    def test_select_limit(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
         users.insert().execute(user_id=3, user_name='ed')
@@ -251,7 +268,7 @@ class QueryTest(PersistTest):
 
     @testing.unsupported('mssql')
     @testing.fails_on('maxdb')
-    def testselectlimitoffset(self):
+    def test_select_limit_offset(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
         users.insert().execute(user_id=3, user_name='ed')
@@ -769,7 +786,9 @@ class JoinTest(PersistTest):
     def assertRows(self, statement, expected):
         """Execute a statement and assert that rows returned equal expected."""
 
-        found = exec_sorted(statement)
+        found = sorted([tuple(row)
+                       for row in statement.execute().fetchall()])
+                       
         self.assertEquals(found, sorted(expected))
 
     def test_join_x1(self):
@@ -1019,12 +1038,6 @@ class OperatorTest(PersistTest):
             [(2,),(1,)]
         )
 
-
-def exec_sorted(statement, *args, **kw):
-    """Executes a statement and returns a sorted list plain tuple rows."""
-
-    return sorted([tuple(row)
-                   for row in statement.execute(*args, **kw).fetchall()])
 
 
 if __name__ == "__main__":

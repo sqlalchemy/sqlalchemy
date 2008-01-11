@@ -4,6 +4,11 @@ CHANGES
 
 0.4.2p4
 ------
+- sql
+    - added "ilike()" operator to column operations. 
+      compiles to ILIKE on postgres, lower(x) LIKE lower(y)
+      on all others [ticket:727]
+      
 - orm
     - proper error message is raised when trying to access
       expired instance attributes with no session present

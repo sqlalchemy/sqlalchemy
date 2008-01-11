@@ -625,7 +625,8 @@ class PGCompiler(compiler.DefaultCompiler):
     operators = compiler.DefaultCompiler.operators.copy()
     operators.update(
         {
-            sql_operators.mod : '%%'
+            sql_operators.mod : '%%',
+            sql_operators.ilike_op: 'ILIKE'
         }
     )
 

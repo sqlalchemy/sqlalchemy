@@ -1113,6 +1113,9 @@ class ColumnOperators(Operators):
     def like(self, other):
         return self.operate(operators.like_op, other)
 
+    def ilike(self, other):
+        return self.operate(operators.ilike_op, other)
+
     def in_(self, *other):
         return self.operate(operators.in_op, other)
 
@@ -1205,6 +1208,7 @@ class _CompareMixin(ColumnOperators):
         operators.ge : (__compare, operators.lt),
         operators.eq : (__compare, operators.ne),
         operators.like_op : (__compare, operators.notlike_op),
+        operators.ilike_op : (__compare, operators.notilike_op),
     }
 
     def operate(self, op, *other):
