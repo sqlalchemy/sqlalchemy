@@ -262,7 +262,7 @@ class FBExecutionContext(default.DefaultExecutionContext):
 class FBDialect(default.DefaultDialect):
     """Firebird dialect"""
 
-    supports_sane_rowcount = True
+    supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
     max_identifier_length = 31
     preexecute_pk_sequences = True
