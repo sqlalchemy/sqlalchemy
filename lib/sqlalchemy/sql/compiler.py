@@ -80,7 +80,7 @@ OPERATORS =  {
     operators.like_op : 'LIKE',
     operators.notlike_op : 'NOT LIKE',
     operators.ilike_op : lambda x, y: "lower(%s) LIKE lower(%s)" % (x, y),
-    operators.notilike_op : 'NOT ILIKE',
+    operators.notilike_op : lambda x, y: "lower(%s) NOT LIKE lower(%s)" % (x, y),
     operators.between_op : 'BETWEEN',
     operators.in_op : 'IN',
     operators.notin_op : 'NOT IN',
