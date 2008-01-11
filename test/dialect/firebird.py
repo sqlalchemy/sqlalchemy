@@ -21,13 +21,22 @@ class DomainReflectionTest(AssertMixin):
         except ProgrammingError, e:
             if not "attempt to store duplicate value" in str(e):
                 raise e
+        con.execute('''CREATE GENERATOR gen_testtable_id''')
         con.execute('''CREATE TABLE testtable (question int_domain,
                                                answer str_domain DEFAULT 'no answer',
-                                               remark rem_domain,
+                                               remark rem_domain DEFAULT '',
                                                photo img_domain,
                                                d date,
                                                t time,
                                                dt timestamp)''')
+        con.execute('''ALTER TABLE testtable
+                       ADD CONSTRAINT testtable_pk PRIMARY KEY (question)''')
+        con.execute('''CREATE TRIGGER testtable_autoid FOR testtable
+                       ACTIVE BEFORE INSERT AS
+                       BEGIN
+                         IF (NEW.question IS NULL) THEN
+                           NEW.question = gen_id(gen_testtable_id, 1);
+                       END''')
 
     def tearDownAll(self):
         con = testbase.db.connect()
@@ -36,6 +45,7 @@ class DomainReflectionTest(AssertMixin):
         con.execute('DROP DOMAIN str_domain')
         con.execute('DROP DOMAIN rem_domain')
         con.execute('DROP DOMAIN img_domain')
+        con.execute('DROP GENERATOR gen_testtable_id')
 
     def test_table_is_reflected(self):
         metadata = MetaData(testbase.db)
@@ -43,11 +53,14 @@ class DomainReflectionTest(AssertMixin):
         self.assertEquals(set(table.columns.keys()),
                           set(['question', 'answer', 'remark', 'photo', 'd', 't', 'dt']),
                           "Columns of reflected table didn't equal expected columns")
+        self.assertEquals(table.c.question.primary_key, True)
+        self.assertEquals(table.c.question.sequence.name, 'gen_testtable_id')
         self.assertEquals(table.c.question.type.__class__, firebird.FBInteger)
         self.assertEquals(table.c.question.default.arg.text, "42")
         self.assertEquals(table.c.answer.type.__class__, firebird.FBString)
         self.assertEquals(table.c.answer.default.arg.text, "'no answer'")
         self.assertEquals(table.c.remark.type.__class__, firebird.FBText)
+        self.assertEquals(table.c.remark.default.arg.text, "''")
         self.assertEquals(table.c.photo.type.__class__, firebird.FBBinary)
         # The following assume a Dialect 3 database
         self.assertEquals(table.c.d.type.__class__, firebird.FBDate)

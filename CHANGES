@@ -20,6 +20,9 @@ CHANGES
 - dialects
     - finally added PGMacAddr type to postgres [ticket:580]
 
+    - reflect the sequence associated to a PK field (tipically
+      with a BEFORE INSERT trigger) under Firebird
+
 0.4.2p3
 ------
 - general
