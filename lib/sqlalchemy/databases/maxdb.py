@@ -56,7 +56,7 @@ integration- email the devel list if you're interested in working on
 this.
 """
 
-import datetime, itertools, re, warnings
+import datetime, itertools, re
 
 from sqlalchemy import exceptions, schema, sql, util
 from sqlalchemy.sql import operators as sql_operators, expression as sql_expr
@@ -632,9 +632,8 @@ class MaxDBDialect(default.DefaultDialect):
                 type_cls = ischema_names[col_type.lower()]
                 type_instance = type_cls(*type_args, **type_kw)
             except KeyError:
-                warnings.warn(RuntimeWarning(
-                    "Did not recognize type '%s' of column '%s'" %
-                    (col_type, name)))
+                util.warn("Did not recognize type '%s' of column '%s'" %
+                          (col_type, name))
                 type_instance = sqltypes.NullType
 
             col_kw = {'autoincrement': False}

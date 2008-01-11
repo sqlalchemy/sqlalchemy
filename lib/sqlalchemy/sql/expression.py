@@ -25,9 +25,7 @@ classes usually have few or no public methods and are less guaranteed
 to stay the same in future releases.
 """
 
-import re
-import datetime
-import warnings
+import datetime, re
 from itertools import chain
 from sqlalchemy import util, exceptions
 from sqlalchemy.sql import operators, visitors
@@ -1464,7 +1462,9 @@ class ColumnCollection(util.OrderedProperties):
             existing = self[key]
             if not existing.shares_lineage(value):
                 table = getattr(existing, 'table', None) and existing.table.description
-                warnings.warn(RuntimeWarning("Column %r on table %r being replaced by another column with the same key.  Consider use_labels for select() statements."  % (key, table)))
+                util.warn(("Column %r on table %r being replaced by another "
+                           "column with the same key.  Consider use_labels "
+                           "for select() statements.")  % (key, table))
         util.OrderedProperties.__setitem__(self, key, value)
 
     def remove(self, column):

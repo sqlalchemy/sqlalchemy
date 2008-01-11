@@ -5,12 +5,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import re
+import datetime, re, time
 
 from sqlalchemy import schema, exceptions, pool, PassiveDefault
 from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
-import datetime,time, warnings
 import sqlalchemy.util as util
 from sqlalchemy.sql import compiler
 
@@ -202,7 +201,11 @@ class SQLiteDialect(default.DefaultDialect):
         if self.dbapi is not None:
             sqlite_ver = self.dbapi.version_info
             if sqlite_ver < (2,1,'3'):
-                warnings.warn(RuntimeWarning("The installed version of pysqlite2 (%s) is out-dated, and will cause errors in some cases.  Version 2.1.3 or greater is recommended." % '.'.join([str(subver) for subver in sqlite_ver])))
+                util.warn(
+                    ("The installed version of pysqlite2 (%s) is out-dated "
+                     "and will cause errors in some cases.  Version 2.1.3 "
+                     "or greater is recommended.") %
+                    '.'.join([str(subver) for subver in sqlite_ver]))
         self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
 
     def dbapi(cls):
@@ -281,7 +284,8 @@ class SQLiteDialect(default.DefaultDialect):
             try:
                 coltype = ischema_names[coltype]
             except KeyError:
-                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
+                util.warn("Did not recognize type '%s' of column '%s'" %
+                          (coltype, name))
                 coltype = sqltypes.NullType
 
             if args is not None:

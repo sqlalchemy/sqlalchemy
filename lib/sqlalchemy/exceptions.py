@@ -21,7 +21,7 @@ class ArgumentError(SQLAlchemyError):
 
 class CompileError(SQLAlchemyError):
     """Raised when an error occurs during SQL compilation"""
-        
+
 
 class TimeoutError(SQLAlchemyError):
     """Raised when a connection pool times out on getting a connection."""
@@ -33,7 +33,7 @@ class ConcurrentModificationError(SQLAlchemyError):
 
 class CircularDependencyError(SQLAlchemyError):
     """Raised by topological sorts when a circular dependency is detected"""
-    
+
 
 class FlushError(SQLAlchemyError):
     """Raised when an invalid condition is detected upon a ``flush()``."""
@@ -47,9 +47,9 @@ class InvalidRequestError(SQLAlchemyError):
     """
 
 class UnmappedColumnError(InvalidRequestError):
-    """A mapper was asked to return mapped information about a column 
+    """A mapper was asked to return mapped information about a column
     which it does not map"""
-    
+
 class NoSuchTableError(InvalidRequestError):
     """SQLAlchemy was asked to load a table's definition from the
     database, but the table doesn't exist.
@@ -66,7 +66,7 @@ class NoSuchColumnError(KeyError, SQLAlchemyError):
 
 class DisconnectionError(SQLAlchemyError):
     """Raised within ``Pool`` when a disconnect is detected on a raw DB-API connection.
-    
+
     This error is consumed internally by a connection pool.  It can be raised by
     a ``PoolListener`` so that the host pool forces a disconnect.
     """
@@ -88,7 +88,7 @@ class DBAPIError(SQLAlchemyError):
     the exception object in the ``statement`` and ``params`` attributes.
 
     The wrapped exception object is available in the ``orig`` attribute.
-    Its type and properties are DB-API implementation specific.  
+    Its type and properties are DB-API implementation specific.
     """
 
     def instance(cls, statement, params, orig, connection_invalidated=False):
@@ -96,15 +96,15 @@ class DBAPIError(SQLAlchemyError):
         # DBAPIError didn't exist.
         if isinstance(orig, (KeyboardInterrupt, SystemExit)):
             return orig
-        
+
         if orig is not None:
             name, glob = orig.__class__.__name__, globals()
             if name in glob and issubclass(glob[name], DBAPIError):
                 cls = glob[name]
-            
+
         return cls(statement, params, orig, connection_invalidated)
     instance = classmethod(instance)
-    
+
     def __init__(self, statement, params, orig, connection_invalidated=False):
         try:
             text = str(orig)
@@ -150,3 +150,10 @@ class ProgrammingError(DatabaseError):
 
 class NotSupportedError(DatabaseError):
     """Wraps a DB-API NotSupportedError."""
+
+# Warnings
+class SADeprecationWarning(DeprecationWarning):
+    """Issued once per usage of a deprecated API."""
+
+class SAWarning(RuntimeWarning):
+    """Issued at runtime."""

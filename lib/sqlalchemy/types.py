@@ -23,7 +23,6 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
 
 import inspect
 import datetime as dt
-import warnings
 
 from sqlalchemy import exceptions
 from sqlalchemy.util import pickle, Decimal as _python_Decimal
@@ -370,7 +369,8 @@ class String(Concatenable, TypeEngine):
                     return value.encode(dialect.encoding)
                 elif assert_unicode and not isinstance(value, (unicode, NoneType)):
                     if assert_unicode == 'warn':
-                        warnings.warn(RuntimeWarning("Unicode type received non-unicode bind param value %r" % value))
+                        util.warn("Unicode type received non-unicode bind "
+                                  "param value %r" % value)
                         return value
                     else:
                         raise exceptions.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)

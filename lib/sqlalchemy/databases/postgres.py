@@ -19,7 +19,7 @@ parameter when creating the queries::
     postgres_returning=[empl.c.id, empl.c.salary]).execute().fetchall()
 """
 
-import re, random, warnings, string
+import random, re, string
 
 from sqlalchemy import sql, schema, exceptions, util
 from sqlalchemy.engine import base, default
@@ -511,7 +511,8 @@ class PGDialect(default.DefaultDialect):
                 if is_array:
                     coltype = PGArray(coltype)
             else:
-                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (attype, name)))
+                util.warn("Did not recognize type '%s' of column '%s'" %
+                          (attype, name))
                 coltype = sqltypes.NULLTYPE
 
             colargs= []

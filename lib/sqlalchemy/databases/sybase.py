@@ -22,7 +22,7 @@ Known issues / TODO:
  * Tested on 'Adaptive Server Anywhere 9' (version 9.0.1.1751)
 """
 
-import datetime, random, warnings, operator
+import datetime, operator, random
 
 from sqlalchemy import util, sql, schema, exceptions
 from sqlalchemy.sql import compiler, expression
@@ -593,7 +593,8 @@ class SybaseSQLDialect(default.DefaultDialect):
                 coltype = SybaseText()
             else:
                 if coltype is None:
-                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (type, name)))
+                    util.warn("Did not recognize type '%s' of column '%s'" %
+                              (type, name))
                     coltype = sqltypes.NULLTYPE
                 coltype = coltype(*args)
             colargs= []

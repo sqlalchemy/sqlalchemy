@@ -143,7 +143,7 @@ Notes page on the wiki at http://www.sqlalchemy.org is a good resource for
 timely information affecting MySQL in SQLAlchemy.
 """
 
-import re, datetime, inspect, warnings, sys
+import datetime, inspect, re, sys
 from array import array as _array
 
 from sqlalchemy import exceptions, logging, schema, sql, util
@@ -1695,10 +1695,10 @@ class MySQLDialect(default.DefaultDialect):
             if 'character_set' in opts:
                 return opts['character_set']
             else:
-                warnings.warn(RuntimeWarning(
+                util.warn(
                     "Could not detect the connection character set with this "
                     "combination of MySQL server and MySQL-python. "
-                    "MySQL-python >= 1.2.2 is recommended.  Assuming latin1."))
+                    "MySQL-python >= 1.2.2 is recommended.  Assuming latin1.")
                 return 'latin1'
 
     def _detect_casing(self, connection, charset=None):
@@ -2068,9 +2068,7 @@ class MySQLSchemaReflector(object):
             else:
                 type_, spec = self.parse_constraints(line)
                 if type_ is None:
-                    warnings.warn(
-                        RuntimeWarning("Unknown schema content: %s" %
-                                       repr(line)))
+                    util.warn("Unknown schema content: %r" % line)
                 elif type_ == 'key':
                     keys.append(spec)
                 elif type_ == 'constraint':
@@ -2098,12 +2096,10 @@ class MySQLSchemaReflector(object):
     def _add_column(self, table, line, charset, only=None):
         spec = self.parse_column(line)
         if not spec:
-            warnings.warn(RuntimeWarning(
-                "Unknown column definition %s" % line))
+            util.warn("Unknown column definition %r" % line)
             return
         if not spec['full']:
-            warnings.warn(RuntimeWarning(
-                "Incomplete reflection of column definition %s" % line))
+            util.warn("Incomplete reflection of column definition %r" % line)
 
         name, type_, args, notnull = \
               spec['name'], spec['coltype'], spec['arg'], spec['notnull']
@@ -2121,9 +2117,8 @@ class MySQLSchemaReflector(object):
         try:
             col_type = ischema_names[type_]
         except KeyError:
-            warnings.warn(RuntimeWarning(
-                "Did not recognize type '%s' of column '%s'" %
-                (type_, name)))
+            util.warn("Did not recognize type '%s' of column '%s'" %
+                      (type_, name))
             col_type = sqltypes.NullType
 
         # Column type positional arguments eg. varchar(32)

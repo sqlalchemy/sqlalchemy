@@ -37,7 +37,7 @@ Known issues / TODO:
 
 """
 
-import datetime, random, warnings, re, sys, operator
+import datetime, operator, random, re, sys
 
 from sqlalchemy import sql, schema, exceptions, util
 from sqlalchemy.sql import compiler, expression, operators as sqlops
@@ -585,7 +585,8 @@ class MSSQLDialect(default.DefaultDialect):
                 coltype = MSText()
             else:
                 if coltype is None:
-                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (type, name)))
+                    util.warn("Did not recognize type '%s' of column '%s'" %
+                              (type, name))
                     coltype = sqltypes.NULLTYPE
 
                 elif coltype in (MSNVarchar, AdoMSNVarchar) and charlen == -1:

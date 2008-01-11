@@ -5,27 +5,28 @@ CHANGES
 0.4.2p4
 ------
 - orm
-    - proper error message is raised when trying to 
-      access expired instance attributes with no session
-      present
-    
+    - proper error message is raised when trying to access
+      expired instance attributes with no session present
+
     - added a mapper() flag "eager_defaults"; when set to
-      True, defaults that are generated during an INSERT
-      or UPDATE operation are post-fetched immediately, 
-      instead of being deferred until later.  This mimics
-      the old 0.3 behavior.
-      
+      True, defaults that are generated during an INSERT or
+      UPDATE operation are post-fetched immediately, instead
+      of being deferred until later.  This mimics the old 0.3
+      behavior.
+
+- general
+    - warnings are now issued as type exceptions.SAWarning.
+
 - dialects
-    - finally added PGMacAddr type to postgres 
-      [ticket:580]
-    
+    - finally added PGMacAddr type to postgres [ticket:580]
+
 0.4.2p3
 ------
 - general
     - sub version numbering scheme changed to suite
       setuptools version number rules; easy_install -u
       should now get this version over 0.4.2.
-      
+
 - sql
     - Text type is properly exported now and does not
       raise a warning on DDL create; String types with no
@@ -34,7 +35,7 @@ CHANGES
 
     - new UnicodeText type is added, to specify an
       encoded, unlengthed Text type
-      
+
     - fixed bug in union() so that select() statements
       which don't derive from FromClause objects can be
       unioned
@@ -42,11 +43,11 @@ CHANGES
 - orm
     - fixed bug with session.dirty when using "mutable
       scalars" (such as PickleTypes)
-      
+
     - added a more descriptive error message when flushing
       on a relation() that has non-locally-mapped columns
       in its primary or secondary join condition
-      
+
 - dialects
     - Fixed reflection of mysql empty string column
       defaults.

@@ -6,7 +6,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import datetime, warnings
+import datetime
 
 from sqlalchemy import sql, schema, exceptions, pool
 from sqlalchemy.sql import compiler
@@ -311,7 +311,8 @@ class InfoDialect(default.DefaultDialect):
                 try:
                     coltype = ischema_names[coltype]
                 except KeyError:
-                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
+                    util.warn("Did not recognize type '%s' of column '%s'" %
+                              (coltype, name))
                     coltype = sqltypes.NULLTYPE
 
             colargs = []

@@ -88,7 +88,6 @@ connections are active, the following setting may alleviate the problem::
 
 
 import datetime
-import warnings
 
 from sqlalchemy import exceptions, schema, types as sqltypes, sql, util
 from sqlalchemy.engine import base, default
@@ -461,7 +460,8 @@ class FBDialect(default.DefaultDialect):
             # get the data types and lengths
             coltype = ischema_names.get(row['ftype'].rstrip())
             if coltype is None:
-                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (str(row['ftype']), name)))
+                util.warn("Did not recognize type '%s' of column '%s'" %
+                          (str(row['ftype']), name))
                 coltype = sqltypes.NULLTYPE
             else:
                 coltype = coltype(row)

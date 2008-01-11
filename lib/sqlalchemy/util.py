@@ -7,7 +7,7 @@
 import itertools, sys, warnings, sets, weakref
 import __builtin__
 
-from sqlalchemy import exceptions, logging
+from sqlalchemy import exceptions
 
 try:
     import thread, threading
@@ -45,9 +45,8 @@ try:
 except ImportError:
     def Decimal(arg):
         if Decimal.warn:
-            warnings.warn(RuntimeWarning(
-                "True Decimal types not available on this Python, "
-                "falling back to floats."))
+            warn("True Decimal types not available on this Python, "
+                "falling back to floats.")
             Decimal.warn = False
         return float(arg)
     Decimal.warn = True
@@ -241,7 +240,7 @@ def warn_exception(func, *args, **kwargs):
     try:
         return func(*args, **kwargs)
     except:
-        warnings.warn(RuntimeWarning("%s('%s') ignored" % sys.exc_info()[0:2]))
+        warn("%s('%s') ignored" % sys.exc_info()[0:2])
 
 class SimpleProperty(object):
     """A *default* property accessor."""
@@ -839,18 +838,35 @@ class ScopedRegistry(object):
     def _get_key(self):
         return self.scopefunc()
 
+def warn(msg):
+    if isinstance(msg, basestring):
+        warnings.warn(msg, exceptions.SAWarning, stacklevel=3)
+    else:
+        warnings.warn(msg, stacklevel=3)
 
 def warn_deprecated(msg):
-    warnings.warn(logging.SADeprecationWarning(msg), stacklevel=3)
+    warnings.warn(msg, exceptions.SADeprecationWarning, stacklevel=3)
 
 def deprecated(func, message=None, add_deprecation_to_docstring=True):
+    """Decorates a function and issues a deprecation warning on use.
+
+    message
+      If provided, issue message in the warning.  A sensible default
+      is used if not provided.
+
+    add_deprecation_to_docstring
+      Default True.  If False, the wrapped function's __doc__ is left
+      as-is.  If True, the 'message' is prepended to the docs if
+      provided, or sensible default if message is omitted.
+    """
+
     if message is not None:
         warning = message % dict(func=func.__name__)
     else:
         warning = "Call to deprecated function %s" % func.__name__
 
     def func_with_warning(*args, **kwargs):
-        warnings.warn(logging.SADeprecationWarning(warning),
+        warnings.warn(exceptions.SADeprecationWarning(warning),
                       stacklevel=2)
         return func(*args, **kwargs)
 

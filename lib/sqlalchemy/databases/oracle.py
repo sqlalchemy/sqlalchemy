@@ -5,15 +5,13 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import re, warnings, random
+import datetime, random, re
 
 from sqlalchemy import util, sql, schema, exceptions, logging
 from sqlalchemy.engine import default, base
 from sqlalchemy.sql import compiler, visitors
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
-
-import datetime
 
 
 class OracleNumeric(sqltypes.Numeric):
@@ -501,7 +499,8 @@ class OracleDialect(default.DefaultDialect):
                 try:
                     coltype = ischema_names[coltype]
                 except KeyError:
-                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, colname)))
+                    util.warn("Did not recognize type '%s' of column '%s'" %
+                              (coltype, colname))
                     coltype = sqltypes.NULLTYPE
 
             colargs = []
@@ -551,7 +550,10 @@ class OracleDialect(default.DefaultDialect):
                    fks[cons_name] = fk
                 if remote_table is None:
                     # ticket 363
-                    warnings.warn("Got 'None' querying 'table_name' from all_cons_columns%(dblink)s - does the user have proper rights to the table?" % {'dblink':dblink})
+                    util.warn(
+                        ("Got 'None' querying 'table_name' from "
+                         "all_cons_columns%(dblink)s - does the user have "
+                         "proper rights to the table?") % {'dblink':dblink})
                     continue
                 refspec = ".".join([remote_table, remote_column])
                 schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, owner=remote_owner)
