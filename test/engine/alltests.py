@@ -1,20 +1,20 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import unittest
 
 
 def suite():
     modules_to_test = (
         # connectivity, execution
-	    'engine.parseconnect',
-        'engine.pool', 
+        'engine.parseconnect',
+        'engine.pool',
         'engine.bind',
         'engine.reconnect',
         'engine.execute',
         'engine.metadata',
         'engine.transaction',
-        
+
         # schema/tables
-        'engine.reflection', 
+        'engine.reflection',
 
         )
     alltests = unittest.TestSuite()
@@ -26,6 +26,5 @@ def suite():
     return alltests
 
 
-
 if __name__ == '__main__':
-    testbase.main(suite())
+    testenv.main(suite())

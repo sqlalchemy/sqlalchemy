@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.sql import table, column, ClauseElement
 from sqlalchemy.sql.expression import  _clone
@@ -489,4 +489,4 @@ class SelectTest(SQLCompileTest):
         self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

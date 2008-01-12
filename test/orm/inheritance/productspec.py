@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from datetime import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -314,4 +314,4 @@ class InheritTest(ORMTest):
         assert orig == new  == '<Assembly a1> specification=[<SpecLine 1.0 <Detail d1>>] documents=[<Document doc1>, <RasterDocument doc2>]'
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

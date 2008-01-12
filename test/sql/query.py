@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exceptions, sql
@@ -10,7 +10,7 @@ class QueryTest(PersistTest):
 
     def setUpAll(self):
         global users, addresses, metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         users = Table('query_users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
@@ -119,7 +119,7 @@ class QueryTest(PersistTest):
                 {'id':'id1', 'bar':'hi'},
             ),
         ]:
-            if testbase.db.name in supported['unsupported']:
+            if testing.db.name in supported['unsupported']:
                 continue
             try:
                 table.create()
@@ -168,13 +168,13 @@ class QueryTest(PersistTest):
     def test_compiled_execute(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         s = select([users], users.c.user_id==bindparam('id')).compile()
-        c = testbase.db.connect()
+        c = testing.db.connect()
         assert c.execute(s, id=7).fetchall()[0]['user_id'] == 7
 
     def test_compiled_insert_execute(self):
         users.insert().compile().execute(user_id = 7, user_name = 'jack')
         s = select([users], users.c.user_id==bindparam('id')).compile()
-        c = testbase.db.connect()
+        c = testing.db.connect()
         assert c.execute(s, id=7).fetchall()[0]['user_id'] == 7
 
     def test_repeated_bindparams(self):
@@ -198,14 +198,14 @@ class QueryTest(PersistTest):
 
     def test_bindparams_in_params(self):
         """test that a _BindParamClause itself can be a key in the params dict"""
-        
+
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
 
         u = bindparam('userid')
         r = users.select(users.c.user_name==u).execute({u:'fred'}).fetchall()
         assert len(r) == 1
-        
+
     def test_bindparam_shortname(self):
         """test the 'shortname' field on BindParamClause."""
         users.insert().execute(user_id = 7, user_name = 'jack')
@@ -370,27 +370,27 @@ class QueryTest(PersistTest):
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
 
-        r = text("select * from query_users where user_id=2", bind=testbase.db).execute().fetchone()
+        r = text("select * from query_users where user_id=2", bind=testing.db).execute().fetchone()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
 
         # test slices
-        r = text("select * from query_addresses", bind=testbase.db).execute().fetchone()
+        r = text("select * from query_addresses", bind=testing.db).execute().fetchone()
         self.assert_(r[0:1] == (1,))
         self.assert_(r[1:] == (2, 'foo@bar.com'))
         self.assert_(r[:-1] == (1, 2))
-        
+
         # test a little sqlite weirdness - with the UNION, cols come back as "query_users.user_id" in cursor.description
         r = text("select query_users.user_id, query_users.user_name from query_users "
-            "UNION select query_users.user_id, query_users.user_name from query_users", bind=testbase.db).execute().fetchone()
+            "UNION select query_users.user_id, query_users.user_name from query_users", bind=testing.db).execute().fetchone()
         self.assert_(r['user_id']) == 1
         self.assert_(r['user_name']) == "john"
 
         # test using literal tablename.colname
-        r = text('select query_users.user_id AS "query_users.user_id", query_users.user_name AS "query_users.user_name" from query_users', bind=testbase.db).execute().fetchone()
+        r = text('select query_users.user_id AS "query_users.user_id", query_users.user_name AS "query_users.user_name" from query_users', bind=testing.db).execute().fetchone()
         self.assert_(r['query_users.user_id']) == 1
         self.assert_(r['query_users.user_name']) == "john"
-        
+
 
     def test_ambiguous_column(self):
         users.insert().execute(user_id=1, user_name='john')
@@ -428,10 +428,10 @@ class QueryTest(PersistTest):
         r = users.select().execute().fetchone()
         self.assertEqual(len(r), 2)
         r.close()
-        r = testbase.db.execute('select user_name, user_id from query_users', {}).fetchone()
+        r = testing.db.execute('select user_name, user_id from query_users', {}).fetchone()
         self.assertEqual(len(r), 2)
         r.close()
-        r = testbase.db.execute('select user_name from query_users', {}).fetchone()
+        r = testing.db.execute('select user_name from query_users', {}).fetchone()
         self.assertEqual(len(r), 1)
         r.close()
 
@@ -455,7 +455,7 @@ class QueryTest(PersistTest):
     def test_column_order_with_text_query(self):
         # should return values in query order
         users.insert().execute(user_id=1, user_name='foo')
-        r = testbase.db.execute('select user_name, user_id from query_users', {}).fetchone()
+        r = testing.db.execute('select user_name, user_id from query_users', {}).fetchone()
         self.assertEqual(r[0], 'foo')
         self.assertEqual(r[1], 1)
         self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])
@@ -463,7 +463,7 @@ class QueryTest(PersistTest):
 
     @testing.unsupported('oracle', 'firebird', 'maxdb')
     def test_column_accessor_shadow(self):
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         shadowed = Table('test_shadowed', meta,
                          Column('shadow_id', INT, primary_key = True),
                          Column('shadow_name', VARCHAR(20)),
@@ -548,7 +548,7 @@ class CompoundTest(PersistTest):
     different databases."""
     def setUpAll(self):
         global metadata, t1, t2, t3
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
             Column('col1', Integer, Sequence('t1pkseq'), primary_key=True),
             Column('col2', String(30)),
@@ -755,7 +755,7 @@ class JoinTest(PersistTest):
         global metadata
         global t1, t2, t3
 
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
                    Column('t1_id', Integer, primary_key=True),
                    Column('name', String(32)))
@@ -788,7 +788,7 @@ class JoinTest(PersistTest):
 
         found = sorted([tuple(row)
                        for row in statement.execute().fetchall()])
-                       
+
         self.assertEquals(found, sorted(expected))
 
     def test_join_x1(self):
@@ -1014,7 +1014,7 @@ class JoinTest(PersistTest):
 class OperatorTest(PersistTest):
     def setUpAll(self):
         global metadata, flds
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         flds = Table('flds', metadata,
             Column('idcol', Integer, Sequence('t1pkseq'), primary_key=True),
             Column('intcol', Integer),
@@ -1041,4 +1041,4 @@ class OperatorTest(PersistTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

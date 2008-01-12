@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import exceptions, util
 from sqlalchemy.orm import *
@@ -191,7 +191,7 @@ class GetTest(ORMTest):
                     assert sess.query(Bar).get(bl.id) == bl
                     assert sess.query(Blub).get(bl.id) == bl
 
-                self.assert_sql_count(testbase.db, go, 0)
+                self.assert_sql_count(testing.db, go, 0)
             else:
                 # this is testing the 'wrong' behavior of using get()
                 # polymorphically with mappers that are not configured to be
@@ -213,7 +213,7 @@ class GetTest(ORMTest):
 
                     assert sess.query(Blub).get(bl.id) == bl
 
-                self.assert_sql_count(testbase.db, go, 3)
+                self.assert_sql_count(testing.db, go, 3)
 
         test_get.__name__ = name
         return test_get
@@ -647,4 +647,4 @@ class SyncCompileTest(ORMTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

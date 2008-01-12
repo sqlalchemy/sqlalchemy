@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import sql
 from sqlalchemy.sql import compiler
@@ -10,7 +10,7 @@ class QuoteTest(PersistTest):
         # such as:  spaces, quote characters, punctuation characters, set up tests for those as
         # well.
         global table1, table2, table3
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table1 = Table('WorstCase1', metadata,
             Column('lowercase', Integer, primary_key=True),
             Column('UPPERCASE', Integer),
@@ -22,15 +22,15 @@ class QuoteTest(PersistTest):
             Column('MixedCase', Integer))
         table1.create()
         table2.create()
-    
+
     def tearDown(self):
         table1.delete().execute()
         table2.delete().execute()
-        
+
     def tearDownAll(self):
         table1.drop()
         table2.drop()
-        
+
     def testbasic(self):
         table1.insert().execute({'lowercase':1,'UPPERCASE':2,'MixedCase':3,'a123':4},
                 {'lowercase':2,'UPPERCASE':2,'MixedCase':3,'a123':4},
@@ -38,17 +38,17 @@ class QuoteTest(PersistTest):
         table2.insert().execute({'d123':1,'u123':2,'MixedCase':3},
                 {'d123':2,'u123':2,'MixedCase':3},
                 {'d123':4,'u123':3,'MixedCase':2})
-        
+
         res1 = select([table1.c.lowercase, table1.c.UPPERCASE, table1.c.MixedCase, table1.c.a123]).execute().fetchall()
         print res1
         assert(res1==[(1,2,3,4),(2,2,3,4),(4,3,2,1)])
-        
+
         res2 = select([table2.c.d123, table2.c.u123, table2.c.MixedCase]).execute().fetchall()
         print res2
         assert(res2==[(1,2,3),(2,2,3),(4,3,2)])
-        
+
     def testreflect(self):
-        meta2 = MetaData(testbase.db)
+        meta2 = MetaData(testing.db)
         t2 = Table('WorstCase2', meta2, autoload=True, quote=True)
         assert 'MixedCase' in t2.c
 
@@ -59,31 +59,31 @@ class QuoteTest(PersistTest):
         table2.insert().execute({'d123':1,'u123':2,'MixedCase':3},
                 {'d123':2,'u123':2,'MixedCase':3},
                 {'d123':4,'u123':3,'MixedCase':2})
-        
+
         res1 = select([table1.c.lowercase, table1.c.UPPERCASE, table1.c.MixedCase, table1.c.a123], use_labels=True).execute().fetchall()
         print res1
         assert(res1==[(1,2,3,4),(2,2,3,4),(4,3,2,1)])
-        
+
         res2 = select([table2.c.d123, table2.c.u123, table2.c.MixedCase], use_labels=True).execute().fetchall()
         print res2
         assert(res2==[(1,2,3),(2,2,3),(4,3,2)])
-    
-    @testing.unsupported('oracle') 
+
+    @testing.unsupported('oracle')
     def testlabels(self):
         """test the quoting of labels.
-        
+
         if labels arent quoted, a query in postgres in particular will fail since it produces:
-        
-        SELECT LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC" 
+
+        SELECT LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC"
         FROM (SELECT DISTINCT "WorstCase1".lowercase AS lowercase, "WorstCase1"."UPPERCASE" AS UPPERCASE, "WorstCase1"."MixedCase" AS MixedCase, "WorstCase1"."ASC" AS ASC \nFROM "WorstCase1") AS LaLa
-        
+
         where the "UPPERCASE" column of "LaLa" doesnt exist.
         """
         x = table1.select(distinct=True).alias("LaLa").select().scalar()
 
     def testlabels2(self):
         metadata = MetaData()
-        table = Table("ImATable", metadata, 
+        table = Table("ImATable", metadata,
             Column("col1", Integer))
         x = select([table.c.col1.label("ImATable_col1")]).alias("SomeAlias")
         assert str(select([x.c.ImATable_col1])) == '''SELECT "SomeAlias"."ImATable_col1" \nFROM (SELECT "ImATable".col1 AS "ImATable_col1" \nFROM "ImATable") AS "SomeAlias"'''
@@ -92,11 +92,11 @@ class QuoteTest(PersistTest):
         x = select([sql.literal_column("'foo'").label("somelabel")], from_obj=[table]).alias("AnAlias")
         x = x.select()
         assert str(x) == '''SELECT "AnAlias".somelabel \nFROM (SELECT 'foo' AS somelabel \nFROM "ImATable") AS "AnAlias"'''
-        
+
         x = select([sql.literal_column("'FooCol'").label("SomeLabel")], from_obj=[table])
         x = x.select()
         assert str(x) == '''SELECT "SomeLabel" \nFROM (SELECT 'FooCol' AS "SomeLabel" \nFROM "ImATable")'''
-   
+
 
 class PreparerTest(PersistTest):
     """Test the db-agnostic quoting services of IdentifierPreparer."""
@@ -147,6 +147,6 @@ class PreparerTest(PersistTest):
         a_eq(unformat('foo.`bar`'), ['foo', 'bar'])
         a_eq(unformat('`foo`.bar'), ['foo', 'bar'])
         a_eq(unformat('`foo`.`b``a``r`.`baz`'), ['foo', 'b`a`r', 'baz'])
-        
+
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

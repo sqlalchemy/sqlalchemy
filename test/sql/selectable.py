@@ -2,7 +2,7 @@
 useable primary keys and foreign keys.  Full relational algebra depends on
 every selectable unit behaving nicely with others.."""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 
@@ -309,4 +309,4 @@ class DerivedTest(AssertMixin):
         assert not t2.select().alias('foo').is_derived_from(t1)
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

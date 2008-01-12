@@ -1,6 +1,6 @@
 """SQLite-specific tests."""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exceptions
@@ -12,7 +12,7 @@ class TestTypes(AssertMixin):
     __only_on__ = 'sqlite'
 
     def test_date(self):
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         t = Table('testdate', meta,
                   Column('id', Integer, primary_key=True),
                   Column('adate', Date),
@@ -44,7 +44,7 @@ class DialectTest(AssertMixin):
         is updated in the future.
         """
 
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         t = Table('reserved', meta,
                   Column('safe', Integer),
                   Column('true', Integer),
@@ -62,12 +62,12 @@ class DialectTest(AssertMixin):
         """Tests autoload of tables created with quoted column names."""
 
         # This is quirky in sqlite.
-        testbase.db.execute("""CREATE TABLE "django_content_type" (
+        testing.db.execute("""CREATE TABLE "django_content_type" (
             "id" integer NOT NULL PRIMARY KEY,
             "django_stuff" text NULL
         )
         """)
-        testbase.db.execute("""
+        testing.db.execute("""
         CREATE TABLE "django_admin_log" (
             "id" integer NOT NULL PRIMARY KEY,
             "action_time" datetime NOT NULL,
@@ -77,14 +77,14 @@ class DialectTest(AssertMixin):
         )
         """)
         try:
-            meta = MetaData(testbase.db)
+            meta = MetaData(testing.db)
             table1 = Table("django_admin_log", meta, autoload=True)
             table2 = Table("django_content_type", meta, autoload=True)
             j = table1.join(table2)
             assert j.onclause == table1.c.content_type_id==table2.c.id
         finally:
-            testbase.db.execute("drop table django_admin_log")
-            testbase.db.execute("drop table django_content_type")
+            testing.db.execute("drop table django_admin_log")
+            testing.db.execute("drop table django_content_type")
 
 
 class InsertTest(AssertMixin):
@@ -112,7 +112,7 @@ class InsertTest(AssertMixin):
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk1(self):
         self._test_empty_insert(
-            Table('a', MetaData(testbase.db),
+            Table('a', MetaData(testing.db),
                   Column('id', Integer, primary_key=True)))
 
     @testing.exclude('sqlite', '<', (3, 4))
@@ -120,7 +120,7 @@ class InsertTest(AssertMixin):
         self.assertRaises(
             exceptions.DBAPIError,
             self._test_empty_insert,
-            Table('b', MetaData(testbase.db),
+            Table('b', MetaData(testing.db),
                   Column('x', Integer, primary_key=True),
                   Column('y', Integer, primary_key=True)))
 
@@ -129,7 +129,7 @@ class InsertTest(AssertMixin):
         self.assertRaises(
             exceptions.DBAPIError,
             self._test_empty_insert,
-            Table('c', MetaData(testbase.db),
+            Table('c', MetaData(testing.db),
                   Column('x', Integer, primary_key=True),
                   Column('y', Integer, PassiveDefault('123'),
                          primary_key=True)))
@@ -137,20 +137,20 @@ class InsertTest(AssertMixin):
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk4(self):
         self._test_empty_insert(
-            Table('d', MetaData(testbase.db),
+            Table('d', MetaData(testing.db),
                   Column('x', Integer, primary_key=True),
                   Column('y', Integer, PassiveDefault('123'))))
 
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_nopk1(self):
         self._test_empty_insert(
-            Table('e', MetaData(testbase.db),
+            Table('e', MetaData(testing.db),
                   Column('id', Integer)))
 
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_nopk2(self):
         self._test_empty_insert(
-            Table('f', MetaData(testbase.db),
+            Table('f', MetaData(testing.db),
                   Column('x', Integer),
                   Column('y', Integer)))
 
@@ -171,4 +171,4 @@ class InsertTest(AssertMixin):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

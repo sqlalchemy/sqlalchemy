@@ -1,13 +1,13 @@
-import testbase
-
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.orderinglist import *
 from testlib import *
 
+
 metadata = None
 
-# order in whole steps 
+# order in whole steps
 def step_numbering(step):
     def f(index, collection):
         return step * index
@@ -51,7 +51,7 @@ class OrderingListTest(PersistTest):
 
         global metadata, slides_table, bullets_table, Slide, Bullet
 
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         slides_table = Table('test_Slides', metadata,
                              Column('id', Integer, primary_key=True),
                              Column('name', String(128)))
@@ -140,7 +140,7 @@ class OrderingListTest(PersistTest):
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 4)
-    
+
         titles = ['s1/b1','s1/b2','s1/b100','s1/b4']
         found = [b.text for b in srt.bullets]
 
@@ -174,7 +174,7 @@ class OrderingListTest(PersistTest):
         self.assert_(s1.bullets[0].position == 1)
         self.assert_(s1.bullets[1].position == 2)
         self.assert_(s1.bullets[2].position == 3)
-            
+
         s1.bullets.append(Bullet('s1/b4'))
         self.assert_(s1.bullets[0].position == 1)
         self.assert_(s1.bullets[1].position == 2)
@@ -204,7 +204,7 @@ class OrderingListTest(PersistTest):
         found = [b.text for b in srt.bullets]
 
         self.assert_(titles == found)
-                
+
     def test_insert(self):
         self._setup(ordering_list('position'))
 
@@ -218,7 +218,7 @@ class OrderingListTest(PersistTest):
         self.assert_(s1.bullets[1].position == 1)
         self.assert_(s1.bullets[2].position == 2)
         self.assert_(s1.bullets[3].position == 3)
-    
+
         s1.bullets.insert(2, Bullet('insert_at_2'))
         self.assert_(s1.bullets[0].position == 0)
         self.assert_(s1.bullets[1].position == 1)
@@ -247,7 +247,7 @@ class OrderingListTest(PersistTest):
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 6)
-    
+
         texts = ['1','2','insert_at_2','3','4','999']
         found = [b.text for b in srt.bullets]
 
@@ -290,7 +290,7 @@ class OrderingListTest(PersistTest):
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 3)
-    
+
         texts = ['1', '6', '3']
         for i, text in enumerate(texts):
             self.assert_(srt.bullets[i].position == i)
@@ -325,13 +325,13 @@ class OrderingListTest(PersistTest):
         session.clear()
 
         srt = session.query(Slide).get(id)
-    
+
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 3)
 
         self.assert_(srt.bullets[1].text == 'new 2')
         self.assert_(srt.bullets[2].text == '3')
-    
+
     def test_funky_ordering(self):
         class Pos(object):
             def __init__(self):
@@ -365,7 +365,7 @@ class OrderingListTest(PersistTest):
         fibbed.insert(2, Pos())
         fibbed.insert(4, Pos())
         fibbed.insert(6, Pos())
-    
+
         for li, pos in (0,1), (1,2), (2,3), (3,5), (4,8), (5,13), (6,21), (7,34):
             self.assert_(fibbed[li].position == pos)
 
@@ -381,5 +381,6 @@ class OrderingListTest(PersistTest):
         for li, pos in (0,'A'), (1,'B'), (2,'C'), (3,'D'):
             self.assert_(alpha[li].position == pos)
 
+
 if __name__ == "__main__":
-    testbase.main()        
+    testenv.main()

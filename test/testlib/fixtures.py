@@ -1,4 +1,5 @@
-import testbase
+# can't be imported until the path is setup; be sure to configure
+# first if covering.
 from sqlalchemy import *
 from sqlalchemy import util
 from testlib import *
@@ -8,22 +9,22 @@ class Base(object):
     def __init__(self, **kwargs):
         for k in kwargs:
             setattr(self, k, kwargs[k])
-    
+
     # TODO: add recursion checks to this
     def __repr__(self):
         return "%s(%s)" % (
-            (self.__class__.__name__), 
+            (self.__class__.__name__),
             ','.join(["%s=%s" % (key, repr(getattr(self, key))) for key in self.__dict__ if not key.startswith('_')])
         )
-    
+
     def __ne__(self, other):
         return not self.__eq__(other)
-        
+
     def __eq__(self, other):
         """'passively' compare this object to another.
-        
+
         only look at attributes that are present on the source object.
-        
+
         """
 
         if self in _recursion_stack:
@@ -40,7 +41,7 @@ class Base(object):
             else:
                 a = self
                 b = other
-            
+
             for attr in a.__dict__.keys():
                 if attr[0] == '_':
                     continue
@@ -75,7 +76,7 @@ class Base(object):
                 return True
         finally:
             _recursion_stack.remove(self)
-            
+
 class User(Base):pass
 class Order(Base):pass
 class Item(Base):pass
@@ -97,18 +98,18 @@ orders = Table('orders', metadata,
     Column('isopen', Integer)
     )
 
-addresses = Table('addresses', metadata, 
+addresses = Table('addresses', metadata,
     Column('id', Integer, primary_key=True),
     Column('user_id', None, ForeignKey('users.id')),
     Column('email_address', String(50), nullable=False))
 
-dingalings = Table("dingalings", metadata, 
+dingalings = Table("dingalings", metadata,
     Column('id', Integer, primary_key=True),
     Column('address_id', None, ForeignKey('addresses.id')),
     Column('data', String(30))
     )
-    
-items = Table('items', metadata, 
+
+items = Table('items', metadata,
     Column('id', Integer, primary_key=True),
     Column('description', String(30), nullable=False)
     )
@@ -117,11 +118,11 @@ order_items = Table('order_items', metadata,
     Column('item_id', None, ForeignKey('items.id')),
     Column('order_id', None, ForeignKey('orders.id')))
 
-item_keywords = Table('item_keywords', metadata, 
+item_keywords = Table('item_keywords', metadata,
     Column('item_id', None, ForeignKey('items.id')),
     Column('keyword_id', None, ForeignKey('keywords.id')))
 
-keywords = Table('keywords', metadata, 
+keywords = Table('keywords', metadata,
     Column('id', Integer, primary_key=True),
     Column('name', String(30), nullable=False)
     )
@@ -189,7 +190,7 @@ def install_fixture_data():
 
     # this many-to-many table has the keywords inserted
     # in primary key order, to appease the unit tests.
-    # this is because postgres, oracle, and sqlite all support 
+    # this is because postgres, oracle, and sqlite all support
     # true insert-order row id, but of course our pal MySQL does not,
     # so the best it can do is order by, well something, so there you go.
     item_keywords.insert().execute(
@@ -206,35 +207,35 @@ def install_fixture_data():
 
 class FixtureTest(ORMTest):
     refresh_data = False
-    
+
     def setUpAll(self):
         super(FixtureTest, self).setUpAll()
         if self.keep_data:
             install_fixture_data()
-    
+
     def setUp(self):
         if self.refresh_data:
             install_fixture_data()
-            
+
     def define_tables(self, meta):
         pass
 FixtureTest.metadata = metadata
-    
+
 class Fixtures(object):
     @property
     def user_address_result(self):
         return [
             User(id=7, addresses=[
                 Address(id=1)
-            ]), 
+            ]),
             User(id=8, addresses=[
                 Address(id=2, email_address='ed@wood.com'),
                 Address(id=3, email_address='ed@bettyboop.com'),
                 Address(id=4, email_address='ed@lala.com'),
-            ]), 
+            ]),
             User(id=9, addresses=[
                 Address(id=5)
-            ]), 
+            ]),
             User(id=10, addresses=[])
         ]
 
@@ -247,18 +248,18 @@ class Fixtures(object):
                 Order(description='order 1', items=[Item(description='item 1'), Item(description='item 2'), Item(description='item 3')]),
                 Order(description='order 3'),
                 Order(description='order 5'),
-            ]), 
+            ]),
             User(id=8, addresses=[
                 Address(id=2),
                 Address(id=3),
                 Address(id=4)
-            ]), 
+            ]),
             User(id=9, addresses=[
                 Address(id=5)
             ], orders=[
                 Order(description='order 2', items=[Item(description='item 1'), Item(description='item 2'), Item(description='item 3')]),
                 Order(description='order 4', items=[Item(description='item 1'), Item(description='item 5')]),
-            ]), 
+            ]),
             User(id=10, addresses=[])
         ]
 
@@ -276,8 +277,8 @@ class Fixtures(object):
                 Order(id=4, items=[Item(id=1), Item(id=5)]),
             ]),
             User(id=10)
-        ] 
-    
+        ]
+
     @property
     def item_keyword_result(self):
         return [

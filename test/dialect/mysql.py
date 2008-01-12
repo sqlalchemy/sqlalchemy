@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import sets
 from sqlalchemy import *
 from sqlalchemy import sql, exceptions
@@ -12,7 +12,7 @@ class TypesTest(AssertMixin):
     __only_on__ = 'mysql'
 
     def test_basic(self):
-        meta1 = MetaData(testbase.db)
+        meta1 = MetaData(testing.db)
         table = Table(
             'mysql_types', meta1,
             Column('id', Integer, primary_key=True),
@@ -28,7 +28,7 @@ class TypesTest(AssertMixin):
         try:
             table.drop(checkfirst=True)
             table.create()
-            meta2 = MetaData(testbase.db)
+            meta2 = MetaData(testing.db)
             t2 = Table('mysql_types', meta2, autoload=True)
             assert isinstance(t2.c.num1.type, mysql.MSInteger)
             assert t2.c.num1.type.unsigned
@@ -156,13 +156,13 @@ class TypesTest(AssertMixin):
              'SMALLINT(4) UNSIGNED ZEROFILL'),
            ]
 
-        table_args = ['test_mysql_numeric', MetaData(testbase.db)]
+        table_args = ['test_mysql_numeric', MetaData(testing.db)]
         for index, spec in enumerate(columns):
             type_, args, kw, res = spec
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         numeric_table = Table(*table_args)
-        gen = testbase.db.dialect.schemagenerator(testbase.db.dialect, testbase.db, None, None)
+        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
 
         for col in numeric_table.c:
             index = int(col.name[1:])
@@ -240,13 +240,13 @@ class TypesTest(AssertMixin):
              '''ENUM('foo','bar') UNICODE''')
            ]
 
-        table_args = ['test_mysql_charset', MetaData(testbase.db)]
+        table_args = ['test_mysql_charset', MetaData(testing.db)]
         for index, spec in enumerate(columns):
             type_, args, kw, res = spec
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         charset_table = Table(*table_args)
-        gen = testbase.db.dialect.schemagenerator(testbase.db.dialect, testbase.db, None, None)
+        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
 
         for col in charset_table.c:
             index = int(col.name[1:])
@@ -265,7 +265,7 @@ class TypesTest(AssertMixin):
     def test_bit_50(self):
         """Exercise BIT types on 5.0+ (not valid for all engine types)"""
 
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         bit_table = Table('mysql_bits', meta,
                           Column('b1', mysql.MSBit),
                           Column('b2', mysql.MSBit()),
@@ -290,7 +290,7 @@ class TypesTest(AssertMixin):
         try:
             meta.create_all()
 
-            meta2 = MetaData(testbase.db)
+            meta2 = MetaData(testing.db)
             reflected = Table('mysql_bits', meta2, autoload=True)
 
             for table in bit_table, reflected:
@@ -327,7 +327,7 @@ class TypesTest(AssertMixin):
     def test_boolean(self):
         """Test BOOL/TINYINT(1) compatability and reflection."""
 
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         bool_table = Table('mysql_bool', meta,
                            Column('b1', BOOLEAN),
                            Column('b2', mysql.MSBoolean),
@@ -368,7 +368,7 @@ class TypesTest(AssertMixin):
             roundtrip([True, True, True, True], [True, True, 1, 1])
             roundtrip([False, False, 0, 0], [False, False, 0, 0])
 
-            meta2 = MetaData(testbase.db)
+            meta2 = MetaData(testing.db)
             # replace with reflected
             table = Table('mysql_bool', meta2, autoload=True)
             self.assert_eq(colspec(table.c.b3), 'b3 BOOL')
@@ -385,7 +385,7 @@ class TypesTest(AssertMixin):
     def test_timestamp(self):
         """Exercise funky TIMESTAMP default syntax."""
 
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
 
         try:
             columns = [
@@ -417,7 +417,7 @@ class TypesTest(AssertMixin):
                 self.assert_eq(colspec(t.c.t), "t %s" % expected)
                 self.assert_(repr(t.c.t))
                 t.create()
-                r = Table('mysql_ts%s' % idx, MetaData(testbase.db),
+                r = Table('mysql_ts%s' % idx, MetaData(testing.db),
                           autoload=True)
                 if len(spec) > 1:
                     self.assert_(r.c.t is not None)
@@ -427,7 +427,7 @@ class TypesTest(AssertMixin):
     def test_year(self):
         """Exercise YEAR."""
 
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         year_table = Table('mysql_year', meta,
                            Column('y1', mysql.MSYear),
                            Column('y2', mysql.MSYear),
@@ -439,7 +439,7 @@ class TypesTest(AssertMixin):
             self.assert_(repr(col))
         try:
             year_table.create()
-            reflected = Table('mysql_year', MetaData(testbase.db),
+            reflected = Table('mysql_year', MetaData(testing.db),
                               autoload=True)
 
             for table in year_table, reflected:
@@ -457,7 +457,7 @@ class TypesTest(AssertMixin):
     def test_set(self):
         """Exercise the SET type."""
 
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         set_table = Table('mysql_set', meta,
                           Column('s1', mysql.MSSet("'dq'", "'sq'")),
                           Column('s2', mysql.MSSet("'a'")),
@@ -471,7 +471,7 @@ class TypesTest(AssertMixin):
             self.assert_(repr(col))
         try:
             set_table.create()
-            reflected = Table('mysql_set', MetaData(testbase.db),
+            reflected = Table('mysql_set', MetaData(testing.db),
                               autoload=True)
 
             for table in set_table, reflected:
@@ -514,8 +514,8 @@ class TypesTest(AssertMixin):
     def test_enum(self):
         """Exercise the ENUM type."""
 
-        db = testbase.db
-        enum_table = Table('mysql_enum', MetaData(testbase.db),
+        db = testing.db
+        enum_table = Table('mysql_enum', MetaData(testing.db),
             Column('e1', mysql.MSEnum("'a'", "'b'")),
             Column('e2', mysql.MSEnum("'a'", "'b'"),
                    nullable=False),
@@ -559,8 +559,8 @@ class TypesTest(AssertMixin):
         # This is known to fail with MySQLDB 1.2.2 beta versions
         # which return these as sets.Set(['a']), sets.Set(['b'])
         # (even on Pythons with __builtin__.set)
-        if testbase.db.dialect.dbapi.version_info < (1, 2, 2, 'beta', 3) and \
-           testbase.db.dialect.dbapi.version_info >= (1, 2, 2):
+        if testing.db.dialect.dbapi.version_info < (1, 2, 2, 'beta', 3) and \
+           testing.db.dialect.dbapi.version_info >= (1, 2, 2):
             # these mysqldb seem to always uses 'sets', even on later pythons
             import sets
             def convert(value):
@@ -585,7 +585,7 @@ class TypesTest(AssertMixin):
 
         # MySQL 3.23 can't handle an ENUM of ''....
 
-        enum_table = Table('mysql_enum', MetaData(testbase.db),
+        enum_table = Table('mysql_enum', MetaData(testing.db),
             Column('e1', mysql.MSEnum("'a'")),
             Column('e2', mysql.MSEnum("''")),
             Column('e3', mysql.MSEnum("'a'", "''")),
@@ -596,7 +596,7 @@ class TypesTest(AssertMixin):
             self.assert_(repr(col))
         try:
             enum_table.create()
-            reflected = Table('mysql_enum', MetaData(testbase.db),
+            reflected = Table('mysql_enum', MetaData(testing.db),
                               autoload=True)
             for t in enum_table, reflected:
                 assert t.c.e1.type.enums == ["a"]
@@ -610,14 +610,14 @@ class TypesTest(AssertMixin):
     def test_default_reflection(self):
         """Test reflection of column defaults."""
 
-        def_table = Table('mysql_def', MetaData(testbase.db),
+        def_table = Table('mysql_def', MetaData(testing.db),
             Column('c1', String(10), PassiveDefault('')),
             Column('c2', String(10), PassiveDefault('0')),
             Column('c3', String(10), PassiveDefault('abc')))
 
         try:
             def_table.create()
-            reflected = Table('mysql_def', MetaData(testbase.db),
+            reflected = Table('mysql_def', MetaData(testing.db),
                               autoload=True)
             for t in def_table, reflected:
                 assert t.c.c1.default.arg == ''
@@ -662,7 +662,7 @@ class TypesTest(AssertMixin):
 
         columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
 
-        db = testbase.db
+        db = testing.db
         m = MetaData(db)
         t_table = Table('mysql_types', m, *columns)
         try:
@@ -695,7 +695,7 @@ class TypesTest(AssertMixin):
             m.drop_all()
 
     def test_autoincrement(self):
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         try:
             Table('ai_1', meta,
                   Column('int_y', Integer, primary_key=True),
@@ -737,7 +737,7 @@ class TypesTest(AssertMixin):
 
             table_names = ['ai_1', 'ai_2', 'ai_3', 'ai_4',
                            'ai_5', 'ai_6', 'ai_7', 'ai_8']
-            mr = MetaData(testbase.db)
+            mr = MetaData(testing.db)
             mr.reflect(only=table_names)
 
             for tbl in [mr.tables[name] for name in table_names]:
@@ -928,8 +928,8 @@ class SQLTest(SQLCompileTest):
 
 
 def colspec(c):
-    return testbase.db.dialect.schemagenerator(testbase.db.dialect,
-        testbase.db, None, None).get_column_specification(c)
+    return testing.db.dialect.schemagenerator(testing.db.dialect,
+        testing.db, None, None).get_column_specification(c)
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

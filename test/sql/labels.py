@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 from sqlalchemy.engine import default
@@ -11,7 +11,7 @@ IDENT_LENGTH = 29
 class LabelTypeTest(PersistTest):
     def test_type(self):
         m = MetaData()
-        t = Table('sometable', m, 
+        t = Table('sometable', m,
             Column('col1', Integer),
             Column('col2', Float))
         assert isinstance(t.c.col1.label('hi').type, Integer)
@@ -20,24 +20,24 @@ class LabelTypeTest(PersistTest):
 class LongLabelsTest(SQLCompileTest):
     def setUpAll(self):
         global metadata, table1, maxlen
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table1 = Table("some_large_named_table", metadata,
             Column("this_is_the_primarykey_column", Integer, Sequence("this_is_some_large_seq"), primary_key=True),
             Column("this_is_the_data_column", String(30))
             )
-            
+
         metadata.create_all()
-        
-        maxlen = testbase.db.dialect.max_identifier_length
-        testbase.db.dialect.max_identifier_length = IDENT_LENGTH
-        
+
+        maxlen = testing.db.dialect.max_identifier_length
+        testing.db.dialect.max_identifier_length = IDENT_LENGTH
+
     def tearDown(self):
         table1.delete().execute()
-        
+
     def tearDownAll(self):
         metadata.drop_all()
-        testbase.db.dialect.max_identifier_length = maxlen
-        
+        testing.db.dialect.max_identifier_length = maxlen
+
     def test_result(self):
         table1.insert().execute(**{"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"})
         table1.insert().execute(**{"this_is_the_primarykey_column":2, "this_is_the_data_column":"data2"})
@@ -54,7 +54,7 @@ class LongLabelsTest(SQLCompileTest):
             (3, "data3"),
             (4, "data4"),
         ], repr(result)
-    
+
     def test_colbinds(self):
         table1.insert().execute(**{"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"})
         table1.insert().execute(**{"this_is_the_primarykey_column":2, "this_is_the_data_column":"data2"})
@@ -69,15 +69,15 @@ class LongLabelsTest(SQLCompileTest):
             table1.c.this_is_the_primarykey_column == 2
         )).execute()
         assert r.fetchall() == [(2, "data2"), (4, "data4")]
-    
+
     def test_insert_no_pk(self):
         table1.insert().execute(**{"this_is_the_data_column":"data1"})
         table1.insert().execute(**{"this_is_the_data_column":"data2"})
         table1.insert().execute(**{"this_is_the_data_column":"data3"})
         table1.insert().execute(**{"this_is_the_data_column":"data4"})
-        
+
     def test_subquery(self):
-      # this is the test that fails if the "max identifier length" is shorter than the 
+      # this is the test that fails if the "max identifier length" is shorter than the
       # length of the actual columns created, because the column names get truncated.
       # if you try to separate "physical columns" from "labels", and only truncate the labels,
       # the compiler.DefaultCompiler.visit_select() logic which auto-labels columns in a subquery (for the purposes of sqlite compat) breaks the code,
@@ -94,13 +94,13 @@ class LongLabelsTest(SQLCompileTest):
       q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias()
       x = select([q], use_labels=True)
 
-      self.assert_compile(x, "SELECT anon_1.this_is_the_primarykey_column AS anon_1_this_is_the_prim_1, anon_1.this_is_the_data_column AS anon_1_this_is_the_data_2 " 
+      self.assert_compile(x, "SELECT anon_1.this_is_the_primarykey_column AS anon_1_this_is_the_prim_1, anon_1.this_is_the_data_column AS anon_1_this_is_the_data_2 "
             "FROM (SELECT some_large_named_table.this_is_the_primarykey_column AS this_is_the_primarykey_column, some_large_named_table.this_is_the_data_column AS this_is_the_data_column "
             "FROM some_large_named_table "
             "WHERE some_large_named_table.this_is_the_primarykey_column = :some_large_named_table__1) AS anon_1", dialect=compile_dialect)
-            
+
       print x.execute().fetchall()
-    
+
     def test_oid(self):
         """test that a primary key column compiled as the 'oid' column gets proper length truncation"""
         from sqlalchemy.databases import postgres
@@ -113,4 +113,4 @@ class LongLabelsTest(SQLCompileTest):
         assert str(x).endswith("""ORDER BY foo.some_large_named_table_t_2""")
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

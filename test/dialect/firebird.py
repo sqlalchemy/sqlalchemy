@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.databases import firebird
 from sqlalchemy.exceptions import ProgrammingError
@@ -12,7 +12,7 @@ class DomainReflectionTest(AssertMixin):
     __only_on__ = 'firebird'
 
     def setUpAll(self):
-        con = testbase.db.connect()
+        con = testing.db.connect()
         try:
             con.execute('CREATE DOMAIN int_domain AS INTEGER DEFAULT 42 NOT NULL')
             con.execute('CREATE DOMAIN str_domain AS VARCHAR(255)')
@@ -39,7 +39,7 @@ class DomainReflectionTest(AssertMixin):
                        END''')
 
     def tearDownAll(self):
-        con = testbase.db.connect()
+        con = testing.db.connect()
         con.execute('DROP TABLE testtable')
         con.execute('DROP DOMAIN int_domain')
         con.execute('DROP DOMAIN str_domain')
@@ -48,7 +48,7 @@ class DomainReflectionTest(AssertMixin):
         con.execute('DROP GENERATOR gen_testtable_id')
 
     def test_table_is_reflected(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         self.assertEquals(set(table.columns.keys()),
                           set(['question', 'answer', 'remark', 'photo', 'd', 't', 'dt']),
@@ -89,15 +89,15 @@ class CompileTest(SQLCompileTest):
 class MiscFBTests(PersistTest):
 
     __only_on__ = 'firebird'
-    
+
     def test_strlen(self):
         # On FB the length() function is implemented by an external
         # UDF, strlen().  Various SA tests fail because they pass a
         # parameter to it, and that does not work (it always results
         # the maximum string length the UDF was declared to accept).
         # This test checks that at least it works ok in other cases.
-        
-        meta = MetaData(testbase.db)
+
+        meta = MetaData(testing.db)
         t = Table('t1', meta,
             Column('id', Integer, Sequence('t1idseq'), primary_key=True),
             Column('name', String(10))
@@ -111,8 +111,8 @@ class MiscFBTests(PersistTest):
             meta.drop_all()
 
     def test_server_version_info(self):
-        version = testbase.db.dialect.server_version_info(testbase.db.connect())
+        version = testing.db.dialect.server_version_info(testing.db.connect())
         assert len(version) == 3, "Got strange version info: %s" % repr(version)
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

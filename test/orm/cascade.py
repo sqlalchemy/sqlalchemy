@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 
 from sqlalchemy import *
 from sqlalchemy import exceptions
@@ -189,7 +189,7 @@ class M2OCascadeTest(AssertMixin):
     def setUpAll(self):
         global ctx, data, metadata, User, Pref, Extra
         ctx = SessionContext(create_session)
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         extra = Table("extra", metadata,
             Column("extra_id", Integer, Sequence("extra_id_seq", optional=True), primary_key=True),
             Column("prefs_id", Integer, ForeignKey("prefs.prefs_id"))
@@ -278,7 +278,7 @@ class M2OCascadeTest(AssertMixin):
 class M2MCascadeTest(AssertMixin):
     def setUpAll(self):
         global metadata, a, b, atob
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         a = Table('a', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30))
@@ -475,7 +475,7 @@ class DoubleParentOrphanTest(AssertMixin):
 
     def setUpAll(self):
         global metadata, address_table, businesses, homes
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         address_table = Table('addresses', metadata,
             Column('address_id', Integer, primary_key=True),
             Column('street', String(30)),
@@ -541,7 +541,7 @@ class CollectionAssignmentOrphanTest(AssertMixin):
     def setUpAll(self):
         global metadata, table_a, table_b
 
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table_a = Table('a', metadata,
                         Column('id', Integer, primary_key=True),
                         Column('foo', String(30)))
@@ -593,4 +593,4 @@ class CollectionAssignmentOrphanTest(AssertMixin):
         assert table_b.count().scalar() == 3
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

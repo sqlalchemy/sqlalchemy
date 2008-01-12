@@ -1,6 +1,6 @@
 """tests basic polymorphic mapper loading/saving, minimal relations"""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 import sets
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -294,15 +294,15 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
 
         if not lazy_relation:
             if polymorphic_fetch=='union':
-                self.assert_sql_count(testbase.db, go, 1)
+                self.assert_sql_count(testing.db, go, 1)
             else:
-                self.assert_sql_count(testbase.db, go, 5)
+                self.assert_sql_count(testing.db, go, 5)
 
         else:
             if polymorphic_fetch=='union':
-                self.assert_sql_count(testbase.db, go, 2)
+                self.assert_sql_count(testing.db, go, 2)
             else:
-                self.assert_sql_count(testbase.db, go, 6)
+                self.assert_sql_count(testing.db, go, 6)
 
         # test selecting from the query, using the base mapped table (people) as the selection criterion.
         # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"
@@ -364,4 +364,4 @@ for include_base in [True, False]:
                         generate_round_trip_test(include_base, lazy_relation, redefine_colprop, use_literal_join, polymorphic_fetch, False)
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

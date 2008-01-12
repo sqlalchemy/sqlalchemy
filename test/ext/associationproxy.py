@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -37,7 +37,7 @@ class _CollectionOperations(PersistTest):
     def setUp(self):
         collection_class = self.collection_class
 
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -313,7 +313,7 @@ class CustomDictTest(DictTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
-        p1.children['e'] = 'changed-in-place' 
+        p1.children['e'] = 'changed-in-place'
         self.assert_(p1.children['e'] == 'changed-in-place')
         inplace_id = p1._children['e'].id
         p1 = self.roundtrip(p1)
@@ -588,7 +588,7 @@ class CustomObjectTest(_CollectionOperations):
 
 class ScalarTest(PersistTest):
     def test_scalar_proxy(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -705,7 +705,7 @@ class ScalarTest(PersistTest):
 
 class LazyLoadTest(PersistTest):
     def setUp(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -811,4 +811,4 @@ class LazyLoadTest(PersistTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

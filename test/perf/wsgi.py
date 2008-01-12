@@ -1,7 +1,7 @@
 #!/usr/bin/python
 """Uses ``wsgiref``, standard in Python 2.5 and also in the cheeseshop."""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import thread
@@ -14,8 +14,8 @@ logging.basicConfig()
 logging.getLogger('sqlalchemy.pool').setLevel(logging.INFO)
 
 threadids = set()
-meta = MetaData(testbase.db)
-foo = Table('foo', meta, 
+meta = MetaData(testing.db)
+foo = Table('foo', meta,
     Column('id', Integer, primary_key=True),
     Column('data', String(30)))
 class Foo(object):
@@ -41,7 +41,7 @@ def serve(environ, start_response):
            " total threads ", len(threadids))
     return [str("\n".join([x.data for x in l]))]
 
-        
+
 if __name__ == '__main__':
     from wsgiref import simple_server
     try:
@@ -51,5 +51,3 @@ if __name__ == '__main__':
         server.serve_forever()
     finally:
         meta.drop_all()
-
-

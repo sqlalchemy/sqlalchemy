@@ -1,6 +1,6 @@
 """eager loading unittests derived from mailing list-reported problems and trac tickets."""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 import random, datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -11,11 +11,11 @@ from testlib import fixtures
 class EagerTest(AssertMixin):
     def setUpAll(self):
         global dbmeta, owners, categories, tests, options, Owner, Category, Test, Option, false
-        dbmeta = MetaData(testbase.db)
+        dbmeta = MetaData(testing.db)
 
         # determine a literal value for "false" based on the dialect
         # FIXME: this PassiveDefault setup is bogus.
-        bp = Boolean().dialect_impl(testbase.db.dialect).bind_processor(testbase.db.dialect)
+        bp = Boolean().dialect_impl(testing.db.dialect).bind_processor(testing.db.dialect)
         if bp:
             false = str(bp(False))
         elif testing.against('maxdb'):
@@ -218,7 +218,7 @@ class EagerTest(AssertMixin):
 class EagerTest2(AssertMixin):
     def setUpAll(self):
         global metadata, middle, left, right
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         middle = Table('middle', metadata,
             Column('id', Integer, primary_key = True),
             Column('data', String(50)),
@@ -260,7 +260,7 @@ class EagerTest2(AssertMixin):
             'right': relation(Right, lazy=False, backref=backref('middle', lazy=False)),
             }
         )
-        session = create_session(bind=testbase.db)
+        session = create_session(bind=testing.db)
         p = Middle('test1')
         p.left.append(Left('tag1'))
         p.right.append(Right('tag2'))
@@ -789,10 +789,10 @@ class EagerTest8(ORMTest):
                                 )
 
     def setUp(self):
-        testbase.db.execute(project_t.insert(), {'id':1})
-        testbase.db.execute(task_status_t.insert(), {'id':1})
-        testbase.db.execute(task_type_t.insert(), {'id':1})
-        testbase.db.execute(task_t.insert(), {'title':u'task 1', 'task_type_id':1, 'status_id':1, 'prj_id':1})
+        testing.db.execute(project_t.insert(), {'id':1})
+        testing.db.execute(task_status_t.insert(), {'id':1})
+        testing.db.execute(task_type_t.insert(), {'id':1})
+        testing.db.execute(task_t.insert(), {'title':u'task 1', 'task_type_id':1, 'status_id':1, 'prj_id':1})
 
     @testing.fails_on('maxdb')
     def test_nested_joins(self):
@@ -920,9 +920,9 @@ class EagerTest9(ORMTest):
             for e in acc.entries:
                 assert e.account is acc
 
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

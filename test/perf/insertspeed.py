@@ -1,8 +1,8 @@
-import testbase
+import testenv; testenv.simple_setup()
 import sys, time
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
+from testlib import profiling
 
 db = create_engine('sqlite://')
 metadata = MetaData(db)
@@ -21,7 +21,7 @@ def sqlite_unprofiled_insertmany(n):
     c = conn.cursor()
     persons = [('john doe', 1, 35) for i in xrange(n)]
     c.executemany("insert into Person(name, sex, age) values (?,?,?)", persons)
-    
+
 @profiling.profiled('sa_profiled_insert_many', always=True)
 def sa_profiled_insert_many(n):
     i = Person_table.insert()
@@ -35,7 +35,7 @@ def sqlite_unprofiled_insert(n):
     c = conn.cursor()
     for j in xrange(n):
         c.execute("insert into Person(name, sex, age) values (?,?,?)",
-                  ('john doe', 1, 35))   
+                  ('john doe', 1, 35))
 
 def sa_unprofiled_insert(n):
     # Another option is to build Person_table.insert() outside of the
@@ -59,7 +59,7 @@ def run_timed(fn, label, *args, **kw):
 
     sys.stdout.write("%s (%s): " % (label, ', '.join([str(a) for a in args])))
     sys.stdout.flush()
-    
+
     t = time.clock()
     fn(*args, **kw)
     t2 = time.clock()
@@ -80,7 +80,7 @@ def all():
         run_timed(sqlite_unprofiled_insertmany,
                   'pysqlite bulk insert',
                   50000)
-        
+
         run_timed(sa_unprofiled_insertmany,
                   'SQLAlchemy bulk insert',
                   50000)
@@ -102,7 +102,7 @@ def all():
         run_profiled(sa_profiled_insert,
                      'SQLAlchemy individual insert/select, profiled',
                      1000)
-        
+
     finally:
         metadata.drop_all()
 

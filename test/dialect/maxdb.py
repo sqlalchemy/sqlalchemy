@@ -1,6 +1,6 @@
 """MaxDB-specific tests."""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 import StringIO, sys
 from sqlalchemy import *
 from sqlalchemy import exceptions, sql
@@ -29,11 +29,11 @@ class ReflectionTest(AssertMixin):
         decimal assignment and selection behavior.
         """
 
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         try:
             if isinstance(tabledef, basestring):
                 # run textual CREATE TABLE
-                testbase.db.execute(tabledef)
+                testing.db.execute(tabledef)
             else:
                 _t = tabledef.tometadata(meta)
                 _t.create()
@@ -52,7 +52,7 @@ class ReflectionTest(AssertMixin):
                                            tuple([2] + vals)])
         finally:
             try:
-                testbase.db.execute("DROP TABLE dectest")
+                testing.db.execute("DROP TABLE dectest")
             except exceptions.DatabaseError:
                 pass
 
@@ -130,9 +130,9 @@ class ReflectionTest(AssertMixin):
     def test_assorted_type_aliases(self):
         """Ensures that aliased types are reflected properly."""
 
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         try:
-            testbase.db.execute("""
+            testing.db.execute("""
             CREATE TABLE assorted (
               c1 INT,
               c2 BINARY(2),
@@ -164,7 +164,7 @@ class ReflectionTest(AssertMixin):
                 self.assert_(isinstance(col.type, expected[i]))
         finally:
             try:
-                testbase.db.execute("DROP TABLE assorted")
+                testing.db.execute("DROP TABLE assorted")
             except exceptions.DatabaseError:
                 pass
 
@@ -177,7 +177,7 @@ class DBAPITest(AssertMixin):
     __only_on__ = 'maxdb'
 
     def test_dbapi_breaks_sequences(self):
-        con = testbase.db.connect().connection
+        con = testing.db.connect().connection
 
         cr = con.cursor()
         cr.execute('CREATE SEQUENCE busto START WITH 1 INCREMENT BY 1')
@@ -195,7 +195,7 @@ class DBAPITest(AssertMixin):
             cr.execute('DROP SEQUENCE busto')
 
     def test_dbapi_breaks_mod_binds(self):
-        con = testbase.db.connect().connection
+        con = testing.db.connect().connection
 
         cr = con.cursor()
         # OK
@@ -212,8 +212,8 @@ class DBAPITest(AssertMixin):
         cr.execute('SELECT MOD(?, 2) FROM DUAL', [3])
 
     def test_dbapi_breaks_close(self):
-        dialect = testbase.db.dialect
-        cargs, ckw = dialect.create_connect_args(testbase.db.url)
+        dialect = testing.db.dialect
+        cargs, ckw = dialect.create_connect_args(testing.db.url)
 
         # There doesn't seem to be a way to test for this as it occurs in
         # regular usage- the warning doesn't seem to go through 'warnings'.
@@ -232,8 +232,9 @@ class DBAPITest(AssertMixin):
             self.assert_(True)
 
     def test_modulo_operator(self):
-        st = str(select([sql.column('col') % 5]).compile(testbase.db))
+        st = str(select([sql.column('col') % 5]).compile(testing.db))
         self.assertEquals(st, 'SELECT mod(col, ?) FROM DUAL')
 
+
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

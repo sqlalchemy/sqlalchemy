@@ -1,4 +1,3 @@
-import testbase
 import optparse, os, sys, re, ConfigParser, StringIO, time, warnings
 logging, require = None, None
 
@@ -41,6 +40,29 @@ def configure():
     # Lazy setup of other options (post coverage)
     for fn in post_configure:
         fn(options, file_config)
+
+    return options, file_config
+
+def configure_defaults():
+    global options, config
+    global getopts_options, file_config
+    global db
+
+    file_config = ConfigParser.ConfigParser()
+    file_config.readfp(StringIO.StringIO(base_config))
+    file_config.read(['test.cfg', os.path.expanduser('~/.satest.cfg')])
+    (options, args) = parser.parse_args([])
+
+    # make error messages raised by decorators that depend on a default
+    # database clearer.
+    class _engine_bomb(object):
+        def __getattr__(self, key):
+            raise RuntimeError('No default engine available, testlib '
+                               'was configured with defaults only.')
+
+    db = _engine_bomb()
+    import testlib.testing
+    testlib.testing.db = db
 
     return options, file_config
 
@@ -150,7 +172,7 @@ class _ordered_map(object):
     def __iter__(self):
         for key in self._keys:
             yield self._data[key]
-    
+
 # at one point in refactoring, modules were injecting into the config
 # process.  this could probably just become a list now.
 post_configure = _ordered_map()
@@ -205,9 +227,10 @@ def _engine_pool(options, file_config):
 post_configure['engine_pool'] = _engine_pool
 
 def _create_testing_engine(options, file_config):
-    from testlib import engines
+    from testlib import engines, testing
     global db
     db = engines.testing_engine(db_url, db_opts)
+    testing.db = db
 post_configure['create_engine'] = _create_testing_engine
 
 def _prep_testing_database(options, file_config):
@@ -242,7 +265,7 @@ post_configure['prep_db'] = _prep_testing_database
 
 def _set_table_options(options, file_config):
     import testlib.schema
-    
+
     table_options = testlib.schema.table_options
     for spec in options.tableopts:
         key, value = spec.split('=')
@@ -268,7 +291,7 @@ post_configure['topological'] = _reverse_topological
 
 def _set_profile_targets(options, file_config):
     from testlib import profiling
-    
+
     profile_config = profiling.profile_config
 
     for target in options.profile_targets:

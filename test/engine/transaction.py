@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import sys, time, threading
 
 from sqlalchemy import *
@@ -15,15 +15,15 @@ class TransactionTest(PersistTest):
             Column('user_name', VARCHAR(20)),
             test_needs_acid=True,
         )
-        users.create(testbase.db)
+        users.create(testing.db)
 
     def tearDown(self):
-        testbase.db.connect().execute(users.delete())
+        testing.db.connect().execute(users.delete())
     def tearDownAll(self):
-        users.drop(testbase.db)
+        users.drop(testing.db)
 
     def testcommits(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         transaction.commit()
@@ -40,7 +40,7 @@ class TransactionTest(PersistTest):
 
     def testrollback(self):
         """test a basic rollback"""
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         connection.execute(users.insert(), user_id=2, user_name='user2')
@@ -52,7 +52,7 @@ class TransactionTest(PersistTest):
         connection.close()
 
     def testraise(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
 
         transaction = connection.begin()
         try:
@@ -71,7 +71,7 @@ class TransactionTest(PersistTest):
 
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedrollback(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
 
         try:
             transaction = connection.begin()
@@ -101,7 +101,7 @@ class TransactionTest(PersistTest):
 
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnesting(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         connection.execute(users.insert(), user_id=2, user_name='user2')
@@ -119,7 +119,7 @@ class TransactionTest(PersistTest):
 
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testclose(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         connection.execute(users.insert(), user_id=2, user_name='user2')
@@ -140,7 +140,7 @@ class TransactionTest(PersistTest):
 
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testclose2(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         connection.execute(users.insert(), user_id=2, user_name='user2')
@@ -163,7 +163,7 @@ class TransactionTest(PersistTest):
     @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactionrollback(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         trans2 = connection.begin_nested()
@@ -181,7 +181,7 @@ class TransactionTest(PersistTest):
     @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactioncommit(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         trans2 = connection.begin_nested()
@@ -199,7 +199,7 @@ class TransactionTest(PersistTest):
     @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testrollbacktosubtransaction(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         trans2 = connection.begin_nested()
@@ -220,7 +220,7 @@ class TransactionTest(PersistTest):
                          'oracle', 'maxdb')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testtwophasetransaction(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
 
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=1, user_name='user1')
@@ -250,7 +250,7 @@ class TransactionTest(PersistTest):
                          'oracle', 'maxdb')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testmixedtwophasetransaction(self):
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
 
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=1, user_name='user1')
@@ -289,14 +289,14 @@ class TransactionTest(PersistTest):
         # MySQL recovery doesn't currently seem to work correctly
         # Prepared transactions disappear when connections are closed and even
         # when they aren't it doesn't seem possible to use the recovery id.
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
 
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=1, user_name='user1')
         transaction.prepare()
 
         connection.close()
-        connection2 = testbase.db.connect()
+        connection2 = testing.db.connect()
 
         self.assertEquals(
             connection2.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
@@ -320,7 +320,7 @@ class TransactionTest(PersistTest):
                          'oracle', 'maxdb')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testmultipletwophase(self):
-        conn = testbase.db.connect()
+        conn = testing.db.connect()
 
         xa = conn.begin_twophase()
         conn.execute(users.insert(), user_id=1, user_name='user1')
@@ -352,13 +352,13 @@ class AutoRollbackTest(PersistTest):
         metadata = MetaData()
 
     def tearDownAll(self):
-        metadata.drop_all(testbase.db)
+        metadata.drop_all(testing.db)
 
     @testing.unsupported('sqlite')
     def testrollback_deadlock(self):
         """test that returning connections to the pool clears any object locks."""
-        conn1 = testbase.db.connect()
-        conn2 = testbase.db.connect()
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
         users = Table('deadlock_users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
@@ -378,7 +378,7 @@ class AutoRollbackTest(PersistTest):
 class TLTransactionTest(PersistTest):
     def setUpAll(self):
         global users, metadata, tlengine
-        tlengine = create_engine(testbase.db.url, strategy='threadlocal')
+        tlengine = create_engine(testing.db.url, strategy='threadlocal')
         metadata = MetaData()
         users = Table('query_users', metadata,
             Column('user_id', INT, Sequence('query_users_id_seq', optional=True), primary_key=True),
@@ -634,14 +634,14 @@ class ForUpdateTest(PersistTest):
             Column('counter_value', INT),
             test_needs_acid=True,
         )
-        counters.create(testbase.db)
+        counters.create(testing.db)
     def tearDown(self):
-        testbase.db.connect().execute(counters.delete())
+        testing.db.connect().execute(counters.delete())
     def tearDownAll(self):
-        counters.drop(testbase.db)
+        counters.drop(testing.db)
 
     def increment(self, count, errors, update_style=True, delay=0.005):
-        con = testbase.db.connect()
+        con = testing.db.connect()
         sel = counters.select(for_update=update_style,
                               whereclause=counters.c.counter_id==1)
 
@@ -676,7 +676,7 @@ class ForUpdateTest(PersistTest):
         with each mutator trying to increment a value stored in user_name.
         """
 
-        db = testbase.db
+        db = testing.db
         db.execute(counters.insert(), counter_id=1, counter_value=0)
 
         iterations, thread_count = 10, 5
@@ -703,7 +703,7 @@ class ForUpdateTest(PersistTest):
     def overlap(self, ids, errors, update_style):
         sel = counters.select(for_update=update_style,
                               whereclause=counters.c.counter_id.in_(ids))
-        con = testbase.db.connect()
+        con = testing.db.connect()
         trans = con.begin()
         try:
             rows = con.execute(sel).fetchall()
@@ -715,7 +715,7 @@ class ForUpdateTest(PersistTest):
         con.close()
 
     def _threaded_overlap(self, thread_count, groups, update_style=True, pool=5):
-        db = testbase.db
+        db = testing.db
         for cid in range(pool - 1):
             db.execute(counters.insert(), counter_id=cid + 1, counter_value=0)
 
@@ -750,4 +750,4 @@ class ForUpdateTest(PersistTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

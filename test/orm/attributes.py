@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import pickle
 import sqlalchemy.orm.attributes as attributes
 from sqlalchemy.orm.collections import collection
@@ -17,17 +17,17 @@ class AttributesTest(PersistTest):
 
     def test_basic(self):
         class User(object):pass
-        
+
         attributes.register_class(User)
         attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
         attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
         attributes.register_attribute(User, 'email_address', uselist = False, useobject=False)
-        
+
         u = User()
         u.user_id = 7
         u.user_name = 'john'
         u.email_address = 'lala@123.com'
-        
+
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
         u._state.commit_all()
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
@@ -60,7 +60,7 @@ class AttributesTest(PersistTest):
         pk_o2 = pickle.dumps(o2)
 
         # so... pickle is creating a new 'mt2' string after a roundtrip here,
-        # so we'll brute-force set it to be id-equal to the original string 
+        # so we'll brute-force set it to be id-equal to the original string
         if False:
             o_mt2_str = [ k for k in o.__dict__ if k == 'mt2'][0]
             o2_mt2_str = [ k for k in o2.__dict__ if k == 'mt2'][0]
@@ -97,22 +97,22 @@ class AttributesTest(PersistTest):
 
     def test_deferred(self):
         class Foo(object):pass
-        
+
         data = {'a':'this is a', 'b':12}
         def loader(instance, keys):
             for k in keys:
                 instance.__dict__[k] = data[k]
             return attributes.ATTR_WAS_SET
-            
+
         attributes.register_class(Foo, deferred_scalar_loader=loader)
         attributes.register_attribute(Foo, 'a', uselist=False, useobject=False)
         attributes.register_attribute(Foo, 'b', uselist=False, useobject=False)
-        
+
         f = Foo()
         f._state.expire_attributes(None)
         self.assertEquals(f.a, "this is a")
         self.assertEquals(f.b, 12)
-        
+
         f.a = "this is some new a"
         f._state.expire_attributes(None)
         self.assertEquals(f.a, "this is a")
@@ -130,7 +130,7 @@ class AttributesTest(PersistTest):
         del f.a
         self.assertEquals(f.a, None)
         self.assertEquals(f.b, 12)
-        
+
         f._state.commit_all()
         self.assertEquals(f.a, None)
         self.assertEquals(f.b, 12)
@@ -141,11 +141,11 @@ class AttributesTest(PersistTest):
             for k in keys:
                 instance.__dict__[k] = data[k]
             return attributes.ATTR_WAS_SET
-            
+
         attributes.register_class(MyTest, deferred_scalar_loader=loader)
         attributes.register_attribute(MyTest, 'a', uselist=False, useobject=False)
         attributes.register_attribute(MyTest, 'b', uselist=False, useobject=False)
-        
+
         m = MyTest()
         m._state.expire_attributes(None)
         assert 'a' not in m.__dict__
@@ -153,11 +153,11 @@ class AttributesTest(PersistTest):
         assert 'a' not in m2.__dict__
         self.assertEquals(m2.a, "this is a")
         self.assertEquals(m2.b, 12)
-        
+
     def test_list(self):
         class User(object):pass
         class Address(object):pass
-        
+
         attributes.register_class(User)
         attributes.register_class(Address)
         attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
@@ -165,7 +165,7 @@ class AttributesTest(PersistTest):
         attributes.register_attribute(User, 'addresses', uselist = True, useobject=True)
         attributes.register_attribute(Address, 'address_id', uselist = False, useobject=False)
         attributes.register_attribute(Address, 'email_address', uselist = False, useobject=False)
-        
+
         u = User()
         u.user_id = 7
         u.user_name = 'john'
@@ -185,7 +185,7 @@ class AttributesTest(PersistTest):
         a.email_address = 'foo@bar.com'
         u.addresses.append(a)
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.addresses[0].email_address == 'lala@123.com' and u.addresses[1].email_address == 'foo@bar.com')
-        
+
     def test_lazytrackparent(self):
         """test that the "hasparent" flag works properly when lazy loaders and backrefs are used"""
 
@@ -193,8 +193,8 @@ class AttributesTest(PersistTest):
         class Blog(object):pass
         attributes.register_class(Post)
         attributes.register_class(Blog)
-        
-        # set up instrumented attributes with backrefs    
+
+        # set up instrumented attributes with backrefs
         attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
         attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
 
@@ -212,23 +212,23 @@ class AttributesTest(PersistTest):
         # assert connections
         assert p1.blog is b
         assert p1 in b.posts
-        
+
         # manual connections
         b2 = Blog()
         p2 = Post()
         b2.posts.append(p2)
         assert attributes.has_parent(Blog, p2, 'posts')
         assert attributes.has_parent(Post, b2, 'blog')
-        
+
     def test_inheritance(self):
         """tests that attributes are polymorphic"""
         class Foo(object):pass
         class Bar(Foo):pass
-        
-        
+
+
         attributes.register_class(Foo)
         attributes.register_class(Bar)
-        
+
         def func1():
             print "func1"
             return "this is the foo attr"
@@ -241,7 +241,7 @@ class AttributesTest(PersistTest):
         attributes.register_attribute(Foo, 'element', uselist=False, callable_=lambda o:func1, useobject=True)
         attributes.register_attribute(Foo, 'element2', uselist=False, callable_=lambda o:func3, useobject=True)
         attributes.register_attribute(Bar, 'element', uselist=False, callable_=lambda o:func2, useobject=True)
-        
+
         x = Foo()
         y = Bar()
         assert x.element == 'this is the foo attr'
@@ -258,22 +258,22 @@ class AttributesTest(PersistTest):
             def __init__(self):
                 states.add(self._state)
                 Foo.__init__(self)
-        
-        
+
+
         attributes.register_class(Foo)
         attributes.register_class(Bar)
-        
+
         b = Bar()
         self.assertEquals(len(states), 1)
         self.assertEquals(list(states)[0].obj(), b)
-        
+
 
     def test_inheritance2(self):
         """test that the attribute manager can properly traverse the managed attributes of an object,
         if the object is of a descendant class with managed attributes in the parent class"""
         class Foo(object):pass
         class Bar(Foo):pass
-        
+
         attributes.register_class(Foo)
         attributes.register_class(Bar)
         attributes.register_attribute(Foo, 'element', uselist=False, useobject=True)
@@ -293,7 +293,7 @@ class AttributesTest(PersistTest):
             pass
         class Bar(fixtures.Base):
             pass
-        
+
         attributes.register_class(Foo)
         attributes.register_class(Bar)
 
@@ -311,33 +311,33 @@ class AttributesTest(PersistTest):
         x._state.commit_all()
         x.col2.append(bar4)
         self.assertEquals(attributes.get_history(x._state, 'col2'), ([bar4], [bar1, bar2, bar3], []))
-        
-    def test_parenttrack(self):    
+
+    def test_parenttrack(self):
         class Foo(object):pass
         class Bar(object):pass
-        
+
         attributes.register_class(Foo)
         attributes.register_class(Bar)
-        
+
         attributes.register_attribute(Foo, 'element', uselist=False, trackparent=True, useobject=True)
         attributes.register_attribute(Bar, 'element', uselist=False, trackparent=True, useobject=True)
-        
+
         f1 = Foo()
         f2 = Foo()
         b1 = Bar()
         b2 = Bar()
-        
+
         f1.element = b1
         b2.element = f2
-        
+
         assert attributes.has_parent(Foo, b1, 'element')
         assert not attributes.has_parent(Foo, b2, 'element')
         assert not attributes.has_parent(Foo, f2, 'element')
         assert attributes.has_parent(Bar, f2, 'element')
-        
+
         b2.element = None
         assert not attributes.has_parent(Bar, f2, 'element')
-        
+
         # test that double assignment doesn't accidentally reset the 'parent' flag.
         b3 = Bar()
         f4 = Foo()
@@ -349,25 +349,25 @@ class AttributesTest(PersistTest):
     def test_mutablescalars(self):
         """test detection of changes on mutable scalar items"""
         class Foo(object):pass
-        
+
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'element', uselist=False, copy_function=lambda x:[y for y in x], mutable_scalars=True, useobject=False)
         x = Foo()
-        x.element = ['one', 'two', 'three']    
+        x.element = ['one', 'two', 'three']
         x._state.commit_all()
         x.element[1] = 'five'
         assert x._state.is_modified()
-        
+
         attributes.unregister_class(Foo)
-        
+
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'element', uselist=False, useobject=False)
         x = Foo()
-        x.element = ['one', 'two', 'three']    
+        x.element = ['one', 'two', 'three']
         x._state.commit_all()
         x.element[1] = 'five'
         assert not x._state.is_modified()
-        
+
     def test_descriptorattributes(self):
         """changeset: 1633 broke ability to use ORM to map classes with unusual
         descriptor attributes (for example, classes that inherit from ones
@@ -380,16 +380,16 @@ class AttributesTest(PersistTest):
         class Foo(object):
             A = des()
 
-        
+
         attributes.unregister_class(Foo)
-    
+
     def test_collectionclasses(self):
-        
+
         class Foo(object):pass
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, "collection", uselist=True, typecallable=set, useobject=True)
         assert isinstance(Foo().collection, set)
-        
+
         attributes.unregister_attribute(Foo, "collection")
 
         try:
@@ -397,7 +397,7 @@ class AttributesTest(PersistTest):
             assert False
         except exceptions.ArgumentError, e:
             assert str(e) == "Type InstrumentedDict must elect an appender method to be a collection class"
-        
+
         class MyDict(dict):
             @collection.appender
             def append(self, item):
@@ -409,14 +409,14 @@ class AttributesTest(PersistTest):
         assert isinstance(Foo().collection, MyDict)
 
         attributes.unregister_attribute(Foo, "collection")
-        
+
         class MyColl(object):pass
         try:
             attributes.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl, useobject=True)
             assert False
         except exceptions.ArgumentError, e:
             assert str(e) == "Type MyColl must elect an appender method to be a collection class"
-        
+
         class MyColl(object):
             @collection.iterator
             def __iter__(self):
@@ -436,7 +436,7 @@ class AttributesTest(PersistTest):
 
 
 class BackrefTest(PersistTest):
-        
+
     def test_manytomany(self):
         class Student(object):pass
         class Course(object):pass
@@ -459,12 +459,12 @@ class BackrefTest(PersistTest):
         self.assert_(s2.courses == [c])
         self.assert_(s1.courses == [c])
         s1.courses.remove(c)
-        self.assert_(c.students == [s2,s3])        
-    
+        self.assert_(c.students == [s2,s3])
+
     def test_onetomany(self):
         class Post(object):pass
         class Blog(object):pass
-        
+
         attributes.register_class(Post)
         attributes.register_class(Blog)
         attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
@@ -511,7 +511,7 @@ class BackrefTest(PersistTest):
 class DeferredBackrefTest(PersistTest):
     def setUp(self):
         global Post, Blog, called, lazy_load
-        
+
         class Post(object):
             def __init__(self, name):
                 self.name = name
@@ -600,20 +600,20 @@ class HistoryTest(PersistTest):
     def test_scalar(self):
         class Foo(fixtures.Base):
             pass
-            
+
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=False)
 
         # case 1.  new object
         f = Foo()
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [], []))
-        
+
         f.someattr = "hi"
         self.assertEquals(attributes.get_history(f._state, 'someattr'), (['hi'], [], []))
 
         f._state.commit(['someattr'])
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['hi'], []))
-        
+
         f.someattr = 'there'
 
         self.assertEquals(attributes.get_history(f._state, 'someattr'), (['there'], [], ['hi']))
@@ -623,15 +623,15 @@ class HistoryTest(PersistTest):
 
         del f.someattr
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [], ['there']))
-        
+
         # case 2.  object with direct dictionary settings (similar to a load operation)
         f = Foo()
         f.__dict__['someattr'] = 'new'
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['new'], []))
-        
+
         f.someattr = 'old'
         self.assertEquals(attributes.get_history(f._state, 'someattr'), (['old'], [], ['new']))
-        
+
         f._state.commit(['someattr'])
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['old'], []))
 
@@ -641,7 +641,7 @@ class HistoryTest(PersistTest):
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [], []))
         f.someattr = None
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([None], [], []))
-        
+
         f = Foo()
         f.__dict__['someattr'] = 'new'
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['new'], []))
@@ -725,7 +725,7 @@ class HistoryTest(PersistTest):
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['old'], []))
 
         # setting None on uninitialized is currently not a change for an object attribute
-        # (this is different than scalar attribute).  a lazyload has occured so if its 
+        # (this is different than scalar attribute).  a lazyload has occured so if its
         # None, its really None
         f = Foo()
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [None], []))
@@ -744,15 +744,15 @@ class HistoryTest(PersistTest):
         class Bar(fixtures.Base):
             def __nonzero__(self):
                 assert False
-            
+
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=True, useobject=True)
-        
+
         hi = Bar(name='hi')
         there = Bar(name='there')
         old = Bar(name='old')
         new = Bar(name='new')
-        
+
         # case 1.  new object
         f = Foo()
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [], []))
@@ -769,7 +769,7 @@ class HistoryTest(PersistTest):
         f._state.commit(['someattr'])
 
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [there], []))
-        
+
         f.someattr = [hi]
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([hi], [], [there]))
 
@@ -796,7 +796,7 @@ class HistoryTest(PersistTest):
             pass
 
         from sqlalchemy.orm.collections import attribute_mapped_collection
-            
+
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=True, useobject=True, typecallable=attribute_mapped_collection('name'))
 
@@ -813,7 +813,7 @@ class HistoryTest(PersistTest):
 
         f.someattr['there'] = there
         self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set([hi, there]), set([]), set([])))
-        
+
         f._state.commit(['someattr'])
         self.assertEquals(tuple([set(x) for x in attributes.get_history(f._state, 'someattr')]), (set([]), set([hi, there]), set([])))
 
@@ -851,16 +851,16 @@ class HistoryTest(PersistTest):
 
         f.someattr.remove(there)
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [hi], [there]))
-        
+
         f.someattr.append(old)
         f.someattr.append(new)
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([old, new], [hi], [there]))
         f._state.commit(['someattr'])
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [hi, old, new], []))
-        
+
         f.someattr.pop(0)
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [old, new], [hi]))
-        
+
         # case 2.  object with direct settings (similar to a load operation)
         f = Foo()
         f.__dict__['id'] = 1
@@ -880,11 +880,11 @@ class HistoryTest(PersistTest):
         collection.append_without_event(new)
         f._state.commit_all()
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [new], []))
-        
+
         f.id = 1
         f.someattr.remove(new)
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [], [new]))
-        
+
         # case 3.  mixing appends with sets
         f = Foo()
         f.someattr.append(hi)
@@ -893,7 +893,7 @@ class HistoryTest(PersistTest):
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([hi, there], [], []))
         f.someattr = [there]
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([there], [], []))
-        
+
     def test_collections_via_backref(self):
         class Foo(fixtures.Base):
             pass
@@ -904,12 +904,12 @@ class HistoryTest(PersistTest):
         attributes.register_class(Bar)
         attributes.register_attribute(Foo, 'bars', uselist=True, extension=attributes.GenericBackrefExtension('foo'), trackparent=True, useobject=True)
         attributes.register_attribute(Bar, 'foo', uselist=False, extension=attributes.GenericBackrefExtension('bars'), trackparent=True, useobject=True)
-            
+
         f1 = Foo()
         b1 = Bar()
         self.assertEquals(attributes.get_history(f1._state, 'bars'), ([], [], []))
         self.assertEquals(attributes.get_history(b1._state, 'foo'), ([], [None], []))
-        
+
         #b1.foo = f1
         f1.bars.append(b1)
         self.assertEquals(attributes.get_history(f1._state, 'bars'), ([b1], [], []))
@@ -920,7 +920,7 @@ class HistoryTest(PersistTest):
         self.assertEquals(attributes.get_history(f1._state, 'bars'), ([b1, b2], [], []))
         self.assertEquals(attributes.get_history(b1._state, 'foo'), ([f1], [], []))
         self.assertEquals(attributes.get_history(b2._state, 'foo'), ([f1], [], []))
-    
+
     def test_lazy_backref_collections(self):
         class Foo(fixtures.Base):
             pass
@@ -932,7 +932,7 @@ class HistoryTest(PersistTest):
             def load():
                 return lazy_load
             return load
-            
+
         attributes.register_class(Foo)
         attributes.register_class(Bar)
         attributes.register_attribute(Foo, 'bars', uselist=True, extension=attributes.GenericBackrefExtension('foo'), trackparent=True, callable_=lazyload, useobject=True)
@@ -945,7 +945,7 @@ class HistoryTest(PersistTest):
         bar4 = Bar()
         bar4.foo = f
         self.assertEquals(attributes.get_history(f._state, 'bars'), ([bar4], [bar1, bar2, bar3], []))
-        
+
         lazy_load = None
         f = Foo()
         bar4 = Bar()
@@ -955,7 +955,7 @@ class HistoryTest(PersistTest):
         lazy_load = [bar1, bar2, bar3]
         f._state.expire_attributes(['bars'])
         self.assertEquals(attributes.get_history(f._state, 'bars'), ([], [bar1, bar2, bar3], []))
-        
+
     def test_collections_via_lazyload(self):
         class Foo(fixtures.Base):
             pass
@@ -967,18 +967,18 @@ class HistoryTest(PersistTest):
             def load():
                 return lazy_load
             return load
-            
+
         attributes.register_class(Foo)
         attributes.register_class(Bar)
         attributes.register_attribute(Foo, 'bars', uselist=True, callable_=lazyload, trackparent=True, useobject=True)
-        
+
         bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
         lazy_load = [bar1, bar2, bar3]
 
         f = Foo()
         f.bars = []
         self.assertEquals(attributes.get_history(f._state, 'bars'), ([], [], [bar1, bar2, bar3]))
-        
+
         f = Foo()
         f.bars.append(bar4)
         self.assertEquals(attributes.get_history(f._state, 'bars'), ([bar4], [bar1, bar2, bar3], []) )
@@ -992,7 +992,7 @@ class HistoryTest(PersistTest):
         f = Foo()
         del f.bars[1]
         self.assertEquals(attributes.get_history(f._state, 'bars'), ([], [bar1, bar3], [bar2]))
-    
+
         lazy_load = None
         f = Foo()
         f.bars.append(bar2)
@@ -1012,9 +1012,9 @@ class HistoryTest(PersistTest):
         attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, useobject=False)
         lazy_load = "hi"
 
-        # with scalar non-object, the lazy callable is only executed on gets, not history 
+        # with scalar non-object, the lazy callable is only executed on gets, not history
         # operations
-        
+
         f = Foo()
         self.assertEquals(f.bar, "hi")
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([], ["hi"], []))
@@ -1035,7 +1035,7 @@ class HistoryTest(PersistTest):
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([], [], ["hi"]))
         assert f.bar is None
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([None], [], ["hi"]))
-        
+
     def test_scalar_object_via_lazyload(self):
         class Foo(fixtures.Base):
             pass
@@ -1047,19 +1047,19 @@ class HistoryTest(PersistTest):
             def load():
                 return lazy_load
             return load
-            
+
         attributes.register_class(Foo)
         attributes.register_class(Bar)
         attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, trackparent=True, useobject=True)
         bar1, bar2 = [Bar(id=1), Bar(id=2)]
         lazy_load = bar1
 
-        # with scalar object, the lazy callable is only executed on gets and history 
+        # with scalar object, the lazy callable is only executed on gets and history
         # operations
 
         f = Foo()
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([], [bar1], []))
-        
+
         f = Foo()
         f.bar = None
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([None], [], [bar1]))
@@ -1069,13 +1069,13 @@ class HistoryTest(PersistTest):
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([bar2], [], [bar1]))
         f.bar = bar1
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([], [bar1], []))
-    
+
         f = Foo()
         self.assertEquals(f.bar, bar1)
         del f.bar
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([None], [], [bar1]))
         assert f.bar is None
         self.assertEquals(attributes.get_history(f._state, 'bar'), ([None], [], [bar1]))
-        
+
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

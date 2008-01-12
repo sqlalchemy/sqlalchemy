@@ -5,12 +5,12 @@
 import datetime
 import sys
 import time
-import testbase
+import testenv; testenv.configure_for_tests()
 from testlib import testing, profiling
-
-
 from sqlalchemy import *
 
+
+ITERATIONS = 1
 
 class ZooMarkTest(testing.AssertMixin):
     """Runs the ZooMark and squawks if method counts vary from the norm.
@@ -25,7 +25,7 @@ class ZooMarkTest(testing.AssertMixin):
     @profiling.profiled('create', call_range=(1500, 1880), always=True)
     def test_1_create_tables(self):
         global metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         Zoo = Table('Zoo', metadata,
                     Column('ID', Integer, Sequence('zoo_id_seq'), primary_key=True, index=True),
@@ -300,7 +300,5 @@ class ZooMarkTest(testing.AssertMixin):
     def test_8_drop(self):
         metadata.drop_all()
 
-ITERATIONS = 1
-
 if __name__ ==u'__main__':
-    testbase.main()
+    testenv.main()

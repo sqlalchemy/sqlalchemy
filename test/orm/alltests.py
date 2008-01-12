@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import unittest
 
 import inheritance.alltests as inheritance
@@ -19,7 +19,7 @@ def suite():
         'orm.assorted_eager',
 
         'orm.naturalpks',
-        'orm.sessioncontext', 
+        'orm.sessioncontext',
         'orm.unitofwork',
         'orm.session',
         'orm.cascade',
@@ -28,7 +28,7 @@ def suite():
         'orm.merge',
         'orm.pickled',
         'orm.memusage',
-        
+
         'orm.cycles',
 
         'orm.entity',
@@ -49,4 +49,4 @@ def suite():
 
 
 if __name__ == '__main__':
-    testbase.main(suite())
+    testenv.main(suite())

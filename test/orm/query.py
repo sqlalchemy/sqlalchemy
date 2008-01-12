@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import operator
 from sqlalchemy import *
 from sqlalchemy import exceptions
@@ -48,7 +48,7 @@ class UnicodeSchemaTest(QueryTest):
 
     def test_get(self):
         mapper(User, uni_users)
-        assert User(id=7) == create_session(bind=testbase.db).query(User).get(7)
+        assert User(id=7) == create_session(bind=testing.db).query(User).get(7)
 
 class GetTest(QueryTest):
     def test_get(self):
@@ -436,7 +436,7 @@ class DistinctTest(QueryTest):
                     Address(id=5)
                 ]),
             ] == q.all()
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
 
 class YieldTest(QueryTest):
@@ -732,14 +732,14 @@ class InstancesTest(QueryTest):
         def go():
             l = q.options(contains_alias('ulist'), contains_eager('addresses')).instances(query.execute())
             assert fixtures.user_address_result == l
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
         sess.clear()
 
         def go():
             l = q.options(contains_alias('ulist'), contains_eager('addresses')).from_statement(query).all()
             assert fixtures.user_address_result == l
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager(self):
 
@@ -750,14 +750,14 @@ class InstancesTest(QueryTest):
         def go():
             l = q.options(contains_eager('addresses')).instances(selectquery.execute())
             assert fixtures.user_address_result[0:3] == l
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
         sess.clear()
 
         def go():
             l = q.options(contains_eager('addresses')).from_statement(selectquery).all()
             assert fixtures.user_address_result[0:3] == l
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_alias(self):
         adalias = addresses.alias('adalias')
@@ -769,14 +769,14 @@ class InstancesTest(QueryTest):
             # test using a string alias name
             l = q.options(contains_eager('addresses', alias="adalias")).instances(selectquery.execute())
             assert fixtures.user_address_result == l
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
         sess.clear()
 
         def go():
             # test using the Alias object itself
             l = q.options(contains_eager('addresses', alias=adalias)).instances(selectquery.execute())
             assert fixtures.user_address_result == l
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
         sess.clear()
 
@@ -790,7 +790,7 @@ class InstancesTest(QueryTest):
             # test using a custom 'decorate' function
             l = q.options(contains_eager('addresses', decorator=decorate)).instances(selectquery.execute())
             assert fixtures.user_address_result == l
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
         sess.clear()
 
         oalias = orders.alias('o1')
@@ -801,7 +801,7 @@ class InstancesTest(QueryTest):
         def go():
             l = q.options(contains_eager('orders', alias='o1'), contains_eager('orders.items', alias='i1')).instances(query.execute())
             assert fixtures.user_order_result == l
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
         sess.clear()
 
@@ -809,7 +809,7 @@ class InstancesTest(QueryTest):
         def go():
             l = q.options(contains_eager('orders', alias=oalias), contains_eager('orders.items', alias=ialias)).instances(query.execute())
             assert fixtures.user_order_result == l
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
         sess.clear()
 
 
@@ -1055,7 +1055,7 @@ class SelectFromTest(QueryTest):
                         ]),
                     Order(description=u'order 5',items=[Item(description=u'item 5',keywords=[])])])
                 ])
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
         sess.clear()
         sel2 = orders.select(orders.c.id.in_([1,2,3]))
@@ -1085,19 +1085,19 @@ class SelectFromTest(QueryTest):
                     User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)])
                 ]
             )
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
         sess.clear()
 
         def go():
             self.assertEquals(sess.query(User).options(eagerload('addresses')).select_from(sel).filter(User.c.id==8).all(),
                 [User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)])]
             )
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
         sess.clear()
 
         def go():
             self.assertEquals(sess.query(User).options(eagerload('addresses')).select_from(sel)[1], User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)]))
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
 class CustomJoinTest(QueryTest):
     keep_mappers = False
@@ -1227,7 +1227,7 @@ class ExternalColumnsTest(QueryTest):
             sess.clear()
             def go():
                 assert address_result == sess.query(Address).options(eagerload('user')).all()
-            self.assert_sql_count(testbase.db, go, 1)
+            self.assert_sql_count(testing.db, go, 1)
 
         tuple_address_result = [(address, address.user) for address in address_result]
 
@@ -1238,4 +1238,4 @@ class ExternalColumnsTest(QueryTest):
 
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import operator
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -10,7 +10,7 @@ from query import QueryTest
 class DynamicTest(FixtureTest):
     keep_mappers = False
     refresh_data = True
-    
+
     def test_basic(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
@@ -31,22 +31,22 @@ class DynamicTest(FixtureTest):
         sess = create_session()
         u = sess.query(User).first()
         assert u.addresses.count() == 1, u.addresses.count()
-        
+
     def test_backref(self):
         mapper(Address, addresses, properties={
             'user':relation(User, backref=backref('addresses', lazy='dynamic'))
         })
         mapper(User, users)
-        
+
         sess = create_session()
         ad = sess.query(Address).get(1)
         def go():
             ad.user = None
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
         sess.flush()
         u = sess.query(User).get(7)
         assert ad not in u.addresses
-        
+
     def test_no_count(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
@@ -58,24 +58,24 @@ class DynamicTest(FixtureTest):
         # result), else additional count() queries are issued when evaluating in a list context
         def go():
             assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
-        self.assert_sql_count(testbase.db, go, 2)
-    
+        self.assert_sql_count(testing.db, go, 2)
+
     def test_m2m(self):
         mapper(Order, orders, properties={
             'items':relation(Item, secondary=order_items, lazy="dynamic", backref=backref('orders', lazy="dynamic"))
         })
         mapper(Item, items)
-        
+
         sess = create_session()
         o1 = Order(id=15, description="order 10")
         i1 = Item(id=10, description="item 8")
         o1.items.append(i1)
         sess.save(o1)
         sess.flush()
-        
+
         assert o1 in i1.orders.all()
         assert i1 in o1.items.all()
-        
+
 class FlushTest(FixtureTest):
     def test_basic(self):
         class Fixture(Base):
@@ -124,15 +124,15 @@ class FlushTest(FixtureTest):
         sess.delete(u.addresses[4])
         sess.delete(u.addresses[3])
         assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
-        
+
         sess.delete(u)
-        
+
         # u.addresses relation will have to force the load
         # of all addresses so that they can be updated
         sess.flush()
         sess.close()
-        
-        assert testbase.db.scalar(addresses.count(addresses.c.user_id != None)) ==0
+
+        assert testing.db.scalar(addresses.count(addresses.c.user_id != None)) ==0
 
     @testing.fails_on('maxdb')
     def test_remove_orphans(self):
@@ -214,5 +214,4 @@ for autoflush in (False, True):
         create_backref_test(autoflush, saveuser)
 
 if __name__ == '__main__':
-    testbase.main()
-
+    testenv.main()

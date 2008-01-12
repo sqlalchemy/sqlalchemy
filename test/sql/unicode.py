@@ -1,7 +1,7 @@
 # coding: utf-8
 """verrrrry basic unicode column name testing"""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 from testlib.engines import utf8_engine
@@ -61,13 +61,13 @@ class UnicodeSchemaTest(PersistTest):
             t3.delete().execute()
             t2.delete().execute()
             t1.delete().execute()
-        
+
     @testing.unsupported('maxdb', 'oracle', 'sybase')
     def tearDownAll(self):
         global unicode_bind
         metadata.drop_all()
         del unicode_bind
-        
+
     @testing.unsupported('maxdb', 'oracle', 'sybase')
     def test_insert(self):
         t1.insert().execute({u'méil':1, u'\u6e2c\u8a66':5})
@@ -80,7 +80,7 @@ class UnicodeSchemaTest(PersistTest):
         assert t1.select().execute().fetchall() == [(1, 5)]
         assert t2.select().execute().fetchall() == [(1, 1)]
         assert t3.select().execute().fetchall() == [(1, 5, 1, 1)]
-    
+
     @testing.unsupported('maxdb', 'oracle', 'sybase')
     def test_reflect(self):
         t1.insert().execute({u'méil':2, u'\u6e2c\u8a66':7})
@@ -111,8 +111,8 @@ class UnicodeSchemaTest(PersistTest):
                      [(2, 7, 2, 2), (1, 5, 1, 1)])
         meta.drop_all()
         metadata.create_all()
-        
+
 
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

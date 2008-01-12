@@ -1,6 +1,5 @@
 """Profiling support for unit and performance tests."""
 
-import testbase
 import os, sys
 from testlib.config import parser, post_configure
 import testlib.config

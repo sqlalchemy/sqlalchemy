@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import exceptions
 from sqlalchemy.orm import create_session, clear_mappers, relation, class_mapper
@@ -10,7 +10,7 @@ from testlib import *
 class AssignMapperTest(PersistTest):
     def setUpAll(self):
         global metadata, table, table2
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table = Table('sometable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)))
@@ -80,4 +80,4 @@ class AssignMapperTest(PersistTest):
 
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import datetime, os
 from sqlalchemy import *
 from sqlalchemy import exceptions, sql
@@ -12,7 +12,7 @@ from testlib import PersistTest
 class ShardTest(PersistTest):
     def setUpAll(self):
         global db1, db2, db3, db4, weather_locations, weather_reports
-        
+
         db1 = create_engine('sqlite:///shard1.db')
         db2 = create_engine('sqlite:///shard2.db')
         db3 = create_engine('sqlite:///shard3.db')
@@ -41,18 +41,18 @@ class ShardTest(PersistTest):
             Column('temperature', Float),
             Column('report_time', DateTime, default=datetime.datetime.now),
         )
-        
+
         for db in (db1, db2, db3, db4):
             meta.create_all(db)
-        
+
         db1.execute(ids.insert(), nextid=1)
 
         self.setup_session()
         self.setup_mappers()
-        
+
     def tearDownAll(self):
         for db in (db1, db2, db3, db4):
-            db.connect().invalidate()        
+            db.connect().invalidate()
         for i in range(1,5):
             os.remove("shard%d.db" % i)
 
@@ -65,7 +65,7 @@ class ShardTest(PersistTest):
             'Europe':'europe',
             'South America':'south_america'
         }
-        
+
         def shard_chooser(mapper, instance, clause=None):
             if isinstance(instance, WeatherLocation):
                 return shard_lookup[instance.continent]
@@ -92,7 +92,7 @@ class ShardTest(PersistTest):
                 return ['north_america', 'asia', 'europe', 'south_america']
             else:
                 return ids
-        
+
         create_session = sessionmaker(class_=ShardedSession, autoflush=True, transactional=True)
 
         create_session.configure(shards={
@@ -101,11 +101,11 @@ class ShardTest(PersistTest):
             'europe':db3,
             'south_america':db4
         }, shard_chooser=shard_chooser, id_chooser=id_chooser, query_chooser=query_chooser)
-        
+
 
     def setup_mappers(self):
         global WeatherLocation, Report
-        
+
         class WeatherLocation(object):
             def __init__(self, continent, city):
                 self.continent = continent
@@ -120,7 +120,7 @@ class ShardTest(PersistTest):
             'city': deferred(weather_locations.c.city),
         })
 
-        mapper(Report, weather_reports)    
+        mapper(Report, weather_reports)
 
     def test_roundtrip(self):
         tokyo = WeatherLocation('Asia', 'Tokyo')
@@ -144,7 +144,7 @@ class ShardTest(PersistTest):
 
         assert db2.execute(weather_locations.select()).fetchall() == [(1, 'Asia', 'Tokyo')]
         assert db1.execute(weather_locations.select()).fetchall() == [(2, 'North America', 'New York'), (3, 'North America', 'Toronto')]
-        
+
         t = sess.query(WeatherLocation).get(tokyo.id)
         assert t.city == tokyo.city
         assert t.reports[0].temperature == 80.0
@@ -158,5 +158,4 @@ class ShardTest(PersistTest):
 
 
 if __name__ == '__main__':
-    testbase.main()
-    
+    testenv.main()

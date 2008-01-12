@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 
@@ -6,7 +6,7 @@ from testlib import *
 class FoundRowsTest(AssertMixin):
     """tests rowcount functionality"""
     def setUpAll(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         global employees_table
 
@@ -48,7 +48,7 @@ class FoundRowsTest(AssertMixin):
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='Z')
         print "expecting 3, dialect reports %s" % r.rowcount
-        if testbase.db.dialect.supports_sane_rowcount:
+        if testing.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
     def test_update_rowcount2(self):
@@ -56,7 +56,7 @@ class FoundRowsTest(AssertMixin):
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='C')
         print "expecting 3, dialect reports %s" % r.rowcount
-        if testbase.db.dialect.supports_sane_rowcount:
+        if testing.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
     def test_delete_rowcount(self):
@@ -64,12 +64,8 @@ class FoundRowsTest(AssertMixin):
         department = employees_table.c.department
         r = employees_table.delete(department=='C').execute()
         print "expecting 3, dialect reports %s" % r.rowcount
-        if testbase.db.dialect.supports_sane_rowcount:
+        if testing.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
 if __name__ == '__main__':
-    testbase.main()
-
-
-
-
+    testenv.main()

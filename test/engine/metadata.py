@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import exceptions
 from testlib import *
@@ -8,7 +8,7 @@ class MetaDataTest(PersistTest):
         metadata = MetaData()
         t1 = Table('table1', metadata, Column('col1', Integer, primary_key=True),
             Column('col2', String(20)))
-        metadata.bind = testbase.db
+        metadata.bind = testing.db
         metadata.create_all()
         try:
             assert t1.count().scalar() == 0
@@ -21,7 +21,7 @@ class MetaDataTest(PersistTest):
         t1 = Table('table1', metadata, Column('col1', Integer, primary_key=True),
             Column('col2', String(20)))
 
-        metadata.bind = testbase.db
+        metadata.bind = testing.db
         metadata.create_all()
         try:
             try:
@@ -33,6 +33,6 @@ class MetaDataTest(PersistTest):
                 assert str(e) == "Table 'table1' is already defined for this MetaData instance."
         finally:
             metadata.drop_all()
-            
+
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

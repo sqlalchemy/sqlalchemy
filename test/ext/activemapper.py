@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from datetime import datetime
 
 from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, many_to_many, objectstore
@@ -66,7 +66,7 @@ class testcase(PersistTest):
                 postal_code = column(String(128))
                 person_id   = column(Integer, foreign_key=ForeignKey('person.id'))
 
-        activemapper.metadata.bind = testbase.db
+        activemapper.metadata.bind = testing.db
         activemapper.create_tables()
 
     def tearDownAll(self):
@@ -175,7 +175,7 @@ class testcase(PersistTest):
             objectstore.registry.set(s1)
             objectstore.flush()
             # Only dialects with a sane rowcount can detect the ConcurrentModificationError
-            if testbase.db.dialect.supports_sane_rowcount:
+            if testing.db.dialect.supports_sane_rowcount:
                 assert False
         except exceptions.ConcurrentModificationError:
             pass
@@ -283,7 +283,7 @@ class testmanytomany(PersistTest):
                  name = column(String(30))
                  foorel = many_to_many("foo", secondarytable, backref='bazrel')
 
-         activemapper.metadata.bind = testbase.db
+         activemapper.metadata.bind = testing.db
          activemapper.create_tables()
 
      # Create a couple of activemapper objects
@@ -330,7 +330,7 @@ class testselfreferential(PersistTest):
                 parent_id = column(Integer, foreign_key=ForeignKey('treenode.id'))
                 children = one_to_many('TreeNode', colname='id', backref='parent')
 
-        activemapper.metadata.bind = testbase.db
+        activemapper.metadata.bind = testing.db
         activemapper.create_tables()
     def tearDownAll(self):
         clear_mappers()
@@ -354,4 +354,4 @@ class testselfreferential(PersistTest):
         assert (t.parent is TreeNode.query.filter_by(name='node1').one())
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

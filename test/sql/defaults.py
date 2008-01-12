@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exceptions, schema, util
@@ -11,7 +11,7 @@ class DefaultTest(PersistTest):
     def setUpAll(self):
         global t, f, f2, ts, currenttime, metadata, default_generator
 
-        db = testbase.db
+        db = testing.db
         metadata = MetaData(db)
         default_generator = {'x':50}
 
@@ -127,7 +127,7 @@ class DefaultTest(PersistTest):
             c = ColumnDefault(fn)
 
     def teststandalone(self):
-        c = testbase.db.engine.contextual_connect()
+        c = testing.db.engine.contextual_connect()
         x = c.execute(t.c.col1.default)
         y = t.c.col2.default.execute()
         z = c.execute(t.c.col3.default)
@@ -148,7 +148,7 @@ class DefaultTest(PersistTest):
         t.insert().execute()
         t.insert().execute()
 
-        ctexec = select([currenttime.label('now')], bind=testbase.db).scalar()
+        ctexec = select([currenttime.label('now')], bind=testing.db).scalar()
         l = t.select().execute()
         today = datetime.date.today()
         self.assertEquals(l.fetchall(), [
@@ -161,7 +161,7 @@ class DefaultTest(PersistTest):
     def testinsertmany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
         if (testing.against('mysql') and
-            testbase.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
+            testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 
         r = t.insert().execute({}, {}, {})
@@ -179,7 +179,7 @@ class DefaultTest(PersistTest):
     def testupdatemany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
         if (testing.against('mysql') and
-            testbase.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
+            testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 
         t.insert().execute({}, {}, {})
@@ -226,8 +226,8 @@ class DefaultTest(PersistTest):
         key values in memory before insert; otherwise we cant locate the just inserted row."""
 
         try:
-            meta = MetaData(testbase.db)
-            testbase.db.execute("""
+            meta = MetaData(testing.db)
+            testing.db.execute("""
              CREATE TABLE speedy_users
              (
                  speedy_user_id   SERIAL     PRIMARY KEY,
@@ -242,13 +242,13 @@ class DefaultTest(PersistTest):
             l = t.select().execute().fetchall()
             self.assert_(l == [(1, 'user', 'lala')])
         finally:
-            testbase.db.execute("drop table speedy_users", None)
+            testing.db.execute("drop table speedy_users", None)
 
 class PKDefaultTest(PersistTest):
     def setUpAll(self):
         global metadata, t1, t2
 
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         t2 = Table('t2', metadata,
             Column('nextid', Integer))
@@ -277,7 +277,7 @@ class AutoIncrementTest(PersistTest):
     def setUp(self):
         global aitable, aimeta
 
-        aimeta = MetaData(testbase.db)
+        aimeta = MetaData(testing.db)
         aitable = Table("aitest", aimeta,
             Column('id', Integer, Sequence('ai_id_seq', optional=True),
                    primary_key=True),
@@ -292,7 +292,7 @@ class AutoIncrementTest(PersistTest):
     @testing.fails_on('sqlite')
     def testnonautoincrement(self):
         # sqlite INT primary keys can be non-unique! (only for ints)
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         nonai_table = Table("nonaitest", meta,
             Column('id', Integer, autoincrement=False, primary_key=True),
             Column('data', String(20)))
@@ -344,10 +344,10 @@ class AutoIncrementTest(PersistTest):
             [(1, 1, None), (2, None, 'row 2'), (3, 3, 'row 3'), (4, 4, None)])
 
     def test_autoincrement_autocommit(self):
-        self._test_autoincrement(testbase.db)
+        self._test_autoincrement(testing.db)
 
     def test_autoincrement_transaction(self):
-        con = testbase.db.connect()
+        con = testing.db.connect()
         tx = con.begin()
         try:
             try:
@@ -364,10 +364,10 @@ class AutoIncrementTest(PersistTest):
             con.close()
 
     def test_autoincrement_fk(self):
-        if not testbase.db.dialect.supports_pk_autoincrement:
+        if not testing.db.dialect.supports_pk_autoincrement:
             return True
 
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         # No optional sequence here.
         nodes = Table('nodes', metadata,
@@ -389,7 +389,7 @@ class SequenceTest(PersistTest):
 
     def setUpAll(self):
         global cartitems, sometable, metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         cartitems = Table("cartitems", metadata,
             Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
             Column("description", String(40)),
@@ -409,7 +409,7 @@ class SequenceTest(PersistTest):
 
         result = sometable.insert().execute(name="somename")
         assert 'id' in result.postfetch_cols()
-        
+
         result = sometable.insert().execute(name="someother")
         assert 'id' in result.postfetch_cols()
 
@@ -443,7 +443,7 @@ class SequenceTest(PersistTest):
     # maxdb db-api seems to double-execute NEXTVAL internally somewhere,
     # throwing off the numbers for these tests...
     def test_implicit_sequence_exec(self):
-        s = Sequence("my_sequence", metadata=MetaData(testbase.db))
+        s = Sequence("my_sequence", metadata=MetaData(testing.db))
         s.create()
         try:
             x = s.execute()
@@ -454,19 +454,19 @@ class SequenceTest(PersistTest):
     @testing.fails_on('maxdb')
     def teststandalone_explicit(self):
         s = Sequence("my_sequence")
-        s.create(bind=testbase.db)
+        s.create(bind=testing.db)
         try:
-            x = s.execute(testbase.db)
+            x = s.execute(testing.db)
             self.assert_(x == 1)
         finally:
-            s.drop(testbase.db)
+            s.drop(testing.db)
 
     def test_checkfirst(self):
         s = Sequence("my_sequence")
-        s.create(testbase.db, checkfirst=False)
-        s.create(testbase.db, checkfirst=True)
-        s.drop(testbase.db, checkfirst=False)
-        s.drop(testbase.db, checkfirst=True)
+        s.create(testing.db, checkfirst=False)
+        s.create(testing.db, checkfirst=True)
+        s.drop(testing.db, checkfirst=False)
+        s.drop(testing.db, checkfirst=True)
 
     @testing.fails_on('maxdb')
     def teststandalone2(self):
@@ -478,4 +478,4 @@ class SequenceTest(PersistTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

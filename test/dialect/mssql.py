@@ -1,11 +1,10 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import re
 from sqlalchemy import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 from testlib import *
 
-# TODO: migrate all MS-SQL tests here
 
 class CompileTest(SQLCompileTest):
     __dialect__ = mssql.MSSQLDialect()
@@ -59,14 +58,14 @@ class ReflectionTest(PersistTest):
     __only_on__ = 'mssql'
 
     def testidentity(self):
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         table = Table(
             'identity_test', meta,
             Column('col1', Integer, Sequence('fred', 2, 3), primary_key=True)
         )
         table.create()
 
-        meta2 = MetaData(testbase.db)
+        meta2 = MetaData(testing.db)
         try:
             table2 = Table('identity_test', meta2, autoload=True)
             assert table2.c['col1'].sequence.start == 2
@@ -79,7 +78,7 @@ class QueryTest(PersistTest):
     __only_on__ = 'mssql'
 
     def test_fetchid_trigger(self):
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         t1 = Table('t1', meta,
                 Column('id', Integer, Sequence('fred', 100, 1), primary_key=True),
                 Column('descr', String(200)))
@@ -87,7 +86,7 @@ class QueryTest(PersistTest):
                 Column('id', Integer, Sequence('fred', 200, 1), primary_key=True),
                 Column('descr', String(200)))
         meta.create_all()
-        con = testbase.db.connect()
+        con = testing.db.connect()
         con.execute("""create trigger paj on t1 for insert as
             insert into t2 (descr) select descr from inserted""")
 
@@ -104,8 +103,8 @@ class QueryTest(PersistTest):
             meta.drop_all()
 
     def test_insertid_schema(self):
-        meta = MetaData(testbase.db)
-        con = testbase.db.connect()
+        meta = MetaData(testing.db)
+        con = testing.db.connect()
         con.execute('create schema paj')
         tbl = Table('test', meta, Column('id', Integer, primary_key=True), schema='paj')
         tbl.create()
@@ -116,21 +115,21 @@ class QueryTest(PersistTest):
             con.execute('drop schema paj')
 
     def test_insertid_reserved(self):
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         table = Table(
             'select', meta,
             Column('col', Integer, primary_key=True)
         )
         table.create()
 
-        meta2 = MetaData(testbase.db)
+        meta2 = MetaData(testing.db)
         try:
             table.insert().execute(col=7)
         finally:
             table.drop()
 
     def test_select_limit_nooffset(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         users = Table('query_users', metadata,
             Column('user_id', INT, primary_key = True),
@@ -157,7 +156,7 @@ class GenerativeQueryTest(PersistTest):
 
     def setUpAll(self):
         global foo, metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         foo = Table('foo', metadata,
                     Column('id', Integer, Sequence('foo_id_seq'),
                            primary_key=True),
@@ -167,7 +166,7 @@ class GenerativeQueryTest(PersistTest):
         mapper(Foo, foo)
         metadata.create_all()
 
-        sess = create_session(bind=testbase.db)
+        sess = create_session(bind=testing.db)
         for i in range(100):
             sess.save(Foo(bar=i, range=i%10))
         sess.flush()
@@ -177,7 +176,7 @@ class GenerativeQueryTest(PersistTest):
         clear_mappers()
 
     def test_slice_mssql(self):
-        sess = create_session(bind=testbase.db)
+        sess = create_session(bind=testing.db)
         query = sess.query(Foo)
         orig = query.all()
         assert list(query[:10]) == orig[:10]
@@ -185,4 +184,4 @@ class GenerativeQueryTest(PersistTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

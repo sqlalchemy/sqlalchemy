@@ -1,6 +1,5 @@
-import testbase
-from testlib import config
 import inspect, re
+from testlib import config
 orm = None
 
 __all__ = 'mapper',

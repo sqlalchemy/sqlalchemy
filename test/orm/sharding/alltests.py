@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import unittest
 
 def suite():
@@ -15,4 +15,4 @@ def suite():
 
 
 if __name__ == '__main__':
-    testbase.main(suite())
+    testenv.main(suite())

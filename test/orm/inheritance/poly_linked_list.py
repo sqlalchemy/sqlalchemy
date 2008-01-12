@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
@@ -195,4 +195,4 @@ class PolymorphicCircularTest(ORMTest):
         assert original == forwards == backwards
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

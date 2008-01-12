@@ -1,7 +1,7 @@
 """tests the "bind" attribute/argument across schema, SQL, and ORM sessions,
 including the deprecated versions of these arguments"""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import engine, exceptions
 from testlib import *
@@ -13,8 +13,8 @@ class BindTest(PersistTest):
         table = Table('test_table', metadata,
             Column('foo', Integer))
         for bind in (
-            testbase.db,
-            testbase.db.connect()
+            testing.db,
+            testing.db.connect()
         ):
             for args in [
                 ([], {'bind':bind}),
@@ -50,8 +50,8 @@ class BindTest(PersistTest):
 
         for meta in (MetaData,ThreadLocalMetaData):
             for bind in (
-                testbase.db,
-                testbase.db.connect()
+                testing.db,
+                testing.db.connect()
             ):
                 metadata = meta()
                 table = Table('test_table', metadata,
@@ -83,8 +83,8 @@ class BindTest(PersistTest):
 
     def test_create_drop_constructor_bound(self):
         for bind in (
-            testbase.db,
-            testbase.db.connect()
+            testing.db,
+            testing.db.connect()
         ):
             try:
                 for args in (
@@ -111,7 +111,7 @@ class BindTest(PersistTest):
             Column('foo', Integer),
             test_needs_acid=True,
             )
-        conn = testbase.db.connect()
+        conn = testing.db.connect()
         metadata.create_all(bind=conn)
         try:
             trans = conn.begin()
@@ -132,7 +132,7 @@ class BindTest(PersistTest):
         metadata = MetaData()
         table = Table('test_table', metadata,
             Column('foo', Integer))
-        metadata.create_all(bind=testbase.db)
+        metadata.create_all(bind=testing.db)
         try:
             for elem in [
                 table.select,
@@ -141,8 +141,8 @@ class BindTest(PersistTest):
                 lambda **kwargs:text("select * from test_table", **kwargs)
             ]:
                 for bind in (
-                    testbase.db,
-                    testbase.db.connect()
+                    testing.db,
+                    testing.db.connect()
                 ):
                     try:
                         e = elem(bind=bind)
@@ -163,7 +163,7 @@ class BindTest(PersistTest):
         finally:
             if isinstance(bind, engine.Connection):
                 bind.close()
-            metadata.drop_all(bind=testbase.db)
+            metadata.drop_all(bind=testing.db)
 
     def test_session(self):
         from sqlalchemy.orm import create_session, mapper
@@ -174,10 +174,10 @@ class BindTest(PersistTest):
         class Foo(object):
             pass
         mapper(Foo, table)
-        metadata.create_all(bind=testbase.db)
+        metadata.create_all(bind=testing.db)
         try:
-            for bind in (testbase.db,
-                testbase.db.connect()
+            for bind in (testing.db,
+                testing.db.connect()
                 ):
                 try:
                     for args in ({'bind':bind},):
@@ -205,8 +205,8 @@ class BindTest(PersistTest):
         finally:
             if isinstance(bind, engine.Connection):
                 bind.close()
-            metadata.drop_all(bind=testbase.db)
+            metadata.drop_all(bind=testing.db)
 
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exceptions, types
@@ -46,8 +46,8 @@ class RelationTest(PersistTest):
         )
     def setUp(self):
         global session
-        session = create_session(bind=testbase.db)
-        conn = testbase.db.connect()
+        session = create_session(bind=testing.db)
+        conn = testing.db.connect()
         conn.create(tbl_a)
         conn.create(tbl_b)
         conn.create(tbl_c)
@@ -85,14 +85,14 @@ class RelationTest(PersistTest):
         session.save_or_update(b)
 
     def tearDown(self):
-        conn = testbase.db.connect()
+        conn = testing.db.connect()
         conn.drop(tbl_d)
         conn.drop(tbl_c)
         conn.drop(tbl_b)
         conn.drop(tbl_a)
 
     def tearDownAll(self):
-        metadata.drop_all(testbase.db)
+        metadata.drop_all(testing.db)
 
     def testDeleteRootTable(self):
         session.flush()
@@ -114,7 +114,7 @@ class RelationTest2(PersistTest):
 
     def setUpAll(self):
         global metadata, company_tbl, employee_tbl
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         company_tbl = Table('company', metadata,
              Column('company_id', Integer, primary_key=True),
@@ -232,7 +232,7 @@ class RelationTest3(PersistTest):
     def setUpAll(self):
         global jobs, pageversions, pages, metadata, Job, Page, PageVersion, PageComment
         import datetime
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         jobs = Table("jobs", metadata,
                         Column("jobno", Unicode(15), primary_key=True),
                         Column("created", DateTime, nullable=False, default=datetime.datetime.now),
@@ -347,7 +347,7 @@ class RelationTest3(PersistTest):
 
         s.save(j1)
         s.save(j2)
-        
+
         s.flush()
 
         s.clear()
@@ -1142,4 +1142,4 @@ class ViewOnlyTest2(ORMTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

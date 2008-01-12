@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
@@ -314,4 +314,4 @@ class M2MTest3(ORMTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

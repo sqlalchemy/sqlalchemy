@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import exceptions, util
 from sqlalchemy.orm import *
@@ -401,7 +401,7 @@ class RelationTest4(ORMTest):
         def go():
             testcar = session.query(Car).options(eagerload('employee')).get(car1.car_id)
             assert str(testcar.employee) == "Engineer E4, status X"
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
         session.clear()
         s = session.query(Car)
@@ -620,7 +620,7 @@ class GenerativeTest(AssertMixin):
         #   +--------------------------------------- has a ------+
 
         global metadata, status, people, engineers, managers, cars
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         # table definitions
         status = Table('status', metadata,
            Column('status_id', Integer, primary_key=True),
@@ -1010,4 +1010,4 @@ class InheritingEagerTest(ORMTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

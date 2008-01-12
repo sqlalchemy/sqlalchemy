@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import sqlalchemy.topological as topological
 from sqlalchemy import util
 from testlib import *
@@ -20,7 +20,7 @@ class DependencySortTest(PersistTest):
                 assert False, "Tuple not in dependency tree: " + str(tuple) + " " + str(node)
             for c in node[2]:
                 assert_tuple(tuple, c)
-        
+
         for tuple in tuples:
             assert_tuple(list(tuple), node)
 
@@ -37,7 +37,7 @@ class DependencySortTest(PersistTest):
                 assert_unique(c)
         assert_unique(node)
         assert len(collection) == 0
-        
+
     def testsort(self):
         rootnode = 'root'
         node2 = 'node2'
@@ -92,7 +92,7 @@ class DependencySortTest(PersistTest):
         head1 = topological.sort_as_tree(tuples, [node1, node2, node3])
         head2 = topological.sort_as_tree(tuples, [node3, node1, node2])
         head3 = topological.sort_as_tree(tuples, [node3, node2, node1])
-        
+
         # TODO: figure out a "node == node2" function
         #self.assert_(str(head1) == str(head2) == str(head3))
         print "\n" + str(head1)
@@ -114,7 +114,7 @@ class DependencySortTest(PersistTest):
         self.assert_sort(tuples, head)
 
     def testsort5(self):
-        # this one, depenending on the weather, 
+        # this one, depenending on the weather,
         node1 = 'node1' #'00B94190'
         node2 = 'node2' #'00B94990'
         node3 = 'node3' #'00B9A9B0'
@@ -153,7 +153,7 @@ class DependencySortTest(PersistTest):
         allitems = [node1, node2, node3, node4]
         head = topological.sort_as_tree(tuples, allitems, with_cycles=True)
         self.assert_sort(tuples, head)
-        
+
     def testcircular2(self):
         # this condition was arising from ticket:362
         # and was not treated properly by topological sort
@@ -170,20 +170,19 @@ class DependencySortTest(PersistTest):
         ]
         head = topological.sort_as_tree(tuples, [], with_cycles=True)
         self.assert_sort(tuples, head)
-    
+
     def testcircular3(self):
         nodes = {}
         tuples = [('Question', 'Issue'), ('ProviderService', 'Issue'), ('Provider', 'Question'), ('Question', 'Provider'), ('ProviderService', 'Question'), ('Provider', 'ProviderService'), ('Question', 'Answer'), ('Issue', 'Question')]
         head = topological.sort_as_tree(tuples, [], with_cycles=True)
         self.assert_sort(tuples, head)
-        
+
     def testbigsort(self):
         tuples = []
         for i in range(0,1500, 2):
             tuples.append((i, i+1))
         head = topological.sort_as_tree(tuples, [])
-            
-            
-            
+
+
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

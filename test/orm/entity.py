@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
@@ -12,7 +12,7 @@ class EntityTest(AssertMixin):
     @testing.uses_deprecated('SessionContext')
     def setUpAll(self):
         global user1, user2, address1, address2, metadata, ctx
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         ctx = SessionContext(create_session)
 
         user1 = Table('user1', metadata,
@@ -216,4 +216,4 @@ class EntityTest(AssertMixin):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

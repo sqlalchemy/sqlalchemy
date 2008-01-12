@@ -2,7 +2,6 @@
 
 # monkeypatches unittest.TestLoader.suiteClass at import time
 
-import testbase
 import itertools, unittest, re, sys, os, operator, warnings
 from cStringIO import StringIO
 import testlib.config as config
@@ -20,6 +19,9 @@ _ops = { '<': operator.lt,
          'in': operator.contains,
          'between': lambda val, pair: val >= pair[0] and val <= pair[1],
          }
+
+# sugar ('testing.db'); set here by config() at runtime
+db = None
 
 def fails_on(*dbs):
     """Mark a test as expected to fail on one or more database implementations.

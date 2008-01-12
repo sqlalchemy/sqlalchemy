@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import re, operator
 from sqlalchemy import *
 from sqlalchemy import exceptions, sql, util
@@ -451,7 +451,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         clause = (table1.c.myid == 12) & table1.c.myid.between(15, 20) & table1.c.myid.like('hoho')
         assert str(clause) == str(util.pickle.loads(util.pickle.dumps(clause)))
 
-        
+
 
     def testextracomparisonoperators(self):
         self.assert_compile(
@@ -1413,4 +1413,4 @@ class SchemaTest(SQLCompileTest):
             "(:rem_id, :datatype_id, :value)")
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import threading, thread, time, gc
 import sqlalchemy.pool as pool
 import sqlalchemy.interfaces as interfaces
@@ -131,11 +131,13 @@ class PoolTest(PersistTest):
             assert int(time.time() - now) == 2
 
     def test_timeout_race(self):
-        # test a race condition where the initial connecting threads all race to queue.Empty, then block on the mutex.
-        # each thread consumes a connection as they go in.  when the limit is reached, the remaining threads
-        # go in, and get TimeoutError; even though they never got to wait for the timeout on queue.get().
-        # the fix involves checking the timeout again within the mutex, and if so, unlocking and throwing them back to the start
-        # of do_get()
+        # test a race condition where the initial connecting threads all race
+        # to queue.Empty, then block on the mutex.  each thread consumes a
+        # connection as they go in.  when the limit is reached, the remaining
+        # threads go in, and get TimeoutError; even though they never got to
+        # wait for the timeout on queue.get().  the fix involves checking the
+        # timeout again within the mutex, and if so, unlocking and throwing
+        # them back to the start of do_get()
         p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db', delay=.05), pool_size = 2, max_overflow = 1, use_threadlocal = False, timeout=3)
         timeouts = []
         def checkout():
@@ -554,4 +556,4 @@ class PoolTest(PersistTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

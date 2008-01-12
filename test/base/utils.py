@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import unittest
 from sqlalchemy import util, sql, exceptions
 from testlib import *
@@ -35,18 +35,18 @@ class OrderedDictTest(PersistTest):
         self.assert_(o.keys() == ['a', 'b', 'c', 'd', 'e', 'f'])
         self.assert_(o.values() == [1, 2, 3, 4, 5, 6])
 
-class OrderedSetTest(PersistTest): 
+class OrderedSetTest(PersistTest):
     def test_mutators_against_iter(self):
         # testing a set modified against an iterator
         o = util.OrderedSet([3,2, 4, 5])
-        
-        self.assertEquals(o.difference(iter([3,4])), util.OrderedSet([2,5]))
 
-        self.assertEquals(o.intersection(iter([3,4, 6])), util.OrderedSet([3, 4]))
+        self.assertEquals(o.difference(iter([3,4])),
+                          util.OrderedSet([2,5]))
+        self.assertEquals(o.intersection(iter([3,4, 6])),
+                          util.OrderedSet([3, 4]))
+        self.assertEquals(o.union(iter([3,4, 6])),
+                          util.OrderedSet([2, 3, 4, 5, 6]))
 
-        self.assertEquals(o.union(iter([3,4, 6])), util.OrderedSet([2, 3, 4, 5, 6]))
-
-        
 class ColumnCollectionTest(PersistTest):
     def test_in(self):
         cc = sql.ColumnCollection()
@@ -119,7 +119,6 @@ class EqOverride(object):
             return self.value != other.value
         else:
             return True
-
 class HashEqOverride(object):
     def __init__(self, value=None):
         self.value = value
@@ -307,4 +306,4 @@ class DictlikeIteritemsTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

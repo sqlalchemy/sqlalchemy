@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy import databases, exceptions, sql
@@ -16,8 +16,8 @@ dialects = [getattr(databases, mod).dialect()
 
 # if the configured dialect is out-of-tree or not yet in __all__, include it
 # too.
-if testbase.db.name not in databases.__all__:
-    dialects.append(testbase.db.dialect)
+if testing.db.name not in databases.__all__:
+    dialects.append(testing.db.dialect)
 
 
 class CompileTest(SQLCompileTest):
@@ -61,18 +61,18 @@ class CompileTest(SQLCompileTest):
 class ExecuteTest(PersistTest):
 
     def test_standalone_execute(self):
-        x = testbase.db.func.current_date().execute().scalar()
-        y = testbase.db.func.current_date().select().execute().scalar()
-        z = testbase.db.func.current_date().scalar()
+        x = testing.db.func.current_date().execute().scalar()
+        y = testing.db.func.current_date().select().execute().scalar()
+        z = testing.db.func.current_date().scalar()
         assert (x == y == z) is True
 
         # ansi func
-        x = testbase.db.func.current_date()
+        x = testing.db.func.current_date()
         assert isinstance(x.type, Date)
         assert isinstance(x.execute().scalar(), datetime.date)
 
     def test_conn_execute(self):
-        conn = testbase.db.connect()
+        conn = testing.db.connect()
         try:
             x = conn.execute(func.current_date()).scalar()
             y = conn.execute(func.current_date().select()).scalar()
@@ -88,7 +88,7 @@ class ExecuteTest(PersistTest):
         get overridden.
         """
 
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         t = Table('t1', meta,
             Column('id', Integer, Sequence('t1idseq', optional=True), primary_key=True),
             Column('value', Integer)
@@ -138,13 +138,13 @@ class ExecuteTest(PersistTest):
     @testing.fails_on_everything_except('postgres')
     def test_as_from(self):
         # TODO: shouldnt this work on oracle too ?
-        x = testbase.db.func.current_date().execute().scalar()
-        y = testbase.db.func.current_date().select().execute().scalar()
-        z = testbase.db.func.current_date().scalar()
-        w = select(['*'], from_obj=[testbase.db.func.current_date()]).scalar()
+        x = testing.db.func.current_date().execute().scalar()
+        y = testing.db.func.current_date().select().execute().scalar()
+        z = testing.db.func.current_date().scalar()
+        w = select(['*'], from_obj=[testing.db.func.current_date()]).scalar()
 
         # construct a column-based FROM object out of a function, like in [ticket:172]
-        s = select([sql.column('date', type_=DateTime)], from_obj=[testbase.db.func.current_date()])
+        s = select([sql.column('date', type_=DateTime)], from_obj=[testing.db.func.current_date()])
         q = s.execute().fetchone()[s.c.date]
         r = s.alias('datequery').select().scalar()
 
@@ -157,4 +157,4 @@ def exec_sorted(statement, *args, **kw):
                    for row in statement.execute(*args, **kw).fetchall()])
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

@@ -1,11 +1,11 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import ConfigParser, StringIO
 from sqlalchemy import *
 from sqlalchemy import exceptions, pool, engine
 import sqlalchemy.engine.url as url
 from testlib import *
 
-        
+
 class ParseConnectTest(PersistTest):
     def test_rfc1738(self):
         for text in (
@@ -41,7 +41,7 @@ class CreateEngineTest(PersistTest):
     """test that create_engine arguments of different types get propigated properly"""
     def test_connect_query(self):
         dbapi = MockDBAPI(foober='12', lala='18', fooz='somevalue')
-        
+
         # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
         e = create_engine('postgres://scott:tiger@somehost/test?foober=12&lala=18&fooz=somevalue', module=dbapi)
         c = e.connect()
@@ -110,52 +110,52 @@ pool_timeout=10
         assert e.pool._recycle == 50
         assert e.url == url.make_url('postgres://scott:tiger@somehost/test?fooz=somevalue')
         assert e.echo is True
-        
+
     def test_custom(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
 
         def connect():
             return dbapi.connect(foober=12, lala=18, fooz='somevalue', hoho={'this':'dict'})
-            
+
         # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
         e = create_engine('postgres://', creator=connect, module=dbapi)
         c = e.connect()
-    
+
     def test_recycle(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
         e = create_engine('postgres://', pool_recycle=472, module=dbapi)
         assert e.pool._recycle == 472
-        
+
     def test_badargs(self):
         # good arg, use MockDBAPI to prevent oracle import errors
         e = create_engine('oracle://', use_ansi=True, module=MockDBAPI())
-        
+
         try:
             e = create_engine("foobar://", module=MockDBAPI())
             assert False
         except ImportError:
-            assert True 
-            
+            assert True
+
         # bad arg
         try:
             e = create_engine('postgres://', use_ansi=True, module=MockDBAPI())
             assert False
         except TypeError:
             assert True
-        
+
         # bad arg
         try:
             e = create_engine('oracle://', lala=5, use_ansi=True, module=MockDBAPI())
             assert False
         except TypeError:
             assert True
-            
+
         try:
             e = create_engine('postgres://', lala=5, module=MockDBAPI())
             assert False
         except TypeError:
             assert True
-        
+
         try:
             e = create_engine('sqlite://', lala=5)
             assert False
@@ -174,31 +174,31 @@ pool_timeout=10
             assert False
         except TypeError:
             assert True
-            
+
         e = create_engine('mysql://', module=MockDBAPI(), connect_args={'use_unicode':True}, convert_unicode=True)
-        
+
         e = create_engine('sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
         try:
             c = e.connect()
             assert False
         except exceptions.DBAPIError:
             assert True
-    
+
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""
-        
+
         e = create_engine('mysql://scott:tiger@localhost/test', module=MockDBAPI())
         u = url.make_url('mysql://scott:tiger@localhost/test')
         e2 = create_engine(u, module=MockDBAPI())
         assert e.url.drivername == e2.url.drivername == 'mysql'
         assert e.url.username == e2.url.username == 'scott'
         assert e2.url is u
-        
+
     def test_poolargs(self):
         """test that connection pool args make it thru"""
         e = create_engine('postgres://', creator=None, pool_recycle=50, echo_pool=None, module=MockDBAPI())
         assert e.pool._recycle == 50
-        
+
         # these args work for QueuePool
         e = create_engine('postgres://', max_overflow=8, pool_timeout=60, poolclass=pool.QueuePool, module=MockDBAPI())
 
@@ -228,7 +228,6 @@ class MockCursor(object):
     def close(self):
         pass
 mock_dbapi = MockDBAPI()
-            
+
 if __name__ == "__main__":
-    testbase.main()
-        
+    testenv.main()

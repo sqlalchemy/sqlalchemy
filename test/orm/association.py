@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -8,7 +8,7 @@ class AssociationTest(PersistTest):
     @testing.uses_deprecated('association option')
     def setUpAll(self):
         global items, item_keywords, keywords, metadata, Item, Keyword, KeywordAssociation
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         items = Table('items', metadata,
             Column('item_id', Integer, primary_key=True),
             Column('name', String(40)),
@@ -144,7 +144,7 @@ class AssociationTest(PersistTest):
 class AssociationTest2(PersistTest):
     def setUpAll(self):
         global table_originals, table_people, table_isauthor, metadata, Originals, People, IsAuthor
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table_originals = Table('Originals', metadata,
             Column('ID',        Integer,        primary_key=True),
             Column('Title',     String(200),    nullable=False),
@@ -223,4 +223,4 @@ table_isauthor.c.Kind],
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

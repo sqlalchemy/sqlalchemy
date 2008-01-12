@@ -1,4 +1,3 @@
-import testbase
 from testlib import testing
 schema = None
 
@@ -18,7 +17,7 @@ def Table(*args, **kw):
 
     kw.update(table_options)
 
-    if testbase.db.name == 'mysql':
+    if testing.against('mysql'):
         if 'mysql_engine' not in kw and 'mysql_type' not in kw:
             if 'test_needs_fk' in test_opts or 'test_needs_acid' in test_opts:
                 kw['mysql_engine'] = 'InnoDB'

@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import time
 from datetime import datetime
 
@@ -78,7 +78,7 @@ def insert_data():
     q_sub_per_item = 10
     q_customers = 1000
 
-    con = testbase.db.connect()
+    con = testing.db.connect()
 
     transaction = con.begin()
     data, subdata = [], []
@@ -146,8 +146,8 @@ def insert_data():
 def run_queries():
     session = create_session()
     # no explicit transaction here.
-    
-    # build a report of summarizing the last 50 purchases and 
+
+    # build a report of summarizing the last 50 purchases and
     # the top 20 items from all purchases
 
     q = session.query(Purchase). \
@@ -165,7 +165,7 @@ def run_queries():
         for item in purchase.items:
             report.append(item.name)
             report.extend([s.name for s in item.subitems])
-    
+
     # mix a little low-level with orm
     # pull a report of the top 20 items of all time
     _item_id = purchaseitems.c.item_id
@@ -212,7 +212,7 @@ def default():
 
 @profiled('all')
 def main():
-    metadata.bind = testbase.db
+    metadata.bind = testing.db
     try:
         define_tables()
         setup_mappers()

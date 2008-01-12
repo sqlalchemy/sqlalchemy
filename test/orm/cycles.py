@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
@@ -24,7 +24,7 @@ class SelfReferentialTest(AssertMixin):
     """tests a self-referential mapper, with an additional list of child objects."""
     def setUpAll(self):
         global t1, t2, metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
             Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('parent_c1', Integer, ForeignKey('t1.c1')),
@@ -110,7 +110,7 @@ class SelfReferentialNoPKTest(AssertMixin):
     """test self-referential relationship that joins on a column other than the primary key column"""
     def setUpAll(self):
         global table, meta
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         table = Table('item', meta,
            Column('id', Integer, primary_key=True),
            Column('uuid', String(32), unique=True, nullable=False),
@@ -155,7 +155,7 @@ class SelfReferentialNoPKTest(AssertMixin):
 class InheritTestOne(AssertMixin):
     def setUpAll(self):
         global parent, child1, child2, meta
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         parent = Table("parent", meta,
             Column("id", Integer, primary_key=True),
             Column("parent_data", String(50)),
@@ -357,7 +357,7 @@ class BiDirectionalOneToManyTest(AssertMixin):
     """tests two mappers with a one-to-many relation to each other."""
     def setUpAll(self):
         global t1, t2, metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
             Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1'))
@@ -398,7 +398,7 @@ class BiDirectionalOneToManyTest2(AssertMixin):
     """tests two mappers with a one-to-many relation to each other, with a second one-to-many on one of the mappers"""
     def setUpAll(self):
         global t1, t2, t3, metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
             Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1')),
@@ -460,7 +460,7 @@ class OneToManyManyToOneTest(AssertMixin):
     raise an exception when dependencies are sorted."""
     def setUpAll(self):
         global metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         global person
         global ball
         ball = Table('ball', metadata,
@@ -534,7 +534,7 @@ class OneToManyManyToOneTest(AssertMixin):
         sess.save(b)
         sess.save(p)
 
-        self.assert_sql(testbase.db, lambda: sess.flush(), [
+        self.assert_sql(testing.db, lambda: sess.flush(), [
             (
                 "INSERT INTO person (favorite_ball_id, data) VALUES (:favorite_ball_id, :data)",
                 {'favorite_ball_id': None, 'data':'some data'}
@@ -588,7 +588,7 @@ class OneToManyManyToOneTest(AssertMixin):
                 )
             ])
         sess.delete(p)
-        self.assert_sql(testbase.db, lambda: sess.flush(), [
+        self.assert_sql(testing.db, lambda: sess.flush(), [
             # heres the post update (which is a pre-update with deletes)
             (
                 "UPDATE person SET favorite_ball_id=:favorite_ball_id WHERE person.id = :person_id",
@@ -638,7 +638,7 @@ class OneToManyManyToOneTest(AssertMixin):
         sess = create_session()
         [sess.save(x) for x in [b,p,b2,b3,b4]]
 
-        self.assert_sql(testbase.db, lambda: sess.flush(), [
+        self.assert_sql(testing.db, lambda: sess.flush(), [
                 (
                     "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
                     {'person_id':None, 'data':'some data'}
@@ -717,7 +717,7 @@ class OneToManyManyToOneTest(AssertMixin):
         ])
 
         sess.delete(p)
-        self.assert_sql(testbase.db, lambda: sess.flush(), [
+        self.assert_sql(testing.db, lambda: sess.flush(), [
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
                 lambda ctx:{'person_id': None, 'ball_id': b.id}
@@ -748,7 +748,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
     """test using post_update on a single self-referential mapper"""
     def setUpAll(self):
         global metadata, node_table
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         node_table = Table('node', metadata,
             Column('id', Integer, Sequence('nodeid_id_seq', optional=True), primary_key=True),
             Column('path', String(50), nullable=False),
@@ -829,7 +829,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
         remove_child(root, cats)
         # pre-trigger lazy loader on 'cats' to make the test easier
         cats.children
-        self.assert_sql(testbase.db, lambda: session.flush(), [
+        self.assert_sql(testing.db, lambda: session.flush(), [
             (
                 "UPDATE node SET prev_sibling_id=:prev_sibling_id WHERE node.id = :node_id",
                 lambda ctx:{'prev_sibling_id':about.id, 'node_id':stories.id}
@@ -851,7 +851,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
 class SelfReferentialPostUpdateTest2(AssertMixin):
     def setUpAll(self):
         global metadata, a_table
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         a_table = Table("a", metadata,
                 Column("id", Integer(), primary_key=True),
                 Column("fui", String(128)),
@@ -890,4 +890,4 @@ class SelfReferentialPostUpdateTest2(AssertMixin):
         assert f2.foo is f1
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

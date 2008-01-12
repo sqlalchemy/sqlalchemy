@@ -1,6 +1,5 @@
 """Tests exceptions and DB-API exception wrapping."""
-
-import testbase
+import testenv; testenv.configure_for_tests()
 import sys, unittest
 import exceptions as stdlib_exceptions
 from sqlalchemy import exceptions as sa_exceptions
@@ -75,4 +74,4 @@ class WrapTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

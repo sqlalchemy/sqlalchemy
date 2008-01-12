@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import time, gc, resource
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -6,7 +6,7 @@ from testlib import *
 
 NUM = 100
 
-metadata = MetaData(testbase.db)
+metadata = MetaData(testing.db)
 Person_table = Table('Person', metadata,
                      Column('id', Integer, primary_key=True),
                      Column('name', String(40)),

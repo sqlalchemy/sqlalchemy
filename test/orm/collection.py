@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.orm import create_session, mapper, relation, \
@@ -1429,4 +1429,4 @@ class DictHelpersTest(ORMTest):
         self._test_composite_mapped(collection_class)
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

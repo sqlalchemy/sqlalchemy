@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exceptions
@@ -6,6 +6,7 @@ from sqlalchemy.databases import postgres
 from sqlalchemy.engine.strategies import MockEngineStrategy
 from testlib import *
 from sqlalchemy.sql import table, column
+
 
 class SequenceTest(SQLCompileTest):
     def test_basic(self):
@@ -61,7 +62,7 @@ class ReturningTest(AssertMixin):
 
     @testing.exclude('postgres', '<', (8, 2))
     def test_update_returning(self):
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         table = Table('tables', meta,
             Column('id', Integer, primary_key=True),
             Column('persons', Integer),
@@ -81,7 +82,7 @@ class ReturningTest(AssertMixin):
 
     @testing.exclude('postgres', '<', (8, 2))
     def test_insert_returning(self):
-        meta = MetaData(testbase.db)
+        meta = MetaData(testing.db)
         table = Table('tables', meta,
             Column('id', Integer, primary_key=True),
             Column('persons', Integer),
@@ -102,7 +103,7 @@ class ReturningTest(AssertMixin):
             result3 = table.insert(postgres_returning=[(table.c.id*2).label('double_id')]).execute({'persons': 4, 'full': False})
             self.assertEqual([dict(row) for row in result3], [{'double_id':8}])
 
-            result4 = testbase.db.execute('insert into tables (id, persons, "full") values (5, 10, true) returning persons')
+            result4 = testing.db.execute('insert into tables (id, persons, "full") values (5, 10, true) returning persons')
             self.assertEqual([dict(row) for row in result4], [{'persons': 10}])
         finally:
             table.drop()
@@ -113,7 +114,7 @@ class InsertTest(AssertMixin):
 
     def setUpAll(self):
         global metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
     def tearDown(self):
         metadata.drop_all()
@@ -183,7 +184,7 @@ class InsertTest(AssertMixin):
         # note that the test framework doesnt capture the "preexecute" of a seqeuence
         # or default.  we just see it in the bind params.
 
-        self.assert_sql(testbase.db, go, [], with_sequences=[
+        self.assert_sql(testing.db, go, [], with_sequences=[
             (
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {'id':30, 'data':'d1'}
@@ -224,7 +225,7 @@ class InsertTest(AssertMixin):
 
         # test the same series of events using a reflected
         # version of the table
-        m2 = MetaData(testbase.db)
+        m2 = MetaData(testing.db)
         table = Table(table.name, m2, autoload=True)
 
         def go():
@@ -236,7 +237,7 @@ class InsertTest(AssertMixin):
             table.insert(inline=True).execute({'id':33, 'data':'d7'})
             table.insert(inline=True).execute({'data':'d8'})
 
-        self.assert_sql(testbase.db, go, [], with_sequences=[
+        self.assert_sql(testing.db, go, [], with_sequences=[
             (
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {'id':30, 'data':'d1'}
@@ -284,7 +285,7 @@ class InsertTest(AssertMixin):
             table.insert(inline=True).execute({'id':33, 'data':'d7'})
             table.insert(inline=True).execute({'data':'d8'})
 
-        self.assert_sql(testbase.db, go, [], with_sequences=[
+        self.assert_sql(testing.db, go, [], with_sequences=[
             (
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {'id':30, 'data':'d1'}
@@ -351,7 +352,7 @@ class InsertTest(AssertMixin):
 
         # test the same series of events using a reflected
         # version of the table
-        m2 = MetaData(testbase.db)
+        m2 = MetaData(testing.db)
         table = Table(table.name, m2, autoload=True)
         table.insert().execute({'id':30, 'data':'d1'})
         try:
@@ -381,7 +382,7 @@ class DomainReflectionTest(AssertMixin):
     __only_on__ = 'postgres'
 
     def setUpAll(self):
-        con = testbase.db.connect()
+        con = testing.db.connect()
         try:
             con.execute('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42')
             con.execute('CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0')
@@ -393,7 +394,7 @@ class DomainReflectionTest(AssertMixin):
         con.execute('CREATE TABLE crosschema (question integer, answer alt_schema.testdomain)')
 
     def tearDownAll(self):
-        con = testbase.db.connect()
+        con = testing.db.connect()
         con.execute('DROP TABLE testtable')
         con.execute('DROP TABLE alt_schema.testtable')
         con.execute('DROP TABLE crosschema')
@@ -401,31 +402,31 @@ class DomainReflectionTest(AssertMixin):
         con.execute('DROP DOMAIN alt_schema.testdomain')
 
     def test_table_is_reflected(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         self.assertEquals(set(table.columns.keys()), set(['question', 'answer']), "Columns of reflected table didn't equal expected columns")
         self.assertEquals(table.c.answer.type.__class__, postgres.PGInteger)
 
     def test_domain_is_reflected(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         self.assertEquals(str(table.columns.answer.default.arg), '42', "Reflected default value didn't equal expected value")
         self.assertFalse(table.columns.answer.nullable, "Expected reflected column to not be nullable.")
 
     def test_table_is_reflected_alt_schema(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True, schema='alt_schema')
         self.assertEquals(set(table.columns.keys()), set(['question', 'answer', 'anything']), "Columns of reflected table didn't equal expected columns")
         self.assertEquals(table.c.anything.type.__class__, postgres.PGInteger)
 
     def test_schema_domain_is_reflected(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True, schema='alt_schema')
         self.assertEquals(str(table.columns.answer.default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
 
     def test_crosschema_domain_is_reflected(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table = Table('crosschema', metadata, autoload=True)
         self.assertEquals(str(table.columns.answer.default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
@@ -434,14 +435,14 @@ class MiscTest(AssertMixin):
     __only_on__ = 'postgres'
 
     def test_date_reflection(self):
-        m1 = MetaData(testbase.db)
+        m1 = MetaData(testing.db)
         t1 = Table('pgdate', m1,
             Column('date1', DateTime(timezone=True)),
             Column('date2', DateTime(timezone=False))
             )
         m1.create_all()
         try:
-            m2 = MetaData(testbase.db)
+            m2 = MetaData(testing.db)
             t2 = Table('pgdate', m2, autoload=True)
             assert t2.c.date1.type.timezone is True
             assert t2.c.date2.type.timezone is False
@@ -449,7 +450,7 @@ class MiscTest(AssertMixin):
             m1.drop_all()
 
     def test_pg_weirdchar_reflection(self):
-        meta1 = MetaData(testbase.db)
+        meta1 = MetaData(testing.db)
         subject = Table("subject", meta1,
                         Column("id$", Integer, primary_key=True),
                         )
@@ -460,7 +461,7 @@ class MiscTest(AssertMixin):
                         )
         meta1.create_all()
         try:
-            meta2 = MetaData(testbase.db)
+            meta2 = MetaData(testing.db)
             subject = Table("subject", meta2, autoload=True)
             referer = Table("referer", meta2, autoload=True)
             print str(subject.join(referer).onclause)
@@ -469,17 +470,17 @@ class MiscTest(AssertMixin):
             meta1.drop_all()
 
     def test_checksfor_sequence(self):
-        meta1 = MetaData(testbase.db)
+        meta1 = MetaData(testing.db)
         t = Table('mytable', meta1,
             Column('col1', Integer, Sequence('fooseq')))
         try:
-            testbase.db.execute("CREATE SEQUENCE fooseq")
+            testing.db.execute("CREATE SEQUENCE fooseq")
             t.create(checkfirst=True)
         finally:
             t.drop(checkfirst=True)
 
     def test_distinct_on(self):
-        t = Table('mytable', MetaData(testbase.db),
+        t = Table('mytable', MetaData(testing.db),
                   Column('id', Integer, primary_key=True),
                   Column('a', String(8)))
         self.assertEquals(
@@ -498,7 +499,7 @@ class MiscTest(AssertMixin):
     def test_schema_reflection(self):
         """note: this test requires that the 'alt_schema' schema be separate and accessible by the test user"""
 
-        meta1 = MetaData(testbase.db)
+        meta1 = MetaData(testing.db)
         users = Table('users', meta1,
             Column('user_id', Integer, primary_key = True),
             Column('user_name', String(30), nullable = False),
@@ -513,7 +514,7 @@ class MiscTest(AssertMixin):
         )
         meta1.create_all()
         try:
-            meta2 = MetaData(testbase.db)
+            meta2 = MetaData(testing.db)
             addresses = Table('email_addresses', meta2, autoload=True, schema="alt_schema")
             users = Table('users', meta2, mustexist=True, schema="alt_schema")
 
@@ -526,7 +527,7 @@ class MiscTest(AssertMixin):
             meta1.drop_all()
 
     def test_schema_reflection_2(self):
-        meta1 = MetaData(testbase.db)
+        meta1 = MetaData(testing.db)
         subject = Table("subject", meta1,
                         Column("id", Integer, primary_key=True),
                         )
@@ -537,7 +538,7 @@ class MiscTest(AssertMixin):
                         schema="alt_schema")
         meta1.create_all()
         try:
-            meta2 = MetaData(testbase.db)
+            meta2 = MetaData(testing.db)
             subject = Table("subject", meta2, autoload=True)
             referer = Table("referer", meta2, schema="alt_schema", autoload=True)
             print str(subject.join(referer).onclause)
@@ -546,7 +547,7 @@ class MiscTest(AssertMixin):
             meta1.drop_all()
 
     def test_schema_reflection_3(self):
-        meta1 = MetaData(testbase.db)
+        meta1 = MetaData(testing.db)
         subject = Table("subject", meta1,
                         Column("id", Integer, primary_key=True),
                         schema='alt_schema_2'
@@ -559,7 +560,7 @@ class MiscTest(AssertMixin):
 
         meta1.create_all()
         try:
-            meta2 = MetaData(testbase.db)
+            meta2 = MetaData(testing.db)
             subject = Table("subject", meta2, autoload=True, schema="alt_schema_2")
             referer = Table("referer", meta2, schema="alt_schema", autoload=True)
             print str(subject.join(referer).onclause)
@@ -573,8 +574,8 @@ class MiscTest(AssertMixin):
         that PassiveDefault upon insert."""
 
         try:
-            meta = MetaData(testbase.db)
-            testbase.db.execute("""
+            meta = MetaData(testing.db)
+            testing.db.execute("""
              CREATE TABLE speedy_users
              (
                  speedy_user_id   SERIAL     PRIMARY KEY,
@@ -590,7 +591,7 @@ class MiscTest(AssertMixin):
             l = t.select().execute().fetchall()
             assert l == [(1, 'user', 'lala')]
         finally:
-            testbase.db.execute("drop table speedy_users", None)
+            testing.db.execute("drop table speedy_users", None)
 
     def test_create_partial_index(self):
         tbl = Table('testtbl', MetaData(), Column('data',Integer))
@@ -617,7 +618,7 @@ class TimezoneTest(AssertMixin):
 
     def setUpAll(self):
         global tztable, notztable, metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         # current_timestamp() in postgres is assumed to return TIMESTAMP WITH TIMEZONE
         tztable = Table('tztable', metadata,
@@ -636,7 +637,7 @@ class TimezoneTest(AssertMixin):
 
     def test_with_timezone(self):
         # get a date with a tzinfo
-        somedate = testbase.db.connect().scalar(func.current_timestamp().select())
+        somedate = testing.db.connect().scalar(func.current_timestamp().select())
         tztable.insert().execute(id=1, name='row1', date=somedate)
         c = tztable.update(tztable.c.id==1).execute(name='newname')
         print tztable.select(tztable.c.id==1).execute().fetchone()
@@ -653,7 +654,7 @@ class ArrayTest(AssertMixin):
 
     def setUpAll(self):
         global metadata, arrtable
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         arrtable = Table('arrtable', metadata,
             Column('id', Integer, primary_key=True),
@@ -665,7 +666,7 @@ class ArrayTest(AssertMixin):
         metadata.drop_all()
 
     def test_reflect_array_column(self):
-        metadata2 = MetaData(testbase.db)
+        metadata2 = MetaData(testing.db)
         tbl = Table('arrtable', metadata2, autoload=True)
         self.assertTrue(isinstance(tbl.c.intarr.type, postgres.PGArray))
         self.assertTrue(isinstance(tbl.c.strarr.type, postgres.PGArray))
@@ -705,4 +706,4 @@ class ArrayTest(AssertMixin):
         arrtable.delete().execute()
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

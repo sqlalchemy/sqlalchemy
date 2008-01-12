@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import unittest
 
 def suite():
@@ -16,7 +16,7 @@ def suite():
         'orm.inheritance.productspec',
         'orm.inheritance.magazine',
         'orm.inheritance.selects',
-        
+
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:
@@ -28,4 +28,4 @@ def suite():
 
 
 if __name__ == '__main__':
-    testbase.main(suite())
+    testenv.main(suite())

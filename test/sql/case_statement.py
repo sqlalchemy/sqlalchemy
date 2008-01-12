@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import sys
 from sqlalchemy import *
 from testlib import *
@@ -7,32 +7,32 @@ from testlib import *
 class CaseTest(PersistTest):
 
     def setUpAll(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         global info_table
         info_table = Table('infos', metadata,
-        	Column('pk', Integer, primary_key=True),
-        	Column('info', String(30)))
+        Column('pk', Integer, primary_key=True),
+        Column('info', String(30)))
 
         info_table.create()
 
         info_table.insert().execute(
-        	{'pk':1, 'info':'pk_1_data'},
-        	{'pk':2, 'info':'pk_2_data'},
-        	{'pk':3, 'info':'pk_3_data'},
- 		{'pk':4, 'info':'pk_4_data'},
-		{'pk':5, 'info':'pk_5_data'},
-		{'pk':6, 'info':'pk_6_data'})
+        {'pk':1, 'info':'pk_1_data'},
+        {'pk':2, 'info':'pk_2_data'},
+        {'pk':3, 'info':'pk_3_data'},
+                {'pk':4, 'info':'pk_4_data'},
+                {'pk':5, 'info':'pk_5_data'},
+                {'pk':6, 'info':'pk_6_data'})
     def tearDownAll(self):
         info_table.drop()
 
     @testing.fails_on('maxdb')
     def testcase(self):
         inner = select([case([
-		[info_table.c.pk < 3,
+                [info_table.c.pk < 3,
                         literal('lessthan3', type_=String)],
-        	[and_(info_table.c.pk >= 3, info_table.c.pk < 7),
+        [and_(info_table.c.pk >= 3, info_table.c.pk < 7),
                         literal('gt3', type_=String)]]).label('x'),
-        	info_table.c.pk, info_table.c.info],
+        info_table.c.pk, info_table.c.info],
                 from_obj=[info_table]).alias('q_inner')
 
         inner_result = inner.execute().fetchall()
@@ -67,12 +67,12 @@ class CaseTest(PersistTest):
         ]
 
         w_else = select([case([
-		[info_table.c.pk < 3,
+                [info_table.c.pk < 3,
                         literal(3, type_=Integer)],
-        	[and_(info_table.c.pk >= 3, info_table.c.pk < 6),
+        [and_(info_table.c.pk >= 3, info_table.c.pk < 6),
                         literal(6, type_=Integer)]],
                 else_ = 0).label('x'),
-        	info_table.c.pk, info_table.c.info],
+        info_table.c.pk, info_table.c.info],
                 from_obj=[info_table]).alias('q_inner')
 
         else_result = w_else.execute().fetchall()
@@ -87,4 +87,4 @@ class CaseTest(PersistTest):
         ]
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

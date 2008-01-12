@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import exceptions
 from sqlalchemy.orm import *
@@ -28,7 +28,7 @@ class SessionTest(AssertMixin):
 
     def test_close(self):
         """test that flush() doenst close a connection the session didnt open"""
-        c = testbase.db.connect()
+        c = testing.db.connect()
         class User(object):pass
         mapper(User, users)
         s = create_session(bind=c)
@@ -45,7 +45,7 @@ class SessionTest(AssertMixin):
         s.flush()
 
     def test_close_two(self):
-        c = testbase.db.connect()
+        c = testing.db.connect()
         try:
             class User(object):pass
             mapper(User, users)
@@ -86,7 +86,7 @@ class SessionTest(AssertMixin):
     @engines.close_open_connections
     def test_binds_from_expression(self):
         """test that Session can extract Table objects from ClauseElements and match them to tables."""
-        Session = sessionmaker(binds={users:testbase.db, addresses:testbase.db})
+        Session = sessionmaker(binds={users:testing.db, addresses:testing.db})
         sess = Session()
         sess.execute(users.insert(), params=dict(user_id=1, user_name='ed'))
         assert sess.execute(users.select()).fetchall() == [(1, 'ed')]
@@ -95,7 +95,7 @@ class SessionTest(AssertMixin):
         mapper(User, users, properties={
             'addresses':relation(Address, backref=backref("user", cascade="all"), cascade="all")
         })
-        Session = sessionmaker(binds={User:testbase.db, Address:testbase.db})
+        Session = sessionmaker(binds={User:testing.db, Address:testing.db})
         sess.execute(users.insert(), params=dict(user_id=2, user_name='fred'))
         assert sess.execute(users.select()).fetchall() == [(1, 'ed'), (2, 'fred')]
         sess.close()
@@ -105,8 +105,8 @@ class SessionTest(AssertMixin):
     def test_transaction(self):
         class User(object):pass
         mapper(User, users)
-        conn1 = testbase.db.connect()
-        conn2 = testbase.db.connect()
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
 
         sess = create_session(transactional=True, bind=conn1)
         u = User()
@@ -116,7 +116,7 @@ class SessionTest(AssertMixin):
         assert conn2.execute("select count(1) from users").scalar() == 0
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
-        assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+        assert testing.db.connect().execute("select count(1) from users").scalar() == 1
         sess.close()
 
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
@@ -124,8 +124,8 @@ class SessionTest(AssertMixin):
     def test_autoflush(self):
         class User(object):pass
         mapper(User, users)
-        conn1 = testbase.db.connect()
-        conn2 = testbase.db.connect()
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
 
         sess = create_session(bind=conn1, transactional=True, autoflush=True)
         u = User()
@@ -137,7 +137,7 @@ class SessionTest(AssertMixin):
         assert conn2.execute("select count(1) from users").scalar() == 0
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
-        assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+        assert testing.db.connect().execute("select count(1) from users").scalar() == 1
         sess.close()
 
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
@@ -154,10 +154,10 @@ class SessionTest(AssertMixin):
             u2 = sess.query(User).filter_by(user_name='ed').one()
             assert u2 is u
             assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
-            assert testbase.db.connect().execute("select count(1) from users").scalar() == 0
+            assert testing.db.connect().execute("select count(1) from users").scalar() == 0
             sess.commit()
             assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
-            assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+            assert testing.db.connect().execute("select count(1) from users").scalar() == 1
             sess.close()
         except:
             sess.rollback()
@@ -167,8 +167,8 @@ class SessionTest(AssertMixin):
     def test_autoflush_2(self):
         class User(object):pass
         mapper(User, users)
-        conn1 = testbase.db.connect()
-        conn2 = testbase.db.connect()
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
 
         sess = create_session(bind=conn1, transactional=True, autoflush=True)
         u = User()
@@ -176,7 +176,7 @@ class SessionTest(AssertMixin):
         sess.save(u)
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
-        assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+        assert testing.db.connect().execute("select count(1) from users").scalar() == 1
         sess.commit()
 
     # TODO: not doing rollback of attributes right now.
@@ -206,7 +206,7 @@ class SessionTest(AssertMixin):
     def test_external_joined_transaction(self):
         class User(object):pass
         mapper(User, users)
-        conn = testbase.db.connect()
+        conn = testing.db.connect()
         trans = conn.begin()
         sess = create_session(bind=conn, transactional=True, autoflush=True)
         sess.begin()
@@ -225,7 +225,7 @@ class SessionTest(AssertMixin):
         class User(object):pass
         mapper(User, users)
         try:
-            conn = testbase.db.connect()
+            conn = testing.db.connect()
             trans = conn.begin()
             sess = create_session(bind=conn, transactional=True, autoflush=True)
             u1 = User()
@@ -248,7 +248,7 @@ class SessionTest(AssertMixin):
                          'oracle', 'maxdb')
     @engines.close_open_connections
     def test_heavy_nesting(self):
-        session = create_session(bind=testbase.db)
+        session = create_session(bind=testing.db)
 
         session.begin()
         session.connection().execute("insert into users (user_name) values ('user1')")
@@ -279,9 +279,9 @@ class SessionTest(AssertMixin):
         mapper(User, users)
         mapper(Address, addresses)
 
-        engine2 = create_engine(testbase.db.url)
+        engine2 = create_engine(testing.db.url)
         sess = create_session(transactional=False, autoflush=False, twophase=True)
-        sess.bind_mapper(User, testbase.db)
+        sess.bind_mapper(User, testing.db)
         sess.bind_mapper(Address, engine2)
         sess.begin()
         u1 = User()
@@ -359,29 +359,29 @@ class SessionTest(AssertMixin):
     def test_bound_connection(self):
         class User(object):pass
         mapper(User, users)
-        c = testbase.db.connect()
+        c = testing.db.connect()
         sess = create_session(bind=c)
         sess.create_transaction()
         transaction = sess.transaction
         u = User()
         sess.save(u)
         sess.flush()
-        assert transaction.get_or_add(testbase.db) is transaction.get_or_add(c) is c
+        assert transaction.get_or_add(testing.db) is transaction.get_or_add(c) is c
 
         try:
-            transaction.add(testbase.db.connect())
+            transaction.add(testing.db.connect())
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Session already has a Connection associated for the given Connection's Engine"
 
         try:
-            transaction.get_or_add(testbase.db.connect())
+            transaction.get_or_add(testing.db.connect())
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Session already has a Connection associated for the given Connection's Engine"
 
         try:
-            transaction.add(testbase.db)
+            transaction.add(testing.db)
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Session already has a Connection associated for the given Engine"
@@ -393,7 +393,7 @@ class SessionTest(AssertMixin):
     def test_bound_connection_transactional(self):
         class User(object):pass
         mapper(User, users)
-        c = testbase.db.connect()
+        c = testing.db.connect()
 
         sess = create_session(bind=c, transactional=True)
         u = User()
@@ -413,7 +413,7 @@ class SessionTest(AssertMixin):
         c.execute("delete from users")
         assert c.scalar("select count(1) from users") == 0
 
-        c = testbase.db.connect()
+        c = testing.db.connect()
 
         trans = c.begin()
         sess = create_session(bind=c, transactional=False)
@@ -813,8 +813,8 @@ class SessionTest(AssertMixin):
         b = Bar()
         assert b in sess
         assert len(list(sess)) == 1
-        
-        
+
+
 class ScopedSessionTest(ORMTest):
 
     def define_tables(self, metadata):
@@ -851,7 +851,7 @@ class ScopedSessionTest(ORMTest):
 class ScopedMapperTest(PersistTest):
     def setUpAll(self):
         global metadata, table, table2
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table = Table('sometable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)))
@@ -976,4 +976,4 @@ class ScopedMapperTest2(ORMTest):
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

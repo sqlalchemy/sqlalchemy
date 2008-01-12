@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import oracle
@@ -9,7 +9,7 @@ class OutParamTest(AssertMixin):
     __only_on__ = 'oracle'
 
     def setUpAll(self):
-        testbase.db.execute("""
+        testing.db.execute("""
 create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT number) IS
   retval number;
     begin
@@ -20,12 +20,12 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
         """)
 
     def test_out_params(self):
-        result = testbase.db.execute(text("begin foo(:x, :y, :z); end;", bindparams=[bindparam('x', Numeric), outparam('y', Numeric), outparam('z', Numeric)]), x=5)
+        result = testing.db.execute(text("begin foo(:x, :y, :z); end;", bindparams=[bindparam('x', Numeric), outparam('y', Numeric), outparam('z', Numeric)]), x=5)
         assert result.out_parameters == {'y':10, 'z':75}, result.out_parameters
         print result.out_parameters
 
     def tearDownAll(self):
-         testbase.db.execute("DROP PROCEDURE foo")
+         testing.db.execute("DROP PROCEDURE foo")
 
 
 class CompileTest(SQLCompileTest):
@@ -149,7 +149,7 @@ class TypesTest(SQLCompileTest):
 
     def test_reflect_raw(self):
         types_table = Table(
-        'all_types', MetaData(testbase.db),
+        'all_types', MetaData(testing.db),
             Column('owner', String(30), primary_key=True),
             Column('type_name', String(30), primary_key=True),
             autoload=True,
@@ -157,8 +157,8 @@ class TypesTest(SQLCompileTest):
         [[row[k] for k in row.keys()] for row in types_table.select().execute().fetchall()]
 
     def test_longstring(self):
-        metadata = MetaData(testbase.db)
-        testbase.db.execute("""
+        metadata = MetaData(testing.db)
+        testing.db.execute("""
         CREATE TABLE Z_TEST
         (
           ID        NUMERIC(22) PRIMARY KEY,
@@ -170,7 +170,7 @@ class TypesTest(SQLCompileTest):
             t.insert().execute(id=1.0, add_user='foobar')
             assert t.select().execute().fetchall() == [(1, 'foobar')]
         finally:
-            testbase.db.execute("DROP TABLE Z_TEST")
+            testing.db.execute("DROP TABLE Z_TEST")
 
 class SequenceTest(SQLCompileTest):
     def test_basic(self):
@@ -186,4 +186,4 @@ class SequenceTest(SQLCompileTest):
 
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

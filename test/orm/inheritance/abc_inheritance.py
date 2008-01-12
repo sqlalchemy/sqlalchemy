@@ -1,8 +1,9 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.sync import ONETOMANY, MANYTOONE
 from testlib import *
+
 
 def produce_test(parent, child, direction):
     """produce a testcase for A->B->C inheritance with a self-referential
@@ -165,4 +166,4 @@ for parent in ["a", "b", "c"]:
 
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

@@ -1,6 +1,6 @@
 """all tests involving generic mapping to Select statements"""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import exceptions
 from sqlalchemy.orm import *
@@ -16,7 +16,7 @@ class SelectableNoFromsTest(ORMTest):
             Column('data', Integer),
             Column('extra', String(45)),
         )
-    
+
     def test_no_tables(self):
         class Subset(object):
             pass
@@ -27,7 +27,7 @@ class SelectableNoFromsTest(ORMTest):
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Could not find any Table objects in mapped table 'SELECT x, y, z'", str(e)
-            
+
     def test_basic(self):
         class Subset(Base):
             pass
@@ -35,7 +35,7 @@ class SelectableNoFromsTest(ORMTest):
         subset_select = select([common_table.c.id, common_table.c.data]).alias('subset')
         subset_mapper = mapper(Subset, subset_select)
 
-        sess = create_session(bind=testbase.db)
+        sess = create_session(bind=testing.db)
         l = Subset()
         l.data = 1
         sess.save(l)
@@ -45,6 +45,6 @@ class SelectableNoFromsTest(ORMTest):
         assert [Subset(data=1)] == sess.query(Subset).all()
 
     # TODO: more tests mapping to selects
-    
+
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

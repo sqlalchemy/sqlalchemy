@@ -1,6 +1,6 @@
 """basic tests of lazy loaded attributes"""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import exceptions
 from sqlalchemy.orm import *
@@ -257,7 +257,7 @@ class LazyTest(FixtureTest):
             def go():
                 # lazy load of a1.user should get it from the session
                 assert a1.user is u1
-            self.assert_sql_count(testbase.db, go, 0)
+            self.assert_sql_count(testing.db, go, 0)
             clear_mappers()
 
     def test_many_to_one(self):
@@ -285,28 +285,28 @@ class LazyTest(FixtureTest):
         def go():
             ad.user = None
             assert ad.user is None
-        self.assert_sql_count(testbase.db, go, 0)
+        self.assert_sql_count(testing.db, go, 0)
 
         u1 = sess.query(User).filter_by(id=7).one()
         def go():
             assert ad not in u1.addresses
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
         sess.expire(u1, ['addresses'])
         def go():
             assert ad in u1.addresses
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
         sess.expire(u1, ['addresses'])
         ad2 = Address()
         def go():
             ad2.user = u1
             assert ad2.user is u1
-        self.assert_sql_count(testbase.db, go, 0)
+        self.assert_sql_count(testing.db, go, 0)
 
         def go():
             assert ad2 in u1.addresses
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
 class M2OGetTest(FixtureTest):
     keep_mappers = False
@@ -333,7 +333,7 @@ class M2OGetTest(FixtureTest):
             assert ad2.user.name == 'jack'
             # no lazy load
             assert ad3.user is None
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

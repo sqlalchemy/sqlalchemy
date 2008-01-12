@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
@@ -113,9 +113,9 @@ class ConcreteTest(ORMTest):
         def go():
             c2 = session.query(Company).get(c.id)
             assert set([repr(x) for x in c2.employees]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
-        self.assert_sql_count(testbase.db, go, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
 
 
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

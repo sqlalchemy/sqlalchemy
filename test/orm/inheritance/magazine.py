@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
@@ -51,7 +51,7 @@ class LocationName(BaseObject):
 class PageSize(BaseObject):
     def __repr__(self):
         return "%s(%sx%s, %s)" % (self.__class__.__name__, self.width, self.height, self.name)
-        
+
 class Magazine(BaseObject):
     def __repr__(self):
         return "%s(%s, %s)" % (self.__class__.__name__, repr(self.location), repr(self.size))
@@ -194,7 +194,7 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
         page2 = MagazinePage(magazine=magazine,page_no=2)
         page3 = ClassifiedPage(magazine=magazine,page_no=3)
         session.save(pub)
-    
+
         session.flush()
         print [x for x in session]
         session.clear()
@@ -206,13 +206,13 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
         print p.issues[0].locations[0].magazine.pages
         print [page, page2, page3]
         assert repr(p.issues[0].locations[0].magazine.pages) == repr([page, page2, page3]), repr(p.issues[0].locations[0].magazine.pages)
-    
+
     test_roundtrip.__name__ = "test_%s" % (not use_union and (use_joins and "joins" or "select") or "unions")
     setattr(MagazineTest, test_roundtrip.__name__, test_roundtrip)
-    
+
 for (use_union, use_join) in [(True, False), (False, True), (False, False)]:
     generate_round_trip_test(use_union, use_join)
 
-        
+
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

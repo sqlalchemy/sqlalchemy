@@ -1,11 +1,11 @@
 # load test of connection pool
-
-import testbase
+import testenv; testenv.configure_for_tests()
+import thread, time
 from sqlalchemy import *
 import sqlalchemy.pool as pool
-import thread,time
+from testlib import testing
 
-db = create_engine(testbase.db.url, pool_timeout=30, echo_pool=True)
+db = create_engine(testing.db.url, pool_timeout=30, echo_pool=True)
 metadata = MetaData(db)
 
 users_table = Table('users', metadata,
@@ -30,8 +30,8 @@ def runfast():
 #        time.sleep(.005)
 #        result.close()
         print "runfast cycle complete"
-        
-#thread.start_new_thread(runslow, ())                
+
+#thread.start_new_thread(runslow, ())
 for x in xrange(0,50):
     thread.start_new_thread(runfast, ())
 

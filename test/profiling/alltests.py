@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import unittest
 
 
@@ -16,5 +16,6 @@ def suite():
         alltests.addTest(unittest.findTestCases(mod, suiteClass=None))
     return alltests
 
+
 if __name__ == '__main__':
-    testbase.main(suite())
+    testenv.main(suite())

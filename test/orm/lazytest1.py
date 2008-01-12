@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
@@ -6,7 +6,7 @@ from testlib import *
 class LazyTest(AssertMixin):
     def setUpAll(self):
         global info_table, data_table, rel_table, metadata
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         info_table = Table('infos', metadata,
                            Column('pk', Integer, primary_key=True),
                            Column('info', String(128)))
@@ -88,4 +88,4 @@ class LazyTest(AssertMixin):
         assert len(info.rels[0].datas) == 3
 
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()
