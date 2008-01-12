@@ -1,6 +1,5 @@
 import testbase
-import pickleable
-import datetime, os, re
+import datetime, os, pickleable, re
 from sqlalchemy import *
 from sqlalchemy import types, exceptions
 from sqlalchemy.sql import operators
@@ -341,24 +340,11 @@ class UnicodeTest(AssertMixin):
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
 
     def testassert(self):
-        import warnings
-
-        warnings.filterwarnings("always", r".*non-unicode bind")
-
-        ## test that data still goes in if warning is emitted....
-        unicode_table.insert().execute(unicode_varchar='not unicode')
-        assert (select([unicode_table.c.unicode_varchar]).execute().fetchall()
-                == [('not unicode', )])
-
-        warnings.filterwarnings("error", r".*non-unicode bind")
         try:
-            try:
-                unicode_table.insert().execute(unicode_varchar='not unicode')
-                assert False
-            except RuntimeWarning, e:
-                assert str(e) == "Unicode type received non-unicode bind param value 'not unicode'", str(e)
-        finally:
-            warnings.filterwarnings("always", r".*non-unicode bind")
+            unicode_table.insert().execute(unicode_varchar='not unicode')
+            assert False
+        except exceptions.SAWarning, e:
+            assert str(e) == "Unicode type received non-unicode bind param value 'not unicode'", str(e)
 
         unicode_engine = engines.utf8_engine(options={'convert_unicode':True,
                                                       'assert_unicode':True})
@@ -368,6 +354,14 @@ class UnicodeTest(AssertMixin):
                 assert False
             except exceptions.InvalidRequestError, e:
                 assert str(e) == "Unicode type received non-unicode bind param value 'im not unicode'"
+
+            @testing.emits_warning('.*non-unicode bind')
+            def warns():
+                # test that data still goes in if warning is emitted....
+                unicode_table.insert().execute(unicode_varchar='not unicode')
+                assert (select([unicode_table.c.unicode_varchar]).execute().fetchall() == [('not unicode', )])
+            warns()
+
         finally:
             unicode_engine.dispose()
 
@@ -674,11 +668,6 @@ class StringTest(AssertMixin):
         foo =Table('foo', metadata,
             Column('one', String))
 
-        import warnings
-        from sqlalchemy.logging import SADeprecationWarning
-
-        warnings.filterwarnings("error", r"Using String type with no length.*")
-
         # no warning
         select([func.count("*")], bind=testbase.db).execute()
 
@@ -686,7 +675,7 @@ class StringTest(AssertMixin):
             # warning during CREATE
             foo.create()
             assert False
-        except SADeprecationWarning, e:
+        except exceptions.SADeprecationWarning, e:
             assert "Using String type with no length" in str(e)
             assert re.search(r'\bone\b', str(e))
 
@@ -700,8 +689,6 @@ class StringTest(AssertMixin):
             select([func.count("*")], from_obj=bar).execute()
         finally:
             bar.drop()
-            warnings.filterwarnings("always", r"Using String type with no length.*")
-
 
 class NumericTest(AssertMixin):
     def setUpAll(self):

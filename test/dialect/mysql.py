@@ -1,5 +1,5 @@
 import testbase
-import sets, warnings
+import sets
 from sqlalchemy import *
 from sqlalchemy import sql, exceptions
 from sqlalchemy.databases import mysql
@@ -627,6 +627,7 @@ class TypesTest(AssertMixin):
             def_table.drop()
 
     @testing.exclude('mysql', '<', (5, 0, 0))
+    @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
         specs = [( String(), mysql.MSText(), ),
@@ -665,13 +666,7 @@ class TypesTest(AssertMixin):
         m = MetaData(db)
         t_table = Table('mysql_types', m, *columns)
         try:
-            try:
-                warnings.filterwarnings('ignore',
-                                        'Using String type with no length.*')
-                m.create_all()
-            finally:
-                warnings.filterwarnings("always",
-                                        'Using String type with no length.*')
+            m.create_all()
 
             m2 = MetaData(db)
             rt = Table('mysql_types', m2, autoload=True)

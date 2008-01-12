@@ -7,7 +7,7 @@ import itertools, unittest, re, sys, os, operator, warnings
 from cStringIO import StringIO
 import testlib.config as config
 sql, MetaData, clear_mappers, Session, util = None, None, None, None, None
-salogging = None
+sa_exceptions = None
 
 __all__ = ('PersistTest', 'AssertMixin', 'ORMTest', 'SQLCompileTest')
 
@@ -169,6 +169,46 @@ def _server_version(bind=None):
         bind = config.db
     return bind.dialect.server_version_info(bind.contextual_connect())
 
+def emits_warning(*messages):
+    """Mark a test as emitting a warning.
+
+    With no arguments, squelches all SAWarning failures.  Or pass one or more
+    strings; these will be matched to the root of the warning description by
+    warnings.filterwarnings().
+    """
+
+    # TODO: it would be nice to assert that a named warning was
+    # emitted. should work with some monkeypatching of warnings,
+    # and may work on non-CPython if they keep to the spirit of
+    # warnings.showwarning's docstring.
+    # - update: jython looks ok, it uses cpython's module
+    def decorate(fn):
+        def safe(*args, **kw):
+            global sa_exceptions
+            if sa_exceptions is None:
+                import sqlalchemy.exceptions as sa_exceptions
+
+            if not messages:
+                filters = [dict(action='ignore',
+                                category=sa_exceptions.SAWarning)]
+            else:
+                filters = [dict(action='ignore',
+                                message=message,
+                                category=sa_exceptions.SAWarning)
+                           for message in messages ]
+            for f in filters:
+                warnings.filterwarnings(**f)
+            try:
+                return fn(*args, **kw)
+            finally:
+                resetwarnings()
+        try:
+            safe.__name__ = fn.__name__
+        except:
+            pass
+        return safe
+    return decorate
+
 def uses_deprecated(*messages):
     """Mark a test as immune from fatal deprecation warnings.
 
@@ -183,17 +223,17 @@ def uses_deprecated(*messages):
 
     def decorate(fn):
         def safe(*args, **kw):
-            global salogging
-            if salogging is None:
-                from sqlalchemy import logging as salogging
+            global sa_exceptions
+            if sa_exceptions is None:
+                import sqlalchemy.exceptions as sa_exceptions
 
             if not messages:
                 filters = [dict(action='ignore',
-                                category=salogging.SADeprecationWarning)]
+                                category=sa_exceptions.SADeprecationWarning)]
             else:
                 filters = [dict(action='ignore',
                                 message=message,
-                                category=salogging.SADeprecationWarning)
+                                category=sa_exceptions.SADeprecationWarning)
                            for message in
                            [ (m.startswith('//') and
                               ('Call to deprecated function ' + m[2:]) or m)
@@ -206,7 +246,7 @@ def uses_deprecated(*messages):
             finally:
                 resetwarnings()
         try:
-            safe.__name__ = fn.name
+            safe.__name__ = fn.__name__
         except:
             pass
         return safe
@@ -215,11 +255,12 @@ def uses_deprecated(*messages):
 def resetwarnings():
     """Reset warning behavior to testing defaults."""
 
-    global salogging
-    if salogging is None:
-        from sqlalchemy import logging as salogging
+    global sa_exceptions
+    if sa_exceptions is None:
+        import sqlalchemy.exceptions as sa_exceptions
     warnings.resetwarnings()
-    warnings.filterwarnings('error', category=salogging.SADeprecationWarning)
+    warnings.filterwarnings('error', category=sa_exceptions.SADeprecationWarning)
+    warnings.filterwarnings('error', category=sa_exceptions.SAWarning)
 
 def against(*queries):
     """Boolean predicate, compares to testing database configuration.

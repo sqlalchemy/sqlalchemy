@@ -1,5 +1,4 @@
 import testbase
-import warnings
 from sqlalchemy import *
 from sqlalchemy import exceptions, util
 from sqlalchemy.orm import *
@@ -550,14 +549,12 @@ class DistinctPKTest(ORMTest):
         self._do_test(True)
 
     def test_explicit_composite_pk(self):
-        warnings.filterwarnings("error", r".*On mapper.*distinct primary key")
-
         person_mapper = mapper(Person, person_table)
         try:
             mapper(Employee, employee_table, inherits=person_mapper, primary_key=[person_table.c.id, employee_table.c.id])
             self._do_test(True)
             assert False
-        except RuntimeWarning, e:
+        except exceptions.SAWarning, e:
             assert str(e) == "On mapper Mapper|Employee|employees, primary key column 'employees.id' is being combined with distinct primary key column 'persons.id' in attribute 'id'.  Use explicit properties to give each column its own mapped attribute name.", str(e)
 
     def test_explicit_pk(self):

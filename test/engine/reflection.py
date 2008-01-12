@@ -1,6 +1,5 @@
 import testbase
-import pickle, StringIO, unicodedata, warnings
-
+import pickle, StringIO, unicodedata
 from sqlalchemy import *
 from sqlalchemy import exceptions
 from sqlalchemy import types as sqltypes
@@ -206,21 +205,20 @@ class ReflectionTest(PersistTest):
         dialect_module.ischema_names = {}
         try:
             try:
-                warnings.filterwarnings('error', 'Did not recognize type')
                 m2 = MetaData(testbase.db)
                 t2 = Table("test", m2, autoload=True)
                 assert False
-            except RuntimeWarning:
+            except exceptions.SAWarning:
                 assert True
 
-            warnings.filterwarnings('ignore', 'Did not recognize type')
-            m3 = MetaData(testbase.db)
-            t3 = Table("test", m3, autoload=True)
-            assert t3.c.foo.type.__class__ == sqltypes.NullType
+            @testing.emits_warning('Did not recognize type')
+            def warns():
+                m3 = MetaData(testbase.db)
+                t3 = Table("test", m3, autoload=True)
+                assert t3.c.foo.type.__class__ == sqltypes.NullType
 
         finally:
             dialect_module.ischema_names = ischema_names
-            warnings.filterwarnings('always', 'Did not recognize type')
             t.drop()
 
     def test_override_fkandpkcol(self):

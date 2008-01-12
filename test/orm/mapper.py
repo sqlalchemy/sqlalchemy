@@ -130,15 +130,12 @@ class MapperTest(MapperSuperTest):
         def bad_expunge(foo):
             raise Exception("this exception should be stated as a warning")
 
-        import warnings
-        warnings.filterwarnings("always", r".*this exception should be stated as a warning")
-
         sess.expunge = bad_expunge
         try:
             Foo(_sa_session=sess)
             assert False
         except Exception, e:
-            assert e is ex
+            assert isinstance(e, exceptions.SAWarning)
 
         clear_mappers()
 
