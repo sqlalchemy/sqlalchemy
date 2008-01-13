@@ -363,7 +363,11 @@ class Mapper(object):
 
             if self.version_id_col is None:
                 self.version_id_col = self.inherits.version_id_col
-
+                
+            for mapper in self.iterate_to_root():
+                if hasattr(mapper, '_genned_equivalent_columns'):
+                    del mapper._genned_equivalent_columns
+                
             if self.order_by is False:
                 self.order_by = self.inherits.order_by
             self.polymorphic_map = self.inherits.polymorphic_map
@@ -432,13 +436,11 @@ class Mapper(object):
         if self.inherits is not None and not self.concrete and not self.primary_key_argument:
             self.primary_key = self.inherits.primary_key
             self._get_clause = self.inherits._get_clause
-            self._equivalent_columns = {}
         else:
             # create the "primary_key" for this mapper.  this will flatten "equivalent" primary key columns
             # into one column, where "equivalent" means that one column references the other via foreign key, or
             # multiple columns that all reference a common parent column.  it will also resolve the column
             # against the "mapped_table" of this mapper.
-            self._equivalent_columns = self._get_equivalent_columns()
 
             primary_key = expression.ColumnSet()
 
@@ -491,7 +493,7 @@ class Mapper(object):
                 _get_clause.clauses.append(primary_key == bind)
             self._get_clause = (_get_clause, _get_params)
 
-    def _get_equivalent_columns(self):
+    def __get_equivalent_columns(self):
         """Create a map of all *equivalent* columns, based on
         the determination of column pairs that are equated to
         one another either by an established foreign key relationship
@@ -556,7 +558,14 @@ class Mapper(object):
                     equivs(col, util.Set(), col)
 
         return result
-
+    def _equivalent_columns(self):
+        if hasattr(self, '_genned_equivalent_columns'):
+            return self._genned_equivalent_columns
+        else:
+            self._genned_equivalent_columns  = self.__get_equivalent_columns()
+            return self._genned_equivalent_columns
+    _equivalent_columns = property(_equivalent_columns)
+    
     class _CompileOnAttr(PropComparator):
         """placeholder class attribute which fires mapper compilation on access"""
 
@@ -714,14 +723,21 @@ class Mapper(object):
         """
 
         if self.select_table is not self.mapped_table:
-            props = {}
+            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, _polymorphic_map=self.polymorphic_map, polymorphic_on=_corresponding_column_or_error(self.select_table, self.polymorphic_on), primary_key=self.primary_key_argument)
+            adapter = sqlutil.ClauseAdapter(self.select_table, equivalents=self.__surrogate_mapper._equivalent_columns)
+            
+            if self.order_by:
+                order_by = [expression._literal_as_text(o) for o in util.to_list(self.order_by) or []]
+                order_by = adapter.copy_and_process(order_by)
+                self.__surrogate_mapper.order_by=order_by
+                
             if self._init_properties is not None:
                 for key, prop in self._init_properties.iteritems():
                     if expression.is_column(prop):
-                        props[key] = _corresponding_column_or_error(self.select_table, prop)
+                        self.__surrogate_mapper.add_property(key, _corresponding_column_or_error(self.select_table, prop))
                     elif (isinstance(prop, list) and expression.is_column(prop[0])):
-                        props[key] = [_corresponding_column_or_error(self.select_table, c) for c in prop]
-            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, _polymorphic_map=self.polymorphic_map, polymorphic_on=_corresponding_column_or_error(self.select_table, self.polymorphic_on), primary_key=self.primary_key_argument)
+                        self.__surrogate_mapper.add_property(key, [_corresponding_column_or_error(self.select_table, c) for c in prop])
+            
 
     def _compile_class(self):
         """If this mapper is to be a primary mapper (i.e. the

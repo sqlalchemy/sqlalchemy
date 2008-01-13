@@ -81,7 +81,9 @@ class PolymorphicQueryTest(ORMTest):
         mapper(Company, companies, properties={
             'employees':relation(Person)
         })
-        mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person', order_by=person_join.c.person_id,
+        
+        # testing a order_by here as well; the surrogate mapper has to adapt it
+        mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person', order_by=people.c.person_id, 
             properties={
                 'paperwork':relation(Paperwork)
             })
@@ -91,6 +93,8 @@ class PolymorphicQueryTest(ORMTest):
         mapper(Paperwork, paperwork)
 
     def insert_data(self):
+        global all_employees, c1_employees, c2_employees, e1, e2, b1, m1, e3
+
         c1 = Company(name="MegaCorp, Inc.")
         c2 = Company(name="Elbonia, Inc.")
         e1 = Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", paperwork=[
@@ -118,11 +122,27 @@ class PolymorphicQueryTest(ORMTest):
         sess.flush()
         sess.clear()
 
-        global all_employees, c1_employees, c2_employees
         all_employees = [e1, e2, b1, m1, e3]
         c1_employees = [e1, e2, b1, m1]
         c2_employees = [e3]
 
+    def test_filter_on_subclass(self):
+        print Manager.person_id == Engineer.person_id
+        print Manager.c.person_id == Engineer.c.person_id
+        
+        sess = create_session()
+        self.assertEquals(sess.query(Engineer).all()[0], Engineer(name="dilbert"))
+
+        self.assertEquals(sess.query(Engineer).first(), Engineer(name="dilbert"))
+
+        self.assertEquals(sess.query(Engineer).filter(Engineer.person_id==e1.person_id).first(), Engineer(name="dilbert"))
+
+        self.assertEquals(sess.query(Manager).filter(Manager.person_id==m1.person_id).one(), Manager(name="dogbert"))
+
+        self.assertEquals(sess.query(Manager).filter(Manager.person_id==b1.person_id).one(), Boss(name="pointy haired boss"))
+        
+        self.assertEquals(sess.query(Boss).filter(Boss.person_id==b1.person_id).one(), Boss(name="pointy haired boss"))
+        
     def test_load_all(self):
         sess = create_session()
 

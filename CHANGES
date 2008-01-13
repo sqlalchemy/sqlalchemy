@@ -19,6 +19,13 @@ CHANGES
       of being deferred until later.  This mimics the old 0.3
       behavior.
 
+    - fixed bug in polymorphic inheritance which made it 
+      difficult to set a working "order_by" on a polymorphic
+      mapper
+    
+    - fixed a rather expensive call in Query that was slowing
+      down polymorphic queries
+        
 - general
     - warnings are now issued as type exceptions.SAWarning.
 

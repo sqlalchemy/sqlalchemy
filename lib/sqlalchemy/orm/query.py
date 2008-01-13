@@ -966,14 +966,14 @@ class Query(object):
         # adapt for poylmorphic mapper
         # TODO: generalize the polymorphic mapper adaption to that of the select_from() adaption
         if not adapt_criterion and whereclause is not None and (self.mapper is not self.select_mapper):
-            whereclause = sql_util.ClauseAdapter(from_obj, equivalents=self.select_mapper._get_equivalent_columns()).traverse(whereclause)
+            whereclause = sql_util.ClauseAdapter(from_obj, equivalents=self.select_mapper._equivalent_columns).traverse(whereclause)
 
         # TODO: mappers added via add_entity(), adapt their queries also,
         # if those mappers are polymorphic
 
         order_by = self._order_by
         if order_by is False:
-            order_by = self.mapper.order_by
+            order_by = self.select_mapper.order_by
         if order_by is False:
             order_by = []
             if self.table.default_order_by() is not None:
@@ -1069,7 +1069,7 @@ class Query(object):
                         context.primary_columns.append(c)
 
             statement = sql.select(context.primary_columns + context.secondary_columns, whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, order_by=util.to_list(order_by), **self._select_args())
-
+            
             if context.eager_joins:
                 if adapt_criterion:
                     context.eager_joins = sql_util.ClauseAdapter(from_obj).traverse(context.eager_joins)
