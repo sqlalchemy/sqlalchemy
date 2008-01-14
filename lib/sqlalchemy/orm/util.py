@@ -236,10 +236,6 @@ class PropertyAliasedClauses(AliasedClauses):
         super(PropertyAliasedClauses, self).__init__(prop.select_table)
             
         self.parentclauses = parentclauses
-        if parentclauses is not None:
-            self.path = build_path(prop.parent, prop.key, parentclauses.path)
-        else:
-            self.path = build_path(prop.parent, prop.key)
 
         self.prop = prop
         
@@ -261,6 +257,7 @@ class PropertyAliasedClauses(AliasedClauses):
                 aliasizer.chain(sql_util.ClauseAdapter(parentclauses.alias, exclude=prop.remote_side))
             else:
                 aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side)
+
             self.primaryjoin = aliasizer.traverse(primaryjoin, clone=True)
             self.secondary = None
             self.secondaryjoin = None
@@ -273,9 +270,6 @@ class PropertyAliasedClauses(AliasedClauses):
     mapper = property(lambda self:self.prop.mapper)
     table = property(lambda self:self.prop.select_table)
     
-    def __str__(self):
-        return "->".join([str(s) for s in self.path])
-
 
 def instance_str(instance):
     """Return a string describing an instance."""

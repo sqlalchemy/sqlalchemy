@@ -18,6 +18,7 @@ from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm.util import CascadeOptions
 from sqlalchemy.orm.interfaces import StrategizedProperty, PropComparator, MapperProperty
 from sqlalchemy.exceptions import ArgumentError
+import weakref
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
            'PropertyLoader', 'BackRef')
@@ -207,7 +208,7 @@ class PropertyLoader(StrategizedProperty):
         self.passive_updates = passive_updates
         self.remote_side = util.to_set(remote_side)
         self.enable_typechecks = enable_typechecks
-        self._parent_join_cache = {}
+        self.__parent_join_cache = weakref.WeakKeyDictionary()
         self.comparator = PropertyLoader.Comparator(self)
         self.join_depth = join_depth
         self.strategy_class = strategy_class
@@ -681,51 +682,66 @@ class PropertyLoader(StrategizedProperty):
     def _is_self_referential(self):
         return self.parent.mapped_table is self.target or self.parent.select_table is self.target
 
-    def get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
-        """return a join condition from the given parent mapper to this PropertyLoader's mapper.
-
-           The resulting ClauseElement object is cached and should not be modified directly.
-
-            parent
-              a mapper which has a relation() to this PropertyLoader.  A PropertyLoader can
-              have multiple "parents" when its actual parent mapper has inheriting mappers.
-
-            primary
-              include the primary join condition in the resulting join.
-
-            secondary
-              include the secondary join condition in the resulting join.  If both primary
-              and secondary are returned, they are joined via AND.
-
-            polymorphic_parent
-              if True, use the parent's 'select_table' instead of its 'mapped_table' to produce the join.
-        """
-
+    def primary_join_against(self, mapper, selectable=None):
+        return self.__cached_join_against(mapper, selectable, True, False)
+        
+    def secondary_join_against(self, mapper):
+        return self.__cached_join_against(mapper, None, False, True)
+        
+    def full_join_against(self, mapper, selectable=None):
+        return self.__cached_join_against(mapper, selectable, True, True)
+    
+    def __cached_join_against(self, mapper, selectable, primary, secondary):
+        if selectable is None:
+            selectable = mapper.local_table
+            
         try:
-            return self._parent_join_cache[(parent, primary, secondary, polymorphic_parent)]
+            rec = self.__parent_join_cache[selectable]
         except KeyError:
-            parent_equivalents = parent._equivalent_columns
-            secondaryjoin = self.polymorphic_secondaryjoin
-            if polymorphic_parent:
-                # adapt the "parent" side of our join condition to the "polymorphic" select of the parent
-                if self.direction is sync.ONETOMANY:
-                    primaryjoin = ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
-                elif self.direction is sync.MANYTOONE:
-                    primaryjoin = ClauseAdapter(parent.select_table, include=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
-                elif self.secondaryjoin:
-                    primaryjoin = ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
+            self.__parent_join_cache[selectable] = rec = {}
 
-            if secondaryjoin is not None:
-                if secondary and not primary:
-                    j = secondaryjoin
-                elif primary and secondary:
-                    j = primaryjoin & secondaryjoin
-                elif primary and not secondary:
-                    j = primaryjoin
+        key = (mapper, primary, secondary)
+        if key in rec:
+            return rec[key]
+        
+        parent_equivalents = mapper._equivalent_columns
+        
+        if primary:
+            if selectable is not mapper.local_table:
+                if self.direction is sync.ONETOMANY:
+                    primaryjoin = ClauseAdapter(selectable, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin)
+                elif self.direction is sync.MANYTOONE:
+                    primaryjoin = ClauseAdapter(selectable, include=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin)
+                elif self.secondaryjoin:
+                    primaryjoin = ClauseAdapter(selectable, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin)
             else:
-                j = primaryjoin
-            self._parent_join_cache[(parent, primary, secondary, polymorphic_parent)] = j
-            return j
+                primaryjoin = self.polymorphic_primaryjoin
+                
+            if secondary:
+                secondaryjoin = self.polymorphic_secondaryjoin
+                rec[key] = ret = primaryjoin & secondaryjoin
+            else:
+                rec[key] = ret = primaryjoin
+            return ret
+        
+        elif secondary:
+            rec[key] = ret = self.polymorphic_secondaryjoin
+            return ret
+
+        else:
+            raise AssertionError("illegal condition")
+        
+    def get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
+        """deprecated.  use primary_join_against(), secondary_join_against(), full_join_against()"""
+        
+        if primary and secondary:
+            return self.full_join_against(parent, parent.select_table)
+        elif primary:
+            return self.primary_join_against(parent, parent.select_table)
+        elif secondary:
+            return self.secondary_join_against(parent)
+        else:
+            raise AssertionError("illegal condition")
 
     def register_dependencies(self, uowcommit):
         if not self.viewonly:

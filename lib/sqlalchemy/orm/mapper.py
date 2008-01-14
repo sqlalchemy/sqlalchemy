@@ -118,7 +118,8 @@ class Mapper(object):
         self._eager_loaders = util.Set()
         self._row_translators = {}
         self._dependency_processors = []
-
+        self._clause_adapter = None
+        
         # our 'polymorphic identity', a string name that when located in a result set row
         # indicates this Mapper should be used to construct the object instance for that row.
         self.polymorphic_identity = polymorphic_identity
@@ -738,6 +739,7 @@ class Mapper(object):
                     elif (isinstance(prop, list) and expression.is_column(prop[0])):
                         self.__surrogate_mapper.add_property(key, [_corresponding_column_or_error(self.select_table, c) for c in prop])
             
+            self.__surrogate_mapper._clause_adapter = adapter
 
     def _compile_class(self):
         """If this mapper is to be a primary mapper (i.e. the

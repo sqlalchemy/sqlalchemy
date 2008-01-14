@@ -93,7 +93,7 @@ class PolymorphicQueryTest(ORMTest):
         mapper(Paperwork, paperwork)
 
     def insert_data(self):
-        global all_employees, c1_employees, c2_employees, e1, e2, b1, m1, e3
+        global all_employees, c1_employees, c2_employees, e1, e2, b1, m1, e3, c1, c2
 
         c1 = Company(name="MegaCorp, Inc.")
         c2 = Company(name="Elbonia, Inc.")
@@ -114,7 +114,9 @@ class PolymorphicQueryTest(ORMTest):
         ])
         c1.employees = [e1, e2, b1, m1]
 
-        e3 = Engineer(name="vlad", engineer_name="vlad", primary_language="cobol", status="elbonian engineer")
+        e3 = Engineer(name="vlad", engineer_name="vlad", primary_language="cobol", status="elbonian engineer", paperwork=[
+            Paperwork(description='elbonian missive #3')
+        ])
         c2.employees = [e3]
         sess = create_session()
         sess.save(c1)
@@ -127,9 +129,6 @@ class PolymorphicQueryTest(ORMTest):
         c2_employees = [e3]
 
     def test_filter_on_subclass(self):
-        print Manager.person_id == Engineer.person_id
-        print Manager.c.person_id == Engineer.c.person_id
-        
         sess = create_session()
         self.assertEquals(sess.query(Engineer).all()[0], Engineer(name="dilbert"))
 
@@ -142,11 +141,73 @@ class PolymorphicQueryTest(ORMTest):
         self.assertEquals(sess.query(Manager).filter(Manager.person_id==b1.person_id).one(), Boss(name="pointy haired boss"))
         
         self.assertEquals(sess.query(Boss).filter(Boss.person_id==b1.person_id).one(), Boss(name="pointy haired boss"))
+
+    def test_join_from_polymorphic(self):
+        sess = create_session()
         
-    def test_load_all(self):
+        for aliased in (True, False):
+            self.assertEquals(sess.query(Person).join('paperwork', aliased=aliased).filter(Paperwork.description.like('%review%')).all(), [b1, m1])
+
+            self.assertEquals(sess.query(Person).join('paperwork', aliased=aliased).filter(Paperwork.description.like('%#2%')).all(), [e1, m1])
+
+            self.assertEquals(sess.query(Engineer).join('paperwork', aliased=aliased).filter(Paperwork.description.like('%#2%')).all(), [e1])
+
+            self.assertEquals(sess.query(Person).join('paperwork', aliased=aliased).filter(Person.c.name.like('%dog%')).filter(Paperwork.description.like('%#2%')).all(), [m1])
+    
+    def test_join_to_polymorphic(self):
+        sess = create_session()
+        self.assertEquals(sess.query(Company).join('employees').filter(Person.name=='vlad').one(), c2)
+
+        self.assertEquals(sess.query(Company).join('employees', aliased=True).filter(Person.name=='vlad').one(), c2)
+    
+    def test_join_through_polymorphic(self):
+        sess = create_session()
+
+        for aliased in (True, False):
+            self.assertEquals(
+                sess.query(Company).\
+                    join(['employees', 'paperwork'], aliased=aliased).filter(Paperwork.description.like('%#2%')).all(),
+                [c1]
+            )
+
+            self.assertEquals(
+                sess.query(Company).\
+                    join(['employees', 'paperwork'], aliased=aliased).filter(Paperwork.description.like('%#%')).all(),
+                [c1, c2]
+            )
+
+            self.assertEquals(
+                sess.query(Company).\
+                    join(['employees', 'paperwork'], aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).filter(Paperwork.description.like('%#2%')).all(),
+                [c1]
+            )
+        
+            self.assertEquals(
+                sess.query(Company).\
+                    join(['employees', 'paperwork'], aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).filter(Paperwork.description.like('%#%')).all(),
+                [c1, c2]
+            )
+
+            self.assertEquals(
+                sess.query(Company).join('employees', aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).\
+                    join('paperwork', from_joinpoint=True, aliased=aliased).filter(Paperwork.description.like('%#2%')).all(),
+                [c1]
+            )
+
+            self.assertEquals(
+                sess.query(Company).join('employees', aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).\
+                    join('paperwork', from_joinpoint=True, aliased=aliased).filter(Paperwork.description.like('%#%')).all(),
+                [c1, c2]
+            )
+        
+    def test_filter_on_baseclass(self):
         sess = create_session()
 
         self.assertEquals(sess.query(Person).all(), all_employees)
+
+        self.assertEquals(sess.query(Person).first(), all_employees[0])
+        
+        self.assertEquals(sess.query(Person).filter(Person.person_id==e2.person_id).one(), e2)
 
 
 if __name__ == "__main__":

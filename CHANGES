@@ -19,6 +19,11 @@ CHANGES
       of being deferred until later.  This mimics the old 0.3
       behavior.
 
+    - general improvements to the behavior of join() in 
+      conjunction with polymorphic mappers, i.e. joining
+      from/to polymorphic mappers and properly applying 
+      aliases
+      
     - fixed bug in polymorphic inheritance which made it 
       difficult to set a working "order_by" on a polymorphic
       mapper

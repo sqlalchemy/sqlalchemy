@@ -519,10 +519,7 @@ class EagerLoader(AbstractRelationLoader):
         if context.eager_joins:
             towrap = context.eager_joins
         else:
-            if isinstance(context.from_clause, sql.Join):
-                towrap = context.from_clause
-            else:
-                towrap = localparent.mapped_table
+            towrap = context.from_clause
         
         # create AliasedClauses object to build up the eager query.  this is cached after 1st creation.    
         try:
