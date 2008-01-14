@@ -26,7 +26,7 @@ to stay the same in future releases.
 """
 
 import datetime, re
-from itertools import chain
+import itertools
 from sqlalchemy import util, exceptions
 from sqlalchemy.sql import operators, visitors
 from sqlalchemy import types as sqltypes
@@ -2349,7 +2349,7 @@ class Join(FromClause):
         return self.select(use_labels=True, correlate=False).alias(name)
 
     def _hide_froms(self):
-        return chain(*[x.left._get_from_objects() + x.right._get_from_objects() for x in self._cloned_set])
+        return itertools.chain(*[x.left._get_from_objects() + x.right._get_from_objects() for x in self._cloned_set])
     _hide_froms = property(_hide_froms)
 
     def _get_from_objects(self, **modifiers):

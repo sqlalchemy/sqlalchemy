@@ -24,6 +24,7 @@ from sqlalchemy.sql import expression, visitors, operators
 from sqlalchemy.orm import mapper, object_mapper
 from sqlalchemy.orm.mapper import _state_mapper
 from sqlalchemy.orm import util as mapperutil
+from sqlalchemy.orm import interfaces
 
 __all__ = ['Query', 'QueryContext']
 
@@ -422,7 +423,11 @@ class Query(object):
         mapper = start
         alias = self._aliases
         for key in util.to_list(keys):
-            prop = mapper.get_property(key, resolve_synonyms=True)
+            if isinstance(key, interfaces.PropComparator):
+                prop = key.property
+            else:
+                prop = mapper.get_property(key, resolve_synonyms=True)
+                
             if prop._is_self_referential() and not create_aliases:
                 raise exceptions.InvalidRequestError("Self-referential query on '%s' property requires create_aliases=True argument." % str(prop))
 
@@ -583,21 +588,39 @@ class Query(object):
         return q
 
     def join(self, prop, id=None, aliased=False, from_joinpoint=False):
-        """create a join of this ``Query`` object's criterion
-        to a relationship and return the newly resulting ``Query``.
+        """Create a join against this ``Query`` object's criterion
+        and apply generatively, retunring the newly resulting ``Query``.
 
-        'prop' may be a string property name or a list of string
-        property names.
+        'prop' may be one of:
+          * a string property name, i.e. "rooms"
+          * a class-mapped attribute, i.e. Houses.rooms
+          * a list containing a combination of any of the above.
+          
+        e.g.::
+        
+            session.query(Company).join('employees')
+            session.query(Company).join(['employees', 'tasks'])
+            session.query(Houses).join([Colonials.rooms, Room.closets])
+        
         """
 
         return self._join(prop, id=id, outerjoin=False, aliased=aliased, from_joinpoint=from_joinpoint)
 
     def outerjoin(self, prop, id=None, aliased=False, from_joinpoint=False):
-        """create a left outer join of this ``Query`` object's criterion
-        to a relationship and return the newly resulting ``Query``.
+        """Create a left outer join against this ``Query`` object's criterion
+        and apply generatively, retunring the newly resulting ``Query``.
 
-        'prop' may be a string property name or a list of string
-        property names.
+        'prop' may be one of:
+          * a string property name, i.e. "rooms"
+          * a class-mapped attribute, i.e. Houses.rooms
+          * a list containing a combination of any of the above.
+          
+        e.g.::
+        
+            session.query(Company).outerjoin('employees')
+            session.query(Company).outerjoin(['employees', 'tasks'])
+            session.query(Houses).outerjoin([Colonials.rooms, Room.closets])
+        
         """
 
         return self._join(prop, id=id, outerjoin=True, aliased=aliased, from_joinpoint=from_joinpoint)

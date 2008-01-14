@@ -22,6 +22,9 @@ class Manager(Person):
 class Boss(Manager):
     pass
 
+class Machine(fixtures.Base):
+    pass
+    
 class Paperwork(fixtures.Base):
     pass
 
@@ -30,7 +33,7 @@ class PolymorphicQueryTest(ORMTest):
     keep_mappers = True
 
     def define_tables(self, metadata):
-        global companies, people, engineers, managers, boss, paperwork
+        global companies, people, engineers, managers, boss, paperwork, machines
 
         companies = Table('companies', metadata,
            Column('company_id', Integer, Sequence('company_id_seq', optional=True), primary_key=True),
@@ -48,7 +51,12 @@ class PolymorphicQueryTest(ORMTest):
            Column('engineer_name', String(50)),
            Column('primary_language', String(50)),
           )
-
+         
+        machines = Table('machines', metadata,
+            Column('machine_id', Integer, primary_key=True),
+            Column('name', String(50)),
+            Column('engineer_id', Integer, ForeignKey('engineers.person_id')))
+            
         managers = Table('managers', metadata,
            Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
            Column('status', String(30)),
@@ -82,12 +90,16 @@ class PolymorphicQueryTest(ORMTest):
             'employees':relation(Person)
         })
         
+        mapper(Machine, machines)
+        
         # testing a order_by here as well; the surrogate mapper has to adapt it
         mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person', order_by=people.c.person_id, 
             properties={
                 'paperwork':relation(Paperwork)
             })
-        mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer')
+        mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer', properties={
+                'machines':relation(Machine)
+            })
         mapper(Manager, managers, select_table=manager_join, inherits=Person, polymorphic_identity='manager')
         mapper(Boss, boss, inherits=Manager, polymorphic_identity='boss')
         mapper(Paperwork, paperwork)
@@ -100,10 +112,15 @@ class PolymorphicQueryTest(ORMTest):
         e1 = Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", paperwork=[
             Paperwork(description="tps report #1"),
             Paperwork(description="tps report #2")
+        ], machines=[
+            Machine(name='IBM ThinkPad'),
+            Machine(name='IPhone'),
         ])
         e2 = Engineer(name="wally", engineer_name="wally", primary_language="c++", status="regular engineer", paperwork=[
             Paperwork(description="tps report #3"),
             Paperwork(description="tps report #4")
+        ], machines=[
+            Machine(name="Commodore 64")
         ])
         b1 = Boss(name="pointy haired boss", golf_swing="fore", manager_name="pointy", status="da boss", paperwork=[
             Paperwork(description="review #1"),
@@ -116,7 +133,11 @@ class PolymorphicQueryTest(ORMTest):
 
         e3 = Engineer(name="vlad", engineer_name="vlad", primary_language="cobol", status="elbonian engineer", paperwork=[
             Paperwork(description='elbonian missive #3')
+        ], machines=[
+                Machine(name="Commodore 64"),
+                Machine(name="IBM 3270")
         ])
+        
         c2.employees = [e3]
         sess = create_session()
         sess.save(c1)
@@ -160,6 +181,17 @@ class PolymorphicQueryTest(ORMTest):
 
         self.assertEquals(sess.query(Company).join('employees', aliased=True).filter(Person.name=='vlad').one(), c2)
     
+    def test_join_to_subclass(self):
+        sess = create_session()
+
+        self.assertEquals(sess.query(Person).join(Engineer.machines).all(), [e1, e2, e3])
+
+        self.assertEquals(sess.query(Person).join(Engineer.machines).filter(Machine.name.ilike("%ibm%")).all(), [e1, e3])
+        
+        self.assertEquals(sess.query(Company).join(['employees', Engineer.machines]).all(), [c1, c2])
+
+        self.assertEquals(sess.query(Company).join(['employees', Engineer.machines]).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
+        
     def test_join_through_polymorphic(self):
         sess = create_session()
 

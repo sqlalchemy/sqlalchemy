@@ -18,7 +18,15 @@ CHANGES
       UPDATE operation are post-fetched immediately, instead
       of being deferred until later.  This mimics the old 0.3
       behavior.
-
+    
+    - query.join() can now accept class-mapped attributes
+      as arguments, which can be used in place or in any
+      combination with strings.  In particular this allows 
+      construction of joins to subclasses on a polymorphic 
+      relation, i.e. 
+      query(Company).join(['employees', Engineer.name]), 
+      etc.
+      
     - general improvements to the behavior of join() in 
       conjunction with polymorphic mappers, i.e. joining
       from/to polymorphic mappers and properly applying 
