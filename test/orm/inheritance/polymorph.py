@@ -342,7 +342,6 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         session.delete(c)
         session.flush()
 
-
     test_roundtrip.__name__ = "test_%s%s%s%s%s" % (
         (lazy_relation and "lazy" or "eager"),
         (include_base and "_inclbase" or ""),
