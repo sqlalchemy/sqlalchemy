@@ -572,7 +572,7 @@ class Session(object):
         This is equivalent to calling ``expunge()`` for all objects in
         this ``Session``.
         """
-
+        
         for instance in self:
             self._unattach(instance)
         self.uow = unitofwork.UnitOfWork(self)

@@ -72,7 +72,7 @@ class MapperTest(MapperSuperTest):
             mapper(User, s)
             assert False
         except exceptions.ArgumentError, e:
-            assert str(e) == "Could not assemble any primary key columns for mapped table 'foo'"
+            assert "could not assemble any primary key columns for mapped table 'foo'" in str(e)
 
     def test_compileonsession(self):
         m = mapper(User, users)

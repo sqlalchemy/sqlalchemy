@@ -159,7 +159,16 @@ def make_test(select_type):
             all_employees = [e1, e2, b1, m1, e3]
             c1_employees = [e1, e2, b1, m1]
             c2_employees = [e3]
-
+            
+        def test_get(self):
+            sess = create_session()
+            
+            # for all mappers, ensure the primary key has been calculated as just the "person_id"
+            # column
+            self.assertEquals(sess.query(Person).get(e1.person_id), Engineer(name="dilbert"))
+            self.assertEquals(sess.query(Engineer).get(e1.person_id), Engineer(name="dilbert"))
+            self.assertEquals(sess.query(Manager).get(b1.person_id), Boss(name="pointy haired boss"))
+            
         def test_filter_on_subclass(self):
             sess = create_session()
             self.assertEquals(sess.query(Engineer).all()[0], Engineer(name="dilbert"))

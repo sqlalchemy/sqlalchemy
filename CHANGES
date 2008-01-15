@@ -30,7 +30,14 @@ CHANGES
     - general improvements to the behavior of join() in 
       conjunction with polymorphic mappers, i.e. joining
       from/to polymorphic mappers and properly applying 
-      aliases
+      aliases.  
+      
+    - fixed/improved behavior when a mapper determines the
+      natural "primary key" of a mapped join, it will more 
+      effectively reduce columns which are equivalent via
+      foreign key relation.  This affects how many arguments 
+      need to be sent to query.get(), among other things.
+      [ticket:933]
       
     - fixed bug in polymorphic inheritance which made it 
       difficult to set a working "order_by" on a polymorphic

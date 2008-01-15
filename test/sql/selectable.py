@@ -5,6 +5,7 @@ every selectable unit behaving nicely with others.."""
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
+from sqlalchemy.sql import util as sql_util
 
 metadata = MetaData()
 table = Table('table1', metadata,
@@ -275,6 +276,124 @@ class PrimaryKeyTest(AssertMixin):
         assert str(j) == "a JOIN b ON a.id = b.id AND b.x = :b_x_1", str(j)
         assert list(j.primary_key) == [a.c.id, b.c.x]
 
+    def test_onclause_direction(self):
+        metadata = MetaData()
+
+        employee = Table( 'Employee', metadata,
+            Column('name', String(100)),
+            Column('id', Integer, primary_key= True),
+        )
+
+        engineer = Table( 'Engineer', metadata,
+            Column('id', Integer, ForeignKey( 'Employee.id', ), primary_key=True),
+        )
+
+        self.assertEquals(
+            set(employee.join(engineer, employee.c.id==engineer.c.id).primary_key),
+            set([employee.c.id])
+        )
+
+        self.assertEquals(
+            set(employee.join(engineer, engineer.c.id==employee.c.id).primary_key),
+            set([employee.c.id])
+        )
+
+
+class ReduceTest(AssertMixin):
+    def test_reduce(self):
+        meta = MetaData()
+        t1 = Table('t1', meta,
+            Column('t1id', Integer, primary_key=True),
+            Column('t1data', String(30)))
+        t2 = Table('t2', meta,
+            Column('t2id', Integer, ForeignKey('t1.t1id'), primary_key=True),
+            Column('t2data', String(30)))
+        t3 = Table('t3', meta,
+            Column('t3id', Integer, ForeignKey('t2.t2id'), primary_key=True),
+            Column('t3data', String(30)))
+        
+        
+        self.assertEquals(
+            set(sql_util.reduce_columns([t1.c.t1id, t1.c.t1data, t2.c.t2id, t2.c.t2data, t3.c.t3id, t3.c.t3data])),
+            set([t1.c.t1id, t1.c.t1data, t2.c.t2data, t3.c.t3data])
+        )
+    
+    def test_reduce_aliased_join(self):
+        metadata = MetaData()
+        people = Table('people', metadata,
+           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('name', String(50)),
+           Column('type', String(30)))
+
+        engineers = Table('engineers', metadata,
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('status', String(30)),
+           Column('engineer_name', String(50)),
+           Column('primary_language', String(50)),
+          )
+     
+        managers = Table('managers', metadata,
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('status', String(30)),
+           Column('manager_name', String(50))
+           )
+        
+        pjoin = people.outerjoin(engineers).outerjoin(managers).select(use_labels=True).alias('pjoin')
+        self.assertEquals(
+            set(sql_util.reduce_columns([pjoin.c.people_person_id, pjoin.c.engineers_person_id, pjoin.c.managers_person_id])),
+            set([pjoin.c.people_person_id])
+        )
+        
+    def test_reduce_aliased_union(self):
+        metadata = MetaData()
+        item_table = Table(
+            'item', metadata,
+            Column('id', Integer, ForeignKey('base_item.id'), primary_key=True),
+            Column('dummy', Integer, default=0))
+
+        base_item_table = Table(
+            'base_item', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('child_name', String(255), default=None))
+        
+        from sqlalchemy.orm.util import polymorphic_union
+        
+        item_join = polymorphic_union( {
+            'BaseItem':base_item_table.select(base_item_table.c.child_name=='BaseItem'),
+            'Item':base_item_table.join(item_table),
+            }, None, 'item_join')
+            
+        self.assertEquals(
+            set(sql_util.reduce_columns([item_join.c.id, item_join.c.dummy, item_join.c.child_name])),
+            set([item_join.c.id, item_join.c.dummy, item_join.c.child_name])
+        )    
+    
+    def test_reduce_aliased_union_2(self):
+        metadata = MetaData()
+
+        page_table = Table('page', metadata,
+            Column('id', Integer, primary_key=True),
+        )
+        magazine_page_table = Table('magazine_page', metadata,
+            Column('page_id', Integer, ForeignKey('page.id'), primary_key=True),
+        )
+        classified_page_table = Table('classified_page', metadata,
+            Column('magazine_page_id', Integer, ForeignKey('magazine_page.page_id'), primary_key=True),
+        )
+        
+        from sqlalchemy.orm.util import polymorphic_union
+        pjoin = polymorphic_union(
+            {
+                'm': page_table.join(magazine_page_table),
+                'c': page_table.join(magazine_page_table).join(classified_page_table),
+            }, None, 'page_join')
+            
+        self.assertEquals(
+            set(sql_util.reduce_columns([pjoin.c.id, pjoin.c.page_id, pjoin.c.magazine_page_id])),
+            set([pjoin.c.id])
+        )    
+    
+            
 class DerivedTest(AssertMixin):
     def test_table(self):
         meta = MetaData()

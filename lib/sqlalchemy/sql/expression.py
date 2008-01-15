@@ -31,7 +31,7 @@ from sqlalchemy import util, exceptions
 from sqlalchemy.sql import operators, visitors
 from sqlalchemy import types as sqltypes
 
-functions, schema = None, None
+functions, schema, sql_util = None, None, None
 DefaultDialect, ClauseAdapter = None, None
 
 __all__ = [
@@ -2179,50 +2179,13 @@ class Join(FromClause):
 
         columns = list(self._flatten_exportable_columns())
 
-        #global sql_util
-        #if not sql_util:
-        #    from sqlalchemy.sql import util as sql_util
-        #self._primary_key = sql_util.reduce_columns([c for c in columns if c.primary_key], self.onclause)
-
-        self.__init_primary_key(columns)
+        global sql_util
+        if not sql_util:
+            from sqlalchemy.sql import util as sql_util
+        self._primary_key = sql_util.reduce_columns([c for c in columns if c.primary_key], self.onclause)
 
         for co in columns:
             cp = self._proxy_column(co)
-
-    def __init_primary_key(self, columns):
-        # TODO !!! remove all this
-        global schema
-        if schema is None:
-            from sqlalchemy import schema
-        pkcol = util.Set([c for c in columns if c.primary_key])
-
-        equivs = {}
-        def add_equiv(a, b):
-            for x, y in ((a, b), (b, a)):
-                if x in equivs:
-                    equivs[x].add(y)
-                else:
-                    equivs[x] = util.Set([y])
-
-        def visit_binary(binary):
-            if binary.operator == operators.eq and isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column):
-                add_equiv(binary.left, binary.right)
-        visitors.traverse(self.onclause, visit_binary=visit_binary)
-
-        for col in pkcol:
-            for fk in col.foreign_keys:
-                if fk.column in pkcol:
-                    add_equiv(col, fk.column)
-
-        omit = util.Set()
-        for col in pkcol:
-            p = col
-            for c in equivs.get(col, util.Set()):
-                if p.references(c) or (c.primary_key and not p.primary_key):
-                    omit.add(p)
-                    p = c
-
-        self._primary_key = ColumnSet(pkcol.difference(omit))
 
     def description(self):
         return "Join object on %s(%d) and %s(%d)" % (self.left.description, id(self.left), self.right.description, id(self.right))
@@ -2284,6 +2247,12 @@ class Join(FromClause):
         """Returns the column list of this Join with all equivalently-named,
         equated columns folded into one column, where 'equated' means they are
         equated to each other in the ON clause of this join.
+        
+        this method is used by select(fold_equivalents=True).
+        
+        The primary usage for this is when generating UNIONs so that 
+        each selectable can have distinctly-named columns without the need
+        for use_labels=True.
         """
 
         if self.__folded_equivalents is not None:

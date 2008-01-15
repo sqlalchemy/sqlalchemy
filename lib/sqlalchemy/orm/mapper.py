@@ -418,6 +418,7 @@ class Mapper(object):
         all_cols = util.Set(chain(*[c2 for c2 in [col.proxy_set for col in [c for c in self._columntoproperty]]]))
         pk_cols = util.Set([c for c in all_cols if c.primary_key])
 
+        # identify primary key columns which are also mapped by this mapper.
         for t in util.Set(self.tables + [self.mapped_table]):
             self._all_tables.add(t)
             if t.primary_key and pk_cols.issuperset(t.primary_key):
@@ -425,6 +426,7 @@ class Mapper(object):
                 self._pks_by_table[t] = util.OrderedSet(t.primary_key).intersection(pk_cols)
             self._cols_by_table[t] = util.OrderedSet(t.c).intersection(all_cols)
 
+        # if explicit PK argument sent, add those columns to the primary key mappings
         if self.primary_key_argument:
             for k in self.primary_key_argument:
                 if k.table not in self._pks_by_table:
@@ -432,58 +434,22 @@ class Mapper(object):
                 self._pks_by_table[k.table].add(k)
 
         if self.mapped_table not in self._pks_by_table or len(self._pks_by_table[self.mapped_table]) == 0:
-            raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
+            raise exceptions.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))
 
         if self.inherits is not None and not self.concrete and not self.primary_key_argument:
+            # if inheriting, the "primary key" for this mapper is that of the inheriting (unless concrete or explicit)
             self.primary_key = self.inherits.primary_key
             self._get_clause = self.inherits._get_clause
         else:
-            # create the "primary_key" for this mapper.  this will flatten "equivalent" primary key columns
-            # into one column, where "equivalent" means that one column references the other via foreign key, or
-            # multiple columns that all reference a common parent column.  it will also resolve the column
-            # against the "mapped_table" of this mapper.
-
-            # TODO !!!
-            #primary_key = sqlutil.reduce_columns((self.primary_key_argument or self._pks_by_table[self.mapped_table]))
-
-            # TODO !!! remove all this
-            primary_key = expression.ColumnSet()
-
-            for col in (self.primary_key_argument or self._pks_by_table[self.mapped_table]):
-                c = self.mapped_table.corresponding_column(col)
-                if c is None:
-                    for cc in self._equivalent_columns[col]:
-                        c = self.mapped_table.corresponding_column(cc)
-                        if c is not None:
-                            break
-                    else:
-                        raise exceptions.ArgumentError("Cant resolve column " + str(col))
-
-                # this step attempts to resolve the column to an equivalent which is not
-                # a foreign key elsewhere.  this helps with joined table inheritance
-                # so that PKs are expressed in terms of the base table which is always
-                # present in the initial select
-                # TODO: this is a little hacky right now, the "tried" list is to prevent
-                # endless loops between cyclical FKs, try to make this cleaner/work better/etc.,
-                # perhaps via topological sort (pick the leftmost item)
-                tried = util.Set()
-                while True:
-                    if not len(c.foreign_keys) or c in tried:
-                        break
-                    for cc in c.foreign_keys:
-                        cc = cc.column
-                        c2 = self.mapped_table.corresponding_column(cc)
-                        if c2 is not None:
-                            c = c2
-                            tried.add(c)
-                            break
-                    else:
-                        break
-                primary_key.add(c)
+            # determine primary key from argument or mapped_table pks - reduce to the minimal set of columns
+            if self.primary_key_argument:
+                primary_key = sqlutil.reduce_columns([self.mapped_table.corresponding_column(c) for c in self.primary_key_argument])
+            else:
+                primary_key = sqlutil.reduce_columns(self._pks_by_table[self.mapped_table])
 
             if len(primary_key) == 0:
-                raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
-
+                raise exceptions.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))
+            
             self.primary_key = primary_key
             self.__log("Identified primary key columns: " + str(primary_key))
 
@@ -730,15 +696,9 @@ class Mapper(object):
         if self.select_table is not self.mapped_table:
             # turn a straight join into an aliased selectable
             if isinstance(self.select_table, sql.Join):
-                if self.primary_key_argument:
-                    primary_key_arg = self.primary_key_argument
-                else:
-                    primary_key_arg = self.select_table.primary_key
                 self.select_table = self.select_table.select(use_labels=True).alias()
-            else:
-                primary_key_arg = self.primary_key_argument
 
-            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, _polymorphic_map=self.polymorphic_map, polymorphic_on=_corresponding_column_or_error(self.select_table, self.polymorphic_on), primary_key=primary_key_arg)
+            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, _polymorphic_map=self.polymorphic_map, polymorphic_on=_corresponding_column_or_error(self.select_table, self.polymorphic_on), primary_key=self.primary_key_argument)
             adapter = sqlutil.ClauseAdapter(self.select_table, equivalents=self.__surrogate_mapper._equivalent_columns)
             
             if self.order_by:
