@@ -43,7 +43,7 @@ class Query(object):
 
         self._with_options = []
         self._lockmode = None
-        self._extension = self.mapper.extension.copy()
+        self._extension = self.mapper.extension
         self._entities = []
         self._order_by = False
         self._group_by = False
