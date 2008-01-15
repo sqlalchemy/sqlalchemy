@@ -67,7 +67,7 @@ def reduce_columns(columns, *clauses):
     
     """
     
-    columns = util.Set(columns)
+    columns = util.OrderedSet(columns)
     
     omit = util.Set()
     for col in columns:
