@@ -187,16 +187,13 @@ def make_test(select_type):
                 self.assertEquals(sess.query(Person).join('paperwork', aliased=aliased).filter(Person.c.name.like('%dog%')).filter(Paperwork.description.like('%#2%')).all(), [m1])
     
         def test_join_to_polymorphic(self):
-            if select_type == 'Joins':
-                return
-                
             sess = create_session()
             self.assertEquals(sess.query(Company).join('employees').filter(Person.name=='vlad').one(), c2)
 
             self.assertEquals(sess.query(Company).join('employees', aliased=True).filter(Person.name=='vlad').one(), c2)
     
         def test_join_to_subclass(self):
-            if select_type in ('Joins', ''):
+            if select_type == '':
                 return
 
             sess = create_session()
@@ -214,8 +211,6 @@ def make_test(select_type):
             self.assertEquals(sess.query(Company).join(['employees', Engineer.machines]).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
         
         def test_join_through_polymorphic(self):
-            if select_type == 'Joins':
-                return
 
             sess = create_session()
 

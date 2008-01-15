@@ -1,5 +1,6 @@
 from sqlalchemy import util, schema, topological
-from sqlalchemy.sql import expression, visitors
+from sqlalchemy.sql import expression, visitors, operators
+from itertools import chain
 
 """Utility functions that build upon SQL and Schema constructs."""
 
@@ -49,6 +50,33 @@ def find_columns(clause):
     visitors.traverse(clause, visit_column=visit_column)
     return cols
     
+    
+def reduce_columns(columns, *clauses):
+    raise NotImplementedError()
+    
+    # TODO !!!
+    all_proxied_cols = util.Set(chain(*[c.proxy_set for c in columns]))
+    
+    columns = util.Set(columns)
+    
+    equivs = {}
+    for col in columns:
+        for fk in col.foreign_keys:
+            if fk.column in all_proxied_cols:
+                for c in columns:
+                    if col.references(c):
+                        equivs[col] = c
+    
+    if clauses:
+        def visit_binary(binary):
+            if binary.operator == operators.eq and binary.left in columns and binary.right in columns:
+                equivs[binary.left] = binary.right
+        for clause in clauses:
+            visitors.traverse(clause, visit_binary=visit_binary)
+    
+    result = util.Set([c for c in columns if c not in equivs])
+    return expression.ColumnSet(result)
+
 class ColumnsInClause(visitors.ClauseVisitor):
     """Given a selectable, visit clauses and determine if any columns
     from the clause are in the selectable.

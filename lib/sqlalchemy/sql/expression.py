@@ -2178,11 +2178,19 @@ class Join(FromClause):
         self._foreign_keys = util.Set()
 
         columns = list(self._flatten_exportable_columns())
+
+        #global sql_util
+        #if not sql_util:
+        #    from sqlalchemy.sql import util as sql_util
+        #self._primary_key = sql_util.reduce_columns([c for c in columns if c.primary_key], self.onclause)
+
         self.__init_primary_key(columns)
+
         for co in columns:
             cp = self._proxy_column(co)
 
     def __init_primary_key(self, columns):
+        # TODO !!! remove all this
         global schema
         if schema is None:
             from sqlalchemy import schema

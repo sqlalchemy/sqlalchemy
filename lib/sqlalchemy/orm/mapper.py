@@ -443,6 +443,10 @@ class Mapper(object):
             # multiple columns that all reference a common parent column.  it will also resolve the column
             # against the "mapped_table" of this mapper.
 
+            # TODO !!!
+            #primary_key = sqlutil.reduce_columns((self.primary_key_argument or self._pks_by_table[self.mapped_table]))
+
+            # TODO !!! remove all this
             primary_key = expression.ColumnSet()
 
             for col in (self.primary_key_argument or self._pks_by_table[self.mapped_table]):
@@ -724,7 +728,17 @@ class Mapper(object):
         """
 
         if self.select_table is not self.mapped_table:
-            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, _polymorphic_map=self.polymorphic_map, polymorphic_on=_corresponding_column_or_error(self.select_table, self.polymorphic_on), primary_key=self.primary_key_argument)
+            # turn a straight join into an aliased selectable
+            if isinstance(self.select_table, sql.Join):
+                if self.primary_key_argument:
+                    primary_key_arg = self.primary_key_argument
+                else:
+                    primary_key_arg = self.select_table.primary_key
+                self.select_table = self.select_table.select(use_labels=True).alias()
+            else:
+                primary_key_arg = self.primary_key_argument
+
+            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, _polymorphic_map=self.polymorphic_map, polymorphic_on=_corresponding_column_or_error(self.select_table, self.polymorphic_on), primary_key=primary_key_arg)
             adapter = sqlutil.ClauseAdapter(self.select_table, equivalents=self.__surrogate_mapper._equivalent_columns)
             
             if self.order_by:
