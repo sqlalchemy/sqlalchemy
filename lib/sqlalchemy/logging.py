@@ -38,7 +38,8 @@ logging = __import__('logging')
 SADeprecationWarning = sa_exc.SADeprecationWarning
 
 rootlogger = logging.getLogger('sqlalchemy')
-rootlogger.setLevel(logging.WARN)
+if rootlogger.level == logging.NOTSET:
+    rootlogger.setLevel(logging.WARN)
 warnings.filterwarnings("once", category=sa_exc.SADeprecationWarning)
 
 default_enabled = False
