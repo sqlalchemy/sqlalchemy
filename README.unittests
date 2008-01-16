@@ -126,7 +126,7 @@ source file can be generated, marking statements that are executed with > and
 statements that are missed with !, by running the coverage.py utility with the
 "-a" (annotate) option, such as:
 
-    $ python ./test/coverage.py -a ./lib/sqlalchemy/sql.py
+    $ python ./test/testlib/coverage.py -a ./lib/sqlalchemy/sql.py
 
 This will create a new annotated file ./lib/sqlalchemy/sql.py,cover. Pretty
 cool!
