@@ -213,5 +213,57 @@ for autoflush in (False, True):
     for saveuser in (False, True):
         create_backref_test(autoflush, saveuser)
 
+class DontDereferenceTest(ORMTest):
+    def define_tables(self, metadata):
+        global users_table, addresses_table
+        
+        users_table = Table('users', metadata,
+                           Column('id', Integer, primary_key=True),
+                           Column('name', String(40)),
+                           Column('fullname', String(100)),
+                           Column('password', String(15)))
+
+        addresses_table = Table('addresses', metadata,
+                                Column('id', Integer, primary_key=True),
+                                Column('email_address', String(100), nullable=False),
+                                Column('user_id', Integer, ForeignKey('users.id')))
+    def test_no_deref(self):
+        mapper(User, users_table, properties={
+            'addresses': relation(Address, backref='user', lazy='dynamic')
+            })
+
+        mapper(Address, addresses_table)
+
+        session = create_session()
+        user = User()
+        user.name = 'joe'
+        user.fullname = 'Joe User'
+        user.password = 'Joe\'s secret'
+        address = Address()
+        address.email_address = 'joe@joesdomain.example'
+        address.user = user
+        session.save(user)
+        session.flush()
+        session.clear()
+        
+        def query1():
+            session = create_session(metadata.bind)
+            user = session.query(User).first()
+            return user.addresses.all()
+
+        def query2():
+            session = create_session(metadata.bind)
+            return session.query(User).first().addresses.all()
+
+        def query3():
+            session = create_session(metadata.bind)
+            user = session.query(User).first()
+            return session.query(User).first().addresses.all()
+
+        self.assertEquals(query1(), [Address(email_address='joe@joesdomain.example')]  )
+        self.assertEquals(query2(), [Address(email_address='joe@joesdomain.example')]  )
+        self.assertEquals(query3(), [Address(email_address='joe@joesdomain.example')]  )
+        
+        
 if __name__ == '__main__':
     testenv.main()

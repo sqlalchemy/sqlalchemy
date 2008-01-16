@@ -80,15 +80,14 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 class AppenderQuery(Query):
     def __init__(self, attr, state):
         super(AppenderQuery, self).__init__(attr.target_mapper, None)
-        self.state = state
+        self.instance = state.obj()
         self.attr = attr
     
     def __session(self):
-        instance = self.state.obj()
-        sess = object_session(instance)
-        if sess is not None and self.autoflush and sess.autoflush and instance in sess:
+        sess = object_session(self.instance)
+        if sess is not None and self.autoflush and sess.autoflush and self.instance in sess:
             sess.flush()
-        if not has_identity(instance):
+        if not has_identity(self.instance):
             return None
         else:
             return sess
@@ -100,21 +99,21 @@ class AppenderQuery(Query):
     def __iter__(self):
         sess = self.__session()
         if sess is None:
-            return iter(self.attr._get_collection(self.state, passive=True).added_items)
+            return iter(self.attr._get_collection(self.instance._state, passive=True).added_items)
         else:
             return iter(self._clone(sess))
 
     def __getitem__(self, index):
         sess = self.__session()
         if sess is None:
-            return self.attr._get_collection(self.state, passive=True).added_items.__getitem__(index)
+            return self.attr._get_collection(self.instance._state, passive=True).added_items.__getitem__(index)
         else:
             return self._clone(sess).__getitem__(index)
     
     def count(self):
         sess = self.__session()
         if sess is None:
-            return len(self.attr._get_collection(self.state, passive=True).added_items)
+            return len(self.attr._get_collection(self.instance._state, passive=True).added_items)
         else:
             return self._clone(sess).count()
     
@@ -122,7 +121,7 @@ class AppenderQuery(Query):
         # note we're returning an entirely new Query class instance here
         # without any assignment capabilities;
         # the class of this query is determined by the session.
-        instance = self.state.obj()
+        instance = self.instance
         if sess is None:
             sess = object_session(instance)
             if sess is None:
@@ -134,19 +133,19 @@ class AppenderQuery(Query):
         return sess.query(self.attr.target_mapper).with_parent(instance, self.attr.key)
 
     def assign(self, collection):
-        instance = self.state.obj()
+        instance = self.instance
         if has_identity(instance):
             oldlist = list(self)
         else:
             oldlist = []
-        self.attr._get_collection(self.state, passive=True).replace(oldlist, collection)
+        self.attr._get_collection(self.instance._state, passive=True).replace(oldlist, collection)
         return oldlist
         
     def append(self, item):
-        self.attr.append(self.state, item, None)
+        self.attr.append(self.instance._state, item, None)
 
     def remove(self, item):
-        self.attr.remove(self.state, item, None)
+        self.attr.remove(self.instance._state, item, None)
 
             
 class CollectionHistory(object): 

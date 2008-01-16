@@ -13,6 +13,12 @@ CHANGES
     - proper error message is raised when trying to access
       expired instance attributes with no session present
 
+    - dynamic relations, when referenced, create a strong
+      reference to the parent object so that the query
+      still has a parent to call against even if the 
+      parent is only created (and otherwise dereferenced)
+      within the scope of a single expression [ticket:938]
+      
     - added a mapper() flag "eager_defaults"; when set to
       True, defaults that are generated during an INSERT or
       UPDATE operation are post-fetched immediately, instead
