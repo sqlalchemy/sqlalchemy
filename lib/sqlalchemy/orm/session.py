@@ -1141,7 +1141,7 @@ def object_session(instance):
     hashkey = getattr(instance, '_sa_session_id', None)
     if hashkey is not None:
         sess = _sessions.get(hashkey)
-        if instance in sess:
+        if sess is not None and instance in sess:
             return sess
     return None
 

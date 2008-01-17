@@ -51,6 +51,8 @@ CHANGES
     
     - fixed a rather expensive call in Query that was slowing
       down polymorphic queries
+
+    - miscellaneous tickets:  [ticket:940]
         
 - general
     - warnings are now issued as type exceptions.SAWarning.
