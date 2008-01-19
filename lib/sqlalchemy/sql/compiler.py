@@ -468,13 +468,20 @@ class DefaultCompiler(engine.Compiled):
         else:
             return column
 
-    def visit_select(self, select, asfrom=False, parens=True, **kwargs):
+    def visit_select(self, select, asfrom=False, parens=True, iswrapper=False, **kwargs):
 
         stack_entry = {'select':select}
-        
-        if asfrom or (self.stack and 'select' in self.stack[-1]):
+        prev_entry = self.stack and self.stack[-1] or None
+
+        if asfrom or (prev_entry and 'select' in prev_entry):
             stack_entry['is_subquery'] = True
+            if prev_entry and 'iswrapper' in prev_entry:
+                column_clause_args = {'result_map':self.result_map}
+            else:
+                column_clause_args = {}
+        elif iswrapper:
             column_clause_args = {}
+            stack_entry['iswrapper'] = True
         else:
             column_clause_args = {'result_map':self.result_map}
             

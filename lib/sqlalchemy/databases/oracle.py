@@ -675,7 +675,7 @@ class OracleCompiler(compiler.DefaultCompiler):
                     limitselect.append_whereclause("ora_rn<=%d" % (select._limit + select._offset))
             else:
                 limitselect.append_whereclause("ora_rn<=%d" % select._limit)
-            return self.process(limitselect, **kwargs)
+            return self.process(limitselect, iswrapper=True, **kwargs)
         else:
             return compiler.DefaultCompiler.visit_select(self, select, **kwargs)
 

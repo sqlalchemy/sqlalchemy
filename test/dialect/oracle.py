@@ -41,12 +41,21 @@ class CompileTest(SQLCompileTest):
     def test_limit(self):
         t = table('sometable', column('col1'), column('col2'))
 
+        s = select([t])
+        c = s.compile(dialect=oracle.OracleDialect())
+        assert t.c.col1 in set(c.result_map['col1'][1])
+        
         s = select([t]).limit(10).offset(20)
 
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2, "
             "ROW_NUMBER() OVER (ORDER BY sometable.rowid) AS ora_rn FROM sometable) WHERE ora_rn>20 AND ora_rn<=30"
         )
 
+        # assert that despite the subquery, the columns from the table,
+        # not the select, get put into the "result_map"
+        c = s.compile(dialect=oracle.OracleDialect())
+        assert t.c.col1 in set(c.result_map['col1'][1])
+        
         s = select([s.c.col1, s.c.col2])
 
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "

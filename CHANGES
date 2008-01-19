@@ -84,6 +84,11 @@ CHANGES
     - reflect the sequence associated to a PK field (tipically
       with a BEFORE INSERT trigger) under Firebird
 
+    - Oracle assembles the correct columns in the result set
+      column mapping when generating a LIMIT/OFFSET subquery,
+      allows columns to map properly to result sets even
+      if long-name truncation kicks in [ticket:941]
+
 0.4.2p3
 ------
 - general

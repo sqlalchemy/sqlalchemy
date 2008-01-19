@@ -44,7 +44,8 @@ class LongLabelsTest(SQLCompileTest):
         table1.insert().execute(**{"this_is_the_primarykey_column":3, "this_is_the_data_column":"data3"})
         table1.insert().execute(**{"this_is_the_primarykey_column":4, "this_is_the_data_column":"data4"})
 
-        r = table1.select(use_labels=True, order_by=[table1.c.this_is_the_primarykey_column]).execute()
+        s = table1.select(use_labels=True, order_by=[table1.c.this_is_the_primarykey_column])
+        r = s.execute()
         result = []
         for row in r:
             result.append((row[table1.c.this_is_the_primarykey_column], row[table1.c.this_is_the_data_column]))
@@ -53,6 +54,28 @@ class LongLabelsTest(SQLCompileTest):
             (2, "data2"),
             (3, "data3"),
             (4, "data4"),
+        ], repr(result)
+
+        # some dialects such as oracle (and possibly ms-sql in a future version)
+        # generate a subquery for limits/offsets.
+        # ensure that the generated result map corresponds to the selected table, not
+        # the select query
+        r = s.limit(2).execute()
+        result = []
+        for row in r:
+            result.append((row[table1.c.this_is_the_primarykey_column], row[table1.c.this_is_the_data_column]))
+        assert result == [
+            (1, "data1"),
+            (2, "data2"),
+        ], repr(result)
+  
+        r = s.limit(2).offset(1).execute()
+        result = []
+        for row in r:
+            result.append((row[table1.c.this_is_the_primarykey_column], row[table1.c.this_is_the_data_column]))
+        assert result == [
+            (2, "data2"),
+            (3, "data3"),
         ], repr(result)
 
     def test_colbinds(self):
