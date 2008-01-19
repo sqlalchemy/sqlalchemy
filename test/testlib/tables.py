@@ -135,7 +135,10 @@ def data():
 
 class BaseObject(object):
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, ",".join("%s=%s" % (k, repr(v)) for k, v in self.__dict__.iteritems() if k[0] != '_'))
+        return "%s(%s)" % (self.__class__.__name__,
+                           ",".join(["%s=%s" % (k, repr(v))
+                                     for k, v in self.__dict__.iteritems()
+                                     if k[0] != '_']))
 
 class User(BaseObject):
     def __init__(self):

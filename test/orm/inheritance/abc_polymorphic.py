@@ -77,7 +77,8 @@ class ABCTest(ORMTest):
                 C(cdata='c2', bdata='c2', adata='c2'),
             ] == sess.query(C).all()
 
-        test_roundtrip.__name__ = 'test_%s' % fetchtype
+        test_roundtrip = _function_named(
+            test_roundtrip, 'test_%s' % fetchtype)
         return test_roundtrip
 
     test_union = make_test('union')

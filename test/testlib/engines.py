@@ -1,14 +1,15 @@
 import sys, weakref
 from testlib import config
+from testlib.compat import *
 
 
 class ConnectionKiller(object):
     def __init__(self):
         self.proxy_refs = weakref.WeakKeyDictionary()
-        
+
     def checkout(self, dbapi_con, con_record, con_proxy):
         self.proxy_refs[con_proxy] = True
-        
+
     def _apply_all(self, methods):
         for rec in self.proxy_refs:
             if rec is not None and rec.is_valid:
@@ -29,12 +30,12 @@ class ConnectionKiller(object):
 
     def close_all(self):
         self._apply_all(('rollback', 'close'))
-        
+
     def assert_all_closed(self):
         for rec in self.proxy_refs:
             if rec.is_valid:
                 assert False
-        
+
 testing_reaper = ConnectionKiller()
 
 def assert_conns_closed(fn):
@@ -43,9 +44,8 @@ def assert_conns_closed(fn):
             fn(*args, **kw)
         finally:
             testing_reaper.assert_all_closed()
-    decorated.__name__ = fn.__name__
-    return decorated
-    
+    return _function_named(decorated, fn.__name__)
+
 def rollback_open_connections(fn):
     """Decorator that rolls back all open connections after fn execution."""
 
@@ -54,8 +54,7 @@ def rollback_open_connections(fn):
             fn(*args, **kw)
         finally:
             testing_reaper.rollback_all()
-    decorated.__name__ = fn.__name__
-    return decorated
+    return _function_named(decorated, fn.__name__)
 
 def close_open_connections(fn):
     """Decorator that closes all connections after fn execution."""
@@ -65,14 +64,13 @@ def close_open_connections(fn):
             fn(*args, **kw)
         finally:
             testing_reaper.close_all()
-    decorated.__name__ = fn.__name__
-    return decorated
+    return _function_named(decorated, fn.__name__)
 
 class ReconnectFixture(object):
     def __init__(self, dbapi):
         self.dbapi = dbapi
         self.connections = []
-    
+
     def __getattr__(self, key):
         return getattr(self.dbapi, key)
 
@@ -85,17 +83,17 @@ class ReconnectFixture(object):
         for c in list(self.connections):
             c.close()
         self.connections = []
-        
+
 def reconnecting_engine(url=None, options=None):
     url = url or config.db_url
     dbapi = config.db.dialect.dbapi
     engine = testing_engine(url, {'module':ReconnectFixture(dbapi)})
     engine.test_shutdown = engine.dialect.dbapi.shutdown
     return engine
-    
+
 def testing_engine(url=None, options=None):
     """Produce an engine configured by --options with optional overrides."""
-    
+
     from sqlalchemy import create_engine
     from testlib.testing import ExecutionContextWrapper
 
@@ -133,5 +131,3 @@ def utf8_engine(url=None, options=None):
             url = str(url)
 
     return testing_engine(url, options)
-
-

@@ -11,6 +11,7 @@ from testlib.testing import rowset
 from testlib.testing import PersistTest, AssertMixin, ORMTest, SQLCompileTest
 import testlib.profiling as profiling
 import testlib.engines as engines
+from testlib.compat import set, sorted, _function_named
 
 
 __all__ = ('testing',
@@ -18,4 +19,5 @@ __all__ = ('testing',
            'Table', 'Column',
            'rowset',
            'PersistTest', 'AssertMixin', 'ORMTest', 'SQLCompileTest',
-           'profiling', 'engines')
+           'profiling', 'engines',
+           'set', 'sorted', '_function_named')

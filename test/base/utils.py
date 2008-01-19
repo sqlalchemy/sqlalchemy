@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import unittest
 from sqlalchemy import util, sql, exceptions
 from testlib import *
-
+from testlib import sorted
 
 class OrderedDictTest(PersistTest):
     def test_odict(self):

@@ -289,7 +289,9 @@ def generate_test(jointype="join1", usedata=False):
             assert p.data.data == 'ps data'
             assert m.data.data == 'ms data'
 
-    do_test.__name__ = 'test_relationonbaseclass_%s_%s' % (jointype, data and "nodata" or "data")
+    do_test = _function_named(
+        do_test, 'test_relationonbaseclass_%s_%s' % (
+        jointype, data and "nodata" or "data"))
     return do_test
 
 for jointype in ["join1", "join2", "join3", "join4"]:

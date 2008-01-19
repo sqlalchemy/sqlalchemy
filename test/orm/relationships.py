@@ -999,13 +999,17 @@ class CustomCollectionsTest(ORMTest):
             pass
 
         class MyCollection(object):
-            def __init__(self): self.data = []
+            def __init__(self):
+                self.data = []
             @collection.appender
-            def append(self, value): self.data.append(value)
+            def append(self, value):
+                self.data.append(value)
             @collection.remover
-            def remove(self, value): self.data.remove(value)
+            def remove(self, value):
+                self.data.remove(value)
             @collection.iterator
-            def __iter__(self): return iter(self.data)
+            def __iter__(self):
+                return iter(self.data)
 
         mapper(Parent, sometable, properties={
             'children':relation(Child, collection_class=MyCollection)

@@ -215,7 +215,7 @@ class GetTest(ORMTest):
 
                 self.assert_sql_count(testing.db, go, 3)
 
-        test_get.__name__ = name
+        test_get = _function_named(test_get, name)
         return test_get
 
     test_get_polymorphic = create_test(True, 'test_get_polymorphic')

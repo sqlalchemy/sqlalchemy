@@ -342,13 +342,13 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         session.delete(c)
         session.flush()
 
-    test_roundtrip.__name__ = "test_%s%s%s%s%s" % (
-        (lazy_relation and "lazy" or "eager"),
-        (include_base and "_inclbase" or ""),
-        (redefine_colprop and "_redefcol" or ""),
-        (polymorphic_fetch != 'union' and '_' + polymorphic_fetch or (use_literal_join and "_litjoin" or "")),
-        (use_outer_joins and '_outerjoins' or '')
-    )
+    test_roundtrip = _function_named(
+        test_roundtrip, "test_%s%s%s%s%s" % (
+          (lazy_relation and "lazy" or "eager"),
+          (include_base and "_inclbase" or ""),
+          (redefine_colprop and "_redefcol" or ""),
+          (polymorphic_fetch != 'union' and '_' + polymorphic_fetch or (use_literal_join and "_litjoin" or "")),
+          (use_outer_joins and '_outerjoins' or '')))
     setattr(RoundTripTest, test_roundtrip.__name__, test_roundtrip)
 
 for include_base in [True, False]:

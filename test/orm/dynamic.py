@@ -170,6 +170,7 @@ class FlushTest(FixtureTest):
         sess.delete(u)
         sess.close()
 
+
 def create_backref_test(autoflush, saveuser):
     def test_backref(self):
         mapper(User, users, properties={
@@ -203,10 +204,9 @@ def create_backref_test(autoflush, saveuser):
             sess.flush()
         self.assert_(list(u.addresses) == [])
 
-    test_backref.__name__ = "test%s%s" % (
-        (autoflush and "_autoflush" or ""),
-        (saveuser and "_saveuser" or "_savead"),
-    )
+    test_backref = _function_named(
+        test_backref, "test%s%s" % ((autoflush and "_autoflush" or ""),
+                                    (saveuser and "_saveuser" or "_savead")))
     setattr(FlushTest, test_backref.__name__, test_backref)
 
 for autoflush in (False, True):
@@ -216,7 +216,7 @@ for autoflush in (False, True):
 class DontDereferenceTest(ORMTest):
     def define_tables(self, metadata):
         global users_table, addresses_table
-        
+
         users_table = Table('users', metadata,
                            Column('id', Integer, primary_key=True),
                            Column('name', String(40)),
@@ -245,7 +245,7 @@ class DontDereferenceTest(ORMTest):
         session.save(user)
         session.flush()
         session.clear()
-        
+
         def query1():
             session = create_session(metadata.bind)
             user = session.query(User).first()
@@ -263,7 +263,7 @@ class DontDereferenceTest(ORMTest):
         self.assertEquals(query1(), [Address(email_address='joe@joesdomain.example')]  )
         self.assertEquals(query2(), [Address(email_address='joe@joesdomain.example')]  )
         self.assertEquals(query3(), [Address(email_address='joe@joesdomain.example')]  )
-        
-        
+
+
 if __name__ == '__main__':
     testenv.main()

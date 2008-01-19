@@ -2,9 +2,11 @@
 
 # monkeypatches unittest.TestLoader.suiteClass at import time
 
-import itertools, unittest, re, sys, os, operator, warnings
+import itertools, os, operator, re, sys, unittest, warnings
 from cStringIO import StringIO
 import testlib.config as config
+from testlib.compat import *
+
 sql, MetaData, clear_mappers, Session, util = None, None, None, None, None
 sa_exceptions = None
 
@@ -22,6 +24,7 @@ _ops = { '<': operator.lt,
 
 # sugar ('testing.db'); set here by config() at runtime
 db = None
+
 
 def fails_on(*dbs):
     """Mark a test as expected to fail on one or more database implementations.
@@ -49,11 +52,7 @@ def fails_on(*dbs):
                     raise AssertionError(
                         "Unexpected success for '%s' on DB implementation '%s'" %
                         (fn_name, config.db.name))
-        try:
-            maybe.__name__ = fn_name
-        except:
-            pass
-        return maybe
+        return _function_named(maybe, fn_name)
     return decorate
 
 def fails_on_everything_except(*dbs):
@@ -80,11 +79,7 @@ def fails_on_everything_except(*dbs):
                     raise AssertionError(
                         "Unexpected success for '%s' on DB implementation '%s'" %
                         (fn_name, config.db.name))
-        try:
-            maybe.__name__ = fn_name
-        except:
-            pass
-        return maybe
+        return _function_named(maybe, fn_name)
     return decorate
 
 def unsupported(*dbs):
@@ -103,17 +98,14 @@ def unsupported(*dbs):
                 return True
             else:
                 return fn(*args, **kw)
-        try:
-            maybe.__name__ = fn_name
-        except:
-            pass
-        return maybe
+        return _function_named(maybe, fn_name)
     return decorate
 
 def exclude(db, op, spec):
     """Mark a test as unsupported by specific database server versions.
 
     Stackable, both with other excludes and other decorators. Examples::
+
       # Not supported by mydb versions less than 1, 0
       @exclude('mydb', '<', (1,0))
       # Other operators work too
@@ -130,11 +122,7 @@ def exclude(db, op, spec):
                 return True
             else:
                 return fn(*args, **kw)
-        try:
-            maybe.__name__ = fn_name
-        except:
-            pass
-        return maybe
+        return _function_named(maybe, fn_name)
     return decorate
 
 def _is_excluded(db, op, spec):
@@ -204,11 +192,7 @@ def emits_warning(*messages):
                 return fn(*args, **kw)
             finally:
                 resetwarnings()
-        try:
-            safe.__name__ = fn.__name__
-        except:
-            pass
-        return safe
+        return _function_named(safe, fn.__name__)
     return decorate
 
 def uses_deprecated(*messages):
@@ -247,11 +231,7 @@ def uses_deprecated(*messages):
                 return fn(*args, **kw)
             finally:
                 resetwarnings()
-        try:
-            safe.__name__ = fn.__name__
-        except:
-            pass
-        return safe
+        return _function_named(safe, fn.__name__)
     return decorate
 
 def resetwarnings():

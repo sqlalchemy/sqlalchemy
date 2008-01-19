@@ -2,6 +2,7 @@
 
 import os, sys
 from testlib.config import parser, post_configure
+from testlib.compat import *
 import testlib.config
 
 __all__ = 'profiled', 'function_call_count'

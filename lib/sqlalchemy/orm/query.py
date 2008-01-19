@@ -880,7 +880,7 @@ class Query(object):
             if tuples:
                 rows = util.OrderedSet()
                 for row in fetch:
-                    rows.add(tuple(proc(context, row) for proc in process))
+                    rows.add(tuple([proc(context, row) for proc in process]))
             else:
                 rows = util.UniqueAppender([])
                 for row in fetch:

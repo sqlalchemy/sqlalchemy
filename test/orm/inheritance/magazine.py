@@ -207,7 +207,8 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
         print [page, page2, page3]
         assert repr(p.issues[0].locations[0].magazine.pages) == repr([page, page2, page3]), repr(p.issues[0].locations[0].magazine.pages)
 
-    test_roundtrip.__name__ = "test_%s" % (not use_union and (use_joins and "joins" or "select") or "unions")
+    test_roundtrip = _function_named(
+        test_roundtrip, "test_%s" % (not use_union and (use_joins and "joins" or "select") or "unions"))
     setattr(MagazineTest, test_roundtrip.__name__, test_roundtrip)
 
 for (use_union, use_join) in [(True, False), (False, True), (False, False)]:
