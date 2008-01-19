@@ -8,7 +8,28 @@ CHANGES
     - added "ilike()" operator to column operations. 
       compiles to ILIKE on postgres, lower(x) LIKE lower(y)
       on all others [ticket:727]
-      
+    
+    - some expression fixup:
+        - the '.c.' attribute on a selectable now gets an
+        entry for every column expression in its columns
+        clause; previously, "unnamed" columns like functions
+        and CASE statements weren't getting put there.  Now
+        they will, using their full string representation
+        if no 'name' is available.  
+        - The anonymous 'label' generated for otherwise
+        unlabeled functions and expressions now propagates 
+        outwards at compile time for expressions like 
+        select([select([func.foo()])])
+        - a CompositeSelect, i.e. any union(), union_all(),
+        intersect(), etc. now asserts that each selectable
+        contains the same number of columns.  This conforms
+        to the corresponding SQL requirement.
+        - building on the above ideas, CompositeSelects
+        now build up their ".c." collection based on
+        the names present in the first selectable only;
+        corresponding_column() now works fully for all 
+        embedded selectables.
+        
 - orm
     - proper error message is raised when trying to access
       expired instance attributes with no session present

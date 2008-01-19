@@ -464,7 +464,7 @@ class DefaultCompiler(engine.Compiled):
             not isinstance(column.table, sql.Select):
             return column.label(column.name)
         elif not isinstance(column, (sql._UnaryExpression, sql._TextClause)) and (not hasattr(column, 'name') or isinstance(column, sql._Function)):
-            return column.label(None)
+            return column.anon_label
         else:
             return column
 
@@ -728,7 +728,7 @@ class DefaultCompiler(engine.Compiled):
         return "RELEASE SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt)
     
     def __str__(self):
-        return self.string
+        return self.string or ''
 
 class DDLBase(engine.SchemaIterator):
     def find_alterables(self, tables):

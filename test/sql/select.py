@@ -845,95 +845,94 @@ mytable.description FROM myothertable JOIN mytable ON mytable.myid = myothertabl
             )
 
     def testunion(self):
-            x = union(
-                  select([table1], table1.c.myid == 5),
-                  select([table1], table1.c.myid == 12),
-                  order_by = [table1.c.myid],
-            )
+        try:
+            union(table3.select(), table1.select())
+        except exceptions.ArgumentError, err:
+            assert str(err) == "All selectables passed to CompoundSelect must have identical numbers of columns; select #1 has 2 columns, select #2 has 3"
+    
+        x = union(
+              select([table1], table1.c.myid == 5),
+              select([table1], table1.c.myid == 12),
+              order_by = [table1.c.myid],
+        )
 
-            self.assert_compile(x, "SELECT mytable.myid, mytable.name, mytable.description \
+        self.assert_compile(x, "SELECT mytable.myid, mytable.name, mytable.description \
 FROM mytable WHERE mytable.myid = :mytable_myid_1 UNION \
 SELECT mytable.myid, mytable.name, mytable.description \
 FROM mytable WHERE mytable.myid = :mytable_myid_2 ORDER BY mytable.myid")
 
-            self.assert_compile(
-                    union(
-                        select([table1]),
-                        select([table2]),
-                        select([table3])
-                    )
-            ,
-            "SELECT mytable.myid, mytable.name, mytable.description \
+        u1 = union(
+            select([table1.c.myid, table1.c.name]),
+            select([table2]),
+            select([table3])
+        )
+        self.assert_compile(u1,
+        "SELECT mytable.myid, mytable.name \
 FROM mytable UNION SELECT myothertable.otherid, myothertable.othername \
 FROM myothertable UNION SELECT thirdtable.userid, thirdtable.otherstuff FROM thirdtable")
 
-            u = union(
-                select([table1]),
+        assert u1.corresponding_column(table2.c.otherid) is u1.c.myid
+
+        # TODO - why is there an extra space before the LIMIT ?
+        self.assert_compile(
+            union(
+                select([table1.c.myid, table1.c.name]),
                 select([table2]),
-                select([table3])
+                order_by=['myid'],
+                offset=10,
+                limit=5
             )
-            assert u.corresponding_column(table2.c.otherid) is u.c.otherid
-
-            self.assert_compile(
-                union(
-                    select([table1]),
-                    select([table2]),
-                    order_by=['myid'],
-                    offset=10,
-                    limit=5
-                )
-            ,    "SELECT mytable.myid, mytable.name, mytable.description \
+        ,    "SELECT mytable.myid, mytable.name \
 FROM mytable UNION SELECT myothertable.otherid, myothertable.othername \
-FROM myothertable ORDER BY myid \
- LIMIT 5 OFFSET 10"
-            )
+FROM myothertable ORDER BY myid  LIMIT 5 OFFSET 10"
+        )
 
-            self.assert_compile(
-                union(
-                    select([table1.c.myid, table1.c.name, func.max(table1.c.description)], table1.c.name=='name2', group_by=[table1.c.myid, table1.c.name]),
-                    table1.select(table1.c.name=='name1')
-                )
-                ,
-                "SELECT mytable.myid, mytable.name, max(mytable.description) AS max_1 FROM mytable \
+        self.assert_compile(
+            union(
+                select([table1.c.myid, table1.c.name, func.max(table1.c.description)], table1.c.name=='name2', group_by=[table1.c.myid, table1.c.name]),
+                table1.select(table1.c.name=='name1')
+            )
+            ,
+            "SELECT mytable.myid, mytable.name, max(mytable.description) AS max_1 FROM mytable \
 WHERE mytable.name = :mytable_name_1 GROUP BY mytable.myid, mytable.name UNION SELECT mytable.myid, mytable.name, mytable.description \
 FROM mytable WHERE mytable.name = :mytable_name_2"
-            )
+        )
 
-            self.assert_compile(
-                union(
-                    select([literal(100).label('value')]),
-                    select([literal(200).label('value')])
-                    ),
-                    "SELECT :param_1 AS value UNION SELECT :param_2 AS value"
-            )
+        self.assert_compile(
+            union(
+                select([literal(100).label('value')]),
+                select([literal(200).label('value')])
+                ),
+                "SELECT :param_1 AS value UNION SELECT :param_2 AS value"
+        )
 
 
     def test_compound_select_grouping(self):
-            self.assert_compile(
-                union_all(
-                    select([table1.c.myid]),
-                    union(
-                        select([table2.c.otherid]),
-                        select([table3.c.userid]),
-                    )
-                )
-                ,
-                "SELECT mytable.myid FROM mytable UNION ALL (SELECT myothertable.otherid FROM myothertable UNION \
-SELECT thirdtable.userid FROM thirdtable)"
-            )
-            # This doesn't need grouping, so don't group to not give sqlite unnecessarily hard time
-            self.assert_compile(
+        self.assert_compile(
+            union_all(
+                select([table1.c.myid]),
                 union(
-                    except_(
-                        select([table2.c.otherid]),
-                        select([table3.c.userid]),
-                    ),
-                    select([table1.c.myid])
+                    select([table2.c.otherid]),
+                    select([table3.c.userid]),
                 )
-                ,
-                "SELECT myothertable.otherid FROM myothertable EXCEPT SELECT thirdtable.userid FROM thirdtable \
-UNION SELECT mytable.myid FROM mytable"
             )
+            ,
+            "SELECT mytable.myid FROM mytable UNION ALL (SELECT myothertable.otherid FROM myothertable UNION \
+SELECT thirdtable.userid FROM thirdtable)"
+        )
+        # This doesn't need grouping, so don't group to not give sqlite unnecessarily hard time
+        self.assert_compile(
+            union(
+                except_(
+                    select([table2.c.otherid]),
+                    select([table3.c.userid]),
+                ),
+                select([table1.c.myid])
+            )
+            ,
+            "SELECT myothertable.otherid FROM myothertable EXCEPT SELECT thirdtable.userid FROM thirdtable \
+UNION SELECT mytable.myid FROM mytable"
+        )
 
     def testouterjoin(self):
         query = select(
@@ -1253,7 +1252,40 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
             "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :param_1 AND :param_2")
         self.assert_compile(table.select(between((table.c.field == table.c.field), False, True)),
             "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :param_1 AND :param_2")
+    
+    def test_naming(self):
+        s1 = select([table1.c.myid, table1.c.myid.label('foobar'), func.hoho(table1.c.name), func.lala(table1.c.name).label('gg')])
+        assert s1.c.keys() == ['myid', 'foobar', 'hoho(mytable.name)', 'gg']
 
+        from sqlalchemy.databases.sqlite import SLNumeric
+        meta = MetaData()
+        t1 = Table('mytable', meta, Column('col1', Integer))
+        
+        for col, key, expr, label in (
+            (table1.c.name, 'name', 'mytable.name', None),
+            (table1.c.myid==12, 'mytable.myid = :mytable_myid_1', 'mytable.myid = :mytable_myid_1', 'anon_1'),
+            (func.hoho(table1.c.myid), 'hoho(mytable.myid)', 'hoho(mytable.myid)', 'hoho_1'),
+            (cast(table1.c.name, SLNumeric), 'CAST(mytable.name AS NUMERIC(10, 2))', 'CAST(mytable.name AS NUMERIC(10, 2))', 'anon_1'),
+            (t1.c.col1, 'col1', 'mytable.col1', None),
+            (column('some wacky thing'), 'some wacky thing', '"some wacky thing"', '')
+        ):
+            s1 = select([col], from_obj=getattr(col, 'table', None) or table1)
+            assert s1.c.keys() == [key], s1.c.keys()
+        
+            if label:
+                self.assert_compile(s1, "SELECT %s AS %s FROM mytable" % (expr, label))
+            else:
+                self.assert_compile(s1, "SELECT %s FROM mytable" % (expr,))
+            
+            s1 = select([s1])
+            if label:
+                self.assert_compile(s1, "SELECT %s FROM (SELECT %s AS %s FROM mytable)" % (label, expr, label))
+            elif col.table is not None:
+                # sqlite rule labels subquery columns
+                self.assert_compile(s1, "SELECT %s FROM (SELECT %s AS %s FROM mytable)" % (key,expr, key))
+            else:
+                self.assert_compile(s1, "SELECT %s FROM (SELECT %s FROM mytable)" % (expr,expr))
+                
 class CRUDTest(SQLCompileTest):
     def testinsert(self):
         # generic insert, will create bind params for all columns

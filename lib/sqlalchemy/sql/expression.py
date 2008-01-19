@@ -1402,17 +1402,37 @@ class ColumnElement(ClauseElement, _CompareMixin):
         ``ColumnElement`` as it appears in the select list of a
         descending selectable.
 
-        The default implementation returns a ``_ColumnClause`` if a
-        name is given, else just returns self.
         """
 
         if name is not None:
-            co = _ColumnClause(name, selectable)
+            co = _ColumnClause(name, selectable, type_=getattr(self, 'type', None))
             co.proxies = [self]
             selectable.columns[name]= co
             return co
         else:
-            return self
+            name = str(self)
+            co = _ColumnClause(self.anon_label.name, selectable, type_=getattr(self, 'type', None))
+            co.proxies = [self]
+            selectable.columns[name] = co
+            return co
+    
+    def anon_label(self):
+        """provides a constant 'anonymous label' for this ColumnElement.
+        
+        This is a label() expression which will be named at compile time.
+        The same label() is returned each time anon_label is called so 
+        that expressions can reference anon_label multiple times, producing
+        the same label name at compile time.
+        
+        the compiler uses this function automatically at compile time
+        for expressions that are known to be 'unnamed' like binary
+        expressions and function calls.
+        """
+
+        if not hasattr(self, '_ColumnElement__anon_label'):
+            self.__anon_label = self.label(None)
+        return self.__anon_label
+    anon_label = property(anon_label)
 
 class ColumnCollection(util.OrderedProperties):
     """An ordered dictionary that stores a list of ColumnElement
@@ -2025,15 +2045,6 @@ class _Cast(ColumnElement):
 
     def _get_from_objects(self, **modifiers):
         return self.clause._get_from_objects(**modifiers)
-
-    def _make_proxy(self, selectable, name=None):
-        if name is not None:
-            co = _ColumnClause(name, selectable, type_=self.type)
-            co.proxies = [self]
-            selectable.columns[name]= co
-            return co
-        else:
-            return self
 
 
 class _UnaryExpression(ColumnElement):
@@ -2864,8 +2875,16 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         self.keyword = keyword
         self.selects = []
 
+        numcols = None
+        
         # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
         for n, s in enumerate(selects):
+            if not numcols:
+                numcols = len(s.c)
+            elif len(s.c) != numcols:
+                raise exceptions.ArgumentError("All selectables passed to CompoundSelect must have identical numbers of columns; select #%d has %d columns, select #%d has %d" % 
+                    (1, len(self.selects[0].c), n+1, len(s.c))
+                )
             if s._order_by_clause:
                 s = s.order_by(None)
             # unions group from left to right, so don't group first select
@@ -2892,17 +2911,22 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                 yield c
 
     def _proxy_column(self, column):
-        existing = self._col_map.get(column.name, None)
-        if existing is not None:
-            existing.proxies.append(column)
-            return existing
-        else:
+        selectable = column.table
+        col_ordering = self._col_map.get(selectable, None)
+        if col_ordering is None:
+            self._col_map[selectable] = col_ordering = []
+        
+        if selectable is self.selects[0]:
             if self.use_labels:
                 col = column._make_proxy(self, name=column._label)
             else:
                 col = column._make_proxy(self)
-            self._col_map[col.name] = col
-            return col
+            col_ordering.append(col)
+        else:
+            col_ordering.append(column)
+            existing = self._col_map[self.selects[0]][len(col_ordering) - 1]
+            existing.proxies.append(column)
+            return existing
 
     def _copy_internals(self, clone=_clone):
         self._clone_from_clause()

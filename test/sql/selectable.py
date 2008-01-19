@@ -74,8 +74,6 @@ class SelectableTest(AssertMixin):
         j = join(a, table2)
 
         criterion = a.c.col1 == table2.c.col2
-        print
-        print str(j)
         self.assert_(criterion.compare(j.onclause))
 
     def testunion(self):
@@ -213,7 +211,7 @@ class SelectableTest(AssertMixin):
         assert u.corresponding_column(table2.oid_column) is u.oid_column
         assert u.corresponding_column(s.oid_column) is u.oid_column
         assert u.corresponding_column(s2.oid_column) is u.oid_column
-
+    
 class PrimaryKeyTest(AssertMixin):
     def test_join_pk_collapse_implicit(self):
         """test that redundant columns in a join get 'collapsed' into a minimal primary key,
