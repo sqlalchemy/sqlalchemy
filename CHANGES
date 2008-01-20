@@ -74,6 +74,29 @@ CHANGES
       down polymorphic queries
 
     - miscellaneous tickets:  [ticket:940]
+    
+    - session transaction management fixes:
+        - fixed bug with session transaction management. Parent transactions
+        weren't started on the connection when adding a connection to a
+        nested transaction.
+        - session.transaction now always refers to the innermost active
+        transaction, even when commit/rollback are called directly on the
+        session transaction object.
+        - when preparing a two-phase transaction fails on one connection
+        all the connections are rolled back.
+        - two phase transactions can now be prepared.
+        - session.close() didn't close all transactions when nested
+        transactions were used.
+        - rollback() previously erroneously set the current transaction
+        directly to the parent of the transaction that could be rolled back
+        to. Now it rolls back the next transaction up that can handle it, but
+        sets the current transaction to it's parent and inactivates the
+        transactions in between. Inactive transactions can only be
+        rolled back or closed, any other call results in an error. In effect
+        this means that every begin() must be accompanied by a corresponding
+        commit() or rollback(), including the implicit begin() in
+        transactional sessions.
+        - autoflush for commit() wasn't flushing for simple subtransactions.
         
 - general
     - warnings are now issued as type exceptions.SAWarning.
@@ -88,6 +111,11 @@ CHANGES
       column mapping when generating a LIMIT/OFFSET subquery,
       allows columns to map properly to result sets even
       if long-name truncation kicks in [ticket:941]
+
+- ext
+    - Changed ext.activemapper to use a non-transactional session
+      for the objectstore as the test seem to imply that this is
+      the expected behavior.
 
 0.4.2p3
 ------

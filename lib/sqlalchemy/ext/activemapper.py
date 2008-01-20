@@ -13,7 +13,7 @@ import sys
 #
 metadata = ThreadLocalMetaData()
 Objectstore = scoped_session
-objectstore = scoped_session(sessionmaker(autoflush=True))
+objectstore = scoped_session(sessionmaker(autoflush=True, transactional=False))
 
 #
 # declarative column declaration - this is so that we can infer the colname

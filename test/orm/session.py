@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions
+from sqlalchemy import exceptions, util
 from sqlalchemy.orm import *
 from sqlalchemy.orm.session import SessionExtension
 from sqlalchemy.orm.session import Session as SessionCls
@@ -355,6 +355,122 @@ class SessionTest(AssertMixin):
         assert len(sess.query(User).all()) == 1
         sess.close()
 
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
+    @testing.exclude('mysql', '<', (5, 0, 3))
+    def test_nested_transaction_connection_add(self):
+        class User(object): pass
+        mapper(User, users)
+        
+        sess = create_session(transactional=False)
+        
+        sess.begin()
+        sess.begin_nested()
+        
+        u1 = User()
+        sess.save(u1)
+        sess.flush()
+        
+        sess.rollback()
+        
+        u2 = User()
+        sess.save(u2)
+        
+        sess.commit()
+        
+        self.assertEquals(util.Set(sess.query(User).all()), util.Set([u2]))
+        
+        sess.begin()
+        sess.begin_nested()
+        
+        u3 = User()
+        sess.save(u3)
+        sess.commit() # commit the nested transaction
+        sess.rollback()
+        
+        self.assertEquals(util.Set(sess.query(User).all()), util.Set([u2]))
+        
+        sess.close()
+    
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
+    @testing.exclude('mysql', '<', (5, 0, 3))
+    def test_mixed_transaction_control(self):
+        class User(object): pass
+        mapper(User, users)
+        
+        sess = create_session(transactional=False)
+        
+        sess.begin()
+        sess.begin_nested()
+        transaction = sess.begin()
+    
+        sess.save(User())
+        
+        transaction.commit()
+        sess.commit()
+        sess.commit()
+        
+        sess.close()
+        
+        self.assertEquals(len(sess.query(User).all()), 1)
+        
+        t1 = sess.begin()
+        t2 = sess.begin_nested()
+    
+        sess.save(User())
+        
+        t2.commit()
+        assert sess.transaction is t1
+        
+        sess.close()
+    
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
+    @testing.exclude('mysql', '<', (5, 0, 3))
+    def test_mixed_transaction_close(self):
+        class User(object): pass
+        mapper(User, users)
+        
+        sess = create_session(transactional=True)
+        
+        sess.begin_nested()
+    
+        sess.save(User())
+        sess.flush()
+        
+        sess.close()
+        
+        sess.save(User())
+        sess.commit()
+        
+        sess.close()
+        
+        self.assertEquals(len(sess.query(User).all()), 1)
+    
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
+    @testing.exclude('mysql', '<', (5, 0, 3))
+    def test_error_on_using_inactive_session(self):
+        class User(object): pass
+        mapper(User, users)
+        
+        sess = create_session(transactional=False)
+        
+        try:
+            sess.begin()
+            sess.begin()
+        
+            sess.save(User())
+            sess.flush()
+            
+            sess.rollback()
+            sess.begin()
+            assert False
+        except exceptions.InvalidRequestError, e:
+            self.assertEquals(str(e), "The transaction is inactive due to a rollback in a subtransaction and should be closed")
+        sess.close()
+    
     @engines.close_open_connections
     def test_bound_connection(self):
         class User(object):pass

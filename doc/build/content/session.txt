@@ -476,7 +476,7 @@ Session also supports Python 2.5's with statement so that the example above can 
         item1.foo = 'bar'
         item2.bar = 'foo'
 
-For MySQL and Postgres (and soon Oracle), "nested" transactions can be accomplished which use SAVEPOINT behavior, via the `begin_nested()` method:
+Subtransactions can be created by calling the `begin()` method repeatedly. For each transaction you `begin()` you must always call either `commit()` or `rollback()`. Note that this includes the implicit transaction created by the transactional session. When a subtransaction is created the current transaction of the session is set to that transaction. Commiting the subtransaction will return you to the next outer transaction. Rolling it back will also return you to the next outer transaction, but in addition it will roll back database state to the innermost transaction that supports rolling back to. Usually this means the root transaction, unless you use the nested transaction functionality via the `begin_nested()` method. MySQL and Postgres (and soon Oracle) support using "nested" transactions by creating SAVEPOINTs, :
 
     {python}
     Session = sessionmaker(transactional=False)
@@ -492,7 +492,7 @@ For MySQL and Postgres (and soon Oracle), "nested" transactions can be accomplis
 
     sess.commit() # commits u1 and u2
 
-Finally, for MySQL, Postgres, and soon Oracle as well, the session can be instructed to use two-phase commit semantics using the flag `twophase=True`, which coordinates transactions across multiple databases:
+Finally, for MySQL, Postgres, and soon Oracle as well, the session can be instructed to use two-phase commit semantics. This will coordinate the commiting of transactions across databases so that the transaction is either committed or rolled back in all databases. You can also `prepare()` the session for interacting with transactions not managed by SQLAlchemy. To use two phase transactions set the flag `twophase=True` on the session:
 
     {python}
     engine1 = create_engine('postgres://db1')
@@ -510,6 +510,8 @@ Finally, for MySQL, Postgres, and soon Oracle as well, the session can be instru
     # commit.  session will issue a flush to all DBs, and a prepare step to all DBs,
     # before committing both transactions
     sess.commit()
+
+Be aware that when a crash occurs in one of the databases while the the transactions are prepared you have to manually commit or rollback the prepared transactions in your database as appropriate.
 
 ## Embedding SQL Insert/Update Expressions into a Flush {@name=flushsql}
 
