@@ -460,10 +460,10 @@ Alternatively, a transaction can be begun explicitly using `begin()`:
         item2 = sess.query(Item).get(2)
         item1.foo = 'bar'
         item2.bar = 'foo'
+        sess.commit()
     except:
         sess.rollback()
         raise
-    sess.commit()
 
 Session also supports Python 2.5's with statement so that the example above can be written as:
 
