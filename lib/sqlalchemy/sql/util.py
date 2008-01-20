@@ -89,6 +89,47 @@ def reduce_columns(columns, *clauses):
     
     return expression.ColumnSet(columns.difference(omit))
 
+def row_adapter(from_, to, equivalent_columns=None):
+    """create a row adapter between two selectables.
+
+    The returned adapter is a class that can be instantiated repeatedly for any number
+    of rows; this is an inexpensive process.  However, the creation of the row
+    adapter class itself *is* fairly expensive so caching should be used to prevent
+    repeated calls to this function.
+    """
+
+    map = {}
+    for c in to.c:
+        corr = from_.corresponding_column(c)
+        if corr:
+            map[c] = corr
+        elif equivalent_columns:
+            if c in equivalent_columns:
+                for c2 in equivalent_columns[c]:
+                    corr = from_.corresponding_column(c2)
+                    if corr:
+                        map[c] = corr
+                        break
+
+    class AliasedRow(object):
+        def __init__(self, row):
+            self.row = row
+        def __contains__(self, key):
+            if key in map:
+                return map[key] in self.row
+            else:
+                return key in self.row
+        def has_key(self, key):
+            return key in self
+        def __getitem__(self, key):
+            if key in map:
+                key = map[key]
+            return self.row[key]
+        def keys(self):
+            return map.keys()
+    AliasedRow.map = map
+    return AliasedRow
+    
 class ColumnsInClause(visitors.ClauseVisitor):
     """Given a selectable, visit clauses and determine if any columns
     from the clause are in the selectable.
