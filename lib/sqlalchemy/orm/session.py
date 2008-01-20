@@ -238,11 +238,7 @@ class SessionTransaction(object):
                 for t in util.Set(self._connections.values()):
                     t[1].prepare()
             except:
-                for t in util.Set(self._connections.values()):
-                    try:
-                        t[1].rollback()
-                    except:
-                        pass
+                self.rollback()
                 raise
         
         self._deactivate()
@@ -310,7 +306,11 @@ class SessionTransaction(object):
         if self.session.transaction is None:
             return
         if type is None:
-            self.commit()
+            try:
+                self.commit()
+            except:
+                self.rollback()
+                raise
         else:
             self.rollback()
 
