@@ -339,6 +339,8 @@ This second form of flush should be used carefully as it will not necessarily lo
 
 Theres also a way to have `flush()` called automatically before each query; this is called "autoflush" and is described below.
 
+Note that when using a `Session` that has been placed into a transaction, the `commit()` method will also `flush()` the `Session` unconditionally before committing the transaction.  
+
 Note that flush **does not change** the state of any collections or entity relationships in memory; for example, if you set a foreign key attribute `b_id` on object `A` with the the identifier `B.id`, the change will be flushed to the database, but `A` will not have `B` added to its collection.  If you want to manipulate foreign key attributes directly, `refresh()` or `expire()` the objects whose state needs to be refreshed subsequent to flushing.
 
 ### Autoflush
@@ -359,6 +361,14 @@ A session can be configured to issue `flush()` calls before each query.  This al
     sess.commit()
 
 Autoflush is particularly handy when using "dynamic" mapper relations, so that changes to the underlying collection are immediately available via its query interface.
+
+### Committing
+
+The `commit()` method on `Session` is used specifically when the `Session` is in a transactional state.  The two ways that a session may be placed in a transactional state are to create it using the `transactional=True` option, or to call the `begin()` method.  
+
+`commit()` serves **two** purposes; it issues a `flush()` unconditionally to persist any remaining pending changes, and it issues a commit to all currently managed database connections.  In the typical case this is just a single connection.  After the commit, connection resources which were allocated by the `Session` are released.  This holds true even for a `Session` which specifies `transactional=True`; when such a session is committed, the next transaction is not "begun" until the next database operation occurs.
+
+See the section below on "Managing Transactions" for further detail.
 
 ### Expunge / Clear
 
@@ -440,14 +450,23 @@ The easiest way to use a Session with transactions is just to declare it as tran
     # transactional session
     Session = sessionmaker(transactional=True)
     sess = Session()
-    item1 = sess.query(Item).get(1)
-    item2 = sess.query(Item).get(2)
-    item1.foo = 'bar'
-    item2.bar = 'foo'
+    try:
+        item1 = sess.query(Item).get(1)
+        item2 = sess.query(Item).get(2)
+        item1.foo = 'bar'
+        item2.bar = 'foo'
     
-    # commit- will immediately go into a new transaction afterwards
-    sess.commit()
-    
+        # commit- will immediately go into a new transaction afterwards
+        sess.commit()
+    except:
+        # rollback - will immediately go into a new transaction afterwards.
+        sess.rollback()
+
+Things to note above:
+
+  * When using a transactional session, either a `rollback()` or a `close()` call **is required** when an error is raised by `flush()` or `commit()`.  The `flush()` error condition will issue a ROLLBACK to the database automatically, but the state of the `Session` itself remains in an "undefined" state until the user decides whether to rollback or close.
+  * The `commit()` call unconditionally issues a `flush()`.  Particularly when using `transactional=True` in conjunction with `autoflush=True`, explicit `flush()` calls are usually not needed.
+  
 Alternatively, a transaction can be begun explicitly using `begin()`:
 
     {python}
@@ -464,6 +483,8 @@ Alternatively, a transaction can be begun explicitly using `begin()`:
     except:
         sess.rollback()
         raise
+
+Like the `transactional` example, the same rules apply; an explicit `rollback()` or `close()` is required when an error occurs, and the `commit()` call issues a `flush()` as well.
 
 Session also supports Python 2.5's with statement so that the example above can be written as:
 
