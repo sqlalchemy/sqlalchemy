@@ -627,7 +627,7 @@ class Connection(Connectable):
 
         The underlying DB-API connection is literally closed (if
         possible), and is discarded.  Its source connection pool will
-        typically lazilly create a new connection to replace it.
+        typically lazily create a new connection to replace it.
         
         Upon the next usage, this Connection will attempt to reconnect
         to the pool with a new connection.
@@ -819,17 +819,19 @@ class Connection(Connectable):
         """Close this Connection."""
 
         try:
-            c = self.__connection
+            conn = self.__connection
         except AttributeError:
             return
         if not self.__branch:
-            self.__connection.close()
-        self.__connection = None
+            conn.close()
         self.__invalid = False
         del self.__connection
 
     def scalar(self, object, *multiparams, **params):
-        """Executes and returns the first column of the first row."""
+        """Executes and returns the first column of the first row.
+        
+        The underlying result/cursor is closed after execution.
+        """
 
         return self.execute(object, *multiparams, **params).scalar()
 
