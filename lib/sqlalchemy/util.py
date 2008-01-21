@@ -19,8 +19,49 @@ try:
     Set = set
     set_types = set, sets.Set
 except NameError:
-    Set = sets.Set
     set_types = sets.Set,
+    # layer some of __builtin__.set's binop behavior onto sets.Set
+    class Set(sets.Set):
+        def _binary_sanity_check(self, other):
+            pass
+
+        def issubset(self, iterable):
+            other = type(self)(iterable)
+            return sets.Set.issubset(self, other)
+        def __le__(self, other):
+            sets.Set._binary_sanity_check(self, other)
+            return sets.Set.__le__(self, other)
+        def issuperset(self, iterable):
+            other = type(self)(iterable)
+            return sets.Set.issuperset(self, other)
+        def __ge__(self, other):
+            sets.Set._binary_sanity_check(self, other)
+            return sets.Set.__ge__(self, other)
+
+        # lt and gt still require a BaseSet
+        def __lt__(self, other):
+            sets.Set._binary_sanity_check(self, other)
+            return sets.Set.__lt__(self, other)
+        def __gt__(self, other):
+            sets.Set._binary_sanity_check(self, other)
+            return sets.Set.__gt__(self, other)
+
+        def __ior__(self, other):
+            if not isinstance(other, sets.BaseSet):
+                return NotImplemented
+            return sets.Set.__ior__(self, other)
+        def __iand__(self, other):
+            if not isinstance(other, sets.BaseSet):
+                return NotImplemented
+            return sets.Set.__iand__(self, other)
+        def __ixor__(self, other):
+            if not isinstance(other, sets.BaseSet):
+                return NotImplemented
+            return sets.Set.__ixor__(self, other)
+        def __isub__(self, other):
+            if not isinstance(other, sets.BaseSet):
+                return NotImplemented
+            return sets.Set.__isub__(self, other)
 
 try:
     import cPickle as pickle
@@ -186,11 +227,16 @@ def duck_type_collection(specimen, default=None):
     """
 
     if hasattr(specimen, '__emulates__'):
-        return specimen.__emulates__
+        # canonicalize set vs sets.Set to a standard: util.Set
+        if (specimen.__emulates__ is not None and
+            issubclass(specimen.__emulates__, set_types)):
+            return Set
+        else:
+            return specimen.__emulates__
 
     isa = isinstance(specimen, type) and issubclass or isinstance
     if isa(specimen, list): return list
-    if isa(specimen, Set): return Set
+    if isa(specimen, set_types): return Set
     if isa(specimen, dict): return dict
 
     if hasattr(specimen, 'append'):
@@ -349,7 +395,8 @@ class OrderedDict(dict):
     def __init__(self, ____sequence=None, **kwargs):
         self._list = []
         if ____sequence is None:
-            self.update(**kwargs)
+            if kwargs:
+                self.update(**kwargs)
         else:
             self.update(____sequence, **kwargs)
 
@@ -539,6 +586,14 @@ class OrderedSet(Set):
 
     __isub__ = difference_update
 
+    if hasattr(Set, '__getstate__'):
+        def __getstate__(self):
+            base = Set.__getstate__(self)
+            return base, self._list
+
+        def __setstate__(self, state):
+            Set.__setstate__(self, state[0])
+            self._list = state[1]
 
 class IdentitySet(object):
     """A set that considers only object id() for uniqueness.

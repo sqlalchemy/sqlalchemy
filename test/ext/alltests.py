@@ -1,12 +1,16 @@
 import testenv; testenv.configure_for_tests()
-import unittest, doctest
+import doctest, sys, unittest
 
 def suite():
     unittest_modules = ['ext.activemapper',
                         'ext.assignmapper',
                         'ext.orderinglist',
                         'ext.associationproxy']
-    doctest_modules = ['sqlalchemy.ext.sqlsoup']
+
+    if sys.version_info >= (2, 4):
+        doctest_modules = ['sqlalchemy.ext.sqlsoup']
+    else:
+        doctest_modules = []
 
     alltests = unittest.TestSuite()
     for name in unittest_modules:

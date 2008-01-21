@@ -690,6 +690,14 @@ class StringTest(AssertMixin):
         finally:
             bar.drop()
 
+def _missing_decimal():
+    """Python implementation supports decimals"""
+    try:
+        import decimal
+        return False
+    except ImportError:
+        return True
+
 class NumericTest(AssertMixin):
     def setUpAll(self):
         global numeric_table, metadata
@@ -709,6 +717,7 @@ class NumericTest(AssertMixin):
     def tearDown(self):
         numeric_table.delete().execute()
 
+    @testing.fails_if(_missing_decimal)
     def test_decimal(self):
         from decimal import Decimal
         numeric_table.insert().execute(numericcol=3.5, floatcol=5.6, ncasdec=12.4, fcasdec=15.75)

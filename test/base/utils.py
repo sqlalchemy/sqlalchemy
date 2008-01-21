@@ -138,8 +138,8 @@ class HashEqOverride(object):
 
 class IdentitySetTest(unittest.TestCase):
     def assert_eq(self, identityset, expected_iterable):
-        found = sorted(list(identityset))
-        expected = sorted(expected_iterable)
+        expected = sorted([id(o) for o in expected_iterable])
+        found = sorted([id(o) for o in identityset])
         self.assertEquals(found, expected)
 
     def test_init(self):

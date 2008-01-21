@@ -25,6 +25,37 @@ _ops = { '<': operator.lt,
 # sugar ('testing.db'); set here by config() at runtime
 db = None
 
+def fails_if(callable_):
+    """Mark a test as expected to fail if callable_ returns True.
+
+    If the callable returns false, the test is run and reported as normal.
+    However if the callable returns true, the test is expected to fail and the
+    unit test logic is inverted: if the test fails, a success is reported.  If
+    the test succeeds, a failure is reported.
+    """
+
+    docstring = getattr(callable_, '__doc__', callable_.__name__)
+    description = docstring.split('\n')[0]
+
+    def decorate(fn):
+        fn_name = fn.__name__
+        def maybe(*args, **kw):
+            if not callable_():
+                return fn(*args, **kw)
+            else:
+                try:
+                    fn(*args, **kw)
+                except Exception, ex:
+                    print ("'%s' failed as expected (condition: %s): %s " % (
+                        fn_name, description, str(ex)))
+                    return True
+                else:
+                    raise AssertionError(
+                        "Unexpected success for '%s' (condition: %s)" %
+                        (fn_name, description))
+        return _function_named(maybe, fn_name)
+    return decorate
+
 
 def fails_on(*dbs):
     """Mark a test as expected to fail on one or more database implementations.

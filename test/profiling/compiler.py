@@ -15,16 +15,16 @@ class CompileTest(AssertMixin):
             Column('c1', Integer, primary_key=True),
             Column('c2', String(30)))
 
-    @profiling.profiled('ctest_insert', call_range=(40, 50), always=True)
+    @profiling.function_call_count(42, {'2.3': 44})
     def test_insert(self):
         t1.insert().compile()
 
-    @profiling.profiled('ctest_update', call_range=(40, 50), always=True)
+    @profiling.function_call_count(42, {'2.3': 47})
     def test_update(self):
         t1.update().compile()
 
     # TODO: this is alittle high
-    @profiling.profiled('ctest_select', call_range=(110, 140), always=True)
+    @profiling.function_call_count(125, versions={'2.3': 180})
     def test_select(self):
         s = select([t1], t1.c.c2==t2.c.c1)
         s.compile()

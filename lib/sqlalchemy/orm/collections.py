@@ -98,7 +98,7 @@ through the adapter, allowing for some very sophisticated behavior.
 import copy, inspect, sys, weakref
 
 from sqlalchemy import exceptions, schema, util as sautil
-from sqlalchemy.util import attrgetter
+from sqlalchemy.util import attrgetter, Set
 
 
 __all__ = ['collection', 'collection_adapter',
@@ -1098,7 +1098,7 @@ def _set_decorators():
 
     def _tidy(fn):
         setattr(fn, '_sa_instrumented', True)
-        fn.__doc__ = getattr(getattr(set, fn.__name__), '__doc__')
+        fn.__doc__ = getattr(getattr(Set, fn.__name__), '__doc__')
 
     Unspecified=object()
 
@@ -1110,15 +1110,23 @@ def _set_decorators():
         _tidy(add)
         return add
 
-    def discard(fn):
-        def discard(self, value, _sa_initiator=None):
-            # testlib.pragma exempt:__hash__
-            if value in self:
-                __del(self, value, _sa_initiator)
-            # testlib.pragma exempt:__hash__
-            fn(self, value)
-        _tidy(discard)
-        return discard
+    if sys.version_info < (2, 4):
+        def discard(fn):
+            def discard(self, value, _sa_initiator=None):
+                if value in self:
+                    self.remove(value, _sa_initiator)
+            _tidy(discard)
+            return discard
+    else:
+        def discard(fn):
+            def discard(self, value, _sa_initiator=None):
+                # testlib.pragma exempt:__hash__
+                if value in self:
+                    __del(self, value, _sa_initiator)
+                    # testlib.pragma exempt:__hash__
+                fn(self, value)
+            _tidy(discard)
+            return discard
 
     def remove(fn):
         def remove(self, value, _sa_initiator=None):
@@ -1156,7 +1164,7 @@ def _set_decorators():
 
     def __ior__(fn):
         def __ior__(self, value):
-            if sautil.duck_type_collection(value) is not set:
+            if sautil.duck_type_collection(value) is not Set:
                 return NotImplemented
             for item in value:
                 if item not in self:
@@ -1174,7 +1182,7 @@ def _set_decorators():
 
     def __isub__(fn):
         def __isub__(self, value):
-            if sautil.duck_type_collection(value) is not set:
+            if sautil.duck_type_collection(value) is not Set:
                 return NotImplemented
             for item in value:
                 self.discard(item)
@@ -1184,7 +1192,7 @@ def _set_decorators():
 
     def intersection_update(fn):
         def intersection_update(self, other):
-            want, have = self.intersection(other), sautil.Set(self)
+            want, have = self.intersection(other), Set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1196,9 +1204,9 @@ def _set_decorators():
 
     def __iand__(fn):
         def __iand__(self, other):
-            if sautil.duck_type_collection(other) is not set:
+            if sautil.duck_type_collection(other) is not Set:
                 return NotImplemented
-            want, have = self.intersection(other), sautil.Set(self)
+            want, have = self.intersection(other), Set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1211,7 +1219,7 @@ def _set_decorators():
 
     def symmetric_difference_update(fn):
         def symmetric_difference_update(self, other):
-            want, have = self.symmetric_difference(other), sautil.Set(self)
+            want, have = self.symmetric_difference(other), Set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1223,9 +1231,9 @@ def _set_decorators():
 
     def __ixor__(fn):
         def __ixor__(self, other):
-            if sautil.duck_type_collection(other) is not set:
+            if sautil.duck_type_collection(other) is not Set:
                 return NotImplemented
-            want, have = self.symmetric_difference(other), sautil.Set(self)
+            want, have = self.symmetric_difference(other), Set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1250,7 +1258,7 @@ class InstrumentedList(list):
        'remover': 'remove',
        'iterator': '__iter__', }
 
-class InstrumentedSet(sautil.Set):
+class InstrumentedSet(Set):
     """An instrumented version of the built-in set (or Set)."""
 
     __instrumentation__ = {
@@ -1266,7 +1274,7 @@ class InstrumentedDict(dict):
 
 __canned_instrumentation = {
     list: InstrumentedList,
-    sautil.Set: InstrumentedSet,
+    Set: InstrumentedSet,
     dict: InstrumentedDict,
     }
 
@@ -1275,10 +1283,10 @@ __interfaces = {
             'remover':  'remove',
             'iterator': '__iter__',
             '_decorators': _list_decorators(), },
-    sautil.Set: { 'appender': 'add',
-                  'remover': 'remove',
-                  'iterator': '__iter__',
-                  '_decorators': _set_decorators(), },
+    Set: { 'appender': 'add',
+           'remover': 'remove',
+           'iterator': '__iter__',
+           '_decorators': _set_decorators(), },
     # decorators are required for dicts and object collections.
     dict: { 'iterator': 'itervalues',
             '_decorators': _dict_decorators(), },

@@ -143,7 +143,7 @@ def function_call_count(count=None, versions={}, variance=0.05):
                     raise AssertionError(
                         "Function call count %s not within %s%% "
                         "of expected %s. (Python version %s)" % (
-                        calls, variance, count, py_version))
+                        calls, (variance * 100), count, py_version))
                 return result
             finally:
                 if os.path.exists(filename):
