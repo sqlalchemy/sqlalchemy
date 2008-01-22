@@ -301,5 +301,5 @@ class ZooMarkTest(testing.AssertMixin):
     def test_8_drop(self):
         metadata.drop_all()
 
-if __name__ ==u'__main__':
+if __name__ == '__main__':
     testenv.main()
