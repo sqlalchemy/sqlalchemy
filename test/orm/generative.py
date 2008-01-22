@@ -70,22 +70,21 @@ class GenerativeQueryTest(PersistTest):
         query = create_session(bind=testing.db).query(Foo)
         assert query.filter(foo.c.bar<30).sum(foo.c.bar) == 435
 
-    @testing.fails_on('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.fails_on('firebird', 'mssql')
     def test_aggregate_2(self):
         query = create_session(bind=testing.db).query(Foo)
-        assert query.filter(foo.c.bar<30).avg(foo.c.bar) == 14.5
+        avg = query.filter(foo.c.bar < 30).avg(foo.c.bar)
+        assert round(avg, 1) == 14.5
 
-    @testing.fails_on_everything_except('sqlite', 'postgres', 'mysql',
-                                        'firebird', 'mssql')
-    def test_aggregate_2_int(self):
-        query = create_session(bind=testing.db).query(Foo)
-        assert int(query.filter(foo.c.bar<30).avg(foo.c.bar)) == 14
-
-    @testing.fails_on('postgres', 'mysql', 'firebird', 'mssql')
+    @testing.fails_on('firebird', 'mssql')
     def test_aggregate_3(self):
         query = create_session(bind=testing.db).query(Foo)
-        assert query.filter(foo.c.bar<30).apply_avg(foo.c.bar).first() == 14.5
-        assert query.filter(foo.c.bar<30).apply_avg(foo.c.bar).one() == 14.5
+
+        avg_f = query.filter(foo.c.bar<30).apply_avg(foo.c.bar).first()
+        assert round(avg_f, 1) == 14.5
+
+        avg_o = query.filter(foo.c.bar<30).apply_avg(foo.c.bar).one()
+        assert round(avg_o, 1) == 14.5
 
     def test_filter(self):
         query = create_session(bind=testing.db).query(Foo)
