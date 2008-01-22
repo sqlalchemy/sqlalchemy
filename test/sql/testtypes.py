@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import datetime, os, pickleable, re
 from sqlalchemy import *
-from sqlalchemy import types, exceptions
+from sqlalchemy import exceptions, types, util
 from sqlalchemy.sql import operators
 import sqlalchemy.engine.url as url
 from sqlalchemy.databases import mssql, oracle, mysql, postgres, firebird
@@ -720,8 +720,12 @@ class NumericTest(AssertMixin):
     @testing.fails_if(_missing_decimal)
     def test_decimal(self):
         from decimal import Decimal
-        numeric_table.insert().execute(numericcol=3.5, floatcol=5.6, ncasdec=12.4, fcasdec=15.75)
-        numeric_table.insert().execute(numericcol=Decimal("3.5"), floatcol=Decimal("5.6"), ncasdec=Decimal("12.4"), fcasdec=Decimal("15.75"))
+        numeric_table.insert().execute(
+            numericcol=3.5, floatcol=5.6, ncasdec=12.4, fcasdec=15.75)
+        numeric_table.insert().execute(
+            numericcol=Decimal("3.5"), floatcol=Decimal("5.6"),
+            ncasdec=Decimal("12.4"), fcasdec=Decimal("15.75"))
+
         l = numeric_table.select().execute().fetchall()
         print l
         rounded = [
@@ -732,6 +736,18 @@ class NumericTest(AssertMixin):
             (1, 3.5, 5.6, Decimal("12.4"), Decimal("15.75")),
             (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.75")),
         ]
+
+    @testing.emits_warning('True Decimal types not available')
+    def test_decimal_fallback(self):
+        from sqlalchemy.util import Decimal  # could be Decimal or float
+
+        numeric_table.insert().execute(ncasdec=12.4, fcasdec=15.75)
+        numeric_table.insert().execute(ncasdec=Decimal("12.4"),
+                                       fcasdec=Decimal("15.75"))
+
+        for row in numeric_table.select().execute().fetchall():
+            assert isinstance(row['ncasdec'], util.decimal_type)
+            assert isinstance(row['fcasdec'], util.decimal_type)
 
 
 class IntervalTest(AssertMixin):
