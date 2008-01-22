@@ -5,7 +5,7 @@ from testlib.config import parser, post_configure
 from testlib.compat import *
 import testlib.config
 
-__all__ = 'profiled', 'function_call_count'
+__all__ = 'profiled', 'function_call_count', 'conditional_call_count'
 
 all_targets = set()
 profile_config = { 'targets': set(),
@@ -79,11 +79,7 @@ def profiled(target=None, **target_opts):
 
             os.unlink(filename)
             return result
-        try:
-            profiled.__name__ = fn.__name__
-        except:
-            pass
-        return profiled
+        return _function_named(profiled, fn.__name__)
     return decorator
 
 def function_call_count(count=None, versions={}, variance=0.05):
@@ -106,6 +102,8 @@ def function_call_count(count=None, versions={}, variance=0.05):
     variance
       An +/- deviation percentage, defaults to 5%.
     """
+
+    # this could easily dump the profile report if --verbose is in effect
 
     version_info = list(sys.version_info)
     py_version = '.'.join([str(v) for v in sys.version_info])
@@ -148,9 +146,31 @@ def function_call_count(count=None, versions={}, variance=0.05):
             finally:
                 if os.path.exists(filename):
                     os.unlink(filename)
-        try:
-            counted.__name__ = fn.__name__
-        except:
-            pass
-        return counted
+        return _function_named(counted, fn.__name__)
+    return decorator
+
+def conditional_call_count(discriminator, categories):
+    """Apply a function call count conditionally at runtime.
+
+    Takes two arguments, a callable that returns a key value, and a dict
+    mapping key values to a tuple of arguments to function_call_count.
+
+    The callable is not evaluated until the decorated function is actually
+    invoked.  If the `discriminator` returns a key not present in the
+    `categories` dictionary, no call count assertion is applied.
+
+    Useful for integration tests, where running a named test in isolation may
+    have a function count penalty not seen in the full suite, due to lazy
+    initialization in the DB-API, SA, etc.
+    """
+
+    def decorator(fn):
+        def at_runtime(*args, **kw):
+            criteria = categories.get(discriminator(), None)
+            if criteria is None:
+                return fn(*args, **kw)
+
+            rewrapped = function_call_count(*criteria)(fn)
+            return rewrapped(*args, **kw)
+        return _function_named(at_runtime, fn.__name__)
     return decorator

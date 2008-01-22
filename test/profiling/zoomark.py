@@ -1,16 +1,20 @@
-# adaptation of Robert Brewers' ZooMark speed tests
+"""Benchmark for SQLAlchemy.
 
-"""Benchmark for SQLAlchemy."""
+An adaptation of Robert Brewers' ZooMark speed tests.
+"""
 
 import datetime
 import sys
 import time
 import testenv; testenv.configure_for_tests()
-from testlib import testing, profiling
+from testlib import engines, testing, profiling
 from sqlalchemy import *
 from testlib import set
 
 ITERATIONS = 1
+
+_run_type = 'suite'
+_running_in = lambda: _run_type
 
 class ZooMarkTest(testing.AssertMixin):
     """Runs the ZooMark and squawks if method counts vary from the norm.
@@ -23,13 +27,16 @@ class ZooMarkTest(testing.AssertMixin):
     __only_on__ = 'postgres'
     __skip_if__ = ((lambda: sys.version_info < (2, 4)), )
 
-    @profiling.profiled('create', call_range=(1500, 1880), always=True)
+    @profiling.conditional_call_count(
+        _running_in, {'isolation': (1806,),
+                      'suite': (1569, {'2.4': 1579})})
     def test_1_create_tables(self):
         global metadata
         metadata = MetaData(testing.db)
 
         Zoo = Table('Zoo', metadata,
-                    Column('ID', Integer, Sequence('zoo_id_seq'), primary_key=True, index=True),
+                    Column('ID', Integer, Sequence('zoo_id_seq'),
+                           primary_key=True, index=True),
                     Column('Name', Unicode(255)),
                     Column('Founded', Date),
                     Column('Opens', Time),
@@ -38,8 +45,10 @@ class ZooMarkTest(testing.AssertMixin):
                     )
 
         Animal = Table('Animal', metadata,
-                       Column('ID', Integer, Sequence('animal_id_seq'), primary_key=True),
-                       Column('ZooID', Integer, ForeignKey('Zoo.ID'), index=True),
+                       Column('ID', Integer, Sequence('animal_id_seq'),
+                              primary_key=True),
+                       Column('ZooID', Integer, ForeignKey('Zoo.ID'),
+                              index=True),
                        Column('Name', Unicode(100)),
                        Column('Species', Unicode(100)),
                        Column('Legs', Integer, default=4),
@@ -51,7 +60,7 @@ class ZooMarkTest(testing.AssertMixin):
                        )
         metadata.create_all()
 
-    @profiling.profiled('populate', call_range=(2700, 3700), always=True)
+    @profiling.function_call_count(3635)
     def test_1a_populate(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -118,14 +127,14 @@ class ZooMarkTest(testing.AssertMixin):
         Animal.insert().execute(Species=u'Ape', Name=u'Hua Mei', Legs=2,
                                 MotherID=bai_yun)
 
-    @profiling.profiled('insert', call_range=(150, 220), always=True)
+    @profiling.function_call_count(195)
     def test_2_insert(self):
         Animal = metadata.tables['Animal']
         i = Animal.insert()
         for x in xrange(ITERATIONS):
             tick = i.execute(Species=u'Tick', Name=u'Tick %d' % x, Legs=8)
 
-    @profiling.profiled('properties', call_range=(2300, 3030), always=True)
+    @profiling.function_call_count(2740)
     def test_3_properties(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -147,7 +156,7 @@ class ZooMarkTest(testing.AssertMixin):
             millipede = fullobject(Animal.select(Animal.c.Legs==1000000))
             ticks = fullobject(Animal.select(Animal.c.Species==u'Tick'))
 
-    @profiling.profiled('expressions', call_range=(9200, 12050), always=True)
+    @profiling.function_call_count(10384, {'2.4': 11001})
     def test_4_expressions(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -200,7 +209,7 @@ class ZooMarkTest(testing.AssertMixin):
             assert len(fulltable(Animal.select(func.date_part('month', Animal.c.LastEscape) == 12))) == 1
             assert len(fulltable(Animal.select(func.date_part('day', Animal.c.LastEscape) == 21))) == 1
 
-    @profiling.profiled('aggregates', call_range=(800, 1170), always=True)
+    @profiling.function_call_count(1046, {'2.4': 1088})
     def test_5_aggregates(self):
         Animal = metadata.tables['Animal']
         Zoo = metadata.tables['Zoo']
@@ -241,7 +250,7 @@ class ZooMarkTest(testing.AssertMixin):
                     select([Animal.c.Legs], distinct=True).execute().fetchall()]
             legs.sort()
 
-    @profiling.profiled('editing', call_range=(1050, 1180), always=True)
+    @profiling.function_call_count(1116)
     def test_6_editing(self):
         Zoo = metadata.tables['Zoo']
 
@@ -269,7 +278,7 @@ class ZooMarkTest(testing.AssertMixin):
             SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().fetchone()
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
 
-    @profiling.profiled('multiview', call_range=(1900, 2300), always=True)
+    @profiling.function_call_count(2139, {'2.4': 2198})
     def test_7_multiview(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -301,5 +310,7 @@ class ZooMarkTest(testing.AssertMixin):
     def test_8_drop(self):
         metadata.drop_all()
 
+
 if __name__ == '__main__':
+    _run_type = 'isolation'
     testenv.main()
