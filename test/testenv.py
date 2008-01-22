@@ -1,6 +1,10 @@
 """First import for all test cases, sets sys.path and loads configuration."""
 
-import sys, os, logging
+import sys, os, logging, warnings
+
+if sys.version_info < (2, 4):
+    warnings.filterwarnings('ignore', category=FutureWarning)
+
 from testlib.testing import main
 import testlib.config
 
@@ -28,3 +32,4 @@ def simple_setup():
 
         testlib.config.configure_defaults()
         _setup = True
+

@@ -271,9 +271,14 @@ def resetwarnings():
     global sa_exceptions
     if sa_exceptions is None:
         import sqlalchemy.exceptions as sa_exceptions
+
     warnings.resetwarnings()
     warnings.filterwarnings('error', category=sa_exceptions.SADeprecationWarning)
     warnings.filterwarnings('error', category=sa_exceptions.SAWarning)
+
+    if sys.version_info < (2, 4):
+        warnings.filterwarnings('ignore', category=FutureWarning)
+
 
 def against(*queries):
     """Boolean predicate, compares to testing database configuration.
@@ -418,6 +423,10 @@ class PersistTest(unittest.TestCase):
     # dialect.  If you need multiple, use __unsupported_on__ and invert.
     __only_on__ = None
 
+    # A sequence of no-arg callables. If any are True, the entire testcase is
+    # skipped.
+    __skip_if__ = None
+
     def __init__(self, *args, **params):
         unittest.TestCase.__init__(self, *args, **params)
 
@@ -430,6 +439,11 @@ class PersistTest(unittest.TestCase):
     def shortDescription(self):
         """overridden to not return docstrings"""
         return None
+
+    if not hasattr(unittest.TestCase, 'assertTrue'):
+        assertTrue = unittest.TestCase.failUnless
+    if not hasattr(unittest.TestCase, 'assertFalse'):
+        assertFalse = unittest.TestCase.failIf
 
 class SQLCompileTest(PersistTest):
     def assert_compile(self, clause, result, params=None, checkparams=None, dialect=None):
@@ -656,6 +670,12 @@ class TTestSuite(unittest.TestSuite):
                 print "'%s' unsupported on DB implementation '%s'" % (
                     init.__class__.__name__, config.db.name)
                 return True
+            if (getattr(init, '__skip_if__', False)):
+                for c in getattr(init, '__skip_if__'):
+                    if c():
+                        print "'%s' skipped by %s" % (
+                            init.__class__.__name__, c.__name__)
+                        return True
             for rule in getattr(init, '__excluded_on__', ()):
                 if _is_excluded(*rule):
                     print "'%s' unsupported on DB %s version %s" % (

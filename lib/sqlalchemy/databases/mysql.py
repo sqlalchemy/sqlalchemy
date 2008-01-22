@@ -2156,7 +2156,7 @@ class MySQLSchemaReflector(object):
         default = spec.get('default', None)
         if default is not None and default != 'NULL':
             # Defaults should be in the native charset for the moment
-            default = default.decode(charset)
+            default = default.encode(charset)
             if type_ == 'timestamp':
                 # can't be NULL for TIMESTAMPs
                 if (default[0], default[-1]) != ("'", "'"):

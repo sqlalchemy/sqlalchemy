@@ -8,7 +8,7 @@ import time
 import testenv; testenv.configure_for_tests()
 from testlib import testing, profiling
 from sqlalchemy import *
-
+from testlib import set
 
 ITERATIONS = 1
 
@@ -21,6 +21,7 @@ class ZooMarkTest(testing.AssertMixin):
     """
 
     __only_on__ = 'postgres'
+    __skip_if__ = ((lambda: sys.version_info < (2, 4)), )
 
     @profiling.profiled('create', call_range=(1500, 1880), always=True)
     def test_1_create_tables(self):

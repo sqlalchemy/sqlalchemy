@@ -1,6 +1,6 @@
-import itertools, new
+import itertools, new, sys, warnings
 
-__all__ = 'set', 'sorted', '_function_named'
+__all__ = 'set', 'frozenset', 'sorted', '_function_named'
 
 try:
     set = set
@@ -52,6 +52,12 @@ except NameError:
             return sets.Set.__isub__(self, other)
 
 try:
+    frozenset = frozenset
+except NameError:
+    import sets
+    from sets import ImmutableSet as frozenset
+
+try:
     sorted = sorted
 except NameError:
     def sorted(iterable, cmp=None):
@@ -69,3 +75,4 @@ def _function_named(fn, newname):
         fn = new.function(fn.func_code, fn.func_globals, newname,
                           fn.func_defaults, fn.func_closure)
     return fn
+
