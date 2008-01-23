@@ -422,18 +422,39 @@ class Query(object):
 
         mapper = start
         alias = self._aliases
-        for key in util.to_list(keys):
+        if not isinstance(keys, list):
+            keys = [keys]
+        for key in keys:
+            use_selectable = None
+            if isinstance(key, tuple):
+                key, use_selectable = key
+
             if isinstance(key, interfaces.PropComparator):
                 prop = key.property
             else:
                 prop = mapper.get_property(key, resolve_synonyms=True)
+
+            if use_selectable:
+                if not use_selectable.is_derived_from(prop.mapper.mapped_table):
+                    raise exceptions.InvalidRequestError("Selectable '%s' is not derived from '%s'" % (use_selectable.description, prop.mapper.mapped_table.description))
+                if not isinstance(use_selectable, expression.Alias):
+                    use_selectable = use_selectable.alias()
                 
-            if prop._is_self_referential() and not create_aliases:
+            if prop._is_self_referential() and not create_aliases and not use_selectable:
                 raise exceptions.InvalidRequestError("Self-referential query on '%s' property requires create_aliases=True argument." % str(prop))
 
-            if prop.select_table not in currenttables or create_aliases:
+            if prop.select_table not in currenttables or create_aliases or use_selectable:
                 if prop.secondary:
-                    if create_aliases:
+                    if use_selectable:
+                        alias = mapperutil.PropertyAliasedClauses(prop,
+                            prop.primary_join_against(mapper, adapt_against),
+                            prop.secondary_join_against(mapper),
+                            alias,
+                            alias=use_selectable
+                        )
+                        crit = alias.primaryjoin
+                        clause = clause.join(alias.secondary, crit, isouter=outerjoin).join(alias.alias, alias.secondaryjoin, isouter=outerjoin)
+                    elif create_aliases:
                         alias = mapperutil.PropertyAliasedClauses(prop,
                             prop.primary_join_against(mapper, adapt_against),
                             prop.secondary_join_against(mapper),
@@ -446,7 +467,16 @@ class Query(object):
                         clause = clause.join(prop.secondary, crit, isouter=outerjoin)
                         clause = clause.join(prop.select_table, prop.secondary_join_against(mapper), isouter=outerjoin)
                 else:
-                    if create_aliases:
+                    if use_selectable:
+                        alias = mapperutil.PropertyAliasedClauses(prop,
+                            prop.primary_join_against(mapper, adapt_against), 
+                            None,
+                            alias,
+                            alias=use_selectable
+                        )
+                        crit = alias.primaryjoin
+                        clause = clause.join(alias.alias, crit, isouter=outerjoin)
+                    elif create_aliases:
                         alias = mapperutil.PropertyAliasedClauses(prop,
                             prop.primary_join_against(mapper, adapt_against), 
                             None,
@@ -464,13 +494,12 @@ class Query(object):
 
             mapper = prop.mapper
 
-            if mapper.select_table is not mapper.mapped_table:
+            if use_selectable:
+                adapt_against = use_selectable
+            elif mapper.select_table is not mapper.mapped_table:
                 adapt_against = mapper.select_table
 
-        if create_aliases:
-            return (clause, mapper, alias)
-        else:
-            return (clause, mapper, None)
+        return (clause, mapper, alias)
 
     def _generative_col_aggregate(self, col, func):
         """apply the given aggregate function to the query and return the newly
@@ -594,14 +623,16 @@ class Query(object):
         'prop' may be one of:
           * a string property name, i.e. "rooms"
           * a class-mapped attribute, i.e. Houses.rooms
-          * a list containing a combination of any of the above.
+          * a 2-tuple containing one of the above, combined with a selectable
+          which derives from the properties' mapped table
+          * a list (not a tuple) containing a combination of any of the above.
           
         e.g.::
         
             session.query(Company).join('employees')
             session.query(Company).join(['employees', 'tasks'])
             session.query(Houses).join([Colonials.rooms, Room.closets])
-        
+            session.query(Company).join([('employees', people.join(engineers)), Engineer.computers])
         """
 
         return self._join(prop, id=id, outerjoin=False, aliased=aliased, from_joinpoint=from_joinpoint)
@@ -613,13 +644,16 @@ class Query(object):
         'prop' may be one of:
           * a string property name, i.e. "rooms"
           * a class-mapped attribute, i.e. Houses.rooms
-          * a list containing a combination of any of the above.
+          * a 2-tuple containing one of the above, combined with a selectable
+          which derives from the properties' mapped table
+          * a list (not a tuple) containing a combination of any of the above.
           
         e.g.::
         
             session.query(Company).outerjoin('employees')
             session.query(Company).outerjoin(['employees', 'tasks'])
             session.query(Houses).outerjoin([Colonials.rooms, Room.closets])
+            session.query(Company).join([('employees', people.join(engineers)), Engineer.computers])
         
         """
 

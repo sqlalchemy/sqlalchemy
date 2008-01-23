@@ -54,8 +54,18 @@ CHANGES
       relation, i.e.:
 
         query(Company).join(['employees', Engineer.name])
-
-    - General improvements to the behavior of join() in
+        
+    - query.join() can also accept tuples of attribute
+      name/some selectable as arguments.  This allows
+      construction of joins *from* subclasses of a 
+      polymorphic relation, i.e.:
+      
+        query(Company).\
+        join(
+          [('employees', people.join(engineer)), Engineer.name]
+        )
+      
+    - General improvements to the behavior of join() in 
       conjunction with polymorphic mappers, i.e. joining
       from/to polymorphic mappers and properly applying
       aliases.

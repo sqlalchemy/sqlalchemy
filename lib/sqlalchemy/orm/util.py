@@ -193,8 +193,8 @@ class AliasedClauses(object):
 class PropertyAliasedClauses(AliasedClauses):
     """extends AliasedClauses to add support for primary/secondary joins on a relation()."""
     
-    def __init__(self, prop, primaryjoin, secondaryjoin, parentclauses=None):
-        super(PropertyAliasedClauses, self).__init__(prop.select_table)
+    def __init__(self, prop, primaryjoin, secondaryjoin, parentclauses=None, alias=None):
+        super(PropertyAliasedClauses, self).__init__(prop.select_table, alias=alias)
             
         self.parentclauses = parentclauses
 

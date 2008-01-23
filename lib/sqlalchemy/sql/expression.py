@@ -2202,6 +2202,9 @@ class Join(FromClause):
         return "Join object on %s(%d) and %s(%d)" % (self.left.description, id(self.left), self.right.description, id(self.right))
     description = property(description)
 
+    def is_derived_from(self, fromclause):
+        return fromclause is self or self.left.is_derived_from(fromclause) or self.right.is_derived_from(fromclause)
+
     def self_group(self, against=None):
         return _FromGrouping(self)
 
