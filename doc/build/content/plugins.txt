@@ -13,6 +13,8 @@ SQLAlchemy has a variety of extensions available which provide extra functionali
 
 #### Simplifying Relations
 
+Consider this "association object" mapping:
+
     {python}
     users_table = Table('users', metadata,
         Column('id', Integer, primary_key=True),
