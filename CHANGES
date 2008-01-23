@@ -109,6 +109,10 @@ CHANGES
     - Miscellaneous tickets: [ticket:940]
 
 - general
+    - Fixed a variety of hidden and some not-so-hidden
+      compatibility issues for Python 2.3, thanks to new
+      support for running the full test suite on 2.3.
+
     - Warnings are now issued as type exceptions.SAWarning.
 
 - dialects
