@@ -5,117 +5,126 @@ CHANGES
 0.4.2p4
 ------
 - sql
-    - added "ilike()" operator to column operations. 
-      compiles to ILIKE on postgres, lower(x) LIKE lower(y)
-      on all others [ticket:727]
-    
-    - some expression fixup:
-        - the '.c.' attribute on a selectable now gets an
-        entry for every column expression in its columns
-        clause; previously, "unnamed" columns like functions
-        and CASE statements weren't getting put there.  Now
-        they will, using their full string representation
-        if no 'name' is available.  
-        - The anonymous 'label' generated for otherwise
-        unlabeled functions and expressions now propagates 
-        outwards at compile time for expressions like 
-        select([select([func.foo()])])
-        - a CompositeSelect, i.e. any union(), union_all(),
-        intersect(), etc. now asserts that each selectable
-        contains the same number of columns.  This conforms
-        to the corresponding SQL requirement.
-        - building on the above ideas, CompositeSelects
-        now build up their ".c." collection based on
-        the names present in the first selectable only;
-        corresponding_column() now works fully for all 
-        embedded selectables.
-        
+    - Added "ilike()" operator to column operations.  Compiles
+      to ILIKE on postgres, lower(x) LIKE lower(y) on all
+      others. [ticket:727]
+
+    - The '.c.' attribute on a selectable now gets an entry
+      for every column expression in its columns clause.
+      Previously, "unnamed" columns like functions and CASE
+      statements weren't getting put there.  Now they will,
+      using their full string representation if no 'name' is
+      available.
+
+    - a CompositeSelect, i.e. any union(), union_all(),
+      intersect(), etc. now asserts that each selectable
+      contains the same number of columns.  This conforms to
+      the corresponding SQL requirement.
+
+    - The anonymous 'label' generated for otherwise unlabeled
+      functions and expressions now propagates outwards at
+      compile time for expressions like
+      select([select([func.foo()])]).
+
+    - Building on the above ideas, CompositeSelects now build
+      up their ".c." collection based on the names present in
+      the first selectable only; corresponding_column() now
+      works fully for all embedded selectables.
+
 - orm
-    - proper error message is raised when trying to access
+    - The proper error message is raised when trying to access
       expired instance attributes with no session present
 
-    - dynamic relations, when referenced, create a strong
-      reference to the parent object so that the query
-      still has a parent to call against even if the 
-      parent is only created (and otherwise dereferenced)
-      within the scope of a single expression [ticket:938]
-      
-    - added a mapper() flag "eager_defaults"; when set to
+    - Dynamic relations, when referenced, create a strong
+      reference to the parent object so that the query still
+      has a parent to call against even if the parent is only
+      created (and otherwise dereferenced) within the scope of
+      a single expression. [ticket:938]
+
+    - Added a mapper() flag "eager_defaults". When set to
       True, defaults that are generated during an INSERT or
       UPDATE operation are post-fetched immediately, instead
       of being deferred until later.  This mimics the old 0.3
       behavior.
-    
-    - query.join() can now accept class-mapped attributes
-      as arguments, which can be used in place or in any
-      combination with strings.  In particular this allows 
-      construction of joins to subclasses on a polymorphic 
-      relation, i.e. 
-      query(Company).join(['employees', Engineer.name]), 
-      etc.
-      
-    - general improvements to the behavior of join() in 
+
+    - query.join() can now accept class-mapped attributes as
+      arguments. These can be used in place or in any
+      combination with strings.  In particular this allows
+      construction of joins to subclasses on a polymorphic
+      relation, i.e.:
+
+        query(Company).join(['employees', Engineer.name])
+
+    - General improvements to the behavior of join() in
       conjunction with polymorphic mappers, i.e. joining
-      from/to polymorphic mappers and properly applying 
-      aliases.  
-      
-    - fixed/improved behavior when a mapper determines the
-      natural "primary key" of a mapped join, it will more 
+      from/to polymorphic mappers and properly applying
+      aliases.
+
+    - Fixed/improved behavior when a mapper determines the
+      natural "primary key" of a mapped join, it will more
       effectively reduce columns which are equivalent via
-      foreign key relation.  This affects how many arguments 
+      foreign key relation.  This affects how many arguments
       need to be sent to query.get(), among other things.
       [ticket:933]
-      
-    - fixed bug in polymorphic inheritance which made it 
-      difficult to set a working "order_by" on a polymorphic
-      mapper
-    
-    - fixed a rather expensive call in Query that was slowing
-      down polymorphic queries
 
-    - miscellaneous tickets:  [ticket:940]
-    
-    - session transaction management fixes:
-        - fixed bug with session transaction management. Parent transactions
-        weren't started on the connection when adding a connection to a
-        nested transaction.
-        - session.transaction now always refers to the innermost active
-        transaction, even when commit/rollback are called directly on the
-        session transaction object.
-        - when preparing a two-phase transaction fails on one connection
-        all the connections are rolled back.
-        - two phase transactions can now be prepared.
-        - session.close() didn't close all transactions when nested
-        transactions were used.
-        - rollback() previously erroneously set the current transaction
-        directly to the parent of the transaction that could be rolled back
-        to. Now it rolls back the next transaction up that can handle it, but
-        sets the current transaction to it's parent and inactivates the
-        transactions in between. Inactive transactions can only be
-        rolled back or closed, any other call results in an error. In effect
-        this means that every begin() must be accompanied by a corresponding
-        commit() or rollback(), including the implicit begin() in
-        transactional sessions.
-        - autoflush for commit() wasn't flushing for simple subtransactions.
-        
+    - Fixed bug in polymorphic inheritance which made it
+      difficult to set a working "order_by" on a polymorphic
+      mapper.
+
+    - Fixed a rather expensive call in Query that was slowing
+      down polymorphic queries.
+
+    - Every begin() must now be accompanied by a corresponding
+      commit() or rollback(), including the implicit begin()
+      in transactional sessions.
+
+    - Fixed bug with session transaction management: parent
+      transactions weren't started on the connection when
+      adding a connection to a nested transaction.
+
+    - session.transaction now always refers to the innermost
+      active transaction, even when commit/rollback are called
+      directly on the session transaction object.
+
+    - Two-phase transactions can now be prepared.
+
+    - When preparing a two-phase transaction fails on one
+      connection, all the connections are rolled back.
+
+    - session.close() didn't close all transactions when
+      nested transactions were used.
+
+    - rollback() previously erroneously set the current
+      transaction directly to the parent of the transaction
+      that could be rolled back to. Now it rolls back the next
+      transaction up that can handle it, but sets the current
+      transaction to it's parent and inactivates the
+      transactions in between. Inactive transactions can only
+      be rolled back or closed, any other call results in an
+      error.
+
+    - autoflush for commit() wasn't flushing for simple
+      subtransactions.
+
+    - Miscellaneous tickets: [ticket:940]
+
 - general
-    - warnings are now issued as type exceptions.SAWarning.
+    - Warnings are now issued as type exceptions.SAWarning.
 
 - dialects
-    - finally added PGMacAddr type to postgres [ticket:580]
+    - Finally added PGMacAddr type to postgres [ticket:580]
 
-    - reflect the sequence associated to a PK field (tipically
+    - Reflect the sequence associated to a PK field (typically
       with a BEFORE INSERT trigger) under Firebird
 
     - Oracle assembles the correct columns in the result set
       column mapping when generating a LIMIT/OFFSET subquery,
-      allows columns to map properly to result sets even
-      if long-name truncation kicks in [ticket:941]
+      allows columns to map properly to result sets even if
+      long-name truncation kicks in [ticket:941]
 
 - ext
-    - Changed ext.activemapper to use a non-transactional session
-      for the objectstore as the test seem to imply that this is
-      the expected behavior.
+    - Changed ext.activemapper to use a non-transactional
+      session for the objectstore.
 
 0.4.2p3
 ------
