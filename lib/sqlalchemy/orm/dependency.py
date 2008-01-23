@@ -435,13 +435,13 @@ class ManyToManyDP(DependencyProcessor):
             statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key, type_=c.type) for c in self.secondary.c if c.key in associationrow]))
             result = connection.execute(statement, secondary_delete)
             if result.supports_sane_multi_rowcount() and result.rowcount != len(secondary_delete):
-                raise exceptions.ConcurrentModificationError("Deleted rowcount %d does not match number of secondary table rows deleted from table %s: %d" % (self.secondary.description, result.rowcount, len(secondary_delete)))
+                raise exceptions.ConcurrentModificationError("Deleted rowcount %d does not match number of secondary table rows deleted from table '%s': %d" % (result.rowcount, self.secondary.description, len(secondary_delete)))
         
         if secondary_update:
             statement = self.secondary.update(sql.and_(*[c == sql.bindparam("old_" + c.key, type_=c.type) for c in self.secondary.c if c.key in associationrow]))
             result = connection.execute(statement, secondary_update)
             if result.supports_sane_multi_rowcount() and result.rowcount != len(secondary_update):
-                raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of secondary table rows updated from table %s: %d" % (self.secondary.description, result.rowcount, len(secondary_update)))
+                raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of secondary table rows updated from table '%s': %d" % (result.rowcount, self.secondary.description, len(secondary_update)))
             
         if secondary_insert:
             statement = self.secondary.insert()
