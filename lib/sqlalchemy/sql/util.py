@@ -81,9 +81,13 @@ def reduce_columns(columns, *clauses):
     
     if clauses:
         def visit_binary(binary):
-            cols = columns.difference(omit)
-            if binary.operator == operators.eq and binary.left in cols and binary.right in cols:
-                omit.add(binary.right)
+            if binary.operator == operators.eq:
+                cols = util.Set(chain(*[c.proxy_set for c in columns.difference(omit)]))
+                if binary.left in cols and binary.right in cols:
+                    for c in columns:
+                        if c.shares_lineage(binary.right):
+                            omit.add(c)
+                            break
         for clause in clauses:
             visitors.traverse(clause, visit_binary=visit_binary)
     

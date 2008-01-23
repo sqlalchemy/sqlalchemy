@@ -316,6 +316,25 @@ class ReduceTest(AssertMixin):
             set([t1.c.t1id, t1.c.t1data, t2.c.t2data, t3.c.t3data])
         )
     
+    def test_reduce_selectable(self):
+       metadata = MetaData()
+
+       engineers = Table('engineers', metadata,
+           Column('engineer_id', Integer, primary_key=True),
+           Column('engineer_name', String(50)),
+          )
+     
+       managers = Table('managers', metadata,
+           Column('manager_id', Integer, primary_key=True),
+           Column('manager_name', String(50))
+           )
+
+       s = select([engineers, managers]).where(engineers.c.engineer_name==managers.c.manager_name)
+       
+       self.assertEquals(set(sql_util.reduce_columns(list(s.c), s)),
+        set([s.c.engineer_id, s.c.engineer_name, s.c.manager_id])
+        )
+       
     def test_reduce_aliased_join(self):
         metadata = MetaData()
         people = Table('people', metadata,
