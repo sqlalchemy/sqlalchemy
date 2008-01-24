@@ -192,7 +192,7 @@ def get_cls_kwargs(cls):
 
     for c in cls.__mro__:
         if '__init__' in c.__dict__:
-            stack = [c]
+            stack = Set([c])
             break
     else:
         return []
@@ -204,9 +204,9 @@ def get_cls_kwargs(cls):
         if not ctr or not isinstance(ctr, types.FunctionType):
             continue
         names, _, has_kw, _ = inspect.getargspec(ctr)
-        args |= Set(names)
+        args.update(names)
         if has_kw:
-            stack.extend(class_.__bases__)
+            stack.update(class_.__bases__)
     args.discard('self')
     return list(args)
 
