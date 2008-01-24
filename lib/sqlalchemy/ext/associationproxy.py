@@ -408,7 +408,13 @@ class _AssociationList(object):
         except TypeError:
             return NotImplemented
         return list(self) + other
-    __radd__ = __add__
+
+    def __radd__(self, iterable):
+        try:
+            other = list(iterable)
+        except TypeError:
+            return NotImplemented
+        return other + list(self)
 
     def __mul__(self, n):
         if not isinstance(n, int):

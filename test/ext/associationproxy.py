@@ -199,13 +199,18 @@ class _CollectionOperations(PersistTest):
         self.assert_(p1.children == after)
         self.assert_([c.name for c in p1._children] == after)
 
+        p1.children += ['c']
+        after = ['a', 'b', 'c']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
         p1.children *= 1
-        after = ['a', 'b']
+        after = ['a', 'b', 'c']
         self.assert_(p1.children == after)
         self.assert_([c.name for c in p1._children] == after)
 
         p1.children *= 2
-        after = ['a', 'b', 'a', 'b']
+        after = ['a', 'b', 'c', 'a', 'b', 'c']
         self.assert_(p1.children == after)
         self.assert_([c.name for c in p1._children] == after)
 
@@ -219,8 +224,8 @@ class _CollectionOperations(PersistTest):
         self.assert_((p1.children * 0) == [])
         self.assert_((0 * p1.children) == [])
 
-        self.assert_((p1.children + ['a']) == ['a', 'a'])
-        self.assert_((['a'] + p1.children) == ['a', 'a'])
+        self.assert_((p1.children + ['b']) == ['a', 'b'])
+        self.assert_((['b'] + p1.children) == ['b', 'a'])
 
         try:
             p1.children + 123

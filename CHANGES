@@ -140,6 +140,9 @@ CHANGES
     - Changed ext.activemapper to use a non-transactional
       session for the objectstore.
 
+    - Fixed output order of "['a'] + obj.proxied" binary operation on
+      association-proxied lists.
+
 0.4.2p3
 ------
 - general
