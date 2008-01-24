@@ -4,8 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import itertools, sys, warnings, sets, weakref
+import inspect, itertools, sets, sys, warnings, weakref
 import __builtin__
+types = __import__('types')
 
 from sqlalchemy import exceptions
 
@@ -181,20 +182,37 @@ class ArgSingleton(type):
             return instance
 
 def get_cls_kwargs(cls):
-    """Return the full set of legal kwargs for the given `cls`."""
+    """Return the full set of inherited kwargs for the given `cls`.
 
-    kw = []
+    Probes a class's __init__ method, collecting all named arguments.  If the
+    __init__ defines a **kwargs catch-all, then the constructor is presumed to
+    pass along unrecognized keywords to it's base classes, and the collection
+    process is repeated recursively on each of the bases.
+    """
+
     for c in cls.__mro__:
-        cons = c.__init__
-        if hasattr(cons, 'func_code'):
-            for vn in cons.func_code.co_varnames:
-                if vn != 'self':
-                    kw.append(vn)
-    return kw
+        if '__init__' in c.__dict__:
+            stack = [c]
+            break
+    else:
+        return []
+
+    args = Set()
+    while stack:
+        class_ = stack.pop()
+        ctr = class_.__dict__.get('__init__', False)
+        if not ctr or not isinstance(ctr, types.FunctionType):
+            continue
+        names, _, has_kw, _ = inspect.getargspec(ctr)
+        args |= Set(names)
+        if has_kw:
+            stack.extend(class_.__bases__)
+    args.discard('self')
+    return list(args)
 
 def get_func_kwargs(func):
     """Return the full set of legal kwargs for the given `func`."""
-    return [vn for vn in func.func_code.co_varnames]
+    return inspect.getargspec(func)[0]
 
 # from paste.deploy.converters
 def asbool(obj):

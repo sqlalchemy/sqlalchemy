@@ -305,5 +305,72 @@ class DictlikeIteritemsTest(unittest.TestCase):
         self._notok(duck6())
 
 
+class ArgInspectionTest(PersistTest):
+    def test_get_cls_kwargs(self):
+        class A(object):
+            def __init__(self, a):
+                pass
+        class A1(A):
+            def __init__(self, a1):
+                pass
+        class A11(A1):
+            def __init__(self, a11, **kw):
+                pass
+        class B(object):
+            def __init__(self, b, **kw):
+                pass
+        class B1(B):
+            def __init__(self, b1, **kw):
+                pass
+        class AB(A, B):
+            def __init__(self, ab):
+                pass
+        class BA(B, A):
+            def __init__(self, ba, **kwargs):
+                pass
+        class BA1(BA):
+            pass
+        class CAB(A, B):
+            pass
+        class CBA(B, A):
+            pass
+        class CAB1(A, B1):
+            pass
+        class CB1A(B1, A):
+            pass
+        class D(object):
+            pass
+
+        def test(cls, *expected):
+            self.assertEquals(set(util.get_cls_kwargs(cls)), set(expected))
+
+        test(A, 'a')
+        test(A1, 'a1')
+        test(A11, 'a11', 'a1')
+        test(B, 'b')
+        test(B1, 'b1', 'b')
+        test(AB, 'ab')
+        test(BA, 'ba', 'b', 'a')
+        test(BA1, 'ba', 'b', 'a')
+        test(CAB, 'a')
+        test(CBA, 'b')
+        test(CAB1, 'a')
+        test(CB1A, 'b1', 'b')
+        test(D)
+
+    def test_get_func_kwargs(self):
+        def f1(): pass
+        def f2(foo): pass
+        def f3(*foo): pass
+        def f4(**foo): pass
+
+        def test(fn, *expected):
+            self.assertEquals(set(util.get_func_kwargs(fn)), set(expected))
+
+        test(f1)
+        test(f2, 'foo')
+        test(f3)
+        test(f4)
+
 if __name__ == "__main__":
     testenv.main()
