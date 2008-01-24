@@ -226,12 +226,29 @@ class IdentitySetTest(unittest.TestCase):
             self.assert_(False)
         except TypeError:
             self.assert_(True)
-        s = set([o1,o2])
-        s |= ids
-        self.assert_(isinstance(s, IdentitySet))
+
+        try:
+            s = set([o1,o2])
+            s |= ids
+            self.assert_(False)
+        except TypeError:
+            self.assert_(True)
 
         self.assertRaises(TypeError, cmp, ids)
         self.assertRaises(TypeError, hash, ids)
+
+    def test_difference(self):
+        os1 = util.IdentitySet([1,2,3])
+        os2 = util.IdentitySet([3,4,5])
+        s1 = set([1,2,3])
+        s2 = set([3,4,5])
+
+        self.assertEquals(os1 - os2, util.IdentitySet([1, 2]))
+        self.assertEquals(os2 - os1, util.IdentitySet([4, 5]))
+        self.assertRaises(TypeError, lambda: os1 - s2)
+        self.assertRaises(TypeError, lambda: os1 - [3, 4, 5])
+        self.assertRaises(TypeError, lambda: s1 - os2)
+        self.assertRaises(TypeError, lambda: s1 - [3, 4, 5])
 
 
 class DictlikeIteritemsTest(unittest.TestCase):
