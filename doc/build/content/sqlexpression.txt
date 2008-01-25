@@ -744,10 +744,12 @@ If we wanted to use our `calculate` statement twice with different bind paramete
     
 ### Unions and Other Set Operations {@name=unions}
 
-Unions come in two flavors, UNION and UNION ALL, which are available via module level functions or methods off a Selectable:
+Unions come in two flavors, UNION and UNION ALL, which are available via module level functions:
 
     {python}
-    >>> u = addresses.select(addresses.c.email_address=='foo@bar.com').union(
+    >>> from sqlalchemy.sql import union
+    >>> u = union(
+    ...     addresses.select(addresses.c.email_address=='foo@bar.com'),
     ...    addresses.select(addresses.c.email_address.like('%@yahoo.com')),
     ... ).order_by(addresses.c.email_address)
 
@@ -763,7 +765,9 @@ Unions come in two flavors, UNION and UNION ALL, which are available via module 
 Also available, though not supported on all databases, are `intersect()`, `intersect_all()`, `except_()`, and `except_all()`:
 
     {python}
-    >>> u = addresses.select(addresses.c.email_address.like('%@%.com')).except_(
+    >>> from sqlalchemy.sql import except_
+    >>> u = except_(
+    ...    addresses.select(addresses.c.email_address.like('%@%.com')),
     ...    addresses.select(addresses.c.email_address.like('%@msn.com'))
     ... )
 
