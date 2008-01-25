@@ -1,5 +1,5 @@
 from sqlalchemy.util import ScopedRegistry, to_list, get_cls_kwargs
-from sqlalchemy.orm import MapperExtension, EXT_CONTINUE, object_session
+from sqlalchemy.orm import MapperExtension, EXT_CONTINUE, object_session, class_mapper
 from sqlalchemy.orm.session import Session
 from sqlalchemy import exceptions
 import types
@@ -69,6 +69,30 @@ class ScopedSession(object):
         
         self.session_factory.configure(**kwargs)
 
+    def query_property(self):
+        """return a class property which produces a `Query` object against the
+        class when called.
+        
+        e.g.::
+            Session = scoped_session(sessionmaker())
+            
+            class MyClass(object):
+                query = Session.query_property()
+                
+            # after mappers are defined
+            result = MyClass.query.filter(MyClass.name=='foo').all()
+        
+        """
+        
+        class query(object):
+            def __get__(s, instance, owner):
+                mapper = class_mapper(owner, raiseerror=False)
+                if mapper:
+                    return self.registry().query(mapper)
+                else:
+                    return None
+        return query()
+        
 def instrument(name):
     def do(self, *args, **kwargs):
         return getattr(self.registry(), name)(*args, **kwargs)

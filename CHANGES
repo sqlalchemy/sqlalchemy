@@ -32,6 +32,12 @@ CHANGES
       works fully for all embedded selectables.
 
 - orm
+    - added standalone "query" class attribute generated
+      by a scoped_session.  This provides MyClass.query
+      without using Session.mapper.  Use via:
+
+        MyClass.query = Session.query_property()
+        
     - The proper error message is raised when trying to access
       expired instance attributes with no session present
 

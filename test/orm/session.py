@@ -946,8 +946,10 @@ class ScopedSessionTest(ORMTest):
     def test_basic(self):
         Session = scoped_session(sessionmaker())
 
-        class SomeObject(fixtures.Base):pass
-        class SomeOtherObject(fixtures.Base):pass
+        class SomeObject(fixtures.Base):
+            query = Session.query_property()
+        class SomeOtherObject(fixtures.Base):
+            query = Session.query_property()
 
         mapper(SomeObject, table, properties={
             'options':relation(SomeOtherObject)
@@ -961,8 +963,9 @@ class ScopedSessionTest(ORMTest):
         Session.commit()
         Session.remove()
 
-        assert SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]) == Session.query(SomeObject).one()
-
+        self.assertEquals(SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]), Session.query(SomeObject).one())
+        self.assertEquals(SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]), SomeObject.query.one())
+        self.assertEquals(SomeOtherObject(someid=1), SomeOtherObject.query.filter(SomeOtherObject.someid==sso.someid).one())
 
 class ScopedMapperTest(PersistTest):
     def setUpAll(self):

@@ -1578,7 +1578,7 @@ def object_mapper(object, entity_name=None, raiseerror=True):
             return None
     return mapper
 
-def class_mapper(class_, entity_name=None, compile=True):
+def class_mapper(class_, entity_name=None, compile=True, raiseerror=True):
     """Given a class and optional entity_name, return the primary Mapper associated with the key.
 
     If no mapper can be located, raises ``InvalidRequestError``.
@@ -1587,7 +1587,10 @@ def class_mapper(class_, entity_name=None, compile=True):
     try:
         mapper = class_._class_state.mappers[entity_name]
     except (KeyError, AttributeError):
-        raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (class_.__name__, entity_name))
+        if raiseerror:
+            raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (class_.__name__, entity_name))
+        else:
+            return None
     if compile:
         return mapper.compile()
     else:
