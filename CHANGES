@@ -83,6 +83,12 @@ CHANGES
       need to be sent to query.get(), among other things.
       [ticket:933]
 
+    - Fixed bug in polymorphic inheritance where incorrect
+      exception is raised when base polymorphic_on
+      column does not correspond to any columns within 
+      the local selectable of an inheriting mapper more 
+      than one level deep
+      
     - Fixed bug in polymorphic inheritance which made it
       difficult to set a working "order_by" on a polymorphic
       mapper.

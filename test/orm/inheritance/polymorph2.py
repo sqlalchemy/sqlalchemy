@@ -1010,6 +1010,54 @@ class InheritingEagerTest(ORMTest):
         instance = session.query(Employee).filter_by(id=1).limit(1).first()
         assert len(instance.tags) == 2
 
-
+class MissingPolymorphicOnTest(ORMTest):
+    def define_tables(self, metadata):
+        global tablea, tableb, tablec, tabled
+        tablea = Table('tablea', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('adata', String(50)),
+            )
+        tableb = Table('tableb', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('aid', Integer, ForeignKey('tablea.id')),
+            Column('data', String(50)),
+            )
+        tablec = Table('tablec', metadata, 
+            Column('id', Integer, ForeignKey('tablea.id'), primary_key=True),
+            Column('cdata', String(50)),
+            )
+        tabled = Table('tabled', metadata, 
+            Column('id', Integer, ForeignKey('tablec.id'), primary_key=True),
+            Column('ddata', String(50)),
+            )
+            
+    def test_polyon_col_setsup(self):
+        class A(fixtures.Base):
+            pass
+        class B(fixtures.Base):
+            pass
+        class C(A):
+            pass
+        class D(C):
+            pass
+            
+        poly_select = select([tablea, tableb.c.data.label('discriminator')], from_obj=tablea.join(tableb)).alias('poly')
+        
+        mapper(B, tableb)
+        mapper(A, tablea, select_table=poly_select, polymorphic_on=poly_select.c.discriminator, properties={
+            'b':relation(B, uselist=False)
+        })
+        mapper(C, tablec, inherits=A,polymorphic_identity='c')
+        mapper(D, tabled, inherits=C, polymorphic_identity='d')
+        
+        c = C(cdata='c1', adata='a1', b=B(data='c'))
+        d = D(cdata='c2', adata='a2', ddata='d2', b=B(data='d'))
+        sess = create_session()
+        sess.save(c)
+        sess.save(d)
+        sess.flush()
+        sess.clear()
+        self.assertEquals(sess.query(A).all(), [C(cdata='c1', adata='a1'), D(cdata='c2', adata='a2', ddata='d2')])
+        
 if __name__ == "__main__":
     testenv.main()

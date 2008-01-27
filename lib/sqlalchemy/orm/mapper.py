@@ -352,9 +352,14 @@ class Mapper(object):
             if self.polymorphic_identity is not None:
                 self.inherits.polymorphic_map[self.polymorphic_identity] = self
                 if self.polymorphic_on is None:
-                    if self.inherits.polymorphic_on is not None:
-                        self.polymorphic_on = self.mapped_table.corresponding_column(self.inherits.polymorphic_on)
+                    for mapper in self.iterate_to_root():
+                        # try to set up polymorphic on using correesponding_column(); else leave
+                        # as None
+                        if mapper.polymorphic_on:
+                            self.polymorphic_on = self.mapped_table.corresponding_column(mapper.polymorphic_on)
+                            break
                     else:
+                        # TODO: this exception not covered
                         raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
 
             if self.polymorphic_identity is not None and not self.concrete:
