@@ -34,7 +34,7 @@ def fails_if(callable_):
     the test succeeds, a failure is reported.
     """
 
-    docstring = getattr(callable_, '__doc__', callable_.__name__)
+    docstring = getattr(callable_, '__doc__', None) or callable_.__name__
     description = docstring.split('\n')[0]
 
     def decorate(fn):
