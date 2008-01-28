@@ -57,6 +57,25 @@ def fails_if(callable_):
     return decorate
 
 
+def future(fn):
+    """Mark a test as expected to unconditionally fail.
+
+    Takes no arguments, omit parens when using as a decorator.
+    """
+
+    fn_name = fn.__name__
+    def decorated(*args, **kw):
+        try:
+            fn(*args, **kw)
+        except Exception, ex:
+            print ("Future test '%s' failed as expected: %s " % (
+                fn_name, str(ex)))
+            return True
+        else:
+            raise AssertionError(
+                "Unexpected success for future test '%s'" % fn_name)
+    return _function_named(decorated, fn_name)
+
 def fails_on(*dbs):
     """Mark a test as expected to fail on one or more database implementations.
 
