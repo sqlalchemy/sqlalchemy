@@ -75,7 +75,23 @@ class ExpireTest(FixtureTest):
             u.name
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Instance <class 'testlib.fixtures.User'> is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed"
+    
+    def test_no_instance_key(self):
+        # this tests an artificial condition such that 
+        # an instance is pending, but has expired attributes.  this
+        # is actually part of a larger behavior when postfetch needs to 
+        # occur during a flush() on an instance that was just inserted
+        mapper(User, users)
+        sess = create_session()
+        u = sess.query(User).get(7)
 
+        sess.expire(u, attribute_names=['name'])
+        sess.expunge(u)
+        del u._instance_key
+        assert 'name' not in u.__dict__
+        sess.save(u)
+        assert u.name == 'jack'
+        
     def test_expire_preserves_changes(self):
         """test that the expire load operation doesn't revert post-expire changes"""
 

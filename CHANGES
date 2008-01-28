@@ -95,7 +95,13 @@ CHANGES
 
     - Fixed a rather expensive call in Query that was slowing
       down polymorphic queries.
-
+    
+    - "Passive defaults" and other "inline" defaults can now
+      be loaded during a flush() call if needed; in particular,
+      this allows constructing relations() where a foreign key
+      column references a server-side-generated, non-primary-key
+      column. [ticket:954]
+      
     - Every begin() must now be accompanied by a corresponding
       commit() or rollback(), including the implicit begin()
       in transactional sessions.

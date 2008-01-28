@@ -1298,7 +1298,13 @@ class Mapper(object):
 
         # determine identity key
         if refresh_instance:
-            identitykey = refresh_instance.dict['_instance_key']
+            try:
+                identitykey = refresh_instance.dict['_instance_key']
+            except KeyError:
+                # super-rare condition; a refresh is being called 
+                # on a non-instance-key instance; this is meant to only 
+                # occur wihtin a flush()
+                identitykey = self._identity_key_from_state(refresh_instance)
         else:
             identitykey = self.identity_key_from_row(row)
 
@@ -1550,8 +1556,13 @@ def _load_scalar_attributes(instance, attribute_names):
             session = mapper.get_session()
         except exceptions.InvalidRequestError:
             raise exceptions.InvalidRequestError("Instance %s is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed" % (instance.__class__))
-
-    if session.query(mapper)._get(instance._instance_key, refresh_instance=instance._state, only_load_props=attribute_names) is None:
+    
+    state = instance._state
+    if '_instance_key' in state.dict:
+        identity_key = state.dict['_instance_key']
+    else:
+        identity_key = mapper._identity_key_from_state(state)
+    if session.query(mapper)._get(identity_key, refresh_instance=state, only_load_props=attribute_names) is None:
         raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % instance_str(instance))
 
 def _state_mapper(state, entity_name=None):

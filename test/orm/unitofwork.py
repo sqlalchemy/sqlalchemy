@@ -681,7 +681,7 @@ class DefaultTest(ORMTest):
 
     def define_tables(self, metadata):
         db = testing.db
-        use_string_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle') or db.engine.__module__.endswith('sqlite')
+        use_string_defaults = testing.against('postgres', 'oracle', 'sqlite') 
         global hohoval, althohoval
 
         if use_string_defaults:
@@ -693,14 +693,24 @@ class DefaultTest(ORMTest):
             hohoval = 9
             althohoval = 15
 
-        global default_table
+        global default_table, secondary_table
         default_table = Table('default_test', metadata,
-        Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
-        Column('hoho', hohotype, PassiveDefault(str(hohoval))),
-        Column('counter', Integer, default=func.length("1234567")),
-        Column('foober', String(30), default="im foober", onupdate="im the update")
+            Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
+            Column('hoho', hohotype, PassiveDefault(str(hohoval))),
+            Column('counter', Integer, default=func.length("1234567")),
+            Column('foober', String(30), default="im foober", onupdate="im the update"),
         )
-
+        
+        secondary_table = Table('secondary_table', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+            )
+        
+        if testing.against('postgres', 'oracle'):
+            default_table.append_column(Column('secondary_id', Integer, Sequence('sec_id_seq'), unique=True))
+            secondary_table.append_column(Column('fk_val', Integer, ForeignKey('default_test.secondary_id')))
+        else:
+            secondary_table.append_column(Column('hoho', hohotype, ForeignKey('default_test.hoho')))
 
     def test_insert(self):
         class Hoho(object):pass
@@ -778,7 +788,38 @@ class DefaultTest(ORMTest):
         h1.counter = 19
         Session.commit()
         self.assertEquals(h1.foober, 'im the update')
+    
+    def test_used_in_relation(self):
+        """test that a server-side generated default can be used as the target of a foreign key"""
+        
+        class Hoho(fixtures.Base):
+            pass
+        class Secondary(fixtures.Base):
+            pass
+        mapper(Hoho, default_table, properties={
+            'secondaries':relation(Secondary)
+        }, save_on_init=False)
+        
+        mapper(Secondary, secondary_table, save_on_init=False)
+        h1 = Hoho()
+        s1 = Secondary(data='s1')
+        h1.secondaries.append(s1)
+        Session.save(h1)
+        Session.commit()
+        Session.clear()
+        
+        self.assertEquals(Session.query(Hoho).get(h1.id), Hoho(hoho=hohoval, secondaries=[Secondary(data='s1')]))
+        
+        h1 = Session.query(Hoho).get(h1.id)
+        h1.secondaries.append(Secondary(data='s2'))
+        Session.commit()
+        Session.clear()
 
+        self.assertEquals(Session.query(Hoho).get(h1.id), 
+            Hoho(hoho=hohoval, secondaries=[Secondary(data='s1'), Secondary(data='s2')])
+        )
+        
+            
 class OneToManyTest(ORMTest):
     metadata = tables.metadata
 
