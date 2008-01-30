@@ -112,8 +112,10 @@ class UnicodeSchemaTest(PersistTest):
         meta.drop_all()
         metadata.create_all()
 
+class EscapesDefaultsTest(testing.PersistTest):
     @testing.fails_on_everything_except('postgres', 'firebird', 'oracle')
     def test_default_exec(self):
+        metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
             Column(u'special_col', Integer, Sequence('special_col'), primary_key=True))
         t1.create()
