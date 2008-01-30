@@ -5,7 +5,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 from testlib.engines import utf8_engine
-
+from sqlalchemy.sql import column
 
 class UnicodeSchemaTest(PersistTest):
     @testing.unsupported('maxdb', 'oracle', 'sybase')
@@ -112,6 +112,27 @@ class UnicodeSchemaTest(PersistTest):
         meta.drop_all()
         metadata.create_all()
 
+    @testing.fails_on_everything_except('postgres', 'firebird', 'oracle')
+    def test_default_exec(self):
+        t1 = Table('t1', metadata,
+            Column(u'special_col', Integer, Sequence('special_col'), primary_key=True))
+        t1.create()
+
+        try:
+            engine = metadata.bind
+            
+            # reset the identifier preparer, so that we can force it to cache
+            # a unicode identifier
+            engine.dialect.identifier_preparer = engine.dialect.preparer(engine.dialect)
+            select([column(u'special_col')]).select_from(t1).execute()
+            assert isinstance(engine.dialect.identifier_preparer.format_sequence(Sequence('special_col')), unicode)
+            
+            # now execute, run the sequence.  it should run in u"Special_col.nextid" or similar as 
+            # a unicode object; cx_oracle asserts that this is None or a String (postgres lets it pass thru).
+            # ensure that base.DefaultRunner is encoding.
+            t1.insert().execute()
+        finally:
+            t1.drop()
 
 
 if __name__ == '__main__':

@@ -760,7 +760,7 @@ class PGDefaultRunner(base.DefaultRunner):
 
     def visit_sequence(self, seq):
         if not seq.optional:
-            return self.execute_string(("select nextval('%s')" % self.dialect.identifier_preparer.format_sequence(seq)).encode(self.dialect.encoding))
+            return self.execute_string(("select nextval('%s')" % self.dialect.identifier_preparer.format_sequence(seq)))
         else:
             return None
 

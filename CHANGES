@@ -30,7 +30,12 @@ CHANGES
       up their ".c." collection based on the names present in
       the first selectable only; corresponding_column() now
       works fully for all embedded selectables.
-
+    
+    - Oracle and others properly encode SQL used for defaults
+      like sequences, etc., even if no unicode idents are used
+      since identifier preparer may return a cached unicode
+      identifier.
+      
 - orm
     - Every Session.begin() must now be accompanied by a 
       corresponding commit() or rollback() unless the session
