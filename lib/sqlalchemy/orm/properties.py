@@ -212,7 +212,8 @@ class PropertyLoader(StrategizedProperty):
         self.comparator = PropertyLoader.Comparator(self)
         self.join_depth = join_depth
         self.strategy_class = strategy_class
-
+        self._reverse_property = None
+        
         if cascade is not None:
             self.cascade = CascadeOptions(cascade)
         else:
@@ -349,17 +350,22 @@ class PropertyLoader(StrategizedProperty):
         return str(self.parent.class_.__name__) + "." + self.key + " (" + str(self.mapper.class_.__name__)  + ")"
 
     def merge(self, session, source, dest, dont_load, _recursive):
+        if not dont_load and self._reverse_property and (source, self._reverse_property) in _recursive:
+            return
+            
         if not "merge" in self.cascade:
             # TODO: lazy callable should merge to the new instance
             dest._state.expire_attributes([self.key])
             return
+
         instances = attributes.get_as_list(source._state, self.key, passive=True)
         if not instances:
             return
+        
         if self.uselist:
-            # sets a blank collection according to the correct list class
             dest_list = attributes.init_collection(dest, self.key)
             for current in instances:
+                _recursive[(current, self)] = True
                 obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     if dont_load:
@@ -369,6 +375,7 @@ class PropertyLoader(StrategizedProperty):
         else:
             current = instances[0]
             if current is not None:
+                _recursive[(current, self)] = True
                 obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     if dont_load:
@@ -781,8 +788,8 @@ class BackRef(object):
 
             mapper._compile_property(self.key, relation);
 
-            prop.reverse_property = mapper._get_property(self.key)
-            mapper._get_property(self.key).reverse_property = prop
+            prop._reverse_property = mapper._get_property(self.key)
+            mapper._get_property(self.key)._reverse_property = prop
 
         else:
             raise exceptions.ArgumentError("Error creating backref '%s' on relation '%s': property of that name exists on mapper '%s'" % (self.key, prop, mapper))

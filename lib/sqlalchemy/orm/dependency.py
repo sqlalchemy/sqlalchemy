@@ -388,8 +388,8 @@ class ManyToManyDP(DependencyProcessor):
         secondary_insert = []
         secondary_update = []
         
-        if hasattr(self.prop, 'reverse_property'):
-            reverse_dep = getattr(self.prop.reverse_property, '_dependency_processor', None)
+        if self.prop._reverse_property:
+            reverse_dep = getattr(self.prop._reverse_property, '_dependency_processor', None)
         else:
             reverse_dep = None
             

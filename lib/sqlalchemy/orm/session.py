@@ -949,7 +949,8 @@ class Session(object):
         """
 
         if _recursive is None:
-            _recursive = {}  #TODO: this should be an IdentityDict
+            _recursive = {}  # TODO: this should be an IdentityDict for instances, but will need a separate
+                             # dict for PropertyLoader tuples
         if entity_name is not None:
             mapper = _class_mapper(instance.__class__, entity_name=entity_name)
         else:
@@ -959,6 +960,8 @@ class Session(object):
 
         key = getattr(instance, '_instance_key', None)
         if key is None:
+            if dont_load:
+                raise exceptions.InvalidRequestError("merge() with dont_load=True option does not support objects transient (i.e. unpersisted) objects.  flush() all changes on mapped instances before merging with dont_load=True.")
             merged = attributes.new_instance(mapper.class_)
         else:
             if key in self.identity_map:

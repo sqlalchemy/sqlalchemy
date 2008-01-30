@@ -2,7 +2,7 @@
 CHANGES
 =======
 
-0.4.2p4
+0.4.3
 ------
 - sql
     - Added "ilike()" operator to column operations.  Compiles
@@ -32,6 +32,25 @@ CHANGES
       works fully for all embedded selectables.
 
 - orm
+    - Every Session.begin() must now be accompanied by a 
+      corresponding commit() or rollback() unless the session
+      is closed with Session.close().  This also includes
+      the begin() which is implicit to a session created
+      with transactional=True.  The biggest change 
+      introduced here is that when a Session created with 
+      transactional=True raises an exception during flush(), 
+      you must call Session.rollback() or Session.close() in 
+      order for that Session to continue after an exception.
+
+    - fixed merge() collection-doubling bug when merging 
+      transient entities with backref'ed collections.
+      [ticket:961]
+      
+    - merge(dont_load=True) does not accept transient 
+      entities, this is in continuation with the fact that
+      merge(dont_load=True) does not accept any "dirty" 
+      objects either.
+      
     - added standalone "query" class attribute generated
       by a scoped_session.  This provides MyClass.query
       without using Session.mapper.  Use via:
@@ -102,37 +121,34 @@ CHANGES
       column references a server-side-generated, non-primary-key
       column. [ticket:954]
       
-    - Every begin() must now be accompanied by a corresponding
-      commit() or rollback(), including the implicit begin()
-      in transactional sessions.
+    - Additional Session transaction fixes/changes:
+        - Fixed bug with session transaction management: parent
+          transactions weren't started on the connection when
+          adding a connection to a nested transaction.
 
-    - Fixed bug with session transaction management: parent
-      transactions weren't started on the connection when
-      adding a connection to a nested transaction.
+        - session.transaction now always refers to the innermost
+          active transaction, even when commit/rollback are
+          called directly on the session transaction object.
 
-    - session.transaction now always refers to the innermost
-      active transaction, even when commit/rollback are called
-      directly on the session transaction object.
+        - Two-phase transactions can now be prepared.
 
-    - Two-phase transactions can now be prepared.
+        - When preparing a two-phase transaction fails on one
+          connection, all the connections are rolled back.
 
-    - When preparing a two-phase transaction fails on one
-      connection, all the connections are rolled back.
+        - session.close() didn't close all transactions when
+          nested transactions were used.
 
-    - session.close() didn't close all transactions when
-      nested transactions were used.
+        - rollback() previously erroneously set the current
+          transaction directly to the parent of the transaction
+          that could be rolled back to. Now it rolls back the
+          next transaction up that can handle it, but sets the
+          current transaction to it's parent and inactivates the
+          transactions in between. Inactive transactions can
+          only be rolled back or closed, any other call results
+          in an error.
 
-    - rollback() previously erroneously set the current
-      transaction directly to the parent of the transaction
-      that could be rolled back to. Now it rolls back the next
-      transaction up that can handle it, but sets the current
-      transaction to it's parent and inactivates the
-      transactions in between. Inactive transactions can only
-      be rolled back or closed, any other call results in an
-      error.
-
-    - autoflush for commit() wasn't flushing for simple
-      subtransactions.
+        - autoflush for commit() wasn't flushing for simple
+          subtransactions.
 
     - Miscellaneous tickets: [ticket:940]
 
@@ -158,8 +174,8 @@ CHANGES
     - Changed ext.activemapper to use a non-transactional
       session for the objectstore.
 
-    - Fixed output order of "['a'] + obj.proxied" binary operation on
-      association-proxied lists.
+    - Fixed output order of "['a'] + obj.proxied" binary
+      operation on association-proxied lists.
 
 0.4.2p3
 ------
