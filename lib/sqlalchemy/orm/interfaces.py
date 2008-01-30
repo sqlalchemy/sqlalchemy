@@ -135,7 +135,7 @@ class MapperExtension(object):
         created from that row.
 
         The method can choose to create the instance itself, or it can
-        return None to indicate normal object creation should take
+        return EXT_CONTINUE to indicate normal object creation should take
         place.
 
         mapper
@@ -149,6 +149,9 @@ class MapperExtension(object):
 
         class\_
           The class we are mapping.
+          
+        return value
+          A new object instance, or EXT_CONTINUE
         """
 
         return EXT_CONTINUE
