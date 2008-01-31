@@ -484,7 +484,7 @@ class Compiled(object):
 
         e = self.bind
         if e is None:
-            raise exceptions.InvalidRequestError("This Compiled object is not bound to any Engine or Connection.")
+            raise exceptions.UnboundExecutionError("This Compiled object is not bound to any Engine or Connection.")
         return e._execute_compiled(self, multiparams, params)
 
     def scalar(self, *multiparams, **params):

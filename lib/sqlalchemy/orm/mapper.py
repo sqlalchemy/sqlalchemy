@@ -1555,7 +1555,7 @@ def _load_scalar_attributes(instance, attribute_names):
         try:
             session = mapper.get_session()
         except exceptions.InvalidRequestError:
-            raise exceptions.InvalidRequestError("Instance %s is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed" % (instance.__class__))
+            raise exceptions.UnboundExecutionError("Instance %s is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed" % (instance.__class__))
     
     state = instance._state
     if '_instance_key' in state.dict:

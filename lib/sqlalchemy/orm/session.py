@@ -695,7 +695,7 @@ class Session(object):
             if self.bind is not None:
                 return self.bind
             else:
-                raise exceptions.InvalidRequestError("This session is unbound to any Engine or Connection; specify a mapper to get_bind()")
+                raise exceptions.UnboundExecutionError("This session is unbound to any Engine or Connection; specify a mapper to get_bind()")
 
         elif len(self.__binds):
             if mapper is not None:
@@ -713,7 +713,7 @@ class Session(object):
         if self.bind is not None:
             return self.bind
         elif mapper is None:
-            raise exceptions.InvalidRequestError("Could not locate any mapper associated with SQL expression")
+            raise exceptions.UnboundExecutionError("Could not locate any mapper associated with SQL expression")
         else:
             if isinstance(mapper, type):
                 mapper = _class_mapper(mapper)
@@ -721,7 +721,7 @@ class Session(object):
                 mapper = mapper.compile()
             e = mapper.mapped_table.bind
             if e is None:
-                raise exceptions.InvalidRequestError("Could not locate any Engine or Connection bound to mapper '%s'" % str(mapper))
+                raise exceptions.UnboundExecutionError("Could not locate any Engine or Connection bound to mapper '%s'" % str(mapper))
             return e
 
     def query(self, mapper_or_class, *addtl_entities, **kwargs):

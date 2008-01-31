@@ -192,7 +192,7 @@ class LoadDeferredColumns(object):
 
         session = sessionlib.object_session(self.instance)
         if session is None:
-            raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session; deferred load operation of attribute '%s' cannot proceed" % (self.instance.__class__, self.key))
+            raise exceptions.UnboundExecutionError("Parent instance %s is not bound to a Session; deferred load operation of attribute '%s' cannot proceed" % (self.instance.__class__, self.key))
 
         query = session.query(localparent)
         if not self.optimizing_statement:
@@ -438,7 +438,7 @@ class LoadLazyAttribute(object):
             try:
                 session = instance_mapper.get_session()
             except exceptions.InvalidRequestError:
-                raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
+                raise exceptions.UnboundExecutionError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
 
         q = session.query(prop.mapper).autoflush(False)
         if self.path:

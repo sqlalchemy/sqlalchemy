@@ -1336,5 +1336,21 @@ class SchemaVisitor(visitors.ClauseVisitor):
 def _bind_or_error(schemaitem):
     bind = schemaitem.bind
     if not bind:
-        raise exceptions.InvalidRequestError("This SchemaItem is not connected to any Engine or Connection.")
+        name = schemaitem.__class__.__name__
+        label = getattr(schemaitem, 'fullname',
+                        getattr(schemaitem, 'name', None))
+        if label:
+            item = '%s %r' % (name, label)
+        else:
+            item = name
+        if isinstance(schemaitem, MetaData):
+            bindable = "the %s's .bind" % name
+        else:
+            bindable = "this %s's .metadata.bind" % name
+
+        msg = ('The %s is not bound to an Engine or Connection.  '
+               'Execution can not proceed without a database to execute '
+               'against.  Either execute with an explicit connection or '
+               'assign %s to enable implicit execution.') % (item, bindable)
+        raise exceptions.UnboundExecutionError(msg)
     return bind

@@ -55,6 +55,8 @@ class NoSuchTableError(InvalidRequestError):
     database, but the table doesn't exist.
     """
 
+class UnboundExecutionError(InvalidRequestError):
+    """SQL was attempted without a database connection to execute it on."""
 
 class AssertionError(SQLAlchemyError):
     """Corresponds to internal state being detected in an invalid state."""

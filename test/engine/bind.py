@@ -34,7 +34,6 @@ class BindTest(PersistTest):
 
         for meth in [
             metadata.create_all,
-            table.exists,
             metadata.drop_all,
             table.create,
             table.drop,
@@ -42,8 +41,53 @@ class BindTest(PersistTest):
             try:
                 meth()
                 assert False
-            except exceptions.InvalidRequestError, e:
-                assert str(e)  == "This SchemaItem is not connected to any Engine or Connection."
+            except exceptions.UnboundExecutionError, e:
+                self.assertEquals(
+                    str(e),
+                    "The MetaData "
+                    "is not bound to an Engine or Connection.  "
+                    "Execution can not proceed without a database to execute "
+                    "against.  Either execute with an explicit connection or "
+                    "assign the MetaData's .bind to enable implicit execution.")
+
+        for meth in [
+            table.exists,
+            # future:
+            #table.create,
+            #table.drop,
+        ]:
+            try:
+                meth()
+                assert False
+            except exceptions.UnboundExecutionError, e:
+                self.assertEquals(
+                    str(e),
+                    "The Table 'test_table' "
+                    "is not bound to an Engine or Connection.  "
+                    "Execution can not proceed without a database to execute "
+                    "against.  Either execute with an explicit connection or "
+                    "assign this Table's .metadata.bind to enable implicit "
+                    "execution.")
+
+    @testing.future
+    def test_create_drop_err2(self):
+        for meth in [
+            table.exists,
+            table.create,
+            table.drop,
+        ]:
+            try:
+                meth()
+                assert False
+            except exceptions.UnboundExecutionError, e:
+                self.assertEquals(
+                    str(e),
+                    "The Table 'test_table' "
+                    "is not bound to an Engine or Connection.  "
+                    "Execution can not proceed without a database to execute "
+                    "against.  Either execute with an explicit connection or "
+                    "assign this Table's .metadata.bind to enable implicit "
+                    "execution.")
 
     @testing.uses_deprecated('//connect')
     def test_create_drop_bound(self):
@@ -157,8 +201,13 @@ class BindTest(PersistTest):
                     assert e.bind is None
                     e.execute()
                     assert False
-                except exceptions.InvalidRequestError, e:
-                    assert str(e) == "This Compiled object is not bound to any Engine or Connection."
+                except exceptions.UnboundExecutionError, e:
+                    assert str(e).endswith(
+                        'is not bound to an Engine or '
+                        'Connection.  Execution can not proceed without a '
+                        'database to execute against.  Either execute with '
+                        'an explicit connection or bind the MetaData of the '
+                        'underlying tables to enable implicit execution.')
 
         finally:
             if isinstance(bind, engine.Connection):
