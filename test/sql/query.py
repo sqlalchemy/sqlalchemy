@@ -138,6 +138,20 @@ class QueryTest(PersistTest):
             l.append(row)
         self.assert_(len(l) == 3)
 
+    def test_row_comparison(self):
+        users.insert().execute(user_id = 7, user_name = 'jack')
+        rp = users.select().execute().fetchone()
+
+        self.assert_(rp == rp)
+        self.assert_(not(rp != rp))
+
+        equal = (7, 'jack')
+
+        self.assert_(rp == equal)
+        self.assert_(equal == rp)
+        self.assert_(not (rp != equal))
+        self.assert_(not (equal != equal))
+
     def test_fetchmany(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'ed')
