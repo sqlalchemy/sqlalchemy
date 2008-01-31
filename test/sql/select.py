@@ -451,29 +451,33 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         clause = (table1.c.myid == 12) & table1.c.myid.between(15, 20) & table1.c.myid.like('hoho')
         assert str(clause) == str(util.pickle.loads(util.pickle.dumps(clause)))
 
-
-
-    def testextracomparisonoperators(self):
+    def test_composed_string_comparators(self):
         self.assert_compile(
-            table1.select(table1.c.name.contains('jo')),
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name LIKE :mytable_name_1",
-            checkparams = {'mytable_name_1': u'%jo%'},
+            table1.c.name.contains('jo'), "mytable.name LIKE '%' || :mytable_name_1 || '%'" , checkparams = {'mytable_name_1': u'jo'},
         )
         self.assert_compile(
-            table1.select(table1.c.name.endswith('hn')),
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name LIKE :mytable_name_1",
-            checkparams = {'mytable_name_1': u'%hn'},
+            table1.c.name.contains('jo'), "mytable.name LIKE concat(concat('%', %s), '%')" , checkparams = {'mytable_name_1': u'jo'},
+            dialect=mysql.dialect()
         )
-
-    def testunicodestartswith(self):
-        string = u"hi \xf6 \xf5"
         self.assert_compile(
-            table1.select(table1.c.name.startswith(string)),
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name LIKE :mytable_name_1",
-            checkparams = {'mytable_name_1': u'hi \xf6 \xf5%'},
+            table1.c.name.endswith('hn'), "mytable.name LIKE '%' || :mytable_name_1", checkparams = {'mytable_name_1': u'hn'},
         )
+        self.assert_compile(
+            table1.c.name.endswith('hn'), "mytable.name LIKE concat('%', %s)",
+            checkparams = {'mytable_name_1': u'hn'}, dialect=mysql.dialect()
+        )
+        self.assert_compile(
+            table1.c.name.startswith(u"hi \xf6 \xf5"), "mytable.name LIKE :mytable_name_1 || '%'",
+            checkparams = {'mytable_name_1': u'hi \xf6 \xf5'},
+        )
+        self.assert_compile(column('name').endswith(text("'foo'")), "name LIKE '%' || 'foo'"  )
+        self.assert_compile(column('name').endswith(literal_column("'foo'")), "name LIKE '%' || 'foo'"  )
+        self.assert_compile(column('name').startswith(text("'foo'")), "name LIKE 'foo' || '%'"  )
+        self.assert_compile(column('name').startswith(text("'foo'")), "name LIKE concat('foo', '%')", dialect=mysql.dialect())
+        self.assert_compile(column('name').startswith(literal_column("'foo'")), "name LIKE 'foo' || '%'"  )
+        self.assert_compile(column('name').startswith(literal_column("'foo'")), "name LIKE concat('foo', '%')", dialect=mysql.dialect())
 
-    def testmultiparam(self):
+    def test_multiple_col_binds(self):
         self.assert_compile(
             select(["*"], or_(table1.c.myid == 12, table1.c.myid=='asdf', table1.c.myid == 'foo')),
             "SELECT * FROM mytable WHERE mytable.myid = :mytable_myid_1 OR mytable.myid = :mytable_myid_2 OR mytable.myid = :mytable_myid_3"
@@ -1067,14 +1071,14 @@ EXISTS (select yay from foo where boo = lar)",
             assert str(err) == "Bind parameter 'mytable_myid_1' conflicts with unique bind parameter of the same name"
 
 
-    def testbindascol(self):
+    def test_bind_as_col(self):
         t = table('foo', column('id'))
 
         s = select([t, literal('lala').label('hoho')])
         self.assert_compile(s, "SELECT foo.id, :param_1 AS hoho FROM foo")
         assert [str(c) for c in s.c] == ["id", "hoho"]
 
-    def testin(self):
+    def test_in(self):
         self.assert_compile(select([table1], table1.c.myid.in_(['a'])),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid_1)")
 
@@ -1179,7 +1183,7 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
         self.assert_compile(select([table1], table1.c.myid.in_()),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (CASE WHEN (mytable.myid IS NULL) THEN NULL ELSE 0 END = 1)")
 
-    def testcast(self):
+    def test_cast(self):
         tbl = table('casttest',
                     column('id', Integer),
                     column('v1', Float),
@@ -1215,7 +1219,11 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
         # then the MySQL engine
         check_results(mysql.dialect(), ['DECIMAL(10, 2)', 'DECIMAL(12, 9)', 'DATE', 'CHAR', 'CHAR(20)'], '%s')
 
-    def testdatebetween(self):
+        self.assert_compile(cast(text('NULL'), Integer), "CAST(NULL AS INTEGER)", dialect=sqlite.dialect())
+        self.assert_compile(cast(null(), Integer), "CAST(NULL AS INTEGER)", dialect=sqlite.dialect())
+        self.assert_compile(cast(literal_column('NULL'), Integer), "CAST(NULL AS INTEGER)", dialect=sqlite.dialect())
+        
+    def test_date_between(self):
         import datetime
         table = Table('dt', metadata,
             Column('date', Date))
