@@ -1,5 +1,5 @@
 import testenv; testenv.configure_for_tests()
-import re, operator
+import datetime, re, operator
 from sqlalchemy import *
 from sqlalchemy import exceptions, sql, util
 from sqlalchemy.sql import table, column
@@ -387,6 +387,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                 ):
                 self.assert_compile(py_op(lhs, rhs), res % sql_op)
 
+        dt = datetime.datetime.today()
         # exercise comparison operators
         for (py_op, fwd_op, rev_op) in ((operator.lt, '<', '>'),
                                         (operator.gt, '>', '<'),
@@ -403,6 +404,8 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                 (literal('a'), 'b', ':param_1', ':param_2'),
                 (literal('a'), table1.c.myid, ':param_1', 'mytable.myid'),
                 (literal('a'), literal('b'), ':param_1', ':param_2'),
+                (dt, literal('b'), ':param_2', ':param_1'),
+                (literal('b'), dt, ':param_1', ':param_2'),
                 ):
 
                 # the compiled clause should match either (e.g.):

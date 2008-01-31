@@ -1111,6 +1111,9 @@ class Operators(object):
 class ColumnOperators(Operators):
     """Defines comparison and math operations."""
 
+    timetuple = None
+    """Hack, allows datetime objects to be compared on the LHS."""
+
     def __lt__(self, other):
         return self.operate(operators.lt, other)
 

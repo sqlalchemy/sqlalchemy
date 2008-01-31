@@ -13,7 +13,7 @@ CHANGES
       now concatenate the wildcard operator with the given
       operand in SQL, i.e. "'%' || <bindparam>" in all cases,
       accept text('something') operands properly [ticket:962]
-      
+
     - cast() accepts text('something') and other non-literal
       operands properly [ticket:962]
 
@@ -24,7 +24,7 @@ CHANGES
       DELETE etc., this flag will enable "autocommit" behavior
       during execution if no transaction is in progress 
       [ticket:915]
-      
+
     - The '.c.' attribute on a selectable now gets an entry
       for every column expression in its columns clause.
       Previously, "unnamed" columns like functions and CASE
@@ -46,12 +46,17 @@ CHANGES
       up their ".c." collection based on the names present in
       the first selectable only; corresponding_column() now
       works fully for all embedded selectables.
-    
+
     - Oracle and others properly encode SQL used for defaults
       like sequences, etc., even if no unicode idents are used
       since identifier preparer may return a cached unicode
       identifier.
-      
+
+    - Column and clause comparisons to datetime objects on the
+      left hand side of the expression now work (d < table.c.col).
+      (datetimes on the RHS have always worked, the LHS exception
+      is a quirk of the datetime implementation.)
+
 - orm
     - Every Session.begin() must now be accompanied by a 
       corresponding commit() or rollback() unless the session
