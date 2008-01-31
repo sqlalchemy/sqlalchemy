@@ -158,6 +158,11 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
     \**kwargs
       Additional parameters include:
 
+      autocommit
+        indicates this SELECT statement modifies the database, and 
+        should be subject to autocommit behavior if no transaction
+        has been started.
+        
       prefixes
         a list of strings or ``ClauseElement`` objects to include
         directly after the SELECT keyword in the generated statement,
@@ -727,6 +732,11 @@ def text(text, bind=None, *args, **kwargs):
     bind
       an optional connection or engine to be used for this text query.
 
+    autocommit=True
+      indicates this SELECT statement modifies the database, and 
+      should be subject to autocommit behavior if no transaction
+      has been started.
+
     bindparams
       a list of ``bindparam()`` instances which can be used to define
       the types and/or initial values for the bind parameters within
@@ -740,6 +750,7 @@ def text(text, bind=None, *args, **kwargs):
       which will be used to perform post-processing on columns within
       the result set (for textual statements that produce result
       sets).
+
     """
 
     return _TextClause(text, bind=bind, *args, **kwargs)
@@ -1821,10 +1832,11 @@ class _TextClause(ClauseElement):
 
     _bind_params_regex = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
 
-    def __init__(self, text = "", bind=None, bindparams=None, typemap=None):
+    def __init__(self, text = "", bind=None, bindparams=None, typemap=None, autocommit=False):
         self._bind = bind
         self.bindparams = {}
         self.typemap = typemap
+        self._autocommit = autocommit
         if typemap is not None:
             for key in typemap.keys():
                 typemap[key] = sqltypes.to_instance(typemap[key])
@@ -2711,9 +2723,10 @@ class TableClause(FromClause):
 class _SelectBaseMixin(object):
     """Base class for ``Select`` and ``CompoundSelects``."""
 
-    def __init__(self, use_labels=False, for_update=False, limit=None, offset=None, order_by=None, group_by=None, bind=None):
+    def __init__(self, use_labels=False, for_update=False, limit=None, offset=None, order_by=None, group_by=None, bind=None, autocommit=False):
         self.use_labels = use_labels
         self.for_update = for_update
+        self._autocommit = autocommit
         self._limit = limit
         self._offset = offset
         self._bind = bind
@@ -2734,7 +2747,7 @@ class _SelectBaseMixin(object):
         return _ScalarSelect(self)
 
     def apply_labels(self):
-        """set the 'labels' flag on this selectable.
+        """return a new selectable with the 'use_labels' flag set to True.
 
         This will result in column expressions being generated using labels against their table
         name, such as "SELECT somecolumn AS tablename_somecolumn".  This allows selectables which
@@ -2760,6 +2773,13 @@ class _SelectBaseMixin(object):
 
         return True
 
+    def autocommit(self):
+        """return a new selectable with the 'autocommit' flag set to True."""
+        
+        s = self._generate()
+        s._autocommit = True
+        return s
+        
     def _generate(self):
         s = self._clone()
         s._clone_from_clause()

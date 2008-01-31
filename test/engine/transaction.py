@@ -375,6 +375,81 @@ class AutoRollbackTest(PersistTest):
         users.drop(conn2)
         conn2.close()
 
+class ExplicitAutoCommitTest(PersistTest):
+    """test the 'autocommit' flag on select() and text() objects.  
+    
+    Requires Postgres so that we may define a custom function which modifies the database.
+    """
+    
+    __only_on__ = 'postgres'
+
+    def setUpAll(self):
+        global metadata, foo
+        metadata = MetaData(testing.db)
+        foo = Table('foo', metadata, Column('id', Integer, primary_key=True), Column('data', String(100)))
+        metadata.create_all()
+        testing.db.execute("create function insert_foo(varchar) returns integer as 'insert into foo(data) values ($1);select 1;' language sql")
+
+    def tearDown(self):
+        foo.delete().execute()
+        
+    def tearDownAll(self):
+        testing.db.execute("drop function insert_foo(varchar)")
+        metadata.drop_all()
+    
+    def test_control(self):
+        # test that not using autocommit does not commit 
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+
+        conn1.execute(select([func.insert_foo('data1')]))
+        assert conn2.execute(select([foo.c.data])).fetchall() == []
+
+        conn1.execute(text("select insert_foo('moredata')"))
+        assert conn2.execute(select([foo.c.data])).fetchall() == []
+
+        trans = conn1.begin()
+        trans.commit()
+
+        assert conn2.execute(select([foo.c.data])).fetchall() == [('data1',), ('moredata',)]
+        
+        conn1.close()
+        conn2.close()
+        
+    def test_explicit_compiled(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+        
+        conn1.execute(select([func.insert_foo('data1')], autocommit=True))
+        assert conn2.execute(select([foo.c.data])).fetchall() == [('data1',)]
+
+        conn1.execute(select([func.insert_foo('data2')]).autocommit())
+        assert conn2.execute(select([foo.c.data])).fetchall() == [('data1',), ('data2',)]
+        
+        conn1.close()
+        conn2.close()
+    
+    def test_explicit_text(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+        
+        conn1.execute(text("select insert_foo('moredata')", autocommit=True))
+        assert conn2.execute(select([foo.c.data])).fetchall() == [('moredata',)]
+        
+        conn1.close()
+        conn2.close()
+
+    def test_implicit_text(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+        
+        conn1.execute(text("insert into foo (data) values ('implicitdata')"))
+        assert conn2.execute(select([foo.c.data])).fetchall() == [('implicitdata',)]
+        
+        conn1.close()
+        conn2.close()
+        
+    
 class TLTransactionTest(PersistTest):
     def setUpAll(self):
         global users, metadata, tlengine

@@ -16,6 +16,14 @@ CHANGES
       
     - cast() accepts text('something') and other non-literal
       operands properly [ticket:962]
+
+    - added "autocommit=True" kwarg to select() and text(),
+      as well as generative autocommit() method on select(); 
+      for statements which modify the database through some 
+      user-defined means other than the usual INSERT/UPDATE/
+      DELETE etc., this flag will enable "autocommit" behavior
+      during execution if no transaction is in progress 
+      [ticket:915]
       
     - The '.c.' attribute on a selectable now gets an entry
       for every column expression in its columns clause.

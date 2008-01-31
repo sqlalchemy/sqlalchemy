@@ -164,10 +164,10 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isupdate = compiled.isupdate
             if isinstance(compiled.statement, expression._TextClause):
                 self.returns_rows = self.returns_rows_text(self.statement)
-                self.should_autocommit = self.should_autocommit_text(self.statement)
+                self.should_autocommit = compiled.statement._autocommit or self.should_autocommit_text(self.statement)
             else:
                 self.returns_rows = self.returns_rows_compiled(compiled)
-                self.should_autocommit = self.should_autocommit_compiled(compiled)
+                self.should_autocommit = getattr(compiled.statement, '_autocommit', False) or self.should_autocommit_compiled(compiled)
             
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]
