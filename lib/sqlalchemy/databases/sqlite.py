@@ -11,7 +11,7 @@ from sqlalchemy import schema, exceptions, pool, PassiveDefault
 from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
 import sqlalchemy.util as util
-from sqlalchemy.sql import compiler
+from sqlalchemy.sql import compiler, functions as sql_functions
 
 
 SELECT_REGEXP = re.compile(r'\s*(?:SELECT|PRAGMA)', re.I | re.UNICODE)
@@ -349,6 +349,13 @@ class SQLiteDialect(default.DefaultDialect):
 
 
 class SQLiteCompiler(compiler.DefaultCompiler):
+    functions = compiler.DefaultCompiler.functions.copy()
+    functions.update (
+        {
+            sql_functions.now : 'CURRENT_TIMESTAMP'
+        }
+    )
+    
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
             return super(SQLiteCompiler, self).visit_cast(cast)

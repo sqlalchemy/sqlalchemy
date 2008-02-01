@@ -1,7 +1,8 @@
 import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
-from sqlalchemy import databases, exceptions, sql
+from sqlalchemy.sql import table, column
+from sqlalchemy import databases, exceptions, sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
@@ -32,6 +33,17 @@ class CompileTest(SQLCompileTest):
                 self.assert_compile(func.nosuchfunction(), "nosuchfunction()", dialect=dialect)
             self.assert_compile(func.char_length('foo'), "char_length(%s)" % bindtemplate % {'name':'param_1', 'position':1}, dialect=dialect)
 
+    def test_generic_now(self):
+        assert isinstance(func.now().type, sqltypes.DateTime)
+        
+        for ret, dialect in [
+            ('CURRENT_TIMESTAMP', sqlite.dialect()),
+            ('now()', postgres.dialect()),
+            ('now()', mysql.dialect()),
+            ('CURRENT_TIMESTAMP', oracle.dialect())
+        ]:
+            self.assert_compile(func.now(), ret, dialect=dialect)
+            
     def test_constructor(self):
         try:
             func.current_timestamp('somearg')
@@ -57,6 +69,75 @@ class CompileTest(SQLCompileTest):
         assert isinstance(func.coalesce(None, datetime.date(2005, 10, 15)).type, sqltypes.Date)
 
         assert isinstance(func.concat("foo", "bar").type, sqltypes.String)
+
+    def test_assorted(self):
+        table1 = table('mytable',
+            column('myid', Integer),
+        )
+
+        table2 = table(
+            'myothertable',
+            column('otherid', Integer),
+        )
+        
+        # test an expression with a function
+        self.assert_compile(func.lala(3, 4, literal("five"), table1.c.myid) * table2.c.otherid,
+            "lala(:lala_1, :lala_2, :param_1, mytable.myid) * myothertable.otherid")
+
+        # test it in a SELECT
+        self.assert_compile(select([func.count(table1.c.myid)]),
+            "SELECT count(mytable.myid) AS count_1 FROM mytable")
+
+        # test a "dotted" function name
+        self.assert_compile(select([func.foo.bar.lala(table1.c.myid)]),
+            "SELECT foo.bar.lala(mytable.myid) AS lala_1 FROM mytable")
+
+        # test the bind parameter name with a "dotted" function name is only the name
+        # (limits the length of the bind param name)
+        self.assert_compile(select([func.foo.bar.lala(12)]),
+            "SELECT foo.bar.lala(:lala_2) AS lala_1")
+
+        # test a dotted func off the engine itself
+        self.assert_compile(func.lala.hoho(7), "lala.hoho(:hoho_1)")
+
+        # test None becomes NULL
+        self.assert_compile(func.my_func(1,2,None,3), "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
+
+        # test pickling
+        self.assert_compile(util.pickle.loads(util.pickle.dumps(func.my_func(1, 2, None, 3))), "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
+
+        # assert func raises AttributeError for __bases__ attribute, since its not a class
+        # fixes pydoc
+        try:
+            func.__bases__
+            assert False
+        except AttributeError:
+            assert True
+
+    def test_functions_with_cols(self):
+        users = table('users', column('id'), column('name'), column('fullname'))
+        calculate = select([column('q'), column('z'), column('r')],
+            from_obj=[func.calculate(bindparam('x'), bindparam('y'))])
+
+        self.assert_compile(select([users], users.c.id > calculate.c.z),
+            "SELECT users.id, users.name, users.fullname "
+            "FROM users, (SELECT q, z, r "
+            "FROM calculate(:x, :y)) "
+            "WHERE users.id > z"
+        )
+
+        s = select([users], users.c.id.between(
+            calculate.alias('c1').unique_params(x=17, y=45).c.z,
+            calculate.alias('c2').unique_params(x=5, y=12).c.z))
+
+        self.assert_compile(s,
+            "SELECT users.id, users.name, users.fullname "
+            "FROM users, (SELECT q, z, r "
+            "FROM calculate(:x_1, :y_1)) AS c1, (SELECT q, z, r "
+            "FROM calculate(:x_2, :y_2)) AS c2 "
+            "WHERE users.id BETWEEN c1.z AND c2.z"
+            , checkparams={'y_1': 45, 'x_1': 17, 'y_2': 12, 'x_2': 5})
+
 
 class ExecuteTest(PersistTest):
 

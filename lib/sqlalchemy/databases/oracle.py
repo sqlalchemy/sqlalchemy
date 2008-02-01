@@ -10,7 +10,7 @@ import datetime, random, re
 from sqlalchemy import util, sql, schema, exceptions, logging
 from sqlalchemy.engine import default, base
 from sqlalchemy.sql import compiler, visitors
-from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy.sql import operators as sql_operators, functions as sql_functions
 from sqlalchemy import types as sqltypes
 
 
@@ -583,6 +583,13 @@ class OracleCompiler(compiler.DefaultCompiler):
     operators.update(
         {
             sql_operators.mod : lambda x, y:"mod(%s, %s)" % (x, y)
+        }
+    )
+
+    functions = compiler.DefaultCompiler.functions.copy()
+    functions.update (
+        {
+            sql_functions.now : 'CURRENT_TIMESTAMP'
         }
     )
 

@@ -21,6 +21,39 @@ class CompileTest(SQLCompileTest):
         t = table('sometable', column('somecolumn'))
         self.assert_compile(t.count(), "SELECT count(sometable.somecolumn) AS tbl_row_count FROM sometable")
 
+    def test_noorderby_insubquery(self):
+        """test that the ms-sql dialect removes ORDER BY clauses from subqueries"""
+
+        table1 = table('mytable',
+            column('myid', Integer),
+            column('name', String),
+            column('description', String),
+        )
+
+        q = select([table1.c.myid], order_by=[table1.c.myid]).alias('foo')
+        crit = q.c.myid == table1.c.myid
+        self.assert_compile(select(['*'], crit), """SELECT * FROM (SELECT mytable.myid AS myid FROM mytable) AS foo, mytable WHERE foo.myid = mytable.myid""")
+
+    def test_aliases_schemas(self):
+        metadata = MetaData()
+        table1 = table('mytable',
+            column('myid', Integer),
+            column('name', String),
+            column('description', String),
+        )
+
+        table4 = Table(
+            'remotetable', metadata,
+            Column('rem_id', Integer, primary_key=True),
+            Column('datatype_id', Integer),
+            Column('value', String(20)),
+            schema = 'remote_owner'
+        )
+
+        self.assert_compile(table4.select(), "SELECT remotetable_1.rem_id, remotetable_1.datatype_id, remotetable_1.value FROM remote_owner.remotetable AS remotetable_1")
+
+        self.assert_compile(table1.join(table4, table1.c.myid==table4.c.rem_id).select(), "SELECT mytable.myid, mytable.name, mytable.description, remotetable_1.rem_id, remotetable_1.datatype_id, remotetable_1.value FROM mytable JOIN remote_owner.remotetable AS remotetable_1 ON remotetable_1.rem_id = mytable.myid")
+
     def test_union(self):
         t1 = table('t1',
             column('col1'),

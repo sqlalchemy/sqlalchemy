@@ -35,6 +35,9 @@ class coalesce(GenericFunction):
         kwargs.setdefault('type_', _type_from_args(args))
         GenericFunction.__init__(self, args=args, **kwargs)
 
+class now(GenericFunction):
+    __return_type__ = sqltypes.DateTime
+    
 class concat(GenericFunction):
     __return_type__ = sqltypes.String
     def __init__(self, *args, **kwargs):

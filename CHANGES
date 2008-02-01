@@ -9,6 +9,10 @@ CHANGES
       to ILIKE on postgres, lower(x) LIKE lower(y) on all
       others. [ticket:727]
 
+    - added "now()" as a generic function; on SQLite and 
+      Oracle compiles as "CURRENT_TIMESTAMP"; "now()"
+      on all others [ticket:943]
+      
     - the startswith(), endswith(), and contains() operators
       now concatenate the wildcard operator with the given
       operand in SQL, i.e. "'%' || <bindparam>" in all cases,
