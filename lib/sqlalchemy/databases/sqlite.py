@@ -141,37 +141,39 @@ class SLBoolean(sqltypes.Boolean):
         return process
 
 colspecs = {
-    sqltypes.Integer : SLInteger,
-    sqltypes.Smallinteger : SLSmallInteger,
-    sqltypes.Numeric : SLNumeric,
-    sqltypes.Float : SLNumeric,
-    sqltypes.DateTime : SLDateTime,
-    sqltypes.Date : SLDate,
-    sqltypes.Time : SLTime,
-    sqltypes.String : SLString,
-    sqltypes.Binary : SLBinary,
-    sqltypes.Boolean : SLBoolean,
-    sqltypes.Text : SLText,
+    sqltypes.Binary: SLBinary,
+    sqltypes.Boolean: SLBoolean,
     sqltypes.CHAR: SLChar,
+    sqltypes.Date: SLDate,
+    sqltypes.DateTime: SLDateTime,
+    sqltypes.Float: SLNumeric,
+    sqltypes.Integer: SLInteger,
+    sqltypes.NCHAR: SLChar,
+    sqltypes.Numeric: SLNumeric,
+    sqltypes.Smallinteger: SLSmallInteger,
+    sqltypes.String: SLString,
+    sqltypes.Text: SLText,
+    sqltypes.Time: SLTime,
 }
 
 ischema_names = {
-    'INTEGER' : SLInteger,
-    'INT' : SLInteger,
-    'SMALLINT' : SLSmallInteger,
-    'VARCHAR' : SLString,
-    'CHAR' : SLChar,
-    'TEXT' : SLText,
-    'NUMERIC' : SLNumeric,
-    'DECIMAL' : SLNumeric,
-    'FLOAT' : SLNumeric,
-    'REAL': SLNumeric,
-    'TIMESTAMP' : SLDateTime,
-    'DATETIME' : SLDateTime,
-    'DATE' : SLDate,
-    'BLOB' : SLBinary,
+    'BLOB': SLBinary,
     'BOOL': SLBoolean,
     'BOOLEAN': SLBoolean,
+    'CHAR': SLChar,
+    'DATE': SLDate,
+    'DATETIME': SLDateTime,
+    'DECIMAL': SLNumeric,
+    'FLOAT': SLNumeric,
+    'INT': SLInteger,
+    'INTEGER': SLInteger,
+    'NUMERIC': SLNumeric,
+    'REAL': SLNumeric,
+    'SMALLINT': SLSmallInteger,
+    'TEXT': SLText,
+    'TIME': SLTime,
+    'TIMESTAMP': SLDateTime,
+    'VARCHAR': SLString,
 }
 
 def descriptor():
@@ -352,10 +354,10 @@ class SQLiteCompiler(compiler.DefaultCompiler):
     functions = compiler.DefaultCompiler.functions.copy()
     functions.update (
         {
-            sql_functions.now : 'CURRENT_TIMESTAMP'
+            sql_functions.now: 'CURRENT_TIMESTAMP'
         }
     )
-    
+
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
             return super(SQLiteCompiler, self).visit_cast(cast)

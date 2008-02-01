@@ -31,6 +31,74 @@ class TestTypes(AssertMixin):
         finally:
             meta.drop_all()
 
+    @testing.uses_deprecated('Using String type with no length')
+    def test_type_reflection(self):
+        # (ask_for, roundtripped_as_if_different)
+        specs = [( String(), sqlite.SLText(), ),
+                 ( String(1), sqlite.SLString(1), ),
+                 ( String(3), sqlite.SLString(3), ),
+                 ( Text(), sqlite.SLText(), ),
+                 ( Unicode(), sqlite.SLText(), ),
+                 ( Unicode(1), sqlite.SLString(1), ),
+                 ( Unicode(3), sqlite.SLString(3), ),
+                 ( UnicodeText(), sqlite.SLText(), ),
+                 ( CLOB, sqlite.SLText(), ),
+                 ( sqlite.SLChar(1), ),
+                 ( CHAR(3), sqlite.SLChar(3), ),
+                 ( NCHAR(2), sqlite.SLChar(2), ),
+                 ( SmallInteger(), sqlite.SLSmallInteger(), ),
+                 ( sqlite.SLSmallInteger(), ),
+                 ( Binary(3), sqlite.SLBinary(), ),
+                 ( Binary(), sqlite.SLBinary() ),
+                 ( sqlite.SLBinary(3), sqlite.SLBinary(), ),
+                 ( NUMERIC, sqlite.SLNumeric(), ),
+                 ( NUMERIC(10,2), sqlite.SLNumeric(10,2), ),
+                 ( Numeric, sqlite.SLNumeric(), ),
+                 ( Numeric(10, 2), sqlite.SLNumeric(10, 2), ),
+                 ( DECIMAL, sqlite.SLNumeric(), ),
+                 ( DECIMAL(10, 2), sqlite.SLNumeric(10, 2), ),
+                 ( Float, sqlite.SLNumeric(), ),
+                 ( sqlite.SLNumeric(), ),
+                 ( INT, sqlite.SLInteger(), ),
+                 ( Integer, sqlite.SLInteger(), ),
+                 ( sqlite.SLInteger(), ),
+                 ( TIMESTAMP, sqlite.SLDateTime(), ),
+                 ( DATETIME, sqlite.SLDateTime(), ),
+                 ( DateTime, sqlite.SLDateTime(), ),
+                 ( sqlite.SLDateTime(), ),
+                 ( DATE, sqlite.SLDate(), ),
+                 ( Date, sqlite.SLDate(), ),
+                 ( sqlite.SLDate(), ),
+                 ( TIME, sqlite.SLTime(), ),
+                 ( Time, sqlite.SLTime(), ),
+                 ( sqlite.SLTime(), ),
+                 ( BOOLEAN, sqlite.SLBoolean(), ),
+                 ( Boolean, sqlite.SLBoolean(), ),
+                 ( sqlite.SLBoolean(), ),
+                 ]
+        columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
+
+        db = testing.db
+        m = MetaData(db)
+        t_table = Table('types', m, *columns)
+        try:
+            m.create_all()
+
+            m2 = MetaData(db)
+            rt = Table('types', m2, autoload=True)
+            try:
+                db.execute('CREATE VIEW types_v AS SELECT * from types')
+                rv = Table('types_v', m2, autoload=True)
+
+                expected = [len(c) > 1 and c[1] or c[0] for c in specs]
+                for table in rt, rv:
+                    for i, reflected in enumerate(table.c):
+                        print reflected.type, type(expected[i])
+                        assert isinstance(reflected.type, type(expected[i]))
+            finally:
+                db.execute('DROP VIEW types_v')
+        finally:
+            m.drop_all()
 
 class DialectTest(AssertMixin):
     __only_on__ = 'sqlite'
