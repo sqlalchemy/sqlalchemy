@@ -104,26 +104,49 @@ class DefaultTest(PersistTest):
         default_generator['x'] = 50
         t.delete().execute()
 
-    def testargsignature(self):
+    def test_bad_argsignature(self):
         ex_msg = \
           "ColumnDefault Python function takes zero or one positional arguments"
 
         def fn1(x, y): pass
         def fn2(x, y, z=3): pass
-        for fn in fn1, fn2:
+        class fn3(object):
+            def __init__(self, x, y):
+                pass
+        class FN4(object):
+            def __call__(self, x, y):
+                pass
+        fn4 = FN4()
+
+        for fn in fn1, fn2, fn3, fn4:
             try:
                 c = ColumnDefault(fn)
-                assert False
+                assert False, str(fn)
             except exceptions.ArgumentError, e:
                 assert str(e) == ex_msg
 
-        def fn3(): pass
-        def fn4(): pass
-        def fn5(x=1): pass
-        def fn6(x=1, y=2, z=3): pass
-        fn7 = list
+    def test_argsignature(self):
+        def fn1(): pass
+        def fn2(): pass
+        def fn3(x=1): pass
+        def fn4(x=1, y=2, z=3): pass
+        fn5 = list
+        class fn6(object):
+            def __init__(self, x):
+                pass
+        class fn6(object):
+            def __init__(self, x, y=3):
+                pass
+        class FN7(object):
+            def __call__(self, x):
+                pass
+        fn7 = FN7()
+        class FN8(object):
+            def __call__(self, x, y=3):
+                pass
+        fn8 = FN8()
 
-        for fn in fn3, fn4, fn5, fn6, fn7:
+        for fn in fn1, fn2, fn3, fn4, fn5, fn6, fn7, fn8:
             c = ColumnDefault(fn)
 
     def teststandalone(self):

@@ -730,22 +730,40 @@ class ColumnDefault(DefaultGenerator):
     def __init__(self, arg, **kwargs):
         super(ColumnDefault, self).__init__(**kwargs)
         if callable(arg):
-            if not inspect.isfunction(arg):
-                self.arg = lambda ctx: arg()
-            else:
-                argspec = inspect.getargspec(arg)
-                if len(argspec[0]) == 0:
-                    self.arg = lambda ctx: arg()
-                else:
-                    defaulted = argspec[3] is not None and len(argspec[3]) or 0
-                    if len(argspec[0]) - defaulted > 1:
-                        raise exceptions.ArgumentError(
-                            "ColumnDefault Python function takes zero or one "
-                            "positional arguments")
-                    else:
-                        self.arg = arg
+            arg = self._maybe_wrap_callable(arg)
+        self.arg = arg
+
+    def _maybe_wrap_callable(self, fn):
+        """Backward compat: Wrap callables that don't accept a context."""
+
+        if inspect.isfunction(fn):
+            inspectable = fn
+        elif inspect.isclass(fn):
+            inspectable = fn.__init__
+        elif hasattr(fn, '__call__'):
+            inspectable = fn.__call__
         else:
-            self.arg = arg
+            # probably not inspectable, try anyways.
+            inspectable = fn
+        try:
+            argspec = inspect.getargspec(inspectable)
+        except TypeError:
+            return lambda ctx: fn()
+
+        positionals = len(argspec[0])
+        if inspect.ismethod(inspectable):
+            positionals -= 1
+
+        if positionals == 0:
+            return lambda ctx: fn()
+
+        defaulted = argspec[3] is not None and len(argspec[3]) or 0
+        if positionals - defaulted > 1:
+            raise exceptions.ArgumentError(
+                "ColumnDefault Python function takes zero or one "
+                "positional arguments")
+        return fn
+
 
     def _visit_name(self):
         if self.for_update:
@@ -783,7 +801,7 @@ class Sequence(DefaultGenerator):
 
     def create(self, bind=None, checkfirst=True):
         """Creates this sequence in the database."""
-        
+
         if bind is None:
             bind = _bind_or_error(self)
         bind.create(self, checkfirst=checkfirst)
