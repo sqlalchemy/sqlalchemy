@@ -20,7 +20,9 @@ def profile_memory(func):
             gc.collect()
             samples.append(len(gc.get_objects()))
         print "sample gc sizes:", samples
+
         assert len(_sessions) == 0
+
         # TODO: this test only finds pure "growing" tests
         for i, x in enumerate(samples):
             if i < len(samples) - 1 and samples[i+1] <= x:
@@ -33,9 +35,14 @@ def profile_memory(func):
 def assert_no_mappers():
     clear_mappers()
     gc.collect()
-    assert len(_mapper_registry) == 0, len(_mapper_registry)
-    
-class MemUsageTest(AssertMixin):
+    assert len(_mapper_registry) == 0
+
+class EnsureZeroed(AssertMixin):
+    def setUp(self):
+        _sessions.clear()
+        _mapper_registry.clear()
+        
+class MemUsageTest(EnsureZeroed):
 
     def test_session(self):
         metadata = MetaData(testing.db)
@@ -139,6 +146,7 @@ class MemUsageTest(AssertMixin):
             for a in alist:
                 sess.delete(a)
             sess.flush()
+            sess.close()
             clear_mappers()
 
         metadata.create_all()
