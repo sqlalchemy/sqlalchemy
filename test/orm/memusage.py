@@ -2,7 +2,8 @@ import testenv; testenv.configure_for_tests()
 import gc
 from sqlalchemy import MetaData, Integer, String, ForeignKey
 from sqlalchemy.orm import mapper, relation, clear_mappers, create_session
-from sqlalchemy.orm.mapper import Mapper
+from sqlalchemy.orm.mapper import Mapper, _mapper_registry
+from sqlalchemy.orm.session import _sessions 
 from testlib import *
 from testlib.fixtures import Base
 
@@ -19,6 +20,7 @@ def profile_memory(func):
             gc.collect()
             samples.append(len(gc.get_objects()))
         print "sample gc sizes:", samples
+        assert len(_sessions) == 0
         # TODO: this test only finds pure "growing" tests
         for i, x in enumerate(samples):
             if i < len(samples) - 1 and samples[i+1] <= x:
@@ -28,6 +30,11 @@ def profile_memory(func):
         assert True
     return profile
 
+def assert_no_mappers():
+    clear_mappers()
+    gc.collect()
+    assert len(_mapper_registry) == 0, len(_mapper_registry)
+    
 class MemUsageTest(AssertMixin):
 
     def test_session(self):
@@ -82,7 +89,8 @@ class MemUsageTest(AssertMixin):
         go()
 
         metadata.drop_all()
-        clear_mappers()
+        del m1, m2, m3
+        assert_no_mappers()
 
     def test_mapper_reset(self):
         metadata = MetaData(testing.db)
@@ -138,6 +146,7 @@ class MemUsageTest(AssertMixin):
             go()
         finally:
             metadata.drop_all()
+        assert_no_mappers()
 
     def test_with_inheritance(self):
         metadata = MetaData(testing.db)
@@ -192,6 +201,7 @@ class MemUsageTest(AssertMixin):
             go()
         finally:
             metadata.drop_all()
+        assert_no_mappers()
 
     def test_with_manytomany(self):
         metadata = MetaData(testing.db)
@@ -255,6 +265,7 @@ class MemUsageTest(AssertMixin):
             go()
         finally:
             metadata.drop_all()
+        assert_no_mappers()
 
 
 if __name__ == '__main__':
