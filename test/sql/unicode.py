@@ -133,7 +133,7 @@ class EscapesDefaultsTest(testing.PersistTest):
             # now execute, run the sequence.  it should run in u"Special_col.nextid" or similar as 
             # a unicode object; cx_oracle asserts that this is None or a String (postgres lets it pass thru).
             # ensure that base.DefaultRunner is encoding.
-            t1.insert().execute()
+            t1.insert().execute(data='foo')
         finally:
             t1.drop()
 
