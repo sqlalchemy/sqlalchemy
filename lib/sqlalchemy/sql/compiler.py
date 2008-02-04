@@ -269,16 +269,20 @@ class DefaultCompiler(engine.Compiled):
                 return None
         elif column.table is None or not column.table.named_with_column:
             if getattr(column, "is_literal", False):
-                return name
+                return self.escape_literal_column(name)
             else:
                 return self.preparer.quote(column, name)
         else:
             if getattr(column, "is_literal", False):
-                return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + name
+                return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.escape_literal_column(name)
             else:
                 return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.preparer.quote(column, name)
 
+    def escape_literal_column(self, text):
+        """provide escaping for the literal_column() construct."""
 
+        return re.sub('%', '%%', text)
+        
     def visit_fromclause(self, fromclause, **kwargs):
         return fromclause.name
 

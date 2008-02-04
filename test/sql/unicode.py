@@ -116,7 +116,9 @@ class EscapesDefaultsTest(testing.PersistTest):
     def test_default_exec(self):
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
-            Column(u'special_col', Integer, Sequence('special_col'), primary_key=True))
+            Column(u'special_col', Integer, Sequence('special_col'), primary_key=True),
+            Column('data', String(50)) # to appease SQLite without DEFAULT VALUES
+            )
         t1.create()
 
         try:
