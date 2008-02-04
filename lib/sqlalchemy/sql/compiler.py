@@ -281,7 +281,8 @@ class DefaultCompiler(engine.Compiled):
     def escape_literal_column(self, text):
         """provide escaping for the literal_column() construct."""
 
-        return re.sub('%', '%%', text)
+        # TODO: some dialects might need different behavior here
+        return text.replace('%', '%%')
         
     def visit_fromclause(self, fromclause, **kwargs):
         return fromclause.name
