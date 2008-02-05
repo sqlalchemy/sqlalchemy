@@ -208,7 +208,31 @@ class ExpireTest(FixtureTest):
         sess.expire(u, ['name', 'addresses'])
         assert 'name' not in u.__dict__
         assert 'addresses' not in u.__dict__
-
+    
+    def test_expire_synonym(self):
+        mapper(User, users, properties={
+            'uname':synonym('name')
+        })
+        
+        sess = create_session()
+        u = sess.query(User).get(7)
+        assert 'name' in u.__dict__
+        assert u.uname == u.name
+        
+        sess.expire(u)
+        assert 'name' not in u.__dict__
+        
+        users.update(users.c.id==7).execute(name='jack2')
+        assert u.name == 'jack2'
+        assert u.uname == 'jack2'
+        assert 'name' in u.__dict__
+        
+        # this wont work unless we add API hooks through the attr. system
+        # to provide "expire" behavior on a synonym
+        #sess.expire(u, ['uname'])
+        #users.update(users.c.id==7).execute(name='jack3')
+        #assert u.uname == 'jack3'
+        
     def test_partial_expire(self):
         mapper(Order, orders)
 

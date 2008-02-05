@@ -188,7 +188,7 @@ CHANGES
         - autoflush for commit() wasn't flushing for simple
           subtransactions.
 
-    - Miscellaneous tickets: [ticket:940]
+    - Miscellaneous tickets: [ticket:940] [ticket:964]
 
 - general
     - Fixed a variety of hidden and some not-so-hidden
