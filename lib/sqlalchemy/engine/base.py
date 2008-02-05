@@ -917,6 +917,13 @@ class Connection(Connectable):
         else:
             self._cursor_execute(context.cursor, context.statement, context.parameters[0], context=context)
 
+    def _execute_ddl(self, ddl, params, multiparams):
+        if params:
+            schema_item, params = params[0], params[1:]
+        else:
+            schema_item = None
+        return ddl(None, schema_item, self, *params, **multiparams)
+
     def _handle_dbapi_exception(self, e, statement, parameters, cursor):
         if getattr(self, '_reentrant_error', False):
             raise exceptions.DBAPIError.instance(None, None, e)
@@ -971,6 +978,7 @@ class Connection(Connectable):
         expression.ClauseElement : execute_clauseelement,
         Compiled : _execute_compiled,
         schema.SchemaItem:_execute_default,
+        schema.DDL: _execute_ddl,
         str.__mro__[-2] : _execute_text
     }
 

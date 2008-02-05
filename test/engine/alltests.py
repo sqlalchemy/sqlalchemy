@@ -15,6 +15,7 @@ def suite():
 
         # schema/tables
         'engine.reflection',
+        'engine.ddlevents',
 
         )
     alltests = unittest.TestSuite()

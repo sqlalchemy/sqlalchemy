@@ -5,14 +5,22 @@ CHANGES
 0.4.3
 ------
 - sql
+    - Added "schema.DDL", an executable free-form DDL statement.
+      DDLs can be executed in isolation or attached to Table or
+      MetaData instances and executed automatically when those
+      objects are created and/or dropped.
+
+    - Added a callable-based DDL events interface, adds hooks
+      before and after Tables and MetaData create and drop.
+
     - Added "ilike()" operator to column operations.  Compiles
       to ILIKE on postgres, lower(x) LIKE lower(y) on all
       others. [ticket:727]
 
-    - added "now()" as a generic function; on SQLite and 
+    - added "now()" as a generic function; on SQLite and
       Oracle compiles as "CURRENT_TIMESTAMP"; "now()"
       on all others [ticket:943]
-      
+
     - the startswith(), endswith(), and contains() operators
       now concatenate the wildcard operator with the given
       operand in SQL, i.e. "'%' || <bindparam>" in all cases,
@@ -22,11 +30,11 @@ CHANGES
       operands properly [ticket:962]
 
     - added "autocommit=True" kwarg to select() and text(),
-      as well as generative autocommit() method on select(); 
-      for statements which modify the database through some 
+      as well as generative autocommit() method on select();
+      for statements which modify the database through some
       user-defined means other than the usual INSERT/UPDATE/
       DELETE etc., this flag will enable "autocommit" behavior
-      during execution if no transaction is in progress 
+      during execution if no transaction is in progress
       [ticket:915]
 
     - The '.c.' attribute on a selectable now gets an entry

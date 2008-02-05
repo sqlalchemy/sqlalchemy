@@ -775,6 +775,9 @@ class SchemaGenerator(DDLBase):
                 self.add_foreignkey(alterable)
 
     def visit_table(self, table):
+        for listener in table.ddl_listeners['before-create']:
+            listener('before-create', table, self.connection)
+
         for column in table.columns:
             if column.default is not None:
                 self.traverse_single(column.default)
@@ -803,9 +806,13 @@ class SchemaGenerator(DDLBase):
 
         self.append("\n)%s\n\n" % self.post_create_table(table))
         self.execute()
+
         if hasattr(table, 'indexes'):
             for index in table.indexes:
                 self.traverse_single(index)
+
+        for listener in table.ddl_listeners['after-create']:
+            listener('after-create', table, self.connection)
 
     def post_create_table(self, table):
         return ''
@@ -892,6 +899,7 @@ class SchemaGenerator(DDLBase):
                        string.join([preparer.quote(c, c.name) for c in index.columns], ', ')))
         self.execute()
 
+
 class SchemaDropper(DDLBase):
     def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
         super(SchemaDropper, self).__init__(connection, **kwargs)
@@ -919,12 +927,19 @@ class SchemaDropper(DDLBase):
         self.execute()
 
     def visit_table(self, table):
+        for listener in table.ddl_listeners['before-drop']:
+            listener('before-drop', table, self.connection)
+
         for column in table.columns:
             if column.default is not None:
                 self.traverse_single(column.default)
 
         self.append("\nDROP TABLE " + self.preparer.format_table(table))
         self.execute()
+
+        for listener in table.ddl_listeners['after-drop']:
+            listener('after-drop', table, self.connection)
+
 
 class IdentifierPreparer(object):
     """Handle quoting and case-folding of identifiers based on options."""
