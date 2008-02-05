@@ -155,6 +155,67 @@ class DialectTest(AssertMixin):
             testing.db.execute("drop table django_content_type")
 
 
+    def test_attached_as_schema(self):
+        cx = testing.db.connect()
+        try:
+            cx.execute('ATTACH DATABASE ":memory:" AS  alt_schema')
+            dialect = cx.dialect
+            assert dialect.table_names(cx, 'alt_schema') == []
+
+            meta = MetaData(cx)
+            Table('created', meta, Column('id', Integer),
+                  schema='alt_schema')
+            alt_master = Table('sqlite_master', meta, autoload=True,
+                               schema='alt_schema')
+            meta.create_all(cx)
+
+            self.assertEquals(dialect.table_names(cx, 'alt_schema'),
+                              ['created'])
+            assert len(alt_master.c) > 0
+
+            meta.clear()
+            reflected = Table('created', meta, autoload=True,
+                              schema='alt_schema')
+            assert len(reflected.c) == 1
+
+            cx.execute(reflected.insert(), dict(id=1))
+            r = cx.execute(reflected.select()).fetchall()
+            assert list(r) == [(1,)]
+
+            cx.execute(reflected.update(), dict(id=2))
+            r = cx.execute(reflected.select()).fetchall()
+            assert list(r) == [(2,)]
+
+            cx.execute(reflected.delete(reflected.c.id==2))
+            r = cx.execute(reflected.select()).fetchall()
+            assert list(r) == []
+
+            # note that sqlite_master is cleared, above
+            meta.drop_all()
+
+            assert dialect.table_names(cx, 'alt_schema') == []
+        finally:
+            cx.execute('DETACH DATABASE alt_schema')
+
+    @testing.exclude('sqlite', '<', (2, 6))
+    def test_temp_table_reflection(self):
+        cx = testing.db.connect()
+        try:
+            cx.execute('CREATE TEMPORARY TABLE tempy (id INT)')
+
+            assert 'tempy' in cx.dialect.table_names(cx, None)
+
+            meta = MetaData(cx)
+            tempy = Table('tempy', meta, autoload=True)
+            assert len(tempy.c) == 1
+            meta.drop_all()
+        except:
+            try:
+                cx.execute('DROP TABLE tempy')
+            except exceptions.DBAPIError:
+                pass
+            raise
+
 class InsertTest(AssertMixin):
     """Tests inserts and autoincrement."""
 

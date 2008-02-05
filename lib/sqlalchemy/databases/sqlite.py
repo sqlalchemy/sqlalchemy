@@ -249,21 +249,53 @@ class SQLiteDialect(default.DefaultDialect):
         return isinstance(e, self.dbapi.ProgrammingError) and "Cannot operate on a closed database." in str(e)
 
     def table_names(self, connection, schema):
-        s = "SELECT name FROM sqlite_master WHERE type='table'"
-        return [row[0] for row in connection.execute(s)]
+        if schema is not None:
+            qschema = self.identifier_preparer.quote_identifier(schema)
+            master = '%s.sqlite_master' % qschema
+            s = ("SELECT name FROM %s "
+                 "WHERE type='table' ORDER BY name") % (master,)
+            rs = connection.execute(s)
+        else:
+            try:
+                s = ("SELECT name FROM "
+                     " (SELECT * FROM sqlite_master UNION ALL "
+                     "  SELECT * FROM sqlite_temp_master) "
+                     "WHERE type='table' ORDER BY name")
+                rs = connection.execute(s)
+            except exceptions.DBAPIError:
+                raise
+                s = ("SELECT name FROM sqlite_master "
+                     "WHERE type='table' ORDER BY name")
+                rs = connection.execute(s)
+
+        return [row[0] for row in rs]
 
     def has_table(self, connection, table_name, schema=None):
-        cursor = connection.execute("PRAGMA table_info(%s)" %
-           self.identifier_preparer.quote_identifier(table_name), {})
+        quote = self.identifier_preparer.quote_identifier
+        if schema is not None:
+            pragma = "PRAGMA %s." % quote(schema)
+        else:
+            pragma = "PRAGMA "
+        qtable = quote(table_name)
+        cursor = connection.execute("%stable_info(%s)" % (pragma, qtable))
         row = cursor.fetchone()
 
-        # consume remaining rows, to work around: http://www.sqlite.org/cvstrac/tktview?tn=1884
-        while cursor.fetchone() is not None:pass
+        # consume remaining rows, to work around
+        # http://www.sqlite.org/cvstrac/tktview?tn=1884
+        while cursor.fetchone() is not None:
+            pass
 
         return (row is not None)
 
     def reflecttable(self, connection, table, include_columns):
-        c = connection.execute("PRAGMA table_info(%s)" % self.identifier_preparer.format_table(table), {})
+        preparer = self.identifier_preparer
+        if table.schema is None:
+            pragma = "PRAGMA "
+        else:
+            pragma = "PRAGMA %s." % preparer.quote_identifier(table.schema)
+        qtable = preparer.format_table(table, False)
+
+        c = connection.execute("%stable_info(%s)" % (pragma, qtable))
         found_table = False
         while True:
             row = c.fetchone()
@@ -302,7 +334,7 @@ class SQLiteDialect(default.DefaultDialect):
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
 
-        c = connection.execute("PRAGMA foreign_key_list(%s)" % self.identifier_preparer.format_table(table), {})
+        c = connection.execute("%sforeign_key_list(%s)" % (pragma, qtable))
         fks = {}
         while True:
             row = c.fetchone()
@@ -318,7 +350,6 @@ class SQLiteDialect(default.DefaultDialect):
                 fk = ([],[])
                 fks[constraint_name] = fk
 
-            #print "row! " + repr([key for key in row.keys()]), repr(row)
             # look up the table based on the given table's engine, not 'self',
             # since it could be a ProxyEngine
             remotetable = schema.Table(tablename, table.metadata, autoload=True, autoload_with=connection)
@@ -331,7 +362,7 @@ class SQLiteDialect(default.DefaultDialect):
         for name, value in fks.iteritems():
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1]))
         # check for UNIQUE indexes
-        c = connection.execute("PRAGMA index_list(%s)" % self.identifier_preparer.format_table(table), {})
+        c = connection.execute("%sindex_list(%s)" % (pragma, qtable))
         unique_indexes = []
         while True:
             row = c.fetchone()
@@ -341,7 +372,7 @@ class SQLiteDialect(default.DefaultDialect):
                 unique_indexes.append(row[1])
         # loop thru unique indexes for one that includes the primary key
         for idx in unique_indexes:
-            c = connection.execute("PRAGMA index_info(" + idx + ")", {})
+            c = connection.execute("%sindex_info(%s)" % (pragma, idx))
             cols = []
             while True:
                 row = c.fetchone()
@@ -443,7 +474,7 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
         ])
 
     def __init__(self, dialect):
-        super(SQLiteIdentifierPreparer, self).__init__(dialect, omit_schema=True)
+        super(SQLiteIdentifierPreparer, self).__init__(dialect)
 
 dialect = SQLiteDialect
 dialect.poolclass = pool.SingletonThreadPool

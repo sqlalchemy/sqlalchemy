@@ -198,6 +198,14 @@ CHANGES
     - Warnings are now issued as type exceptions.SAWarning.
 
 - dialects
+    - Better support for schemas in SQLite (linked in by
+      ATTACH DATABASE ... AS name).  In some cases in the
+      past, schema names were ommitted from generated SQL
+      for SQLite.  This is no longer the case.
+
+    - table_names on SQLite now picks up temporary tables
+      as well.
+
     - Auto-detect an unspecified MySQL ANSI_QUOTES mode during
       reflection operations, support for changing the mode
       midstream.  Manual mode setting is still required if no
