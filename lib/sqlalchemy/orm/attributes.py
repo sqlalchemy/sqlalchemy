@@ -72,7 +72,7 @@ class ProxiedAttribute(InstrumentedAttribute):
     """
     
     class ProxyImpl(object):
-        accepts_scalar_loader = True
+        accepts_scalar_loader = False
         
         def __init__(self, key):
             self.key = key
