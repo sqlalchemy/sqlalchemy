@@ -41,7 +41,7 @@ When you write your application, place the call to `sessionmaker()` somewhere gl
 
 In our previous example regarding `sessionmaker()`, nowhere did we specify how our session would connect to our database.  When the session is configured in this manner, it will look for a database engine to connect with via the `Table` objects that it works with - the chapter called [metadata_tables_binding](rel:metadata_tables_binding) describes how to associate `Table` objects directly with a source of database connections.
 
-However, it is often more straightforward to explicitly tell the session what database engine (or engines) you'd like it to communicate with.  This is particularly handy with multiple-database scenarios where the session can be used as the central point of configuration.  To acheive this, the constructor keyword `bind` is used for a basic single-database configuration:
+However, it is often more straightforward to explicitly tell the session what database engine (or engines) you'd like it to communicate with.  This is particularly handy with multiple-database scenarios where the session can be used as the central point of configuration.  To achieve this, the constructor keyword `bind` is used for a basic single-database configuration:
 
     {python}
     # create engine
@@ -171,7 +171,7 @@ Knowing these states is important, since the `Session` tries to be strict about 
 
 * Is the session threadsafe ?
 
-    Nope.  It has no thread synchronization of any kind built in, and particularly when you do a flush operation, it definitely is not open to concurrent threads accessing it, because it holds onto a single database connection at that point.  If you use a session which is non-transactional for read operations only, it's still not thread-"safe", but you also wont get any catastrophic failures either, since it opens and closes connections on an as-needed basis; its just that different threads might load the same objects independently of each other, but only one will wind up in the identity map (however, the other one might still live in a collection somewhere).
+    Nope.  It has no thread synchronization of any kind built in, and particularly when you do a flush operation, it definitely is not open to concurrent threads accessing it, because it holds onto a single database connection at that point.  If you use a session which is non-transactional for read operations only, it's still not thread-"safe", but you also wont get any catastrophic failures either, since it opens and closes connections on an as-needed basis; it's just that different threads might load the same objects independently of each other, but only one will wind up in the identity map (however, the other one might still live in a collection somewhere).
 
     But the bigger point here is, you should not *want* to use the session with multiple concurrent threads.  That would be like having everyone at a restaurant all eat from the same plate.  The session is a local "workspace" that you use for a specific set of tasks; you don't want to, or need to, share that session with other threads who are doing some other task.  If, on the other hand, there are other threads  participating in the same task you are, such as in a desktop graphical application, then you would be sharing the session with those threads, but you also will have implemented a proper locking scheme (or your graphical framework does) so that those threads do not collide.
   
@@ -341,7 +341,7 @@ Theres also a way to have `flush()` called automatically before each query; this
 
 Note that when using a `Session` that has been placed into a transaction, the `commit()` method will also `flush()` the `Session` unconditionally before committing the transaction.  
 
-Note that flush **does not change** the state of any collections or entity relationships in memory; for example, if you set a foreign key attribute `b_id` on object `A` with the the identifier `B.id`, the change will be flushed to the database, but `A` will not have `B` added to its collection.  If you want to manipulate foreign key attributes directly, `refresh()` or `expire()` the objects whose state needs to be refreshed subsequent to flushing.
+Note that flush **does not change** the state of any collections or entity relationships in memory; for example, if you set a foreign key attribute `b_id` on object `A` with the identifier `B.id`, the change will be flushed to the database, but `A` will not have `B` added to its collection.  If you want to manipulate foreign key attributes directly, `refresh()` or `expire()` the objects whose state needs to be refreshed subsequent to flushing.
 
 ### Autoflush
 
@@ -377,7 +377,7 @@ Expunge removes an object from the Session, sending persistent instances to the 
     {python}
     session.expunge(obj1)
     
-Use `expunge` when youd like to remove an object altogether from memory, such as before calling `del` on it, which will prevent any "ghost" operations occuring when the session is flushed.
+Use `expunge` when you'd like to remove an object altogether from memory, such as before calling `del` on it, which will prevent any "ghost" operations occurring when the session is flushed.
 
 This `clear()` method is equivalent to `expunge()`-ing everything from the Session:
     
@@ -413,7 +413,7 @@ To assist with the Session's "sticky" behavior of instances which are present, i
     session.refresh(obj1, ['hello', 'world'])
     session.refresh(obj2, ['hello', 'world'])
     
-    # expire the attriibutes 'hello', 'world' objects obj1, obj2, attributes will be reloaded
+    # expire the attributes 'hello', 'world' objects obj1, obj2, attributes will be reloaded
     # on the next access:
     session.expire(obj1, ['hello', 'world'])
     session.expire(obj2, ['hello', 'world'])
@@ -442,7 +442,7 @@ The default value for `cascade` on `relation()`s is `save-update, merge`.
 
 ## Managing Transactions
 
-The Session can manage transactions automatically, including across multiple engines.  When the Session is in a transaction, as it receives requests to execute SQL statements, it adds each indivdual Connection/Engine encountered to its transactional state.  At commit time, all unflushed data is flushed, and each individual transaction is committed.  If the underlying databases support two-phase semantics, this may be used by the Session as well if two-phase transactions are enabled.
+The Session can manage transactions automatically, including across multiple engines.  When the Session is in a transaction, as it receives requests to execute SQL statements, it adds each individual Connection/Engine encountered to its transactional state.  At commit time, all unflushed data is flushed, and each individual transaction is committed.  If the underlying databases support two-phase semantics, this may be used by the Session as well if two-phase transactions are enabled.
 
 The easiest way to use a Session with transactions is just to declare it as transactional.  The session will remain in a transaction at all times:
 
@@ -555,11 +555,11 @@ This works both for INSERT and UPDATE statements.  After the flush/commit operat
 
 ## Using SQL Expressions with Sessions {@name=sql}
 
-SQL constructs and string statements can be executed via the `Session`.  You'd want to do this normally when your `Session` is transactional and youd like your free-standing SQL statements to participate in the same transaction.
+SQL constructs and string statements can be executed via the `Session`.  You'd want to do this normally when your `Session` is transactional and you'd like your free-standing SQL statements to participate in the same transaction.
 
 The two ways to do this are to use the connection/execution services of the Session, or to have your Session participate in a regular SQL transaction.
 
-First, a Session thats associated with an Engine or Connection can execute statements immediately (whether or not its transactional):
+First, a Session thats associated with an Engine or Connection can execute statements immediately (whether or not it's transactional):
 
     {python}
     Session = sessionmaker(bind=engine, transactional=True)
@@ -662,7 +662,7 @@ Since the `Session()` constructor now returns the same `Session` object every ti
     # commit transaction (if using a transactional session)
     Session.commit()
 
-To "dispose" of the `Session`, theres two general approaches.  One is to close out the current session, but to leave it assigned to the current context.  This allows the same object to be re-used on another operation.  This may be called from a current, instantiated `Session`:
+To "dispose" of the `Session`, there's two general approaches.  One is to close out the current session, but to leave it assigned to the current context.  This allows the same object to be re-used on another operation.  This may be called from a current, instantiated `Session`:
 
     {python}
     sess.close()
@@ -698,7 +698,7 @@ A (really, really) common question is when does the contextual session get creat
                                              # load some objects, save some changes
                                              objects = sess.query(MyClass).all()
                                              
-                                             # some other code calls Session, its the 
+                                             # some other code calls Session, it's the 
                                              # same contextual session as "sess"
                                              sess2 = Session()
                                              sess2.save(foo)
@@ -709,13 +709,13 @@ A (really, really) common question is when does the contextual session get creat
                         Session.remove() <-
     web response   <-  
 
-Above, we illustrate a *typical* organization of duties, where the "Web Framework" layer has some integration built-in to manage the span of ORM sessions.  Upon the initial handling of an incoming web request, the framework passes control to a controller.  The controller then calls `Session()` when it wishes to work with the ORM; this method establishes the contextual Session which will remain until it's removed.  Disparate parts of the controller code may all call `Session()` and will get the same session object.  Then, when the controller has completed and the reponse is to be sent to the web server, the framework **closes out** the current contextual session, above using the `remove()` method which removes the session from the context altogether.
+Above, we illustrate a *typical* organization of duties, where the "Web Framework" layer has some integration built-in to manage the span of ORM sessions.  Upon the initial handling of an incoming web request, the framework passes control to a controller.  The controller then calls `Session()` when it wishes to work with the ORM; this method establishes the contextual Session which will remain until it's removed.  Disparate parts of the controller code may all call `Session()` and will get the same session object.  Then, when the controller has completed and the response is to be sent to the web server, the framework **closes out** the current contextual session, above using the `remove()` method which removes the session from the context altogether.
 
 As an alternative, the "finalization" step can also call `Session.close()`, which will leave the same session object in place.  Which one is better ?  For a web framework which runs from a fixed pool of threads, it doesn't matter much.  For a framework which runs a **variable** number of threads, or which **creates and disposes** of a thread for each request, `remove()` is better, since it leaves no resources associated with the thread which might not exist.
 
 * Why close out the session at all ?  Why not just leave it going so the next request doesn't have to do as many queries ?
 
-    There are some cases where you may actually want to do this.  However, this is a special case where you are dealing with data which **does not change** very often, or you don't care about the "freshness" of the data.  In reality, a single thread of a web server may, on a slow day, sit around for many minutes or even hours without being accessed.  When it's next accessed, if data from the previous request still exists in the session, that data may be very stale indeed.  So its generally better to have an empty session at the start of a web request.
+    There are some cases where you may actually want to do this.  However, this is a special case where you are dealing with data which **does not change** very often, or you don't care about the "freshness" of the data.  In reality, a single thread of a web server may, on a slow day, sit around for many minutes or even hours without being accessed.  When it's next accessed, if data from the previous request still exists in the session, that data may be very stale indeed.  So it's generally better to have an empty session at the start of a web request.
 
 ### Associating Classes and Mappers with a Contextual Session {@name=associating}
 
@@ -757,7 +757,7 @@ The auto-save functionality can cause problems, namely that any `flush()` which 
     }, save_on_init=False)
     mapper(Address, addresses_table, save_on_init=False)
 
-    # objects now again require expicit "save"
+    # objects now again require explicit "save"
     >>> newuser = User(name='ed')
     >>> assert newuser in Session.new
     False

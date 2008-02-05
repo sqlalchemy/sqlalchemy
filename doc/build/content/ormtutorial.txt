@@ -27,7 +27,7 @@ The `echo` flag is a shortcut to setting up SQLAlchemy logging, which is accompl
     
 ## Define and Create a Table {@name=tables}
 
-Next we want to tell SQLAlchemy about our tables.  We will start with just a single table called `users`, which will store records for the end-users using our application (lets assume its a website).  We define our tables all within a catalog called `MetaData`, using the `Table` construct, which resembles regular SQL CREATE TABLE syntax:
+Next we want to tell SQLAlchemy about our tables.  We will start with just a single table called `users`, which will store records for the end-users using our application (lets assume it's a website).  We define our tables all within a catalog called `MetaData`, using the `Table` construct, which resembles regular SQL CREATE TABLE syntax:
 
     {python}
     >>> from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey    
@@ -41,7 +41,7 @@ Next we want to tell SQLAlchemy about our tables.  We will start with just a sin
 
 All about how to define `Table` objects, as well as how to create them from an existing database automatically, is described in [metadata](rel:metadata).
 
-Next, to tell the `MetaData` we'd actually like to create our `users_table` for real inside the SQLite database, we use `create_all()`, passing it the `engine` instance which points to our database.  This will check for the presence of a table first before creating, so its safe to call multiple times:
+Next, to tell the `MetaData` we'd actually like to create our `users_table` for real inside the SQLite database, we use `create_all()`, passing it the `engine` instance which points to our database.  This will check for the presence of a table first before creating, so it's safe to call multiple times:
 
     {python}
     {sql}>>> metadata.create_all(engine) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
@@ -61,7 +61,7 @@ So now our database is created, our initial schema is present, and our SQLAlchem
  
 ## Define a Python Class to be Mapped {@name=mapping}
 
-So lets create a rudimental `User` object to be mapped in the database.  This object will for starters have three attributes, `name`, `fullname` and `password`.  It only need subclass Python's built-in `object` class (i.e. its a new style class).  We will give it a constructor so that it may conveniently be instantiated with its attributes at once, as well as a `__repr__` method so that we can get a nice string representation of it:
+So lets create a rudimentary `User` object to be mapped in the database.  This object will for starters have three attributes, `name`, `fullname` and `password`.  It only need subclass Python's built-in `object` class (i.e. it's a new style class).  We will give it a constructor so that it may conveniently be instantiated with its attributes at once, as well as a `__repr__` method so that we can get a nice string representation of it:
 
     {python}
     >>> class User(object):
@@ -93,7 +93,7 @@ The `mapper()` function creates a new `Mapper` object and stores it away for fut
     >>> str(ed_user.id)
     'None'
     
-What was that last `id` attribute?  That was placed there by the `Mapper`, to track the value of the `id` column in the `users_table`.  Since our `User` doesn't exist in the database, it's id is `None`.  When we save the object, it will get populated automatically with its new id.
+What was that last `id` attribute?  That was placed there by the `Mapper`, to track the value of the `id` column in the `users_table`.  Since our `User` doesn't exist in the database, its id is `None`.  When we save the object, it will get populated automatically with its new id.
 
 ## Creating a Session
 
@@ -118,7 +118,7 @@ This `Session` class will create new `Session` objects which are bound to our da
     {python}
     >>> session = Session()
     
-The above `Session` is associated with our SQLite `engine`, but it hasn't opened any connections yet.  When it's first used, it retrieves a connection from a pool of connections maintained by the `engine`, and holds onto it until we commit all changes and/or close the session object.  Because we configured `transactional=True`, theres also a transaction in progress (one notable exception to this is MySQL, when you use its default table style of MyISAM).  There's options available to modify this behavior but we'll go with this straightforward version to start.    
+The above `Session` is associated with our SQLite `engine`, but it hasn't opened any connections yet.  When it's first used, it retrieves a connection from a pool of connections maintained by the `engine`, and holds onto it until we commit all changes and/or close the session object.  Because we configured `transactional=True`, there's also a transaction in progress (one notable exception to this is MySQL, when you use its default table style of MyISAM).  There's options available to modify this behavior but we'll go with this straightforward version to start.    
 
 ## Saving Objects
 
@@ -127,7 +127,7 @@ So saving our `User` is as easy as issuing `save()`:
     {python}
     >>> session.save(ed_user)
     
-But yo'll notice nothing has happened yet.  Well, lets pretend something did, and try to query for our user.  This is done using the `query()` method on `Session`.  We create a new query representing the set of all `User` objects first.  Then we narrow the results by "filtering" down to the user we want; that is, the user whose `name` attribute is `"ed"`.  Finally we call `first()` which tells `Query`, "we'd like the first result in this list".
+But you'll notice nothing has happened yet.  Well, lets pretend something did, and try to query for our user.  This is done using the `query()` method on `Session`.  We create a new query representing the set of all `User` objects first.  Then we narrow the results by "filtering" down to the user we want; that is, the user whose `name` attribute is `"ed"`.  Finally we call `first()` which tells `Query`, "we'd like the first result in this list".
 
     {python}
     {sql}>>> session.query(User).filter_by(name='ed').first() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
@@ -141,7 +141,7 @@ But yo'll notice nothing has happened yet.  Well, lets pretend something did, an
     ['ed']
     {stop}<User('ed','Ed Jones', 'edspassword')>
 
-And we get back our new user.  If you view the generated SQL, yo'll see that the `Session` issued an `INSERT` statement before querying.  The `Session` stores whatever you put into it in memory, and at certain points it issues a **flush**, which issues SQL to the database to store all pending new objects and changes to existing objects.  You can manually invoke the flush operation using `flush()`; however when the `Session` is configured to `autoflush`, its usually not needed.
+And we get back our new user.  If you view the generated SQL, you'll see that the `Session` issued an `INSERT` statement before querying.  The `Session` stores whatever you put into it in memory, and at certain points it issues a **flush**, which issues SQL to the database to store all pending new objects and changes to existing objects.  You can manually invoke the flush operation using `flush()`; however when the `Session` is configured to `autoflush`, it's usually not needed.
 
 OK, let's do some more operations.  We'll create and save three more users:
 
@@ -179,7 +179,7 @@ If we look at Ed's `id` attribute, which earlier was `None`, it now has a value:
 
 After each `INSERT` operation, the `Session` assigns all newly generated ids and column defaults to the mapped object instance.  For column defaults which are database-generated and are not part of the table's primary key, they'll be loaded when you first reference the attribute on the instance.
 
-One crucial thing to note about the `Session` is that each object instance is cached within the Session, based on its primary key identitifer.  The reason for this cache is not as much for performance as it is for maintaining an **identity map** of instances.  This map guarantees that whenever you work with a particular `User` object in a session, **you always get the same instance back**.  As below, reloading Ed gives us the same instance back:
+One crucial thing to note about the `Session` is that each object instance is cached within the Session, based on its primary key identifier.  The reason for this cache is not as much for performance as it is for maintaining an **identity map** of instances.  This map guarantees that whenever you work with a particular `User` object in a session, **you always get the same instance back**.  As below, reloading Ed gives us the same instance back:
 
     {python}
     {sql}>>> ed_user is session.query(User).filter_by(name='ed').one() # doctest: +NORMALIZE_WHITESPACE
@@ -409,7 +409,7 @@ There's also a way to combine scalar results with objects, using `add_column()`.
 
 ## Building a One-to-Many Relation {@name=onetomany}
 
-We've spent a lot of time dealing with just one class, and one table.  Let's now look at how SQLAlchemy deals with two tables, which have a relationship to each other.   Let's say that the users in our system also can store any number of email addresses associated with their username.  This implies a basic one to many association from the `users_table` to a new table which stores email addresess, which we will call `addresses`.  We will also create a relationship between this new table to the users table, using a `ForeignKey`:
+We've spent a lot of time dealing with just one class, and one table.  Let's now look at how SQLAlchemy deals with two tables, which have a relationship to each other.   Let's say that the users in our system also can store any number of email addresses associated with their username.  This implies a basic one to many association from the `users_table` to a new table which stores email addresses, which we will call `addresses`.  We will also create a relationship between this new table to the users table, using a `ForeignKey`:
 
     {python}
     >>> from sqlalchemy import ForeignKey
@@ -564,7 +564,7 @@ Then apply an **option** to the query, indicating that we'd like `addresses` to 
     >>> jack.addresses
     [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
     
-If you think that query is elaborate, it is !  But SQLAlchemy is just getting started.  Note that when using eager loading, *nothing* changes as far as the ultimate results returned.  The "loading strategy", as its called, is designed to be completely transparent in all cases, and is for optimization purposes only.  Any query criterion you use to load objects, including ordering, limiting, other joins, etc., should return identical results regardless of the combination of lazily- and eagerly- loaded relationships present.
+If you think that query is elaborate, it is !  But SQLAlchemy is just getting started.  Note that when using eager loading, *nothing* changes as far as the ultimate results returned.  The "loading strategy", as it's called, is designed to be completely transparent in all cases, and is for optimization purposes only.  Any query criterion you use to load objects, including ordering, limiting, other joins, etc., should return identical results regardless of the combination of lazily- and eagerly- loaded relationships present.
 
 An eagerload targeting across multiple relations can use dot separated names:
 
@@ -655,7 +655,7 @@ Another common scenario is the need to join on the same table more than once.  F
     ['jack@google.com', 'j25@yahoo.com']
     {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
-The key thing which occured above is that our SQL criterion were **aliased** as appropriate corresponding to the alias generated in the most recent `join()` call.
+The key thing which occurred above is that our SQL criterion were **aliased** as appropriate corresponding to the alias generated in the most recent `join()` call.
 
 The next section describes some "higher level" operators, including `any()` and `has()`, which make patterns like joining to multiple aliases unnecessary in most cases.
 
@@ -879,7 +879,7 @@ So far, so good.  How about Jack's `Address` objects ?
     ['jack@google.com', 'j25@yahoo.com']
     {stop}2
     
-Uh oh, they're still there !  Anaylzing the flush SQL, we can see that the `user_id` column of each addresss was set to NULL, but the rows weren't deleted.  SQLAlchemy doesn't assume that deletes cascade, you have to tell it so.
+Uh oh, they're still there !  Analyzing the flush SQL, we can see that the `user_id` column of each address was set to NULL, but the rows weren't deleted.  SQLAlchemy doesn't assume that deletes cascade, you have to tell it so.
 
 So let's rollback our work, and start fresh with new mappers that express the relationship the way we want:
 

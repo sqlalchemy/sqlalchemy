@@ -4,7 +4,7 @@
 Mapper Configuration {@name=advdatamapping}
 ======================
 
-This section references most major configurational patterns involving the [mapper()](rel:docstrings_sqlalchemy.orm_modfunc_mapper) and [relation()](rel:docstrings_sqlalchemy.orm_modfunc_relation) functions.  It assumes you've worked through the [datamapping](rel:datamapping) and know how to construct and use rudimental mappers and relations.
+This section references most major configurational patterns involving the [mapper()](rel:docstrings_sqlalchemy.orm_modfunc_mapper) and [relation()](rel:docstrings_sqlalchemy.orm_modfunc_relation) functions.  It assumes you've worked through the [datamapping](rel:datamapping) and know how to construct and use rudimentary mappers and relations.
 
 ### Mapper Configuration
 
@@ -56,7 +56,7 @@ To place multiple columns which are known to be "synonymous" based on foreign ke
 
 #### Deferred Column Loading {@name=deferred}
 
-This feature allows particular columns of a table to not be loaded by default, instead being loaded later on when first referenced.  It is essentailly "column-level lazy loading".   This feature is useful when one wants to avoid loading a large text or binary field into memory when its not needed.  Individual columns can be lazy loaded by themselves or placed into groups that lazy-load together.
+This feature allows particular columns of a table to not be loaded by default, instead being loaded later on when first referenced.  It is essentially "column-level lazy loading".   This feature is useful when one wants to avoid loading a large text or binary field into memory when it's not needed.  Individual columns can be lazy loaded by themselves or placed into groups that lazy-load together.
 
     {python}
     book_excerpts = Table('books', db, 
@@ -439,7 +439,7 @@ This form of inheritance maps each class to a distinct table, as below:
         Column('engineer_info', String(50)),
     )
 
-Notice in this case there is no `type` column.  If polymorphic loading is not required, theres no advantage to using `inherits` here; you just define a separate mapper for each class.
+Notice in this case there is no `type` column.  If polymorphic loading is not required, there's no advantage to using `inherits` here; you just define a separate mapper for each class.
 
     {python}
     mapper(Employee, employees_table)
@@ -486,7 +486,7 @@ Upon select, the polymorphic union produces a query like this:
 
 ##### Using Relations with Inheritance {@name=relations}
 
-Both joined-table and single table inheritance scenarios produce mappings which are usable in relation() functions; that is, it's possible to map a parent object to a child object which is polymorphic.  Similiarly, inheriting mappers can have `relation()`s of their own at any level, which are inherited to each child class.  The only requirement for relations is that there is a table relationship between parent and child.  An example is the following modification to the joined table inheritance example, which sets a bi-directional relationship between `Employee` and `Company`:
+Both joined-table and single table inheritance scenarios produce mappings which are usable in relation() functions; that is, it's possible to map a parent object to a child object which is polymorphic.  Similarly, inheriting mappers can have `relation()`s of their own at any level, which are inherited to each child class.  The only requirement for relations is that there is a table relationship between parent and child.  An example is the following modification to the joined table inheritance example, which sets a bi-directional relationship between `Employee` and `Company`:
 
     {python}
     employees_table = Table('employees', metadata, 
@@ -758,7 +758,7 @@ Backref behavior is available here as well, where `backref="parents"` will place
 
 ##### One To One {@name=onetoone}
 
-One To One is essentially a bi-directional relationship with a scalar attribute on both sides.  To acheive this, the `uselist=False` flag indicates the placement of a scalar attribute instead of a collection on the "many" side of the relationship.  To convert one-to-many into one-to-one:
+One To One is essentially a bi-directional relationship with a scalar attribute on both sides.  To achieve this, the `uselist=False` flag indicates the placement of a scalar attribute instead of a collection on the "many" side of the relationship.  To convert one-to-many into one-to-one:
 
     {python}
     mapper(Parent, parent_table, properties={

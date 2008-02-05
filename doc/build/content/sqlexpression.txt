@@ -45,7 +45,7 @@ We define our tables all within a catalog called `MetaData`, using the `Table` c
 
 All about how to define `Table` objects, as well as how to create them from an existing database automatically, is described in [metadata](rel:metadata).
 
-Next, to tell the `MetaData` we'd actually like to create our selection of tables for real inside the SQLite database, we use `create_all()`, passing it the `engine` instance which points to our database.  This will check for the presence of each table first before creating, so its safe to call multiple times:
+Next, to tell the `MetaData` we'd actually like to create our selection of tables for real inside the SQLite database, we use `create_all()`, passing it the `engine` instance which points to our database.  This will check for the presence of each table first before creating, so it's safe to call multiple times:
 
     {python}
     {sql}>>> metadata.create_all(engine) #doctest: +NORMALIZE_WHITESPACE
@@ -114,7 +114,7 @@ The `Connection` object represents an actively checked out DBAPI connection reso
     ['jack', 'Jack Jones']
     COMMIT
 
-So the INSERT statement was now issued to the database.  Although we got positional "qmark" bind parameters instead of "named" bind params in the output.  How come ?  Because when executed, the `Connection` used the SQLite **dialect** to help generate the statement; when we use the `str()` function, the statement isn't aware of this dialect, and falls back onto a default which uses named params. We can view this manually as follows:
+So the INSERT statement was now issued to the database.  Although we got positional "qmark" bind parameters instead of "named" bind parameters in the output.  How come ?  Because when executed, the `Connection` used the SQLite **dialect** to help generate the statement; when we use the `str()` function, the statement isn't aware of this dialect, and falls back onto a default which uses named parameters. We can view this manually as follows:
 
     {python}
     >>> from sqlalchemy.databases.sqlite import SQLiteDialect
@@ -122,7 +122,7 @@ So the INSERT statement was now issued to the database.  Although we got positio
     >>> str(compiled)
     'INSERT INTO users (name, fullname) VALUES (?, ?)'
 
-What about the `result` variable we got when we called `execute()` ?  As the SQLAlchemy `Connection` object references a DBAPI connection, the result, known as a `ResultProxy` object, is analgous to the DBAPI cursor object.  In the case of an INSERT, we can get important information from it, such as the primary key values which were generated from our statement:
+What about the `result` variable we got when we called `execute()` ?  As the SQLAlchemy `Connection` object references a DBAPI connection, the result, known as a `ResultProxy` object, is analogous to the DBAPI cursor object.  In the case of an INSERT, we can get important information from it, such as the primary key values which were generated from our statement:
 
     {python}
     >>> result.last_inserted_ids()
@@ -160,7 +160,7 @@ To issue many inserts using DBAPI's `executemany()` method, we can send in a lis
 
 Above, we again relied upon SQLite's automatic generation of primary key identifiers for each `addresses` row.
 
-When executing multiple sets of parameters, each dictionary must have the **same** set of keys; i.e. you cant have fewer keys in some dictionaries than others.  This is because the `Insert` statement is compiled against the **first** dictionary in the list, and its assumed that all subsequent argument dictionaries are compatible with that statement.
+When executing multiple sets of parameters, each dictionary must have the **same** set of keys; i.e. you cant have fewer keys in some dictionaries than others.  This is because the `Insert` statement is compiled against the **first** dictionary in the list, and it's assumed that all subsequent argument dictionaries are compatible with that statement.
 
 ## Connectionless / Implicit Execution {@name=connectionless}
 
@@ -287,7 +287,7 @@ Lets observe something interesting about the FROM clause.  Whereas the generated
     (4, u'mary', u'Mary Contrary', 3, 2, u'www@www.org')
     (4, u'mary', u'Mary Contrary', 4, 2, u'wendy@aol.com')
 
-It placed **both** tables into the FROM clause.  But also, it made a real mess.  Those who are familiar with SQL joins know that this is a **cartesian product**; each row from the `users` table is produced against each row from the `addresses` table.  So to put some sanity into this statement, we need a WHERE clause.  Which brings us to the second argument of `select()`:
+It placed **both** tables into the FROM clause.  But also, it made a real mess.  Those who are familiar with SQL joins know that this is a **Cartesian product**; each row from the `users` table is produced against each row from the `addresses` table.  So to put some sanity into this statement, we need a WHERE clause.  Which brings us to the second argument of `select()`:
 
     {python}
     >>> s = select([users, addresses], users.c.id==addresses.c.user_id)
@@ -314,7 +314,7 @@ Wow, surprise !  This is neither a `True` nor a `False`.  Well what is it ?
     >>> str(users.c.id==addresses.c.user_id)
     'users.id = addresses.user_id'
 
-As you can see, the `==` operator is producing an object that is very much like the `Insert` and `select()` objects we've made so far, thanks to Python's `__eq__()` builtin; you call `str()` on it and it produces SQL.  By now, one can that everything we are working with is ultimately the same type of object.  SQLAlchemy terms the base class of all of these expessions as `sqlalchemy.sql.ClauseElement`.
+As you can see, the `==` operator is producing an object that is very much like the `Insert` and `select()` objects we've made so far, thanks to Python's `__eq__()` builtin; you call `str()` on it and it produces SQL.  By now, one can that everything we are working with is ultimately the same type of object.  SQLAlchemy terms the base class of all of these expressions as `sqlalchemy.sql.ClauseElement`.
 
 ## Operators {@name=operators}
 
@@ -400,7 +400,7 @@ And you can also use the re-jiggered bitwise AND, OR and NOT operators, although
     (addresses.email_address = :addresses_email_address_1 OR addresses.email_address = :addresses_email_address_2) 
     AND users.id <= :users_id_1
 
-So with all of this vocabulary, let's select all users who have an email address at AOL or MSN, whose name starts with a letter between "m" and "z", and we'll also generate a column containing their full name combined with their email address.  We will add two new constructs to this statement, `between()` and `label()`.  `between()` produces a BETWEEN clause, and `label()` is used in a column expression to produce labels using the `AS` keyword; its recommended when selecting from expressions that otherwise would not have a name:
+So with all of this vocabulary, let's select all users who have an email address at AOL or MSN, whose name starts with a letter between "m" and "z", and we'll also generate a column containing their full name combined with their email address.  We will add two new constructs to this statement, `between()` and `label()`.  `between()` produces a BETWEEN clause, and `label()` is used in a column expression to produce labels using the `AS` keyword; it's recommended when selecting from expressions that otherwise would not have a name:
 
     {python}
     >>> s = select([(users.c.fullname + ", " + addresses.c.email_address).label('title')], 
@@ -482,7 +482,7 @@ The alias corresponds to a "renamed" version of a table or arbitrary relation, w
     ['jack@msn.com', 'jack@yahoo.com']
     {stop}[(1, u'jack', u'Jack Jones')]
 
-Easy enough.  One thing that we're going for with the SQL Expression Language is the melding of programmatic behavior with SQL generation.  Coming up with names like `a1` and `a2` is messy; we really didn't need to use those names anywhere, its just the database that needed them.  Plus, we might write some code that uses alias objects that came from several different places, and its difficult to ensure that they all have unique names.  So instead, we just let SQLAlchemy make the names for us, using "anonymous" aliases:
+Easy enough.  One thing that we're going for with the SQL Expression Language is the melding of programmatic behavior with SQL generation.  Coming up with names like `a1` and `a2` is messy; we really didn't need to use those names anywhere, it's just the database that needed them.  Plus, we might write some code that uses alias objects that came from several different places, and it's difficult to ensure that they all have unique names.  So instead, we just let SQLAlchemy make the names for us, using "anonymous" aliases:
 
     {python}
     >>> a1 = addresses.alias()
@@ -565,7 +565,7 @@ If you don't know what that SQL means, don't worry !  The secret tribe of Oracle
 
 ## Intro to Generative Selects and Transformations {@name=transform}
 
-We've now gained the ability to construct very sophisticated statements.  We can use all kinds of operators, table constructs, text, joins, and aliases.  The point of all of this, as mentioned earlier, is not that it's an "easier" or "better" way to write SQL than just writing a SQL statement yourself; the point is that its better for writing *programmatically generated* SQL which can be morphed and adapted as needed in automated scenarios.
+We've now gained the ability to construct very sophisticated statements.  We can use all kinds of operators, table constructs, text, joins, and aliases.  The point of all of this, as mentioned earlier, is not that it's an "easier" or "better" way to write SQL than just writing a SQL statement yourself; the point is that it's better for writing *programmatically generated* SQL which can be morphed and adapted as needed in automated scenarios.
 
 To support this, the `select()` construct we've been working with supports piecemeal construction, in addition to the "all at once" method we've been doing.  Suppose you're writing a search function, which receives criterion and then must construct a select from it.  To accomplish this, upon each criterion encountered, you apply "generative" criterion to an existing `select()` construct with new elements, one at a time.  We start with a basic `select()` constructed with the shortcut method available on the `users` table:
 
@@ -637,7 +637,7 @@ One more thing though, with automatic labeling applied as well as anonymous alia
     {stop}Name: jack ; Email Address jack@yahoo.com
     Name: jack ; Email Address jack@msn.com
 
-The above example, by it's end, got significantly more intense than the typical end-user constructed SQL will usually be.  However when writing higher-level tools such as ORMs, they become more significant.  SQLAlchemy's ORM relies very heavily on techniques like this.
+The above example, by its end, got significantly more intense than the typical end-user constructed SQL will usually be.  However when writing higher-level tools such as ORMs, they become more significant.  SQLAlchemy's ORM relies very heavily on techniques like this.
 
 ## Everything Else {@name=everythingelse}
 
@@ -657,7 +657,7 @@ Throughout all these examples, SQLAlchemy is busy creating bind parameters where
     ['wendy']
     {stop}[(2, u'wendy', u'Wendy Williams')]
 
-Another important aspect of bind paramters is that they may be assigned a type.  The type of the bind paramter will determine it's behavior within expressions and also how the data bound to it is processed before being sent off to the database:
+Another important aspect of bind parameters is that they may be assigned a type.  The type of the bind parameter will determine its behavior within expressions and also how the data bound to it is processed before being sent off to the database:
 
     {python}
     >>> s = users.select(users.c.name.like(bindparam('username', type_=String) + text("'%'")))
@@ -669,7 +669,7 @@ Another important aspect of bind paramters is that they may be assigned a type. 
     {stop}[(2, u'wendy', u'Wendy Williams')]
     
     
-Bind parameters of the same name can also be used multiple times, where only a single named value is needed in the execute paramters:
+Bind parameters of the same name can also be used multiple times, where only a single named value is needed in the execute parameters:
 
     {python}
     >>> s = select([users, addresses], 
@@ -701,7 +701,7 @@ Certain functions are marked as "ANSI" functions, which mean they don't get the 
     >>> print func.current_timestamp()
     CURRENT_TIMESTAMP
     
-Functions are most typically used in the columns clause of a select statement, and can also be labeled as well as given a type.  Labeling a function is recommended so that the result can be targeted in a result row based on a string name, and assigning it a type is required when you need result-set processing to occur, such as for unicode conversion and date conversions.  Below, we use the result function `scalar()` to just read the first column of the first row and then close the result; the label, even though present, is not important in this case:
+Functions are most typically used in the columns clause of a select statement, and can also be labeled as well as given a type.  Labeling a function is recommended so that the result can be targeted in a result row based on a string name, and assigning it a type is required when you need result-set processing to occur, such as for Unicode conversion and date conversions.  Below, we use the result function `scalar()` to just read the first column of the first row and then close the result; the label, even though present, is not important in this case:
 
     {python}
     >>> print conn.execute(
@@ -725,7 +725,7 @@ Databases such as Postgres and Oracle which support functions that return whole 
     FROM calculate(:x, :y)) 
     WHERE users.id > z
     
-If we wanted to use our `calculate` statement twice with different bind parameters, the `unique_params()` function will create copies for us, and mark the bind params as "unique" so that conflicting names are isolated.  Note we also make two separate aliases of our selectable:
+If we wanted to use our `calculate` statement twice with different bind parameters, the `unique_params()` function will create copies for us, and mark the bind parameters as "unique" so that conflicting names are isolated.  Note we also make two separate aliases of our selectable:
 
     {python}
     >>> s = select([users], users.c.id.between(
@@ -812,7 +812,7 @@ Alternatively, applying a `label()` to a select evaluates it as a scalar as well
 
 ### Correlated Subqueries {@name=correlated}
 
-Notice in the examples on "scalar selects", the FROM clause of each embedded select did not contain the `users` table in it's FROM clause.  This is because SQLAlchemy automatically attempts to correlate embeded FROM objects to that of an enclosing query.  To disable this, or to specify explicit FROM clauses to be correlated, use `correlate()`:
+Notice in the examples on "scalar selects", the FROM clause of each embedded select did not contain the `users` table in its FROM clause.  This is because SQLAlchemy automatically attempts to correlate embedded FROM objects to that of an enclosing query.  To disable this, or to specify explicit FROM clauses to be correlated, use `correlate()`:
 
     {python}
     >>> s = select([users.c.name], users.c.id==select([users.c.id]).correlate(None))

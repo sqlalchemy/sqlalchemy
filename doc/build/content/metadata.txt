@@ -170,12 +170,12 @@ Note that if a reflected table has a foreign key referencing another table, the 
     >>> 'shopping_carts' in meta.tables:
     True
         
-To get direct access to 'shopping_carts', simply instantiate it via the `Table` constructor.  `Table` uses a special contructor that will return the already created `Table` instance if its already present:
+To get direct access to 'shopping_carts', simply instantiate it via the `Table` constructor.  `Table` uses a special contructor that will return the already created `Table` instance if it's already present:
 
     {python}
     shopping_carts = Table('shopping_carts', meta)
 
-Of course, its a good idea to use `autoload=True` with the above table regardless.  This is so that if it hadn't been loaded already, the operation will load the table.  The autoload operation only occurs for the table if it hasn't already been loaded; once loaded, new calls to `Table` will not re-issue any reflection queries.
+Of course, it's a good idea to use `autoload=True` with the above table regardless.  This is so that if it hadn't been loaded already, the operation will load the table.  The autoload operation only occurs for the table if it hasn't already been loaded; once loaded, new calls to `Table` will not re-issue any reflection queries.
 
 ##### Overriding Reflected Columns {@name=overriding}
 
@@ -426,7 +426,7 @@ Unique constraints can be created anonymously on a single column using the `uniq
 
 Check constraints can be named or unnamed and can be created at the Column or Table level, using the `CheckConstraint` construct.  The text of the check constraint is passed directly through to the database, so there is limited "database independent" behavior.  Column level check constraints generally should only refer to the column to which they are placed, while table level constraints can refer to any columns in the table.
 
-Note that some databases do not actively support check constraints such as MySQL and sqlite.
+Note that some databases do not actively support check constraints such as MySQL and SQLite.
 
     {python}
     meta = MetaData()

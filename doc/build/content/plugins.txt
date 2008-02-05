@@ -149,7 +149,7 @@ Association proxies are also useful for keeping [association objects](rel:datama
     # Adding a Keyword requires creating a UserKeyword association object
     user.user_keywords.append(UserKeyword(user, kw1))
 
-    # And accessing Keywords requires traverrsing UserKeywords
+    # And accessing Keywords requires traversing UserKeywords
     print user.user_keywords[0]
     # <__main__.UserKeyword object at 0xb79bbbec>
 
@@ -367,7 +367,7 @@ A lot of our extensions are deprecated.  But this is a good thing.  Why ?  Becau
 
 **Author:** Jonas Borgström
 
-*NOTE:* As of verison 0.3.6 of SQLAlchemy, most behavior of `SelectResults` has been rolled into the base `Query` object.  Explicit usage of `SelectResults` is therefore no longer needed.
+*NOTE:* As of version 0.3.6 of SQLAlchemy, most behavior of `SelectResults` has been rolled into the base `Query` object.  Explicit usage of `SelectResults` is therefore no longer needed.
 
 `SelectResults` gives transformative behavior to the results returned from the `select` and `select_by` methods of `Query`. 
 

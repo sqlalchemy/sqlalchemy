@@ -59,7 +59,7 @@ To start connecting to databases and begin issuing queries, we want to import th
     {python}
     >>> from sqlalchemy import *
 
-Note that importing using the `*` operator pulls all the names from `sqlalchemy` into the local module namespace, which in a real application can produce name conflicts.  Therefore its recommended in practice to either import the individual symbols desired (i.e. `from sqlalchemy import Table, Column`) or to import under a distinct namespace (i.e. `import sqlalchemy as sa`).
+Note that importing using the `*` operator pulls all the names from `sqlalchemy` into the local module namespace, which in a real application can produce name conflicts.  Therefore it's recommended in practice to either import the individual symbols desired (i.e. `from sqlalchemy import Table, Column`) or to import under a distinct namespace (i.e. `import sqlalchemy as sa`).
 
 ### Connecting to the Database
 
@@ -68,7 +68,7 @@ After our imports, the next thing we need is a handle to the desired database, r
     {python}
     >>> db = create_engine('sqlite:///tutorial.db')
     
-Technically, the above statement did not make an actual connection to the sqlite database just yet.  As soon as we begine working with the engine, it will start creating connections.  In the case of SQLite, the `tutorial.db` file will actually be created at the moment it is first used, if the file does not exist already.
+Technically, the above statement did not make an actual connection to the SQLite database just yet.  As soon as we begin working with the engine, it will start creating connections.  In the case of SQLite, the `tutorial.db` file will actually be created at the moment it is first used, if the file does not exist already.
 
 For full information on creating database engines, including those for SQLite and others, see [dbengine](rel:dbengine).
 
@@ -81,7 +81,7 @@ A central concept of SQLAlchemy is that it actually contains two distinct areas 
 
 The Object Relational Mapper (ORM) is a set of tools completely distinct from the SQL Construction Language which serve the purpose of mapping Python object instances into database rows, providing a rich selection interface with which to retrieve instances from tables as well as a comprehensive solution to persisting changes on those instances back into the database.  When working with the ORM, its underlying workings as well as its public API make extensive use of the SQL Construction Language, however the general theory of operation is slightly different.  Instead of working with database rows directly, you work with your own user-defined classes and object instances.  Additionally, the method of issuing queries to the database is different, as the ORM handles the job of generating most of the SQL required, and instead requires more information about what kind of class instances you'd like to load and where you'd like to put them.
 
-Where SA is somewhat unique, more powerful, and slightly more complicated is that the two areas of functionality can be mixed together in many ways.  A key strategy to working with SA effectively is to have a solid awareness of these two distinct toolsets, and which concepts of SA belong to each - even some publications have confused the SQL Construction Language with the ORM.  The key difference between the two is that when you're working with cursor-like result sets its the SQL Construction Language, and when working with collections of your own class instances its the Object Relational Mapper.
+Where SA is somewhat unique, more powerful, and slightly more complicated is that the two areas of functionality can be mixed together in many ways.  A key strategy to working with SA effectively is to have a solid awareness of these two distinct toolsets, and which concepts of SA belong to each - even some publications have confused the SQL Construction Language with the ORM.  The key difference between the two is that when you're working with cursor-like result sets it's the SQL Construction Language, and when working with collections of your own class instances it's the Object Relational Mapper.
 
 This tutorial will first focus on the basic configuration that is common to using both the SQL Construction Language as well as the ORM, which is to declare information about your database called **table metadata**.  This will be followed by some constructed SQL examples, and then into usage of the ORM utilizing the same data we established in the SQL construction examples.
 
@@ -298,7 +298,7 @@ To start, we will import the names necessary to use SQLAlchemy's ORM, again usin
     {python}
     >>> from sqlalchemy.orm import *
     
-It should be noted that the above step is technically not needed when working with the 0.3 series of SQLAlchemy; all symbols from the `orm` package are also included in the `sqlalchemy` package.  However, a future release (most likely the 0.4 series) will make the separate `orm` import required in order to use the object relational mapper, so its a good practice for now.
+It should be noted that the above step is technically not needed when working with the 0.3 series of SQLAlchemy; all symbols from the `orm` package are also included in the `sqlalchemy` package.  However, a future release (most likely the 0.4 series) will make the separate `orm` import required in order to use the object relational mapper, so it's a good practice for now.
 
 ### Creating a Mapper {@name=mapper}
 
@@ -368,7 +368,7 @@ Notice that our `User` class has a special attribute `c` attached to it.  This '
 
 ### Making Changes {@name=changes}
 
-With a little experience in loading objects, lets see what its like to make changes.  First, lets create a new user "Ed".  We do this by just constructing the new object.  Then, we just add it to the session:
+With a little experience in loading objects, lets see what it's like to make changes.  First, lets create a new user "Ed".  We do this by just constructing the new object.  Then, we just add it to the session:
 
     {python}
     >>> ed = User()
@@ -460,7 +460,7 @@ The `relation()` function takes either a class or a Mapper as its first argument
 
 The order in which the mapping definitions for `User` and `Address` is created is *not significant*.  When the `mapper()` function is called, it creates an *uncompiled* mapping record corresponding to the given class/table combination.  When the mappers are first used, the entire collection of mappers created up until that point will be compiled, which involves the establishment of class instrumentation as well as the resolution of all mapping relationships.  
 
-Lets try out this new mapping configuration, and see what we get for the email addresses already in the database.  Since we have made a new mapping configuration, its best that we clear out our `Session`, which is currently holding onto every `User` object we have already loaded:
+Lets try out this new mapping configuration, and see what we get for the email addresses already in the database.  Since we have made a new mapping configuration, it's best that we clear out our `Session`, which is currently holding onto every `User` object we have already loaded:
 
     {python}
     >>> session.clear()
@@ -497,7 +497,7 @@ Main documentation for using mappers:  [datamapping](rel:datamapping)
 
 ### Transactions
 
-You may have noticed from the example above that when we say `session.flush()`, SQLAlchemy indicates the names `BEGIN` and `COMMIT` to indicate a transaction with the database.  The `flush()` method, since it may execute many statements in a row, will automatically use a transaction in order to execute these instructions.  But what if we want to use `flush()` inside of a larger transaction?  The easiest way is to use a "transactional" session; that is, when the session is created, you're automatically in a transaction which you can commit or rollback at any time.  As a bonus, it offers the ability to call `flush()` for you, whenever a query is issued; that way whatever changes you've made can be returned right back (and since its all in a transaction, nothing gets committed until you tell it so).
+You may have noticed from the example above that when we say `session.flush()`, SQLAlchemy indicates the names `BEGIN` and `COMMIT` to indicate a transaction with the database.  The `flush()` method, since it may execute many statements in a row, will automatically use a transaction in order to execute these instructions.  But what if we want to use `flush()` inside of a larger transaction?  The easiest way is to use a "transactional" session; that is, when the session is created, you're automatically in a transaction which you can commit or rollback at any time.  As a bonus, it offers the ability to call `flush()` for you, whenever a query is issued; that way whatever changes you've made can be returned right back (and since it's all in a transaction, nothing gets committed until you tell it so).
 
 Below, we create a session with `autoflush=True`, which implies that it's transactional.  We can query for things as soon as they are created without the need for calling `flush()`.  At the end, we call `commit()` to persist everything permanently.
 

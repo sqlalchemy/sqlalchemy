@@ -29,7 +29,7 @@ Both `convert_unicode` and `assert_unicode` may be set at the engine level as fl
 
 #### Unicode
 
-The `Unicode` type is shorthand for `String` with `convert_unicode=True` and `assert_unicode='warn'`.  When writing a unicode-aware appication, it is strongly recommended that this type is used, and that only unicode strings are used in the application.  By "unicode string" we mean a string with a u, i.e. `u'hello'`.  Otherwise, particularly when using the ORM, data will be converted to unicode when it returns from the database, but local data which was generated locally will not be in unicode format, which can create confusion.
+The `Unicode` type is shorthand for `String` with `convert_unicode=True` and `assert_unicode='warn'`.  When writing a Unicode-aware application, it is strongly recommended that this type is used, and that only Unicode strings are used in the application.  By "Unicode string" we mean a string with a u, i.e. `u'hello'`.  Otherwise, particularly when using the ORM, data will be converted to Unicode when it returns from the database, but local data which was generated locally will not be in Unicode format, which can create confusion.
 
 #### Numeric
 
@@ -122,7 +122,7 @@ User-defined types can be created which can augment the bind parameter and resul
         def copy(self):
             return MyType(self.impl.length)
 
-Note that the "old" way to process bind params and result values, the `convert_bind_param()` and `convert_result_value()` methods, are still available.  The downside of these is that when using a type which already processes data such as the `Unicode` type, you need to call the superclass version of these methods directly.  Using `process_bind_param()` and `process_result_value()`, user-defined code can return and receive the desired Python data directly.
+Note that the "old" way to process bind parameters and result values, the `convert_bind_param()` and `convert_result_value()` methods, are still available.  The downside of these is that when using a type which already processes data such as the `Unicode` type, you need to call the superclass version of these methods directly.  Using `process_bind_param()` and `process_result_value()`, user-defined code can return and receive the desired Python data directly.
 
 As of version 0.4.2, `TypeDecorator` should generally be used for any user-defined type which redefines the behavior of another type, including other `TypeDecorator` subclasses such as `PickleType`, and the new `process_...()` methods described above should be used.  
 
@@ -144,7 +144,7 @@ To build a type object from scratch, which will not have a corresponding databas
         def convert_result_value(self, value, engine):
             return value
 
-Once you make your type, its immediately useable:
+Once you make your type, it's immediately useable:
 
     {python}
     table = Table('foo', meta,
