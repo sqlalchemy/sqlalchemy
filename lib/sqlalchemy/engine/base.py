@@ -974,12 +974,12 @@ class Connection(Connectable):
 
     # poor man's multimethod/generic function thingy
     executors = {
-        expression._Function : _execute_function,
-        expression.ClauseElement : execute_clauseelement,
-        Compiled : _execute_compiled,
-        schema.SchemaItem:_execute_default,
+        expression._Function: _execute_function,
+        expression.ClauseElement: execute_clauseelement,
+        Compiled: _execute_compiled,
+        schema.SchemaItem: _execute_default,
         schema.DDL: _execute_ddl,
-        str.__mro__[-2] : _execute_text
+        basestring: _execute_text
     }
 
     def create(self, entity, **kwargs):
