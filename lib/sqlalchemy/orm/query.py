@@ -624,7 +624,7 @@ class Query(object):
           * a string property name, i.e. "rooms"
           * a class-mapped attribute, i.e. Houses.rooms
           * a 2-tuple containing one of the above, combined with a selectable
-          which derives from the properties' mapped table
+            which derives from the properties' mapped table
           * a list (not a tuple) containing a combination of any of the above.
 
         e.g.::
@@ -645,7 +645,7 @@ class Query(object):
           * a string property name, i.e. "rooms"
           * a class-mapped attribute, i.e. Houses.rooms
           * a 2-tuple containing one of the above, combined with a selectable
-          which derives from the properties' mapped table
+            which derives from the properties' mapped table
           * a list (not a tuple) containing a combination of any of the above.
 
         e.g.::

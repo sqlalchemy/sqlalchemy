@@ -159,10 +159,10 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       Additional parameters include:
 
       autocommit
-        indicates this SELECT statement modifies the database, and 
+        indicates this SELECT statement modifies the database, and
         should be subject to autocommit behavior if no transaction
         has been started.
-        
+
       prefixes
         a list of strings or ``ClauseElement`` objects to include
         directly after the SELECT keyword in the generated statement,
@@ -645,26 +645,25 @@ def column(text, type_=None):
     return _ColumnClause(text, type_=type_)
 
 def literal_column(text, type_=None):
-    """Return a textual column expression, as would be in the columns 
+    """Return a textual column expression, as would be in the columns
     clause of a ``SELECT`` statement.
 
-    The object returned supports further expressions in the same way
-    as any other column object, including comparison, math and string
-    operations.  The type_ parameter is important to determine proper
-    expression behavior (such as, '+' means string concatenation or
-    numerical addition based on the type).
+    The object returned supports further expressions in the same way as any
+    other column object, including comparison, math and string operations.
+    The type\_ parameter is important to determine proper expression behavior
+    (such as, '+' means string concatenation or numerical addition based on
+    the type).
 
     text
-      the text of the expression; can be any SQL expression.  Quoting rules 
+      the text of the expression; can be any SQL expression.  Quoting rules
       will not be applied.  To specify a column-name expression which should
-      be subject to quoting rules, use the [sqlalchemy.sql.expression#column()] 
-      function.
+      be subject to quoting rules, use the
+      [sqlalchemy.sql.expression#column()] function.
 
-    type_
-      an optional [sqlalchemy.types#TypeEngine] object which will
-      provide result-set translation and additional expression 
-      semantics for this column.  If left as None the type will be
-      NullType.
+    type\_
+      an optional [sqlalchemy.types#TypeEngine] object which will provide
+      result-set translation and additional expression semantics for this
+      column.  If left as None the type will be NullType.
     """
 
     return _ColumnClause(text, type_=type_, is_literal=True)
@@ -685,7 +684,7 @@ def bindparam(key, value=None, shortname=None, type_=None, unique=False):
       a default value for this bind parameter.  a bindparam with a
       value is called a ``value-based bindparam``.
 
-    type
+    type\_
       a sqlalchemy.types.TypeEngine object indicating the type of this
       bind param, will invoke type-specific bind parameter processing
 
@@ -733,7 +732,7 @@ def text(text, bind=None, *args, **kwargs):
       an optional connection or engine to be used for this text query.
 
     autocommit=True
-      indicates this SELECT statement modifies the database, and 
+      indicates this SELECT statement modifies the database, and
       should be subject to autocommit behavior if no transaction
       has been started.
 
@@ -1208,7 +1207,7 @@ class _CompareMixin(ColumnOperators):
                 raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
         else:
             obj = self._check_literal(obj)
-            
+
         if reverse:
             return _BinaryExpression(obj, self.expression_element(), op, type_=sqltypes.Boolean, negate=negate)
         else:
@@ -1437,15 +1436,15 @@ class ColumnElement(ClauseElement, _CompareMixin):
             co.proxies = [self]
             selectable.columns[name] = co
             return co
-    
+
     def anon_label(self):
         """provides a constant 'anonymous label' for this ColumnElement.
-        
+
         This is a label() expression which will be named at compile time.
-        The same label() is returned each time anon_label is called so 
+        The same label() is returned each time anon_label is called so
         that expressions can reference anon_label multiple times, producing
         the same label name at compile time.
-        
+
         the compiler uses this function automatically at compile time
         for expressions that are known to be 'unnamed' like binary
         expressions and function calls.
@@ -2282,10 +2281,10 @@ class Join(FromClause):
         """Returns the column list of this Join with all equivalently-named,
         equated columns folded into one column, where 'equated' means they are
         equated to each other in the ON clause of this join.
-        
+
         this method is used by select(fold_equivalents=True).
-        
-        The primary usage for this is when generating UNIONs so that 
+
+        The primary usage for this is when generating UNIONs so that
         each selectable can have distinctly-named columns without the need
         for use_labels=True.
         """
@@ -2784,11 +2783,11 @@ class _SelectBaseMixin(object):
 
     def autocommit(self):
         """return a new selectable with the 'autocommit' flag set to True."""
-        
+
         s = self._generate()
         s._autocommit = True
         return s
-        
+
     def _generate(self):
         s = self._clone()
         s._clone_from_clause()
@@ -2908,13 +2907,13 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         self.selects = []
 
         numcols = None
-        
+
         # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
         for n, s in enumerate(selects):
             if not numcols:
                 numcols = len(s.c)
             elif len(s.c) != numcols:
-                raise exceptions.ArgumentError("All selectables passed to CompoundSelect must have identical numbers of columns; select #%d has %d columns, select #%d has %d" % 
+                raise exceptions.ArgumentError("All selectables passed to CompoundSelect must have identical numbers of columns; select #%d has %d columns, select #%d has %d" %
                     (1, len(self.selects[0].c), n+1, len(s.c))
                 )
             if s._order_by_clause:
@@ -2947,7 +2946,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         col_ordering = self._col_map.get(selectable, None)
         if col_ordering is None:
             self._col_map[selectable] = col_ordering = []
-        
+
         if selectable is self.selects[0]:
             if self.use_labels:
                 col = column._make_proxy(self, name=column._label)
