@@ -13,56 +13,53 @@ CHANGES
     - Added a callable-based DDL events interface, adds hooks
       before and after Tables and MetaData create and drop.
 
-    - Added "ilike()" operator to column operations.  Compiles
-      to ILIKE on postgres, lower(x) LIKE lower(y) on all
+    - Added "ilike()" operator to column operations.  Compiles to
+      ILIKE on postgres, lower(x) LIKE lower(y) on all
       others. [ticket:727]
 
-    - added "now()" as a generic function; on SQLite and
-      Oracle compiles as "CURRENT_TIMESTAMP"; "now()"
-      on all others [ticket:943]
+    - added "now()" as a generic function; on SQLite and Oracle
+      compiles as "CURRENT_TIMESTAMP"; "now()" on all others
+      [ticket:943]
 
-    - the startswith(), endswith(), and contains() operators
-      now concatenate the wildcard operator with the given
-      operand in SQL, i.e. "'%' || <bindparam>" in all cases,
-      accept text('something') operands properly [ticket:962]
+    - the startswith(), endswith(), and contains() operators now
+      concatenate the wildcard operator with the given operand in
+      SQL, i.e. "'%' || <bindparam>" in all cases, accept
+      text('something') operands properly [ticket:962]
 
     - cast() accepts text('something') and other non-literal
       operands properly [ticket:962]
 
-    - added "autocommit=True" kwarg to select() and text(),
-      as well as generative autocommit() method on select();
-      for statements which modify the database through some
+    - added "autocommit=True" kwarg to select() and text(), as
+      well as generative autocommit() method on select(); for
+      statements which modify the database through some
       user-defined means other than the usual INSERT/UPDATE/
       DELETE etc., this flag will enable "autocommit" behavior
       during execution if no transaction is in progress
       [ticket:915]
 
-    - The '.c.' attribute on a selectable now gets an entry
-      for every column expression in its columns clause.
-      Previously, "unnamed" columns like functions and CASE
-      statements weren't getting put there.  Now they will,
-      using their full string representation if no 'name' is
-      available.
+    - The '.c.' attribute on a selectable now gets an entry for
+      every column expression in its columns clause.  Previously,
+      "unnamed" columns like functions and CASE statements weren't
+      getting put there.  Now they will, using their full string
+      representation if no 'name' is available.
 
     - a CompositeSelect, i.e. any union(), union_all(),
-      intersect(), etc. now asserts that each selectable
-      contains the same number of columns.  This conforms to
-      the corresponding SQL requirement.
+      intersect(), etc. now asserts that each selectable contains
+      the same number of columns.  This conforms to the
+      corresponding SQL requirement.
 
     - The anonymous 'label' generated for otherwise unlabeled
-      functions and expressions now propagates outwards at
-      compile time for expressions like
-      select([select([func.foo()])]).
+      functions and expressions now propagates outwards at compile
+      time for expressions like select([select([func.foo()])]).
 
-    - Building on the above ideas, CompositeSelects now build
-      up their ".c." collection based on the names present in
-      the first selectable only; corresponding_column() now
-      works fully for all embedded selectables.
+    - Building on the above ideas, CompositeSelects now build up
+      their ".c." collection based on the names present in the
+      first selectable only; corresponding_column() now works
+      fully for all embedded selectables.
 
-    - Oracle and others properly encode SQL used for defaults
-      like sequences, etc., even if no unicode idents are used
-      since identifier preparer may return a cached unicode
-      identifier.
+    - Oracle and others properly encode SQL used for defaults like
+      sequences, etc., even if no unicode idents are used since
+      identifier preparer may return a cached unicode identifier.
 
     - Column and clause comparisons to datetime objects on the
       left hand side of the expression now work (d < table.c.col).
@@ -70,103 +67,95 @@ CHANGES
       is a quirk of the datetime implementation.)
 
 - orm
-    - Every Session.begin() must now be accompanied by a 
-      corresponding commit() or rollback() unless the session
-      is closed with Session.close().  This also includes
-      the begin() which is implicit to a session created
-      with transactional=True.  The biggest change 
-      introduced here is that when a Session created with 
-      transactional=True raises an exception during flush(), 
-      you must call Session.rollback() or Session.close() in 
-      order for that Session to continue after an exception.
+    - Every Session.begin() must now be accompanied by a
+      corresponding commit() or rollback() unless the session is
+      closed with Session.close().  This also includes the begin()
+      which is implicit to a session created with
+      transactional=True.  The biggest change introduced here is
+      that when a Session created with transactional=True raises
+      an exception during flush(), you must call
+      Session.rollback() or Session.close() in order for that
+      Session to continue after an exception.
 
-    - fixed merge() collection-doubling bug when merging 
-      transient entities with backref'ed collections.
-      [ticket:961]
-      
-    - merge(dont_load=True) does not accept transient 
-      entities, this is in continuation with the fact that
-      merge(dont_load=True) does not accept any "dirty" 
-      objects either.
-      
-    - added standalone "query" class attribute generated
-      by a scoped_session.  This provides MyClass.query
-      without using Session.mapper.  Use via:
+    - fixed merge() collection-doubling bug when merging transient
+      entities with backref'ed collections.  [ticket:961]
+
+    - merge(dont_load=True) does not accept transient entities,
+      this is in continuation with the fact that
+      merge(dont_load=True) does not accept any "dirty" objects
+      either.
+
+    - added standalone "query" class attribute generated by a
+      scoped_session.  This provides MyClass.query without using
+      Session.mapper.  Use via:
 
         MyClass.query = Session.query_property()
-        
+
     - The proper error message is raised when trying to access
       expired instance attributes with no session present
 
     - Dynamic relations, when referenced, create a strong
-      reference to the parent object so that the query still
-      has a parent to call against even if the parent is only
-      created (and otherwise dereferenced) within the scope of
-      a single expression. [ticket:938]
+      reference to the parent object so that the query still has a
+      parent to call against even if the parent is only created
+      (and otherwise dereferenced) within the scope of a single
+      expression. [ticket:938]
 
-    - Added a mapper() flag "eager_defaults". When set to
-      True, defaults that are generated during an INSERT or
-      UPDATE operation are post-fetched immediately, instead
-      of being deferred until later.  This mimics the old 0.3
-      behavior.
+    - Added a mapper() flag "eager_defaults". When set to True,
+      defaults that are generated during an INSERT or UPDATE
+      operation are post-fetched immediately, instead of being
+      deferred until later.  This mimics the old 0.3 behavior.
 
     - query.join() can now accept class-mapped attributes as
-      arguments. These can be used in place or in any
-      combination with strings.  In particular this allows
-      construction of joins to subclasses on a polymorphic
-      relation, i.e.:
+      arguments. These can be used in place or in any combination
+      with strings.  In particular this allows construction of
+      joins to subclasses on a polymorphic relation, i.e.:
 
         query(Company).join(['employees', Engineer.name])
-        
-    - query.join() can also accept tuples of attribute
-      name/some selectable as arguments.  This allows
-      construction of joins *from* subclasses of a 
-      polymorphic relation, i.e.:
-      
+
+    - query.join() can also accept tuples of attribute name/some
+      selectable as arguments.  This allows construction of joins
+      *from* subclasses of a polymorphic relation, i.e.:
+
         query(Company).\
         join(
           [('employees', people.join(engineer)), Engineer.name]
         )
-      
-    - General improvements to the behavior of join() in 
-      conjunction with polymorphic mappers, i.e. joining
-      from/to polymorphic mappers and properly applying
-      aliases.
 
-    - Fixed/improved behavior when a mapper determines the
-      natural "primary key" of a mapped join, it will more
-      effectively reduce columns which are equivalent via
-      foreign key relation.  This affects how many arguments
-      need to be sent to query.get(), among other things.
-      [ticket:933]
+    - General improvements to the behavior of join() in
+      conjunction with polymorphic mappers, i.e. joining from/to
+      polymorphic mappers and properly applying aliases.
+
+    - Fixed/improved behavior when a mapper determines the natural
+      "primary key" of a mapped join, it will more effectively
+      reduce columns which are equivalent via foreign key
+      relation.  This affects how many arguments need to be sent
+      to query.get(), among other things.  [ticket:933]
 
     - Fixed bug in polymorphic inheritance where incorrect
-      exception is raised when base polymorphic_on
-      column does not correspond to any columns within 
-      the local selectable of an inheriting mapper more 
-      than one level deep
-      
-    - Fixed bug in polymorphic inheritance which made it
-      difficult to set a working "order_by" on a polymorphic
-      mapper.
+      exception is raised when base polymorphic_on column does not
+      correspond to any columns within the local selectable of an
+      inheriting mapper more than one level deep
 
-    - Fixed a rather expensive call in Query that was slowing
-      down polymorphic queries.
-    
-    - "Passive defaults" and other "inline" defaults can now
-      be loaded during a flush() call if needed; in particular,
-      this allows constructing relations() where a foreign key
-      column references a server-side-generated, non-primary-key
+    - Fixed bug in polymorphic inheritance which made it difficult
+      to set a working "order_by" on a polymorphic mapper.
+
+    - Fixed a rather expensive call in Query that was slowing down
+      polymorphic queries.
+
+    - "Passive defaults" and other "inline" defaults can now be
+      loaded during a flush() call if needed; in particular, this
+      allows constructing relations() where a foreign key column
+      references a server-side-generated, non-primary-key
       column. [ticket:954]
-      
+
     - Additional Session transaction fixes/changes:
         - Fixed bug with session transaction management: parent
           transactions weren't started on the connection when
           adding a connection to a nested transaction.
 
         - session.transaction now always refers to the innermost
-          active transaction, even when commit/rollback are
-          called directly on the session transaction object.
+          active transaction, even when commit/rollback are called
+          directly on the session transaction object.
 
         - Two-phase transactions can now be prepared.
 
@@ -178,12 +167,12 @@ CHANGES
 
         - rollback() previously erroneously set the current
           transaction directly to the parent of the transaction
-          that could be rolled back to. Now it rolls back the
-          next transaction up that can handle it, but sets the
-          current transaction to it's parent and inactivates the
-          transactions in between. Inactive transactions can
-          only be rolled back or closed, any other call results
-          in an error.
+          that could be rolled back to. Now it rolls back the next
+          transaction up that can handle it, but sets the current
+          transaction to it's parent and inactivates the
+          transactions in between. Inactive transactions can only
+          be rolled back or closed, any other call results in an
+          error.
 
         - autoflush for commit() wasn't flushing for simple
           subtransactions.
@@ -192,19 +181,18 @@ CHANGES
 
 - general
     - Fixed a variety of hidden and some not-so-hidden
-      compatibility issues for Python 2.3, thanks to new
-      support for running the full test suite on 2.3.
+      compatibility issues for Python 2.3, thanks to new support
+      for running the full test suite on 2.3.
 
     - Warnings are now issued as type exceptions.SAWarning.
 
 - dialects
-    - Better support for schemas in SQLite (linked in by
-      ATTACH DATABASE ... AS name).  In some cases in the
-      past, schema names were ommitted from generated SQL
-      for SQLite.  This is no longer the case.
+    - Better support for schemas in SQLite (linked in by ATTACH
+      DATABASE ... AS name).  In some cases in the past, schema
+      names were ommitted from generated SQL for SQLite.  This is
+      no longer the case.
 
-    - table_names on SQLite now picks up temporary tables
-      as well.
+    - table_names on SQLite now picks up temporary tables as well.
 
     - Auto-detect an unspecified MySQL ANSI_QUOTES mode during
       reflection operations, support for changing the mode
@@ -224,11 +212,11 @@ CHANGES
       long-name truncation kicks in [ticket:941]
 
 - ext
-    - Changed ext.activemapper to use a non-transactional
-      session for the objectstore.
+    - Changed ext.activemapper to use a non-transactional session
+      for the objectstore.
 
-    - Fixed output order of "['a'] + obj.proxied" binary
-      operation on association-proxied lists.
+    - Fixed output order of "['a'] + obj.proxied" binary operation
+      on association-proxied lists.
 
 0.4.2p3
 ------
