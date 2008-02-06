@@ -36,9 +36,9 @@
 
     % if len(item.children) == 0:
         % if paged:
-            <a href="#top">back to section top</a>
+            <a href="#top" class="totoc">back to section top</a>
         % else:
-            <a href="#${item.get_page_root().path}">back to section top</a>
+            <a href="#${item.get_page_root().path}" class="totoc">back to section top</a>
         % endif
     % endif
     </div>

@@ -45,7 +45,7 @@
 
 <%def name="pagenav(item, paged, extension)">
     <div class="navbanner">
-        <a href="${paged and 'index' or 'documentation'}.${ extension }">Table of Contents</a>
+        <a href="${paged and 'index' or 'documentation'}.${ extension }" class="totoc">Table of Contents</a>
         ${prevnext(item, paged, extension)}
         <h2>${item.description}</h2>
     </div>

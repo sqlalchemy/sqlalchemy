@@ -198,3 +198,11 @@ h3 {
     background-color: #900;
 }
 
+@media print {
+  #nav { display: none; }
+  #pagecontrol { display: none; }
+  .topnav .prevnext { display: none; }
+  .bottomnav { display: none; }
+  .totoc { display: none; }
+  .topnav ul li a { text-decoration: none; color: #000; }
+}

@@ -6,15 +6,15 @@
 	<a name="table_of_contents"></a>
 	<h3>Table of Contents</h3>
 	&nbsp;&nbsp;
-	<a href="#full_index">(view full table)</a>
+	<a href="#full_index" class="totoc">(view full table)</a>
 	<br/><br/>
 	${printtoc(root=toc,paged=paged, extension=extension, current=None,children=False,anchor_toplevel=False)}
 
 	<a name="full_index"></a>
 	<h3>Table of Contents: Full</h3>
 	&nbsp;&nbsp;
-	<a href="#table_of_contents">(view brief table)</a>
-	
+	<a href="#table_of_contents" class="totoc">(view brief table)</a>
+
 	${printtoc(root=toc,paged=paged, extension=extension, current=None,children=True,anchor_toplevel=False)}
 
 	</div>
@@ -31,7 +31,7 @@
                 anchor = False
         %>
         <li><a style="${item is current and "font-weight:bold;" or "" }" href="${item.get_link(extension=extension,anchor=anchor, usefilename=paged) }">${item.description}</a></li>
-        
+
             % if children and item.children:
 	        <li>
                 ${printtoc(item, current=current, children=True,anchor_toplevel=True, paged=paged, extension=extension)}
