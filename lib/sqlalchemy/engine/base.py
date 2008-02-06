@@ -1825,7 +1825,7 @@ class DefaultRunner(schema.SchemaVisitor):
         """execute a string statement, using the raw cursor,
         and return a scalar result."""
         conn = self.context._connection
-        if not self.dialect.supports_unicode_statements:
+        if isinstance(stmt, unicode) and not self.dialect.supports_unicode_statements:
             stmt = stmt.encode(self.dialect.encoding)
         conn._cursor_execute(self.context.cursor, stmt, params)
         return self.context.cursor.fetchone()[0]

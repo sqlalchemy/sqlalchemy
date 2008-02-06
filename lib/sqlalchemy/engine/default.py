@@ -185,7 +185,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.result_map = None
             self.parameters = self.__encode_param_keys(parameters)
             self.executemany = len(parameters) > 1
-            if not dialect.supports_unicode_statements:
+            if isinstance(statement, unicode) and not dialect.supports_unicode_statements:
                 self.statement = statement.encode(self.dialect.encoding)
             else:
                 self.statement = statement
