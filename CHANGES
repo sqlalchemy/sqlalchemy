@@ -211,6 +211,8 @@ CHANGES
       midstream.  Manual mode setting is still required if no
       reflection is used.
 
+    - Fixed reflection of TIME columns on SQLite.
+
     - Finally added PGMacAddr type to postgres [ticket:580]
 
     - Reflect the sequence associated to a PK field (typically
