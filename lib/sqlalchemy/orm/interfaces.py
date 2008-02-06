@@ -11,17 +11,17 @@ Defines the [sqlalchemy.orm.interfaces#MapperExtension] class,
 which can be end-user subclassed to add event-based functionality
 to mappers.  The remainder of this module is generally private to the
 ORM.
-
 """
+
 from sqlalchemy import util, logging, exceptions
 from sqlalchemy.sql import expression
 from itertools import chain
 class_mapper = None
 
 __all__ = ['EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS', 'MapperExtension',
-           'MapperProperty', 'PropComparator', 'StrategizedProperty', 
-           'build_path', 'MapperOption', 
-           'ExtensionOption', 'PropertyOption', 
+           'MapperProperty', 'PropComparator', 'StrategizedProperty',
+           'build_path', 'MapperOption',
+           'ExtensionOption', 'PropertyOption',
            'AttributeExtension', 'StrategizedOption', 'LoaderStrategy' ]
 
 EXT_CONTINUE = EXT_PASS = object()
@@ -30,25 +30,23 @@ EXT_STOP = object()
 class MapperExtension(object):
     """Base implementation for customizing Mapper behavior.
 
-    For each method in MapperExtension, returning a result of
-    EXT_CONTINUE will allow processing to continue to the next
-    MapperExtension in line or use the default functionality if there
-    are no other extensions.
+    For each method in MapperExtension, returning a result of EXT_CONTINUE
+    will allow processing to continue to the next MapperExtension in line or
+    use the default functionality if there are no other extensions.
 
-    Returning EXT_STOP will halt processing of further extensions
-    handling that method.  Some methods such as ``load`` have other
-    return requirements, see the individual documentation for details.
-    Other than these exception cases, any return value other than
-    EXT_CONTINUE or EXT_STOP will be interpreted as equivalent to
-    EXT_STOP.
-    
-    EXT_PASS is a synonym for EXT_CONTINUE and is provided for
-    backward compatibility.
+    Returning EXT_STOP will halt processing of further extensions handling
+    that method.  Some methods such as ``load`` have other return
+    requirements, see the individual documentation for details.  Other than
+    these exception cases, any return value other than EXT_CONTINUE or
+    EXT_STOP will be interpreted as equivalent to EXT_STOP.
+
+    EXT_PASS is a synonym for EXT_CONTINUE and is provided for backward
+    compatibility.
     """
-    
+
     def instrument_class(self, mapper, class_):
         return EXT_CONTINUE
-        
+
     def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
         return EXT_CONTINUE
 
@@ -89,7 +87,7 @@ class MapperExtension(object):
         The return value of this method is used as the result of
         ``query.get_by()`` if the value is anything other than
         EXT_CONTINUE.
-        
+
         DEPRECATED.
         """
 
@@ -101,7 +99,7 @@ class MapperExtension(object):
         The return value of this method is used as the result of
         ``query.select_by()`` if the value is anything other than
         EXT_CONTINUE.
-        
+
         DEPRECATED.
         """
 
@@ -113,7 +111,7 @@ class MapperExtension(object):
         The return value of this method is used as the result of
         ``query.select()`` if the value is anything other than
         EXT_CONTINUE.
-        
+
         DEPRECATED.
         """
 
@@ -134,9 +132,8 @@ class MapperExtension(object):
         """Receive a row when a new object instance is about to be
         created from that row.
 
-        The method can choose to create the instance itself, or it can
-        return EXT_CONTINUE to indicate normal object creation should take
-        place.
+        The method can choose to create the instance itself, or it can return
+        EXT_CONTINUE to indicate normal object creation should take place.
 
         mapper
           The mapper doing the operation
@@ -149,7 +146,7 @@ class MapperExtension(object):
 
         class\_
           The class we are mapping.
-          
+
         return value
           A new object instance, or EXT_CONTINUE
         """
@@ -211,12 +208,12 @@ class MapperExtension(object):
         This is a good place to set up primary key values and such
         that aren't handled otherwise.
 
-        Column-based attributes can be modified within this method which will 
-        result in the new value being inserted.  However *no* changes to the overall 
+        Column-based attributes can be modified within this method which will
+        result in the new value being inserted.  However *no* changes to the overall
         flush plan can be made; this means any collection modification or
         save() operations which occur within this method will not take effect
         until the next flush call.
-        
+
         """
 
         return EXT_CONTINUE
@@ -228,11 +225,11 @@ class MapperExtension(object):
 
     def before_update(self, mapper, connection, instance):
         """Receive an object instance before that instance is UPDATEed.
-        
-        Note that this method is called for all instances that are marked as 
-        "dirty", even those which have no net changes to their column-based 
+
+        Note that this method is called for all instances that are marked as
+        "dirty", even those which have no net changes to their column-based
         attributes.  An object is marked as dirty when any of its column-based
-        attributes have a "set attribute" operation called or when any of its 
+        attributes have a "set attribute" operation called or when any of its
         collections are modified.  If, at update time, no column-based attributes
         have any net changes, no UPDATE statement will be issued.  This means
         that an instance being sent to before_update is *not* a guarantee that
@@ -240,15 +237,15 @@ class MapperExtension(object):
         here).
 
         To detect if the column-based attributes on the object have net changes,
-        and will therefore generate an UPDATE statement, use 
+        and will therefore generate an UPDATE statement, use
         ``object_session(instance).is_modified(instance, include_collections=False)``.
-        
-        Column-based attributes can be modified within this method which will 
-        result in their being updated.  However *no* changes to the overall 
+
+        Column-based attributes can be modified within this method which will
+        result in their being updated.  However *no* changes to the overall
         flush plan can be made; this means any collection modification or
         save() operations which occur within this method will not take effect
         until the next flush call.
-        
+
         """
 
         return EXT_CONTINUE
@@ -260,12 +257,12 @@ class MapperExtension(object):
 
     def before_delete(self, mapper, connection, instance):
         """Receive an object instance before that instance is DELETEed.
-        
-        Note that *no* changes to the overall 
+
+        Note that *no* changes to the overall
         flush plan can be made here; this means any collection modification,
-        save() or delete() operations which occur within this method will 
+        save() or delete() operations which occur within this method will
         not take effect until the next flush call.
-        
+
         """
 
         return EXT_CONTINUE
@@ -284,7 +281,7 @@ class MapperProperty(object):
 
     def setup(self, querycontext, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
-        
+
         Each MapperProperty associated with the target mapper processes the
         statement referenced by the query context, adding columns and/or
         criterion as appropriate.
@@ -293,53 +290,57 @@ class MapperProperty(object):
         pass
 
     def create_row_processor(self, selectcontext, mapper, row):
-        """return a 3-tuple consiting of two row processing functions and an instance post-processing function.
-        
-        Input arguments are the query.SelectionContext and the *first*
-        applicable row of a result set obtained within query.Query.instances(), called
-        only the first time a particular mapper's populate_instance() method is invoked for the 
-        overall result.
+        """Return a 3-tuple consiting of two row processing functions and an instance post-processing function.
 
-        The settings contained within the SelectionContext as well as the columns present
-        in the row (which will be the same columns present in all rows) are used to determine
-        the presence and behavior of the returned callables.  The callables will then be used to process
-        all rows and to post-process all instances, respectively.
-        
-        callables are of the following form::
-        
+        Input arguments are the query.SelectionContext and the *first*
+        applicable row of a result set obtained within
+        query.Query.instances(), called only the first time a particular
+        mapper's populate_instance() method is invoked for the overall result.
+
+        The settings contained within the SelectionContext as well as the
+        columns present in the row (which will be the same columns present in
+        all rows) are used to determine the presence and behavior of the
+        returned callables.  The callables will then be used to process all
+        rows and to post-process all instances, respectively.
+
+        Callables are of the following form::
+
             def new_execute(instance, row, **flags):
-                # process incoming instance and given row.  the instance is "new" and
-                # was just created upon receipt of this row.
-                # flags is a dictionary containing at least the following attributes:
-                #   isnew - indicates if the instance was newly created as a result of reading this row
+                # process incoming instance and given row.  the instance is
+                # "new" and was just created upon receipt of this row.
+                # flags is a dictionary containing at least the following
+                # attributes:
+                #   isnew - indicates if the instance was newly created as a
+                #           result of reading this row
                 #   instancekey - identity key of the instance
                 # optional attribute:
-                #   ispostselect - indicates if this row resulted from a 'post' select of additional tables/columns
+                #   ispostselect - indicates if this row resulted from a
+                #                  'post' select of additional tables/columns
 
             def existing_execute(instance, row, **flags):
-                # process incoming instance and given row.  the instance is "existing" and
-                # was created based on a previous row.
-                
+                # process incoming instance and given row.  the instance is
+                # "existing" and was created based on a previous row.
+
             def post_execute(instance, **flags):
-                # process instance after all result rows have been processed.  this
-                # function should be used to issue additional selections in order to
-                # eagerly load additional properties.
-                
+                # process instance after all result rows have been processed.
+                # this function should be used to issue additional selections
+                # in order to eagerly load additional properties.
+
             return (new_execute, existing_execute, post_execute)
-            
-        either of the three tuples can be ``None`` in which case no function is called.
-        
+
+        Either of the three tuples can be ``None`` in which case no function
+        is called.
         """
-        
+
         raise NotImplementedError()
 
     def cascade_iterator(self, type, object, recursive=None, halt_on=None):
-        """iterate through instances related to the given instance along
+        """Iterate through instances related to the given instance along
         a particular 'cascade' path, starting with this MapperProperty.
-        
-        see PropertyLoader for the related instance implementation.
+
+        See PropertyLoader for the related instance implementation.
         """
-        
+
         return iter([])
 
     def get_criterion(self, query, key, value):
@@ -349,9 +350,9 @@ class MapperProperty(object):
         is a value to be matched.  This is only picked up by
         ``PropertyLoaders``.
 
-        This is called by a ``Query``'s ``join_by`` method to
-        formulate a set of key/value pairs into a ``WHERE`` criterion
-        that spans multiple tables if needed.
+        This is called by a ``Query``'s ``join_by`` method to formulate a set
+        of key/value pairs into a ``WHERE`` criterion that spans multiple
+        tables if needed.
         """
 
         return None
@@ -370,10 +371,10 @@ class MapperProperty(object):
 
     def do_init(self):
         """Perform subclass-specific initialization steps.
-        
-        This is a *template* method called by the 
+
+        This is a *template* method called by the
         ``MapperProperty`` object's init() method."""
-        
+
         pass
 
     def register_dependencies(self, *args, **kwargs):
@@ -408,7 +409,7 @@ class MapperProperty(object):
         this ``MapperProperty`` to the given value, which may be a
         column value or an instance.  'operator' is an operator from
         the operators module, or from sql.Comparator.
-        
+
         By default uses the PropComparator attached to this MapperProperty
         under the attribute name "comparator".
         """
@@ -417,56 +418,57 @@ class MapperProperty(object):
 
 class PropComparator(expression.ColumnOperators):
     """defines comparison operations for MapperProperty objects"""
-    
+
     def expression_element(self):
         return self.clause_element()
-        
+
     def contains_op(a, b):
         return a.contains(b)
     contains_op = staticmethod(contains_op)
-    
+
     def any_op(a, b, **kwargs):
         return a.any(b, **kwargs)
     any_op = staticmethod(any_op)
-    
+
     def has_op(a, b, **kwargs):
         return a.has(b, **kwargs)
     has_op = staticmethod(has_op)
-    
+
     def __init__(self, prop):
         self.prop = prop
 
     def contains(self, other):
-        """return true if this collection contains other"""
+        """Return true if this collection contains other"""
         return self.operate(PropComparator.contains_op, other)
 
     def any(self, criterion=None, **kwargs):
-        """return true if this collection contains any member that meets the given criterion.
-        
-            criterion
-                an optional ClauseElement formulated against the member class' table or attributes.
-                
-            \**kwargs
-                key/value pairs corresponding to member class attribute names which will be compared
-                via equality to the corresponding values.
+        """Return true if this collection contains any member that meets the given criterion.
+
+        criterion
+          an optional ClauseElement formulated against the member class' table
+          or attributes.
+
+        \**kwargs
+          key/value pairs corresponding to member class attribute names which
+          will be compared via equality to the corresponding values.
         """
 
         return self.operate(PropComparator.any_op, criterion, **kwargs)
-    
+
     def has(self, criterion=None, **kwargs):
-        """return true if this element references a member which meets the given criterion.
-        
-    
+        """Return true if this element references a member which meets the given criterion.
+
         criterion
-            an optional ClauseElement formulated against the member class' table or attributes.
-            
+          an optional ClauseElement formulated against the member class' table
+          or attributes.
+
         \**kwargs
-            key/value pairs corresponding to member class attribute names which will be compared
-            via equality to the corresponding values.
+          key/value pairs corresponding to member class attribute names which
+          will be compared via equality to the corresponding values.
         """
 
         return self.operate(PropComparator.has_op, criterion, **kwargs)
-        
+
 class StrategizedProperty(MapperProperty):
     """A MapperProperty which uses selectable strategies to affect
     loading behavior.
@@ -518,7 +520,7 @@ def serialize_path(path):
         (mapper.class_, mapper.entity_name, key)
         for mapper, key in [(path[i], path[i+1]) for i in range(0, len(path)-1, 2)]
     ]
-    
+
 def deserialize_path(path):
     if path is None:
         return None
@@ -536,18 +538,18 @@ class MapperOption(object):
 
     def process_query(self, query):
         pass
-    
+
     def process_query_conditionally(self, query):
         """same as process_query(), except that this option may not apply
-        to the given query.  
-        
-        Used when secondary loaders resend existing options to a new 
+        to the given query.
+
+        Used when secondary loaders resend existing options to a new
         Query."""
         self.process_query(query)
 
 class ExtensionOption(MapperOption):
     """a MapperOption that applies a MapperExtension to a query operation."""
-    
+
     def __init__(self, ext):
         self.ext = ext
 
@@ -564,13 +566,13 @@ class PropertyOption(MapperOption):
     def __init__(self, key, mapper=None):
         self.key = key
         self.mapper = mapper
-        
+
     def process_query(self, query):
         self._process(query, True)
-        
+
     def process_query_conditionally(self, query):
         self._process(query, False)
-        
+
     def _process(self, query, raiseerr):
         if self._should_log_debug:
             self.logger.debug("applying option to Query, property key '%s'" % self.key)
@@ -585,7 +587,7 @@ class PropertyOption(MapperOption):
         path = None
         l = []
         current_path = list(query._current_path)
-        
+
         if self.mapper:
             global class_mapper
             if class_mapper is None:
@@ -634,7 +636,7 @@ class StrategizedOption(PropertyOption):
 
     def is_chained(self):
         return False
-        
+
     def process_query_property(self, query, paths):
         if self.is_chained():
             for path in paths:
@@ -664,10 +666,10 @@ class LoaderStrategy(object):
       list of selected columns, *eager loading* properties may add
       ``LEFT OUTER JOIN`` clauses to the statement.
 
-    * it processes the ``SelectionContext`` at row-processing time.  This 
+    * it processes the ``SelectionContext`` at row-processing time.  This
       includes straight population of attributes corresponding to rows,
       setting instance-level lazyloader callables on newly
-      constructed instances, and appending child items to scalar/collection 
+      constructed instances, and appending child items to scalar/collection
       attributes in response to eagerly-loaded relations.
     """
 
@@ -678,7 +680,7 @@ class LoaderStrategy(object):
     def init(self):
         self.parent = self.parent_property.parent
         self.key = self.parent_property.key
-    
+
     def init_class_attribute(self):
         pass
 
@@ -686,12 +688,11 @@ class LoaderStrategy(object):
         pass
 
     def create_row_processor(self, selectcontext, mapper, row):
-        """return row processing functions which fulfill the contract specified
+        """Return row processing functions which fulfill the contract specified
         by MapperProperty.create_row_processor.
-        
-        
-        StrategizedProperty delegates its create_row_processor method
-        directly to this method.
+
+        StrategizedProperty delegates its create_row_processor method directly
+        to this method.
         """
 
         raise NotImplementedError()

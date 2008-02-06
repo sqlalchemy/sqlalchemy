@@ -31,7 +31,7 @@ standard Python ``list``, ``set`` and ``dict`` interfaces.  These could be
 specified in terms of generic decorator recipes, but are instead hand-tooled for
 increased efficiency.   The targeted decorators occasionally implement
 adapter-like behavior, such as mapping bulk-set methods (``extend``, ``update``,
-``__setslice``, etc.) into the series of atomic mutation events that the ORM
+``__setslice__``, etc.) into the series of atomic mutation events that the ORM
 requires.
 
 The targeted decorators are used internally for automatic instrumentation of
@@ -587,13 +587,13 @@ class CollectionAdapter(object):
 
     def fire_pre_remove_event(self, initiator=None):
         """Notify that an entity is about to be removed from the collection.
-        
-        Only called if the entity cannot be removed after calling 
+
+        Only called if the entity cannot be removed after calling
         fire_remove_event().
         """
-        
+
         self.attr.fire_pre_remove_event(self.owner_state, initiator=initiator)
-        
+
     def __getstate__(self):
         return { 'key': self.attr.key,
                  'owner_state': self.owner_state,
@@ -853,7 +853,7 @@ def __before_delete(collection, _sa_initiator=None):
     executor = getattr(collection, '_sa_adapter', None)
     if executor:
         getattr(executor, 'fire_pre_remove_event')(_sa_initiator)
-    
+
 def _list_decorators():
     """Hand-turned instrumentation wrappers that can decorate any list-like
     class."""

@@ -69,9 +69,9 @@ class Query(object):
         self._current_path = ()
         self._only_load_props = None
         self._refresh_instance = None
-        
+
         self._adapter = self.select_mapper._clause_adapter
-        
+
     def _no_criterion(self, meth):
         q = self._clone()
 
@@ -186,7 +186,7 @@ class Query(object):
            instance.
 
          \**kwargs
-           all extra keyword arguments are propigated to the constructor of
+           all extra keyword arguments are propagated to the constructor of
            Query.
         """
 
@@ -253,7 +253,7 @@ class Query(object):
         Query, and subsequent elements matching columns or entities which were
         specified via add_column or add_entity.
 
-        When adding entities to the result, its generally desireable to add
+        When adding entities to the result, its generally desirable to add
         limiting criterion to the query which can associate the primary entity
         of this Query along with the additional entities.  The Query selects
         from all tables with no joining criterion by default.
@@ -287,7 +287,7 @@ class Query(object):
         class for this Query, and subsequent elements matching columns or
         entities which were specified via add_column or add_entity.
 
-        When adding columns to the result, its generally desireable to add
+        When adding columns to the result, its generally desirable to add
         limiting criterion to the query which can associate the primary entity
         of this Query along with the additional columns, if the column is
         based on a table or selectable that is not the primary mapped
@@ -360,7 +360,7 @@ class Query(object):
         q._params = q._params.copy()
         q._params.update(kwargs)
         return q
-    
+
     def filter(self, criterion):
         """apply the given filtering criterion to the query and return the newly resulting ``Query``
 
@@ -375,7 +375,7 @@ class Query(object):
 
         if self._adapter is not None:
             criterion = self._adapter.traverse(criterion)
-            
+
         q = self._no_statement("filter")
         if q._criterion is not None:
             q._criterion = q._criterion & criterion
@@ -412,7 +412,7 @@ class Query(object):
         currenttables = self._get_joinable_tables()
 
         # determine if generated joins need to be aliased on the left
-        # hand side.  
+        # hand side.
         if self._adapter and not self._aliases:  # at the beginning of a join, look at leftmost adapter
             adapt_against = self._adapter.selectable
         elif start.select_table is not start.mapped_table: # in the middle of a join, look for a polymorphic mapper
@@ -439,7 +439,7 @@ class Query(object):
                     raise exceptions.InvalidRequestError("Selectable '%s' is not derived from '%s'" % (use_selectable.description, prop.mapper.mapped_table.description))
                 if not isinstance(use_selectable, expression.Alias):
                     use_selectable = use_selectable.alias()
-                
+
             if prop._is_self_referential() and not create_aliases and not use_selectable:
                 raise exceptions.InvalidRequestError("Self-referential query on '%s' property requires create_aliases=True argument." % str(prop))
 
@@ -469,7 +469,7 @@ class Query(object):
                 else:
                     if use_selectable:
                         alias = mapperutil.PropertyAliasedClauses(prop,
-                            prop.primary_join_against(mapper, adapt_against), 
+                            prop.primary_join_against(mapper, adapt_against),
                             None,
                             alias,
                             alias=use_selectable
@@ -478,7 +478,7 @@ class Query(object):
                         clause = clause.join(alias.alias, crit, isouter=outerjoin)
                     elif create_aliases:
                         alias = mapperutil.PropertyAliasedClauses(prop,
-                            prop.primary_join_against(mapper, adapt_against), 
+                            prop.primary_join_against(mapper, adapt_against),
                             None,
                             alias
                         )
@@ -598,7 +598,7 @@ class Query(object):
         return q
 
     def having(self, criterion):
-        """apply a HAVING criterion to the quer and return the newly resulting ``Query``."""
+        """apply a HAVING criterion to the query and return the newly resulting ``Query``."""
 
         if isinstance(criterion, basestring):
             criterion = sql.text(criterion)
@@ -626,9 +626,9 @@ class Query(object):
           * a 2-tuple containing one of the above, combined with a selectable
           which derives from the properties' mapped table
           * a list (not a tuple) containing a combination of any of the above.
-          
+
         e.g.::
-        
+
             session.query(Company).join('employees')
             session.query(Company).join(['employees', 'tasks'])
             session.query(Houses).join([Colonials.rooms, Room.closets])
@@ -647,14 +647,14 @@ class Query(object):
           * a 2-tuple containing one of the above, combined with a selectable
           which derives from the properties' mapped table
           * a list (not a tuple) containing a combination of any of the above.
-          
+
         e.g.::
-        
+
             session.query(Company).outerjoin('employees')
             session.query(Company).outerjoin(['employees', 'tasks'])
             session.query(Houses).outerjoin([Colonials.rooms, Room.closets])
             session.query(Company).join([('employees', people.join(engineers)), Engineer.computers])
-        
+
         """
 
         return self._join(prop, id=id, outerjoin=True, aliased=aliased, from_joinpoint=from_joinpoint)
@@ -665,7 +665,7 @@ class Query(object):
         q._from_obj = clause
         q._joinpoint = mapper
         q._aliases = aliases
-        
+
         if aliases:
             q._adapter = sql_util.ClauseAdapter(aliases.alias).copy_and_chain(q._adapter)
         else:
@@ -1040,7 +1040,7 @@ class Query(object):
             adapter = None
 
         adapter = self._adapter
-        
+
         # TODO: mappers added via add_entity(), adapt their queries also,
         # if those mappers are polymorphic
 
@@ -1143,7 +1143,7 @@ class Query(object):
                         context.primary_columns.append(c)
 
             statement = sql.select(context.primary_columns + context.secondary_columns, whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, order_by=util.to_list(order_by), **self._select_args())
-            
+
             if context.eager_joins:
                 if adapter:
                     context.eager_joins = adapter.traverse(context.eager_joins)
@@ -1177,7 +1177,7 @@ class Query(object):
                 return self._alias_ids[alias_id]
             except KeyError:
                 raise exceptions.InvalidRequestError("Query has no alias identified by '%s'" % alias_id)
-                
+
         if isinstance(m, type):
             m = mapper.class_mapper(m)
         if isinstance(m, mapper.Mapper):

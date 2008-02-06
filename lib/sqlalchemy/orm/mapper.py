@@ -8,7 +8,7 @@
 unit which associates a class with a database table.
 
 This is a semi-private module; the main configurational API of the ORM is
-avaiable in [sqlalchemy.orm#].
+available in [sqlalchemy.orm#].
 """
 
 import weakref
@@ -119,7 +119,7 @@ class Mapper(object):
         self._row_translators = {}
         self._dependency_processors = []
         self._clause_adapter = None
-        
+
         # our 'polymorphic identity', a string name that when located in a result set row
         # indicates this Mapper should be used to construct the object instance for that row.
         self.polymorphic_identity = polymorphic_identity
@@ -369,11 +369,11 @@ class Mapper(object):
 
             if self.version_id_col is None:
                 self.version_id_col = self.inherits.version_id_col
-                
+
             for mapper in self.iterate_to_root():
                 if hasattr(mapper, '_genned_equivalent_columns'):
                     del mapper._genned_equivalent_columns
-                
+
             if self.order_by is False:
                 self.order_by = self.inherits.order_by
             self.polymorphic_map = self.inherits.polymorphic_map
@@ -454,7 +454,7 @@ class Mapper(object):
 
             if len(primary_key) == 0:
                 raise exceptions.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))
-            
+
             self.primary_key = primary_key
             self.__log("Identified primary key columns: " + str(primary_key))
 
@@ -541,7 +541,7 @@ class Mapper(object):
             self._genned_equivalent_columns  = self.__get_equivalent_columns()
             return self._genned_equivalent_columns
     _equivalent_columns = property(_equivalent_columns)
-    
+
     class _CompileOnAttr(PropComparator):
         """placeholder class attribute which fires mapper compilation on access"""
 
@@ -705,19 +705,19 @@ class Mapper(object):
 
             self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, _polymorphic_map=self.polymorphic_map, polymorphic_on=_corresponding_column_or_error(self.select_table, self.polymorphic_on), primary_key=self.primary_key_argument)
             adapter = sqlutil.ClauseAdapter(self.select_table, equivalents=self.__surrogate_mapper._equivalent_columns)
-            
+
             if self.order_by:
                 order_by = [expression._literal_as_text(o) for o in util.to_list(self.order_by) or []]
                 order_by = adapter.copy_and_process(order_by)
                 self.__surrogate_mapper.order_by=order_by
-                
+
             if self._init_properties is not None:
                 for key, prop in self._init_properties.iteritems():
                     if expression.is_column(prop):
                         self.__surrogate_mapper.add_property(key, _corresponding_column_or_error(self.select_table, prop))
                     elif (isinstance(prop, list) and expression.is_column(prop[0])):
                         self.__surrogate_mapper.add_property(key, [_corresponding_column_or_error(self.select_table, c) for c in prop])
-            
+
             self.__surrogate_mapper._clause_adapter = adapter
 
     def _compile_class(self):
@@ -804,7 +804,7 @@ class Mapper(object):
             self.add_property(key, value)
 
     def add_property(self, key, prop):
-        """Add an indiviual MapperProperty to this mapper.
+        """Add an individual MapperProperty to this mapper.
 
         If the mapper has not been compiled yet, just adds the
         property to the initial properties dictionary sent to the
@@ -1301,8 +1301,8 @@ class Mapper(object):
             try:
                 identitykey = refresh_instance.dict['_instance_key']
             except KeyError:
-                # super-rare condition; a refresh is being called 
-                # on a non-instance-key instance; this is meant to only 
+                # super-rare condition; a refresh is being called
+                # on a non-instance-key instance; this is meant to only
                 # occur wihtin a flush()
                 identitykey = self._identity_key_from_state(refresh_instance)
         else:
@@ -1556,7 +1556,7 @@ def _load_scalar_attributes(instance, attribute_names):
             session = mapper.get_session()
         except exceptions.InvalidRequestError:
             raise exceptions.UnboundExecutionError("Instance %s is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed" % (instance.__class__))
-    
+
     state = instance._state
     if '_instance_key' in state.dict:
         identity_key = state.dict['_instance_key']
