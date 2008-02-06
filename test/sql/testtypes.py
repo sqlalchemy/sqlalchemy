@@ -489,29 +489,29 @@ class ExpressionTest(AssertMixin):
         test_table = Table('test', meta,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
-            Column('timestamp', Date),
-            Column('value', MyCustomType))
+            Column('atimestamp', Date),
+            Column('avalue', MyCustomType))
 
         meta.create_all()
 
-        test_table.insert().execute({'id':1, 'data':'somedata', 'timestamp':datetime.date(2007, 10, 15), 'value':25})
+        test_table.insert().execute({'id':1, 'data':'somedata', 'atimestamp':datetime.date(2007, 10, 15), 'avalue':25})
 
     def tearDownAll(self):
         meta.drop_all()
 
     def test_control(self):
-        assert testing.db.execute("select value from test").scalar() == 250
+        assert testing.db.execute("select avalue from test").scalar() == 250
 
         assert test_table.select().execute().fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
 
     def test_bind_adapt(self):
-        expr = test_table.c.timestamp == bindparam("thedate")
-        assert expr.right.type.__class__ == test_table.c.timestamp.type.__class__
+        expr = test_table.c.atimestamp == bindparam("thedate")
+        assert expr.right.type.__class__ == test_table.c.atimestamp.type.__class__
 
         assert testing.db.execute(test_table.select().where(expr), {"thedate":datetime.date(2007, 10, 15)}).fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
 
-        expr = test_table.c.value == bindparam("somevalue")
-        assert expr.right.type.__class__ == test_table.c.value.type.__class__
+        expr = test_table.c.avalue == bindparam("somevalue")
+        assert expr.right.type.__class__ == test_table.c.avalue.type.__class__
         assert testing.db.execute(test_table.select().where(expr), {"somevalue":25}).fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
 
 
@@ -526,8 +526,8 @@ class ExpressionTest(AssertMixin):
         assert testing.db.execute(select([expr])).scalar() == 16
 
         # test custom operator conversion
-        expr = test_table.c.value + 40
-        assert expr.type.__class__ is test_table.c.value.type.__class__
+        expr = test_table.c.avalue + 40
+        assert expr.type.__class__ is test_table.c.avalue.type.__class__
 
         # + operator converted to -
         # value is calculated as: (250 - (40 * 10)) / 10 == -15
