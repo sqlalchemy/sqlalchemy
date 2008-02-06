@@ -177,6 +177,10 @@ CHANGES
         - autoflush for commit() wasn't flushing for simple
           subtransactions.
 
+        - unitofwork flush didn't close the failed transaction
+          when the session was not in a transaction and commiting
+          the transaction failed.
+
     - Miscellaneous tickets: [ticket:940] [ticket:964]
 
 - general

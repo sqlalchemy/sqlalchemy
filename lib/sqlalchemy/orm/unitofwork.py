@@ -216,10 +216,10 @@ class UnitOfWork(object):
             
             if session.extension is not None:
                 session.extension.after_flush(session, flush_context)
+            session.commit()
         except:
             session.rollback()
             raise
-        session.commit()
 
         flush_context.post_exec()
 

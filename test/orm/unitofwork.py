@@ -15,6 +15,7 @@ from testlib import engines, tables, fixtures
 # TODO: convert suite to not use Session.mapper, use fixtures.Base
 # with explicit session.save()
 Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
+orm_mapper = mapper
 mapper = Session.mapper
 
 class UnitOfWorkTest(object):
@@ -1967,7 +1968,45 @@ class RowSwitchTest(ORMTest):
         assert list(sess.execute(t1.select(), mapper=T1)) == [(2, 'some other t1')]
         assert list(sess.execute(t2.select(), mapper=T1)) == [(1, 'some other t2', 2)]
 
+class TransactionTest(ORMTest):
+    """This is in fact a core test, but currently the only known way
+    to make COMMIT repeatably fail is on postgresql with deferrable FKs"""
+    __only_on__ = 'postgres'
+    def define_tables(self, metadata):
+        global t1, T1, t2, T2
 
+        Session.remove()
+
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True))
+        
+        t2 = Table('t2', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('t1_id', Integer))
+        deferred_constraint = DDL("ALTER TABLE t2 ADD CONSTRAINT t2_t1_id_fk FOREIGN KEY (t1_id) "\
+                                  "REFERENCES t1 (id) DEFERRABLE INITIALLY DEFERRED")
+        deferred_constraint.execute_at('after-create', t2)
+        
+        class T1(fixtures.Base):
+            pass
+        
+        class T2(fixtures.Base):
+            pass
+
+        orm_mapper(T1, t1)
+        orm_mapper(T2, t2)
+
+    def test_close_transaction_on_commit_fail(self):
+        Session = sessionmaker(autoflush=False, transactional=False)
+        sess = Session()
+        
+        sess.save(T2(t1_id=123))
+        try:
+            sess.flush()
+            assert False
+        except:
+            # Flush needs to rollback also when commit fails
+            assert sess.transaction is None
 
 if __name__ == "__main__":
     testenv.main()
