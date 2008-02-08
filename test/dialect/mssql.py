@@ -1,6 +1,8 @@
 import testenv; testenv.configure_for_tests()
 import re
 from sqlalchemy import *
+from sqlalchemy.orm import *
+from sqlalchemy import exceptions
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 from testlib import *
@@ -183,6 +185,11 @@ class QueryTest(PersistTest):
                 pass
         finally:
             metadata.drop_all()
+
+class Foo(object):
+    def __init__(self, **kw):
+        for k in kw:
+            setattr(self, k, kw[k])
 
 class GenerativeQueryTest(PersistTest):
     __only_on__ = 'mssql'
