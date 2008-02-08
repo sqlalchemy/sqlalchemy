@@ -375,6 +375,13 @@ class AccessCompiler(compiler.DefaultCompiler):
         """FOR UPDATE is not supported by Access; silently ignore"""
         return ''
 
+    # Strip schema
+    def visit_table(self, table, asfrom=False, **kwargs):
+        if asfrom:
+            return self.preparer.quote(table, table.name)
+        else:
+            return ""
+
 
 class AccessSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
