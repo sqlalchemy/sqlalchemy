@@ -13,6 +13,11 @@ CHANGES
     - Added a callable-based DDL events interface, adds hooks
       before and after Tables and MetaData create and drop.
 
+    - added generative where(<criterion>) method to delete() 
+      and update() constructs which return a new object with
+      criterion joined to existing criterion via AND, just
+      like select().where().
+      
     - Added "ilike()" operator to column operations.  Compiles to
       ILIKE on postgres, lower(x) LIKE lower(y) on all
       others. [ticket:727]

@@ -480,10 +480,10 @@ class SQLCompileTest(PersistTest):
 
         cc = re.sub(r'\n', '', str(c))
 
-        self.assert_(cc == result, "\n'" + cc + "'\n does not match \n'" + result + "'")
+        self.assertEquals(cc, result)
 
         if checkparams is not None:
-            self.assert_(c.construct_params(params) == checkparams, "params dont match" + repr(c.params))
+            self.assertEquals(c.construct_params(params), checkparams)
 
 class AssertMixin(PersistTest):
     """given a list-based structure of keys/properties which represent information within an object structure, and

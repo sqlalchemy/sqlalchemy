@@ -2178,6 +2178,9 @@ class _Exists(_UnaryExpression):
         return e
 
     def where(self, clause):
+        """return a new exists() construct with the given expression added to its WHERE clause, joined
+        to the existing clause via AND, if any."""
+
         e = self._clone()
         e.element = self.element.where(clause).self_group()
         return e
@@ -3493,7 +3496,10 @@ class Insert(_UpdateBase):
 class Update(_UpdateBase):
     def __init__(self, table, whereclause, values=None, inline=False, **kwargs):
         self.table = table
-        self._whereclause = whereclause
+        if whereclause:
+            self._whereclause = _literal_as_text(whereclause)
+        else:
+            self._whereclause = None
         self.inline = inline
         self.parameters = self._process_colparams(values)
 
@@ -3509,6 +3515,17 @@ class Update(_UpdateBase):
         self._whereclause = clone(self._whereclause)
         self.parameters = self.parameters.copy()
 
+    def where(self, whereclause):
+        """return a new update() construct with the given expression added to its WHERE clause, joined
+        to the existing clause via AND, if any."""
+        
+        s = self._clone()
+        if s._whereclause is not None:
+            s._whereclause = and_(s._whereclause, _literal_as_text(whereclause))
+        else:
+            s._whereclause = _literal_as_text(whereclause)
+        return s
+
     def values(self, v):
         if len(v) == 0:
             return self
@@ -3523,7 +3540,10 @@ class Update(_UpdateBase):
 class Delete(_UpdateBase):
     def __init__(self, table, whereclause):
         self.table = table
-        self._whereclause = whereclause
+        if whereclause:
+            self._whereclause = _literal_as_text(whereclause)
+        else:
+            self._whereclause = None
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:
@@ -3531,6 +3551,17 @@ class Delete(_UpdateBase):
         else:
             return ()
 
+    def where(self, whereclause):
+        """return a new delete() construct with the given expression added to its WHERE clause, joined
+        to the existing clause via AND, if any."""
+        
+        s = self._clone()
+        if s._whereclause is not None:
+            s._whereclause = and_(s._whereclause, _literal_as_text(whereclause))
+        else:
+            s._whereclause = _literal_as_text(whereclause)
+        return s
+        
     def _copy_internals(self, clone=_clone):
         self._whereclause = clone(self._whereclause)
 
