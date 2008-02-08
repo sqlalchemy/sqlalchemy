@@ -56,6 +56,11 @@ class CompileTest(SQLCompileTest):
 
         self.assert_compile(table1.join(table4, table1.c.myid==table4.c.rem_id).select(), "SELECT mytable.myid, mytable.name, mytable.description, remotetable_1.rem_id, remotetable_1.datatype_id, remotetable_1.value FROM mytable JOIN remote_owner.remotetable AS remotetable_1 ON remotetable_1.rem_id = mytable.myid")
 
+    def test_delete_schema(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata, Column('id', Integer, primary_key=True), schema='paj')
+        self.assert_compile(tbl.delete(tbl.c.id == 1), "DELETE FROM paj.test WHERE paj.test.id = :test_id_1")
+
     def test_union(self):
         t1 = table('t1',
             column('col1'),
@@ -145,6 +150,19 @@ class QueryTest(PersistTest):
         tbl.create()
         try:
             tbl.insert().execute({'id':1})
+        finally:
+            tbl.drop()
+            con.execute('drop schema paj')
+
+    def test_delete_schema(self):
+        meta = MetaData(testing.db)
+        con = testing.db.connect()
+        con.execute('create schema paj')
+        tbl = Table('test', meta, Column('id', Integer, primary_key=True), schema='paj')
+        tbl.create()
+        try:
+            tbl.insert().execute({'id':1})
+            tbl.delete(tbl.c.id == 1).execute()
         finally:
             tbl.drop()
             con.execute('drop schema paj')

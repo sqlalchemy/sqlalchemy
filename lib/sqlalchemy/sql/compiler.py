@@ -240,12 +240,18 @@ class DefaultCompiler(engine.Compiled):
             
         return " ".join([self.process(label.obj), self.operator_string(operators.as_), self.preparer.format_label(label, labelname)])
         
-    def visit_column(self, column, result_map=None, **kwargs):
+    def visit_column(self, column, result_map=None, use_schema=False, **kwargs):
         # there is actually somewhat of a ruleset when you would *not* necessarily
         # want to truncate a column identifier, if its mapped to the name of a 
         # physical column.  but thats very hard to identify at this point, and 
         # the identifier length should be greater than the id lengths of any physical
         # columns so should not matter.
+
+        if use_schema and getattr(column, 'table', None) and getattr(column.table, 'schema', None):
+            schema_prefix = self.preparer.quote(column.table, column.table.schema) + '.'
+        else:
+            schema_prefix = ''
+
         if not column.is_literal:
             name = self._truncated_identifier("colident", column.name)
         else:
@@ -260,11 +266,11 @@ class DefaultCompiler(engine.Compiled):
                 if column.table is None or not column.table.named_with_column:
                     return n
                 else:
-                    return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + n
+                    return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + n
             elif len(column.table.primary_key) != 0:
                 pk = list(column.table.primary_key)[0]
                 pkname = (pk.is_literal and name or self._truncated_identifier("colident", pk.name))
-                return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.preparer.quote(pk, pkname)
+                return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.preparer.quote(pk, pkname)
             else:
                 return None
         elif column.table is None or not column.table.named_with_column:
@@ -274,9 +280,9 @@ class DefaultCompiler(engine.Compiled):
                 return self.preparer.quote(column, name)
         else:
             if getattr(column, "is_literal", False):
-                return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.escape_literal_column(name)
+                return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.escape_literal_column(name)
             else:
-                return self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.preparer.quote(column, name)
+                return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.preparer.quote(column, name)
 
     def escape_literal_column(self, text):
         """provide escaping for the literal_column() construct."""
