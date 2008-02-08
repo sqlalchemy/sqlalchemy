@@ -2,6 +2,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import exceptions
 from testlib import *
+from testlib import config, engines
 
 class ConstraintTest(AssertMixin):
 
@@ -199,6 +200,110 @@ class ConstraintTest(AssertMixin):
                                 sport='hockey', announcer='some canadian',
                                 winner='sweden')
         ss = events.select().execute().fetchall()
+
+
+class ConstraintCompilationTest(AssertMixin):
+    class accum(object):
+        def __init__(self):
+            self.statements = []
+        def __call__(self, sql, *a, **kw):
+            self.statements.append(sql)
+        def __contains__(self, substring):
+            for s in self.statements:
+                if substring in s:
+                    return True
+            return False
+        def __str__(self):
+            return '\n'.join([repr(x) for x in self.statements])
+        def clear(self):
+            del self.statements[:]
+
+    def setUp(self):
+        self.sql = self.accum()
+        opts = config.db_opts.copy()
+        opts['strategy'] = 'mock'
+        opts['executor'] = self.sql
+        self.engine = engines.testing_engine(options=opts)
+
+
+    def _test_deferrable(self, constraint_factory):
+        meta = MetaData(self.engine)
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer),
+                  constraint_factory(deferrable=True))
+        t.create()
+        assert 'DEFERRABLE' in self.sql, self.sql
+        assert 'NOT DEFERRABLE' not in self.sql, self.sql
+        self.sql.clear()
+        meta.clear()
+
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer),
+                  constraint_factory(deferrable=False))
+        t.create()
+        assert 'NOT DEFERRABLE' in self.sql
+        self.sql.clear()
+        meta.clear()
+
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer),
+                  constraint_factory(deferrable=True, initially='IMMEDIATE'))
+        t.create()
+        assert 'NOT DEFERRABLE' not in self.sql
+        assert 'INITIALLY IMMEDIATE' in self.sql
+        self.sql.clear()
+        meta.clear()
+
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer),
+                  constraint_factory(deferrable=True, initially='DEFERRED'))
+        t.create()
+
+        assert 'NOT DEFERRABLE' not in self.sql
+        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+
+    def test_deferrable_pk(self):
+        factory = lambda **kw: PrimaryKeyConstraint('a', **kw)
+        self._test_deferrable(factory)
+
+    def test_deferrable_table_fk(self):
+        factory = lambda **kw: ForeignKeyConstraint(['b'], ['tbl.a'], **kw)
+        self._test_deferrable(factory)
+
+    def test_deferrable_column_fk(self):
+        meta = MetaData(self.engine)
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer,
+                         ForeignKey('tbl.a', deferrable=True,
+                                    initially='DEFERRED')))
+        t.create()
+        assert 'DEFERRABLE' in self.sql, self.sql
+        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+
+    def test_deferrable_unique(self):
+        factory = lambda **kw: UniqueConstraint('b', **kw)
+        self._test_deferrable(factory)
+
+    def test_deferrable_table_check(self):
+        factory = lambda **kw: CheckConstraint('a < b', **kw)
+        self._test_deferrable(factory)
+
+    def test_deferrable_column_check(self):
+        meta = MetaData(self.engine)
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer,
+                         CheckConstraint('a < b',
+                                         deferrable=True,
+                                         initially='DEFERRED')))
+        t.create()
+        assert 'DEFERRABLE' in self.sql, self.sql
+        assert 'INITIALLY DEFERRED' in self.sql, self.sql
 
 
 if __name__ == "__main__":

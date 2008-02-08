@@ -608,7 +608,7 @@ class ForeignKey(SchemaItem):
     constraint definition.
     """
 
-    def __init__(self, column, constraint=None, use_alter=False, name=None, onupdate=None, ondelete=None):
+    def __init__(self, column, constraint=None, use_alter=False, name=None, onupdate=None, ondelete=None, deferrable=None, initially=None):
         """Construct a new ``ForeignKey`` object.
 
         column
@@ -629,6 +629,8 @@ class ForeignKey(SchemaItem):
         self.name = name
         self.onupdate = onupdate
         self.ondelete = ondelete
+        self.deferrable = deferrable
+        self.initially = initially
 
     def __repr__(self):
         return "ForeignKey(%s)" % repr(self._get_colspec())
@@ -714,7 +716,7 @@ class ForeignKey(SchemaItem):
                     self.parent.table.constraints.remove(fk.constraint)
 
         if self.constraint is None and isinstance(self.parent.table, Table):
-            self.constraint = ForeignKeyConstraint([],[], use_alter=self.use_alter, name=self.name, onupdate=self.onupdate, ondelete=self.ondelete)
+            self.constraint = ForeignKeyConstraint([],[], use_alter=self.use_alter, name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, deferrable=self.deferrable, initially=self.initially)
             self.parent.table.append_constraint(self.constraint)
             self.constraint._append_fk(self)
 
@@ -855,9 +857,11 @@ class Constraint(SchemaItem):
     list of underying columns.
     """
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, deferrable=None, initially=None):
         self.name = name
         self.columns = expression.ColumnCollection()
+        self.deferrable = deferrable
+        self.initially = initially
 
     def __contains__(self, x):
         return self.columns.contains_column(x)
@@ -878,8 +882,8 @@ class Constraint(SchemaItem):
         raise NotImplementedError()
 
 class CheckConstraint(Constraint):
-    def __init__(self, sqltext, name=None):
-        super(CheckConstraint, self).__init__(name)
+    def __init__(self, sqltext, name=None, deferrable=None, initially=None):
+        super(CheckConstraint, self).__init__(name, deferrable, initially)
         self.sqltext = sqltext
 
     def __visit_name__(self):
@@ -899,8 +903,8 @@ class CheckConstraint(Constraint):
 class ForeignKeyConstraint(Constraint):
     """Table-level foreign key constraint, represents a collection of ``ForeignKey`` objects."""
 
-    def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, use_alter=False):
-        super(ForeignKeyConstraint, self).__init__(name)
+    def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, use_alter=False, deferrable=None, initially=None):
+        super(ForeignKeyConstraint, self).__init__(name, deferrable, initially)
         self.__colnames = columns
         self.__refcolnames = refcolumns
         self.elements = util.OrderedSet()
@@ -930,7 +934,15 @@ class ForeignKeyConstraint(Constraint):
 
 class PrimaryKeyConstraint(Constraint):
     def __init__(self, *columns, **kwargs):
-        super(PrimaryKeyConstraint, self).__init__(name=kwargs.pop('name', None))
+        constraint_args = dict(name=kwargs.pop('name', None),
+                               deferrable=kwargs.pop('deferrable', None),
+                               initially=kwargs.pop('initially', None))
+        if kwargs:
+            raise exceptions.ArgumentError(
+                'Unknown PrimaryKeyConstraint argument(s): %s' %
+                ', '.join([repr(x) for x in kwargs.keys()]))
+
+        super(PrimaryKeyConstraint, self).__init__(**constraint_args)
         self.__colnames = list(columns)
 
     def _set_parent(self, table):
@@ -959,7 +971,15 @@ class PrimaryKeyConstraint(Constraint):
 
 class UniqueConstraint(Constraint):
     def __init__(self, *columns, **kwargs):
-        super(UniqueConstraint, self).__init__(name=kwargs.pop('name', None))
+        constraint_args = dict(name=kwargs.pop('name', None),
+                               deferrable=kwargs.pop('deferrable', None),
+                               initially=kwargs.pop('initially', None))
+        if kwargs:
+            raise exceptions.ArgumentError(
+                'Unknown UniqueConstraint argument(s): %s' %
+                ', '.join([repr(x) for x in kwargs.keys()]))
+
+        super(UniqueConstraint, self).__init__(**constraint_args)
         self.__colnames = list(columns)
 
     def _set_parent(self, table):

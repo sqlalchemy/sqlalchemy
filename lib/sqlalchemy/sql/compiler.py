@@ -844,9 +844,11 @@ class SchemaGenerator(DDLBase):
             self.append("CONSTRAINT %s " %
                         self.preparer.format_constraint(constraint))
         self.append(" CHECK (%s)" % constraint.sqltext)
+        self.define_constraint_deferrability(constraint)
 
     def visit_column_check_constraint(self, constraint):
         self.append(" CHECK (%s)" % constraint.sqltext)
+        self.define_constraint_deferrability(constraint)
 
     def visit_primary_key_constraint(self, constraint):
         if len(constraint) == 0:
@@ -856,6 +858,7 @@ class SchemaGenerator(DDLBase):
             self.append("CONSTRAINT %s " % self.preparer.format_constraint(constraint))
         self.append("PRIMARY KEY ")
         self.append("(%s)" % ', '.join([self.preparer.quote(c, c.name) for c in constraint]))
+        self.define_constraint_deferrability(constraint)
 
     def visit_foreign_key_constraint(self, constraint):
         if constraint.use_alter and self.dialect.supports_alter:
@@ -883,6 +886,7 @@ class SchemaGenerator(DDLBase):
             self.append(" ON DELETE %s" % constraint.ondelete)
         if constraint.onupdate is not None:
             self.append(" ON UPDATE %s" % constraint.onupdate)
+        self.define_constraint_deferrability(constraint)
 
     def visit_unique_constraint(self, constraint):
         self.append(", \n\t")
@@ -890,6 +894,16 @@ class SchemaGenerator(DDLBase):
             self.append("CONSTRAINT %s " %
                         self.preparer.format_constraint(constraint))
         self.append(" UNIQUE (%s)" % (', '.join([self.preparer.quote(c, c.name) for c in constraint])))
+        self.define_constraint_deferrability(constraint)
+
+    def define_constraint_deferrability(self, constraint):
+        if constraint.deferrable is not None:
+            if constraint.deferrable:
+                self.append(" DEFERRABLE")
+            else:
+                self.append(" NOT DEFERRABLE")
+        if constraint.initially is not None:
+            self.append(" INITIALLY %s" % constraint.initially)
 
     def visit_column(self, column):
         pass

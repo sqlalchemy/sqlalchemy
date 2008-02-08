@@ -29,6 +29,8 @@ CHANGES
     - cast() accepts text('something') and other non-literal
       operands properly [ticket:962]
 
+    - Deferrable constraints can now be defined.
+
     - added "autocommit=True" kwarg to select() and text(), as
       well as generative autocommit() method on select(); for
       statements which modify the database through some
