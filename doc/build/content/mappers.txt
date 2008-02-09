@@ -992,8 +992,8 @@ In this example we create a relation `boston_addresses` which will only load the
     mapper(Address, addresses_table)
     mapper(User, users_table, properties={
         'boston_addresses' : relation(Address, primaryjoin=
-                    and_(users_table.c.user_id==Address.c.user_id, 
-                    Addresses.c.city=='Boston'))
+                    and_(users_table.c.user_id==addresses_table.c.user_id, 
+                    addresses_table.c.city=='Boston'))
     })
         
 Many to many relationships can be customized by one or both of `primaryjoin` and `secondaryjoin`, shown below with just the default many-to-many relationship explicitly set:
@@ -1010,6 +1010,19 @@ Many to many relationships can be customized by one or both of `primaryjoin` and
             secondaryjoin=userkeywords_table.c.keyword_id==keywords_table.c.keyword_id
             )
     })
+
+##### Specifying Foreign Keys {@name=fks}
+
+When using `primaryjoin` and `secondaryjoin`, SQLAlchemy also needs to be aware of which columns in the relation reference the other.  In most cases, a `Table` construct will have `ForeignKey` constructs which take care of this; however, in the case of reflected tables on a database that does not report FKs (like MySQL ISAM) or when using join conditions on columns that don't have foreign keys, the `relation()` needs to be told specifically which columns are "foreign" using the `foreign_keys` collection:
+
+    {python}
+    mapper(Address, addresses_table)
+    mapper(User, users_table, properties={
+        'addresses' : relation(Address, primaryjoin=
+                    users_table.c.user_id==addresses_table.c.user_id)
+    }, foreign_keys=[addresses_table.c.user_id])
+
+##### Building Query-Enabled Properties {@name=properties}
 
 Very ambitious custom join conditions may fail to be directly persistable, and in some cases may not even load correctly.  To remove the persistence part of the equation, use the flag `viewonly=True` on the `relation()`, which establishes it as a read-only attribute (data written to the collection will be ignored on flush()).  However, in extreme cases, consider using a regular Python property in conjunction with `Query` as follows:
 
