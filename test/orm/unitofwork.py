@@ -2024,6 +2024,7 @@ class TransactionTest(ORMTest):
         # todo: on 8.3 at least, the failed commit seems to close the cursor?
         # needs investigation.  leaving in the DDL above now to help verify
         # that the new deferrable support on FK isn't involved in this issue.
-        t1.bind.engine.dispose()
+        if testing.against('postgres'):
+            t1.bind.engine.dispose()
 if __name__ == "__main__":
     testenv.main()
