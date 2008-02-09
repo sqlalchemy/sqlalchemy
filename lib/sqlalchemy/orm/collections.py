@@ -504,11 +504,13 @@ class CollectionAdapter(object):
             return converter(obj)
 
         setting_type = sautil.duck_type_collection(obj)
+        receiving_type = sautil.duck_type_collection(self._data())
 
-        if obj is None or setting_type != self.attr.collection_interface:
+        if obj is None or setting_type != receiving_type:
             raise TypeError(
                 "Incompatible collection type: %s is not %s-like" %
-                (type(obj).__name__, self.attr.collection_interface.__name__))
+                (type(obj).__class__.__name__,
+                 receiving_type.__class__.__name__))
 
         # If the object is an adapted collection, return the (iterable) adapter.
         if getattr(obj, '_sa_adapter', None) is not None:
