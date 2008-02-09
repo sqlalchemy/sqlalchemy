@@ -7,6 +7,7 @@ from sqlalchemy.orm import *
 from testlib import *
 from testlib.fixtures import *
 from query import QueryTest
+import datetime
 
 class LazyTest(FixtureTest):
     keep_mappers = False
@@ -334,6 +335,61 @@ class M2OGetTest(FixtureTest):
             # no lazy load
             assert ad3.user is None
         self.assert_sql_count(testing.db, go, 1)
+
+class CorrelatedTest(ORMTest):
+    keep_mappers = False
+    keep_data = False
+    
+    def define_tables(self, meta):
+        global user_t, stuff
+        
+        user_t = Table('users', meta,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50))
+            )
+
+        stuff = Table('stuff', meta,
+            Column('id', Integer, primary_key=True),
+            Column('date', Date),
+            Column('user_id', Integer, ForeignKey('users.id')))
+    
+    def insert_data(self):
+        user_t.insert().execute(
+            {'id':1, 'name':'user1'},
+            {'id':2, 'name':'user2'},
+            {'id':3, 'name':'user3'},
+        )
+
+        stuff.insert().execute(
+            {'id':1, 'user_id':1, 'date':datetime.date(2007, 10, 15)},
+            {'id':2, 'user_id':1, 'date':datetime.date(2007, 12, 15)},
+            {'id':3, 'user_id':1, 'date':datetime.date(2007, 11, 15)},
+            {'id':4, 'user_id':2, 'date':datetime.date(2008, 1, 15)},
+            {'id':5, 'user_id':3, 'date':datetime.date(2007, 6, 15)},
+        )        
+        
+    def test_correlated_lazyload(self):
+        class User(Base):
+            pass
+
+        class Stuff(Base):
+            pass
+            
+        mapper(Stuff, stuff)
+
+        stuff_view = select([stuff.c.id]).where(stuff.c.user_id==user_t.c.id).correlate(user_t).order_by(desc(stuff.c.date)).limit(1)
+
+        mapper(User, user_t, properties={
+            'stuff':relation(Stuff, primaryjoin=and_(user_t.c.id==stuff.c.user_id, stuff.c.id==(stuff_view.as_scalar())))
+        })
+
+        sess = create_session()
+
+        self.assertEquals(sess.query(User).all(), [
+            User(name='user1', stuff=[Stuff(date=datetime.date(2007, 12, 15), id=2)]), 
+            User(name='user2', stuff=[Stuff(id=4, date=datetime.date(2008, 1 , 15))]), 
+            User(name='user3', stuff=[Stuff(id=5, date=datetime.date(2007, 6, 15))])
+        ])
 
 if __name__ == '__main__':
     testenv.main()

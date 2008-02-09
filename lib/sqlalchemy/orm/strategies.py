@@ -265,7 +265,7 @@ NoLoader.logger = logging.class_logger(NoLoader)
 class LazyLoader(AbstractRelationLoader):
     def init(self):
         super(LazyLoader, self).init()
-        (self.lazywhere, self.lazybinds, self.equated_columns) = self._create_lazy_clause(self)
+        (self.lazywhere, self.lazybinds, self.equated_columns) = self._create_lazy_clause(self.parent_property)
         
         self.logger.info(str(self.parent_property) + " lazy loading clause " + str(self.lazywhere))
 
@@ -366,6 +366,9 @@ class LazyLoader(AbstractRelationLoader):
         equated_columns = {}
 
         def should_bind(targetcol, othercol):
+            if not prop._col_is_part_of_mappings(targetcol):
+                return False
+                
             if reverse_direction and not secondaryjoin:
                 return targetcol in remote_side
             else:
@@ -381,13 +384,20 @@ class LazyLoader(AbstractRelationLoader):
             equated_columns[leftcol] = rightcol
 
             if should_bind(leftcol, rightcol):
-                binary.left = binds[leftcol] = sql.bindparam(None, None, type_=binary.right.type)
+                if leftcol in binds:
+                    binary.left = binds[leftcol]
+                else:
+                    binary.left = binds[leftcol] = sql.bindparam(None, None, type_=binary.right.type)
 
             # the "left is not right" compare is to handle part of a join clause that is "table.c.col1==table.c.col1",
             # which can happen in rare cases (test/orm/relationships.py RelationTest2)
             if leftcol is not rightcol and should_bind(rightcol, leftcol):
-                binary.right = binds[rightcol] = sql.bindparam(None, None, type_=binary.left.type)
+                if rightcol in binds:
+                    binary.right = binds[rightcol]
+                else:
+                    binary.right = binds[rightcol] = sql.bindparam(None, None, type_=binary.left.type)
 
+                
         lazywhere = primaryjoin
         
         if not secondaryjoin or not reverse_direction:

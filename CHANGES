@@ -138,6 +138,13 @@ CHANGES
       relation.  This affects how many arguments need to be sent
       to query.get(), among other things.  [ticket:933]
 
+    - lazy loader can now handle a join condition where the "bound"
+      column (i.e. the one that gets the parent id sent as a bind
+      parameter) appears more than once in the join condition.
+      Specifically this allows the common task of a relation()
+      which contains a parent-correlated subquery, such as "select
+      only the most recent child item". [ticket:946]
+      
     - Fixed bug in polymorphic inheritance where incorrect
       exception is raised when base polymorphic_on column does not
       correspond to any columns within the local selectable of an

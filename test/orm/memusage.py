@@ -28,7 +28,7 @@ def profile_memory(func):
             if i < len(samples) - 1 and samples[i+1] <= x:
                 break
         else:
-            assert False
+            assert False, repr(samples)
         assert True
     return profile
 

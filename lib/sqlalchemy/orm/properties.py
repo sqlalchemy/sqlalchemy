@@ -494,18 +494,18 @@ class PropertyLoader(StrategizedProperty):
             if vis.result:
                 raise exceptions.ArgumentError("In relationship '%s', primary and secondary join conditions must not include columns from the polymorphic 'select_table' argument as of SA release 0.3.4.  Construct join conditions using the base tables of the related mappers." % (str(self)))
 
+    def _col_is_part_of_mappings(self, column):
+        if self.secondary is None:
+            return self.parent.mapped_table.c.contains_column(column) or \
+                self.target.c.contains_column(column)
+        else:
+            return self.parent.mapped_table.c.contains_column(column) or \
+                self.target.c.contains_column(column) or \
+                self.secondary.c.contains_column(column) is not None
+        
     def _determine_fks(self):
         if self._legacy_foreignkey and not self._is_self_referential():
             self.foreign_keys = self._legacy_foreignkey
-
-        def col_is_part_of_mappings(col):
-            if self.secondary is None:
-                return self.parent.mapped_table.corresponding_column(col) is not None or \
-                    self.target.corresponding_column(col) is not None
-            else:
-                return self.parent.mapped_table.corresponding_column(col) is not None or \
-                    self.target.corresponding_column(col) is not None or \
-                    self.secondary.corresponding_column(col) is not None
 
         if self.foreign_keys:
             self._opposite_side = util.Set()
@@ -529,7 +529,7 @@ class PropertyLoader(StrategizedProperty):
                 # this check is for when the user put the "view_only" flag on and has tables that have nothing
                 # to do with the relationship's parent/child mappings in the join conditions.  we dont want cols
                 # or clauses related to those external tables dealt with.  see orm.relationships.ViewOnlyTest
-                if not col_is_part_of_mappings(binary.left) or not col_is_part_of_mappings(binary.right):
+                if not self._col_is_part_of_mappings(binary.left) or not self._col_is_part_of_mappings(binary.right):
                     return
 
                 for f in binary.left.foreign_keys:
