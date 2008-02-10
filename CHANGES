@@ -10,6 +10,11 @@ CHANGES
       MetaData instances and executed automatically when those
       objects are created and/or dropped.
 
+    - Table columns and constraints can be overridden on a 
+      an existing table (such as a table that was already
+      reflected) using the 'useexisting=True' flag, which now
+      takes into account the arguments passed along with it.
+      
     - Added a callable-based DDL events interface, adds hooks
       before and after Tables and MetaData create and drop.
 

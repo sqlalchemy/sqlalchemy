@@ -93,13 +93,14 @@ class _TableSingleton(expression._FigureVisitName):
         key = _get_table_key(name, schema)
         try:
             table = metadata.tables[key]
-            if args:
-                if not useexisting:
-                    raise exceptions.ArgumentError("Table '%s' is already defined for this MetaData instance." % key)
+            if not useexisting and table._cant_override(*args, **kwargs):
+                raise exceptions.InvalidRequestError("Table '%s' is already defined for this MetaData instance.  Specify 'useexisting=True' to redefine options and columns on an existing Table object." % key)
+            else:
+                table._init_existing(*args, **kwargs)
             return table
         except KeyError:
             if mustexist:
-                raise exceptions.ArgumentError("Table '%s' not defined" % (key))
+                raise exceptions.InvalidRequestError("Table '%s' not defined" % (key))
             try:
                 return type.__call__(self, name, metadata, *args, **kwargs)
             except:
@@ -201,25 +202,15 @@ class Table(SchemaItem, expression.TableClause):
         self.primary_key = PrimaryKeyConstraint()
         self._foreign_keys = util.OrderedSet()
         self.ddl_listeners = util.defaultdict(list)
-        self.quote = kwargs.pop('quote', False)
-        self.quote_schema = kwargs.pop('quote_schema', False)
+        self.kwargs = {}
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
             self.fullname = self.name
-        self.owner = kwargs.pop('owner', None)
-        if kwargs.get('info'):
-            self._info = kwargs.pop('info')
 
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', None)
         include_columns = kwargs.pop('include_columns', None)
-
-        # validate remaining kwargs that they all specify DB prefixes
-        if len([k for k in kwargs if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
-            raise TypeError("Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
-
-        self.kwargs = kwargs
 
         self._set_parent(metadata)
         # load column definitions from the database if 'autoload' is defined
@@ -233,8 +224,44 @@ class Table(SchemaItem, expression.TableClause):
 
         # initialize all the column, etc. objects.  done after
         # reflection to allow user-overrides
-        self._init_items(*args)
+        self.__post_init(*args, **kwargs)
+    
+    def _init_existing(self, *args, **kwargs):
+        autoload = kwargs.pop('autoload', False)
+        autoload_with = kwargs.pop('autoload_with', None)
+        schema = kwargs.pop('schema', None)
+        if schema and schema != self.schema:
+            raise exceptions.ArgumentError("Can't change schema of existing table from '%s' to '%s'", (self.schema, schema))
+            
+        include_columns = kwargs.pop('include_columns', None)
+        if include_columns:
+            for c in self.c:
+                if c.name not in include_columns:
+                    self.c.remove(c)
+        self.__post_init(*args, **kwargs)
+    
+    def _cant_override(self, *args, **kwargs):
+        """return True if the given arguments cannot be sent to a table that already exists.
+        
+        the 'useexisting' flag overrides this.
+        """
 
+        return bool(args) or bool(util.Set(kwargs).difference(['autoload', 'autoload_with', 'schema']))
+        
+    def __post_init(self, *args, **kwargs):
+        self.quote = kwargs.pop('quote', False)
+        self.quote_schema = kwargs.pop('quote_schema', False)
+        self.owner = kwargs.pop('owner', None)
+        if kwargs.get('info'):
+            self._info = kwargs.pop('info')
+
+        # validate remaining kwargs that they all specify DB prefixes
+        if len([k for k in kwargs if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
+            raise TypeError("Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
+        self.kwargs.update(kwargs)
+
+        self._init_items(*args)
+        
     def key(self):
         return _get_table_key(self.name, self.schema)
     key = property(key)
@@ -916,9 +943,10 @@ class ForeignKeyConstraint(Constraint):
 
     def _set_parent(self, table):
         self.table = table
-        table.constraints.add(self)
-        for (c, r) in zip(self.__colnames, self.__refcolnames):
-            self.append_element(c,r)
+        if self not in table.constraints:
+            table.constraints.add(self)
+            for (c, r) in zip(self.__colnames, self.__refcolnames):
+                self.append_element(c,r)
 
     def append_element(self, col, refcol):
         fk = ForeignKey(refcol, constraint=self, name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, use_alter=self.use_alter)
@@ -948,8 +976,8 @@ class PrimaryKeyConstraint(Constraint):
     def _set_parent(self, table):
         self.table = table
         table.primary_key = self
-        for c in self.__colnames:
-            self.add(table.c[c])
+        for name in self.__colnames:
+            self.add(table.c[name])
 
     def add(self, col):
         self.columns.add(col)
