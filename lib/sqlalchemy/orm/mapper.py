@@ -1371,13 +1371,22 @@ class Mapper(object):
 
             if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                 self.populate_instance(context, instance, row, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew)
+        
+        else:
+            attrs = getattr(state, 'expired_attributes', None)
+            # populate attributes on non-loading instances which have been expired
+            # TODO: also support deferred attributes here [ticket:870]
+            if attrs: 
+                if state in context.partials:
+                    isnew = False
+                    attrs = context.partials[state]
+                else:
+                    isnew = True
+                    attrs = state.expired_attributes.intersection(state.unmodified)
+                    context.partials[state] = attrs  #<-- allow query.instances to commit the subset of attrs
 
-#       NOTYET: populate attributes on non-loading instances which have been expired, deferred, etc.
-#        elif getattr(state, 'expired_attributes', None):   # TODO: base off total set of unloaded attributes, not just exp
-#            attrs = state.expired_attributes.intersection(state.unmodified)
-#            if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
-#                self.populate_instance(context, instance, row, only_load_props=attrs, instancekey=identitykey, isnew=isnew)
-#            context.partials.add((state, attrs))  <-- allow query.instances to commit the subset of attrs
+                if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+                    self.populate_instance(context, instance, row, only_load_props=attrs, instancekey=identitykey, isnew=isnew)
 
         if result is not None and ('append_result' not in extension.methods or extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE):
             result.append(instance)
@@ -1448,10 +1457,10 @@ class Mapper(object):
         if self.non_primary:
             selectcontext.attributes[('populating_mapper', instance._state)] = self
 
-    def _post_instance(self, selectcontext, state):
+    def _post_instance(self, selectcontext, state, **kwargs):
         post_processors = selectcontext.attributes[('post_processors', self, None)]
         for p in post_processors:
-            p(state.obj())
+            p(state.obj(), **kwargs)
 
     def _get_poly_select_loader(self, selectcontext, row):
         """set up attribute loaders for 'select' and 'deferred' polymorphic loading.
@@ -1475,11 +1484,13 @@ class Mapper(object):
 
                 identitykey = self.identity_key_from_instance(instance)
 
+                only_load_props = flags.get('only_load_props', None)
+
                 params = {}
                 for c, bind in param_names:
                     params[bind] = self._get_attr_by_column(instance, c)
                 row = selectcontext.session.connection(self).execute(statement, params).fetchone()
-                self.populate_instance(selectcontext, instance, row, isnew=False, instancekey=identitykey, ispostselect=True)
+                self.populate_instance(selectcontext, instance, row, isnew=False, instancekey=identitykey, ispostselect=True, only_load_props=only_load_props)
             return post_execute
         elif hosted_mapper.polymorphic_fetch == 'deferred':
             from sqlalchemy.orm.strategies import DeferredColumnLoader
@@ -1494,6 +1505,12 @@ class Mapper(object):
 
                 props = [prop for prop in [self._get_col_to_prop(col) for col in statement.inner_columns] if prop.key not in instance.__dict__]
                 keys = [p.key for p in props]
+                
+                only_load_props = flags.get('only_load_props', None)
+                if only_load_props:
+                    keys = util.Set(keys).difference(only_load_props)
+                    props = [p for p in props if p.key in only_load_props]
+                    
                 for prop in props:
                     strategy = prop._get_strategy(DeferredColumnLoader)
                     instance._state.set_callable(prop.key, strategy.setup_loader(instance, props=keys, create_statement=create_statement))

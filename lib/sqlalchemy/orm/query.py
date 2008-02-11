@@ -903,6 +903,7 @@ class Query(object):
 
         while True:
             context.progress = util.Set()
+            context.partials = {}
 
             if self._yield_per:
                 fetch = cursor.fetchmany(self._yield_per)
@@ -927,7 +928,11 @@ class Query(object):
             for ii in context.progress:
                 context.attributes.get(('populating_mapper', ii), _state_mapper(ii))._post_instance(context, ii)
                 ii.commit_all()
-
+                
+            for ii, attrs in context.partials.items():
+                context.attributes.get(('populating_mapper', ii), _state_mapper(ii))._post_instance(context, ii, only_load_props=attrs)
+                ii.commit(attrs)
+                
             for row in rows:
                 yield row
 

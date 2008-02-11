@@ -775,7 +775,14 @@ class InstanceState(object):
         serializable.
         """
         instance = self.obj()
-        self.class_._class_state.deferred_scalar_loader(instance, [k for k in self.expired_attributes if k in self.unmodified])
+        
+        unmodified = self.unmodified
+        self.class_._class_state.deferred_scalar_loader(instance, [
+            attr.impl.key for attr in _managed_attributes(self.class_) if 
+                attr.impl.accepts_scalar_loader and 
+                attr.impl.key in self.expired_attributes and 
+                attr.impl.key in unmodified
+            ])
         for k in self.expired_attributes:
             self.callables.pop(k, None)
         self.expired_attributes.clear()
@@ -798,20 +805,18 @@ class InstanceState(object):
         if attribute_names is None:
             for attr in _managed_attributes(self.class_):
                 self.dict.pop(attr.impl.key, None)
-
+                self.expired_attributes.add(attr.impl.key)
                 if attr.impl.accepts_scalar_loader:
                     self.callables[attr.impl.key] = self
-                    self.expired_attributes.add(attr.impl.key)
 
             self.committed_state = {}
         else:
             for key in attribute_names:
                 self.dict.pop(key, None)
                 self.committed_state.pop(key, None)
-
+                self.expired_attributes.add(key)
                 if getattr(self.class_, key).impl.accepts_scalar_loader:
                     self.callables[key] = self
-                    self.expired_attributes.add(key)
 
     def reset(self, key):
         """remove the given attribute and any callables associated with it."""

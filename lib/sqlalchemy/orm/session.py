@@ -820,7 +820,14 @@ class Session(object):
 
         if self.query(_object_mapper(instance))._get(instance._instance_key, refresh_instance=instance._state, only_load_props=attribute_names) is None:
             raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % mapperutil.instance_str(instance))
-
+    
+    def expire_all(self):
+        """Expires all persistent instances within this Session.  
+        
+        """
+        for state in self.identity_map.all_states():
+            _expire_state(state, None)
+        
     def expire(self, instance, attribute_names=None):
         """Expire the attributes on the given instance.
 
@@ -828,13 +835,6 @@ class Session(object):
         when an attribute is next accessed, a query will be issued
         to the database which will refresh all attributes with their
         current value.
-
-        Lazy-loaded relational attributes will remain lazily loaded, so that
-        triggering one will incur the instance-wide refresh operation, followed
-        immediately by the lazy load of that attribute.
-
-        Eagerly-loaded relational attributes will eagerly load within the
-        single refresh operation.
 
         The ``attribute_names`` argument is an iterable collection
         of attribute names indicating a subset of attributes to be

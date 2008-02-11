@@ -105,7 +105,16 @@ CHANGES
 
     - The proper error message is raised when trying to access
       expired instance attributes with no session present
-
+    
+    - added expire_all() method to Session.  Calls expire()
+      for all persistent instances.  This is handy in conjunction
+      with .....
+      
+    - instances which have been partially or fully expired
+      will have their expired attributes populated during a regular
+      Query operation which affects those objects, preventing
+      a needless second SQL statement for each instance.
+      
     - Dynamic relations, when referenced, create a strong
       reference to the parent object so that the query still has a
       parent to call against even if the parent is only created
