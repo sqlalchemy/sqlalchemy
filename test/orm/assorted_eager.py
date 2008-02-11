@@ -460,17 +460,17 @@ class EagerTest5(ORMTest):
         derivedMapper = mapper(Derived, derived, inherits=baseMapper)
         derivedIIMapper = mapper(DerivedII, derivedII, inherits=baseMapper)
         sess = create_session()
-        d = Derived(1, 'x', 'y')
-        d.comments = [Comment(1, 'comment')]
-        d2 = DerivedII(2, 'xx', 'z')
-        d2.comments = [Comment(2, 'comment')]
+        d = Derived('uid1', 'x', 'y')
+        d.comments = [Comment('uid1', 'comment')]
+        d2 = DerivedII('uid2', 'xx', 'z')
+        d2.comments = [Comment('uid2', 'comment')]
         sess.save(d)
         sess.save(d2)
         sess.flush()
         sess.clear()
         # this eager load sets up an AliasedClauses for the "comment" relationship,
         # then stores it in clauses_by_lead_mapper[mapper for Derived]
-        d = sess.query(Derived).get(1)
+        d = sess.query(Derived).get('uid1')
         sess.clear()
         assert len([c for c in d.comments]) == 1
 
@@ -478,7 +478,7 @@ class EagerTest5(ORMTest):
         # and should store it in clauses_by_lead_mapper[mapper for DerivedII].
         # the bug was that the previous AliasedClause create prevented this population
         # from occurring.
-        d2 = sess.query(DerivedII).get(2)
+        d2 = sess.query(DerivedII).get('uid2')
         sess.clear()
         # object is not in the session; therefore the lazy load cant trigger here,
         # eager load had to succeed
