@@ -7,7 +7,7 @@ from zblog.user import *
 from zblog.blog import *
 
 
-class ZBlogTest(AssertMixin):
+class ZBlogTest(TestBase, AssertsExecutionResults):
 
     def create_tables(self):
         tables.metadata.drop_all(bind=testing.db)

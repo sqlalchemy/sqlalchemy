@@ -12,7 +12,7 @@ class Foo(object):
         for k in kwargs:
             setattr(self, k, kwargs[k])
 
-class GenerativeQueryTest(PersistTest):
+class GenerativeQueryTest(TestBase):
     def setUpAll(self):
         global foo, metadata
         metadata = MetaData(testing.db)
@@ -119,7 +119,7 @@ class Obj1(object):
 class Obj2(object):
     pass
 
-class GenerativeTest2(PersistTest):
+class GenerativeTest2(TestBase):
     def setUpAll(self):
         global metadata, table1, table2
         metadata = MetaData()
@@ -149,7 +149,7 @@ class GenerativeTest2(PersistTest):
         res = query.filter(and_(table1.c.id==table2.c.t1id,table2.c.t1id==1)).distinct()
         self.assertEqual(res.count(), 1)
 
-class RelationsTest(AssertMixin):
+class RelationsTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         tables.create()
         tables.data()
@@ -206,7 +206,7 @@ class RelationsTest(AssertMixin):
         self.assert_result(list(x), tables.User, *tables.user_result[1:3])
 
 
-class CaseSensitiveTest(PersistTest):
+class CaseSensitiveTest(TestBase):
     def setUpAll(self):
         global metadata, table1, table2
         metadata = MetaData(testing.db)

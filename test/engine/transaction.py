@@ -6,7 +6,7 @@ from sqlalchemy.orm import *
 from testlib import *
 
 
-class TransactionTest(PersistTest):
+class TransactionTest(TestBase):
     def setUpAll(self):
         global users, metadata
         metadata = MetaData()
@@ -346,7 +346,7 @@ class TransactionTest(PersistTest):
 
         conn.close()
 
-class AutoRollbackTest(PersistTest):
+class AutoRollbackTest(TestBase):
     def setUpAll(self):
         global metadata
         metadata = MetaData()
@@ -375,7 +375,7 @@ class AutoRollbackTest(PersistTest):
         users.drop(conn2)
         conn2.close()
 
-class ExplicitAutoCommitTest(PersistTest):
+class ExplicitAutoCommitTest(TestBase):
     """test the 'autocommit' flag on select() and text() objects.  
     
     Requires Postgres so that we may define a custom function which modifies the database.
@@ -450,7 +450,7 @@ class ExplicitAutoCommitTest(PersistTest):
         conn2.close()
         
     
-class TLTransactionTest(PersistTest):
+class TLTransactionTest(TestBase):
     def setUpAll(self):
         global users, metadata, tlengine
         tlengine = create_engine(testing.db.url, strategy='threadlocal')
@@ -700,7 +700,7 @@ class TLTransactionTest(PersistTest):
         assert c1.connection.connection is not None
 
 
-class ForUpdateTest(PersistTest):
+class ForUpdateTest(TestBase):
     def setUpAll(self):
         global counters, metadata
         metadata = MetaData()

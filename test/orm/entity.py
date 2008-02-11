@@ -5,7 +5,7 @@ from sqlalchemy.ext.sessioncontext import SessionContext
 from testlib import *
 from testlib.tables import *
 
-class EntityTest(AssertMixin):
+class EntityTest(TestBase, AssertsExecutionResults):
     """tests mappers that are constructed based on "entity names", which allows the same class
     to have multiple primary mappers """
 

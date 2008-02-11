@@ -33,7 +33,7 @@ class ObjectCollection(object):
     def __iter__(self):
         return iter(self.values)
 
-class _CollectionOperations(PersistTest):
+class _CollectionOperations(TestBase):
     def setUp(self):
         collection_class = self.collection_class
 
@@ -591,7 +591,7 @@ class CustomObjectTest(_CollectionOperations):
         except TypeError:
             pass
 
-class ScalarTest(PersistTest):
+class ScalarTest(TestBase):
     def test_scalar_proxy(self):
         metadata = MetaData(testing.db)
 
@@ -708,7 +708,7 @@ class ScalarTest(PersistTest):
         p2.bar = 'quux'
 
 
-class LazyLoadTest(PersistTest):
+class LazyLoadTest(TestBase):
     def setUp(self):
         metadata = MetaData(testing.db)
 

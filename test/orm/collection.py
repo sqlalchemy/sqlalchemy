@@ -55,7 +55,7 @@ def dictable_entity(a=None, b=None, c=None):
     return Entity(a or str(_id), b or 'value %s' % _id, c)
 
 
-class CollectionsTest(PersistTest):
+class CollectionsTest(TestBase):
     def _test_adapter(self, typecallable, creator=entity_maker,
                       to_set=None):
         class Foo(object):

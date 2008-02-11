@@ -3,7 +3,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
 
-class LazyTest(AssertMixin):
+class LazyTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global info_table, data_table, rel_table, metadata
         metadata = MetaData(testing.db)

@@ -7,7 +7,7 @@ from testlib import *
 from testlib.engines import utf8_engine
 from sqlalchemy.sql import column
 
-class UnicodeSchemaTest(PersistTest):
+class UnicodeSchemaTest(TestBase):
     @testing.unsupported('maxdb', 'oracle', 'sybase')
     def setUpAll(self):
         global unicode_bind, metadata, t1, t2, t3
@@ -112,7 +112,7 @@ class UnicodeSchemaTest(PersistTest):
         meta.drop_all()
         metadata.create_all()
 
-class EscapesDefaultsTest(testing.PersistTest):
+class EscapesDefaultsTest(testing.TestBase):
     def test_default_exec(self):
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,

@@ -3,7 +3,7 @@ from sqlalchemy import *
 from sqlalchemy import exceptions
 from testlib import *
 
-class ExecuteTest(PersistTest):
+class ExecuteTest(TestBase):
     def setUpAll(self):
         global users, metadata
         metadata = MetaData(testing.db)

@@ -4,7 +4,7 @@ from sqlalchemy import exceptions
 from testlib import *
 import pickle
 
-class MetaDataTest(PersistTest, ComparesTables):
+class MetaDataTest(TestBase, ComparesTables):
     def test_metadata_connect(self):
         metadata = MetaData()
         t1 = Table('table1', metadata, Column('col1', Integer, primary_key=True),

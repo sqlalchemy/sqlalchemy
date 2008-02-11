@@ -6,7 +6,7 @@ import sqlalchemy.engine.url as url
 from testlib import *
 
 
-class ParseConnectTest(PersistTest):
+class ParseConnectTest(TestBase):
     def test_rfc1738(self):
         for text in (
             'dbtype://username:password@hostspec:110//usr/db_file.db',
@@ -37,7 +37,7 @@ class ParseConnectTest(PersistTest):
             assert u.host == 'hostspec' or u.host == '127.0.0.1' or (not u.host)
             assert str(u) == text
 
-class CreateEngineTest(PersistTest):
+class CreateEngineTest(TestBase):
     """test that create_engine arguments of different types get propigated properly"""
     def test_connect_query(self):
         dbapi = MockDBAPI(foober='12', lala='18', fooz='somevalue')

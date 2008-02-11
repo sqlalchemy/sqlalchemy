@@ -6,7 +6,7 @@ from sqlalchemy.sql import table, column
 from testlib import *
 
 
-class DomainReflectionTest(AssertMixin):
+class DomainReflectionTest(TestBase, AssertsExecutionResults):
     "Test Firebird domains"
 
     __only_on__ = 'firebird'
@@ -68,7 +68,7 @@ class DomainReflectionTest(AssertMixin):
         self.assertEquals(table.c.dt.type.__class__, firebird.FBDateTime)
 
 
-class CompileTest(SQLCompileTest):
+class CompileTest(TestBase, AssertsCompiledSQL):
     __dialect__ = firebird.FBDialect()
 
     def test_alias(self):
@@ -86,7 +86,7 @@ class CompileTest(SQLCompileTest):
         self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) AS max_1 FROM sometable")
 
 
-class MiscFBTests(PersistTest):
+class MiscFBTests(TestBase):
 
     __only_on__ = 'firebird'
 

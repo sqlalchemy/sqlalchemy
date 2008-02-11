@@ -5,7 +5,7 @@ from sqlalchemy.databases import oracle
 from testlib import *
 
 
-class OutParamTest(AssertMixin):
+class OutParamTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'oracle'
 
     def setUpAll(self):
@@ -28,7 +28,7 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
          testing.db.execute("DROP PROCEDURE foo")
 
 
-class CompileTest(SQLCompileTest):
+class CompileTest(TestBase, AssertsCompiledSQL):
     __dialect__ = oracle.OracleDialect()
 
     def test_subquery(self):
@@ -135,7 +135,7 @@ myothertable.othername != :myothertable_othername_1 OR EXISTS (select yay from f
             "ON addresses.address_type_id = address_types_1.id WHERE addresses.user_id = :addresses_user_id_1 ORDER BY addresses.rowid, "
             "address_types.rowid")
 
-class TypesTest(SQLCompileTest):
+class TypesTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
     def test_no_clobs_for_string_params(self):
@@ -181,7 +181,7 @@ class TypesTest(SQLCompileTest):
         finally:
             testing.db.execute("DROP TABLE Z_TEST")
 
-class SequenceTest(SQLCompileTest):
+class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
         seq = Sequence("my_seq_no_schema")
         dialect = oracle.OracleDialect()

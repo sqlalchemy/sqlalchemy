@@ -9,7 +9,7 @@ import gc
 
 ITERATIONS = 100
 
-class SessionTest(AssertMixin):
+class SessionTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global t1, t2, metadata,T1, T2
         metadata = MetaData(testing.db)

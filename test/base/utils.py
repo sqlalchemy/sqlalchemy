@@ -4,7 +4,7 @@ from sqlalchemy import util, sql, exceptions
 from testlib import *
 from testlib import sorted
 
-class OrderedDictTest(PersistTest):
+class OrderedDictTest(TestBase):
     def test_odict(self):
         o = util.OrderedDict()
         o['a'] = 1
@@ -35,7 +35,7 @@ class OrderedDictTest(PersistTest):
         self.assert_(o.keys() == ['a', 'b', 'c', 'd', 'e', 'f'])
         self.assert_(o.values() == [1, 2, 3, 4, 5, 6])
 
-class OrderedSetTest(PersistTest):
+class OrderedSetTest(TestBase):
     def test_mutators_against_iter(self):
         # testing a set modified against an iterator
         o = util.OrderedSet([3,2, 4, 5])
@@ -47,7 +47,7 @@ class OrderedSetTest(PersistTest):
         self.assertEquals(o.union(iter([3,4, 6])),
                           util.OrderedSet([2, 3, 4, 5, 6]))
 
-class ColumnCollectionTest(PersistTest):
+class ColumnCollectionTest(TestBase):
     def test_in(self):
         cc = sql.ColumnCollection()
         cc.add(sql.column('col1'))
@@ -322,7 +322,7 @@ class DictlikeIteritemsTest(unittest.TestCase):
         self._notok(duck6())
 
 
-class ArgInspectionTest(PersistTest):
+class ArgInspectionTest(TestBase):
     def test_get_cls_kwargs(self):
         class A(object):
             def __init__(self, a):

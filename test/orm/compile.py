@@ -5,7 +5,7 @@ from sqlalchemy.orm import *
 from testlib import *
 
 
-class CompileTest(AssertMixin):
+class CompileTest(TestBase, AssertsExecutionResults):
     """test various mapper compilation scenarios"""
     def tearDown(self):
         clear_mappers()

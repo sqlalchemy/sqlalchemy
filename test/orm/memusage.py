@@ -37,7 +37,7 @@ def assert_no_mappers():
     gc.collect()
     assert len(_mapper_registry) == 0
 
-class EnsureZeroed(AssertMixin):
+class EnsureZeroed(TestBase, AssertsExecutionResults):
     def setUp(self):
         _sessions.clear()
         _mapper_registry.clear()

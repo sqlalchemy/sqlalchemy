@@ -10,7 +10,7 @@ import sqlalchemy
 from testlib import *
 
 
-class testcase(PersistTest):
+class testcase(TestBase):
     def setUpAll(self):
         clear_mappers()
         objectstore.clear()
@@ -263,7 +263,7 @@ class testcase(PersistTest):
 
         self.assertEquals(Person.query.count(), 2)
 
-class testmanytomany(PersistTest):
+class testmanytomany(TestBase):
      def setUpAll(self):
          clear_mappers()
          objectstore.clear()
@@ -318,7 +318,7 @@ class testmanytomany(PersistTest):
          foo1.bazrel.append(baz1)
          assert (foo1.bazrel == [baz1])
 
-class testselfreferential(PersistTest):
+class testselfreferential(TestBase):
     def setUpAll(self):
         clear_mappers()
         objectstore.clear()

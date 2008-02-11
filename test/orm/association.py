@@ -4,7 +4,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
 
-class AssociationTest(PersistTest):
+class AssociationTest(TestBase):
     @testing.uses_deprecated('association option')
     def setUpAll(self):
         global items, item_keywords, keywords, metadata, Item, Keyword, KeywordAssociation
@@ -141,7 +141,7 @@ class AssociationTest(PersistTest):
         sess.flush()
         self.assert_(item_keywords.count().scalar() == 0)
 
-class AssociationTest2(PersistTest):
+class AssociationTest2(TestBase):
     def setUpAll(self):
         global table_originals, table_people, table_isauthor, metadata, Originals, People, IsAuthor
         metadata = MetaData(testing.db)

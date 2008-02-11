@@ -37,7 +37,7 @@ def alpha_ordering(index, collection):
     s += chr(index + 65)
     return s
 
-class OrderingListTest(PersistTest):
+class OrderingListTest(TestBase):
     def setUp(self):
         global metadata, slides_table, bullets_table, Slide, Bullet
         slides_table, bullets_table = None, None

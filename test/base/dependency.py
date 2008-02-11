@@ -4,7 +4,7 @@ from sqlalchemy import util
 from testlib import *
 
 
-class DependencySortTest(PersistTest):
+class DependencySortTest(TestBase):
     def assert_sort(self, tuples, node, collection=None):
         print str(node)
         def assert_tuple(tuple, node):

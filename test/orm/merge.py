@@ -8,7 +8,7 @@ from testlib import fixtures
 from testlib.tables import *
 import testlib.tables as tables
 
-class MergeTest(AssertMixin):
+class MergeTest(TestBase, AssertsExecutionResults):
     """tests session.merge() functionality"""
     def setUpAll(self):
         tables.create()

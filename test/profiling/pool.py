@@ -4,7 +4,7 @@ from testlib import *
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.databases import sqlite
 
-class QueuePoolTest(AssertMixin):
+class QueuePoolTest(TestBase, AssertsExecutionResults):
     def setUp(self):
         global pool
         pool = QueuePool(creator = lambda: sqlite.SQLiteDialect.dbapi().connect(':memory:'), pool_size = 3, max_overflow = -1, use_threadlocal = True)

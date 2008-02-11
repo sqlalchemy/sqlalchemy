@@ -8,7 +8,7 @@ from sqlalchemy.engine import default
 
 IDENT_LENGTH = 29
 
-class LabelTypeTest(PersistTest):
+class LabelTypeTest(TestBase):
     def test_type(self):
         m = MetaData()
         t = Table('sometable', m,
@@ -17,7 +17,7 @@ class LabelTypeTest(PersistTest):
         assert isinstance(t.c.col1.label('hi').type, Integer)
         assert isinstance(select([t.c.col2]).as_scalar().label('lala').type, Float)
 
-class LongLabelsTest(SQLCompileTest):
+class LongLabelsTest(TestBase, AssertsCompiledSQL):
     def setUpAll(self):
         global metadata, table1, maxlen
         metadata = MetaData(testing.db)

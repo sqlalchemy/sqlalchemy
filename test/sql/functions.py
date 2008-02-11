@@ -21,7 +21,7 @@ if testing.db.name not in databases.__all__:
     dialects.append(testing.db.dialect)
 
 
-class CompileTest(SQLCompileTest):
+class CompileTest(TestBase, AssertsCompiledSQL):
     def test_compile(self):
         for dialect in dialects:
             bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
@@ -139,7 +139,7 @@ class CompileTest(SQLCompileTest):
             , checkparams={'y_1': 45, 'x_1': 17, 'y_2': 12, 'x_2': 5})
 
 
-class ExecuteTest(PersistTest):
+class ExecuteTest(TestBase):
 
     def test_standalone_execute(self):
         x = testing.db.func.current_date().execute().scalar()

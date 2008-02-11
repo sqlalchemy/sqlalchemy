@@ -8,7 +8,7 @@ from sqlalchemy import util
 from sqlalchemy.sql import util as sql_util
 
 
-class TraversalTest(AssertMixin):
+class TraversalTest(TestBase, AssertsExecutionResults):
     """test ClauseVisitor's traversal, particularly its ability to copy and modify
     a ClauseElement in place."""
 
@@ -138,7 +138,7 @@ class TraversalTest(AssertMixin):
         assert struct3 == s3
 
 
-class ClauseTest(SQLCompileTest):
+class ClauseTest(TestBase, AssertsCompiledSQL):
     """test copy-in-place behavior of various ClauseElements."""
 
     def setUpAll(self):
@@ -270,7 +270,7 @@ class ClauseTest(SQLCompileTest):
 
         self.assert_compile(Vis().traverse(s, clone=True), "SELECT * FROM table1 WHERE table1.col1 = table2.col1 AND table1.col2 = :table1_col2_1")
 
-class ClauseAdapterTest(SQLCompileTest):
+class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
     def setUpAll(self):
         global t1, t2
         t1 = table("table1",
@@ -410,7 +410,7 @@ class ClauseAdapterTest(SQLCompileTest):
             "LEFT OUTER JOIN table1 AS bar ON anon_1.col1 = bar.col1")
 
 
-class SelectTest(SQLCompileTest):
+class SelectTest(TestBase, AssertsCompiledSQL):
     """tests the generative capability of Select"""
 
     def setUpAll(self):

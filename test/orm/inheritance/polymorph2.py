@@ -612,7 +612,7 @@ class RelationTest7(ORMTest):
         for p in r:
             assert p.car_id == p.car.car_id
 
-class GenerativeTest(AssertMixin):
+class GenerativeTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         #  cars---owned by---  people (abstract) --- has a --- status
         #   |                  ^    ^                            |

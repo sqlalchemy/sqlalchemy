@@ -8,7 +8,7 @@ from testlib import *
 from sqlalchemy.sql import table, column
 
 
-class SequenceTest(SQLCompileTest):
+class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
         seq = Sequence("my_seq_no_schema")
         dialect = postgres.PGDialect()
@@ -20,7 +20,7 @@ class SequenceTest(SQLCompileTest):
         seq = Sequence("My_Seq", schema="Some_Schema")
         assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
 
-class CompileTest(SQLCompileTest):
+class CompileTest(TestBase, AssertsCompiledSQL):
     def test_update_returning(self):
         dialect = postgres.dialect()
         table1 = table('mytable',
@@ -57,7 +57,7 @@ class CompileTest(SQLCompileTest):
         i = insert(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
 
-class ReturningTest(AssertMixin):
+class ReturningTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
 
     @testing.exclude('postgres', '<', (8, 2))
@@ -109,7 +109,7 @@ class ReturningTest(AssertMixin):
             table.drop()
 
 
-class InsertTest(AssertMixin):
+class InsertTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
 
     def setUpAll(self):
@@ -376,7 +376,7 @@ class InsertTest(AssertMixin):
             (33, 'd4'),
         ]
 
-class DomainReflectionTest(AssertMixin):
+class DomainReflectionTest(TestBase, AssertsExecutionResults):
     "Test PostgreSQL domains"
 
     __only_on__ = 'postgres'
@@ -431,7 +431,7 @@ class DomainReflectionTest(AssertMixin):
         self.assertEquals(str(table.columns.answer.default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
 
-class MiscTest(AssertMixin):
+class MiscTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
 
     def test_date_reflection(self):
@@ -605,7 +605,7 @@ class MiscTest(AssertMixin):
 
         assert executed_sql == ['CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10']
 
-class TimezoneTest(AssertMixin):
+class TimezoneTest(TestBase, AssertsExecutionResults):
     """Test timezone-aware datetimes.
 
     psycopg will return a datetime with a tzinfo attached to it, if postgres
@@ -649,7 +649,7 @@ class TimezoneTest(AssertMixin):
         c = notztable.update(notztable.c.id==1).execute(name='newname')
         print notztable.select(tztable.c.id==1).execute().fetchone()
 
-class ArrayTest(AssertMixin):
+class ArrayTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
 
     def setUpAll(self):

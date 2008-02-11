@@ -4,7 +4,7 @@ from sqlalchemy.orm import *
 from testlib import *
 
 
-class SingleInheritanceTest(AssertMixin):
+class SingleInheritanceTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         metadata = MetaData(testing.db)
         global employees_table

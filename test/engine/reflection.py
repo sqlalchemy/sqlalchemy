@@ -7,7 +7,7 @@ from testlib import *
 from testlib import engines
 
 
-class ReflectionTest(PersistTest, ComparesTables):
+class ReflectionTest(TestBase, ComparesTables):
 
     @testing.exclude('mysql', '<', (4, 1, 1))
     def test_basic_reflection(self):
@@ -517,7 +517,7 @@ class ReflectionTest(PersistTest, ComparesTables):
             self.assert_(not m9.tables)
 
 
-class CreateDropTest(PersistTest):
+class CreateDropTest(TestBase):
     def setUpAll(self):
         global metadata, users
         metadata = MetaData()
@@ -587,7 +587,7 @@ class CreateDropTest(PersistTest):
         self.assert_(not Set(metadata.tables) - Set(testing.db.table_names()))
         metadata.drop_all(bind=testing.db)
 
-class SchemaManipulationTest(PersistTest):
+class SchemaManipulationTest(TestBase):
     def test_append_constraint_unique(self):
         meta = MetaData()
         
@@ -601,7 +601,7 @@ class SchemaManipulationTest(PersistTest):
         assert len(addresses.c.user_id.foreign_keys) == 1
         assert addresses.constraints == set([addresses.primary_key, fk])
         
-class UnicodeReflectionTest(PersistTest):
+class UnicodeReflectionTest(TestBase):
 
     def test_basic(self):
         try:
@@ -638,7 +638,7 @@ class UnicodeReflectionTest(PersistTest):
             bind.dispose()
 
 
-class SchemaTest(PersistTest):
+class SchemaTest(TestBase):
 
     def test_iteration(self):
         metadata = MetaData()
@@ -700,7 +700,7 @@ class SchemaTest(PersistTest):
             metadata.drop_all()
 
 
-class HasSequenceTest(PersistTest):
+class HasSequenceTest(TestBase):
     def setUpAll(self):
         global metadata, users
         metadata = MetaData()

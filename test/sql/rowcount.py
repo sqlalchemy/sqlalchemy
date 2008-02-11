@@ -3,7 +3,7 @@ from sqlalchemy import *
 from testlib import *
 
 
-class FoundRowsTest(AssertMixin):
+class FoundRowsTest(TestBase, AssertsExecutionResults):
     """tests rowcount functionality"""
     def setUpAll(self):
         metadata = MetaData(testing.db)

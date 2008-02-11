@@ -4,7 +4,7 @@ from sqlalchemy import sql
 from sqlalchemy.sql import compiler
 from testlib import *
 
-class QuoteTest(PersistTest):
+class QuoteTest(TestBase):
     def setUpAll(self):
         # TODO: figure out which databases/which identifiers allow special characters to be used,
         # such as:  spaces, quote characters, punctuation characters, set up tests for those as
@@ -98,7 +98,7 @@ class QuoteTest(PersistTest):
         assert str(x) == '''SELECT "SomeLabel" \nFROM (SELECT 'FooCol' AS "SomeLabel" \nFROM "ImATable")'''
 
 
-class PreparerTest(PersistTest):
+class PreparerTest(TestBase):
     """Test the db-agnostic quoting services of IdentifierPreparer."""
 
     def test_unformat(self):

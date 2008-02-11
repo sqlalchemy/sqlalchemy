@@ -20,7 +20,7 @@ class Tester(object):
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, repr(self.data))
 
-class SelfReferentialTest(AssertMixin):
+class SelfReferentialTest(TestBase, AssertsExecutionResults):
     """tests a self-referential mapper, with an additional list of child objects."""
     def setUpAll(self):
         global t1, t2, metadata
@@ -106,7 +106,7 @@ class SelfReferentialTest(AssertMixin):
         sess.delete(a)
         sess.flush()
 
-class SelfReferentialNoPKTest(AssertMixin):
+class SelfReferentialNoPKTest(TestBase, AssertsExecutionResults):
     """test self-referential relationship that joins on a column other than the primary key column"""
     def setUpAll(self):
         global table, meta
@@ -152,7 +152,7 @@ class SelfReferentialNoPKTest(AssertMixin):
         assert t.uuid == t2.uuid
         assert t.parent.uuid == t1.uuid
 
-class InheritTestOne(AssertMixin):
+class InheritTestOne(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global parent, child1, child2, meta
         meta = MetaData(testing.db)
@@ -353,7 +353,7 @@ class BiDirectionalManyToOneTest(ORMTest):
         sess.save(o3)
         sess.flush()
 
-class BiDirectionalOneToManyTest(AssertMixin):
+class BiDirectionalOneToManyTest(TestBase, AssertsExecutionResults):
     """tests two mappers with a one-to-many relation to each other."""
     def setUpAll(self):
         global t1, t2, metadata
@@ -394,7 +394,7 @@ class BiDirectionalOneToManyTest(AssertMixin):
         [sess.save(x) for x in [a,b,c,d,e,f]]
         sess.flush()
 
-class BiDirectionalOneToManyTest2(AssertMixin):
+class BiDirectionalOneToManyTest2(TestBase, AssertsExecutionResults):
     """tests two mappers with a one-to-many relation to each other, with a second one-to-many on one of the mappers"""
     def setUpAll(self):
         global t1, t2, t3, metadata
@@ -454,7 +454,7 @@ class BiDirectionalOneToManyTest2(AssertMixin):
         sess.delete(c)
         sess.flush()
 
-class OneToManyManyToOneTest(AssertMixin):
+class OneToManyManyToOneTest(TestBase, AssertsExecutionResults):
     """tests two mappers, one has a one-to-many on the other mapper, the other has a separate many-to-one relationship to the first.
     two tests will have a row for each item that is dependent on the other.  without the "post_update" flag, such relationships
     raise an exception when dependencies are sorted."""
@@ -744,7 +744,7 @@ class OneToManyManyToOneTest(AssertMixin):
             )
         ])
 
-class SelfReferentialPostUpdateTest(AssertMixin):
+class SelfReferentialPostUpdateTest(TestBase, AssertsExecutionResults):
     """test using post_update on a single self-referential mapper"""
     def setUpAll(self):
         global metadata, node_table
@@ -848,7 +848,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
             ),
         ])
 
-class SelfReferentialPostUpdateTest2(AssertMixin):
+class SelfReferentialPostUpdateTest2(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global metadata, a_table
         metadata = MetaData(testing.db)

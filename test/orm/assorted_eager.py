@@ -8,7 +8,7 @@ from sqlalchemy.ext.sessioncontext import SessionContext
 from testlib import *
 from testlib import fixtures
 
-class EagerTest(AssertMixin):
+class EagerTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global dbmeta, owners, categories, tests, options, Owner, Category, Test, Option, false
         dbmeta = MetaData(testing.db)
@@ -215,7 +215,7 @@ class EagerTest(AssertMixin):
         print result
         assert result == [u'3 Some Category']
 
-class EagerTest2(AssertMixin):
+class EagerTest2(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global metadata, middle, left, right
         metadata = MetaData(testing.db)

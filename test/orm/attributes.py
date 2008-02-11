@@ -13,7 +13,7 @@ ROLLBACK_SUPPORTED=False
 class MyTest(object):pass
 class MyTest2(object):pass
 
-class AttributesTest(PersistTest):
+class AttributesTest(TestBase):
 
     def test_basic(self):
         class User(object):pass
@@ -435,7 +435,7 @@ class AttributesTest(PersistTest):
             assert False
 
 
-class BackrefTest(PersistTest):
+class BackrefTest(TestBase):
 
     def test_manytomany(self):
         class Student(object):pass
@@ -508,7 +508,7 @@ class BackrefTest(PersistTest):
         j.port = None
         self.assert_(p.jack is None)
 
-class DeferredBackrefTest(PersistTest):
+class DeferredBackrefTest(TestBase):
     def setUp(self):
         global Post, Blog, called, lazy_load
 
@@ -596,7 +596,7 @@ class DeferredBackrefTest(PersistTest):
         called[0] = 0
         lazy_load = (p1, p2, p3) = [Post("post 1"), Post("post 2"), Post("post 3")]
 
-class HistoryTest(PersistTest):
+class HistoryTest(TestBase):
     def test_scalar(self):
         class Foo(fixtures.Base):
             pass

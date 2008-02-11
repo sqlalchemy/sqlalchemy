@@ -12,7 +12,7 @@ users = Table('users', metadata,
     Column('user_name', String(40)),
 )
 
-class SessionContextTest(AssertMixin):
+class SessionContextTest(TestBase, AssertsExecutionResults):
     def setUp(self):
         clear_mappers()
 

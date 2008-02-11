@@ -9,7 +9,7 @@ from testlib import *
 
 
 
-class AdaptTest(PersistTest):
+class AdaptTest(TestBase):
     def testadapt(self):
         e1 = url.URL('postgres').get_dialect()()
         e2 = url.URL('mysql').get_dialect()()
@@ -106,7 +106,7 @@ class AdaptTest(PersistTest):
 
 
 
-class UserDefinedTest(PersistTest):
+class UserDefinedTest(TestBase):
     """tests user-defined types."""
 
     def testbasic(self):
@@ -266,7 +266,7 @@ class UserDefinedTest(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
 
-class ColumnsTest(AssertMixin):
+class ColumnsTest(TestBase, AssertsExecutionResults):
 
     def testcolumns(self):
         expectedResults = { 'int_column': 'int_column INTEGER',
@@ -299,7 +299,7 @@ class ColumnsTest(AssertMixin):
                 db.dialect.schemagenerator(db.dialect, db, None, None).\
                   get_column_specification(aCol))
 
-class UnicodeTest(AssertMixin):
+class UnicodeTest(TestBase, AssertsExecutionResults):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
     def setUpAll(self):
         global unicode_table
@@ -400,7 +400,7 @@ class UnicodeTest(AssertMixin):
         teststr = u'aaa\x1234'
         self.assert_(testing.db.func.length(teststr).scalar() == len(teststr))
 
-class BinaryTest(AssertMixin):
+class BinaryTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global binary_table, MyPickleType
 
@@ -467,7 +467,7 @@ class BinaryTest(AssertMixin):
         # put a number less than the typical MySQL default BLOB size
         return file(f).read(len)
 
-class ExpressionTest(AssertMixin):
+class ExpressionTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global test_table, meta
 
@@ -537,7 +537,7 @@ class ExpressionTest(AssertMixin):
         # processing rules on the column.
         assert testing.db.execute(select([expr])).scalar() == -15
 
-class DateTest(AssertMixin):
+class DateTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global users_with_date, insert_data
 
@@ -662,7 +662,7 @@ class DateTest(AssertMixin):
         finally:
             t.drop(checkfirst=True)
 
-class StringTest(AssertMixin):
+class StringTest(TestBase, AssertsExecutionResults):
     def test_nolen_string_deprecated(self):
         metadata = MetaData(testing.db)
         foo =Table('foo', metadata,
@@ -698,7 +698,7 @@ def _missing_decimal():
     except ImportError:
         return True
 
-class NumericTest(AssertMixin):
+class NumericTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global numeric_table, metadata
         metadata = MetaData(testing.db)
@@ -750,7 +750,7 @@ class NumericTest(AssertMixin):
             assert isinstance(row['fcasdec'], util.decimal_type)
 
 
-class IntervalTest(AssertMixin):
+class IntervalTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global interval_table, metadata
         metadata = MetaData(testing.db)
@@ -775,7 +775,7 @@ class IntervalTest(AssertMixin):
         interval_table.insert().execute(id=1, inverval=None)
         assert interval_table.select().execute().fetchone()['interval'] is None
 
-class BooleanTest(AssertMixin):
+class BooleanTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global bool_table
         metadata = MetaData(testing.db)

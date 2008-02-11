@@ -4,7 +4,7 @@ from sqlalchemy import exceptions
 from testlib import *
 from testlib import config, engines
 
-class ConstraintTest(AssertMixin):
+class ConstraintTest(TestBase, AssertsExecutionResults):
 
     def setUp(self):
         global metadata
@@ -202,7 +202,7 @@ class ConstraintTest(AssertMixin):
         ss = events.select().execute().fetchall()
 
 
-class ConstraintCompilationTest(AssertMixin):
+class ConstraintCompilationTest(TestBase, AssertsExecutionResults):
     class accum(object):
         def __init__(self):
             self.statements = []

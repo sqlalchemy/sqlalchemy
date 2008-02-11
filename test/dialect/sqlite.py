@@ -8,7 +8,7 @@ from sqlalchemy.databases import sqlite
 from testlib import *
 
 
-class TestTypes(AssertMixin):
+class TestTypes(TestBase, AssertsExecutionResults):
     __only_on__ = 'sqlite'
 
     def test_date(self):
@@ -100,7 +100,7 @@ class TestTypes(AssertMixin):
         finally:
             m.drop_all()
 
-class DialectTest(AssertMixin):
+class DialectTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'sqlite'
 
     def test_extra_reserved_words(self):
@@ -216,7 +216,7 @@ class DialectTest(AssertMixin):
                 pass
             raise
 
-class InsertTest(AssertMixin):
+class InsertTest(TestBase, AssertsExecutionResults):
     """Tests inserts and autoincrement."""
 
     __only_on__ = 'sqlite'

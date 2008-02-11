@@ -11,7 +11,7 @@ import pickle
 import gc
 
 
-class SessionTest(AssertMixin):
+class SessionTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         tables.create()
 
@@ -967,7 +967,7 @@ class ScopedSessionTest(ORMTest):
         self.assertEquals(SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]), SomeObject.query.one())
         self.assertEquals(SomeOtherObject(someid=1), SomeOtherObject.query.filter(SomeOtherObject.someid==sso.someid).one())
 
-class ScopedMapperTest(PersistTest):
+class ScopedMapperTest(TestBase):
     def setUpAll(self):
         global metadata, table, table2
         metadata = MetaData(testing.db)

@@ -6,7 +6,7 @@ from sqlalchemy.databases import mysql
 from testlib import *
 
 
-class TypesTest(AssertMixin):
+class TypesTest(TestBase, AssertsExecutionResults):
     "Test MySQL column types"
 
     __only_on__ = 'mysql'
@@ -762,7 +762,7 @@ class TypesTest(AssertMixin):
         self.assertEqual(got, wanted)
 
 
-class SQLTest(SQLCompileTest):
+class SQLTest(TestBase, AssertsCompiledSQL):
     """Tests MySQL-dialect specific compilation."""
 
     __dialect__ = mysql.dialect()

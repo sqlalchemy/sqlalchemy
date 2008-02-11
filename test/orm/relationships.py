@@ -7,7 +7,7 @@ from sqlalchemy.orm import collections
 from sqlalchemy.orm.collections import collection
 from testlib import *
 
-class RelationTest(PersistTest):
+class RelationTest(TestBase):
     """An extended topological sort test
 
     This is essentially an extension of the "dependency.py" topological sort
@@ -104,7 +104,7 @@ class RelationTest(PersistTest):
         session.delete(c) # fails
         session.flush()
 
-class RelationTest2(PersistTest):
+class RelationTest2(TestBase):
     """Tests a relationship on a column included in multiple foreign keys.
 
     This test tests a relationship on a column that is included in multiple
@@ -228,7 +228,7 @@ class RelationTest2(PersistTest):
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
 
-class RelationTest3(PersistTest):
+class RelationTest3(TestBase):
     def setUpAll(self):
         global jobs, pageversions, pages, metadata, Job, Page, PageVersion, PageComment
         import datetime

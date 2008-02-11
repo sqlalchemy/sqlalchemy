@@ -5,7 +5,7 @@ import sqlalchemy
 from testlib import *
 
 
-class DDLEventTest(PersistTest):
+class DDLEventTest(TestBase):
     class Canary(object):
         def __init__(self, schema_item, bind):
             self.state = None
@@ -189,7 +189,7 @@ class DDLEventTest(PersistTest):
         self.assertRaises(LookupError, metadata.append_ddl_listener, 'blah', fn)
 
 
-class DDLExecutionTest(PersistTest):
+class DDLExecutionTest(TestBase):
     def mock_engine(self):
         buffer = []
         def executor(sql, *a, **kw):
@@ -288,7 +288,7 @@ class DDLExecutionTest(PersistTest):
             r = eval(py)
             assert list(r) == [(1,)], py
 
-class DDLTest(PersistTest):
+class DDLTest(TestBase):
     def mock_engine(self):
         executor = lambda *a, **kw: None
         engine = create_engine(testing.db.name + '://',

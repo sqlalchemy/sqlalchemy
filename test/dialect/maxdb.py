@@ -15,7 +15,7 @@ from testlib import *
 # - datetime tests
 # - the orm/query 'test_has' destabilizes the server- cover here
 
-class ReflectionTest(AssertMixin):
+class ReflectionTest(TestBase, AssertsExecutionResults):
     """Extra reflection tests."""
 
     __only_on__ = 'maxdb'
@@ -168,7 +168,7 @@ class ReflectionTest(AssertMixin):
             except exceptions.DatabaseError:
                 pass
 
-class DBAPITest(AssertMixin):
+class DBAPITest(TestBase, AssertsExecutionResults):
     """Asserts quirks in the native Python DB-API driver.
 
     If any of these fail, that's good- the bug is fixed!

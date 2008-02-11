@@ -43,7 +43,7 @@ class MockCursor(object):
     def close(self):
         pass
 
-class MockReconnectTest(PersistTest):
+class MockReconnectTest(TestBase):
     def setUp(self):
         global db, dbapi
         dbapi = MockDBAPI()
@@ -169,7 +169,7 @@ class MockReconnectTest(PersistTest):
         assert len(dbapi.connections) == 1
 
 
-class RealReconnectTest(PersistTest):
+class RealReconnectTest(TestBase):
     def setUp(self):
         global engine
         engine = engines.reconnecting_engine()

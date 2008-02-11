@@ -33,7 +33,7 @@ class MockCursor(object):
         pass
 mock_dbapi = MockDBAPI()
 
-class PoolTest(PersistTest):
+class PoolTest(TestBase):
 
     def setUp(self):
         pool.clear_managers()

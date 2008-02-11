@@ -23,7 +23,7 @@ table2 = Table('table2', metadata,
     Column('coly', Integer),
 )
 
-class SelectableTest(AssertMixin):
+class SelectableTest(TestBase, AssertsExecutionResults):
     def testdistance(self):
         # same column three times
         s = select([table.c.col1.label('c2'), table.c.col1, table.c.col1.label('c1')])
@@ -212,7 +212,7 @@ class SelectableTest(AssertMixin):
         assert u.corresponding_column(s.oid_column) is u.oid_column
         assert u.corresponding_column(s2.oid_column) is u.oid_column
     
-class PrimaryKeyTest(AssertMixin):
+class PrimaryKeyTest(TestBase, AssertsExecutionResults):
     def test_join_pk_collapse_implicit(self):
         """test that redundant columns in a join get 'collapsed' into a minimal primary key,
         which is the root column along a chain of foreign key relationships."""
@@ -297,7 +297,7 @@ class PrimaryKeyTest(AssertMixin):
         )
 
 
-class ReduceTest(AssertMixin):
+class ReduceTest(TestBase, AssertsExecutionResults):
     def test_reduce(self):
         meta = MetaData()
         t1 = Table('t1', meta,
@@ -411,7 +411,7 @@ class ReduceTest(AssertMixin):
         )    
     
             
-class DerivedTest(AssertMixin):
+class DerivedTest(TestBase, AssertsExecutionResults):
     def test_table(self):
         meta = MetaData()
         t1 = Table('t1', meta, Column('c1', Integer, primary_key=True), Column('c2', String(30)))

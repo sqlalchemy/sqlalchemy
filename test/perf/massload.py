@@ -17,7 +17,7 @@ top while it runs
 
 NUM = 2500
 
-class LoadTest(AssertMixin):
+class LoadTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global items, meta
         meta = MetaData(testing.db)

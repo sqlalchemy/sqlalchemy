@@ -7,7 +7,7 @@ from sqlalchemy import engine, exceptions
 from testlib import *
 
 
-class BindTest(PersistTest):
+class BindTest(TestBase):
     def test_create_drop_explicit(self):
         metadata = MetaData()
         table = Table('test_table', metadata,

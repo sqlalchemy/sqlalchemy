@@ -10,7 +10,7 @@ from testlib.compat import *
 sql, sqltypes, schema, MetaData, clear_mappers, Session, util = None, None, None, None, None, None, None
 sa_exceptions = None
 
-__all__ = ('PersistTest', 'AssertMixin', 'ComparesTables', 'ORMTest', 'SQLCompileTest')
+__all__ = ('TestBase', 'AssertsExecutionResults', 'ComparesTables', 'ORMTest', 'AssertsCompiledSQL')
 
 _ops = { '<': operator.lt,
          '>': operator.gt,
@@ -434,7 +434,7 @@ class ExecutionContextWrapper(object):
             query = re.sub(r':([\w_]+)', repl, query)
         return query
 
-class PersistTest(unittest.TestCase):
+class TestBase(unittest.TestCase):
     # A sequence of dialect names to exclude from the test class.
     __unsupported_on__ = ()
 
@@ -464,7 +464,7 @@ class PersistTest(unittest.TestCase):
     if not hasattr(unittest.TestCase, 'assertFalse'):
         assertFalse = unittest.TestCase.failIf
 
-class SQLCompileTest(PersistTest):
+class AssertsCompiledSQL(object):
     def assert_compile(self, clause, result, params=None, checkparams=None, dialect=None):
         if dialect is None:
             dialect = getattr(self, '__dialect__', None)
@@ -519,7 +519,7 @@ class ComparesTables(object):
             assert reflected_table.primary_key.columns[c.name]
 
     
-class AssertMixin(PersistTest):
+class AssertsExecutionResults(object):
     def assert_result(self, result, class_, *objects):
         result = list(result)
         print repr(result)
@@ -629,7 +629,7 @@ class AssertMixin(PersistTest):
             testdata.buffer = None
 
 _otest_metadata = None
-class ORMTest(AssertMixin):
+class ORMTest(TestBase, AssertsExecutionResults):
     keep_mappers = False
     keep_data = False
     metadata = None
@@ -690,7 +690,7 @@ class TTestSuite(unittest.TestSuite):
     """A TestSuite with once per TestCase setUpAll() and tearDownAll()"""
 
     def __init__(self, tests=()):
-        if len(tests) > 0 and isinstance(tests[0], PersistTest):
+        if len(tests) > 0 and isinstance(tests[0], TestBase):
             self._initTest = tests[0]
         else:
             self._initTest = None

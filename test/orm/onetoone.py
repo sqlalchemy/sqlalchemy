@@ -24,7 +24,7 @@ class Port(object):
         self.name=name
         self.description = description
 
-class O2OTest(AssertMixin):
+class O2OTest(TestBase, AssertsExecutionResults):
     @testing.uses_deprecated('SessionContext')
     def setUpAll(self):
         global jack, port, metadata, ctx

@@ -10,7 +10,7 @@ from testlib.tables import *
 import testlib.tables as tables
 
 
-class MapperSuperTest(AssertMixin):
+class MapperSuperTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         tables.create()
         tables.data()
@@ -1238,7 +1238,7 @@ class NoLoadTest(MapperSuperTest):
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             )
 
-class MapperExtensionTest(PersistTest):
+class MapperExtensionTest(TestBase):
     def setUpAll(self):
         tables.create()
 
@@ -1387,7 +1387,7 @@ class MapperExtensionTest(PersistTest):
         self.assertEquals(methods, ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'get',
             'translate_row', 'create_instance', 'populate_instance', 'before_update', 'after_update', 'before_delete', 'after_delete'])
 
-class RequirementsTest(AssertMixin):
+class RequirementsTest(TestBase, AssertsExecutionResults):
     """Tests the contract for user classes."""
 
     def setUpAll(self):

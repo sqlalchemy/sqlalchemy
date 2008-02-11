@@ -4,7 +4,7 @@ from sqlalchemy import *
 from testlib import *
 
 
-class CaseTest(PersistTest):
+class CaseTest(TestBase):
 
     def setUpAll(self):
         metadata = MetaData(testing.db)

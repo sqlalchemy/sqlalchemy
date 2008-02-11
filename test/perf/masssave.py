@@ -7,7 +7,7 @@ from testlib import *
 
 NUM = 2500
 
-class SaveTest(AssertMixin):
+class SaveTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global items, metadata
         metadata = MetaData(testing.db)

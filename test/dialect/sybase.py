@@ -4,7 +4,7 @@ from sqlalchemy.databases import sybase
 from testlib import *
 
 
-class BasicTest(AssertMixin):
+class BasicTest(TestBase, AssertsExecutionResults):
     # A simple import of the database/ module should work on all systems.
     def test_import(self):
         # we got this far, right?

@@ -8,7 +8,7 @@ from sqlalchemy.databases import mssql
 from testlib import *
 
 
-class CompileTest(SQLCompileTest):
+class CompileTest(TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.MSSQLDialect()
 
     def test_insert(self):
@@ -94,7 +94,7 @@ class CompileTest(SQLCompileTest):
         t = Table('sometable', m, Column('col1', Integer), Column('col2', Integer))
         self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) AS max_1 FROM sometable")
 
-class ReflectionTest(PersistTest):
+class ReflectionTest(TestBase):
     __only_on__ = 'mssql'
 
     def testidentity(self):
@@ -114,7 +114,7 @@ class ReflectionTest(PersistTest):
             table.drop()
 
 
-class QueryTest(PersistTest):
+class QueryTest(TestBase):
     __only_on__ = 'mssql'
 
     def test_fetchid_trigger(self):
@@ -209,7 +209,7 @@ class Foo(object):
         for k in kw:
             setattr(self, k, kw[k])
 
-class GenerativeQueryTest(PersistTest):
+class GenerativeQueryTest(TestBase):
     __only_on__ = 'mssql'
 
     def setUpAll(self):

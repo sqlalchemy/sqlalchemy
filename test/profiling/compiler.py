@@ -3,7 +3,7 @@ from sqlalchemy import *
 from testlib import *
 
 
-class CompileTest(AssertMixin):
+class CompileTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global t1, t2, metadata
         metadata = MetaData()

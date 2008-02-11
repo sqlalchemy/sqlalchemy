@@ -6,7 +6,7 @@ from sqlalchemy.orm import mapper, create_session
 from testlib import *
 
 
-class DefaultTest(PersistTest):
+class DefaultTest(TestBase):
 
     def setUpAll(self):
         global t, f, f2, ts, currenttime, metadata, default_generator
@@ -267,7 +267,7 @@ class DefaultTest(PersistTest):
         finally:
             testing.db.execute("drop table speedy_users", None)
 
-class PKDefaultTest(PersistTest):
+class PKDefaultTest(TestBase):
     def setUpAll(self):
         global metadata, t1, t2
 
@@ -296,7 +296,7 @@ class PKDefaultTest(PersistTest):
         assert r.last_inserted_ids() == [2]
 
 
-class AutoIncrementTest(PersistTest):
+class AutoIncrementTest(TestBase):
     def setUp(self):
         global aitable, aimeta
 
@@ -406,7 +406,7 @@ class AutoIncrementTest(PersistTest):
             metadata.drop_all()
 
 
-class SequenceTest(PersistTest):
+class SequenceTest(TestBase):
     __unsupported_on__ = ('sqlite', 'mysql', 'mssql', 'firebird',
                           'sybase', 'access')
 

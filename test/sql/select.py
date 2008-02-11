@@ -48,7 +48,7 @@ addresses = table('addresses',
     column('zip')
 )
 
-class SelectTest(SQLCompileTest):
+class SelectTest(TestBase, AssertsCompiledSQL):
 
     def test_attribute_sanity(self):
         assert hasattr(table1, 'c')
@@ -1198,7 +1198,7 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
             else:
                 self.assert_compile(s1, "SELECT %s FROM (SELECT %s FROM mytable)" % (expr,expr))
                 
-class CRUDTest(SQLCompileTest):
+class CRUDTest(TestBase, AssertsCompiledSQL):
     def test_insert(self):
         # generic insert, will create bind params for all columns
         self.assert_compile(insert(table1), "INSERT INTO mytable (myid, name, description) VALUES (:myid, :name, :description)")
@@ -1304,7 +1304,7 @@ class CRUDTest(SQLCompileTest):
         u = table1.delete(table1.c.name==s)
         self.assert_compile(u, "DELETE FROM mytable WHERE mytable.name = (SELECT myothertable.othername FROM myothertable WHERE myothertable.otherid = mytable.myid)")
 
-class InlineDefaultTest(SQLCompileTest):
+class InlineDefaultTest(TestBase, AssertsCompiledSQL):
     def test_insert(self):
         m = MetaData()
         foo =  Table('foo', m,
@@ -1330,7 +1330,7 @@ class InlineDefaultTest(SQLCompileTest):
 
         self.assert_compile(t.update(inline=True, values={'col3':'foo'}), "UPDATE test SET col1=foo(:foo_1), col2=(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM foo), col3=:col3")
 
-class SchemaTest(SQLCompileTest):
+class SchemaTest(TestBase, AssertsCompiledSQL):
     @testing.fails_on('mssql')
     def test_select(self):
         # these tests will fail with the MS-SQL compiler since it will alias schema-qualified tables

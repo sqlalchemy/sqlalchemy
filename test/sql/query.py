@@ -6,7 +6,7 @@ from sqlalchemy.engine import default
 from testlib import *
 
 
-class QueryTest(PersistTest):
+class QueryTest(TestBase):
 
     def setUpAll(self):
         global users, addresses, metadata
@@ -557,7 +557,7 @@ class QueryTest(PersistTest):
         assert len(r) == 1
 
 
-class CompoundTest(PersistTest):
+class CompoundTest(TestBase):
     """test compound statements like UNION, INTERSECT, particularly their ability to nest on
     different databases."""
     def setUpAll(self):
@@ -755,7 +755,7 @@ class CompoundTest(PersistTest):
         self.assertEquals(found, wanted)
 
 
-class JoinTest(PersistTest):
+class JoinTest(TestBase):
     """Tests join execution.
 
     The compiled SQL emitted by the dialect might be ANSI joins or
@@ -1025,7 +1025,7 @@ class JoinTest(PersistTest):
             self.assertRows(expr, [(10, 20, 30)])
 
 
-class OperatorTest(PersistTest):
+class OperatorTest(TestBase):
     def setUpAll(self):
         global metadata, flds
         metadata = MetaData(testing.db)

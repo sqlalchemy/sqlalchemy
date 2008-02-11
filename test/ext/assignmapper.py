@@ -7,7 +7,7 @@ from sqlalchemy.ext.sessioncontext import SessionContext
 from testlib import *
 
 
-class AssignMapperTest(PersistTest):
+class AssignMapperTest(TestBase):
     def setUpAll(self):
         global metadata, table, table2
         metadata = MetaData(testing.db)

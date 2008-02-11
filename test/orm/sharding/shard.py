@@ -5,11 +5,11 @@ from sqlalchemy import exceptions, sql
 from sqlalchemy.orm import *
 from sqlalchemy.orm.shard import ShardedSession
 from sqlalchemy.sql import operators
-from testlib import PersistTest
+from testlib import TestBase
 
 # TODO: ShardTest can be turned into a base for further subclasses
 
-class ShardTest(PersistTest):
+class ShardTest(TestBase):
     def setUpAll(self):
         global db1, db2, db3, db4, weather_locations, weather_reports
 

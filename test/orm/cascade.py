@@ -7,7 +7,7 @@ from sqlalchemy.ext.sessioncontext import SessionContext
 from testlib import *
 import testlib.tables as tables
 
-class O2MCascadeTest(AssertMixin):
+class O2MCascadeTest(TestBase, AssertsExecutionResults):
     def tearDown(self):
         tables.delete()
 
@@ -175,7 +175,7 @@ class O2MCascadeTest(AssertMixin):
         self.assert_(tables.orderitems.count(tables.orders.c.user_id.in_(ids)  &(tables.orderitems.c.order_id==tables.orders.c.order_id)).scalar() == 0)
 
 
-class M2OCascadeTest(AssertMixin):
+class M2OCascadeTest(TestBase, AssertsExecutionResults):
     def tearDown(self):
         ctx.current.clear()
         for t in metadata.table_iterator(reverse=True):
@@ -275,7 +275,7 @@ class M2OCascadeTest(AssertMixin):
 
 
 
-class M2MCascadeTest(AssertMixin):
+class M2MCascadeTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global metadata, a, b, atob
         metadata = MetaData(testing.db)
@@ -470,7 +470,7 @@ class UnsavedOrphansTest2(ORMTest):
         assert item.id is None
         assert attr.id is None
 
-class DoubleParentOrphanTest(AssertMixin):
+class DoubleParentOrphanTest(TestBase, AssertsExecutionResults):
     """test orphan detection for an entity with two parent relations"""
 
     def setUpAll(self):
@@ -537,7 +537,7 @@ class DoubleParentOrphanTest(AssertMixin):
         except exceptions.FlushError, e:
             assert True
 
-class CollectionAssignmentOrphanTest(AssertMixin):
+class CollectionAssignmentOrphanTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global metadata, table_a, table_b
 

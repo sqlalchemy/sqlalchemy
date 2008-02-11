@@ -7,16 +7,15 @@ import datetime
 import sys
 import time
 import testenv; testenv.configure_for_tests()
-from testlib import engines, testing, profiling
 from sqlalchemy import *
-from testlib import set
+from testlib import *
 
 ITERATIONS = 1
 
 _run_type = 'suite'
 _running_in = lambda: _run_type
 
-class ZooMarkTest(testing.AssertMixin):
+class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
     """Runs the ZooMark and squawks if method counts vary from the norm.
 
     Each test has an associated `call_range`, the total number of accepted
@@ -29,7 +28,7 @@ class ZooMarkTest(testing.AssertMixin):
 
     @profiling.conditional_call_count(
         _running_in, {'isolation': (1806,),
-                      'suite': (1569, {'2.4': 1579})})
+                      'suite': (1569, {'2.4': 1579}, 0.20)})
     def test_1_create_tables(self):
         global metadata
         metadata = MetaData(testing.db)
