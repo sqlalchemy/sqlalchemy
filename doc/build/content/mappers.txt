@@ -813,8 +813,8 @@ The association object pattern is a variant on many-to-many:  it specifically is
         Column('id', Integer, primary_key=True))
     
     association_table = Table('association', metadata,
-        Column('left_id', Integer, ForeignKey('left.id')),
-        Column('right_id', Integer, ForeignKey('right.id')),
+        Column('left_id', Integer, ForeignKey('left.id'), primary_key=True),
+        Column('right_id', Integer, ForeignKey('right.id'), primary_key=True),
         Column('data', String(50))
         )
     
