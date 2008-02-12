@@ -2935,7 +2935,6 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
             if s.oid_column:
                 self.oid_column = self._proxy_column(s.oid_column)
 
-
     def self_group(self, against=None):
         return _FromGrouping(self)
 
@@ -2956,6 +2955,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
             else:
                 col = column._make_proxy(self)
             col_ordering.append(col)
+            return col
         else:
             col_ordering.append(column)
             existing = self._col_map[self.selects[0]][len(col_ordering) - 1]

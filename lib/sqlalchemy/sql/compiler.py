@@ -269,8 +269,7 @@ class DefaultCompiler(engine.Compiled):
                     return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + n
             elif len(column.table.primary_key) != 0:
                 pk = list(column.table.primary_key)[0]
-                pkname = (pk.is_literal and name or self._truncated_identifier("colident", pk.name))
-                return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.preparer.quote(pk, pkname)
+                return self.visit_column(pk, result_map=result_map, use_schema=use_schema, **kwargs)
             else:
                 return None
         elif column.table is None or not column.table.named_with_column:

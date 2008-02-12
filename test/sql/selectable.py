@@ -92,6 +92,16 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert u.corresponding_column(s1.c.table1_col2) is u.c.col2
         assert u.corresponding_column(s2.c.table2_col2) is u.c.col2
 
+    def test_singular_union(self):
+        u = union(select([table.c.col1, table.c.col2, table.c.col3]), select([table.c.col1, table.c.col2, table.c.col3]))
+        assert u.oid_column is not None
+
+        u = union(select([table.c.col1, table.c.col2, table.c.col3]))
+        assert u.oid_column
+        assert u.c.col1
+        assert u.c.col2
+        assert u.c.col3
+        
     def testaliasunion(self):
         # same as testunion, except its an alias of the union
         u = select([table.c.col1, table.c.col2, table.c.col3, table.c.colx, null().label('coly')]).union(
