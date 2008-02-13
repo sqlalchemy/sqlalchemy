@@ -624,6 +624,8 @@ class CollectionAttributeImpl(AttributeImpl):
         try:
             return getattr(user_data, '_sa_adapter')
         except AttributeError:
+            # TODO: this codepath never occurs, and this 
+            # except/initialize should be removed
             collections.CollectionAdapter(self, state, user_data)
             return getattr(user_data, '_sa_adapter')
 
