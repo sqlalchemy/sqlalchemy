@@ -5,7 +5,7 @@ from sqlalchemy import exceptions, sql
 from sqlalchemy.orm import *
 from sqlalchemy.orm.shard import ShardedSession
 from sqlalchemy.sql import operators
-from testlib import TestBase
+from testlib import *
 
 # TODO: ShardTest can be turned into a base for further subclasses
 
