@@ -766,7 +766,7 @@ class UOWTask(object):
                 # TODO: no test coverage for this !!
                 localtask = UOWTask(self.uowtransaction, t2.mapper)
                 for state in t2.elements:
-                    localtask.append(obj, t2.listonly, isdelete=t2._objects[state].isdelete)
+                    localtask.append(state, t2.listonly, isdelete=t2._objects[state].isdelete)
                 for dep in t2.dependencies:
                     localtask.dependencies.add(dep)
                 ret.insert(0, localtask)
