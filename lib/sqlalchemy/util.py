@@ -658,9 +658,10 @@ class IdentitySet(object):
     two 'foo' strings in one of these sets, for example.  Use sparingly.
     """
 
+    _working_set = Set
+
     def __init__(self, iterable=None):
         self._members = _IterableUpdatableDict()
-        self._tempset = Set
         if iterable:
             for o in iterable:
                 self.add(o)
@@ -750,7 +751,7 @@ class IdentitySet(object):
         result = type(self)()
         # testlib.pragma exempt:__hash__
         result._members.update(
-            self._tempset(self._members.iteritems()).union(_iter_id(iterable)))
+            self._working_set(self._members.iteritems()).union(_iter_id(iterable)))
         return result
 
     def __or__(self, other):
@@ -771,7 +772,7 @@ class IdentitySet(object):
         result = type(self)()
         # testlib.pragma exempt:__hash__
         result._members.update(
-            self._tempset(self._members.iteritems()).difference(_iter_id(iterable)))
+            self._working_set(self._members.iteritems()).difference(_iter_id(iterable)))
         return result
 
     def __sub__(self, other):
@@ -792,7 +793,7 @@ class IdentitySet(object):
         result = type(self)()
         # testlib.pragma exempt:__hash__
         result._members.update(
-            self._tempset(self._members.iteritems()).intersection(_iter_id(iterable)))
+            self._working_set(self._members.iteritems()).intersection(_iter_id(iterable)))
         return result
 
     def __and__(self, other):
@@ -813,7 +814,7 @@ class IdentitySet(object):
         result = type(self)()
         # testlib.pragma exempt:__hash__
         result._members.update(
-            self._tempset(self._members.iteritems()).symmetric_difference(_iter_id(iterable)))
+            self._working_set(self._members.iteritems()).symmetric_difference(_iter_id(iterable)))
         return result
 
     def __xor__(self, other):
@@ -867,10 +868,16 @@ def _iter_id(iterable):
 
 
 class OrderedIdentitySet(IdentitySet):
+    class _working_set(OrderedSet):
+        # a testing pragma: exempt the OIDS working set for the test suite's
+        # "never call the user's__hash__" assertions.  this is a big hammer,
+        # but it's safe here: IDS operates on (id, instance) tuples in the
+        # working set.
+        __sa_hash_exempt__ = True
+
     def __init__(self, iterable=None):
         IdentitySet.__init__(self)
         self._members = OrderedDict()
-        self._tempset = OrderedSet
         if iterable:
             for o in iterable:
                 self.add(o)

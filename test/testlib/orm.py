@@ -70,7 +70,9 @@ def _make_blocker(method_name, fallback):
             exempt = (
                 (not module.startswith('sqlalchemy')) or
                 (pragma and pragma_marker in pragma) or
-                (frame_marker in frame.f_locals))
+                (frame_marker in frame.f_locals) or
+                ('self' in frame.f_locals and
+                 getattr(frame.f_locals['self'], frame_marker, False)))
 
             if exempt:
                 supermeth = getattr(super(type_, self), method_name, None)
