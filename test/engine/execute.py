@@ -55,7 +55,7 @@ class ExecuteTest(TestBase):
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
             conn.execute("delete from users")
 
-    @testing.fails_on_everything_except('sqlite')
+    @testing.fails_on_everything_except('sqlite', 'oracle')
     def test_raw_named(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (:id, :name)", {'id':1, 'name':'jack'})

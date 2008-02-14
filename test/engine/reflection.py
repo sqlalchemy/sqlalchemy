@@ -27,8 +27,7 @@ class ReflectionTest(TestBase, ComparesTables):
             Column('test8', Binary),
             Column('test_passivedefault2', Integer, PassiveDefault("5")),
             Column('test9', Binary(100)),
-            Column('test10', Boolean),
-            Column('test_numeric', Numeric(None, None)),
+            Column('test_numeric', Numeric()),
             test_needs_fk=True,
         )
 

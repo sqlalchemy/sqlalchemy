@@ -196,6 +196,7 @@ class Table(SchemaItem, expression.TableClause):
         super(Table, self).__init__(name)
         self.metadata = metadata
         self.schema = kwargs.pop('schema', None)
+        self.owner = kwargs.pop('owner', None)
         self.indexes = util.Set()
         self.constraints = util.Set()
         self._columns = expression.ColumnCollection()
@@ -232,7 +233,13 @@ class Table(SchemaItem, expression.TableClause):
         schema = kwargs.pop('schema', None)
         if schema and schema != self.schema:
             raise exceptions.ArgumentError("Can't change schema of existing table from '%s' to '%s'", (self.schema, schema))
-            
+        owner = kwargs.pop('owner', None)
+        if owner:
+            if not self.owner:
+                self.owner = owner
+            elif owner != self.owner:
+                raise exceptions.ArgumentError("Can't change owner of existing table from '%s' to '%s'", (self.owner, owner))
+    
         include_columns = kwargs.pop('include_columns', None)
         if include_columns:
             for c in self.c:
@@ -246,12 +253,11 @@ class Table(SchemaItem, expression.TableClause):
         the 'useexisting' flag overrides this.
         """
 
-        return bool(args) or bool(util.Set(kwargs).difference(['autoload', 'autoload_with', 'schema']))
+        return bool(args) or bool(util.Set(kwargs).difference(['autoload', 'autoload_with', 'schema', 'owner']))
         
     def __post_init(self, *args, **kwargs):
         self.quote = kwargs.pop('quote', False)
         self.quote_schema = kwargs.pop('quote_schema', False)
-        self.owner = kwargs.pop('owner', None)
         if kwargs.get('info'):
             self._info = kwargs.pop('info')
 
