@@ -869,8 +869,8 @@ def _iter_id(iterable):
 
 class OrderedIdentitySet(IdentitySet):
     class _working_set(OrderedSet):
-        # a testing pragma: exempt the OIDS working set for the test suite's
-        # "never call the user's__hash__" assertions.  this is a big hammer,
+        # a testing pragma: exempt the OIDS working set from the test suite's
+        # "never call the user's __hash__" assertions.  this is a big hammer,
         # but it's safe here: IDS operates on (id, instance) tuples in the
         # working set.
         __sa_hash_exempt__ = True
