@@ -39,6 +39,10 @@ CHANGES
     - cast() accepts text('something') and other non-literal
       operands properly [ticket:962]
 
+    - fixed bug in result proxy where anonymously generated
+      column labels would not be accessible using their straight
+      string name
+      
     - Deferrable constraints can now be defined.
 
     - Added "autocommit=True" keyword argument to select() and

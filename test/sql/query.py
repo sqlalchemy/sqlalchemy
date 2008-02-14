@@ -129,14 +129,28 @@ class QueryTest(TestBase):
                 table.drop()
 
     def test_row_iteration(self):
-        users.insert().execute(user_id = 7, user_name = 'jack')
-        users.insert().execute(user_id = 8, user_name = 'ed')
-        users.insert().execute(user_id = 9, user_name = 'fred')
+        users.insert().execute(
+            {'user_id':7, 'user_name':'jack'},
+            {'user_id':8, 'user_name':'ed'},
+            {'user_id':9, 'user_name':'fred'},
+        )
         r = users.select().execute()
         l = []
         for row in r:
             l.append(row)
         self.assert_(len(l) == 3)
+
+    def test_anonymous_rows(self):
+        users.insert().execute(
+            {'user_id':7, 'user_name':'jack'},
+            {'user_id':8, 'user_name':'ed'},
+            {'user_id':9, 'user_name':'fred'},
+        )
+
+        sel = select([users.c.user_id]).where(users.c.user_name=='jack').as_scalar()
+        for row in select([sel + 1, sel + 3], bind=users.bind).execute():
+            assert row['anon_1'] == 8
+            assert row['anon_2'] == 10
 
     def test_row_comparison(self):
         users.insert().execute(user_id = 7, user_name = 'jack')

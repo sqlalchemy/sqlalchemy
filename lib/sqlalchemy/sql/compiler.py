@@ -236,7 +236,7 @@ class DefaultCompiler(engine.Compiled):
         labelname = self._truncated_identifier("colident", label.name)
         
         if result_map is not None:
-            result_map[labelname.lower()] = (label.name, (label, label.obj), label.obj.type)
+            result_map[labelname.lower()] = (label.name, (label, label.obj, labelname), label.obj.type)
             
         return " ".join([self.process(label.obj), self.operator_string(operators.as_), self.preparer.format_label(label, labelname)])
         
