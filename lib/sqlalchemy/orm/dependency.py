@@ -10,10 +10,10 @@
  dependencies at flush time.
 """
 
-from sqlalchemy.orm import sync, attributes
+from sqlalchemy.orm import sync
 from sqlalchemy.orm.sync import ONETOMANY,MANYTOONE,MANYTOMANY
 from sqlalchemy import sql, util, exceptions
-from sqlalchemy.orm import session as sessionlib
+
 
 def create_dependency_processor(prop):
     types = {
@@ -28,7 +28,7 @@ def create_dependency_processor(prop):
 
 class DependencyProcessor(object):
     no_dependencies = False
-    
+
     def __init__(self, prop):
         self.prop = prop
         self.cascade = prop.cascade
@@ -55,12 +55,12 @@ class DependencyProcessor(object):
         return getattr(self.parent.class_, self.key)
 
     def hasparent(self, state):
-        """return True if the given object instance has a parent, 
+        """return True if the given object instance has a parent,
         according to the ``InstrumentedAttribute`` handled by this ``DependencyProcessor``."""
-        
+
         # TODO: use correct API for this
         return self._get_instrumented_attribute().impl.hasparent(state)
-        
+
     def register_dependencies(self, uowcommit):
         """Tell a ``UOWTransaction`` what mappers are dependent on
         which, with regards to the two or three mappers handled by
@@ -113,7 +113,7 @@ class DependencyProcessor(object):
             return
         if state is not None and not self.mapper._canload(state):
             raise exceptions.FlushError("Attempting to flush an item of type %s on collection '%s', which is handled by mapper '%s' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?  Set 'enable_typechecks=False' on the relation() to disable this exception.  Mismatched typeloading may cause bi-directional relationships (backrefs) to not function properly." % (state.class_, self.prop, self.mapper))
-        
+
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         """Called during a flush to synchronize primary key identifier
         values between a parent/child object, as well as to an
@@ -124,7 +124,7 @@ class DependencyProcessor(object):
 
     def _compile_synchronizers(self):
         """Assemble a list of *synchronization rules*.
-                
+
         These are fired to populate attributes from one side
         of a relation to another.
         """
@@ -156,10 +156,10 @@ class DependencyProcessor(object):
                 if x is not None:
                     uowcommit.register_object(state, postupdate=True, post_update_cols=self.syncrules.dest_columns())
                     break
-    
+
     def _pks_changed(self, uowcommit, state):
         return self.syncrules.source_changes(uowcommit, state)
-        
+
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, str(self.prop))
 
@@ -205,12 +205,12 @@ class OneToManyDP(DependencyProcessor):
                     for child in deleted:
                         if not self.cascade.delete_orphan and not self.hasparent(child):
                             self._synchronize(state, child, None, True, uowcommit)
-                            
+
                 if self._pks_changed(uowcommit, state):
                     if unchanged:
                         for child in unchanged:
                             self._synchronize(state, child, None, False, uowcommit)
-                
+
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " preprocess_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
 
@@ -247,7 +247,7 @@ class OneToManyDP(DependencyProcessor):
                     if unchanged:
                         for child in unchanged:
                             uowcommit.register_object(child)
-                    
+
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         if child is not None:
             child = getattr(child, '_state', child)
@@ -263,45 +263,45 @@ class DetectKeySwitch(DependencyProcessor):
     child items who have changed their referenced key."""
 
     no_dependencies = True
-    
+
     def register_dependencies(self, uowcommit):
         uowcommit.register_processor(self.parent, self, self.mapper)
-        
+
     def preprocess_dependencies(self, task, deplist, uowcommit, delete=False):
         # for non-passive updates, register in the preprocess stage
         # so that mapper save_obj() gets a hold of changes
         if not delete and not self.passive_updates:
             self._process_key_switches(deplist, uowcommit)
-        
+
     def process_dependencies(self, task, deplist, uowcommit, delete=False):
         # for passive updates, register objects in the process stage
-        # so that we avoid ManyToOneDP's registering the object without 
+        # so that we avoid ManyToOneDP's registering the object without
         # the listonly flag in its own preprocess stage (results in UPDATE)
         # statements being emitted
         if not delete and self.passive_updates:
             self._process_key_switches(deplist, uowcommit)
-    
-    def _process_key_switches(self, deplist, uowcommit):    
+
+    def _process_key_switches(self, deplist, uowcommit):
         switchers = util.Set([s for s in deplist if self._pks_changed(uowcommit, s)])
         if switchers:
-            # yes, we're doing a linear search right now through the UOW.  only 
+            # yes, we're doing a linear search right now through the UOW.  only
             # takes effect when primary key values have actually changed.
             # a possible optimization might be to enhance the "hasparents" capability of
             # attributes to actually store all parent references, but this introduces
             # more complicated attribute accounting.
-            for s in [elem for elem in uowcommit.session.identity_map.all_states() 
-                if issubclass(elem.class_, self.parent.class_) and 
-                    self.key in elem.dict and 
+            for s in [elem for elem in uowcommit.session.identity_map.all_states()
+                if issubclass(elem.class_, self.parent.class_) and
+                    self.key in elem.dict and
                     elem.dict[self.key]._state in switchers
                 ]:
                 uowcommit.register_object(s, listonly=self.passive_updates)
                 self.syncrules.execute(s.dict[self.key]._state, s, None, None, False)
-                        
+
 class ManyToOneDP(DependencyProcessor):
     def __init__(self, prop):
         DependencyProcessor.__init__(self, prop)
         self.mapper._dependency_processors.append(DetectKeySwitch(prop))
-        
+
     def register_dependencies(self, uowcommit):
         if self.post_update:
             if not self.is_backref:
@@ -312,7 +312,7 @@ class ManyToOneDP(DependencyProcessor):
         else:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, self, self.parent)
-            
+
 
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
@@ -387,12 +387,12 @@ class ManyToManyDP(DependencyProcessor):
         secondary_delete = []
         secondary_insert = []
         secondary_update = []
-        
+
         if self.prop._reverse_property:
             reverse_dep = getattr(self.prop._reverse_property, '_dependency_processor', None)
         else:
             reverse_dep = None
-            
+
         if delete:
             for state in deplist:
                 (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
@@ -422,13 +422,13 @@ class ManyToManyDP(DependencyProcessor):
                         self._synchronize(state, child, associationrow, False, uowcommit)
                         uowcommit.attributes[(self, "manytomany", state, child)] = True
                         secondary_delete.append(associationrow)
-                        
+
                 if not self.passive_updates and unchanged and self._pks_changed(uowcommit, state):
                     for child in unchanged:
                         associationrow = {}
                         self.syncrules.update(associationrow, state, child, "old_")
                         secondary_update.append(associationrow)
-                    
+
         if secondary_delete:
             secondary_delete.sort()
             # TODO: precompile the delete/insert queries?
@@ -436,13 +436,13 @@ class ManyToManyDP(DependencyProcessor):
             result = connection.execute(statement, secondary_delete)
             if result.supports_sane_multi_rowcount() and result.rowcount != len(secondary_delete):
                 raise exceptions.ConcurrentModificationError("Deleted rowcount %d does not match number of secondary table rows deleted from table '%s': %d" % (result.rowcount, self.secondary.description, len(secondary_delete)))
-        
+
         if secondary_update:
             statement = self.secondary.update(sql.and_(*[c == sql.bindparam("old_" + c.key, type_=c.type) for c in self.secondary.c if c.key in associationrow]))
             result = connection.execute(statement, secondary_update)
             if result.supports_sane_multi_rowcount() and result.rowcount != len(secondary_update):
                 raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of secondary table rows updated from table '%s': %d" % (result.rowcount, self.secondary.description, len(secondary_update)))
-            
+
         if secondary_insert:
             statement = self.secondary.insert()
             connection.execute(statement, secondary_insert)
@@ -481,7 +481,7 @@ class MapperStub(object):
     """
 
     __metaclass__ = util.ArgSingleton
-    
+
     def __init__(self, parent, mapper, key):
         self.mapper = mapper
         self.base_mapper = self
@@ -490,7 +490,7 @@ class MapperStub(object):
 
     def polymorphic_iterator(self):
         return iter([self])
-        
+
     def _register_dependencies(self, uowcommit):
         pass
 
@@ -502,4 +502,3 @@ class MapperStub(object):
 
     def primary_mapper(self):
         return self
-

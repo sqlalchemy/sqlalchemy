@@ -14,7 +14,7 @@ and result contexts.
 
 import StringIO, sys
 from sqlalchemy import exceptions, schema, util, types, logging
-from sqlalchemy.sql import expression, visitors
+from sqlalchemy.sql import expression
 
 
 class Dialect(object):

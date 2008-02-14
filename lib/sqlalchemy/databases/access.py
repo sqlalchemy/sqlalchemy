@@ -5,10 +5,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import random
 from sqlalchemy import sql, schema, types, exceptions, pool
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, base
+
 
 class AcNumeric(types.Numeric):
     def result_processor(self, dialect):

@@ -8,7 +8,7 @@ from sqlalchemy import sql, util, exceptions
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.util import row_adapter as create_row_adapter
 from sqlalchemy.sql import visitors
-from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, build_path
+from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE
 
 all_cascades = util.Set(["delete", "delete-orphan", "all", "merge",
                          "expunge", "save-update", "refresh-expire", "none"])

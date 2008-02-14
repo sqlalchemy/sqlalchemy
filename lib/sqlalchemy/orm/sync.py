@@ -12,7 +12,7 @@ clause that compares column values.
 from sqlalchemy import schema, exceptions, util
 from sqlalchemy.sql import visitors, operators
 from sqlalchemy import logging
-from sqlalchemy.orm import util as mapperutil, attributes
+from sqlalchemy.orm import util as mapperutil
 
 ONETOMANY = 0
 MANYTOONE = 1

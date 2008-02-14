@@ -25,8 +25,7 @@ classes usually have few or no public methods and are less guaranteed
 to stay the same in future releases.
 """
 
-import datetime, re
-import itertools
+import itertools, re
 from sqlalchemy import util, exceptions
 from sqlalchemy.sql import operators, visitors
 from sqlalchemy import types as sqltypes

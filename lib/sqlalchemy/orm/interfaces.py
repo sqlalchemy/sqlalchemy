@@ -13,9 +13,9 @@ to mappers.  The remainder of this module is generally private to the
 ORM.
 """
 
-from sqlalchemy import util, logging, exceptions
-from sqlalchemy.sql import expression
 from itertools import chain
+from sqlalchemy import exceptions, logging
+from sqlalchemy.sql import expression
 class_mapper = None
 
 __all__ = ['EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS', 'MapperExtension',

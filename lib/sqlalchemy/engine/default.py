@@ -14,7 +14,6 @@ as the base class for their own corresponding classes.
 
 
 import re, random
-from sqlalchemy import util
 from sqlalchemy.engine import base
 from sqlalchemy.sql import compiler, expression
 
@@ -40,7 +39,7 @@ class DefaultDialect(base.Dialect):
     preexecute_pk_sequences = False
     supports_pk_autoincrement = True
     dbapi_type_map = {}
-    
+
     def __init__(self, convert_unicode=False, assert_unicode=False, encoding='utf-8', default_paramstyle='named', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode
         self.assert_unicode = assert_unicode
@@ -81,7 +80,7 @@ class DefaultDialect(base.Dialect):
             typeobj = typeobj()
         return typeobj
 
-        
+
     def oid_column_name(self, column):
         return None
 
@@ -105,15 +104,15 @@ class DefaultDialect(base.Dialect):
         """
 
         connection.commit()
-    
+
     def create_xid(self):
         """Create a random two-phase transaction ID.
-        
+
         This id will be passed to do_begin_twophase(), do_rollback_twophase(),
         do_commit_twophase().  Its format is unspecified."""
-        
+
         return "_sa_%032x" % random.randint(0,2**128)
-        
+
     def do_savepoint(self, connection, name):
         connection.execute(expression.SavepointClause(name))
 
@@ -139,27 +138,27 @@ class DefaultExecutionContext(base.ExecutionContext):
         self._connection = self.root_connection = connection
         self.compiled = compiled
         self.engine = connection.engine
-        
+
         if compiled is not None:
             # compiled clauseelement.  process bind params, process table defaults,
             # track collections used by ResultProxy to target and process results
-            
+
             self.processors = dict([
-                (key, value) for key, value in 
+                (key, value) for key, value in
                 [(
                     compiled.bind_names[bindparam],
                     bindparam.bind_processor(self.dialect)
                 ) for bindparam in compiled.bind_names]
                 if value is not None
             ])
-            
+
             self.result_map = compiled.result_map
-            
+
             if not dialect.supports_unicode_statements:
                 self.statement = unicode(compiled).encode(self.dialect.encoding)
             else:
                 self.statement = unicode(compiled)
-                
+
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
             if isinstance(compiled.statement, expression._TextClause):
@@ -168,7 +167,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             else:
                 self.returns_rows = self.returns_rows_compiled(compiled)
                 self.should_autocommit = getattr(compiled.statement, '_autocommit', False) or self.should_autocommit_compiled(compiled)
-            
+
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]
                 self.executemany = False
@@ -181,7 +180,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.parameters = self.__convert_compiled_params(self.compiled_parameters)
 
         elif statement is not None:
-            # plain text statement.  
+            # plain text statement.
             self.result_map = None
             self.parameters = self.__encode_param_keys(parameters)
             self.executemany = len(parameters) > 1
@@ -198,14 +197,14 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.statement = None
             self.isinsert = self.isupdate = self.executemany = self.returns_rows = self.should_autocommit = False
             self.cursor = self.create_cursor()
-    
+
     connection = property(lambda s:s._connection._branch())
-    
+
     def __encode_param_keys(self, params):
         """apply string encoding to the keys of dictionary-based bind parameters.
-        
+
         This is only used executing textual, non-compiled SQL expressions."""
-        
+
         if self.dialect.positional or self.dialect.supports_unicode_statements:
             if params:
                 return params
@@ -226,7 +225,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         """convert the dictionary of bind parameter values into a dict or list
         to be sent to the DBAPI's execute() or executemany() method.
         """
-        
+
         processors = self.processors
         parameters = []
         if self.dialect.positional:
@@ -257,10 +256,10 @@ class DefaultExecutionContext(base.ExecutionContext):
                             param[key] = compiled_params[key]
                 parameters.append(param)
         return parameters
-                
+
     def returns_rows_compiled(self, compiled):
         return isinstance(compiled.statement, expression.Selectable)
-        
+
     def returns_rows_text(self, statement):
         return SELECT_REGEXP.match(statement)
 
@@ -276,10 +275,10 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def pre_execution(self):
         self.pre_exec()
-    
+
     def post_execution(self):
         self.post_exec()
-    
+
     def result(self):
         return self.get_result_proxy()
 
@@ -330,7 +329,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         if self.dialect.positional:
             inputsizes = []
             for key in self.compiled.positiontup:
-               typeengine = types[key] 
+               typeengine = types[key]
                dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                if dbtype is not None:
                     inputsizes.append(dbtype)
@@ -362,7 +361,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                     drunner = self.dialect.defaultrunner(self)
                     params = self.compiled_parameters
                     for param in params:
-                        # assign each dict of params to self.compiled_parameters; 
+                        # assign each dict of params to self.compiled_parameters;
                         # this allows user-defined default generators to access the full
                         # set of bind params for the row
                         self.compiled_parameters = param
@@ -374,17 +373,17 @@ class DefaultExecutionContext(base.ExecutionContext):
                             if val is not None:
                                 param[c.key] = val
                     self.compiled_parameters = params
-                    
+
             else:
                 compiled_parameters = self.compiled_parameters[0]
                 drunner = self.dialect.defaultrunner(self)
-                    
+
                 for c in self.compiled.prefetch:
                     if self.isinsert:
                         val = drunner.get_column_default(c)
                     else:
                         val = drunner.get_column_onupdate(c)
-                        
+
                     if val is not None:
                         compiled_parameters[c.key] = val
 

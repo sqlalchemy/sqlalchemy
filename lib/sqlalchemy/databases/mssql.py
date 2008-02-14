@@ -38,7 +38,7 @@ Known issues / TODO:
 
 """
 
-import datetime, operator, random, re, sys
+import datetime, operator, re, sys
 
 from sqlalchemy import sql, schema, exceptions, util
 from sqlalchemy.sql import compiler, expression, operators as sqlops, functions as sql_functions

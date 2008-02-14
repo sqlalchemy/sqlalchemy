@@ -22,7 +22,7 @@ Known issues / TODO:
  * Tested on 'Adaptive Server Anywhere 9' (version 9.0.1.1751)
 """
 
-import datetime, operator, random
+import datetime, operator
 
 from sqlalchemy import util, sql, schema, exceptions
 from sqlalchemy.sql import compiler, expression
