@@ -884,8 +884,8 @@ def _list_decorators():
 
     def remove(fn):
         def remove(self, value, _sa_initiator=None):
-            # testlib.pragma exempt:__eq__
             __before_delete(self, _sa_initiator)
+            # testlib.pragma exempt:__eq__
             fn(self, value)
             __del(self, value, _sa_initiator)
         _tidy(remove)
