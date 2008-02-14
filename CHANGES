@@ -243,6 +243,15 @@ CHANGES
       allows columns to map properly to result sets even if
       long-name truncation kicks in [ticket:941]
 
+    - MSSQL now includes EXEC in the _is_select regexp, which should
+      allow row-returning stored procedures to be used.
+
+    - MSSQL now includes an experimental implementation of LIMIT/OFFSET
+      using the ANSI SQL row_number() function, so it requires
+      MSSQL-2005 or higher. To enable the feature, add "has_window_funcs"
+      to the keyword arguments for connect, or add "?has_window_funcs=1"
+      to your dburi query arguments.
+
 - ext
     - Changed ext.activemapper to use a non-transactional session
       for the objectstore.

@@ -27,6 +27,7 @@
 
 * ``select._limit`` implemented as ``SELECT TOP n``
 
+* Experimental implemention of LIMIT / OFFSET with row_number()
 
 Known issues / TODO:
 
@@ -340,7 +341,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                 # print "LAST ROW ID", self._last_inserted_ids
         super(MSSQLExecutionContext, self).post_exec()
 
-    _ms_is_select = re.compile(r'\s*(?:SELECT|sp_columns)',
+    _ms_is_select = re.compile(r'\s*(?:SELECT|sp_columns|EXEC)',
                                re.I | re.UNICODE)
 
     def returns_rows_text(self, statement):
@@ -361,7 +362,6 @@ class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):
             pass
         else:
             super(MSSQLExecutionContext_pyodbc, self).post_exec()
-
 
 class MSSQLDialect(default.DefaultDialect):
     colspecs = {
@@ -424,6 +424,7 @@ class MSSQLDialect(default.DefaultDialect):
         self.auto_identity_insert = auto_identity_insert
         self.text_as_varchar = False
         self.use_scope_identity = False
+        self.has_window_funcs = False
         self.set_default_schema_name("dbo")
 
     def dbapi(cls, module_name=None):
@@ -454,6 +455,8 @@ class MSSQLDialect(default.DefaultDialect):
             self.text_as_varchar = bool(int(opts.pop('text_as_varchar')))
         if 'use_scope_identity' in opts:
             self.use_scope_identity = bool(int(opts.pop('use_scope_identity')))
+        if 'has_window_funcs' in opts:
+            self.has_window_funcs =  bool(int(opts.pop('has_window_funcs')))
         return self.make_connect_string(opts)
 
     def create_execution_context(self, *args, **kwargs):
@@ -877,16 +880,45 @@ class MSSQLCompiler(compiler.DefaultCompiler):
 
     def get_select_precolumns(self, select):
         """ MS-SQL puts TOP, it's version of LIMIT here """
-        s = select._distinct and "DISTINCT " or ""
-        if select._limit:
-            s += "TOP %s " % (select._limit,)
-        if select._offset:
-            raise exceptions.InvalidRequestError('MSSQL does not support LIMIT with an offset')
-        return s
+        if not self.dialect.has_window_funcs:
+            s = select._distinct and "DISTINCT " or ""
+            if select._limit:
+                s += "TOP %s " % (select._limit,)
+            if select._offset:
+                raise exceptions.InvalidRequestError('MSSQL does not support LIMIT with an offset')
+            return s
+        return compiler.DefaultCompiler.get_select_precolumns(self, select)
 
     def limit_clause(self, select):
         # Limit in mssql is after the select keyword
         return ""
+
+    def visit_select(self, select, **kwargs):
+        """Look for ``LIMIT`` and OFFSET in a select statement, and if
+        so tries to wrap it in a subquery with ``row_number()`` criterion.
+        """
+        if self.dialect.has_window_funcs and (not getattr(select, '_mssql_visit', None)) and (select._limit is not None or select._offset is not None):
+            # to use ROW_NUMBER(), an ORDER BY is required.
+            orderby = self.process(select._order_by_clause)
+            if not orderby:
+                orderby = list(select.oid_column.proxies)[0]
+                orderby = self.process(orderby)
+
+            _offset = select._offset
+            _limit = select._limit
+            select._mssql_visit = True
+            select = select.column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("mssql_rn")).order_by(None).alias()
+
+            limitselect = sql.select([c for c in select.c if c.key!='mssql_rn'])
+            if _offset is not None:
+                limitselect.append_whereclause("mssql_rn>=%d" % _offset)
+                if _limit is not None:
+                    limitselect.append_whereclause("mssql_rn<=%d" % (_limit + _offset))
+            else:
+                limitselect.append_whereclause("mssql_rn<=%d" % _limit)
+            return self.process(limitselect, iswrapper=True, **kwargs)
+        else:
+            return compiler.DefaultCompiler.visit_select(self, select, **kwargs)
 
     def _schema_aliased_table(self, table):
         if getattr(table, 'schema', None) is not None:
