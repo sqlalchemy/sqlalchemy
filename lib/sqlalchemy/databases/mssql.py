@@ -41,10 +41,11 @@ Known issues / TODO:
 import datetime, operator, random, re, sys
 
 from sqlalchemy import sql, schema, exceptions, util
-from sqlalchemy.sql import compiler, expression, operators as sqlops
+from sqlalchemy.sql import compiler, expression, operators as sqlops, functions as sql_functions
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
 from sqlalchemy.util import Decimal as _python_Decimal
+
 
 MSSQL_RESERVED_WORDS = util.Set(['function'])
 
@@ -874,6 +875,13 @@ class MSSQLCompiler(compiler.DefaultCompiler):
     operators = compiler.OPERATORS.copy()
     operators[sqlops.concat_op] = '+'
 
+    functions = compiler.DefaultCompiler.functions.copy()
+    functions.update (
+        {
+            sql_functions.now: 'CURRENT_TIMESTAMP'
+        }
+    )
+    
     def __init__(self, *args, **kwargs):
         super(MSSQLCompiler, self).__init__(*args, **kwargs)
         self.tablealiases = {}
