@@ -2,6 +2,10 @@
 CHANGES
 =======
 
+0.4.4
+------
+
+
 0.4.3
 ------
 - sql
@@ -28,7 +32,7 @@ CHANGES
       others. [ticket:727]
 
     - Added "now()" as a generic function; on SQLite, Oracle
-      and MSSQL compiles as "CURRENT_TIMESTAMP"; "now()" on 
+      and MSSQL compiles as "CURRENT_TIMESTAMP"; "now()" on
       all others. [ticket:943]
 
     - The startswith(), endswith(), and contains() operators now
@@ -42,7 +46,7 @@ CHANGES
     - fixed bug in result proxy where anonymously generated
       column labels would not be accessible using their straight
       string name
-      
+
     - Deferrable constraints can now be defined.
 
     - Added "autocommit=True" keyword argument to select() and
@@ -247,14 +251,14 @@ CHANGES
       allows columns to map properly to result sets even if
       long-name truncation kicks in [ticket:941]
 
-    - MSSQL now includes EXEC in the _is_select regexp, which should
-      allow row-returning stored procedures to be used.
+    - MSSQL now includes EXEC in the _is_select regexp, which
+      should allow row-returning stored procedures to be used.
 
-    - MSSQL now includes an experimental implementation of LIMIT/OFFSET
-      using the ANSI SQL row_number() function, so it requires
-      MSSQL-2005 or higher. To enable the feature, add "has_window_funcs"
-      to the keyword arguments for connect, or add "?has_window_funcs=1"
-      to your dburi query arguments.
+    - MSSQL now includes an experimental implementation of
+      LIMIT/OFFSET using the ANSI SQL row_number() function, so it
+      requires MSSQL-2005 or higher. To enable the feature, add
+      "has_window_funcs" to the keyword arguments for connect, or
+      add "?has_window_funcs=1" to your dburi query arguments.
 
 - ext
     - Changed ext.activemapper to use a non-transactional session
