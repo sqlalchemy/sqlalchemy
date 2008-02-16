@@ -71,23 +71,8 @@ __all__ = [
 
 def engine_descriptors():
     """Provide a listing of all the database implementations supported.
-
-    This data is provided as a list of dictionaries, where each
-    dictionary contains the following key/value pairs:
-
-    name
-      the name of the engine, suitable for use in the create_engine function
-
-    description
-      a plain description of the engine.
-
-    arguments
-      a dictionary describing the name and description of each
-      parameter used to connect to this engine's underlying DB-API.
-
-    This function is meant for usage in automated configuration tools
-    that wish to query the user for database and connection
-    information.
+    
+    deprecated - this method will be removed in 0.5.
     """
 
     result = []
@@ -96,6 +81,8 @@ def engine_descriptors():
             __import__('sqlalchemy.databases.%s' % module).databases, module)
         result.append(module.descriptor())
     return result
+engine_descriptors = util.deprecated(engine_descriptors)
+
 
 default_strategy = 'plain'
 def create_engine(*args, **kwargs):
