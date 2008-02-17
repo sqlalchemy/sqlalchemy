@@ -8,6 +8,12 @@ CHANGES
       work properly with self-referential relations - the clause
       inside the EXISTS is aliased on the "remote" side to
       distinguish it from the parent table.
+    - your cries have been heard:  removing a pending item
+      from an attribute or collection with delete-orphan 
+      expunges the item from the session; no FlushError is raised.  
+      Note that if you session.save()'ed the pending item 
+      explicitly, the attribute/collection removal still knocks 
+      it out.
       
 0.4.4
 ------

@@ -13,10 +13,6 @@ class QueryTest(FixtureTest):
     keep_mappers = True
     keep_data = True
 
-    def setUpAll(self):
-        super(QueryTest, self).setUpAll()
-        self.setup_mappers()
-
     def setup_mappers(self):
         mapper(User, users, properties={
             'addresses':relation(Address, backref='user'),

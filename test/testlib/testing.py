@@ -648,11 +648,15 @@ class ORMTest(TestBase, AssertsExecutionResults):
                 _otest_metadata.bind = config.db
         self.define_tables(_otest_metadata)
         _otest_metadata.create_all()
+        self.setup_mappers()
         self.insert_data()
 
     def define_tables(self, _otest_metadata):
         raise NotImplementedError()
-
+    
+    def setup_mappers(self):
+        pass
+        
     def insert_data(self):
         pass
 

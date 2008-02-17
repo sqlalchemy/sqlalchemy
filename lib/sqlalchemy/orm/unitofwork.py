@@ -33,7 +33,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
     session cascade operations.
     """
 
-    def __init__(self, key, class_, cascade=None):
+    def __init__(self, key, class_, cascade):
         self.key = key
         self.class_ = class_
         self.cascade = cascade
@@ -41,27 +41,34 @@ class UOWEventHandler(interfaces.AttributeExtension):
     def append(self, obj, item, initiator):
         # process "save_update" cascade rules for when an instance is appended to the list of another instance
         sess = object_session(obj)
-        if sess is not None:
-            if self.cascade is not None and self.cascade.save_update and item not in sess:
+        if sess:
+            if self.cascade.save_update and item not in sess:
                 mapper = object_mapper(obj)
                 prop = mapper.get_property(self.key)
                 ename = prop.mapper.entity_name
                 sess.save_or_update(item, entity_name=ename)
 
     def remove(self, obj, item, initiator):
-        # currently no cascade rules for removing an item from a list
-        # (i.e. it stays in the Session)
-        pass
+        sess = object_session(obj)
+        if sess:
+            # expunge pending orphans
+            if self.cascade.delete_orphan and item in sess.new:
+                sess.expunge(item)
 
     def set(self, obj, newvalue, oldvalue, initiator):
         # process "save_update" cascade rules for when an instance is attached to another instance
+        if oldvalue is newvalue:
+            return
         sess = object_session(obj)
-        if sess is not None:
-            if newvalue is not None and self.cascade is not None and self.cascade.save_update and newvalue not in sess:
+        if sess:
+            if newvalue is not None and self.cascade.save_update and newvalue not in sess:
                 mapper = object_mapper(obj)
                 prop = mapper.get_property(self.key)
                 ename = prop.mapper.entity_name
                 sess.save_or_update(newvalue, entity_name=ename)
+            if self.cascade.delete_orphan and oldvalue in sess.new:
+                sess.expunge(oldvalue)
+
 
 def register_attribute(class_, key, *args, **kwargs):
     """overrides attributes.register_attribute() to add UOW event handlers
