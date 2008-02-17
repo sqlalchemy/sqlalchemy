@@ -368,11 +368,12 @@ class InfoDialect(default.DefaultDialect):
 class InfoCompiler(compiler.DefaultCompiler):
     """Info compiler modifies the lexical structure of Select statements to work under
     non-ANSI configured Oracle databases, if the use_ansi flag is False."""
-    def __init__(self, dialect, statement, parameters=None, **kwargs):
+
+    def __init__(self, *args, **kwargs):
         self.limit = 0
         self.offset = 0
 
-        compiler.DefaultCompiler.__init__( self , dialect , statement , parameters , **kwargs )
+        compiler.DefaultCompiler.__init__( self , *args, **kwargs )
 
     def default_from(self):
         return " from systables where tabname = 'systables' "
@@ -401,7 +402,7 @@ class InfoCompiler(compiler.DefaultCompiler):
 
         # TODO: dont modify the original select, generate a new one
         a = [ __label(c) for c in select._raw_columns ]
-        for c in select.order_by_clause.clauses:
+        for c in select._order_by_clause.clauses:
             if ( __label(c) not in a ) and getattr( c , 'name' , '' ) != 'oid':
                 select.append_column( c )
 
