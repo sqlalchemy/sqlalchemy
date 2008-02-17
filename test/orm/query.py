@@ -1121,15 +1121,20 @@ class CustomJoinTest(QueryTest):
 
         assert [User(id=7)] == q.join(['open_orders', 'items'], aliased=True).filter(Item.id==4).join(['closed_orders', 'items'], aliased=True).filter(Item.id==3).all()
 
-class SelfReferentialJoinTest(ORMTest):
+class SelfReferentialTest(ORMTest):
+    keep_mappers = True
+    keep_data = True
+    
     def define_tables(self, metadata):
         global nodes
         nodes = Table('nodes', metadata,
             Column('id', Integer, primary_key=True),
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
-
-    def test_join(self):
+    
+    def insert_data(self):
+        global Node
+        
         class Node(Base):
             def append(self, node):
                 self.children.append(node)
@@ -1149,11 +1154,11 @@ class SelfReferentialJoinTest(ORMTest):
         n1.children[1].append(Node(data='n123'))
         sess.save(n1)
         sess.flush()
-        sess.clear()
+        sess.close()
+        
+    def test_join(self):
+        sess = create_session()
 
-        # TODO: the aliasing of the join in query._join_to has to limit the aliasing
-        # among local_side / remote_side (add local_side as an attribute on PropertyLoader)
-        # also implement this idea in EagerLoader
         node = sess.query(Node).join('children', aliased=True).filter_by(data='n122').first()
         assert node.data=='n12'
 
@@ -1164,6 +1169,37 @@ class SelfReferentialJoinTest(ORMTest):
             join('parent', aliased=True, from_joinpoint=True).filter_by(data='n1').first()
         assert node.data == 'n122'
 
+    def test_any(self):
+        sess = create_session()
+        
+        self.assertEquals(sess.query(Node).filter(Node.children.any(Node.data=='n1')).all(), [])
+        self.assertEquals(sess.query(Node).filter(Node.children.any(Node.data=='n12')).all(), [Node(data='n1')])
+        self.assertEquals(sess.query(Node).filter(~Node.children.any()).all(), [Node(data='n11'), Node(data='n13'),Node(data='n121'),Node(data='n122'),Node(data='n123'),])
+
+    def test_has(self):
+        sess = create_session()
+        
+        self.assertEquals(sess.query(Node).filter(Node.parent.has(Node.data=='n12')).all(), [Node(data='n121'),Node(data='n122'),Node(data='n123')])
+        self.assertEquals(sess.query(Node).filter(Node.parent.has(Node.data=='n122')).all(), [])
+        self.assertEquals(sess.query(Node).filter(~Node.parent.has()).all(), [Node(data='n1')])
+    
+    def test_contains(self):
+        sess = create_session()
+        
+        n122 = sess.query(Node).filter(Node.data=='n122').one()
+        self.assertEquals(sess.query(Node).filter(Node.children.contains(n122)).all(), [Node(data='n12')])
+
+        n13 = sess.query(Node).filter(Node.data=='n13').one()
+        self.assertEquals(sess.query(Node).filter(Node.children.contains(n13)).all(), [Node(data='n1')])
+    
+    def test_eq_ne(self):
+        sess = create_session()
+        
+        n12 = sess.query(Node).filter(Node.data=='n12').one()
+        self.assertEquals(sess.query(Node).filter(Node.parent==n12).all(), [Node(data='n121'),Node(data='n122'),Node(data='n123')])
+        
+        self.assertEquals(sess.query(Node).filter(Node.parent != n12).all(), [Node(data='n1'), Node(data='n11'), Node(data='n12'), Node(data='n13')])
+        
 class ExternalColumnsTest(QueryTest):
     keep_mappers = False
 

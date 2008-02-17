@@ -1,7 +1,14 @@
 =======
 CHANGES
 =======
-
+0.4.4
+------
+- orm
+    - any(), has(), contains(), attribute level == and != now
+      work properly with self-referential relations - the clause
+      inside the EXISTS is aliased on the "remote" side to
+      distinguish it from the parent table.
+      
 0.4.4
 ------
 
