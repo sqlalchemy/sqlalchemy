@@ -625,6 +625,11 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
             select(["column1 AS foobar", "column2 AS hoho", table1.c.myid], from_obj=[table1]).select(),
             "SELECT column1 AS foobar, column2 AS hoho, myid FROM (SELECT column1 AS foobar, column2 AS hoho, mytable.myid AS myid FROM mytable)"
         )
+        
+        self.assert_compile(
+            select(['col1','col2'], from_obj='tablename').alias('myalias'),
+            "SELECT col1, col2 FROM tablename"
+        )
 
     def test_binds_in_text(self):
         self.assert_compile(

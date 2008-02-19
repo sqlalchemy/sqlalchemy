@@ -1718,6 +1718,7 @@ class _TextFromClause(FromClause):
 
     def __init__(self, text):
         self.name = text
+        self.oid_column = None
 
 class _BindParamClause(ClauseElement, _CompareMixin):
     """Represent a bind parameter.

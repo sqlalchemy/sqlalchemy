@@ -3,6 +3,10 @@ CHANGES
 =======
 0.4.4
 ------
+- sql
+    - can again create aliases of selects against textual
+      FROM clauses, [ticket:975]
+      
 - orm
     - any(), has(), contains(), attribute level == and != now
       work properly with self-referential relations - the clause
