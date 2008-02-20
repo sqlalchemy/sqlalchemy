@@ -665,7 +665,14 @@ class Query(object):
         q._from_obj = clause
         q._joinpoint = mapper
         q._aliases = aliases
-
+        
+        q._alias_ids = {}
+        for k, v in self._alias_ids.items():
+            if isinstance(v, list):
+                q._alias_ids[k] = list(v)
+            else:
+                q._alias_ids[k] = v
+        
         if aliases:
             q._adapter = sql_util.ClauseAdapter(aliases.alias).copy_and_chain(q._adapter)
         else:

@@ -550,6 +550,20 @@ class JoinTest(QueryTest):
         result = create_session().query(User).outerjoin(['orders', 'items']).filter_by(id=3).outerjoin(['orders','address']).filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
 
+    def test_generative_join(self):
+        # test that alised_ids is copied
+        sess = create_session()
+        q = sess.query(User).add_entity(Address)
+        q1 = q.join('addresses', aliased=True)
+        q2 = q.join('addresses', aliased=True)
+        q3 = q2.join('addresses', aliased=True)
+        q4 = q2.join('addresses', aliased=True, id='someid')
+        q5 = q2.join('addresses', aliased=True, id='someid')
+        q6 = q5.join('addresses', aliased=True, id='someid')
+        assert q1._alias_ids[class_mapper(Address)] != q2._alias_ids[class_mapper(Address)]
+        assert q2._alias_ids[class_mapper(Address)] != q3._alias_ids[class_mapper(Address)]
+        assert q4._alias_ids['someid'] != q5._alias_ids['someid']
+        
     def test_reset_joinpoint(self):
         for aliased in (True, False):
             # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
@@ -1012,7 +1026,7 @@ class SelectFromTest(QueryTest):
                 (User(name='ed',id=8), Address(user_id=8,email_address='ed@lala.com',id=4))
             ]
         )
-
+    
     def test_more_joins(self):
         mapper(User, users, properties={
             'orders':relation(Order, backref='user'), # o2m, m2o

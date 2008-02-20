@@ -18,6 +18,8 @@ CHANGES
       Note that if you session.save()'ed the pending item 
       explicitly, the attribute/collection removal still knocks 
       it out.
+    - fixed potential generative bug when the same Query was
+      used to generate multiple Query objects using join().
       
 0.4.4
 ------
