@@ -30,7 +30,10 @@ CHANGES
       
         query.join(Company.employees.of_type(Engineer)).
           filter(Engineer.name=='foo')
-      
+
+      - preventive code against a potential lost-reference 
+        bug in flush()
+        
 0.4.4
 ------
 

@@ -134,9 +134,13 @@ class UnitOfWork(object):
             
         if hasattr(state, 'insert_order'):
             delattr(state, 'insert_order')
-            
-        self.identity_map[state.dict['_instance_key']] = state.obj()
-        state.commit_all()
+        
+        o = state.obj()
+        # prevent against last minute dereferences of "dirty"
+        # objects TODO: identify a code path where state.obj() is None
+        if o is not None:
+            self.identity_map[state.dict['_instance_key']] = o
+            state.commit_all()
         
         # remove from new last, might be the last strong ref
         self.new.pop(state, None)
