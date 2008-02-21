@@ -468,7 +468,7 @@ class UOWTransaction(object):
                     continue
                 if elem.isdelete:
                     self.uow._remove_deleted(elem.state)
-                else:
+                elif not elem.listonly:
                     self.uow._register_clean(elem.state)
 
     def _sort_dependencies(self):
