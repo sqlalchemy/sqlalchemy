@@ -468,7 +468,7 @@ class UOWTransaction(object):
                     continue
                 if elem.isdelete:
                     self.uow._remove_deleted(elem.state)
-                elif not elem.listonly:
+                else:
                     self.uow._register_clean(elem.state)
 
     def _sort_dependencies(self):
@@ -839,7 +839,7 @@ class UOWTaskElement(object):
         return self.__preprocessed.get(processor, False)
 
     def __repr__(self):
-        return "UOWTaskElement/%d: %s/%d %s" % (id(self), self.obj.__class__.__name__, id(self.obj), (self.listonly and 'listonly' or (self.isdelete and 'delete' or 'save')) )
+        return "UOWTaskElement/%d: %s/%d %s" % (id(self), self.state.class_.__name__, id(self.state.obj()), (self.listonly and 'listonly' or (self.isdelete and 'delete' or 'save')) )
 
 class UOWDependencyProcessor(object):
     """In between the saving and deleting of objects, process
