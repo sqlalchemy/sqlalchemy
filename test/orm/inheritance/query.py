@@ -200,7 +200,30 @@ def make_test(select_type):
             self.assertEquals(sess.query(Company).join('employees').filter(Person.name=='vlad').one(), c2)
 
             self.assertEquals(sess.query(Company).join('employees', aliased=True).filter(Person.name=='vlad').one(), c2)
-    
+        
+        def test_polymorphic_any(self):
+            sess = create_session()
+
+            self.assertEquals(
+                sess.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).one(),
+                c2
+                )
+
+            self.assertEquals(
+                sess.query(Company).filter(Company.employees.of_type(Boss).any(Boss.golf_swing=='fore')).one(),
+                c1
+                )
+            self.assertEquals(
+                sess.query(Company).filter(Company.employees.of_type(Boss).any(Manager.manager_name=='pointy')).one(),
+                c1
+                )
+
+            if select_type == '':
+                self.assertEquals(
+                    sess.query(Company).filter(Company.employees.any(and_(Engineer.primary_language=='cobol', people.c.person_id==engineers.c.person_id))).one(),
+                    c2
+                    )
+                
         def test_join_to_subclass(self):
             sess = create_session()
 
@@ -218,6 +241,16 @@ def make_test(select_type):
                 self.assertEquals(sess.query(Person).join(Engineer.machines).filter(Machine.name.ilike("%ibm%")).all(), [e1, e3])
                 self.assertEquals(sess.query(Company).join(['employees', Engineer.machines]).all(), [c1, c2])
                 self.assertEquals(sess.query(Company).join(['employees', Engineer.machines]).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
+            
+            # non-polymorphic
+            self.assertEquals(sess.query(Engineer).join(Engineer.machines).all(), [e1, e2, e3])
+            self.assertEquals(sess.query(Engineer).join(Engineer.machines).filter(Machine.name.ilike("%ibm%")).all(), [e1, e3])
+
+            # here's the new way
+            self.assertEquals(sess.query(Company).join(Company.employees.of_type(Engineer)).filter(Engineer.primary_language=='java').all(), [c1])
+            self.assertEquals(sess.query(Company).join([Company.employees.of_type(Engineer), 'machines']).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
+
+
         
         def test_join_through_polymorphic(self):
 

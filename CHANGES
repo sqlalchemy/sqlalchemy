@@ -20,6 +20,16 @@ CHANGES
       it out.
     - fixed potential generative bug when the same Query was
       used to generate multiple Query objects using join().
+    - added a new "higher level" operator called "of_type()" - 
+      used in join() as well as with any() and has(), qualifies
+      the subclass which will be used in filter criterion, 
+      e.g.: 
+      
+        query.filter(Company.employees.of_type(Engineer).
+          any(Engineer.name=='foo')), 
+      
+        query.join(Company.employees.of_type(Engineer)).
+          filter(Engineer.name=='foo')
       
 0.4.4
 ------

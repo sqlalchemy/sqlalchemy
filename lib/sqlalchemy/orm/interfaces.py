@@ -435,8 +435,29 @@ class PropComparator(expression.ColumnOperators):
     has_op = staticmethod(has_op)
 
     def __init__(self, prop):
-        self.prop = prop
-
+        self.prop = self.property = prop
+    
+    def of_type_op(a, class_):
+        return a.of_type(class_)
+    of_type_op = staticmethod(of_type_op)
+    
+    def of_type(self, class_):
+        """Redefine this object in terms of a polymorphic subclass.
+        
+        Returns a new PropComparator from which further criterion can be evaulated.
+        
+        class_
+          a class or mapper indicating that criterion will be against
+          this specific subclass.
+        
+        e.g.::
+          query.join(Company.employees.of_type(Engineer)).\
+             filter(Engineer.name=='foo')
+         
+        """
+        
+        return self.operate(PropComparator.of_type_op, class_)
+        
     def contains(self, other):
         """Return true if this collection contains other"""
         return self.operate(PropComparator.contains_op, other)

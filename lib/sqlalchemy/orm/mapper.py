@@ -1628,3 +1628,12 @@ def class_mapper(class_, entity_name=None, compile=True, raiseerror=True):
         return mapper.compile()
     else:
         return mapper
+
+def _class_to_mapper(class_or_mapper, entity_name=None, compile=True):
+    if isinstance(class_or_mapper, type):
+        return class_mapper(class_or_mapper, entity_name=entity_name, compile=compile)
+    else:
+        if compile:
+            return class_or_mapper.compile()
+        else:
+            return class_or_mapper

@@ -339,6 +339,65 @@ We then configure mappers as usual, except we use some additional arguments to i
 
 And that's it.  Querying against `Employee` will return a combination of `Employee`, `Engineer` and `Manager` objects.
 
+###### Polymorphic Querying Strategies {@name=querying}
+
+The `Query` object includes some helper functionality when dealing with joined-table inheritance mappings.  These helpers apply mostly to the `join()` method, as well as the special `any()` and `has()` operators.
+
+Suppose the `employees` table represents a collection of employees which are associated with a `Company` object.  We'll add a `company_id` column to the `employees` table and a new table `companies`:
+
+    {python}
+    companies = Table('companies', metadata,
+       Column('company_id', Integer, primary_key=True),
+       Column('name', String(50))
+       )
+
+    employees = Table('employees', metadata, 
+      Column('employee_id', Integer, primary_key=True),
+      Column('name', String(50)),
+      Column('type', String(30), nullable=False),
+      Column('company_id', Integer, ForeignKey('companies.company_id'))
+    )
+    
+    class Company(object):
+        pass
+    
+    mapper(Company, companies, properties={
+        'employees':relation(Employee)
+    })
+    
+If we wanted to join from `Company` to not just `Employee` but specifically `Engineers`, using the `join()` method or `any()` or `has()` operators will by default create a join from `companies` to `employees`, without including `engineers` or `managers` in the mix.  If we wish to have criterion which is specifically against the `Engineer` class, extra instruction is needed.  As of version 0.4.4 we can use this notation:
+
+    {python}
+    session.query(Company).join(Company.employees.of_type(Engineer)).filter(Engineer.engineer_info=='someinfo')
+    
+A longhand notation, introduced in 0.4.3, is also available, which involves spelling out the full target selectable within a 2-tuple:
+
+    {python}
+    session.query(Company).join(('employees', employees.join(engineers))).filter(Engineer.engineer_info=='someinfo')
+    
+The second notation allows more flexibility, such as joining to any group of subclass tables:
+
+    {python}
+    session.query(Company).join(('employees', employees.outerjoin(engineers).outerjoin(managers))).\
+        filter(or_(Engineer.engineer_info=='someinfo', Manager.manager_data=='somedata'))
+
+The `any()` and `has()` operators also can be used with `of_type()` when the embedded criterion is in terms of a subclass:
+
+    {python}
+    session.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.engineer_info=='someinfo')).all()
+    
+Note that these two operators are shorthand for a correlated EXISTS query.  To build one by hand looks like:
+
+    {python}
+    session.query(Company).filter(
+        exists([1], 
+            and_(Engineer.engineer_info=='someinfo', employees.c.company_id==companies.c.company_id), 
+            from_obj=employees.join(engineers)
+        )
+    ).all()
+
+Where the EXISTS query selects from the join of `employees` to `engineers`, and also specifies criterion which correlates the exists subselect back to the parent `companies` table.
+    
 ###### Optimizing Joined Table Loads {@name=optimizing}
 
 When loading fresh from the database, the joined-table setup above will query from the parent table first, then for each row will issue a second query to the child table.  For example, for a load of five rows with `Employee` id 3, `Manager` ids 1 and 5 and `Engineer` ids 2 and 4, will produce queries along the lines of this example:

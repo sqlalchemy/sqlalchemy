@@ -22,21 +22,18 @@ from sqlalchemy import sql, util, exceptions, logging
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import expression, visitors, operators
 from sqlalchemy.orm import mapper, object_mapper
-from sqlalchemy.orm.mapper import _state_mapper
+from sqlalchemy.orm.mapper import _state_mapper, _class_to_mapper
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm import interfaces
 
 __all__ = ['Query', 'QueryContext']
 
-
+    
 class Query(object):
     """Encapsulates the object-fetching operations provided by Mappers."""
 
     def __init__(self, class_or_mapper, session=None, entity_name=None):
-        if isinstance(class_or_mapper, type):
-            self.mapper = mapper.class_mapper(class_or_mapper, entity_name=entity_name)
-        else:
-            self.mapper = class_or_mapper.compile()
+        self.mapper = _class_to_mapper(class_or_mapper, entity_name=entity_name)
         self.select_mapper = self.mapper.get_select_mapper().compile()
 
         self._session = session
@@ -422,15 +419,23 @@ class Query(object):
 
         mapper = start
         alias = self._aliases
+        
         if not isinstance(keys, list):
             keys = [keys]
         for key in keys:
             use_selectable = None
+            of_type = None
+
             if isinstance(key, tuple):
                 key, use_selectable = key
 
             if isinstance(key, interfaces.PropComparator):
                 prop = key.property
+                if getattr(key, '_of_type', None):
+                    if use_selectable:
+                        raise exceptions.InvalidRequestError("Can't specify use_selectable along with polymorphic property created via of_type().")
+                    of_type = key._of_type
+                    use_selectable = key._of_type.select_table
             else:
                 prop = mapper.get_property(key, resolve_synonyms=True)
 
@@ -445,20 +450,12 @@ class Query(object):
 
             if prop.select_table not in currenttables or create_aliases or use_selectable:
                 if prop.secondary:
-                    if use_selectable:
+                    if use_selectable or create_aliases:
                         alias = mapperutil.PropertyAliasedClauses(prop,
                             prop.primary_join_against(mapper, adapt_against),
-                            prop.secondary_join_against(mapper),
+                            prop.secondary_join_against(mapper, toselectable=use_selectable),
                             alias,
                             alias=use_selectable
-                        )
-                        crit = alias.primaryjoin
-                        clause = clause.join(alias.secondary, crit, isouter=outerjoin).join(alias.alias, alias.secondaryjoin, isouter=outerjoin)
-                    elif create_aliases:
-                        alias = mapperutil.PropertyAliasedClauses(prop,
-                            prop.primary_join_against(mapper, adapt_against),
-                            prop.secondary_join_against(mapper),
-                            alias
                         )
                         crit = alias.primaryjoin
                         clause = clause.join(alias.secondary, crit, isouter=outerjoin).join(alias.alias, alias.secondaryjoin, isouter=outerjoin)
@@ -467,20 +464,12 @@ class Query(object):
                         clause = clause.join(prop.secondary, crit, isouter=outerjoin)
                         clause = clause.join(prop.select_table, prop.secondary_join_against(mapper), isouter=outerjoin)
                 else:
-                    if use_selectable:
+                    if use_selectable or create_aliases:
                         alias = mapperutil.PropertyAliasedClauses(prop,
-                            prop.primary_join_against(mapper, adapt_against),
+                            prop.primary_join_against(mapper, adapt_against, toselectable=use_selectable),
                             None,
                             alias,
                             alias=use_selectable
-                        )
-                        crit = alias.primaryjoin
-                        clause = clause.join(alias.alias, crit, isouter=outerjoin)
-                    elif create_aliases:
-                        alias = mapperutil.PropertyAliasedClauses(prop,
-                            prop.primary_join_against(mapper, adapt_against),
-                            None,
-                            alias
                         )
                         crit = alias.primaryjoin
                         clause = clause.join(alias.alias, crit, isouter=outerjoin)
@@ -492,7 +481,7 @@ class Query(object):
                 # does not use secondary tables
                 raise exceptions.InvalidRequestError("Can't join to property '%s'; a path to this table along a different secondary table already exists.  Use the `alias=True` argument to `join()`." % prop.key)
 
-            mapper = prop.mapper
+            mapper = of_type or prop.mapper
 
             if use_selectable:
                 adapt_against = use_selectable
@@ -707,7 +696,7 @@ class Query(object):
             q._adapter = sql_util.ClauseAdapter(q._from_obj, equivalents=q.mapper._equivalent_columns)
         return q
 
-
+    
     def select_from(self, from_obj):
         """Set the `from_obj` parameter of the query and return the newly
         resulting ``Query``.  This replaces the table which this Query selects
