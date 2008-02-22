@@ -140,6 +140,21 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert testing.db.connect().execute("select count(1) from users").scalar() == 1
         sess.close()
 
+    def test_autoflush_expressions(self):
+        class User(fixtures.Base):
+            pass
+        class Address(fixtures.Base):
+            pass
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref="user")
+        })
+        mapper(Address, addresses)
+        
+        sess = create_session(autoflush=True, transactional=True)
+        u = User(user_name='ed', addresses=[Address(email_address='foo')])
+        sess.save(u)
+        self.assertEquals(sess.query(Address).filter(Address.user==u).one(), Address(email_address='foo'))
+        
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
     @engines.close_open_connections
     def test_autoflush_unbound(self):

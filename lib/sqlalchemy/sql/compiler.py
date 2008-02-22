@@ -213,10 +213,19 @@ class DefaultCompiler(engine.Compiled):
                         pd[name] = params[paramname]
                         break
                 else:
-                    pd[name] = bindparam.value
+                    if callable(bindparam.value):
+                        pd[name] = bindparam.value()
+                    else:
+                        pd[name] = bindparam.value
             return pd
         else:
-            return dict([(self.bind_names[bindparam], bindparam.value) for bindparam in self.bind_names])
+            pd = {}
+            for bindparam in self.bind_names:
+                if callable(bindparam.value):
+                    pd[self.bind_names[bindparam]] = bindparam.value()
+                else:
+                    pd[self.bind_names[bindparam]] = bindparam.value
+            return pd
 
     params = property(construct_params)
 

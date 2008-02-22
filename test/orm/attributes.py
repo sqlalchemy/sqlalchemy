@@ -597,6 +597,26 @@ class DeferredBackrefTest(TestBase):
         lazy_load = (p1, p2, p3) = [Post("post 1"), Post("post 2"), Post("post 3")]
 
 class HistoryTest(TestBase):
+    def test_get_committed_value(self):
+        class Foo(fixtures.Base):
+            pass
+
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=False)
+
+        f = Foo()
+        self.assertEquals(Foo.someattr.impl.get_committed_value(f._state), None)
+
+        f.someattr = 3
+        self.assertEquals(Foo.someattr.impl.get_committed_value(f._state), None)
+
+        f = Foo()
+        f.someattr = 3
+        self.assertEquals(Foo.someattr.impl.get_committed_value(f._state), None)
+        
+        f._state.commit(['someattr'])
+        self.assertEquals(Foo.someattr.impl.get_committed_value(f._state), 3)
+
     def test_scalar(self):
         class Foo(fixtures.Base):
             pass

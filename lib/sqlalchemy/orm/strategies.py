@@ -294,7 +294,9 @@ class LazyLoader(AbstractRelationLoader):
             mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
             if bindparam.key in bind_to_col:
                 # use the "committed" (database) version to get query column values
-                bindparam.value = mapper._get_committed_attr_by_column(instance, bind_to_col[bindparam.key])
+                # also its a deferred value; so that when used by Query, the committed value is used
+                # after an autoflush occurs
+                bindparam.value = lambda: mapper._get_committed_attr_by_column(instance, bind_to_col[bindparam.key])
         return visitors.traverse(criterion, clone=True, visit_bindparam=visit_bindparam)
     
     def _lazy_none_clause(self, reverse_direction=False):

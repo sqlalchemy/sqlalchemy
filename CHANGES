@@ -6,6 +6,9 @@ CHANGES
 - sql
     - can again create aliases of selects against textual
       FROM clauses, [ticket:975]
+    - the value of a bindparam() can be a callable, in which 
+      case it's evaluated at statement execution time to
+      get the value.
       
 - orm
     - any(), has(), contains(), attribute level == and != now
@@ -33,10 +36,15 @@ CHANGES
 
       - preventive code against a potential lost-reference 
         bug in flush()
-        
-0.4.4
-------
-
+      - expressions used in filter(), filter_by() and others,
+        when they make usage of a clause generated from a
+        relation using the identity of a child object
+        (e.g. filter(Parent.child==<somechild>)), evaluate
+        the actual primary key value of <somechild> at 
+        execution time so that the autoflush step of the
+        Query can complete, thereby populating the PK value
+        of <somechild> in the case that <somechild> was
+        pending.
 
 0.4.3
 ------

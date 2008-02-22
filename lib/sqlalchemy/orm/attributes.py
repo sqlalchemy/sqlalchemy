@@ -246,7 +246,10 @@ class AttributeImpl(object):
         """return the unchanged value of this attribute"""
 
         if self.key in state.committed_state:
-            return state.committed_state.get(self.key)
+            if state.committed_state[self.key] is NO_VALUE:
+                return None
+            else:
+                return state.committed_state.get(self.key)
         else:
             return self.get(state)
 

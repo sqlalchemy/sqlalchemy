@@ -136,8 +136,8 @@ class UnitOfWork(object):
             delattr(state, 'insert_order')
         
         o = state.obj()
-        # prevent against last minute dereferences of "dirty"
-        # objects TODO: identify a code path where state.obj() is None
+        # prevent against last minute dereferences of the object
+        # TODO: identify a code path where state.obj() is None
         if o is not None:
             self.identity_map[state.dict['_instance_key']] = o
             state.commit_all()
