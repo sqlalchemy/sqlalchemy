@@ -448,7 +448,7 @@ class _AssociationList(object):
     def __hash__(self):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
 
-_NotProvided = object()
+_NotProvided = util.symbol('_NotProvided')
 class _AssociationDict(object):
     """Generic proxying list which proxies dict operations to a another dict,
     converting association objects to and from a simplified value.

@@ -952,6 +952,42 @@ class ScopedRegistry(object):
     def _get_key(self):
         return self.scopefunc()
 
+class symbol(object):
+    """A constant symbol.
+
+    >>> symbol('foo') is symbol('foo')
+    True
+    >>> symbol('foo')
+    <symbol 'foo>
+
+    A slight refinement of the MAGICCOOKIE=object() pattern.  The primary
+    advantage of symbol() is its repr().  They are also singletons.
+    """
+
+    symbols = {}
+    _lock = threading.Lock()
+
+    def __new__(cls, name):
+        try:
+            symbol._lock.acquire()
+            sym = cls.symbols.get(name)
+            if sym is None:
+                cls.symbols[name] = sym = object.__new__(cls, name)
+            return sym
+        finally:
+            symbol._lock.release()
+
+    def __init__(self, name):
+        """Construct a new named symbol.
+
+        Repeated calls of symbol('name') will all return the same instance.
+        """
+
+        assert isinstance(name, str)
+        self.name = name
+    def __repr__(self):
+        return "<symbol '%s>" % self.name
+
 def warn(msg):
     if isinstance(msg, basestring):
         warnings.warn(msg, exceptions.SAWarning, stacklevel=3)

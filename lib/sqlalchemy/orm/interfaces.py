@@ -14,7 +14,7 @@ ORM.
 """
 
 from itertools import chain
-from sqlalchemy import exceptions, logging
+from sqlalchemy import exceptions, logging, util
 from sqlalchemy.sql import expression
 class_mapper = None
 
@@ -24,8 +24,8 @@ __all__ = ['EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS', 'MapperExtension',
            'ExtensionOption', 'PropertyOption',
            'AttributeExtension', 'StrategizedOption', 'LoaderStrategy' ]
 
-EXT_CONTINUE = EXT_PASS = object()
-EXT_STOP = object()
+EXT_CONTINUE = EXT_PASS = util.symbol('EXT_CONTINUE')
+EXT_STOP = util.symbol('EXT_STOP')
 
 class MapperExtension(object):
     """Base implementation for customizing Mapper behavior.

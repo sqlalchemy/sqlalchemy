@@ -5,8 +5,7 @@
 
 from operator import and_, or_, inv, add, mul, sub, div, mod, truediv, \
      lt, le, ne, gt, ge, eq
-
-from sqlalchemy.util import Set
+from sqlalchemy.util import Set, symbol
 
 def from_():
     raise NotImplementedError()
@@ -74,9 +73,9 @@ def asc_op(a):
 _commutative = Set([eq, ne, add, mul])
 def is_commutative(op):
     return op in _commutative
-    
-_smallest = object()
-_largest = object()
+
+_smallest = symbol('_smallest')
+_largest = symbol('_largest')
 
 _PRECEDENCE = {
     from_:15,

@@ -12,10 +12,10 @@ from sqlalchemy.orm import interfaces, collections
 from sqlalchemy.orm.util import identity_equal
 from sqlalchemy import exceptions
 
-PASSIVE_NORESULT = object()
-ATTR_WAS_SET = object()
-NO_VALUE = object()
-NEVER_SET = object()
+PASSIVE_NORESULT = util.symbol('PASSIVE_NORESULT')
+ATTR_WAS_SET = util.symbol('ATTR_WAS_SET')
+NO_VALUE = util.symbol('NO_VALUE')
+NEVER_SET = util.symbol('NEVER_SET')
 
 class InstrumentedAttribute(interfaces.PropComparator):
     """public-facing instrumented attribute, placed in the

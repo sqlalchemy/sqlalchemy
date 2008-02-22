@@ -30,7 +30,7 @@ global_extensions = []
 # a constant returned by _get_attr_by_column to indicate
 # this mapper is not handling an attribute for a particular
 # column
-NO_ATTRIBUTE = object()
+NO_ATTRIBUTE = util.symbol('NO_ATTRIBUTE')
 
 # lock used to synchronize the "mapper compile" step
 _COMPILE_MUTEX = util.threading.Lock()
