@@ -225,6 +225,13 @@ class SQLiteDialect(default.DefaultDialect):
         return self.dbapi.sqlite_version_info
 
     def create_connect_args(self, url):
+        if url.username or url.password or url.host or url.port:
+            raise exceptions.ArgumentError(
+                "Invalid SQLite URL: %s\n"
+                "Valid SQLite URL forms are:\n"
+                " sqlite:///:memory: (or, sqlite://)\n"
+                " sqlite:///relative/path/to/file.db\n"
+                " sqlite:////absolute/path/to/file.db" % (url,))
         filename = url.database or ':memory:'
 
         opts = url.query.copy()

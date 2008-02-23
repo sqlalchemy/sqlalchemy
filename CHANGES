@@ -38,17 +38,21 @@ CHANGES
         query.join(Company.employees.of_type(Engineer)).
           filter(Engineer.name=='foo')
 
-      - Preventive code against a potential lost-reference bug in
-        flush().
+    - Preventive code against a potential lost-reference bug in
+      flush().
 
-      - Expressions used in filter(), filter_by() and others, when
-        they make usage of a clause generated from a relation
-        using the identity of a child object
-        (e.g. filter(Parent.child==<somechild>)), evaluate the
-        actual primary key value of <somechild> at execution time
-        so that the autoflush step of the Query can complete,
-        thereby populating the PK value of <somechild> in the case
-        that <somechild> was pending.
+    - Expressions used in filter(), filter_by() and others, when
+      they make usage of a clause generated from a relation using
+      the identity of a child object (e.g.,
+      filter(Parent.child==<somechild>)), evaluate the actual
+      primary key value of <somechild> at execution time so that
+      the autoflush step of the Query can complete, thereby
+      populating the PK value of <somechild> in the case that
+      <somechild> was pending.
+
+- dialects
+    - Invalid SQLite connection URLs now raise an error.
+
 
 0.4.3
 ------
