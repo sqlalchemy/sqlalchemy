@@ -1424,17 +1424,15 @@ class ColumnElement(ClauseElement, _CompareMixin):
 
         """
 
-        if name is not None:
+        if name:
             co = _ColumnClause(name, selectable, type_=getattr(self, 'type', None))
-            co.proxies = [self]
-            selectable.columns[name]= co
-            return co
         else:
             name = str(self)
             co = _ColumnClause(self.anon_label.name, selectable, type_=getattr(self, 'type', None))
-            co.proxies = [self]
-            selectable.columns[name] = co
-            return co
+
+        co.proxies = [self]
+        selectable.columns[name]= co
+        return co
 
     def anon_label(self):
         """provides a constant 'anonymous label' for this ColumnElement.
@@ -3417,13 +3415,13 @@ class Select(_SelectBaseMixin, FromClause):
                 yield t
 
     def bind(self):
-        if self._bind is not None:
+        if self._bind:
             return self._bind
         for f in self._froms:
             if f is self:
                 continue
             e = f.bind
-            if e is not None:
+            if e:
                 self._bind = e
                 return e
         # look through the columns (largely synomous with looking
@@ -3432,7 +3430,7 @@ class Select(_SelectBaseMixin, FromClause):
             if getattr(c, 'table', None) is self:
                 continue
             e = c.bind
-            if e is not None:
+            if e:
                 self._bind = e
                 return e
         return None
