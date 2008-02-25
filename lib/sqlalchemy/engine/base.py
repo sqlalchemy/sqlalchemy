@@ -1616,30 +1616,47 @@ class ResultProxy(object):
     def fetchall(self):
         """Fetch all rows, just like DB-API ``cursor.fetchall()``."""
 
-        l = [self._process_row(self, row) for row in self._fetchall_impl()]
-        self.close()
-        return l
+        try:
+            l = [self._process_row(self, row) for row in self._fetchall_impl()]
+            self.close()
+            return l
+        except Exception, e:
+            self.connection._handle_dbapi_exception(e, None, None, self.cursor)
+            raise
 
     def fetchmany(self, size=None):
         """Fetch many rows, just like DB-API ``cursor.fetchmany(size=cursor.arraysize)``."""
 
-        l = [self._process_row(self, row) for row in self._fetchmany_impl(size)]
-        if len(l) == 0:
-            self.close()
-        return l
+        try:
+            l = [self._process_row(self, row) for row in self._fetchmany_impl(size)]
+            if len(l) == 0:
+                self.close()
+            return l
+        except Exception, e:
+            self.connection._handle_dbapi_exception(e, None, None, self.cursor)
+            raise
 
     def fetchone(self):
         """Fetch one row, just like DB-API ``cursor.fetchone()``."""
-        row = self._fetchone_impl()
-        if row is not None:
-            return self._process_row(self, row)
-        else:
-            self.close()
-            return None
+        try:
+            row = self._fetchone_impl()
+            if row is not None:
+                return self._process_row(self, row)
+            else:
+                self.close()
+                return None
+        except Exception, e:
+            self.connection._handle_dbapi_exception(e, None, None, self.cursor)
+            raise
 
     def scalar(self):
         """Fetch the first column of the first row, and close the result set."""
-        row = self._fetchone_impl()
+        try:
+            row = self._fetchone_impl()
+        except Exception, e:
+            self.connection._handle_dbapi_exception(e, None, None, self.cursor)
+            raise
+            
         try:
             if row is not None:
                 return self._process_row(self, row)[0]

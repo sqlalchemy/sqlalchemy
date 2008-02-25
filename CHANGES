@@ -11,6 +11,11 @@ CHANGES
     - The value of a bindparam() can be a callable, in which case
       it's evaluated at statement execution time to get the value.
 
+    - added exception wrapping/reconnect support to result set 
+      fetching.  Reconnect works for those databases that 
+      raise a catchable data error during results 
+      (i.e. doesn't work on MySQL) [ticket:978]
+
 - orm
     - any(), has(), contains(), attribute level == and != now
       work properly with self-referential relations - the clause

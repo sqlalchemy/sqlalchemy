@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 import sys, weakref
-from sqlalchemy import create_engine, exceptions, select
+from sqlalchemy import create_engine, exceptions, select, MetaData, Table, Column, Integer, String
 from testlib import *
 
 
@@ -212,7 +212,7 @@ class RealReconnectTest(TestBase):
         assert not conn.invalidated
 
         conn.close()
-
+    
     def test_close(self):
         conn = engine.connect()
         self.assertEquals(conn.execute(select([1])).scalar(), 1)
@@ -275,6 +275,40 @@ class RealReconnectTest(TestBase):
         self.assertEquals(conn.execute(select([1])).scalar(), 1)
         assert not conn.invalidated
 
+class InvalidateDuringResultTest(TestBase):
+    def setUp(self):
+        global meta, table, engine
+        engine = engines.reconnecting_engine()
+        meta = MetaData(engine)
+        table = Table('sometable', meta,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50)))
+        meta.create_all()
+        table.insert().execute(
+            [{'id':i, 'name':'row %d' % i} for i in range(1, 100)]
+        )
+        
+    def tearDown(self):
+        meta.drop_all()
+        engine.dispose()
+    
+    @testing.fails_on('mysql')    
+    def test_invalidate_on_results(self):
+        conn = engine.connect()
+        
+        result = conn.execute("select * from sometable")
+        for x in xrange(20):
+            result.fetchone()
+        
+        engine.test_shutdown()
+        try:
+            result.fetchone()
+            assert False
+        except exceptions.DBAPIError, e:
+            if not e.connection_invalidated:
+                raise
 
+        assert conn.invalidated
+        
 if __name__ == '__main__':
     testenv.main()
