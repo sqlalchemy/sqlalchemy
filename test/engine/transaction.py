@@ -699,6 +699,32 @@ class TLTransactionTest(TestBase):
         c2.close()
         assert c1.connection.connection is not None
 
+    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
+                         'oracle', 'maxdb')
+    @testing.exclude('mysql', '<', (5, 0, 3))
+    def testtwophasetransaction(self):
+        tlengine.begin_twophase()
+        tlengine.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.prepare()
+        tlengine.commit()
+
+        tlengine.begin_twophase()
+        tlengine.execute(users.insert(), user_id=2, user_name='user2')
+        tlengine.commit()
+
+        tlengine.begin_twophase()
+        tlengine.execute(users.insert(), user_id=3, user_name='user3')
+        tlengine.rollback()
+
+        tlengine.begin_twophase()
+        tlengine.execute(users.insert(), user_id=4, user_name='user4')
+        tlengine.prepare()
+        tlengine.rollback()
+
+        self.assertEquals(
+            tlengine.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,),(2,)]
+        )
 
 class ForUpdateTest(TestBase):
     def setUpAll(self):

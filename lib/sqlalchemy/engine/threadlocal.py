@@ -38,17 +38,9 @@ class TLSession(object):
 
     def prepare(self):
         if self.__tcount == 1:
-            try:
-                self.__trans._trans.prepare()
-            finally:
-                self.reset()
+            self.__trans._trans.prepare()
 
     def begin_twophase(self, xid=None):
-        raise NotImplementedError(
-            "Two phase transactions not yet implemented for 'threadlocal' "
-            "strategy")
-
-    def _dont_begin_twophase(self, xid=None):
         if self.__tcount == 0:
             self.__transaction = self.get_connection()
             self.__trans = self.__transaction._begin_twophase(xid=xid)
@@ -189,9 +181,15 @@ class TLEngine(base.Engine):
 
         return self.session.get_connection(**kwargs)
 
+    def begin_twophase(self, **kwargs):
+        return self.session.begin_twophase(**kwargs)
+        
     def begin(self, **kwargs):
         return self.session.begin(**kwargs)
 
+    def prepare(self):
+        self.session.prepare()
+        
     def commit(self):
         self.session.commit()
 

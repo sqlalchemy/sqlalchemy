@@ -16,6 +16,10 @@ CHANGES
       raise a catchable data error during results 
       (i.e. doesn't work on MySQL) [ticket:978]
 
+    - implemented two-phase API for "threadlocal" engine, 
+      via engine.begin_twophase(), engine.prepare()
+      [ticket:936]
+      
 - orm
     - any(), has(), contains(), attribute level == and != now
       work properly with self-referential relations - the clause
