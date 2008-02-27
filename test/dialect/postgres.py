@@ -705,5 +705,15 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         self.assertEquals(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
         arrtable.delete().execute()
 
+class TimeStampTest(TestBase, AssertsExecutionResults): 
+    __only_on__ = 'postgres' 
+    def test_timestamp(self): 
+        engine = testing.db
+        connection = engine.connect() 
+        s = select([func.TIMESTAMP("12/25/07").label("ts")]) 
+        result = connection.execute(s).fetchone() 
+        self.assertEqual(result[0], datetime.datetime(2007, 12, 25, 0, 0)) 
+
+
 if __name__ == "__main__":
     testenv.main()

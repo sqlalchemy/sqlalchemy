@@ -349,7 +349,7 @@ class DefaultCompiler(engine.Compiled):
         name = self.function_string(func)
 
         if callable(name):
-            return name(*[self.process(x) for x in func.clause_expr])
+            return name(*[self.process(x) for x in func.clauses])
         else:
             return ".".join(func.packagenames + [name]) % {'expr':self.function_argspec(func)}
 
@@ -357,7 +357,7 @@ class DefaultCompiler(engine.Compiled):
         return self.process(func.clause_expr)
 
     def function_string(self, func):
-        return self.functions.get(func.__class__, func.name + "%(expr)s")
+        return self.functions.get(func.__class__, self.functions.get(func.name, func.name + "%(expr)s"))
 
     def visit_compound_select(self, cs, asfrom=False, parens=True, **kwargs):
         stack_entry = {'select':cs}

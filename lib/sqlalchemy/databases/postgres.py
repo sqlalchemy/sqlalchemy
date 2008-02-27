@@ -631,6 +631,13 @@ class PGCompiler(compiler.DefaultCompiler):
         }
     )
 
+    functions = compiler.DefaultCompiler.functions.copy()
+    functions.update (
+        {
+            'TIMESTAMP':lambda x:'TIMESTAMP %s' % x,
+        }
+    )
+
     def visit_sequence(self, seq):
         if seq.optional:
             return None

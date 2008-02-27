@@ -62,6 +62,7 @@ CHANGES
 - dialects
     - Invalid SQLite connection URLs now raise an error.
 
+    - postgres TIMESTAMP renders correctly [ticket:981]
 
 0.4.3
 ------
