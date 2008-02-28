@@ -192,6 +192,26 @@ class TypeEngine(AbstractType):
         return self.__class__.__mro__[0:-1]
 
 class TypeDecorator(AbstractType):
+    """Allows the creation of types which add additional functionality
+    to an existing type.  Typical usage::
+    
+      class MyCustomType(TypeDecorator):
+          impl = String
+          
+          def process_bind_param(self, value, dialect):
+              return value + "incoming string"
+              
+          def process_result_value(self, value, dialect):
+              return value[0:-16]
+    
+    The class-level "impl" variable is required, and can reference any
+    TypeEngine class.  Alternatively, the load_dialect_impl() method can
+    be used to provide different type classes based on the dialect given; 
+    in this case, the "impl" variable can reference ``TypeEngine`` as a 
+    placeholder.
+        
+    """
+    
     def __init__(self, *args, **kwargs):
         if not hasattr(self.__class__, 'impl'):
             raise exceptions.AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
@@ -545,36 +565,18 @@ class PickleType(MutableType, TypeDecorator):
         self.comparator = comparator
         super(PickleType, self).__init__()
 
-    def bind_processor(self, dialect):
-        impl_process = self.impl.bind_processor(dialect)
+    def process_bind_param(self, value, dialect):
         dumps = self.pickler.dumps
         protocol = self.protocol
-        if impl_process is None:
-            def process(value):
-                if value is None:
-                    return None
-                return dumps(value, protocol)
-        else:
-            def process(value):
-                if value is None:
-                    return None
-                return impl_process(dumps(value, protocol))
-        return process
+        if value is None:
+            return None
+        return dumps(value, protocol)
 
-    def result_processor(self, dialect):
-        impl_process = self.impl.result_processor(dialect)
+    def process_result_value(self, value, dialect):
         loads = self.pickler.loads
-        if impl_process is None:
-            def process(value):
-                if value is None:
-                    return None
-                return loads(str(value))
-        else:
-            def process(value):
-                if value is None:
-                    return None
-                return loads(str(impl_process(value)))
-        return process
+        if value is None:
+            return None
+        return loads(str(value))
 
     def copy_value(self, value):
         if self.mutable:
@@ -608,68 +610,38 @@ class Interval(TypeDecorator):
         will be stored as DateTime = '2nd Jan 1970 00:00', see bind_processor
         and result_processor to actual conversion code
     """
-    #Empty useless type, because at the moment of creation of instance we don't
-    #know what type will be decorated - it depends on used dialect.
+
     impl = TypeEngine
 
-    def load_dialect_impl(self, dialect):
-        """Checks if engine has native implementation of timedelta python type,
-        if so it returns right class to handle it, if there is no native support,
-        it fallback to engine's DateTime implementation class
-        """
-        if not hasattr(self,'__supported'):
-            import sqlalchemy.databases.postgres as pg
-            self.__supported = {pg.PGDialect:pg.PGInterval}
-            del pg
+    def __init__(self):
+        super(Interval, self).__init__()
+        import sqlalchemy.databases.postgres as pg
+        self.__supported = {pg.PGDialect:pg.PGInterval}
+        del pg
 
-        if self.__hasNativeImpl(dialect):
-            #For now, only PostgreSQL has native timedelta types support
+    def load_dialect_impl(self, dialect):
+        if dialect.__class__ in self.__supported:
             return self.__supported[dialect.__class__]()
         else:
-            #All others should fallback to DateTime
             return dialect.type_descriptor(DateTime)
 
-    def __hasNativeImpl(self,dialect):
-        return dialect.__class__ in self.__supported
-
-    def bind_processor(self, dialect):
-        impl_processor = self.impl.bind_processor(dialect)
-        if self.__hasNativeImpl(dialect):
-            return impl_processor
+    def process_bind_param(self, value, dialect):
+        if dialect.__class__ in self.__supported:
+            return value
         else:
-            zero_timestamp = dt.datetime.utcfromtimestamp(0)
-            if impl_processor is None:
-                def process(value):
-                    if value is None:
-                        return None
-                    return zero_timestamp + value
-            else:
-                def process(value):
-                    if value is None:
-                        return None
-                    return impl_processor(zero_timestamp + value)
-            return process
-
-    def result_processor(self, dialect):
-        impl_processor = self.impl.result_processor(dialect)
-        if self.__hasNativeImpl(dialect):
-            return impl_processor
+            if value is None:
+                return None
+            return dt.datetime.utcfromtimestamp(0) + value
+            
+    def process_result_value(self, value, dialect):
+        if dialect.__class__ in self.__supported:
+            return value
         else:
-            zero_timestamp = dt.datetime.utcfromtimestamp(0)
-            if impl_processor is None:
-                def process(value):
-                    if value is None:
-                        return None
-                    return value - zero_timestamp
-            else:
-                def process(value):
-                    if value is None:
-                        return None
-                    return impl_processor(value) - zero_timestamp
-            return process
+            if value is None:
+                return None
+            return value - dt.datetime.utcfromtimestamp(0)
 
 class FLOAT(Float): pass
-
 TEXT = Text
 class NUMERIC(Numeric): pass
 class DECIMAL(Numeric): pass
