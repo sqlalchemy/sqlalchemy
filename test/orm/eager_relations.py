@@ -74,7 +74,7 @@ class EagerTest(FixtureTest):
             User(id=10, addresses=[])
         ] == q.all()
 
-    def test_orderby_secondary(self):
+    def test_orderby_related(self):
         """tests that a regular mapper select on a single table can order by a relation to a second table"""
 
         mapper(Address, addresses)
@@ -649,6 +649,59 @@ class AddEntityTest(FixtureTest):
             self.assertEquals(ret, self._assert_result())
         self.assert_sql_count(testing.db, go, 1)
 
+class OrderBySecondaryTest(ORMTest):
+    def define_tables(self, metadata):
+        global a, b, m2m
+        m2m = Table('mtom', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('aid', Integer, ForeignKey('a.id')),
+            Column('bid', Integer, ForeignKey('b.id')),
+            )
+            
+        a = Table('a', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+            )
+        b = Table('b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+            )
+
+    def insert_data(self):
+        a.insert().execute([
+            {'id':1, 'data':'a1'},
+            {'id':2, 'data':'a2'}
+        ])
+        
+        b.insert().execute([
+            {'id':1, 'data':'b1'},
+            {'id':2, 'data':'b2'},
+            {'id':3, 'data':'b3'},
+            {'id':4, 'data':'b4'},
+        ])
+        
+        m2m.insert().execute([
+            {'id':2, 'aid':1, 'bid':1},
+            {'id':4, 'aid':2, 'bid':4},
+            {'id':1, 'aid':1, 'bid':3},
+            {'id':6, 'aid':2, 'bid':2},
+            {'id':3, 'aid':1, 'bid':2},
+            {'id':5, 'aid':2, 'bid':3},
+        ])
+    
+    def test_ordering(self):
+        class A(Base):pass
+        class B(Base):pass
+        
+        mapper(A, a, properties={
+            'bs':relation(B, secondary=m2m, lazy=False, order_by=m2m.c.id)
+        })
+        mapper(B, b)
+        
+        sess = create_session()
+        self.assertEquals(sess.query(A).all(), [A(data='a1', bs=[B(data='b3'), B(data='b1'), B(data='b2')]), A(bs=[B(data='b4'), B(data='b3'), B(data='b2')])])
+        
+        
 class SelfReferentialEagerTest(ORMTest):
     def define_tables(self, metadata):
         global nodes

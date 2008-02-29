@@ -59,6 +59,11 @@ CHANGES
       populating the PK value of <somechild> in the case that
       <somechild> was pending.
 
+    - setting the relation()-level order by to a column in the
+      many-to-many "secondary" table will now work with eager 
+      loading, previously the "order by" wasn't aliased against
+      the secondary table's alias.
+      
 - dialects
     - Invalid SQLite connection URLs now raise an error.
 

@@ -214,17 +214,23 @@ class PropertyAliasedClauses(AliasedClauses):
             self.primaryjoin = primary_aliasizer.traverse(primaryjoin, clone=True)
         else:
             if parentclauses is not None: 
-                aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side)
-                aliasizer.chain(sql_util.ClauseAdapter(parentclauses.alias, exclude=prop.remote_side))
+                primary_aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side)
+                primary_aliasizer.chain(sql_util.ClauseAdapter(parentclauses.alias, exclude=prop.remote_side))
             else:
-                aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side)
+                primary_aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side)
 
-            self.primaryjoin = aliasizer.traverse(primaryjoin, clone=True)
+            self.primaryjoin = primary_aliasizer.traverse(primaryjoin, clone=True)
             self.secondary = None
             self.secondaryjoin = None
         
         if prop.order_by:
-            self.order_by = sql_util.ClauseAdapter(self.alias).copy_and_process(util.to_list(prop.order_by))
+            if prop.secondary:
+                # usually this is not used but occasionally someone has a sort key in their secondary
+                # table, even tho SA does not support writing this column directly
+                self.order_by = secondary_aliasizer.copy_and_process(util.to_list(prop.order_by))
+            else:
+                self.order_by = primary_aliasizer.copy_and_process(util.to_list(prop.order_by))
+                
         else:
             self.order_by = None
     
