@@ -118,6 +118,10 @@ The `BoundMetaData` name is removed.  Now, you just use `MetaData`.  Additionall
     
 Additionally, `DynamicMetaData` is now known as `ThreadLocalMetaData`.
 
+### "Magic" Global MetaData removed {@name=global}
+
+There was an old way to specify `Table` objects using an implicit, global `MetaData` object.  To do this you'd omit the second positional argument, and specify `Table('tablename', Column(...))`.  This no longer exists in 0.4 and the second `MetaData` positional argument is required, i.e. `Table('tablename', meta, Column(...))`.
+
 ### Some existing select() methods become generative {@name=generative}
 
 The methods `correlate()`, `order_by()`, and `group_by()` on the `select()` construct now return a **new** select object, and do not change the original one.  Additionally, the generative methods `where()`, `column()`, `distinct()`, and several others have been added:
