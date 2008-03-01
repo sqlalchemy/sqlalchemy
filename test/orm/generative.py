@@ -53,6 +53,7 @@ class GenerativeQueryTest(TestBase):
         assert list(query[-5:]) == orig[-5:]
         assert query[10:20][5] == orig[10:20][5]
 
+    @testing.uses_deprecated('Call to deprecated function apply_max')
     def test_aggregate(self):
         sess = create_session(bind=testing.db)
         query = sess.query(Foo)
@@ -77,6 +78,7 @@ class GenerativeQueryTest(TestBase):
         assert round(avg, 1) == 14.5
 
     @testing.fails_on('firebird', 'mssql')
+    @testing.uses_deprecated('Call to deprecated function apply_avg')
     def test_aggregate_3(self):
         query = create_session(bind=testing.db).query(Foo)
 

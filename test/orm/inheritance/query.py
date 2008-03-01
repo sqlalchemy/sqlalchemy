@@ -194,6 +194,19 @@ def make_test(select_type):
                 self.assertEquals(sess.query(Engineer).join('paperwork', aliased=aliased).filter(Paperwork.description.like('%#2%')).all(), [e1])
 
                 self.assertEquals(sess.query(Person).join('paperwork', aliased=aliased).filter(Person.c.name.like('%dog%')).filter(Paperwork.description.like('%#2%')).all(), [m1])
+
+        def test_join_from_with_polymorphic(self):
+            sess = create_session()
+
+            for aliased in (True, False):
+                sess.clear()
+                self.assertEquals(sess.query(Person).with_polymorphic(Manager).join('paperwork', aliased=aliased).filter(Paperwork.description.like('%review%')).all(), [b1, m1])
+
+                sess.clear()
+                self.assertEquals(sess.query(Person).with_polymorphic([Manager, Engineer]).join('paperwork', aliased=aliased).filter(Paperwork.description.like('%#2%')).all(), [e1, m1])
+
+                sess.clear()
+                self.assertEquals(sess.query(Person).with_polymorphic([Manager, Engineer]).join('paperwork', aliased=aliased).filter(Person.c.name.like('%dog%')).filter(Paperwork.description.like('%#2%')).all(), [m1])
     
         def test_join_to_polymorphic(self):
             sess = create_session()
@@ -223,7 +236,58 @@ def make_test(select_type):
                     sess.query(Company).filter(Company.employees.any(and_(Engineer.primary_language=='cobol', people.c.person_id==engineers.c.person_id))).one(),
                     c2
                     )
-                
+        
+        def test_expire(self):
+            """test that individual column refresh doesn't get tripped up by the select_table mapper"""
+            
+            sess = create_session()
+            m1 = sess.query(Manager).filter(Manager.name=='dogbert').one()
+            sess.expire(m1)
+            assert m1.status == 'regular manager'
+
+            m2 = sess.query(Manager).filter(Manager.name=='pointy haired boss').one()
+            sess.expire(m2, ['manager_name', 'golf_swing'])
+            assert m2.golf_swing=='fore'
+            
+        def test_with_polymorphic(self):
+            
+            sess = create_session()
+            
+            # compare to entities without related collections to prevent additional lazy SQL from firing on 
+            # loaded entities
+            emps_without_relations = [
+                Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer"),
+                Engineer(name="wally", engineer_name="wally", primary_language="c++", status="regular engineer"),
+                Boss(name="pointy haired boss", golf_swing="fore", manager_name="pointy", status="da boss"),
+                Manager(name="dogbert", manager_name="dogbert", status="regular manager"),
+                Engineer(name="vlad", engineer_name="vlad", primary_language="cobol", status="elbonian engineer")
+            ]
+            
+            def go():
+                self.assertEquals(sess.query(Person).with_polymorphic(Engineer).filter(Engineer.primary_language=='java').all(), emps_without_relations[0:1])
+            self.assert_sql_count(testing.db, go, 1)
+            
+            sess.clear()
+            def go():
+                self.assertEquals(sess.query(Person).with_polymorphic('*').all(), emps_without_relations)
+            self.assert_sql_count(testing.db, go, 1)
+
+            sess.clear()
+            def go():
+                self.assertEquals(sess.query(Person).with_polymorphic(Engineer).all(), emps_without_relations)
+            self.assert_sql_count(testing.db, go, 3)
+
+            sess.clear()
+            def go():
+                self.assertEquals(sess.query(Person).with_polymorphic(Engineer, people.outerjoin(engineers)).all(), emps_without_relations)
+            self.assert_sql_count(testing.db, go, 3)
+            
+            sess.clear()
+            def go():
+                # limit the polymorphic join down to just "Person", overriding select_table
+                self.assertEquals(sess.query(Person).with_polymorphic(Person).all(), emps_without_relations)
+            self.assert_sql_count(testing.db, go, 6)
+
         def test_join_to_subclass(self):
             sess = create_session()
 

@@ -1579,6 +1579,7 @@ def _load_scalar_attributes(instance, attribute_names):
         identity_key = state.dict['_instance_key']
     else:
         identity_key = mapper._identity_key_from_state(state)
+
     if session.query(mapper)._get(identity_key, refresh_instance=state, only_load_props=attribute_names) is None:
         raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % instance_str(instance))
 

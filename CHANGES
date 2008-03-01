@@ -25,7 +25,17 @@ CHANGES
       work properly with self-referential relations - the clause
       inside the EXISTS is aliased on the "remote" side to
       distinguish it from the parent table.
-
+    
+    - fixed bug whereby session.expire() attributes were not
+      loading on an polymorphically-mapped instance mapped 
+      by a select_table mapper.
+      
+    - added query.with_polymorphic() - specifies a list
+      of classes which descend from the base class, which will
+      be added to the FROM clause of the query.  Allows subclasses
+      to be used within filter() criterion as well as eagerly loads
+      the attributes of those subclasses.
+    
     - Your cries have been heard: removing a pending item from an
       attribute or collection with delete-orphan expunges the item
       from the session; no FlushError is raised.  Note that if you
@@ -35,6 +45,9 @@ CHANGES
     - Fixed potential generative bug when the same Query was used
       to generate multiple Query objects using join().
 
+    - deprecated Query methods apply_sum(), apply_max(), apply_min(),
+      apply_avg().  Better methodologies are coming....
+      
     - Added a new "higher level" operator called "of_type()": used
       in join() as well as with any() and has(), qualifies the
       subclass which will be used in filter criterion, e.g.:

@@ -389,6 +389,7 @@ class AggregateTest(QueryTest):
         orders = sess.query(Order).filter(Order.id.in_([2, 3, 4]))
         assert orders.sum(Order.user_id * Order.address_id) == 79
 
+    @testing.uses_deprecated('Call to deprecated function apply_sum')
     def test_apply(self):
         sess = create_session()
         assert sess.query(Order).apply_sum(Order.user_id * Order.address_id).filter(Order.id.in_([2, 3, 4])).one() == 79
