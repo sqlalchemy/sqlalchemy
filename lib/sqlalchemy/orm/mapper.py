@@ -1373,10 +1373,9 @@ class Mapper(object):
                 self.populate_instance(context, instance, row, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew)
         
         else:
-            attrs = getattr(state, 'expired_attributes', None)
             # populate attributes on non-loading instances which have been expired
             # TODO: also support deferred attributes here [ticket:870]
-            if attrs: 
+            if state.expired_attributes: 
                 if state in context.partials:
                     isnew = False
                     attrs = context.partials[state]
@@ -1483,7 +1482,7 @@ class Mapper(object):
                     self.__log_debug("Post query loading instance " + instance_str(instance))
 
                 identitykey = self.identity_key_from_instance(instance)
-
+                
                 only_load_props = flags.get('only_load_props', None)
 
                 params = {}
@@ -1563,7 +1562,6 @@ object_session = None
 
 def _load_scalar_attributes(instance, attribute_names):
     mapper = object_mapper(instance)
-
     global object_session
     if not object_session:
         from sqlalchemy.orm.session import object_session

@@ -45,6 +45,16 @@ CHANGES
     - Fixed potential generative bug when the same Query was used
       to generate multiple Query objects using join().
 
+    - fixed bug which was introduced in 0.4.3, whereby loading an
+      already-persistent instance mapped with joined table inheritance
+      would trigger a useless "secondary" load from its joined 
+      table, when using the default "select" polymorphic_fetch.  
+      This was due to attributes being marked as expired
+      during its first load and not getting unmarked from the 
+      previous "secondary" load.  Attributes are now unexpired
+      based on presence in __dict__ after any load or commit
+      operation succeeds.
+      
     - deprecated Query methods apply_sum(), apply_max(), apply_min(),
       apply_avg().  Better methodologies are coming....
       

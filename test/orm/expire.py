@@ -39,10 +39,12 @@ class ExpireTest(FixtureTest):
         sess.expire(u)
         # object isnt refreshed yet, using dict to bypass trigger
         assert u.__dict__.get('name') != 'jack'
+        assert 'name' in u._state.expired_attributes
 
         sess.query(User).all()
         # test that it refreshed
         assert u.__dict__['name'] == 'jack'
+        assert 'name' not in u._state.expired_attributes
 
         def go():
             assert u.name == 'jack'

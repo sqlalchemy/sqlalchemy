@@ -257,9 +257,6 @@ class AttributeImpl(object):
         """set an attribute value on the given instance and 'commit' it."""
 
         state.commit_attr(self, value)
-        # remove per-instance callable, if any
-        state.callables.pop(self.key, None)
-        state.dict[self.key] = value
         return value
 
 class ScalarAttributeImpl(AttributeImpl):
@@ -672,6 +669,9 @@ class ClassState(object):
         self.attrs = {}
         self.has_mutable_scalars = False
 
+import sets
+_empty_set = sets.ImmutableSet()
+
 class InstanceState(object):
     """tracks state information at the instance level."""
 
@@ -687,6 +687,7 @@ class InstanceState(object):
         self.appenders = {}
         self.instance_dict = None
         self.runid = None
+        self.expired_attributes = _empty_set
 
     def __cleanup(self, ref):
         # tiptoe around Python GC unpredictableness
@@ -751,7 +752,7 @@ class InstanceState(object):
             return None
 
     def __getstate__(self):
-        return {'committed_state':self.committed_state, 'pending':self.pending, 'parents':self.parents, 'modified':self.modified, 'instance':self.obj(), 'expired_attributes':getattr(self, 'expired_attributes', None), 'callables':self.callables}
+        return {'committed_state':self.committed_state, 'pending':self.pending, 'parents':self.parents, 'modified':self.modified, 'instance':self.obj(), 'expired_attributes':self.expired_attributes, 'callables':self.callables}
 
     def __setstate__(self, state):
         self.committed_state = state['committed_state']
@@ -764,8 +765,7 @@ class InstanceState(object):
         self.callables = state['callables']
         self.runid = None
         self.appenders = {}
-        if state['expired_attributes'] is not None:
-            self.expire_attributes(state['expired_attributes'])
+        self.expired_attributes = state['expired_attributes']
 
     def initialize(self, key):
         getattr(self.class_, key).impl.initialize(self)
@@ -780,7 +780,6 @@ class InstanceState(object):
         serializable.
         """
         instance = self.obj()
-        
         unmodified = self.unmodified
         self.class_._class_state.deferred_scalar_loader(instance, [
             attr.impl.key for attr in _managed_attributes(self.class_) if 
@@ -804,8 +803,7 @@ class InstanceState(object):
     unmodified = property(unmodified)
 
     def expire_attributes(self, attribute_names):
-        if not hasattr(self, 'expired_attributes'):
-            self.expired_attributes = util.Set()
+        self.expired_attributes = util.Set(self.expired_attributes)
 
         if attribute_names is None:
             for attr in _managed_attributes(self.class_):
@@ -829,18 +827,29 @@ class InstanceState(object):
         self.callables.pop(key, None)
 
     def commit_attr(self, attr, value):
+        """set the value of an attribute and mark it 'committed'."""
+
         if hasattr(attr, 'commit_to_state'):
             attr.commit_to_state(self, value)
         else:
             self.committed_state.pop(attr.key, None)
+        self.dict[attr.key] = value
         self.pending.pop(attr.key, None)
         self.appenders.pop(attr.key, None)
+        
+        # we have a value so we can also unexpire it
+        self.callables.pop(attr.key, None)
+        if attr.key in self.expired_attributes:
+            self.expired_attributes.remove(attr.key)
 
     def commit(self, keys):
         """commit all attributes named in the given list of key names.
 
         This is used by a partial-attribute load operation to mark committed those attributes
         which were refreshed from the database.
+
+        Attributes marked as "expired" can potentially remain "expired" after this step
+        if a value was not populated in state.dict.
         """
 
         if self.class_._class_state.has_mutable_scalars:
@@ -857,18 +866,34 @@ class InstanceState(object):
                 self.committed_state.pop(key, None)
                 self.pending.pop(key, None)
                 self.appenders.pop(key, None)
-
+                
+        # unexpire attributes which have loaded
+        for key in self.expired_attributes.intersection(keys):
+            if key in self.dict:
+                self.expired_attributes.remove(key)
+                self.callables.pop(key, None)
+                    
+                
     def commit_all(self):
         """commit all attributes unconditionally.
 
         This is used after a flush() or a regular instance load or refresh operation
         to mark committed all populated attributes.
+        
+        Attributes marked as "expired" can potentially remain "expired" after this step
+        if a value was not populated in state.dict.
         """
 
         self.committed_state = {}
         self.modified = False
         self.pending = {}
         self.appenders = {}
+
+        # unexpire attributes which have loaded
+        for key in list(self.expired_attributes):
+            if key in self.dict:
+                self.expired_attributes.remove(key)
+                self.callables.pop(key, None)
 
         if self.class_._class_state.has_mutable_scalars:
             for attr in _managed_attributes(self.class_):

@@ -268,7 +268,7 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         c.employees.append(Engineer(status='CGG', engineer_name='engineer2', primary_language='python', **{person_attribute_name:'wally'}))
         c.employees.append(Manager(status='ABA', manager_name='manager2', **{person_attribute_name:'jsmith'}))
         session.save(c)
-        print session.new
+
         session.flush()
         session.clear()
 
@@ -284,7 +284,6 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         def go():
             c = session.query(Company).get(id)
             for e in c.employees:
-                print e, e._instance_key, e.company
                 assert e._instance_key[0] == Person
             if include_base:
                 assert sets.Set([(e.get_name(), getattr(e, 'status', None)) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('joesmith', None), ('wally', 'CGG'), ('jsmith', 'ABA')])
@@ -307,25 +306,31 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         # test selecting from the query, using the base mapped table (people) as the selection criterion.
         # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"
         dilbert = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
-        dilbert2 = session.query(Engineer).filter(getattr(Person, person_attribute_name)=='dilbert').first()
-        assert dilbert is dilbert2
+        assert dilbert is session.query(Engineer).filter(getattr(Person, person_attribute_name)=='dilbert').first()
 
         # test selecting from the query, joining against an alias of the base "people" table.  test that
         # the "palias" alias does *not* get sucked up into the "person_join" conversion.
         palias = people.alias("palias")
-        session.query(Person).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
-        dilbert2 = session.query(Engineer).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
-        assert dilbert is dilbert2
-
-        session.query(Person).filter((Engineer.engineer_name=="engineer1") & (Engineer.person_id==people.c.person_id)).first()
-
-        dilbert2 = session.query(Engineer).filter(Engineer.engineer_name=="engineer1")[0]
-        assert dilbert is dilbert2
-
+        assert dilbert is session.query(Person).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
+        assert dilbert is session.query(Engineer).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
+        assert dilbert is session.query(Person).filter((Engineer.engineer_name=="engineer1") & (engineers.c.person_id==people.c.person_id)).first()
+        assert dilbert is session.query(Engineer).filter(Engineer.engineer_name=="engineer1")[0]
+        
         dilbert.engineer_name = 'hes dibert!'
 
         session.flush()
         session.clear()
+        
+        if polymorphic_fetch == 'select':
+            def go():
+                session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+            self.assert_sql_count(testing.db, go, 2)
+            session.clear()
+            dilbert = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+            def go():
+                # assert that only primary table is queried for already-present-in-session
+                d = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+            self.assert_sql_count(testing.db, go, 1)
 
         # save/load some managers/bosses
         b = Boss(status='BBB', manager_name='boss', golf_swing='fore', **{person_attribute_name:'daboss'})
