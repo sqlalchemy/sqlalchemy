@@ -444,15 +444,17 @@ class PropComparator(expression.ColumnOperators):
     def of_type(self, class_):
         """Redefine this object in terms of a polymorphic subclass.
         
-        Returns a new PropComparator from which further criterion can be evaulated.
-        
-        class_
-          a class or mapper indicating that criterion will be against
-          this specific subclass.
-        
+        Returns a new PropComparator from which further criterion can be evaluated.
+
         e.g.::
-          query.join(Company.employees.of_type(Engineer)).\
-             filter(Engineer.name=='foo')
+        
+            query.join(Company.employees.of_type(Engineer)).\\
+               filter(Engineer.name=='foo')
+              
+        \class_
+            a class or mapper indicating that criterion will be against
+            this specific subclass.
+
          
         """
         
