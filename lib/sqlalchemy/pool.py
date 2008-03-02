@@ -660,6 +660,10 @@ class StaticPool(Pool):
     def status(self):
         return "StaticPool"
 
+    def dispose(self):
+        self._conn.close()
+        self._conn = None
+        
     def create_connection(self):
         return self._conn
 
