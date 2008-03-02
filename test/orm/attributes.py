@@ -274,17 +274,21 @@ class AttributesTest(TestBase):
         class Foo(object):pass
         class Bar(Foo):pass
 
+        class Element(object):
+            _state = True
+
         attributes.register_class(Foo)
         attributes.register_class(Bar)
         attributes.register_attribute(Foo, 'element', uselist=False, useobject=True)
+        el = Element()
         x = Bar()
-        x.element = 'this is the element'
-        self.assertEquals(attributes.get_history(x._state, 'element'), (['this is the element'],[], []))
+        x.element = el
+        self.assertEquals(attributes.get_history(x._state, 'element'), ([el],[], []))
         x._state.commit_all()
 
         (added, unchanged, deleted) = attributes.get_history(x._state, 'element')
         assert added == []
-        assert unchanged == ['this is the element']
+        assert unchanged == [el]
 
     def test_lazyhistory(self):
         """tests that history functions work with lazy-loading attributes"""
@@ -710,6 +714,16 @@ class HistoryTest(TestBase):
         class Foo(fixtures.Base):
             pass
 
+        class Bar(fixtures.Base):
+            _state = None
+            def __nonzero__(self):
+                assert False
+
+        hi = Bar(name='hi')
+        there = Bar(name='there')
+        new = Bar(name='new')
+        old = Bar(name='old')
+
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=True)
 
@@ -717,32 +731,32 @@ class HistoryTest(TestBase):
         f = Foo()
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [None], []))
 
-        f.someattr = "hi"
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), (['hi'], [], []))
+        f.someattr = hi
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([hi], [], []))
 
         f._state.commit(['someattr'])
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['hi'], []))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [hi], []))
 
-        f.someattr = 'there'
+        f.someattr = there
 
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), (['there'], [], ['hi']))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([there], [], [hi]))
         f._state.commit(['someattr'])
 
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['there'], []))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [there], []))
 
         del f.someattr
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([None], [], ['there']))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([None], [], [there]))
 
         # case 2.  object with direct dictionary settings (similar to a load operation)
         f = Foo()
-        f.__dict__['someattr'] = 'new'
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['new'], []))
+        f.__dict__['someattr'] = new
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [new], []))
 
-        f.someattr = 'old'
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), (['old'], [], ['new']))
+        f.someattr = old
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([old], [], [new]))
 
         f._state.commit(['someattr'])
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['old'], []))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [old], []))
 
         # setting None on uninitialized is currently not a change for an object attribute
         # (this is different than scalar attribute).  a lazyload has occured so if its
@@ -753,10 +767,10 @@ class HistoryTest(TestBase):
         self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [None], []))
 
         f = Foo()
-        f.__dict__['someattr'] = 'new'
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], ['new'], []))
+        f.__dict__['someattr'] = new
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([], [new], []))
         f.someattr = None
-        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([None], [], ['new']))
+        self.assertEquals(attributes.get_history(f._state, 'someattr'), ([None], [], [new]))
 
     def test_object_collections_set(self):
         class Foo(fixtures.Base):

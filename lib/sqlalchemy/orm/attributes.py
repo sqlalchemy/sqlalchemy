@@ -371,6 +371,11 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if initiator is self:
             return
 
+        if value is not None and not hasattr(value, '_state'):
+            raise TypeError("Can not assign %s instance to %s's %r attribute, "
+                            "a mapped instance was expected." % (
+                type(value).__name__, type(state.obj()).__name__, self.key))
+
         # TODO: add options to allow the get() to be passive
         old = self.get(state)
         state.dict[self.key] = value
