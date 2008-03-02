@@ -341,9 +341,26 @@ And that's it.  Querying against `Employee` will return a combination of `Employ
 
 ###### Polymorphic Querying Strategies {@name=querying}
 
-The `Query` object includes some helper functionality when dealing with joined-table inheritance mappings.  These helpers apply mostly to the `join()` method, as well as the special `any()` and `has()` operators.
+The `Query` object includes some helper functionality when dealing with joined-table inheritance mappings.  These are the `with_polymorphic()` and `of_type()` methods, both of which are introduced in version 0.4.4.
 
-Suppose the `employees` table represents a collection of employees which are associated with a `Company` object.  We'll add a `company_id` column to the `employees` table and a new table `companies`:
+The `with_polymorphic()` method affects the specific subclass tables which the Query selects from.  Normally, a query such as this:
+
+    {python}
+    session.query(Employee).filter(Employee.name=='ed')
+
+Selects only from the `employees` table.  The criterion we use in `filter()` and other methods will generate WHERE criterion against this table.  What if we wanted to load `Employee` objects but also wanted to use criterion against `Engineer` ?  We could just query against the `Engineer` class instead.  But, if we were using criterion which filters among more than one subclass (subclasses which do not inherit directly from one to the other), we'd like to select from an outer join of all those tables.  The `with_polymorphic()` method can tell `Query` which joined-table subclasses we want to select for:
+
+    {python}
+    session.query(Employee).with_polymorphic(Engineer).filter(Engineer.engineer_info=='some info')
+    
+Even without criterion, the `with_polymorphic()` method has the added advantage that instances are loaded from all of their tables in one result set.  Such as, to optimize the loading of all `Employee` objects, `with_polymorphic()` accepts `'*'` as a wildcard indicating that all subclass tables should be joined:
+
+    {python}
+    session.query(Employee).with_polymorphic('*').all()
+    
+`with_polymorphic()` is an effective query-level alternative to the existing `select_table` option available on `mapper()`.
+
+Next is a way to join along `relation` paths while narrowing the criterion to specific subclasses.  Suppose the `employees` table represents a collection of employees which are associated with a `Company` object.  We'll add a `company_id` column to the `employees` table and a new table `companies`:
 
     {python}
     companies = Table('companies', metadata,
@@ -365,7 +382,7 @@ Suppose the `employees` table represents a collection of employees which are ass
         'employees':relation(Employee)
     })
     
-If we wanted to join from `Company` to not just `Employee` but specifically `Engineers`, using the `join()` method or `any()` or `has()` operators will by default create a join from `companies` to `employees`, without including `engineers` or `managers` in the mix.  If we wish to have criterion which is specifically against the `Engineer` class, extra instruction is needed.  As of version 0.4.4 we can use this notation:
+If we wanted to join from `Company` to not just `Employee` but specifically `Engineers`, using the `join()` method or `any()` or `has()` operators will by default create a join from `companies` to `employees`, without including `engineers` or `managers` in the mix.  If we wish to have criterion which is specifically against the `Engineer` class, we can tell those methods to join or subquery against the full set of tables representing the subclass using the `of_type()` opertator:
 
     {python}
     session.query(Company).join(Company.employees.of_type(Engineer)).filter(Engineer.engineer_info=='someinfo')
@@ -386,7 +403,7 @@ The `any()` and `has()` operators also can be used with `of_type()` when the emb
     {python}
     session.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.engineer_info=='someinfo')).all()
     
-Note that these two operators are shorthand for a correlated EXISTS query.  To build one by hand looks like:
+Note that the `any()` and `has()` are both shorthand for a correlated EXISTS query.  To build one by hand looks like:
 
     {python}
     session.query(Company).filter(
@@ -396,8 +413,8 @@ Note that these two operators are shorthand for a correlated EXISTS query.  To b
         )
     ).all()
 
-Where the EXISTS query selects from the join of `employees` to `engineers`, and also specifies criterion which correlates the exists subselect back to the parent `companies` table.
-    
+The EXISTS subquery above selects from the join of `employees` to `engineers`, and also specifies criterion which correlates the EXISTS subselect back to the parent `companies` table.
+
 ###### Optimizing Joined Table Loads {@name=optimizing}
 
 When loading fresh from the database, the joined-table setup above will query from the parent table first, then for each row will issue a second query to the child table.  For example, for a load of five rows with `Employee` id 3, `Manager` ids 1 and 5 and `Engineer` ids 2 and 4, will produce queries along the lines of this example:
@@ -437,7 +454,23 @@ One way to reduce the number of "secondary" loads of child rows is to "defer" th
 
 The above configuration queries in the same manner as earlier, except the load of each "secondary" table occurs only when attributes referencing those columns are first referenced on the loaded instance.  This style of loading is very efficient for cases where large selects of items occur, but a detailed "drill down" of extra inherited properties is less common.
 
-More commonly, an all-at-once load may be achieved by constructing a query which combines all three tables together, and adding it to the mapper configuration as its `select_table`, which is an arbitrary selectable which the mapper will use for load operations (it has no impact on save operations).  Any selectable can be used for this, such as a UNION of tables.  For joined table inheritance, the easiest method is to use OUTER JOIN:
+More commonly, an all-at-once load may be achieved by constructing a query which combines all three tables together.  The easiest way to do this as of version 0.4.4 is to use the `with_polymorphic()` query method which will automatically join in the classes desired:
+
+    {python}
+    query = session.query(Employee).with_polymorphic([Engineer, Manager])
+    
+Which produces a query like the following:
+
+    {python}
+    query.all()
+    {opensql}
+    SELECT employees.employee_id AS employees_employee_id, engineers.employee_id AS engineers_employee_id, managers.employee_id AS managers_employee_id, employees.name AS employees_name, employees.type AS employees_type, engineers.engineer_info AS engineers_engineer_info, managers.manager_data AS managers_manager_data 
+    FROM employees LEFT OUTER JOIN engineers ON employees.employee_id = engineers.employee_id LEFT OUTER JOIN managers ON employees.employee_id = managers.employee_id ORDER BY employees.oid
+    []    
+
+`with_polymorphic()` accepts a single class or mapper, a list of classes/mappers, or the string `'*'` to indicate all subclasses.  It also accepts a second argument `selectable` which replaces the automatic join creation and instead selects directly from the selectable given.  This can allow polymorphic loads from a variety of inheritance schemes including concrete tables, if the appropriate unions are constructed.
+
+Similar behavior as provided by `with_polymorphic()` can be configured at the mapper level so that any user-defined query is used by default in order to load instances.  The `select_table` argument references an arbitrary selectable which the mapper will use for load operations (it has no impact on save operations).  Any selectable can be used for this, such as a UNION of tables.  For joined table inheritance, the easiest method is to use OUTER JOIN:
 
     {python}
     join = employees.outerjoin(engineers).outerjoin(managers)
@@ -447,14 +480,9 @@ More commonly, an all-at-once load may be achieved by constructing a query which
     mapper(Engineer, engineers, inherits=Employee, polymorphic_identity='engineer')
     mapper(Manager, managers, inherits=Employee, polymorphic_identity='manager')
 
-Which produces a query like the following:
+The above mapping will produce a query similar to that of `with_polymorphic('*')` for every query of `Employee` objects.
 
-    {python}
-    session.query(Employee).all()
-    {opensql}
-    SELECT employees.employee_id AS employees_employee_id, engineers.employee_id AS engineers_employee_id, managers.employee_id AS managers_employee_id, employees.name AS employees_name, employees.type AS employees_type, engineers.engineer_info AS engineers_engineer_info, managers.manager_data AS managers_manager_data 
-    FROM employees LEFT OUTER JOIN engineers ON employees.employee_id = engineers.employee_id LEFT OUTER JOIN managers ON employees.employee_id = managers.employee_id ORDER BY employees.oid
-    []    
+When `select_table` is used, `with_polymorphic()` still overrides its usage at the query level.  For example, if `select_table` were configured to load from a join of multiple tables, using `with_polymorphic(Employee)` will limit the list of tables selected from to just the base table (as always, tables which don't get loaded in the first pass will be loaded on an as-needed basis).
 
 ##### Single Table Inheritance
 
