@@ -1617,7 +1617,8 @@ class ResultProxy(object):
         """Fetch all rows, just like DB-API ``cursor.fetchall()``."""
 
         try:
-            l = [self._process_row(self, row) for row in self._fetchall_impl()]
+            process_row = self._process_row
+            l = [process_row(self, row) for row in self._fetchall_impl()]
             self.close()
             return l
         except Exception, e:
@@ -1628,7 +1629,8 @@ class ResultProxy(object):
         """Fetch many rows, just like DB-API ``cursor.fetchmany(size=cursor.arraysize)``."""
 
         try:
-            l = [self._process_row(self, row) for row in self._fetchmany_impl(size)]
+            process_row = self._process_row
+            l = [process_row(self, row) for row in self._fetchmany_impl(size)]
             if len(l) == 0:
                 self.close()
             return l
