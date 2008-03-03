@@ -255,7 +255,7 @@ class PropertyLoader(StrategizedProperty):
             
         def __eq__(self, other):
             if other is None:
-                if self.prop.uselist:
+                if self.prop.direction == sync.ONETOMANY:
                     return ~sql.exists([1], self.prop.primaryjoin)
                 else:
                     return self.prop._optimized_compare(None)
@@ -341,6 +341,14 @@ class PropertyLoader(StrategizedProperty):
             return clause
 
         def __ne__(self, other):
+            if other is None:
+                if self.prop.direction == sync.MANYTOONE:
+                    return sql.or_(*[x!=None for x in self.prop.foreign_keys])
+                elif self.prop.uselist:
+                    return self.any()
+                else:
+                    return self.has()
+
             if self.prop.uselist and not hasattr(other, '__iter__'):
                 raise exceptions.InvalidRequestError("Can only compare a collection to an iterable object")
             

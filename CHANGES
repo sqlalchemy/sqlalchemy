@@ -26,6 +26,10 @@ CHANGES
       inside the EXISTS is aliased on the "remote" side to
       distinguish it from the parent table.
     
+    - repaired behavior of == and != operators at the relation()
+      level when compared against NULL for one-to-one 
+      relations [ticket:985]
+      
     - fixed bug whereby session.expire() attributes were not
       loading on an polymorphically-mapped instance mapped 
       by a select_table mapper.

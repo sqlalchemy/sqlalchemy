@@ -18,7 +18,10 @@ class QueryTest(FixtureTest):
             'addresses':relation(Address, backref='user'),
             'orders':relation(Order, backref='user'), # o2m, m2o
         })
-        mapper(Address, addresses)
+        mapper(Address, addresses, properties={
+            'dingaling':relation(Dingaling, uselist=False, backref="address")  #o2o
+        })
+        mapper(Dingaling, dingalings)
         mapper(Order, orders, properties={
             'items':relation(Item, secondary=order_items, order_by=items.c.id),  #m2m
             'address':relation(Address),  # m2o
@@ -372,6 +375,10 @@ class FilterTest(QueryTest):
 
         assert [Order(id=5)] == sess.query(Order).filter(Order.address == None).all()
 
+        # o2o
+        dingaling = sess.query(Dingaling).get(2)
+        assert [Address(id=5)] == sess.query(Address).filter(Address.dingaling==dingaling).all()
+
     def test_filter_by(self):
         sess = create_session()
         user = sess.query(User).get(8)
@@ -382,7 +389,22 @@ class FilterTest(QueryTest):
 
         # one to many generates WHERE NOT EXISTS
         assert [User(name='chuck')] == sess.query(User).filter_by(addresses = None).all()
-
+    
+    def test_none_comparison(self):
+        sess = create_session()
+        
+        # o2o
+        self.assertEquals([Address(id=1), Address(id=3), Address(id=4)], sess.query(Address).filter(Address.dingaling==None).all())
+        self.assertEquals([Address(id=2), Address(id=5)], sess.query(Address).filter(Address.dingaling != None).all())
+        
+        # m2o
+        self.assertEquals([Order(id=5)], sess.query(Order).filter(Order.address==None).all())
+        self.assertEquals([Order(id=1), Order(id=2), Order(id=3), Order(id=4)], sess.query(Order).filter(Order.address!=None).all())
+        
+        # o2m
+        self.assertEquals([User(id=10)], sess.query(User).filter(User.addresses==None).all())
+        self.assertEquals([User(id=7),User(id=8),User(id=9)], sess.query(User).filter(User.addresses!=None).all())
+        
 class AggregateTest(QueryTest):
     def test_sum(self):
         sess = create_session()
