@@ -1232,6 +1232,64 @@ class SelfReferentialTest(ORMTest):
         self.assertEquals(sess.query(Node).filter(Node.parent==n12).all(), [Node(data='n121'),Node(data='n122'),Node(data='n123')])
         
         self.assertEquals(sess.query(Node).filter(Node.parent != n12).all(), [Node(data='n1'), Node(data='n11'), Node(data='n12'), Node(data='n13')])
+
+class SelfReferentialM2MTest(ORMTest):
+    keep_mappers = True
+    keep_data = True
+    
+    def define_tables(self, metadata):
+        global nodes, node_to_nodes
+        nodes = Table('nodes', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+            
+        node_to_nodes =Table('node_to_nodes', metadata,
+            Column('left_node_id', Integer, ForeignKey('nodes.id'),primary_key=True),
+            Column('right_node_id', Integer, ForeignKey('nodes.id'),primary_key=True),
+            )
+    
+    def insert_data(self):
+        global Node
+        
+        class Node(Base):
+            pass
+
+        mapper(Node, nodes, properties={
+            'children':relation(Node, lazy=True, secondary=node_to_nodes,
+                primaryjoin=nodes.c.id==node_to_nodes.c.left_node_id,
+                secondaryjoin=nodes.c.id==node_to_nodes.c.right_node_id,
+            )
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n2 = Node(data='n2')
+        n3 = Node(data='n3')
+        n4 = Node(data='n4')
+        n5 = Node(data='n5')
+        n6 = Node(data='n6')
+        n7 = Node(data='n7')
+        
+        n1.children = [n2, n3, n4]
+        n2.children = [n3, n6, n7]
+        n3.children = [n5, n4]
+
+        sess.save(n1)
+        sess.save(n2)
+        sess.save(n3)
+        sess.save(n4)
+        sess.flush()
+        sess.close()
+
+    def test_any(self):
+        sess = create_session()
+        self.assertEquals(sess.query(Node).filter(Node.children.any(Node.data=='n3')).all(), [Node(data='n1'), Node(data='n2')])
+
+    def test_contains(self):
+        sess = create_session()
+        n4 = sess.query(Node).filter_by(data='n4').one()
+
+        self.assertEquals(sess.query(Node).filter(Node.children.contains(n4)).order_by(Node.data).all(), [Node(data='n1'), Node(data='n3')])
+        self.assertEquals(sess.query(Node).filter(not_(Node.children.contains(n4))).order_by(Node.data).all(), [Node(data='n2'), Node(data='n4'), Node(data='n5'), Node(data='n6'), Node(data='n7')])
         
 class ExternalColumnsTest(QueryTest):
     keep_mappers = False

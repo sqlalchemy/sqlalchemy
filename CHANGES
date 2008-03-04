@@ -24,10 +24,10 @@ CHANGES
       [ticket:986]
       
 - orm
-    - any(), has(), contains(), attribute level == and != now
-      work properly with self-referential relations - the clause
-      inside the EXISTS is aliased on the "remote" side to
-      distinguish it from the parent table.
+    - any(), has(), contains(), ~contains(), attribute level ==
+      and != now work properly with self-referential relations -
+      the clause inside the EXISTS is aliased on the "remote"
+      side to distinguish it from the parent table.
     
     - repaired behavior of == and != operators at the relation()
       level when compared against NULL for one-to-one 

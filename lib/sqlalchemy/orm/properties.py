@@ -334,12 +334,15 @@ class PropertyLoader(StrategizedProperty):
             clause = self.prop._optimized_compare(other)
 
             if self.prop.secondaryjoin:
-                j = self.prop.primaryjoin
-                j = j & self.prop.secondaryjoin
-                clause.negation_clause = ~sql.exists([1], j & sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(other))]))
+                clause.negation_clause = self._negated_contains_or_equals(other)
 
             return clause
 
+        def _negated_contains_or_equals(self, other):
+            criterion = sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(other))])
+            j, criterion, from_obj = self._join_and_criterion(criterion)
+            return ~sql.exists([1], j & criterion, from_obj=from_obj)
+            
         def __ne__(self, other):
             if other is None:
                 if self.prop.direction == sync.MANYTOONE:
@@ -351,11 +354,8 @@ class PropertyLoader(StrategizedProperty):
 
             if self.prop.uselist and not hasattr(other, '__iter__'):
                 raise exceptions.InvalidRequestError("Can only compare a collection to an iterable object")
-            
-            criterion = sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(other))])
-            j, criterion, from_obj = self._join_and_criterion(criterion)
 
-            return ~sql.exists([1], j & criterion, from_obj=from_obj)
+            return self._negated_contains_or_equals(other)
 
     def compare(self, op, value, value_is_parent=False):
         if op == operators.eq:
