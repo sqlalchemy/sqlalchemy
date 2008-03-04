@@ -466,7 +466,7 @@ Things to note above:
 
   * When using a transactional session, either a `rollback()` or a `close()` call **is required** when an error is raised by `flush()` or `commit()`.  The `flush()` error condition will issue a ROLLBACK to the database automatically, but the state of the `Session` itself remains in an "undefined" state until the user decides whether to rollback or close.
   * The `commit()` call unconditionally issues a `flush()`.  Particularly when using `transactional=True` in conjunction with `autoflush=True`, explicit `flush()` calls are usually not needed.
-  
+
 Alternatively, a transaction can be begun explicitly using `begin()`:
 
     {python}
