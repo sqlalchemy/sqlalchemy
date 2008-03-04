@@ -117,9 +117,8 @@ The `Connection` object represents an actively checked out DBAPI connection reso
 So the INSERT statement was now issued to the database.  Although we got positional "qmark" bind parameters instead of "named" bind parameters in the output.  How come ?  Because when executed, the `Connection` used the SQLite **dialect** to help generate the statement; when we use the `str()` function, the statement isn't aware of this dialect, and falls back onto a default which uses named parameters. We can view this manually as follows:
 
     {python}
-    >>> from sqlalchemy.databases.sqlite import SQLiteDialect
-    >>> compiled = ins.compile(dialect=SQLiteDialect())
-    >>> str(compiled)
+    >>> ins.bind = engine
+    >>> str(ins)
     'INSERT INTO users (name, fullname) VALUES (?, ?)'
 
 What about the `result` variable we got when we called `execute()` ?  As the SQLAlchemy `Connection` object references a DBAPI connection, the result, known as a `ResultProxy` object, is analogous to the DBAPI cursor object.  In the case of an INSERT, we can get important information from it, such as the primary key values which were generated from our statement:
@@ -365,11 +364,10 @@ Interestingly, the type of the `Column` is important !  If we use `+` with two s
 Where `||` is the string concatenation operator used on most databases.  But not all of them.  MySQL users, fear not:
 
     {python}
-    >>> from sqlalchemy.databases.mysql import MySQLDialect
-    >>> print (users.c.name + users.c.fullname).compile(dialect=MySQLDialect())
+    >>> print (users.c.name + users.c.fullname).compile(bind=create_engine('mysql://'))
     concat(users.name, users.fullname)
 
-The above illustrates the SQL that's generated for an `Engine` that's connected to a MySQL database (note that the `Dialect` is normally created behind the scenes; we created one above just to illustrate without using an engine).
+The above illustrates the SQL that's generated for an `Engine` that's connected to a MySQL database; the `||` operator now compiles as MySQL's `concat()` function.
 
 If you have come across an operator which really isn't available, you can always use the `op()` method; this generates whatever operator you need:
 

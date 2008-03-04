@@ -23,6 +23,9 @@ CHANGES
     - fixed bug which was preventing UNIONS from being cloneable,
       [ticket:986]
       
+    - added "bind" keyword argument to insert(), update(), delete();
+      .bind property is settable on those as well as select().
+      
 - orm
     - any(), has(), contains(), ~contains(), attribute level ==
       and != now work properly with self-referential relations -

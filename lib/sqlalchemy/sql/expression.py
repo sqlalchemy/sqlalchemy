@@ -2981,13 +2981,17 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                 yield t
 
     def bind(self):
+        if self._bind:
+            return self._bind
         for s in self.selects:
             e = s.bind
             if e:
                 return e
         else:
             return None
-    bind = property(bind)
+    def _set_bind(self, bind):
+        self._bind = bind
+    bind = property(bind, _set_bind)
 
 class Select(_SelectBaseMixin, FromClause):
     """Represents a ``SELECT`` statement.
@@ -3437,7 +3441,9 @@ class Select(_SelectBaseMixin, FromClause):
                 self._bind = e
                 return e
         return None
-    bind = property(bind)
+    def _set_bind(self, bind):
+        self._bind = bind
+    bind = property(bind, _set_bind)
 
 class _UpdateBase(ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
@@ -3462,11 +3468,15 @@ class _UpdateBase(ClauseElement):
             return parameters
 
     def bind(self):
-        return self.table.bind
-    bind = property(bind)
+        return self._bind or self.table.bind
+        
+    def _set_bind(self, bind):
+        self._bind = bind
+    bind = property(bind, _set_bind)
 
 class Insert(_UpdateBase):
-    def __init__(self, table, values=None, inline=False, **kwargs):
+    def __init__(self, table, values=None, inline=False, bind=None, **kwargs):
+        self._bind = bind
         self.table = table
         self.select = None
         self.inline=inline
@@ -3495,7 +3505,8 @@ class Insert(_UpdateBase):
         return u
 
 class Update(_UpdateBase):
-    def __init__(self, table, whereclause, values=None, inline=False, **kwargs):
+    def __init__(self, table, whereclause, values=None, inline=False, bind=None, **kwargs):
+        self._bind = bind
         self.table = table
         if whereclause:
             self._whereclause = _literal_as_text(whereclause)
@@ -3539,7 +3550,8 @@ class Update(_UpdateBase):
         return u
 
 class Delete(_UpdateBase):
-    def __init__(self, table, whereclause):
+    def __init__(self, table, whereclause, bind=None):
+        self._bind = bind
         self.table = table
         if whereclause:
             self._whereclause = _literal_as_text(whereclause)
