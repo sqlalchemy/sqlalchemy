@@ -6,24 +6,25 @@
 
 """The schema module provides the building blocks for database metadata.
 
-Each element within this module describes a database entity
-which can be created and dropped, or is otherwise part of such an entity.
-Examples include tables, columns, sequences, and indexes.
+Each element within this module describes a database entity which can be
+created and dropped, or is otherwise part of such an entity.  Examples include
+tables, columns, sequences, and indexes.
 
-All entities are subclasses of [sqlalchemy.schema#SchemaItem], and as
-defined in this module they are intended to be agnostic of any
-vendor-specific constructs.
+All entities are subclasses of [sqlalchemy.schema#SchemaItem], and as defined
+in this module they are intended to be agnostic of any vendor-specific
+constructs.
 
-A collection of entities are grouped into a unit called [sqlalchemy.schema#MetaData].
-MetaData serves as a logical grouping of schema elements, and can also
-be associated with an actual database connection such that operations
-involving the contained elements can contact the database as needed.
+A collection of entities are grouped into a unit called
+[sqlalchemy.schema#MetaData].  MetaData serves as a logical grouping of schema
+elements, and can also be associated with an actual database connection such
+that operations involving the contained elements can contact the database as
+needed.
 
-Two of the elements here also build upon their "syntactic" counterparts,
-which are defined in [sqlalchemy.sql.expression#], specifically [sqlalchemy.schema#Table]
-and [sqlalchemy.schema#Column].  Since these objects are part of the
-SQL expression language, they are usable as components in SQL expressions.
-"""
+Two of the elements here also build upon their "syntactic" counterparts, which
+are defined in [sqlalchemy.sql.expression#], specifically
+[sqlalchemy.schema#Table] and [sqlalchemy.schema#Column].  Since these objects
+are part of the SQL expression language, they are usable as components in SQL
+expressions.  """
 
 import re, inspect
 from sqlalchemy import types, exceptions, util, databases
@@ -94,13 +95,17 @@ class _TableSingleton(expression._FigureVisitName):
         try:
             table = metadata.tables[key]
             if not useexisting and table._cant_override(*args, **kwargs):
-                raise exceptions.InvalidRequestError("Table '%s' is already defined for this MetaData instance.  Specify 'useexisting=True' to redefine options and columns on an existing Table object." % key)
+                raise exceptions.InvalidRequestError(
+                    "Table '%s' is already defined for this MetaData instance.  "
+                    "Specify 'useexisting=True' to redefine options and "
+                    "columns on an existing Table object." % key)
             else:
                 table._init_existing(*args, **kwargs)
             return table
         except KeyError:
             if mustexist:
-                raise exceptions.InvalidRequestError("Table '%s' not defined" % (key))
+                raise exceptions.InvalidRequestError(
+                    "Table '%s' not defined" % (key))
             try:
                 return type.__call__(self, name, metadata, *args, **kwargs)
             except:
@@ -119,18 +124,17 @@ class Table(SchemaItem, expression.TableClause):
     def __init__(self, name, metadata, *args, **kwargs):
         """Construct a Table.
 
-        Table objects can be constructed directly.  Arguments
-        are:
+        Table objects can be constructed directly.  Arguments are:
 
         name
-          The name of this table, exactly as it appears, or will
-          appear, in the database.
+          The name of this table, exactly as it appears, or will appear, in
+          the database.
 
-          This property, along with the *schema*, indicates the
-          *singleton identity* of this table.
+          This property, along with the *schema*, indicates the *singleton
+          identity* of this table.
 
-          Further tables constructed with the same name/schema
-          combination will return the same Table instance.
+          Further tables constructed with the same name/schema combination
+          will return the same Table instance.
 
         \*args
           Should contain a listing of the Column objects for this table.
@@ -139,60 +143,56 @@ class Table(SchemaItem, expression.TableClause):
           kwargs include:
 
           schema
-            The *schema name* for this table, which is
-            required if the table resides in a schema other than the
-            default selected schema for the engine's database
-            connection.  Defaults to ``None``.
+            The *schema name* for this table, which is required if the table
+            resides in a schema other than the default selected schema for the
+            engine's database connection.  Defaults to ``None``.
 
           autoload
-            Defaults to False: the Columns for this table should be
-            reflected from the database.  Usually there will be no
-            Column objects in the constructor if this property is set.
+            Defaults to False: the Columns for this table should be reflected
+            from the database.  Usually there will be no Column objects in the
+            constructor if this property is set.
 
           autoload_with
             if autoload==True, this is an optional Engine or Connection
-            instance to be used for the table reflection.  If ``None``,
-            the underlying MetaData's bound connectable will be used.
+            instance to be used for the table reflection.  If ``None``, the
+            underlying MetaData's bound connectable will be used.
 
           include_columns
-            A list of strings indicating a subset of columns to be
-            loaded via the ``autoload`` operation; table columns who
-            aren't present in this list will not be represented on the resulting
-            ``Table`` object.  Defaults to ``None`` which indicates all
-            columns should be reflected.
+            A list of strings indicating a subset of columns to be loaded via
+            the ``autoload`` operation; table columns who aren't present in
+            this list will not be represented on the resulting ``Table``
+            object.  Defaults to ``None`` which indicates all columns should
+            be reflected.
 
           info
-            Defaults to {}: A space to store application specific data;
-            this must be a dictionary.
+            Defaults to {}: A space to store application specific data; this
+            must be a dictionary.
 
           mustexist
-            Defaults to False: indicates that this Table must already
-            have been defined elsewhere in the application, else an
-            exception is raised.
+            Defaults to False: indicates that this Table must already have
+            been defined elsewhere in the application, else an exception is
+            raised.
 
           useexisting
-            Defaults to False: indicates that if this Table was
-            already defined elsewhere in the application, disregard
-            the rest of the constructor arguments.
+            Defaults to False: indicates that if this Table was already
+            defined elsewhere in the application, disregard the rest of the
+            constructor arguments.
 
           owner
-            Defaults to None: optional owning user of this table.
-            useful for databases such as Oracle to aid in table
-            reflection.
+            Defaults to None: optional owning user of this table.  useful for
+            databases such as Oracle to aid in table reflection.
 
           quote
-            Defaults to False: indicates that the Table identifier
-            must be properly escaped and quoted before being sent to
-            the database. This flag overrides all other quoting
-            behavior.
+            Defaults to False: indicates that the Table identifier must be
+            properly escaped and quoted before being sent to the
+            database. This flag overrides all other quoting behavior.
 
           quote_schema
-            Defaults to False: indicates that the Namespace identifier
-            must be properly escaped and quoted before being sent to
-            the database. This flag overrides all other quoting
-            behavior.
-
+            Defaults to False: indicates that the Namespace identifier must be
+            properly escaped and quoted before being sent to the
+            database. This flag overrides all other quoting behavior.
         """
+
         super(Table, self).__init__(name)
         self.metadata = metadata
         self.schema = kwargs.pop('schema', None)
@@ -223,38 +223,44 @@ class Table(SchemaItem, expression.TableClause):
             else:
                 _bind_or_error(metadata).reflecttable(self, include_columns=include_columns)
 
-        # initialize all the column, etc. objects.  done after
-        # reflection to allow user-overrides
+        # initialize all the column, etc. objects.  done after reflection to
+        # allow user-overrides
         self.__post_init(*args, **kwargs)
-    
+
     def _init_existing(self, *args, **kwargs):
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', None)
         schema = kwargs.pop('schema', None)
         if schema and schema != self.schema:
-            raise exceptions.ArgumentError("Can't change schema of existing table from '%s' to '%s'", (self.schema, schema))
+            raise exceptions.ArgumentError(
+                "Can't change schema of existing table from '%s' to '%s'",
+                (self.schema, schema))
         owner = kwargs.pop('owner', None)
         if owner:
             if not self.owner:
                 self.owner = owner
             elif owner != self.owner:
-                raise exceptions.ArgumentError("Can't change owner of existing table from '%s' to '%s'", (self.owner, owner))
-    
+                raise exceptions.ArgumentError(
+                    "Can't change owner of existing table from '%s' to '%s'",
+                    (self.owner, owner))
+
         include_columns = kwargs.pop('include_columns', None)
         if include_columns:
             for c in self.c:
                 if c.name not in include_columns:
                     self.c.remove(c)
         self.__post_init(*args, **kwargs)
-    
-    def _cant_override(self, *args, **kwargs):
-        """return True if the given arguments cannot be sent to a table that already exists.
-        
-        the 'useexisting' flag overrides this.
-        """
 
-        return bool(args) or bool(util.Set(kwargs).difference(['autoload', 'autoload_with', 'schema', 'owner']))
-        
+    def _cant_override(self, *args, **kwargs):
+        """Return True if any argument is not supported as an override.
+
+        Takes arguments that would be sent to Table.__init__, and returns
+        True if any of them would be disallowed if sent to an existing
+        Table singleton.
+        """
+        return bool(args) or bool(util.Set(kwargs).difference(
+            ['autoload', 'autoload_with', 'schema', 'owner']))
+
     def __post_init(self, *args, **kwargs):
         self.quote = kwargs.pop('quote', False)
         self.quote_schema = kwargs.pop('quote_schema', False)
@@ -267,13 +273,14 @@ class Table(SchemaItem, expression.TableClause):
         self.kwargs.update(kwargs)
 
         self._init_items(*args)
-        
+
     def key(self):
         return _get_table_key(self.name, self.schema)
     key = property(key)
 
     def _export_columns(self, columns=None):
-        # override FromClause's collection initialization logic; Table implements it differently
+        # override FromClause's collection initialization logic; Table
+        # implements it differently
         pass
 
     def _set_primary_key(self, pk):
@@ -342,7 +349,8 @@ class Table(SchemaItem, expression.TableClause):
 
     def get_children(self, column_collections=True, schema_visitor=False, **kwargs):
         if not schema_visitor:
-            return expression.TableClause.get_children(self, column_collections=column_collections, **kwargs)
+            return expression.TableClause.get_children(
+                self, column_collections=column_collections, **kwargs)
         else:
             if column_collections:
                 return [c for c in self.columns]
@@ -362,15 +370,15 @@ class Table(SchemaItem, expression.TableClause):
     def create(self, bind=None, checkfirst=False):
         """Issue a ``CREATE`` statement for this table.
 
-        See also ``metadata.create_all()``."""
-
+        See also ``metadata.create_all()``.
+        """
         self.metadata.create_all(bind=bind, checkfirst=checkfirst, tables=[self])
 
     def drop(self, bind=None, checkfirst=False):
         """Issue a ``DROP`` statement for this table.
 
-        See also ``metadata.drop_all()``."""
-
+        See also ``metadata.drop_all()``.
+        """
         self.metadata.drop_all(bind=bind, checkfirst=checkfirst, tables=[self])
 
     def tometadata(self, metadata, schema=None):
@@ -392,8 +400,8 @@ class Table(SchemaItem, expression.TableClause):
 class Column(SchemaItem, expression._ColumnClause):
     """Represent a column in a database table.
 
-    This is a subclass of ``expression.ColumnClause`` and represents an
-    actual existing table in the database, in a similar fashion as
+    This is a subclass of ``expression.ColumnClause`` and represents an actual
+    existing table in the database, in a similar fashion as
     ``TableClause``/``Table``.
     """
 
@@ -403,98 +411,90 @@ class Column(SchemaItem, expression._ColumnClause):
         Arguments are:
 
         name
-          The name of this column.  This should be the identical name
-          as it appears, or will appear, in the database.
+          The name of this column.  This should be the identical name as it
+          appears, or will appear, in the database.
 
         type\_
-          The ``TypeEngine`` for this column.  This can be any
-          subclass of ``types.AbstractType``, including the
-          database-agnostic types defined in the types module,
-          database-specific types defined within specific database
-          modules, or user-defined types. If the column contains a
-          ForeignKey, the type can also be None, in which case the
+          The ``TypeEngine`` for this column.  This can be any subclass of
+          ``types.AbstractType``, including the database-agnostic types
+          defined in the types module, database-specific types defined within
+          specific database modules, or user-defined types. If the column
+          contains a ForeignKey, the type can also be None, in which case the
           type assigned will be that of the referenced column.
 
         \*args
-          Constraint, ForeignKey, ColumnDefault and Sequence objects
-          should be added as list values.
+          Constraint, ForeignKey, ColumnDefault and Sequence objects should be
+          added as list values.
 
         \**kwargs
           Keyword arguments include:
 
           key
-            Defaults to None: an optional *alias name* for this column.
-            The column will then be identified everywhere in an
-            application, including the column list on its Table, by
-            this key, and not the given name.  Generated SQL, however,
-            will still reference the column by its actual name.
+            Defaults to None: an optional *alias name* for this column.  The
+            column will then be identified everywhere in an application,
+            including the column list on its Table, by this key, and not the
+            given name.  Generated SQL, however, will still reference the
+            column by its actual name.
 
           primary_key
-            Defaults to False: True if this column is a primary key
-            column.  Multiple columns can have this flag set to
-            specify composite primary keys.  As an alternative, the
-            primary key of a Table can be specified via an explicit
-            ``PrimaryKeyConstraint`` instance appended to the Table's
-            list of objects.
+            Defaults to False: True if this column is a primary key column.
+            Multiple columns can have this flag set to specify composite
+            primary keys.  As an alternative, the primary key of a Table can
+            be specified via an explicit ``PrimaryKeyConstraint`` instance
+            appended to the Table's list of objects.
 
           nullable
-            Defaults to True : True if this column should allow
-            nulls. True is the default unless this column is a primary
-            key column.
+            Defaults to True : True if this column should allow nulls. True is
+            the default unless this column is a primary key column.
 
           default
             Defaults to None: a scalar, Python callable, or ``ClauseElement``
-            representing the *default value* for this column, which will
-            be invoked upon insert if this column is not present in
-            the insert list or is given a value of None.  The default
-            expression will be converted into a ``ColumnDefault`` object
-            upon initialization.
+            representing the *default value* for this column, which will be
+            invoked upon insert if this column is not present in the insert
+            list or is given a value of None.  The default expression will be
+            converted into a ``ColumnDefault`` object upon initialization.
 
           _is_oid
-            Defaults to False: used internally to indicate that this
-            column is used as the quasi-hidden "oid" column
+            Defaults to False: used internally to indicate that this column is
+            used as the quasi-hidden "oid" column
 
           index
-            Defaults to False: indicates that this column is
-            indexed. The name of the index is autogenerated.  to
-            specify indexes with explicit names or indexes that
-            contain multiple columns, use the ``Index`` construct instead.
+            Defaults to False: indicates that this column is indexed. The name
+            of the index is autogenerated.  to specify indexes with explicit
+            names or indexes that contain multiple columns, use the ``Index``
+            construct instead.
 
           info
-            Defaults to {}: A space to store application specific data;
-            this must be a dictionary.
+            Defaults to {}: A space to store application specific data; this
+            must be a dictionary.
 
           unique
-            Defaults to False: indicates that this column contains a
-            unique constraint, or if `index` is True as well,
-            indicates that the Index should be created with the unique
-            flag.  To specify multiple columns in the constraint/index
-            or to specify an explicit name, use the
-            ``UniqueConstraint`` or ``Index`` constructs instead.
+            Defaults to False: indicates that this column contains a unique
+            constraint, or if `index` is True as well, indicates that the
+            Index should be created with the unique flag.  To specify multiple
+            columns in the constraint/index or to specify an explicit name,
+            use the ``UniqueConstraint`` or ``Index`` constructs instead.
 
           autoincrement
-            Defaults to True: indicates that integer-based primary key
-            columns should have autoincrementing behavior, if
-            supported by the underlying database.  This will affect
-            ``CREATE TABLE`` statements such that they will use the
-            databases *auto-incrementing* keyword (such as ``SERIAL``
-            for Postgres, ``AUTO_INCREMENT`` for Mysql) and will also
-            affect the behavior of some dialects during ``INSERT``
-            statement execution such that they will assume primary key
-            values are created in this manner.  If a ``Column`` has an
+            Defaults to True: indicates that integer-based primary key columns
+            should have autoincrementing behavior, if supported by the
+            underlying database.  This will affect ``CREATE TABLE`` statements
+            such that they will use the databases *auto-incrementing* keyword
+            (such as ``SERIAL`` for Postgres, ``AUTO_INCREMENT`` for Mysql)
+            and will also affect the behavior of some dialects during
+            ``INSERT`` statement execution such that they will assume primary
+            key values are created in this manner.  If a ``Column`` has an
             explicit ``ColumnDefault`` object (such as via the `default`
-            keyword, or a ``Sequence`` or ``PassiveDefault``), then
-            the value of `autoincrement` is ignored and is assumed to be
-            False.  `autoincrement` value is only significant for a
-            column with a type or subtype of Integer.
+            keyword, or a ``Sequence`` or ``PassiveDefault``), then the value
+            of `autoincrement` is ignored and is assumed to be False.
+            `autoincrement` value is only significant for a column with a type
+            or subtype of Integer.
 
           quote
-            Defaults to False: indicates that the Column identifier
-            must be properly escaped and quoted before being sent to
-            the database.  This flag should normally not be required
-            as dialects can auto-detect conditions where quoting is
-            required.
-
+            Defaults to False: indicates that the Column identifier must be
+            properly escaped and quoted before being sent to the database.
+            This flag should normally not be required as dialects can
+            auto-detect conditions where quoting is required.
         """
 
         super(Column, self).__init__(name, None, type_)
@@ -514,7 +514,8 @@ class Column(SchemaItem, expression._ColumnClause):
         if kwargs.get('info'):
             self._info = kwargs.pop('info')
         if kwargs:
-            raise exceptions.ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
+            raise exceptions.ArgumentError(
+                "Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
     def __str__(self):
         if self.table is not None:
@@ -530,7 +531,7 @@ class Column(SchemaItem, expression._ColumnClause):
     bind = property(bind)
 
     def references(self, column):
-        """return true if this column references the given column via foreign key"""
+        """Return True if this references the given column via a foreign key."""
         for fk in self.foreign_keys:
             if fk.column is column:
                 return True
@@ -573,18 +574,29 @@ class Column(SchemaItem, expression._ColumnClause):
         if self.primary_key:
             table.primary_key.replace(self)
         elif self.key in table.primary_key:
-            raise exceptions.ArgumentError("Trying to redefine primary-key column '%s' as a non-primary-key column on table '%s'" % (self.key, table.fullname))
+            raise exceptions.ArgumentError(
+                "Trying to redefine primary-key column '%s' as a "
+                "non-primary-key column on table '%s'" % (
+                self.key, table.fullname))
             # if we think this should not raise an error, we'd instead do this:
             #table.primary_key.remove(self)
         self.table = table
 
         if self.index:
             if isinstance(self.index, basestring):
-                raise exceptions.ArgumentError("The 'index' keyword argument on Column is boolean only.  To create indexes with a specific name, create an explicit Index object external to the Table.")
+                raise exceptions.ArgumentError(
+                    "The 'index' keyword argument on Column is boolean only. "
+                    "To create indexes with a specific name, create an "
+                    "explicit Index object external to the Table.")
             Index('ix_%s' % self._label, self, unique=self.unique)
         elif self.unique:
             if isinstance(self.unique, basestring):
-                raise exceptions.ArgumentError("The 'unique' keyword argument on Column is boolean only.  To create unique constraints or indexes with a specific name, append an explicit UniqueConstraint to the Table's list of elements, or create an explicit Index object external to the Table.")
+                raise exceptions.ArgumentError(
+                    "The 'unique' keyword argument on Column is boolean only. "
+                    "To create unique constraints or indexes with a specific "
+                    "name, append an explicit UniqueConstraint to the Table's "
+                    "list of elements, or create an explicit Index object "
+                    "external to the Table.")
             table.append_constraint(UniqueConstraint(self.key))
 
         toinit = list(self.args)
@@ -645,14 +657,14 @@ class ForeignKey(SchemaItem):
         """Construct a new ``ForeignKey`` object.
 
         column
-          Can be a ``schema.Column`` object representing the relationship,
-          or just its string name given as ``tablename.columnname``.
-          schema can be specified as ``schema.tablename.columnname``.
+          Can be a ``schema.Column`` object representing the relationship, or
+          just its string name given as ``tablename.columnname``.  schema can
+          be specified as ``schema.tablename.columnname``.
 
         constraint
           Is the owning ``ForeignKeyConstraint`` object, if any.  if not
-          given, then a ``ForeignKeyConstraint`` will be automatically
-          created and added to the parent table.
+          given, then a ``ForeignKeyConstraint`` will be automatically created
+          and added to the parent table.
         """
 
         self._colspec = column
@@ -677,57 +689,72 @@ class ForeignKey(SchemaItem):
         if isinstance(self._colspec, basestring):
             return self._colspec
         elif self._colspec.table.schema is not None:
-            return "%s.%s.%s" % (self._colspec.table.schema, self._colspec.table.name, self._colspec.key)
+            return "%s.%s.%s" % (self._colspec.table.schema,
+                                 self._colspec.table.name, self._colspec.key)
         else:
             return "%s.%s" % (self._colspec.table.name, self._colspec.key)
 
     def references(self, table):
-        """Return True if the given table is referenced by this ``ForeignKey``."""
+        """Return True if the given table is referenced by this ForeignKey."""
 
         return table.corresponding_column(self.column) is not None
 
     def get_referent(self, table):
-        """return the column in the given table referenced by this ``ForeignKey``, or
-        None if this ``ForeignKey`` does not reference the given table.
+        """Return the column in the given table referenced by this ForeignKey.
+
+        Returns None if this ``ForeignKey`` does not reference the given table.
         """
         return table.corresponding_column(self.column)
 
     def column(self):
-        # ForeignKey inits its remote column as late as possible, so tables can
-        # be defined without dependencies
+        # ForeignKey inits its remote column as late as possible, so tables
+        # can be defined without dependencies
         if self._column is None:
             if isinstance(self._colspec, basestring):
-                # locate the parent table this foreign key is attached to.
-                # we use the "original" column which our parent column represents
-                # (its a list of columns/other ColumnElements if the parent table is a UNION)
+                # locate the parent table this foreign key is attached to.  we
+                # use the "original" column which our parent column represents
+                # (its a list of columns/other ColumnElements if the parent
+                # table is a UNION)
                 for c in self.parent.base_columns:
                     if isinstance(c, Column):
                         parenttable = c.table
                         break
                 else:
-                    raise exceptions.ArgumentError("Parent column '%s' does not descend from a table-attached Column" % str(self.parent))
-                m = re.match(r"^(.+?)(?:\.(.+?))?(?:\.(.+?))?$", self._colspec, re.UNICODE)
+                    raise exceptions.ArgumentError(
+                        "Parent column '%s' does not descend from a "
+                        "table-attached Column" % str(self.parent))
+                m = re.match(r"^(.+?)(?:\.(.+?))?(?:\.(.+?))?$", self._colspec,
+                             re.UNICODE)
                 if m is None:
-                    raise exceptions.ArgumentError("Invalid foreign key column specification: " + self._colspec)
+                    raise exceptions.ArgumentError(
+                        "Invalid foreign key column specification: %s" %
+                        self._colspec)
                 if m.group(3) is None:
                     (tname, colname) = m.group(1, 2)
                     schema = None
                 else:
                     (schema,tname,colname) = m.group(1,2,3)
                 if _get_table_key(tname, schema) not in parenttable.metadata:
-                    raise exceptions.InvalidRequestError("Could not find table '%s' with which to generate a foreign key" % tname)
-                table = Table(tname, parenttable.metadata, mustexist=True, schema=schema)
+                    raise exceptions.InvalidRequestError(
+                        "Could not find table '%s' with which to generate a "
+                        "foreign key" % tname)
+                table = Table(tname, parenttable.metadata,
+                              mustexist=True, schema=schema)
                 try:
                     if colname is None:
-                        # colname is None in the case that ForeignKey argument was specified
-                        # as table name only, in which case we match the column name to the same
-                        # column on the parent.
+                        # colname is None in the case that ForeignKey argument
+                        # was specified as table name only, in which case we
+                        # match the column name to the same column on the
+                        # parent.
                         key = self.parent
                         self._column = table.c[self.parent.key]
                     else:
                         self._column = table.c[colname]
                 except KeyError, e:
-                    raise exceptions.ArgumentError("Could not create ForeignKey '%s' on table '%s': table '%s' has no column named '%s'" % (self._colspec, parenttable.name, table.name, str(e)))
+                    raise exceptions.ArgumentError(
+                        "Could not create ForeignKey '%s' on table '%s': "
+                        "table '%s' has no column named '%s'" % (
+                        self._colspec, parenttable.name, table.name, str(e)))
             else:
                 self._column = self._colspec
 
@@ -749,7 +776,10 @@ class ForeignKey(SchemaItem):
                     self.parent.table.constraints.remove(fk.constraint)
 
         if self.constraint is None and isinstance(self.parent.table, Table):
-            self.constraint = ForeignKeyConstraint([],[], use_alter=self.use_alter, name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, deferrable=self.deferrable, initially=self.initially)
+            self.constraint = ForeignKeyConstraint(
+                [], [], use_alter=self.use_alter, name=self.name,
+                onupdate=self.onupdate, ondelete=self.ondelete,
+                deferrable=self.deferrable, initially=self.initially)
             self.parent.table.append_constraint(self.constraint)
             self.constraint._append_fk(self)
 
@@ -792,8 +822,7 @@ class PassiveDefault(DefaultGenerator):
 class ColumnDefault(DefaultGenerator):
     """A plain default value on a column.
 
-    This could correspond to a constant, a callable function, or a SQL
-    clause.
+    This could correspond to a constant, a callable function, or a SQL clause.
     """
 
     def __init__(self, arg, **kwargs):
@@ -845,7 +874,7 @@ class ColumnDefault(DefaultGenerator):
         return "ColumnDefault(%s)" % repr(self.arg)
 
 class Sequence(DefaultGenerator):
-    """Represents a named sequence."""
+    """Represents a named database sequence."""
 
     def __init__(self, name, start=None, increment=None, schema=None,
                  optional=False, quote=False, **kwargs):
@@ -884,10 +913,10 @@ class Sequence(DefaultGenerator):
 
 
 class Constraint(SchemaItem):
-    """Represent a table-level ``Constraint`` such as a composite primary key, foreign key, or unique constraint.
+    """A table-level SQL constraint, such as a KEY.
 
-    Implements a hybrid of dict/setlike behavior with regards to the
-    list of underying columns.
+    Implements a hybrid of dict/setlike behavior with regards to the list of
+    underying columns.
     """
 
     def __init__(self, name=None, deferrable=None, initially=None):
@@ -934,7 +963,7 @@ class CheckConstraint(Constraint):
         return CheckConstraint(self.sqltext, name=self.name)
 
 class ForeignKeyConstraint(Constraint):
-    """Table-level foreign key constraint, represents a collection of ``ForeignKey`` objects."""
+    """A table-level, composite foreign key of one or more ForeignKey objects."""
 
     def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, use_alter=False, deferrable=None, initially=None):
         super(ForeignKeyConstraint, self).__init__(name, deferrable, initially)
@@ -1040,8 +1069,8 @@ class Index(SchemaItem):
           The name of the index
 
         \*columns
-          Columns to include in the index. All columns must belong to
-          the same table, and no column may appear more than once.
+          Columns to include in the index. All columns must belong to the same
+          table, and no column may appear more than once.
 
         \**kwargs
           Keyword arguments include:
@@ -1077,14 +1106,13 @@ class Index(SchemaItem):
             self._set_parent(column.table)
         elif column.table != self.table:
             # all columns muse be from same table
-            raise exceptions.ArgumentError("All index columns must be from same table. "
-                                "%s is from %s not %s" % (column,
-                                                          column.table,
-                                                          self.table))
+            raise exceptions.ArgumentError(
+                "All index columns must be from same table. "
+                "%s is from %s not %s" % (column, column.table, self.table))
         elif column.name in [ c.name for c in self.columns ]:
-            raise exceptions.ArgumentError("A column may not appear twice in the "
-                                "same index (%s already has column %s)"
-                                % (self.name, column))
+            raise exceptions.ArgumentError(
+                "A column may not appear twice in the "
+                "same index (%s already has column %s)" % (self.name, column))
         self.columns.append(column)
 
     def create(self, bind=None):
@@ -1110,14 +1138,12 @@ class Index(SchemaItem):
 class MetaData(SchemaItem):
     """A collection of Tables and their associated schema constructs.
 
-    Holds a collection of Tables and an optional binding to an
-    ``Engine`` or ``Connection``.  If bound, the
-    [sqlalchemy.schema#Table] objects in the collection and their
-    columns may participate in implicit SQL execution.
+    Holds a collection of Tables and an optional binding to an ``Engine`` or
+    ``Connection``.  If bound, the [sqlalchemy.schema#Table] objects in the
+    collection and their columns may participate in implicit SQL execution.
 
-    The ``bind`` property may be assigned to dynamically.  A common
-    pattern is to start unbound and then bind later when an engine is
-    available::
+    The ``bind`` property may be assigned to dynamically.  A common pattern is
+    to start unbound and then bind later when an engine is available::
 
       metadata = MetaData()
       # define tables
@@ -1126,8 +1152,8 @@ class MetaData(SchemaItem):
       # configuration file
       metadata.bind = an_engine
 
-    MetaData is a thread-safe object after tables have been explicitly
-    defined or loaded via reflection.
+    MetaData is a thread-safe object after tables have been explicitly defined
+    or loaded via reflection.
     """
 
     __visit_name__ = 'metadata'
@@ -1138,16 +1164,15 @@ class MetaData(SchemaItem):
         """Create a new MetaData object.
 
         bind
-          An Engine or Connection to bind to.  May also be a string or
-          URL instance, these are passed to create_engine() and this
-          MetaData will be bound to the resulting engine.
+          An Engine or Connection to bind to.  May also be a string or URL
+          instance, these are passed to create_engine() and this MetaData will
+          be bound to the resulting engine.
 
         reflect
           Optional, automatically load all tables from the bound database.
-          Defaults to False. ``bind`` is required when this option is
-          set.  For finer control over loaded tables, use the ``reflect``
-          method of ``MetaData``.
-
+          Defaults to False. ``bind`` is required when this option is set.
+          For finer control over loaded tables, use the ``reflect`` method of
+          ``MetaData``.
         """
 
         self.tables = {}
@@ -1185,10 +1210,10 @@ class MetaData(SchemaItem):
         Use ``metadata.bind = <engine>`` or ``metadata.bind = <url>``.
 
         bind
-          A string, ``URL``, ``Engine`` or ``Connection`` instance.  If
-          a string or ``URL``, will be passed to ``create_engine()`` along
-          with ``\**kwargs`` to produce the engine which to connect to.
-          Otherwise connects directly to the given ``Engine``.
+          A string, ``URL``, ``Engine`` or ``Connection`` instance.  If a
+          string or ``URL``, will be passed to ``create_engine()`` along with
+          ``\**kwargs`` to produce the engine which to connect to.  Otherwise
+          connects directly to the given ``Engine``.
         """
 
         global URL
@@ -1203,12 +1228,10 @@ class MetaData(SchemaItem):
     def bind(self):
         """An Engine or Connection to which this MetaData is bound.
 
-        This property may be assigned an ``Engine`` or
-        ``Connection``, or assigned a string or URL to
-        automatically create a basic ``Engine`` for this bind
-        with ``create_engine()``.
+        This property may be assigned an ``Engine`` or ``Connection``, or
+        assigned a string or URL to automatically create a basic ``Engine``
+        for this bind with ``create_engine()``.
         """
-
         return self._bind
 
     def _bind_to(self, bind):
@@ -1244,30 +1267,30 @@ class MetaData(SchemaItem):
         """Load all available table definitions from the database.
 
         Automatically creates ``Table`` entries in this ``MetaData`` for any
-        table available in the database but not yet present in the ``MetaData``.
-        May be called multiple times to pick up tables recently added to the
-        database, however no special action is taken if a table in this
-        ``MetaData`` no longer exists in the database.
+        table available in the database but not yet present in the
+        ``MetaData``.  May be called multiple times to pick up tables recently
+        added to the database, however no special action is taken if a table
+        in this ``MetaData`` no longer exists in the database.
 
         bind
-          A ``Connectable`` used to access the database; if None, uses
-          the existing bind on this ``MetaData``, if any.
+          A ``Connectable`` used to access the database; if None, uses the
+          existing bind on this ``MetaData``, if any.
 
         schema
           Optional, query and reflect tables from an alterate schema.
 
         only
-          Optional.  Load only a sub-set of available named tables.  May
-          be specified as a sequence of names or a callable.
+          Optional.  Load only a sub-set of available named tables.  May be
+          specified as a sequence of names or a callable.
 
           If a sequence of names is provided, only those tables will be
           reflected.  An error is raised if a table is requested but not
           available.  Named tables already present in this ``MetaData`` are
           ignored.
 
-          If a callable is provided, it will be used as a boolean predicate
-          to filter the list of potential table names.  The callable is
-          called with a table name and this ``MetaData`` instance as positional
+          If a callable is provided, it will be used as a boolean predicate to
+          filter the list of potential table names.  The callable is called
+          with a table name and this ``MetaData`` instance as positional
           arguments and should return a true value for any table to reflect.
         """
 
@@ -1344,16 +1367,20 @@ class MetaData(SchemaItem):
     def create_all(self, bind=None, tables=None, checkfirst=True):
         """Create all tables stored in this metadata.
 
-        This will conditionally create tables depending on if they do
-        not yet exist in the database.
+        Conditional by default, will not attempt to recreate tables already
+        present in the target database.
 
         bind
-          A ``Connectable`` used to access the database; if None, uses
-          the existing bind on this ``MetaData``, if any.
+          A ``Connectable`` used to access the database; if None, uses the
+          existing bind on this ``MetaData``, if any.
 
         tables
-          Optional list of ``Table`` objects, which is a subset of the
-          total tables in the ``MetaData`` (others are ignored).
+          Optional list of ``Table`` objects, which is a subset of the total
+          tables in the ``MetaData`` (others are ignored).
+
+        checkfirst
+          Defaults to True, don't issue CREATEs for tables already present
+          in the target database.
         """
 
         if bind is None:
@@ -1367,8 +1394,8 @@ class MetaData(SchemaItem):
     def drop_all(self, bind=None, tables=None, checkfirst=True):
         """Drop all tables stored in this metadata.
 
-        This will conditionally drop tables depending on if they
-        currently exist in the database.
+        Conditional by default, will not attempt to drop tables not present in
+        the target database.
 
         bind
           A ``Connectable`` used to access the database; if None, uses
@@ -1377,6 +1404,10 @@ class MetaData(SchemaItem):
         tables
           Optional list of ``Table`` objects, which is a subset of the
           total tables in the ``MetaData`` (others are ignored).
+
+        checkfirst
+          Defaults to True, don't issue CREATEs for tables already present
+          in the target database.
         """
 
         if bind is None:
@@ -1390,17 +1421,17 @@ class MetaData(SchemaItem):
 class ThreadLocalMetaData(MetaData):
     """A MetaData variant that presents a different ``bind`` in every thread.
 
-    Makes the ``bind`` property of the MetaData a thread-local value,
-    allowing this collection of tables to be bound to different ``Engine``
+    Makes the ``bind`` property of the MetaData a thread-local value, allowing
+    this collection of tables to be bound to different ``Engine``
     implementations or connections in each thread.
 
-    The ThreadLocalMetaData starts off bound to None in each thread.
-    Binds must be made explicitly by assigning to the ``bind`` property or
-    using ``connect()``.  You can also re-bind dynamically multiple times per
+    The ThreadLocalMetaData starts off bound to None in each thread.  Binds
+    must be made explicitly by assigning to the ``bind`` property or using
+    ``connect()``.  You can also re-bind dynamically multiple times per
     thread, just like a regular ``MetaData``.
 
-    Use this type of MetaData when your tables are present in more than
-    one database and you need to address them simultanesouly.
+    Use this type of MetaData when your tables are present in more than one
+    database and you need to address them simultanesouly.
     """
 
     __visit_name__ = 'metadata'
@@ -1419,10 +1450,10 @@ class ThreadLocalMetaData(MetaData):
         Use ``metadata.bind=<engine>`` or ``metadata.bind=<url>``.
 
         bind
-          A string, ``URL``, ``Engine`` or ``Connection`` instance.  If
-          a string or ``URL``, will be passed to ``create_engine()`` along
-          with ``\**kwargs`` to produce the engine which to connect to.
-          Otherwise connects directly to the given ``Engine``.
+          A string, ``URL``, ``Engine`` or ``Connection`` instance.  If a
+          string or ``URL``, will be passed to ``create_engine()`` along with
+          ``\**kwargs`` to produce the engine which to connect to.  Otherwise
+          connects directly to the given ``Engine``.
         """
 
         global URL
@@ -1441,9 +1472,9 @@ class ThreadLocalMetaData(MetaData):
     def bind(self):
         """The bound Engine or Connection for this thread.
 
-        This property may be assigned an Engine or Connection,
-        or assigned a string or URL to automatically create a
-        basic Engine for this bind with ``create_engine()``."""
+        This property may be assigned an Engine or Connection, or assigned a
+        string or URL to automatically create a basic Engine for this bind
+        with ``create_engine()``."""
 
         return getattr(self.context, '_engine', None)
 
@@ -1476,7 +1507,7 @@ class ThreadLocalMetaData(MetaData):
                 self.context._engine is not None)
 
     def dispose(self):
-        """Dispose any and all ``Engines`` to which this ``ThreadLocalMetaData`` has been connected."""
+        """Dispose all bound engines, in all thread contexts."""
 
         for e in self.__engines.values():
             if hasattr(e, 'dispose'):
@@ -1513,8 +1544,8 @@ class DDL(object):
         """Create a DDL statement.
 
         statement
-          A string or unicode string to be executed.  Statements will
-          be processed with Python's string formatting operator.  See the
+          A string or unicode string to be executed.  Statements will be
+          processed with Python's string formatting operator.  See the
           ``context`` argument and the ``execute_at`` method.
 
           A literal '%' in a statement must be escaped as '%%'.
@@ -1531,19 +1562,18 @@ class DDL(object):
           If a callable, it will be invoked with three positional arguments:
 
             event
-              The name of the event that has triggered this DDL, such
-              as 'after-create'  Will be None if the DDL is executed
-              explicitly.
+              The name of the event that has triggered this DDL, such as
+              'after-create' Will be None if the DDL is executed explicitly.
 
             schema_item
-              A SchemaItem instance, such as ``Table`` or ``MetaData``. May
-              be None if the DDL is executed explicitly.
+              A SchemaItem instance, such as ``Table`` or ``MetaData``. May be
+              None if the DDL is executed explicitly.
 
             connection
               The ``Connection`` being used for DDL execution
 
-          If the callable returns a true value, the DDL statement will
-          be executed.
+          If the callable returns a true value, the DDL statement will be
+          executed.
 
         context
           Optional dictionary, defaults to None.  These values will be
