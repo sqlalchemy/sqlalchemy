@@ -1550,7 +1550,7 @@ class DDL(object):
 
           A literal '%' in a statement must be escaped as '%%'.
 
-          Bind parameters are not available in DDL statements.
+          SQL bind parameters are not available in DDL statements.
 
         on
           Optional filtering criteria.  May be a string or a callable
@@ -1578,6 +1578,10 @@ class DDL(object):
         context
           Optional dictionary, defaults to None.  These values will be
           available for use in string substitutions on the DDL statement.
+
+        bind
+          Optional. A ``Connectable``, used by default when ``execute()``
+          is invoked without a bind argument.
         """
 
         if not isinstance(statement, basestring):
@@ -1626,7 +1630,10 @@ class DDL(object):
         """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
 
         Links this ``DDL`` to a ``Table`` or ``MetaData`` instance, executing
-        it when that schema item is created or dropped.
+        it when that schema item is created or dropped.  The DDL statement
+        will be executed using the same Connection and transactional context
+        as the Table create/drop itself.  The ``.bind`` property of this
+        statement is ignored.
 
         event
           One of the events defined in the schema item's ``.ddl_events``;
