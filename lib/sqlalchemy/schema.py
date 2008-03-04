@@ -1747,7 +1747,7 @@ def _bind_or_error(schemaitem):
             item = '%s %r' % (name, label)
         else:
             item = name
-        if isinstance(schemaitem, MetaData):
+        if isinstance(schemaitem, (MetaData, DDL)):
             bindable = "the %s's .bind" % name
         else:
             bindable = "this %s's .metadata.bind" % name
