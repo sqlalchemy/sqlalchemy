@@ -121,7 +121,9 @@ class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         self.mutable = mutable
 
     def copy_value(self, value):
-        if self.mutable:
+        if value is None:
+            return None
+        elif self.mutable:
             return list(value)
         else:
             return value
