@@ -1,5 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
+from sqlalchemy import exceptions
 from sqlalchemy.schema import DDL
 import sqlalchemy
 from testlib import *
@@ -287,6 +288,21 @@ class DDLExecutionTest(TestBase):
                    'ddl.execute(cx, table)'):
             r = eval(py)
             assert list(r) == [(1,)], py
+
+        for py in ('ddl.execute()',
+                   'ddl.execute(schema_item=table)'):
+            try:
+                r = eval(py)
+                assert False
+            except exceptions.UnboundExecutionError:
+                pass
+
+        for bind in engine, cx:
+            ddl.bind = bind
+            for py in ('ddl.execute()',
+                       'ddl.execute(schema_item=table)'):
+                r = eval(py)
+                assert list(r) == [(1,)], py
 
 class DDLTest(TestBase):
     def mock_engine(self):

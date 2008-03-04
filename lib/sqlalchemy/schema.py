@@ -1540,7 +1540,7 @@ class DDL(object):
       connection.execute(drop_spow)
     """
 
-    def __init__(self, statement, on=None, context=None):
+    def __init__(self, statement, on=None, context=None, bind=None):
         """Create a DDL statement.
 
         statement
@@ -1593,16 +1593,19 @@ class DDL(object):
         self.statement = statement
         self.on = on
         self.context = context or {}
+        self._bind = bind
 
-    def execute(self, bind, schema_item=None):
+    def execute(self, bind=None, schema_item=None):
         """Execute this DDL immediately.
 
         Executes the DDL statement in isolation using the supplied
-        ``Connectable``.  If the DDL has a conditional ``on`` criteria, it
+        ``Connectable`` or ``Connectable`` assigned to the ``.bind`` property,
+        if not supplied.  If the DDL has a conditional ``on`` criteria, it
         will be invoked with None as the event.
 
         bind
-          An Engine or Connection
+          Optional, an ``Engine`` or ``Connection``.  If not supplied, a
+          valid ``Connectable`` must be present in the ``.bind`` property.
 
         schema_item
           Optional, defaults to None.  Will be passed to the ``on`` callable
@@ -1610,7 +1613,9 @@ class DDL(object):
           statement. See ``execute_at`` for more information.
         """
 
-        # no bind params are supported
+        if bind is None:
+            bind = _bind_or_error(self)
+        # no SQL bind params are supported
         if self._should_execute(None, schema_item, bind):
             executable = expression.text(self._expand(schema_item, bind))
             return bind.execute(executable)
@@ -1662,6 +1667,29 @@ class DDL(object):
                 (', '.join(schema_item.ddl_events), event))
         schema_item.ddl_listeners[event].append(self)
         return self
+
+    def bind(self):
+        """An Engine or Connection to which this DDL is bound.
+
+        This property may be assigned an ``Engine`` or ``Connection``, or
+        assigned a string or URL to automatically create a basic ``Engine``
+        for this bind with ``create_engine()``.
+        """
+        return self._bind
+
+    def _bind_to(self, bind):
+        """Bind this MetaData to an Engine, Connection, string or URL."""
+
+        global URL
+        if URL is None:
+            from sqlalchemy.engine.url import URL
+
+        if isinstance(bind, (basestring, URL)):
+            from sqlalchemy import create_engine
+            self._bind = create_engine(bind)
+        else:
+            self._bind = bind
+    bind = property(bind, _bind_to)
 
     def __call__(self, event, schema_item, bind):
         """Execute the DDL as a ddl_listener."""
