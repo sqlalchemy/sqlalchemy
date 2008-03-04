@@ -224,7 +224,29 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         print str(s5)
         assert str(s5) == s5_assert
         assert str(s4) == s4_assert
+    
+    def test_union(self):
+        u = union(t1.select(), t2.select())
+        u2 = ClauseVisitor().traverse(u, clone=True)
+        assert str(u) == str(u2)
+        assert [str(c) for c in u2.c] == [str(c) for c in u.c]
 
+        u = union(t1.select(), t2.select())
+        cols = [str(c) for c in u.c]
+        u2 = ClauseVisitor().traverse(u, clone=True)
+        assert str(u) == str(u2)
+        assert [str(c) for c in u2.c] == cols
+        
+        s1 = select([t1], t1.c.col1 == bindparam('id_param'))
+        s2 = select([t2])
+        u = union(s1, s2)
+        
+        u2 = u.params(id_param=7)
+        u3 = u.params(id_param=10)
+        assert str(u) == str(u2) == str(u3)
+        assert u2.compile().params == {'id_param':7}
+        assert u3.compile().params == {'id_param':10}
+        
     def test_binds(self):
         """test that unique bindparams change their name upon clone() to prevent conflicts"""
 

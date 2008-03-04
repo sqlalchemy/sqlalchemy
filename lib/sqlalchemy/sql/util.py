@@ -152,6 +152,12 @@ class AbstractClauseProcessor(object):
 
     This class implements its own visit-and-copy strategy but maintains the
     same public interface as visitors.ClauseVisitor.
+    
+    The convert_element() method receives the *un-copied* version of each element.
+    It can return a new element or None for no change.  If None, the element
+    will be cloned afterwards and added to the new structure.  Note this is the
+    opposite behavior of visitors.traverse(clone=True), where visitors receive
+    the cloned element so that it can be mutated.
     """
 
     __traverse_options__ = {'column_collections':False}

@@ -19,6 +19,9 @@ CHANGES
     - implemented two-phase API for "threadlocal" engine, 
       via engine.begin_twophase(), engine.prepare()
       [ticket:936]
+
+    - fixed bug which was preventing UNIONS from being cloneable,
+      [ticket:986]
       
 - orm
     - any(), has(), contains(), attribute level == and != now

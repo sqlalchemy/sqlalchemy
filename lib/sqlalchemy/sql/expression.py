@@ -2925,8 +2925,6 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
             else:
                 self.selects.append(s)
 
-        self._col_map = {}
-
         _SelectBaseMixin.__init__(self, **kwargs)
 
         for s in self.selects:
@@ -2942,11 +2940,15 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                 yield c
 
     def _proxy_column(self, column):
-        selectable = column.table
-        col_ordering = self._col_map.get(selectable, None)
-        if col_ordering is None:
-            self._col_map[selectable] = col_ordering = []
-
+        if not hasattr(self, '_col_map'):
+            self._col_map = dict([(s, []) for s in self.selects])
+            for s in self.selects:
+                for c in s.c + [s.oid_column]:
+                    self._col_map[c] = s
+        
+        selectable = self._col_map[column]
+        col_ordering = self._col_map[selectable]
+        
         if selectable is self.selects[0]:
             if self.use_labels:
                 col = column._make_proxy(self, name=column._label)
@@ -2962,8 +2964,9 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
     def _copy_internals(self, clone=_clone):
         self._clone_from_clause()
-        self._col_map = {}
         self.selects = [clone(s) for s in self.selects]
+        if hasattr(self, '_col_map'):
+            del self._col_map
         for attr in ('_order_by_clause', '_group_by_clause'):
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr)))
