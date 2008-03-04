@@ -99,6 +99,10 @@ CHANGES
 
     - postgres TIMESTAMP renders correctly [ticket:981]
 
+    - postgres PGArray is a "mutable" type by default;
+      when used with the ORM, mutable-style equality/
+      copy-on-write techniques are used to test for changes.
+      
 0.4.3
 ------
 - sql

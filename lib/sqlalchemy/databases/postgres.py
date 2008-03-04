@@ -113,11 +113,24 @@ class PGBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
 
-class PGArray(sqltypes.Concatenable, sqltypes.TypeEngine):
-    def __init__(self, item_type):
+class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
+    def __init__(self, item_type, mutable=True):
         if isinstance(item_type, type):
             item_type = item_type()
         self.item_type = item_type
+        self.mutable = mutable
+
+    def copy_value(self, value):
+        if self.mutable:
+            return list(value)
+        else:
+            return value
+
+    def compare_values(self, x, y):
+        return x == y
+
+    def is_mutable(self):
+        return self.mutable
 
     def dialect_impl(self, dialect, **kwargs):
         impl = self.__class__.__new__(self.__class__)
