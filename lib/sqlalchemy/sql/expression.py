@@ -1001,11 +1001,11 @@ class ClauseElement(object):
         e = self.bind
         if e is None:
             label = getattr(self, 'description', self.__class__.__name__)
-            msg = ('This %s is not bound to an Engine or Connection.  '
-                   'Execution can not proceed without a database to execute '
-                   'against.  Either execute with an explicit connection or '
-                   'bind the MetaData of the underlying tables to enable '
-                   'implicit execution.') % label
+            msg = ('This %s is not bound and does not support direct '
+                   'execution. Supply this statement to a Connection or '
+                   'Engine for execution. Or, assign a bind to the statement '
+                   'or the Metadata of its underlying tables to enable '
+                   'implicit execution via this method.' % label)
             raise exceptions.UnboundExecutionError(msg)
         return e.execute_clauseelement(self, multiparams, params)
 
