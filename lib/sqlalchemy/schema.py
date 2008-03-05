@@ -644,27 +644,53 @@ class Column(SchemaItem, expression._ColumnClause):
 
 
 class ForeignKey(SchemaItem):
-    """Defines a column-level ``ForeignKey`` constraint between two columns.
+    """Defines a column-level FOREIGN KEY constraint between two columns.
 
-    ``ForeignKey`` is specified as an argument to a Column object.
+    ``ForeignKey`` is specified as an argument to a ``Column`` object.
 
-    One or more ``ForeignKey`` objects are used within a
-    ``ForeignKeyConstraint`` object which represents the table-level
-    constraint definition.
+    For a composite (multiple column) FOREIGN KEY, use a ForeignKeyConstraint
+    within the Table definition.
     """
 
     def __init__(self, column, constraint=None, use_alter=False, name=None, onupdate=None, ondelete=None, deferrable=None, initially=None):
-        """Construct a new ``ForeignKey`` object.
+        """Construct a column-level FOREIGN KEY.
 
         column
-          Can be a ``schema.Column`` object representing the relationship, or
-          just its string name given as ``tablename.columnname``.  schema can
-          be specified as ``schema.tablename.columnname``.
+          A single target column for the key relationship.  A ``Column``
+          object or a column name as a string: ``tablename.columnname`` or
+          ``schema.tablename.columnname``.
 
         constraint
-          Is the owning ``ForeignKeyConstraint`` object, if any.  if not
-          given, then a ``ForeignKeyConstraint`` will be automatically created
+          Optional.  A parent ``ForeignKeyConstraint`` object.  If not
+          supplied, a ``ForeignKeyConstraint`` will be automatically created
           and added to the parent table.
+
+        name
+          Optional string.  An in-database name for the key if `constraint` is
+          not provided.
+
+        onupdate
+          Optional string.  If set, emit ON UPDATE <value> when issuing DDL
+          for this constraint.  Typical values include CASCADE, DELETE and
+          RESTRICT.
+
+        ondelete
+          Optional string.  If set, emit ON DELETE <value> when issuing DDL
+          for this constraint.  Typical values include CASCADE, DELETE and
+          RESTRICT.
+
+        deferrable
+          Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
+          issuing DDL for this constraint.
+
+        initially
+          Optional string.  If set, emit INITIALLY <value> when issuing DDL
+          for this constraint.
+
+        use_alter
+          If True, do not emit this key as part of the CREATE TABLE
+          definition.  Instead, use ALTER TABLE after table creation to add
+          the key.  Useful for circular dependencies.
         """
 
         self._colspec = column
@@ -920,6 +946,20 @@ class Constraint(SchemaItem):
     """
 
     def __init__(self, name=None, deferrable=None, initially=None):
+        """Create a SQL constraint.
+
+        name
+          Optional, the in-database name of this ``Constraint``.
+
+        deferrable
+          Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
+          issuing DDL for this constraint.
+
+        initially
+          Optional string.  If set, emit INITIALLY <value> when issuing DDL
+          for this constraint.
+        """
+
         self.name = name
         self.columns = expression.ColumnCollection()
         self.deferrable = deferrable
@@ -944,7 +984,30 @@ class Constraint(SchemaItem):
         raise NotImplementedError()
 
 class CheckConstraint(Constraint):
+    """A table- or column-level CHECK constraint.
+
+    Can be included in the definition of a Table or Column.
+    """
+
     def __init__(self, sqltext, name=None, deferrable=None, initially=None):
+        """Construct a CHECK constraint.
+
+        sqltest
+          A string containing the constraint definition.  Will be used
+          verbatim.
+
+        name
+          Optional, the in-database name of the constraint.
+
+        deferrable
+          Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
+          issuing DDL for this constraint.
+
+        initially
+          Optional string.  If set, emit INITIALLY <value> when issuing DDL
+          for this constraint.
+        """
+
         super(CheckConstraint, self).__init__(name, deferrable, initially)
         self.sqltext = sqltext
 
@@ -963,9 +1026,52 @@ class CheckConstraint(Constraint):
         return CheckConstraint(self.sqltext, name=self.name)
 
 class ForeignKeyConstraint(Constraint):
-    """A table-level, composite foreign key of one or more ForeignKey objects."""
+    """A table-level FOREIGN KEY constraint.
+
+    Defines a single column or composite FOREIGN KEY ... REFERENCES
+    constraint. For a no-frills, single column foreign key, adding a
+    ``ForeignKey`` to the definition of a ``Column`` is a shorthand equivalent
+    for an unnamed, single column ``ForeignKeyConstraint``.
+    """
 
     def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, use_alter=False, deferrable=None, initially=None):
+        """Construct a composite-capable FOREIGN KEY.
+
+        columns
+          A sequence of local column names.  The named columns must be defined
+          and present in the parent Table.
+
+        refcolumns
+          A sequence of foreign column names or Column objects.  The columns
+          must all be located within the same Table.
+
+        name
+          Optional, the in-database name of the key.
+
+        onupdate
+          Optional string.  If set, emit ON UPDATE <value> when issuing DDL
+          for this constraint.  Typical values include CASCADE, DELETE and
+          RESTRICT.
+
+        ondelete
+          Optional string.  If set, emit ON DELETE <value> when issuing DDL
+          for this constraint.  Typical values include CASCADE, DELETE and
+          RESTRICT.
+
+        deferrable
+          Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
+          issuing DDL for this constraint.
+
+        initially
+          Optional string.  If set, emit INITIALLY <value> when issuing DDL
+          for this constraint.
+
+        use_alter
+          If True, do not emit this key as part of the CREATE TABLE
+          definition.  Instead, use ALTER TABLE after table creation to add
+          the key.  Useful for circular dependencies.
+        """
+
         super(ForeignKeyConstraint, self).__init__(name, deferrable, initially)
         self.__colnames = columns
         self.__refcolnames = refcolumns
@@ -996,7 +1102,33 @@ class ForeignKeyConstraint(Constraint):
         return ForeignKeyConstraint([x.parent.name for x in self.elements], [x._get_colspec() for x in self.elements], name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, use_alter=self.use_alter)
 
 class PrimaryKeyConstraint(Constraint):
+    """A table-level PRIMARY KEY constraint.
+
+    Defines a single column or composite PRIMARY KEY constraint. For a
+    no-frills primary key, adding ``primary_key=True`` to one or more
+    ``Column`` definitions is a shorthand equivalent for an unnamed single- or
+    multiple-column PrimaryKeyConstraint.
+    """
+
     def __init__(self, *columns, **kwargs):
+        """Construct a composite-capable PRIMARY KEY.
+
+        \*columns
+          A sequence of column names.  All columns named must be defined and
+          present within the parent Table.
+
+        name
+          Optional, the in-database name of the key.
+
+        deferrable
+          Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
+          issuing DDL for this constraint.
+
+        initially
+          Optional string.  If set, emit INITIALLY <value> when issuing DDL
+          for this constraint.
+        """
+
         constraint_args = dict(name=kwargs.pop('name', None),
                                deferrable=kwargs.pop('deferrable', None),
                                initially=kwargs.pop('initially', None))
@@ -1033,7 +1165,33 @@ class PrimaryKeyConstraint(Constraint):
         return self.columns == other
 
 class UniqueConstraint(Constraint):
+    """A table-level UNIQUE constraint.
+
+    Defines a single column or composite UNIQUE constraint. For a no-frills,
+    single column constraint, adding ``unique=True`` to the ``Column``
+    definition is a shorthand equivalent for an unnamed, single column
+    UniqueConstraint.
+    """
+
     def __init__(self, *columns, **kwargs):
+        """Construct a UNIQUE constraint.
+
+        \*columns
+          A sequence of column names.  All columns named must be defined and
+          present within the parent Table.
+
+        name
+          Optional, the in-database name of the key.
+
+        deferrable
+          Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
+          issuing DDL for this constraint.
+
+        initially
+          Optional string.  If set, emit INITIALLY <value> when issuing DDL
+          for this constraint.
+        """
+
         constraint_args = dict(name=kwargs.pop('name', None),
                                deferrable=kwargs.pop('deferrable', None),
                                initially=kwargs.pop('initially', None))
@@ -1058,7 +1216,12 @@ class UniqueConstraint(Constraint):
         return UniqueConstraint(name=self.name, *self.__colnames)
 
 class Index(SchemaItem):
-    """Represent an index of columns from a database table."""
+    """A table-level INDEX.
+
+    Defines a composite (one or more column) INDEX. For a no-frills, single
+    column index, adding ``index=True`` to the ``Column`` definition is
+    a shorthand equivalent for an unnamed, single column Index.
+    """
 
     def __init__(self, name, *columns, **kwargs):
         """Construct an index object.
