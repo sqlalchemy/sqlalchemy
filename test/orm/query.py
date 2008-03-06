@@ -354,6 +354,9 @@ class FilterTest(QueryTest):
 
         assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(Address).filter(Address.user.has(User.name.like('%ed%'), id=8)).all()
 
+        dingaling = sess.query(Dingaling).get(2)
+        assert [User(id=9)] == sess.query(User).filter(User.addresses.any(Address.dingaling==dingaling)).all()
+        
     def test_contains_m2m(self):
         sess = create_session()
         item = sess.query(Item).get(3)

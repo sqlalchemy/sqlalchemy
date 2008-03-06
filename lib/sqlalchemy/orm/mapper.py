@@ -732,6 +732,8 @@ class Mapper(object):
         """
 
         if self.non_primary:
+            if not hasattr(self.class_, '_class_state'):
+                raise exceptions.InvalidRequestError("Class %s has no primary mapper configured.  Configure a primary mapper first before setting up a non primary Mapper.")
             self._class_state = self.class_._class_state
             _mapper_registry[self] = True
             return

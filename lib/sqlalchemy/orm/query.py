@@ -522,7 +522,7 @@ class Query(object):
                     use_selectable = use_selectable.alias()
             
             if prop._is_self_referential() and not create_aliases and not use_selectable:
-                raise exceptions.InvalidRequestError("Self-referential query on '%s' property requires create_aliases=True argument." % str(prop))
+                raise exceptions.InvalidRequestError("Self-referential query on '%s' property requires aliased=True argument." % str(prop))
 
             if prop.select_table not in currenttables or create_aliases or use_selectable:
                 if prop.secondary:

@@ -322,6 +322,13 @@ class MapperTest(MapperSuperTest):
         except exceptions.ArgumentError, e:
             assert "Attempting to assign a new relation 'addresses' to a non-primary mapper on class 'User'" in str(e)
 
+    def test_illegal_non_primary_2(self):
+        try:
+            mapper(User, users, non_primary=True)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert "Configure a primary mapper first" in str(e)
+
     def test_propfilters(self):
         t = Table('person', MetaData(),
                   Column('id', Integer, primary_key=True),
