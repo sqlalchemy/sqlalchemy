@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import weakref, threading, operator, inspect
+import operator, weakref
 from itertools import chain
 import UserDict
 from sqlalchemy import util
@@ -105,8 +105,8 @@ class ProxiedAttribute(InstrumentedAttribute):
 def proxied_attribute_factory(descriptor):
     """Create an InstrumentedAttribute / user descriptor hybrid.
 
-    Returns a new InstrumentedAttribute type that delegates
-    descriptor behavior and getattr() to the given descriptor.
+    Returns a new InstrumentedAttribute type that delegates descriptor
+    behavior and getattr() to the given descriptor.
     """
 
     class ProxyImpl(object):
@@ -683,7 +683,7 @@ class CollectionAttributeImpl(AttributeImpl):
         try:
             return getattr(user_data, '_sa_adapter')
         except AttributeError:
-            # TODO: this codepath never occurs, and this 
+            # TODO: this codepath never occurs, and this
             # except/initialize should be removed
             collections.CollectionAdapter(self, state, user_data)
             return getattr(user_data, '_sa_adapter')
@@ -841,9 +841,9 @@ class InstanceState(object):
         instance = self.obj()
         unmodified = self.unmodified
         self.class_._class_state.deferred_scalar_loader(instance, [
-            attr.impl.key for attr in _managed_attributes(self.class_) if 
-                attr.impl.accepts_scalar_loader and 
-                attr.impl.key in self.expired_attributes and 
+            attr.impl.key for attr in _managed_attributes(self.class_) if
+                attr.impl.accepts_scalar_loader and
+                attr.impl.key in self.expired_attributes and
                 attr.impl.key in unmodified
             ])
         for k in self.expired_attributes:
@@ -895,7 +895,7 @@ class InstanceState(object):
         self.dict[attr.key] = value
         self.pending.pop(attr.key, None)
         self.appenders.pop(attr.key, None)
-        
+
         # we have a value so we can also unexpire it
         self.callables.pop(attr.key, None)
         if attr.key in self.expired_attributes:
@@ -925,20 +925,20 @@ class InstanceState(object):
                 self.committed_state.pop(key, None)
                 self.pending.pop(key, None)
                 self.appenders.pop(key, None)
-                
+
         # unexpire attributes which have loaded
         for key in self.expired_attributes.intersection(keys):
             if key in self.dict:
                 self.expired_attributes.remove(key)
                 self.callables.pop(key, None)
-                    
-                
+
+
     def commit_all(self):
         """commit all attributes unconditionally.
 
         This is used after a flush() or a regular instance load or refresh operation
         to mark committed all populated attributes.
-        
+
         Attributes marked as "expired" can potentially remain "expired" after this step
         if a value was not populated in state.dict.
         """
@@ -968,9 +968,9 @@ class WeakInstanceDict(UserDict.UserDict):
 
     def __init__(self, *args, **kw):
         self._wr = weakref.ref(self)
-        # RLock because the mutex is used by a cleanup
-        # handler, which can be called at any time (including within an already mutexed block)
-        self._mutex = threading.RLock()
+        # RLock because the mutex is used by a cleanup handler, which can be
+        # called at any time (including within an already mutexed block)
+        self._mutex = util.threading.RLock()
         UserDict.UserDict.__init__(self, *args, **kw)
 
     def __getitem__(self, key):
