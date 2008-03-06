@@ -176,7 +176,8 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.executemany = len(parameters) > 1
 
             self.cursor = self.create_cursor()
-            self.__process_defaults()
+            if self.isinsert or self.isupdate:
+                self.__process_defaults()
             self.parameters = self.__convert_compiled_params(self.compiled_parameters)
 
         elif statement is not None:
@@ -355,42 +356,41 @@ class DefaultExecutionContext(base.ExecutionContext):
         """generate default values for compiled insert/update statements,
         and generate last_inserted_ids() collection."""
 
-        if self.isinsert or self.isupdate:
-            if self.executemany:
-                if len(self.compiled.prefetch):
-                    drunner = self.dialect.defaultrunner(self)
-                    params = self.compiled_parameters
-                    for param in params:
-                        # assign each dict of params to self.compiled_parameters;
-                        # this allows user-defined default generators to access the full
-                        # set of bind params for the row
-                        self.compiled_parameters = param
-                        for c in self.compiled.prefetch:
-                            if self.isinsert:
-                                val = drunner.get_column_default(c)
-                            else:
-                                val = drunner.get_column_onupdate(c)
-                            if val is not None:
-                                param[c.key] = val
-                    self.compiled_parameters = params
-
-            else:
-                compiled_parameters = self.compiled_parameters[0]
+        if self.executemany:
+            if len(self.compiled.prefetch):
                 drunner = self.dialect.defaultrunner(self)
+                params = self.compiled_parameters
+                for param in params:
+                    # assign each dict of params to self.compiled_parameters;
+                    # this allows user-defined default generators to access the full
+                    # set of bind params for the row
+                    self.compiled_parameters = param
+                    for c in self.compiled.prefetch:
+                        if self.isinsert:
+                            val = drunner.get_column_default(c)
+                        else:
+                            val = drunner.get_column_onupdate(c)
+                        if val is not None:
+                            param[c.key] = val
+                self.compiled_parameters = params
 
-                for c in self.compiled.prefetch:
-                    if self.isinsert:
-                        val = drunner.get_column_default(c)
-                    else:
-                        val = drunner.get_column_onupdate(c)
+        else:
+            compiled_parameters = self.compiled_parameters[0]
+            drunner = self.dialect.defaultrunner(self)
 
-                    if val is not None:
-                        compiled_parameters[c.key] = val
-
+            for c in self.compiled.prefetch:
                 if self.isinsert:
-                    self._last_inserted_ids = [compiled_parameters.get(c.key, None) for c in self.compiled.statement.table.primary_key]
-                    self._last_inserted_params = compiled_parameters
+                    val = drunner.get_column_default(c)
                 else:
-                    self._last_updated_params = compiled_parameters
+                    val = drunner.get_column_onupdate(c)
 
-                self.postfetch_cols = self.compiled.postfetch
+                if val is not None:
+                    compiled_parameters[c.key] = val
+
+            if self.isinsert:
+                self._last_inserted_ids = [compiled_parameters.get(c.key, None) for c in self.compiled.statement.table.primary_key]
+                self._last_inserted_params = compiled_parameters
+            else:
+                self._last_updated_params = compiled_parameters
+
+            self.postfetch_cols = self.compiled.postfetch
