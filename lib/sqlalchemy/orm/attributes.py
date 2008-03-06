@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import weakref, threading, operator
+import weakref, threading, operator, inspect
 from itertools import chain
 import UserDict
 from sqlalchemy import util
@@ -67,8 +67,9 @@ class InstrumentedAttribute(interfaces.PropComparator):
     property = property(_property, doc="the MapperProperty object associated with this attribute")
 
 class ProxiedAttribute(InstrumentedAttribute):
-    """a 'proxy' attribute which adds InstrumentedAttribute
-    class-level behavior to any user-defined class property.
+    """Adds InstrumentedAttribute class-level behavior to a regular descriptor.
+
+    Obsoleted by proxied_attribute_factory.
     """
 
     class ProxyImpl(object):
@@ -100,6 +101,59 @@ class ProxiedAttribute(InstrumentedAttribute):
 
     def __delete__(self, instance):
         return self.user_prop.__delete__(instance)
+
+def proxied_attribute_factory(descriptor):
+    """Create an InstrumentedAttribute / user descriptor hybrid.
+
+    Returns a new InstrumentedAttribute type that delegates
+    descriptor behavior and getattr() to the given descriptor.
+    """
+
+    class ProxyImpl(object):
+        accepts_scalar_loader = False
+        def __init__(self, key):
+            self.key = key
+
+    class Proxy(InstrumentedAttribute):
+        """A combination of InsturmentedAttribute and a regular descriptor."""
+
+        def __init__(self, key, descriptor, comparator):
+            self.key = key
+            # maintain ProxiedAttribute.user_prop compatability.
+            self.descriptor = self.user_prop = descriptor
+            self._comparator = comparator
+            self.impl = ProxyImpl(key)
+
+        def comparator(self):
+            if callable(self._comparator):
+                self._comparator = self._comparator()
+            return self._comparator
+        comparator = property(comparator)
+
+        def __get__(self, instance, owner):
+            """Delegate __get__ to the original descriptor."""
+            if instance is None:
+                descriptor.__get__(instance, owner)
+                return self
+            return descriptor.__get__(instance, owner)
+
+        def __set__(self, instance, value):
+            """Delegate __set__ to the original descriptor."""
+            return descriptor.__set__(instance, value)
+
+        def __delete__(self, instance):
+            """Delegate __delete__ to the original descriptor."""
+            return descriptor.__delete__(instance)
+
+        def __getattr__(self, attribute):
+            """Delegate __getattr__ to the original descriptor."""
+            return getattr(descriptor, attribute)
+    Proxy.__name__ = type(descriptor).__name__ + 'Proxy'
+
+    util.monkeypatch_proxied_specials(Proxy, type(descriptor),
+                                      name='descriptor',
+                                      from_instance=descriptor)
+    return Proxy
 
 class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
@@ -1233,7 +1287,8 @@ def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_pr
         return
 
     if proxy_property:
-        inst = ProxiedAttribute(key, proxy_property, comparator=comparator)
+        proxy_type = proxied_attribute_factory(proxy_property)
+        inst = proxy_type(key, proxy_property, comparator)
     else:
         inst = InstrumentedAttribute(_create_prop(class_, key, uselist, callable_, useobject=useobject,
                                        typecallable=typecallable, mutable_scalars=mutable_scalars, **kwargs), comparator=comparator)

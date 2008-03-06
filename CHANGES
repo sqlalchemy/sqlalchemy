@@ -97,7 +97,10 @@ CHANGES
       many-to-many "secondary" table will now work with eager 
       loading, previously the "order by" wasn't aliased against
       the secondary table's alias.
-      
+
+    - Synonyms riding on top of existing descriptors are now
+      full proxies to those descriptors.
+
 - dialects
     - Invalid SQLite connection URLs now raise an error.
 

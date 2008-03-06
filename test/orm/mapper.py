@@ -545,6 +545,11 @@ class MapperTest(MapperSuperTest):
         sess = create_session()
 
         assert_col = []
+        class extendedproperty(property):
+            attribute = 123
+            def __getitem__(self, key):
+                return 'value'
+
         class User(object):
             def _get_user_name(self):
                 assert_col.append(('get', self.user_name))
@@ -552,10 +557,10 @@ class MapperTest(MapperSuperTest):
             def _set_user_name(self, name):
                 assert_col.append(('set', name))
                 self.user_name = name
-            uname = property(_get_user_name, _set_user_name)
+            uname = extendedproperty(_get_user_name, _set_user_name)
 
         mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True),
+            addresses = relation(mapper(Address, addresses), lazy=True),
             uname = synonym('user_name'),
             adlist = synonym('addresses', proxy=True),
             adname = synonym('addresses')
@@ -585,6 +590,8 @@ class MapperTest(MapperSuperTest):
         assert u.user_name == "some user name"
         assert u in sess.dirty
 
+        assert User.uname.attribute == 123
+        assert User.uname['key'] == 'value'
 
     def test_column_synonyms(self):
         """test new-style synonyms which automatically instrument properties, set up aliased column, etc."""

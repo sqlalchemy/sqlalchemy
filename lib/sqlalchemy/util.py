@@ -344,6 +344,35 @@ def warn_exception(func, *args, **kwargs):
     except:
         warn("%s('%s') ignored" % sys.exc_info()[0:2])
 
+def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
+                                 name='self.proxy', from_instance=None):
+    """Automates delegation of __specials__ for a proxying type."""
+
+    if only:
+        dunders = only
+    else:
+        if skip is None:
+            skip = ('__slots__', '__del__', '__getattribute__',
+                    '__metaclass__', '__getstate__', '__setstate__')
+        dunders = [m for m in dir(from_cls)
+                   if (m.startswith('__') and m.endswith('__') and
+                       not hasattr(into_cls, m) and m not in skip)]
+    for method in dunders:
+        try:
+            spec = inspect.getargspec(getattr(from_cls, method))
+            fn_args = inspect.formatargspec(spec[0])
+            d_args = inspect.formatargspec(spec[0][1:])
+        except TypeError:
+            fn_args = '(self, *args, **kw)'
+            d_args = '(*args, **kw)'
+
+        py = ("def %(method)s%(fn_args)s: "
+              "return %(name)s.%(method)s%(d_args)s" % locals())
+
+        env = from_instance is not None and {name: from_instance} or {}
+        exec py in env
+        setattr(into_cls, method, env[method])
+
 class SimpleProperty(object):
     """A *default* property accessor."""
 
