@@ -1118,7 +1118,8 @@ class Session(object):
         ``Session``.
         """
 
-        return instance in self
+        if instance not in self:
+            raise exceptions.InvalidRequestError("Instance '%s' is not persistent within this Session" % mapperutil.instance_str(instance))
 
     def __contains__(self, instance):
         """Return True if the given instance is associated with this session.

@@ -53,6 +53,9 @@ CHANGES
       session.save()'ed the pending item explicitly, the
       attribute/collection removal still knocks it out.
 
+    - session.refresh() and session.expire() raise an error when 
+      called on instances which are not persistent within the session
+      
     - Fixed potential generative bug when the same Query was used
       to generate multiple Query objects using join().
 

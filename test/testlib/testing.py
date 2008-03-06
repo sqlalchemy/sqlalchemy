@@ -458,7 +458,15 @@ class TestBase(unittest.TestCase):
     def shortDescription(self):
         """overridden to not return docstrings"""
         return None
-
+    
+    def assert_raises(self, callable_, except_cls, reg):
+        try:
+            callable_()
+            assert False, "Callable did not raise expected exception"
+        except Exception, e:
+            assert isinstance(e, except_cls), "Exception was not an instance of '%s' ('%s')" % (except_cls, type(e))
+            assert re.search(reg, str(e)), "Callable raised non-matching exception: '%s'" % str(e)
+        
     if not hasattr(unittest.TestCase, 'assertTrue'):
         assertTrue = unittest.TestCase.failUnless
     if not hasattr(unittest.TestCase, 'assertFalse'):
@@ -524,7 +532,7 @@ class AssertsExecutionResults(object):
         result = list(result)
         print repr(result)
         self.assert_list(result, class_, objects)
-
+        
     def assert_list(self, result, class_, list):
         self.assert_(len(result) == len(list),
                      "result list is not the same size as test list, " +

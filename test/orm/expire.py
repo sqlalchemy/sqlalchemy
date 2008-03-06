@@ -50,6 +50,13 @@ class ExpireTest(FixtureTest):
             assert u.name == 'jack'
         self.assert_sql_count(testing.db, go, 0)
 
+    def test_persistence_check(self):
+        mapper(User, users)
+        s = create_session()
+        u = s.get(User, 7)
+        s.clear()
+        self.assert_raises(lambda: s.expire(u), exceptions.InvalidRequestError, r"is not persistent within this Session")
+
     def test_expire_doesntload_on_set(self):
         mapper(User, users)
 
@@ -678,7 +685,14 @@ class RefreshTest(FixtureTest):
 #        print u._state.callables
         assert u.name == 'jack'
         assert id(a) not in [id(x) for x in u.addresses]
-
+    
+    def test_persistence_check(self):
+        mapper(User, users)
+        s = create_session()
+        u = s.get(User, 7)
+        s.clear()
+        self.assert_raises(lambda: s.refresh(u), exceptions.InvalidRequestError, r"is not persistent within this Session")
+        
     def test_refresh_expired(self):
         mapper(User, users)
         s = create_session()
