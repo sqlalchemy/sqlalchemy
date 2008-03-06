@@ -459,13 +459,12 @@ class TestBase(unittest.TestCase):
         """overridden to not return docstrings"""
         return None
     
-    def assert_raises(self, callable_, except_cls, reg):
+    def assertRaisesMessage(self, except_cls, msg, callable_, ):
         try:
             callable_()
             assert False, "Callable did not raise expected exception"
-        except Exception, e:
-            assert isinstance(e, except_cls), "Exception was not an instance of '%s' ('%s')" % (except_cls, type(e))
-            assert re.search(reg, str(e)), "Callable raised non-matching exception: '%s'" % str(e)
+        except except_cls, e:
+            assert re.search(msg, str(e)), "Exception message did not match: '%s'" % str(e)
         
     if not hasattr(unittest.TestCase, 'assertTrue'):
         assertTrue = unittest.TestCase.failUnless

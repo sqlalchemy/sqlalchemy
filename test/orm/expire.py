@@ -55,7 +55,8 @@ class ExpireTest(FixtureTest):
         s = create_session()
         u = s.get(User, 7)
         s.clear()
-        self.assert_raises(lambda: s.expire(u), exceptions.InvalidRequestError, r"is not persistent within this Session")
+
+        self.assertRaisesMessage(exceptions.InvalidRequestError, r"is not persistent within this Session", lambda: s.expire(u))
 
     def test_expire_doesntload_on_set(self):
         mapper(User, users)
@@ -691,7 +692,7 @@ class RefreshTest(FixtureTest):
         s = create_session()
         u = s.get(User, 7)
         s.clear()
-        self.assert_raises(lambda: s.refresh(u), exceptions.InvalidRequestError, r"is not persistent within this Session")
+        self.assertRaisesMessage(exceptions.InvalidRequestError, r"is not persistent within this Session", lambda: s.refresh(u))
         
     def test_refresh_expired(self):
         mapper(User, users)
