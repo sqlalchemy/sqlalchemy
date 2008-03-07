@@ -84,7 +84,7 @@ class Mapper(object):
             raise exceptions.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
 
         for table in (local_table, select_table):
-            if table is not None and isinstance(table, expression._SelectBaseMixin):
+            if table and isinstance(table, expression._SelectBaseMixin):
                 # some db's, noteably postgres, dont want to select from a select
                 # without an alias.  also if we make our own alias internally, then
                 # the configured properties on the mapper are not matched against the alias
@@ -280,12 +280,12 @@ class Mapper(object):
         extlist = util.OrderedSet()
 
         extension = self.extension
-        if extension is not None:
+        if extension:
             for ext_obj in util.to_list(extension):
                 # local MapperExtensions have already instrumented the class
                 extlist.add(ext_obj)
 
-        if self.inherits is not None:
+        if self.inherits:
             for ext in self.inherits.extension:
                 if ext not in extlist:
                     extlist.add(ext)
@@ -312,7 +312,7 @@ class Mapper(object):
         initializes polymorphic variables used in polymorphic loads.
         """
 
-        if self.inherits is not None:
+        if self.inherits:
             if isinstance(self.inherits, type):
                 self.inherits = class_mapper(self.inherits, compile=False)
             else:
@@ -349,7 +349,7 @@ class Mapper(object):
             else:
                 self._synchronizer = None
                 self.mapped_table = self.local_table
-            if self.polymorphic_identity is not None:
+            if self.polymorphic_identity:
                 self.inherits.polymorphic_map[self.polymorphic_identity] = self
                 if self.polymorphic_on is None:
                     for mapper in self.iterate_to_root():
@@ -362,7 +362,7 @@ class Mapper(object):
                         # TODO: this exception not covered
                         raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
 
-            if self.polymorphic_identity is not None and not self.concrete:
+            if self.polymorphic_identity and not self.concrete:
                 self._identity_class = self.inherits._identity_class
             else:
                 self._identity_class = self.class_
@@ -386,7 +386,7 @@ class Mapper(object):
             self.base_mapper = self
             self._synchronizer = None
             self.mapped_table = self.local_table
-            if self.polymorphic_identity is not None:
+            if self.polymorphic_identity:
                 if self.polymorphic_on is None:
                     raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
                 self.polymorphic_map[self.polymorphic_identity] = self
@@ -441,7 +441,7 @@ class Mapper(object):
         if self.mapped_table not in self._pks_by_table or len(self._pks_by_table[self.mapped_table]) == 0:
             raise exceptions.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))
 
-        if self.inherits is not None and not self.concrete and not self.primary_key_argument:
+        if self.inherits and not self.concrete and not self.primary_key_argument:
             # if inheriting, the "primary key" for this mapper is that of the inheriting (unless concrete or explicit)
             self.primary_key = self.inherits.primary_key
             self._get_clause = self.inherits._get_clause
@@ -506,7 +506,7 @@ class Mapper(object):
                 else:
                     result[binary.right] = util.Set([binary.left])
         for mapper in self.base_mapper.polymorphic_iterator():
-            if mapper.inherit_condition is not None:
+            if mapper.inherit_condition:
                 visitors.traverse(mapper.inherit_condition, visit_binary=visit_binary)
 
         # TODO: matching of cols to foreign keys might better be generalized
@@ -582,12 +582,12 @@ class Mapper(object):
         self._columntoproperty = {}
 
         # load custom properties
-        if self._init_properties is not None:
+        if self._init_properties:
             for key, prop in self._init_properties.iteritems():
                 self._compile_property(key, prop, False)
 
         # pull properties from the inherited mapper if any.
-        if self.inherits is not None:
+        if self.inherits:
             for key, prop in self.inherits.__props.iteritems():
                 if key not in self.__props:
                     self._adapt_inherited_property(key, prop)
@@ -711,7 +711,7 @@ class Mapper(object):
                 order_by = adapter.copy_and_process(order_by)
                 self.__surrogate_mapper.order_by=order_by
 
-            if self._init_properties is not None:
+            if self._init_properties:
                 for key, prop in self._init_properties.iteritems():
                     if expression.is_column(prop):
                         self.__surrogate_mapper.add_property(key, _corresponding_column_or_error(self.select_table, prop))
@@ -771,13 +771,13 @@ class Mapper(object):
         """Return True if the given mapper inherits from this mapper."""
 
         m = other
-        while m is not self and m.inherits is not None:
+        while m is not self and m.inherits:
             m = m.inherits
         return m is self
 
     def iterate_to_root(self):
         m = self
-        while m is not None:
+        while m:
             yield m
             m = m.inherits
 
@@ -893,7 +893,7 @@ class Mapper(object):
         return [self._get_state_attr_by_column(state, column) for column in self.primary_key]
 
     def _canload(self, state):
-        if self.polymorphic_on is not None:
+        if self.polymorphic_on:
             return issubclass(state.class_, self.class_)
         else:
             return state.class_ is self.class_
@@ -1015,7 +1015,7 @@ class Mapper(object):
                             value = mapper._get_state_attr_by_column(state, col)
                             if value is not None:
                                 params[col.key] = value
-                        elif mapper.polymorphic_on is not None and mapper.polymorphic_on.shares_lineage(col):
+                        elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col):
                             if self.__should_log_debug:
                                 self.__log_debug("Using polymorphic identity '%s' for insert column '%s'" % (mapper.polymorphic_identity, col.key))
                             value = mapper.polymorphic_identity
@@ -1038,7 +1038,7 @@ class Mapper(object):
                                 (added, unchanged, deleted) = attributes.get_history(state, prop.key, passive=True)
                                 if added:
                                     hasdata = True
-                        elif mapper.polymorphic_on is not None and mapper.polymorphic_on.shares_lineage(col):
+                        elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col):
                             pass
                         else:
                             if post_update_cols is not None and col not in post_update_cols:
@@ -1072,7 +1072,7 @@ class Mapper(object):
                 for col in mapper._pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col._label, type_=col.type))
 
-                if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
+                if mapper.version_id_col and table.c.contains_column(mapper.version_id_col):
                     clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type_=col.type))
 
                 statement = table.update(clause)
@@ -1119,7 +1119,7 @@ class Mapper(object):
                     # TODO: this fires off more than needed, try to organize syncrules
                     # per table
                     for m in util.reversed(list(mapper.iterate_to_root())):
-                        if m._synchronizer is not None:
+                        if m._synchronizer:
                             m._synchronizer.execute(state, state)
 
                     # testlib.pragma exempt:__hash__
@@ -1203,7 +1203,7 @@ class Mapper(object):
                     delete.setdefault(connection, []).append(params)
                 for col in mapper._pks_by_table[table]:
                     params[col.key] = mapper._get_state_attr_by_column(state, col)
-                if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
+                if mapper.version_id_col and table.c.contains_column(mapper.version_id_col):
                     params[mapper.version_id_col.key] = mapper._get_state_attr_by_column(state, mapper.version_id_col)
                 # testlib.pragma exempt:__hash__
                 deleted_objects.add((state, connection))
@@ -1219,7 +1219,7 @@ class Mapper(object):
                 clause = sql.and_()
                 for col in mapper._pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.key, type_=col.type))
-                if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
+                if mapper.version_id_col and table.c.contains_column(mapper.version_id_col):
                     clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col.key, type_=mapper.version_id_col.type))
                 statement = table.delete(clause)
                 c = connection.execute(statement, del_objects)
@@ -1429,16 +1429,16 @@ class Mapper(object):
             post_processors = []
             for prop in self.__props.values():
                 (newpop, existingpop, post_proc) = selectcontext.exec_with_path(self, prop.key, prop.create_row_processor, selectcontext, self, row)
-                if newpop is not None:
+                if newpop:
                     new_populators.append((prop.key, newpop))
-                if existingpop is not None:
+                if existingpop:
                     existing_populators.append((prop.key, existingpop))
-                if post_proc is not None:
+                if post_proc:
                     post_processors.append(post_proc)
 
             # install a post processor for immediate post-load of joined-table inheriting mappers
             poly_select_loader = self._get_poly_select_loader(selectcontext, row)
-            if poly_select_loader is not None:
+            if poly_select_loader:
                 post_processors.append(poly_select_loader)
 
             selectcontext.attributes[('populators', self, snapshot, ispostselect)] = (new_populators, existing_populators)
