@@ -510,5 +510,50 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(select_copy, "SELECT FOOBER table1.col1, table1.col2, table1.col3 FROM table1")
         self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
 
+
+class InsertTest(TestBase, AssertsCompiledSQL):
+    """Tests the generative capability of Insert"""
+
+    # fixme: consolidate converage from elsewhere here and expand
+
+    def setUpAll(self):
+        global t1, t2
+        t1 = table("table1",
+            column("col1"),
+            column("col2"),
+            column("col3"),
+            )
+        t2 = table("table2",
+            column("col1"),
+            column("col2"),
+            column("col3"),
+            )
+
+    def test_prefixes(self):
+        i = t1.insert()
+        self.assert_compile(i,
+                            "INSERT INTO table1 (col1, col2, col3) "
+                            "VALUES (:col1, :col2, :col3)")
+
+        gen = i.prefix_with("foober")
+        self.assert_compile(gen,
+                            "INSERT foober INTO table1 (col1, col2, col3) "
+                            "VALUES (:col1, :col2, :col3)")
+
+        self.assert_compile(i,
+                            "INSERT INTO table1 (col1, col2, col3) "
+                            "VALUES (:col1, :col2, :col3)")
+
+        i2 = t1.insert(prefixes=['squiznart'])
+        self.assert_compile(i2,
+                            "INSERT squiznart INTO table1 (col1, col2, col3) "
+                            "VALUES (:col1, :col2, :col3)")
+
+        gen2 = i2.prefix_with("quux")
+        self.assert_compile(gen2,
+                            "INSERT squiznart quux INTO "
+                            "table1 (col1, col2, col3) "
+                            "VALUES (:col1, :col2, :col3)")
+
 if __name__ == '__main__':
     testenv.main()

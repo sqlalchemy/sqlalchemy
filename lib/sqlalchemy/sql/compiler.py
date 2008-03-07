@@ -626,7 +626,10 @@ class DefaultCompiler(engine.Compiled):
         colparams = self._get_colparams(insert_stmt)
         preparer = self.preparer
 
-        return ("INSERT INTO %s (%s) VALUES (%s)" %
+        insert = ' '.join(["INSERT"] +
+                          [self.process(x) for x in insert_stmt._prefixes])
+
+        return (insert + " INTO %s (%s) VALUES (%s)" %
                 (preparer.format_table(insert_stmt.table),
                  ', '.join([preparer.quote(c[0], c[0].name)
                             for c in colparams]),

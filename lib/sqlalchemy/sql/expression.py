@@ -274,6 +274,10 @@ def insert(table, values=None, inline=False, **kwargs):
       column specifications will be generated from the full list of
       table columns.
 
+    prefixes
+      A list of modifier keywords to be inserted between INSERT and INTO,
+      see ``Insert.prefix_with``.
+
     inline
       if True, SQL defaults will be compiled 'inline' into the statement
       and not pre-executed.
@@ -3475,11 +3479,16 @@ class _UpdateBase(ClauseElement):
     bind = property(bind, _set_bind)
 
 class Insert(_UpdateBase):
-    def __init__(self, table, values=None, inline=False, bind=None, **kwargs):
+    def __init__(self, table, values=None, inline=False, bind=None, prefixes=None, **kwargs):
         self._bind = bind
         self.table = table
         self.select = None
         self.inline=inline
+        if prefixes:
+            self._prefixes = [_literal_as_text(p) for p in prefixes]
+        else:
+            self._prefixes = []
+
         self.parameters = self._process_colparams(values)
 
         self.kwargs = kwargs
@@ -3503,6 +3512,17 @@ class Insert(_UpdateBase):
             u.parameters = self.parameters.copy()
             u.parameters.update(u._process_colparams(v))
         return u
+
+    def prefix_with(self, clause):
+        """Add a word or expression between INSERT and INTO. Generative.
+
+        If multiple prefixes are supplied, they will be separated with
+        spaces.
+        """
+        gen = self._clone()
+        clause = _literal_as_text(clause)
+        gen._prefixes = self._prefixes + [clause]
+        return gen
 
 class Update(_UpdateBase):
     def __init__(self, table, whereclause, values=None, inline=False, bind=None, **kwargs):

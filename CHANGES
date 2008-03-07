@@ -27,6 +27,10 @@ CHANGES
       delete() and DDL(). The .bind property is now assignable
       on those statements as well as on select().
 
+    - Insert statements can now be compiled with extra "prefix"
+      words between INSERT and INTO, for vendor extensions like
+      MySQL's INSERT IGNORE INTO table.
+
 - orm
     - any(), has(), contains(), ~contains(), attribute level ==
       and != now work properly with self-referential relations -
