@@ -31,7 +31,9 @@ CHANGES
     - any(), has(), contains(), ~contains(), attribute level ==
       and != now work properly with self-referential relations -
       the clause inside the EXISTS is aliased on the "remote"
-      side to distinguish it from the parent table.
+      side to distinguish it from the parent table.  This
+      applies to single table self-referential as well as 
+      inheritance-based self-referential.
     
     - repaired behavior of == and != operators at the relation()
       level when compared against NULL for one-to-one 

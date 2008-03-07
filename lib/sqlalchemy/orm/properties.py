@@ -546,7 +546,7 @@ class PropertyLoader(StrategizedProperty):
                 self.secondary.c.contains_column(column) is not None
         
     def _determine_fks(self):
-        if self._legacy_foreignkey and not self._is_self_referential():
+        if self._legacy_foreignkey and not self._refers_to_parent_table():
             self.foreign_keys = self._legacy_foreignkey
 
         if self.foreign_keys:
@@ -601,7 +601,7 @@ class PropertyLoader(StrategizedProperty):
 
         if self.secondaryjoin is not None:
             self.direction = sync.MANYTOMANY
-        elif self._is_self_referential():
+        elif self._refers_to_parent_table():
             # for a self referential mapper, if the "foreignkey" is a single or composite primary key,
             # then we are "many to one", since the remote site of the relationship identifies a singular entity.
             # otherwise we are "one to many".
@@ -728,9 +728,12 @@ class PropertyLoader(StrategizedProperty):
 
         super(PropertyLoader, self).do_init()
 
-    def _is_self_referential(self):
+    def _refers_to_parent_table(self):
         return self.parent.mapped_table is self.target or self.parent.select_table is self.target
-
+    
+    def _is_self_referential(self):
+        return self.mapper.isa(self.parent)
+        
     def primary_join_against(self, mapper, selectable=None, toselectable=None):
         return self.__cached_join_against(mapper, selectable, toselectable, True, False)
         

@@ -7,6 +7,7 @@ import testenv; testenv.configure_for_tests()
 import sets
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy import exceptions
 from testlib import *
 from testlib import fixtures
 
@@ -374,6 +375,58 @@ for select_type in ('', 'Unions', 'AliasedJoins', 'Joins'):
     exec("%s = testclass" % testclass.__name__)
     
 del testclass
+
+class SelfReferentialTest(ORMTest):
+    keep_mappers = True
+    
+    def define_tables(self, metadata):
+        global people, engineers
+        people = Table('people', metadata,
+           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('name', String(50)),
+           Column('type', String(30)))
+
+        engineers = Table('engineers', metadata,
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('primary_language', String(50)),
+           Column('reports_to_id', Integer, ForeignKey('people.person_id'))
+          )
+
+        mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
+        mapper(Engineer, engineers, inherits=Person, 
+          inherit_condition=engineers.c.person_id==people.c.person_id,
+          polymorphic_identity='engineer', properties={
+          'reports_to':relation(Person, primaryjoin=people.c.person_id==engineers.c.reports_to_id)
+        })
+    
+    def test_has(self):
+        
+        p1 = Person(name='dogbert')
+        e1 = Engineer(name='dilbert', primary_language='java', reports_to=p1)
+        sess = create_session()
+        sess.save(p1)
+        sess.save(e1)
+        sess.flush()
+        sess.clear()
+        
+        self.assertEquals(sess.query(Engineer).filter(Engineer.reports_to.has(Person.name=='dogbert')).first(), Engineer(name='dilbert'))
+        
+    def test_join(self):
+        p1 = Person(name='dogbert')
+        e1 = Engineer(name='dilbert', primary_language='java', reports_to=p1)
+        sess = create_session()
+        sess.save(p1)
+        sess.save(e1)
+        sess.flush()
+        sess.clear()
+        
+        self.assertEquals(sess.query(Engineer).join('reports_to', aliased=True).filter(Person.name=='dogbert').first(), Engineer(name='dilbert'))
+        
+    def test_noalias_raises(self):
+        sess = create_session()
+        def go():
+            sess.query(Engineer).join('reports_to')
+        self.assertRaises(exceptions.InvalidRequestError, go)
 
 if __name__ == "__main__":
     testenv.main()

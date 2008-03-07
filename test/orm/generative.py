@@ -249,17 +249,15 @@ class SelfRefTest(ORMTest):
         class T(object):pass
         mapper(T, t1, properties={'children':relation(T)})
         sess = create_session(bind=testing.db)
-        try:
-            sess.query(T).join('children').select_by(id=7)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Self-referential query on 'T.children (T)' property requires aliased=True argument.", str(e)
+        def go():
+            sess.query(T).join('children')
+        self.assertRaisesMessage(exceptions.InvalidRequestError, 
+            "Self-referential query on 'T\.children \(T\)' property requires aliased=True argument.", go)
 
-        try:
+        def go():
             sess.query(T).join(['children']).select_by(id=7)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Self-referential query on 'T.children (T)' property requires aliased=True argument.", str(e)
+        self.assertRaisesMessage(exceptions.InvalidRequestError, 
+            "Self-referential query on 'T\.children \(T\)' property requires aliased=True argument.", go)
 
 
 
