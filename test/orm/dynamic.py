@@ -23,7 +23,15 @@ class DynamicTest(FixtureTest):
         print list(u.addresses)
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
         assert fixtures.user_address_result == q.all()
-
+    
+    def test_order_by(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        sess = create_session()
+        u = sess.query(User).get(8)
+        self.assertEquals(list(u.addresses.order_by(desc(Address.email_address))), [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@bettyboop.com')])
+        
     def test_count(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
