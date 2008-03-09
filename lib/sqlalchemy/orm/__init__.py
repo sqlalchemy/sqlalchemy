@@ -274,7 +274,7 @@ def relation(argument, secondary=None, **kwargs):
 
 def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None,
     foreign_keys=None, backref=None, post_update=False, cascade=None, remote_side=None, enable_typechecks=True,
-    passive_deletes=False):
+    passive_deletes=False, order_by=None):
     """construct a dynamically-loading mapper property.
 
     This property is similar to relation(), except read operations
@@ -292,7 +292,7 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=Non
     return PropertyLoader(argument, secondary=secondary, primaryjoin=primaryjoin,
             secondaryjoin=secondaryjoin, entity_name=entity_name, foreign_keys=foreign_keys, backref=backref,
             post_update=post_update, cascade=cascade, remote_side=remote_side, enable_typechecks=enable_typechecks,
-            passive_deletes=passive_deletes,
+            passive_deletes=passive_deletes, order_by=order_by,
             strategy_class=DynaLoader)
 
 #def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):

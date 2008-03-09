@@ -31,6 +31,14 @@ class DynamicTest(FixtureTest):
         sess = create_session()
         u = sess.query(User).get(8)
         self.assertEquals(list(u.addresses.order_by(desc(Address.email_address))), [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@bettyboop.com')])
+
+    def test_configured_order_by(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses), order_by=desc(Address.email_address))
+        })
+        sess = create_session()
+        u = sess.query(User).get(8)
+        self.assertEquals(list(u.addresses), [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@bettyboop.com')])
         
     def test_count(self):
         mapper(User, users, properties={

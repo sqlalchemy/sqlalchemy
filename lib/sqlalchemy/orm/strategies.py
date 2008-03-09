@@ -240,7 +240,7 @@ class AbstractRelationLoader(LoaderStrategy):
 class DynaLoader(AbstractRelationLoader):
     def init_class_attribute(self):
         self.is_class_level = True
-        self._register_attribute(self.parent.class_, dynamic=True, target_mapper=self.parent_property.mapper)
+        self._register_attribute(self.parent.class_, dynamic=True, target_mapper=self.parent_property.mapper, order_by=self.parent_property.order_by)
 
     def create_row_processor(self, selectcontext, mapper, row):
         return (None, None, None)

@@ -7,9 +7,10 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.mapper import has_identity, object_mapper
 
 class DynamicAttributeImpl(attributes.AttributeImpl):
-    def __init__(self, class_, key, typecallable, target_mapper, **kwargs):
+    def __init__(self, class_, key, typecallable, target_mapper, order_by, **kwargs):
         super(DynamicAttributeImpl, self).__init__(class_, key, typecallable, **kwargs)
         self.target_mapper = target_mapper
+        self.order_by=order_by
 
     def get(self, state, passive=False):
         if passive:
@@ -130,7 +131,10 @@ class AppenderQuery(Query):
                 except exceptions.InvalidRequestError:
                     raise exceptions.UnboundExecutionError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (mapperutil.instance_str(instance), self.attr.key))
 
-        return sess.query(self.attr.target_mapper).with_parent(instance, self.attr.key)
+        q = sess.query(self.attr.target_mapper).with_parent(instance, self.attr.key)
+        if self.attr.order_by:
+            q = q.order_by(self.attr.order_by)
+        return q
 
     def assign(self, collection):
         instance = self.instance

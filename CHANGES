@@ -226,7 +226,11 @@ CHANGES
 
     - The proper error message is raised when trying to access
       expired instance attributes with no session present
-
+    
+    - dynamic_loader() / lazy="dynamic" now accepts and uses
+      the order_by parameter in the same way in which it works
+      with relation().
+      
     - Added expire_all() method to Session.  Calls expire() for
       all persistent instances.  This is handy in conjunction
       with...
