@@ -170,9 +170,16 @@ class DeclarativeMeta(type):
         if '__table__' not in cls.__dict__:
             if '__tablename__' in cls.__dict__:
                 tablename = cls.__tablename__
+                autoload = cls.__dict__.get('__autoload__')
+                if autoload is True:
+                    table_kw = {'autoload': True}
+                elif autoload:
+                    table_kw = {'autoload': True, 'autoload_with': autoload}
+                else:
+                    table_kw = {}
                 cls.__table__ = table = Table(tablename, cls.metadata, *[
                     c for c in our_stuff.values() if isinstance(c, Column)
-                ])
+                ], **table_kw)
         else:
             table = cls.__table__
         
@@ -234,6 +241,9 @@ def declarative_base(engine=None, metadata=None):
         _decl_class_registry = {}
         def __init__(self, **kwargs):
             for k in kwargs:
+                if not hasattr(type(self), k):
+                    raise TypeError('%r is an invalid keyword argument for %s' %
+                                    (k, type(self).__name__))
                 setattr(self, k, kwargs[k])
     return Base
 
