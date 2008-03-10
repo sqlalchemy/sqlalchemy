@@ -415,6 +415,61 @@ class UnsavedOrphansTest2(ORMTest):
         assert items.count().scalar() == 0
         assert attributes.count().scalar() == 0
 
+class UnsavedOrphansTest3(ORMTest):
+    """test not expuning double parents"""
+
+    def define_tables(self, meta):
+        global sales_reps, accounts, customers
+        sales_reps = Table('sales_reps', meta,
+            Column('sales_rep_id', Integer, Sequence('sales_rep_id_seq'), primary_key = True),
+            Column('name', String(50)),
+        )
+        accounts = Table('accounts', meta,
+            Column('account_id', Integer, Sequence('account_id_seq'), primary_key = True),
+            Column('balance', Integer),
+        )
+        customers = Table('customers', meta,
+            Column('customer_id', Integer, Sequence('customer_id_seq'), primary_key = True),
+            Column('name', String(50)),
+            Column('sales_rep_id', Integer, ForeignKey('sales_reps.sales_rep_id')),
+            Column('account_id', Integer, ForeignKey('accounts.account_id')),
+        )
+
+    def test_double_parent_expunge(self):
+        """test that removing a pending item from a collection expunges it from the session."""
+        class Customer(fixtures.Base):
+            pass
+        class Account(fixtures.Base):
+            pass
+        class SalesRep(fixtures.Base):
+            pass
+
+        mapper(Customer, customers)
+        mapper(Account, accounts, properties=dict(
+            customers=relation(Customer, cascade="all,delete-orphan", backref="account")
+        ))
+        mapper(SalesRep, sales_reps, properties=dict(
+            customers=relation(Customer, cascade="all,delete-orphan", backref="sales_rep")
+        ))
+        s = create_session()
+
+        a = Account(balance=0)
+        sr = SalesRep(name="John")
+        [s.save(x) for x in [a,sr]]
+        s.flush()
+        
+        c = Customer(name="Jane")
+
+        a.customers.append(c)
+        sr.customers.append(c)
+        assert c in s
+        
+        a.customers.remove(c)
+        assert c in s, "Should not expunge customer yet, still has one parent"
+
+        sr.customers.remove(c)
+        assert c not in s, "Should expunge customer when both parents are gone"
+
 class DoubleParentOrphanTest(ORMTest):
     """test orphan detection for an entity with two parent relations"""
 

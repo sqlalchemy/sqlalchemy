@@ -174,22 +174,10 @@ class Mapper(object):
             self.logger.debug("(" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.description or str(self.local_table)) + (not self.non_primary and "|non-primary" or "") + ") " + msg)
 
     def _is_orphan(self, obj):
-        optimistic = has_identity(obj)
         for (key,klass) in self.delete_orphans:
-            if attributes.has_parent(klass, obj, key, optimistic=optimistic):
-               return False
-        else:
-            if self.delete_orphans:
-                if not has_identity(obj):
-                    raise exceptions.FlushError("instance %s is an unsaved, pending instance and is an orphan (is not attached to %s)" %
-                    (
-                        obj,
-                        ", nor ".join(["any parent '%s' instance via that classes' '%s' attribute" % (klass.__name__, key) for (key,klass) in self.delete_orphans])
-                    ))
-                else:
-                    return True
-            else:
+            if attributes.has_parent(klass, obj, key, optimistic=has_identity(obj)):
                 return False
+        return bool(self.delete_orphans)
 
     def get_property(self, key, resolve_synonyms=False, raiseerr=True):
         """return a MapperProperty associated with the given key."""

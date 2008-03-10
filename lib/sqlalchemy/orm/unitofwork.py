@@ -23,7 +23,7 @@ import StringIO, weakref
 from sqlalchemy import util, logging, topological, exceptions
 from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
-from sqlalchemy.orm.mapper import object_mapper, _state_mapper
+from sqlalchemy.orm.mapper import object_mapper, _state_mapper, has_identity
 
 # Load lazily
 object_session = None
@@ -37,23 +37,25 @@ class UOWEventHandler(interfaces.AttributeExtension):
         self.key = key
         self.class_ = class_
         self.cascade = cascade
+    
+    def _target_mapper(self, obj):
+        prop = object_mapper(obj).get_property(self.key)
+        return prop.mapper
 
     def append(self, obj, item, initiator):
         # process "save_update" cascade rules for when an instance is appended to the list of another instance
         sess = object_session(obj)
         if sess:
             if self.cascade.save_update and item not in sess:
-                mapper = object_mapper(obj)
-                prop = mapper.get_property(self.key)
-                ename = prop.mapper.entity_name
-                sess.save_or_update(item, entity_name=ename)
+                sess.save_or_update(item, entity_name=self._target_mapper(obj).entity_name)
 
     def remove(self, obj, item, initiator):
         sess = object_session(obj)
         if sess:
             # expunge pending orphans
             if self.cascade.delete_orphan and item in sess.new:
-                sess.expunge(item)
+                if self._target_mapper(obj)._is_orphan(item):
+                    sess.expunge(item)
 
     def set(self, obj, newvalue, oldvalue, initiator):
         # process "save_update" cascade rules for when an instance is attached to another instance
@@ -62,10 +64,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
         sess = object_session(obj)
         if sess:
             if newvalue is not None and self.cascade.save_update and newvalue not in sess:
-                mapper = object_mapper(obj)
-                prop = mapper.get_property(self.key)
-                ename = prop.mapper.entity_name
-                sess.save_or_update(newvalue, entity_name=ename)
+                sess.save_or_update(newvalue, entity_name=self._target_mapper(obj).entity_name)
             if self.cascade.delete_orphan and oldvalue in sess.new:
                 sess.expunge(oldvalue)
 
@@ -210,7 +209,15 @@ class UnitOfWork(object):
             if state in processed:
                 continue
 
-            flush_context.register_object(state, isdelete=_state_mapper(state)._is_orphan(state.obj()))
+            obj = state.obj()
+            is_orphan = _state_mapper(state)._is_orphan(obj)
+            if is_orphan and not has_identity(obj):
+                raise exceptions.FlushError("instance %s is an unsaved, pending instance and is an orphan (is not attached to %s)" %
+                    (
+                        obj,
+                        ", nor ".join(["any parent '%s' instance via that classes' '%s' attribute" % (klass.__name__, key) for (key,klass) in _state_mapper(state).delete_orphans])
+                    ))
+            flush_context.register_object(state, isdelete=is_orphan)
             processed.add(state)
 
         # put all remaining deletes into the flush context.
