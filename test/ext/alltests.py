@@ -4,6 +4,7 @@ import doctest, sys, unittest
 def suite():
     unittest_modules = ['ext.activemapper',
                         'ext.assignmapper',
+                        'ext.declarative',
                         'ext.orderinglist',
                         'ext.associationproxy']
 

@@ -3,6 +3,156 @@ Plugins  {@name=plugins}
 
 SQLAlchemy has a variety of extensions available which provide extra functionality to SA, either via explicit usage or by augmenting the core behavior.  Several of these extensions are designed to work together.
 
+### declarative
+
+**Author:** Mike Bayer<br/>
+**Version:** 0.4.4 or greater
+
+`declarative` intends to be a fully featured replacement for the very old `activemapper` extension.  Its goal is to redefine the organization of class, `Table`, and `mapper()` constructs such that they can all be defined "at once" underneath a class declaration.   Unlike `activemapper`, it does not redefine normal SQLAlchemy configurational semantics - regular `Column`, `relation()` and other schema or ORM constructs are used in almost all cases.
+
+`declarative` is a so-called "micro declarative layer"; it does not generate table or column names and requires almost as fully verbose a configuration as that of straight tables and mappers.  As an alternative, the [Elixir](http://elixir.ematia.de/) project is a full community-supported declarative layer for SQLAlchemy, and is recommended for its active-record-like semantics, its convention-based configuration, and plugin capabilities.
+
+SQLAlchemy object-relational configuration involves the usage of Table, mapper(), and class objects to define the three areas of configuration.
+declarative moves these three types of configuration underneath the individual mapped class. Regular SQLAlchemy schema and ORM constructs are used
+in most cases:
+
+    {python}
+    from sqlalchemy.ext.declarative import declarative_base, declared_synonym
+    
+    engine = create_engine('sqlite://')
+    Base = declarative_base(engine)
+    
+    class SomeClass(Base):
+        __tablename__ = 'some_table'
+        id = Column('id', Integer, primary_key=True)
+        name =  Column('name', String(50))
+
+Above, the `declarative_base` callable produces a new base class from which all mapped classes inherit from. When the class definition is
+completed, a new `Table` and `mapper()` have been generated, accessible via the `__table__` and `__mapper__` attributes on the
+`SomeClass` class.
+
+Attributes may be added to the class after its construction, and they will be added to the underlying `Table` and `mapper()` definitions as
+appropriate:
+
+    {python}
+    SomeClass.data = Column('data', Unicode)
+    SomeClass.related = relation(RelatedInfo)
+
+Classes which are mapped explicitly using `mapper()` can interact freely with declarative classes. The `declarative_base` base class contains a
+`MetaData` object as well as a dictionary of all classes created against the base. So to access the above metadata and create tables we can say:
+
+    {python}
+    Base.metadata.create_all()
+    
+The `declarative_base` can also receive a pre-created `MetaData` object:
+
+    {python}
+    mymetadata = MetaData()
+    Base = declarative_base(metadata=mymetadata)
+
+Relations to other classes are done in the usual way, with the added feature that the class specified to `relation()` may be a string name. The
+"class registry" associated with `Base` is used at mapper compilation time to resolve the name into the actual class object, which is expected to
+have been defined once the mapper configuration is used:
+
+    {python}
+    class User(Base):
+        __tablename__ = 'users'
+
+        id = Column('id', Integer, primary_key=True)
+        name = Column('name', String(50))
+        addresses = relation("Address", backref="user")
+    
+    class Address(Base):
+        __tablename__ = 'addresses'
+
+        id = Column('id', Integer, primary_key=True)
+        email = Column('email', String(50))
+        user_id = Column('user_id', Integer, ForeignKey('users.id'))
+
+Column constructs, since they are just that, are immediately usable, as below where we define a primary join condition on the `Address` class
+using them:
+
+    {python}
+    class Address(Base)
+        __tablename__ = 'addresses'
+
+        id = Column('id', Integer, primary_key=True)
+        email = Column('email', String(50))
+        user_id = Column('user_id', Integer, ForeignKey('users.id'))
+        user = relation(User, primaryjoin=user_id==User.id)
+
+Synonyms are one area where `declarative` needs to slightly change the usual SQLAlchemy configurational syntax. To define a getter/setter which
+proxies to an underlying attribute, use `declared_synonym`:
+
+    {python}
+    class MyClass(Base):
+        __tablename__ = 'sometable'
+        
+        _attr = Column('attr', String)
+        
+        def _get_attr(self):
+            return self._some_attr
+        def _set_attr(self, attr)
+            self._some_attr = attr
+        attr = declared_synonym(property(_get_attr, _set_attr), '_attr')
+        
+The above synonym is then usable as an instance attribute as well as a class-level expression construct:
+
+    {python}
+    x = MyClass()
+    x.attr = "some value"
+    session.query(MyClass).filter(MyClass.attr == 'some other value').all()
+        
+As an alternative to `__tablename__`, a direct `Table` construct may be used:
+
+    {python}
+    class MyClass(Base):
+        __table__ = Table('my_table', Base.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50))
+        )
+
+This is the preferred approach when using reflected tables, as below:
+
+    {python}
+    class MyClass(Base):
+        __table__ = Table('my_table', Base.metadata, autoload=True)
+
+Mapper arguments are specified using the `__mapper_args__` class variable. Note that the column objects declared on the class are immediately
+usable, as in this joined-table inheritance example:
+
+    {python}
+    class Person(Base):
+        __tablename__ = 'people'
+        id = Column('id', Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on':discriminator}
+    
+    class Engineer(Person):
+        __tablename__ = 'engineers'
+        __mapper_args__ = {'polymorphic_identity':'engineer'}
+        id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
+        primary_language = Column('primary_language', String(50))
+        
+For single-table inheritance, the `__tablename__` and `__table__` class variables are optional on a class when the class inherits from another
+mapped class.
+
+As a convenience feature, the `declarative_base()` sets a default constructor on classes which takes keyword arguments, and assigns them to the
+named attributes:
+
+    {python}
+    e = Engineer(primary_language='python')
+
+Note that `declarative` has no integration built in with sessions, and is only intended as an optional syntax for the regular usage of mappers
+and Table objects. A typical application setup using `scoped_session` might look like:
+
+    {python}
+    engine = create_engine('postgres://scott:tiger@localhost/test')
+    Session = scoped_session(sessionmaker(transactional=True, autoflush=False, bind=engine))
+    Base = declarative_base()
+    
+Mapped instances then make usage of `Session` in the usual way.
+
 
 ### associationproxy
 
@@ -361,7 +511,7 @@ Full SqlSoup documentation is on the [SQLAlchemy Wiki](http://www.sqlalchemy.org
 
 ### Deprecated Extensions
 
-A lot of our extensions are deprecated.  But this is a good thing.  Why ?  Because all of them have been refined and focused, and rolled into the core of SQLAlchemy (or in the case of `ActiveMapper`, it's become **Elixir**).  So they aren't removed, they've just graduated into fully integrated features.  Below we describe a set of extensions which are present in 0.4 but are deprecated.
+A lot of our extensions are deprecated.  But this is a good thing.  Why ?  Because all of them have been refined and focused, and rolled into the core of SQLAlchemy.  So they aren't removed, they've just graduated into fully integrated features.  Below we describe a set of extensions which are present in 0.4 but are deprecated.
 
 #### SelectResults
 
@@ -444,7 +594,7 @@ For docs on `assignmapper`, see the SQLAlchemy 0.3 documentation.
 
 **Author:** Jonathan LaCour
 
-Please note that ActiveMapper has been deprecated in favor of [Elixir](http://elixir.ematia.de/), a more comprehensive solution to declarative mapping, of which Jonathan is a co-author.
+Please note that ActiveMapper has been deprecated in favor of either [Elixir](http://elixir.ematia.de/), a comprehensive solution to declarative mapping, or [declarative](rel:plugins_declarative), a built in convenience tool which reorganizes `Table` and `mapper()` configuration.
 
 ActiveMapper is a so-called "declarative layer" which allows the construction of a class, a `Table`, and a `Mapper` all in one step:
 

@@ -12,6 +12,7 @@ import sqlalchemy.ext.orderinglist as orderinglist
 import sqlalchemy.ext.associationproxy as associationproxy
 import sqlalchemy.ext.assignmapper as assignmapper
 import sqlalchemy.ext.sqlsoup as sqlsoup
+import sqlalchemy.ext.declarative as declarative
 
 def make_doc(obj, classes=None, functions=None, **kwargs):
     """generate a docstring.ObjectDoc structure for an individual module, list of classes, and list of functions."""
@@ -45,6 +46,7 @@ def make_all_docs():
         make_doc(obj=orm.query, classes=[orm.query.Query]),
         make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionExtension]),
         make_doc(obj=orm.shard),
+        make_doc(obj=declarative),
         make_doc(obj=associationproxy, classes=[associationproxy.AssociationProxy]),
         make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),
         make_doc(obj=sqlsoup),

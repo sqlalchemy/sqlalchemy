@@ -124,6 +124,15 @@ CHANGES
       when used with the ORM, mutable-style equality/
       copy-on-write techniques are used to test for changes.
       
+- extensions
+    - a new super-small "declarative" extension has been added,
+      which allows Table and mapper() configuration to take place
+      inline underneath a class declaration.  This extension differs
+      from ActiveMapper and Elixir in that it does not redefine
+      any SQLAlchemy semantics at all; literal Column, Table
+      and relation() constructs are used to define the class 
+      behavior and table definition.
+      
 0.4.3
 ------
 - sql
