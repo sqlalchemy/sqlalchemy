@@ -173,6 +173,40 @@ class DeclarativeTest(TestBase):
         
         self.assertEquals(sess.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).first(), c2)
 
+    def test_relation_reference(self):
+        class Address(Base, Fixture):
+            __tablename__ = 'addresses'
+
+            id = Column('id', Integer, primary_key=True)
+            email = Column('email', String(50))
+            user_id = Column('user_id', Integer, ForeignKey('users.id'))
+
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            addresses = relation("Address", backref="user",
+                                 primaryjoin=id==Address.user_id)
+
+        User.address_count = column_property(select([func.count(Address.id)]).where(Address.user_id==User.id).as_scalar())
+
+        Base.metadata.create_all()
+
+        u1 = User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])
+        sess = create_session()
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(User).all(), [User(name='u1', address_count=2, addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])])
+
     def test_single_inheritance(self):
         class Company(Base, Fixture):
             __tablename__ = 'companies'
