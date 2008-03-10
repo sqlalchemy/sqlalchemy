@@ -281,6 +281,12 @@ class DeclarativeReflectionTest(TestBase):
               Column('id', Integer, primary_key=True),
               Column('email', String(50)),
               Column('user_id', Integer, ForeignKey('users.id')))
+        Table('imhandles', reflection_metadata,
+              Column('id', Integer, primary_key=True),
+              Column('user_id', Integer),
+              Column('network', String(50)),
+              Column('handle', String(50)))
+
         reflection_metadata.create_all()
 
     def setUp(self):
@@ -356,6 +362,71 @@ class DeclarativeReflectionTest(TestBase):
         self.assertEquals(a1.user, User(nom='u1'))
 
         self.assertRaises(TypeError, User, name='u3')
+
+    def test_rekey(self):
+        meta = MetaData(testing.db)
+
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+            __autoload__ = True
+            nom = Column('name', String(50), key='nom')
+            addresses = relation("Address", backref="user")
+
+        class Address(Base, Fixture):
+            __tablename__ = 'addresses'
+            __autoload__ = True
+
+        u1 = User(nom='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+            ])
+        sess = create_session()
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(User).all(), [User(nom='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+            ])])
+
+        a1 = sess.query(Address).filter(Address.email=='two').one()
+        self.assertEquals(a1, Address(email='two'))
+        self.assertEquals(a1.user, User(nom='u1'))
+
+        self.assertRaises(TypeError, User, name='u3')
+
+    def test_supplied_fk(self):
+        meta = MetaData(testing.db)
+
+        class IMHandle(Base, Fixture):
+            __tablename__ = 'imhandles'
+            __autoload__ = True
+
+            user_id = Column('user_id', Integer,
+                             ForeignKey('users.id'))
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+            __autoload__ = True
+            handles = relation("IMHandle", backref="user")
+
+        u1 = User(name='u1', handles=[
+            IMHandle(network='blabber', handle='foo'),
+            IMHandle(network='lol', handle='zomg')
+            ])
+        sess = create_session()
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(User).all(), [User(name='u1', handles=[
+            IMHandle(network='blabber', handle='foo'),
+            IMHandle(network='lol', handle='zomg')
+            ])])
+
+        a1 = sess.query(IMHandle).filter(IMHandle.handle=='zomg').one()
+        self.assertEquals(a1, IMHandle(network='lol', handle='zomg'))
+        self.assertEquals(a1.user, User(name='u1'))
 
 if __name__ == '__main__':
     testing.main()
