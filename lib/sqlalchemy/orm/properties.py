@@ -468,6 +468,9 @@ class PropertyLoader(StrategizedProperty):
             self.mapper = mapper.class_mapper(self.argument, entity_name=self.entity_name, compile=False)
         elif isinstance(self.argument, mapper.Mapper):
             self.mapper = self.argument
+        elif callable(self.argument):
+            # accept a callable to suit various deferred-configurational schemes
+            self.mapper = mapper.class_mapper(self.argument(), entity_name=self.entity_name, compile=False)
         else:
             raise exceptions.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
 

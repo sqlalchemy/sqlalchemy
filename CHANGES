@@ -77,7 +77,12 @@ CHANGES
       
     - deprecated Query methods apply_sum(), apply_max(), apply_min(),
       apply_avg().  Better methodologies are coming....
-      
+    
+    - relation() can accept a callable for its first argument,
+      which returns the class to be related.  This is in place
+      to assist declarative packages to define relations without
+      classes yet being in place.
+        
     - Added a new "higher level" operator called "of_type()": used
       in join() as well as with any() and has(), qualifies the
       subclass which will be used in filter criterion, e.g.:
