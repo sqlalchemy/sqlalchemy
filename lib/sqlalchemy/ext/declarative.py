@@ -171,10 +171,8 @@ class DeclarativeMeta(type):
             if '__tablename__' in cls.__dict__:
                 tablename = cls.__tablename__
                 autoload = cls.__dict__.get('__autoload__')
-                if autoload is True:
+                if autoload:
                     table_kw = {'autoload': True}
-                elif autoload:
-                    table_kw = {'autoload': True, 'autoload_with': autoload}
                 else:
                     table_kw = {}
                 cls.__table__ = table = Table(tablename, cls.metadata, *[
