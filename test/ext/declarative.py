@@ -363,39 +363,6 @@ class DeclarativeReflectionTest(TestBase):
 
         self.assertRaises(TypeError, User, name='u3')
 
-    def test_rekey(self):
-        meta = MetaData(testing.db)
-
-        class User(Base, Fixture):
-            __tablename__ = 'users'
-            __autoload__ = True
-            nom = Column('name', String(50), key='nom')
-            addresses = relation("Address", backref="user")
-
-        class Address(Base, Fixture):
-            __tablename__ = 'addresses'
-            __autoload__ = True
-
-        u1 = User(nom='u1', addresses=[
-            Address(email='one'),
-            Address(email='two'),
-            ])
-        sess = create_session()
-        sess.save(u1)
-        sess.flush()
-        sess.clear()
-
-        self.assertEquals(sess.query(User).all(), [User(nom='u1', addresses=[
-            Address(email='one'),
-            Address(email='two'),
-            ])])
-
-        a1 = sess.query(Address).filter(Address.email=='two').one()
-        self.assertEquals(a1, Address(email='two'))
-        self.assertEquals(a1.user, User(nom='u1'))
-
-        self.assertRaises(TypeError, User, name='u3')
-
     def test_supplied_fk(self):
         meta = MetaData(testing.db)
 
