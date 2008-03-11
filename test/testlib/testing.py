@@ -519,7 +519,7 @@ class ComparesTables(object):
             if c.default:
                 assert isinstance(reflected_c.default, schema.PassiveDefault)
             elif not c.primary_key or not against('postgres'):
-                assert reflected_c.default is None
+                assert reflected_c.default is None, reflected_c.default
         
         assert len(table.primary_key) == len(reflected_table.primary_key)
         for c in table.primary_key:
