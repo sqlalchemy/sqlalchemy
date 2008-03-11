@@ -97,7 +97,7 @@ What was that last `id` attribute?  That was placed there by the `Mapper`, to tr
 
 ## Too Verbose ?  There are alternatives
 
-Some users, upon seeing the full set of steps to map a class, which are to define a `Table`, define a class, and then define a `mapper()`, are too verbose and disjoint.  Most popular object relational products use the so-called "active record" approach, where the table definition and its class mapping are all defined at once.  With SQLAlchemy, there are two excellent alternatives to its usual configuration:
+The full set of steps to map a class, which are to define a `Table`, define a class, and then define a `mapper()`, are fairly verbose and for simple cases may appear overly disjoint.   Most popular object relational products use the so-called "active record" approach, where the table definition and its class mapping are all defined at once.  With SQLAlchemy, there are two excellent alternatives to its usual configuration:
 
   * [Elixir](http://elixir.ematia.de/) is a "sister" product to SQLAlchemy, which is a full "declarative" layer built on top of SQLAlchemy.  It has existed almost as long as SA itself and defines a rich featureset on top of SA's normal configuration, adding many new capabilities such as plugins, automatic generation of table and column names based on configurations, and an intuitive system of defining relations.
   * [declarative](rel:plugins_declarative) is a "micro-declarative" plugin included with SQLAlchemy 0.4.4 and above.  In contrast to Elixir, it maintains virtually the identical configuration outlined in this tutorial, except it allows the `Column`, `relation()`, and other constructs to be defined "inline" with the mapped class itself.
