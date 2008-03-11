@@ -276,16 +276,19 @@ class DeclarativeReflectionTest(TestBase):
 
         Table('users', reflection_metadata,
               Column('id', Integer, primary_key=True),
-              Column('name', String(50)))
+              Column('name', String(50)),
+              test_needs_fk=True)
         Table('addresses', reflection_metadata,
               Column('id', Integer, primary_key=True),
               Column('email', String(50)),
-              Column('user_id', Integer, ForeignKey('users.id')))
+              Column('user_id', Integer, ForeignKey('users.id')),
+              test_needs_fk=True)
         Table('imhandles', reflection_metadata,
               Column('id', Integer, primary_key=True),
               Column('user_id', Integer),
               Column('network', String(50)),
-              Column('handle', String(50)))
+              Column('handle', String(50)),
+              test_needs_fk=True)
 
         reflection_metadata.create_all()
 
