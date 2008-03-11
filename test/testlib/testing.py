@@ -518,7 +518,7 @@ class ComparesTables(object):
             self.assertEquals(set([f.column.name for f in c.foreign_keys]), set([f.column.name for f in reflected_c.foreign_keys]))
             if c.default:
                 assert isinstance(reflected_c.default, schema.PassiveDefault)
-            elif against('mysql', '<', (5, 0)):
+            elif against(('mysql', '<', (5, 0))):
                 # ignore reflection of bogus db-generated PassiveDefault()
                 pass
             elif not c.primary_key or not against('postgres'):
