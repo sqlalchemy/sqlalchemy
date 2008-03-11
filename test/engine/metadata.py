@@ -41,7 +41,7 @@ class MetaDataTest(TestBase, ComparesTables):
 
         table = Table('mytable', meta,
             Column('myid', Integer, primary_key=True),
-            Column('name', String(40), nullable=False),
+            Column('name', String(40), nullable=True),
             Column('description', String(30), CheckConstraint("description='hi'")),
             UniqueConstraint('name'),
             test_needs_fk=True,
