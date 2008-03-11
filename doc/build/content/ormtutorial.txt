@@ -391,10 +391,10 @@ To use an entirely string-based statement, using `from_statement()`; just ensure
     ...     select(
     ...            [users_table], 
     ...            select([func.max(users_table.c.name)]).label('maxuser')==users_table.c.name) 
-    ...    ).all()
+    ...    ).all() # doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE (SELECT max(users.name) 
+    WHERE (SELECT max(users.name) AS max_1
     FROM users) = users.name
     []
     {stop}[<User('wendy','Wendy Williams', 'foobar')>]
@@ -404,8 +404,8 @@ There's also a way to combine scalar results with objects, using `add_column()`.
     {python}
     {sql}>>> for r in session.query(User).\
     ...     add_column(select([func.max(users_table.c.name)]).label('maxuser')):
-    ...     print r
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password, (SELECT max(users.name) 
+    ...     print r # doctest: +NORMALIZE_WHITESPACE
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password, (SELECT max(users.name) AS max_1
     FROM users) AS maxuser 
     FROM users ORDER BY users.oid
     []
@@ -861,14 +861,14 @@ Let's try to delete `jack` and see how that goes.  We'll mark as deleted in the 
 
     {python}
     >>> session.delete(jack)
-    {sql}>>> session.query(User).filter_by(name='jack').count()
+    {sql}>>> session.query(User).filter_by(name='jack').count() # doctest: +NORMALIZE_WHITESPACE
     UPDATE addresses SET user_id=? WHERE addresses.id = ?
     [None, 1]
     UPDATE addresses SET user_id=? WHERE addresses.id = ?
     [None, 2]
     DELETE FROM users WHERE users.id = ?
     [5]
-    SELECT count(users.id) 
+    SELECT count(users.id) AS count_1
     FROM users 
     WHERE users.name = ?
     ['jack']
@@ -879,8 +879,8 @@ So far, so good.  How about Jack's `Address` objects ?
     {python}
     {sql}>>> session.query(Address).filter(
     ...     Address.email_address.in_(['jack@google.com', 'j25@yahoo.com'])
-    ...  ).count()
-    SELECT count(addresses.id) 
+    ...  ).count() # doctest: +NORMALIZE_WHITESPACE
+    SELECT count(addresses.id) AS count_1
     FROM addresses 
     WHERE addresses.email_address IN (?, ?)
     ['jack@google.com', 'j25@yahoo.com']
@@ -931,10 +931,10 @@ Now when we load Jack, removing an address from his `addresses` collection will 
     # only one address remains
     {sql}>>> session.query(Address).filter(
     ...     Address.email_address.in_(['jack@google.com', 'j25@yahoo.com'])
-    ... ).count()
+    ... ).count() # doctest: +NORMALIZE_WHITESPACE
     DELETE FROM addresses WHERE addresses.id = ?
     [2]
-    SELECT count(addresses.id) 
+    SELECT count(addresses.id) AS count_1
     FROM addresses 
     WHERE addresses.email_address IN (?, ?)
     ['jack@google.com', 'j25@yahoo.com']
@@ -953,9 +953,9 @@ Deleting Jack will delete both Jack and his remaining `Address`:
     COMMIT
     {stop}
     
-    {sql}>>> session.query(User).filter_by(name='jack').count()
+    {sql}>>> session.query(User).filter_by(name='jack').count() # doctest: +NORMALIZE_WHITESPACE
     BEGIN
-    SELECT count(users.id) 
+    SELECT count(users.id) AS count_1
     FROM users 
     WHERE users.name = ?
     ['jack']
@@ -963,8 +963,8 @@ Deleting Jack will delete both Jack and his remaining `Address`:
     
     {sql}>>> session.query(Address).filter(
     ...    Address.email_address.in_(['jack@google.com', 'j25@yahoo.com'])
-    ... ).count()
-    SELECT count(addresses.id) 
+    ... ).count() # doctest: +NORMALIZE_WHITESPACE
+    SELECT count(addresses.id) AS count_1
     FROM addresses 
     WHERE addresses.email_address IN (?, ?)
     ['jack@google.com', 'j25@yahoo.com']
@@ -977,11 +977,12 @@ We're moving into the bonus round here, but lets show off a many-to-many relatio
 First some new tables:
 
     {python}
+    >>> from sqlalchemy import Text
     >>> post_table = Table('posts', metadata, 
     ...        Column('id', Integer, primary_key=True),
     ...        Column('user_id', Integer, ForeignKey('users.id')),
     ...        Column('headline', String(255), nullable=False),
-    ...        Column('body', String)
+    ...        Column('body', Text)
     ...        )
     
     >>> post_keywords = Table('post_keywords', metadata,
