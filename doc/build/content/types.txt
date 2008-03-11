@@ -31,33 +31,37 @@ Both `convert_unicode` and `assert_unicode` may be set at the engine level as fl
 
 The `Unicode` type is shorthand for `String` with `convert_unicode=True` and `assert_unicode='warn'`.  When writing a Unicode-aware application, it is strongly recommended that this type is used, and that only Unicode strings are used in the application.  By "Unicode string" we mean a string with a u, i.e. `u'hello'`.  Otherwise, particularly when using the ORM, data will be converted to Unicode when it returns from the database, but local data which was generated locally will not be in Unicode format, which can create confusion.
 
+#### Text / UnicodeText
+
+These are the "unbounded" versions of ``String`` and ``Unicode``.  They have no "length" parameter, and generate a column type of TEXT or CLOB.
+
 #### Numeric
 
-TODO
+Numeric types return `decimal.Decimal` objects by default.  The flag `asdecimal=False` may be specified which enables the type to pass data straight through.   Numeric also takes "precision" and "scale" arguments which are used when CREATE TABLE is issued.
 
 #### Float
 
-TODO
+Float types return Python floats.  Float also takes a "precision" argument which is used when CREATE TABLE is issued.
 
 #### Datetime/Date/Time
 
-TODO
+Date and time types return objects from the Python `datetime` module.  Most DBAPIs have built in support for the datetime module, with the noted exception of SQLite.  In the case of SQLite, date and time types are stored as strings which are then converted back to datetime objects when rows are returned.
 
 #### Interval
 
-TODO
+The Interval type deals with `datetime.timedelta` objects.  In Postgres, the native INTERVAL type is used; for others, the value is stored as a date which is relative to the "epoch" (Jan. 1, 1970).
 
 #### Binary
 
-TODO
+The Binary type generates BLOB or BYTEA when tables are created, and also converts incoming values using the `Binary` callable provided by each DBAPI.  
 
 #### Boolean
 
-TODO
+Boolean typically uses BOOLEAN or SMALLINT on the CREATE TABLE side, and returns Python `True` or `False`.
 
 #### PickleType
 
-TODO
+PickleType builds upon the Binary type to apply Python's `pickle.dumps()` to incoming objects, and `pickle.loads()` on the way out, allowing any pickleable Python object to be stored as a serialized binary field.
 
 #### SQL-Specific Types {@name=sqlspecific}
 
@@ -76,6 +80,8 @@ These are subclasses of the generic types and include:
     class CHAR(String)
     class BLOB(Binary)
     class BOOLEAN(Boolean)
+
+The idea behind the SQL-specific types is that a CREATE TABLE statement would generate the exact type specified.  
 
 ### Dialect Specific Types {@name=dialect}
 
