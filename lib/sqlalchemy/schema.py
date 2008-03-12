@@ -1383,7 +1383,8 @@ class MetaData(SchemaItem):
         if URL is None:
             from sqlalchemy.engine.url import URL
         if isinstance(bind, (basestring, URL)):
-            self._bind = sqlalchemy.create_engine(bind, **kwargs)
+            from sqlalchemy import create_engine
+            self._bind = create_engine(bind, **kwargs)
         else:
             self._bind = bind
     connect = util.deprecated(connect)
@@ -1627,7 +1628,8 @@ class ThreadLocalMetaData(MetaData):
             try:
                 engine = self.__engines[bind]
             except KeyError:
-                engine = sqlalchemy.create_engine(bind, **kwargs)
+                from sqlalchemy import create_engine
+                engine = create_engine(bind, **kwargs)
             bind = engine
         self._bind_to(bind)
     connect = util.deprecated(connect)
@@ -1652,7 +1654,8 @@ class ThreadLocalMetaData(MetaData):
             try:
                 self.context._engine = self.__engines[bind]
             except KeyError:
-                e = sqlalchemy.create_engine(bind)
+                from sqlalchemy import create_engine
+                e = create_engine(bind)
                 self.__engines[bind] = e
                 self.context._engine = e
         else:
