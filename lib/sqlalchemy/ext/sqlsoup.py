@@ -182,6 +182,28 @@ You can also join directly to a labeled object::
     [u'name', u'email', u'password', u'classname', u'admin', u'loans_book_id', u'loans_user_name', u'loans_loan_date']
 
 
+Relations
+=========
+
+You can define relations on SqlSoup classes:
+
+    >>> db.users.relate('loans', db.loans)
+
+These can then be used like a normal SA property:
+
+    >>> db.users.get('Joe Student').loans
+    [MappedLoans(book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
+
+    >>> db.users.filter(~db.users.loans.any()).all()
+    [MappedUsers(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1)]
+
+
+relate can take any options that the relation function accepts in normal mapper definition:
+
+    >>> del db._cache['users']
+    >>> db.users.relate('loans', db.loans, order_by=db.loans.loan_date, cascade='all, delete-orphan')
+
+
 Advanced Use
 ============
 
@@ -253,6 +275,16 @@ you would also see on a cursor::
     Joe Student student@example.edu
 
 You can also pass this engine object to other SQLAlchemy constructs.
+
+
+Dynamic table names
+-------------------
+
+You can load a table whose name is specified at runtime with the entity() method:
+
+    >>> tablename = 'loans'
+    >>> db.entity(tablename) == db.loans
+    True
 
 
 Extra tests
@@ -357,13 +389,13 @@ objectstore = Objectstore(create_session)
 
 class PKNotFoundError(SQLAlchemyError): pass
 
-# metaclass is necessary to expose class methods with getattr, e.g.
-# we want to pass db.users.select through to users._mapper.select
 def _ddl_error(cls):
     msg = 'SQLSoup can only modify mapped Tables (found: %s)' \
           % cls._table.__class__.__name__
     raise InvalidRequestError(msg)
 
+# metaclass is necessary to expose class methods with getattr, e.g.
+# we want to pass db.users.select through to users._mapper.select
 class SelectableClassType(type):
     def insert(cls, **kwargs):
         _ddl_error(cls)
@@ -394,6 +426,9 @@ class TableClassType(SelectableClassType):
 
     def update(cls, whereclause=None, values=None, **kwargs):
         cls._table.update(whereclause, values).execute(**kwargs)
+
+    def relate(cls, propname, *args, **kwargs):
+        class_mapper(cls)._compile_property(propname, relation(*args, **kwargs))
 
 def _is_outer_join(selectable):
     if not isinstance(selectable, sql.Join):
@@ -506,7 +541,7 @@ class SqlSoup:
         j = join(*args, **kwargs)
         return self.map(j)
 
-    def __getattr__(self, attr):
+    def entity(self, attr):
         try:
             t = self._cache[attr]
         except KeyError:
@@ -520,6 +555,9 @@ class SqlSoup:
             self._cache[attr] = t
         return t
     
+    def __getattr__(self, attr):
+        return self.entity(attr)
+
     def __repr__(self):
         return 'SqlSoup(%r)' % self._metadata
 
