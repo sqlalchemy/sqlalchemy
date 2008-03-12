@@ -120,7 +120,7 @@ Below, we open a new `Session` using a configured `sessionmaker()`, make some ch
     sess = Session()
     d = Data(value=10)
     sess.save(d)
-    d2 = sess.query(Data).filter(Data.value=15).one()
+    d2 = sess.query(Data).filter(Data.value==15).one()
     d2.value = 19
     sess.commit()
 
