@@ -337,7 +337,7 @@ class Mapper(object):
             else:
                 self._synchronizer = None
                 self.mapped_table = self.local_table
-            if self.polymorphic_identity:
+            if self.polymorphic_identity is not None:
                 self.inherits.polymorphic_map[self.polymorphic_identity] = self
                 if self.polymorphic_on is None:
                     for mapper in self.iterate_to_root():

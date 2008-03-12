@@ -8,7 +8,10 @@ CHANGES
     - when attributes are expired on a pending instance, an 
       error will not be raised when the "refresh" action 
       is triggered and returns no result
-    
+      
+    - fixed/covered case when using a False value as a 
+      polymorphic discriminator
+      
 0.4.4
 ------
 - sql
