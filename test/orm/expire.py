@@ -84,6 +84,14 @@ class ExpireTest(FixtureTest):
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Instance <class 'testlib.fixtures.User'> is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed"
     
+    def test_pending_doesnt_raise(self):
+        mapper(User, users)
+        sess = create_session()
+        u = User(id=15)
+        sess.save(u)
+        sess.expire(u, ['name'])
+        assert u.name is None
+        
     def test_no_instance_key(self):
         # this tests an artificial condition such that 
         # an instance is pending, but has expired attributes.  this

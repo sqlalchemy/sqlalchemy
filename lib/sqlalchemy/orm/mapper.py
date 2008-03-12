@@ -1565,10 +1565,13 @@ def _load_scalar_attributes(instance, attribute_names):
     state = instance._state
     if '_instance_key' in state.dict:
         identity_key = state.dict['_instance_key']
+        shouldraise = True
     else:
+        # if instance is pending, a refresh operation may not complete (even if PK attributes are assigned)
+        shouldraise = False
         identity_key = mapper._identity_key_from_state(state)
 
-    if session.query(mapper)._get(identity_key, refresh_instance=state, only_load_props=attribute_names) is None:
+    if session.query(mapper)._get(identity_key, refresh_instance=state, only_load_props=attribute_names) is None and shouldraise:
         raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % instance_str(instance))
 
 def _state_mapper(state, entity_name=None):
