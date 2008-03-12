@@ -652,7 +652,7 @@ class Mapper(object):
             for col in prop.columns:
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
-        elif isinstance(prop, SynonymProperty):
+        elif isinstance(prop, SynonymProperty) and setparent:
             prop.instrument = getattr(self.class_, key, None)
             if isinstance(prop.instrument, Mapper._CompileOnAttr):
                 prop.instrument = object.__getattribute__(prop.instrument, 'existing_prop')

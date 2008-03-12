@@ -11,7 +11,10 @@ CHANGES
       
     - fixed/covered case when using a False value as a 
       polymorphic discriminator
-      
+    
+    - fixed bug which was preventing synonym() attributes
+      from being used with inheritance
+        
 0.4.4
 ------
 - sql
