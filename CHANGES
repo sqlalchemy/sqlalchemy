@@ -14,6 +14,8 @@ CHANGES
     
     - fixed bug which was preventing synonym() attributes
       from being used with inheritance
+
+    - Session.execute can now find binds from metadata
         
 0.4.4
 ------

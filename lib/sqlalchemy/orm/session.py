@@ -712,6 +712,8 @@ class Session(object):
 
         if self.bind is not None:
             return self.bind
+        elif isinstance(clause, sql.expression.ClauseElement) and clause.bind is not None:
+            return clause.bind
         elif mapper is None:
             raise exceptions.UnboundExecutionError("Could not locate any mapper associated with SQL expression")
         else:

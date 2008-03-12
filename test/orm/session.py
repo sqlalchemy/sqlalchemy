@@ -99,6 +99,21 @@ class SessionTest(TestBase, AssertsExecutionResults):
         sess.execute(users.insert(), params=dict(user_id=2, user_name='fred'))
         assert sess.execute(users.select()).fetchall() == [(1, 'ed'), (2, 'fred')]
         sess.close()
+    
+    @engines.close_open_connections
+    def test_bind_from_metadata(self):
+        Session = sessionmaker()
+        sess = Session()
+        mapper(User, users)
+        
+        sess.execute(users.insert(user_name='Johnny'))
+        
+        assert len(sess.query(User).all()) == 1
+        
+        sess.execute(users.delete())
+        
+        assert len(sess.query(User).all()) == 0
+        sess.close()
 
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
     @engines.close_open_connections
