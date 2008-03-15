@@ -159,6 +159,12 @@ class DeclarativeMeta(type):
         our_stuff = {}
         for k in dict_:
             value = dict_[k]
+            if (isinstance(value, tuple) and len(value) == 1 and
+                isinstance(value[0], (Column, MapperProperty))):
+                util.warn("Ignoring declarative-like tuple value of attribute "
+                          "%s: possibly a copy-and-paste error with a comma "
+                          "left at the end of the line?" % k)
+                continue
             if not isinstance(value, (Column, MapperProperty)):
                 continue
             prop = _deferred_relation(cls, value)

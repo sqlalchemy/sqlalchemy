@@ -3,6 +3,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base, declared_synonym
+from sqlalchemy import exceptions
 from testlib.fixtures import Base as Fixture
 from testlib import *
 
@@ -49,6 +50,21 @@ class DeclarativeTest(TestBase):
         a1 = sess.query(Address).filter(Address.email=='two').one()
         self.assertEquals(a1, Address(email='two'))
         self.assertEquals(a1.user, User(name='u1'))
+
+    @testing.emits_warning('Ignoring declarative-like tuple value of '
+                           'attribute id')
+    def test_oops(self):
+        def define():
+            class User(Base, Fixture):
+                __tablename__ = 'users'
+
+                id = Column('id', Integer, primary_key=True),
+                name = Column('name', String(50))
+            assert False
+        self.assertRaisesMessage(
+            exceptions.ArgumentError,
+            "Mapper Mapper|User|users could not assemble any primary key",
+            define)
 
     def test_expression(self):
         class User(Base, Fixture):
