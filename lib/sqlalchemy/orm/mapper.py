@@ -653,9 +653,10 @@ class Mapper(object):
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
         elif isinstance(prop, SynonymProperty) and setparent:
-            prop.instrument = getattr(self.class_, key, None)
-            if isinstance(prop.instrument, Mapper._CompileOnAttr):
-                prop.instrument = object.__getattribute__(prop.instrument, 'existing_prop')
+            if prop.instrument is None:
+                prop.instrument = getattr(self.class_, key, None)
+                if isinstance(prop.instrument, Mapper._CompileOnAttr):
+                    prop.instrument = object.__getattribute__(prop.instrument, 'existing_prop')
             if prop.map_column:
                 if not key in self.mapped_table.c:
                     raise exceptions.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.mapped_table.description, key))

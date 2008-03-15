@@ -93,7 +93,7 @@ class DeclarativeTest(TestBase):
                 self._name = "SOMENAME " + name
             def _get_name(self):
                 return self._name
-            name = declared_synonym(property(_get_name, _set_name), '_name')
+            name = synonym('_name', instrument=property(_get_name, _set_name))
             
         Base.metadata.create_all()
         
@@ -104,7 +104,52 @@ class DeclarativeTest(TestBase):
         sess.flush()
         self.assertEquals(sess.query(User).filter(User.name=="SOMENAME someuser").one(), u1)
 
+    @testing.uses_deprecated('Call to deprecated function declared_synonym')
+    def test_decl_synonym_inline(self):
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            _name = Column('name', String(50))
+            def _set_name(self, name):
+                self._name = "SOMENAME " + name
+            def _get_name(self):
+                return self._name
+            name = declared_synonym(property(_get_name, _set_name), '_name')
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+        u1 = User(name='someuser')
+        assert u1.name == "SOMENAME someuser", u1.name
+        sess.save(u1)
+        sess.flush()
+        self.assertEquals(sess.query(User).filter(User.name=="SOMENAME someuser").one(), u1)
+
     def test_synonym_added(self):
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            _name = Column('name', String(50))
+            def _set_name(self, name):
+                self._name = "SOMENAME " + name
+            def _get_name(self):
+                return self._name
+            name = property(_get_name, _set_name)
+        User.name = synonym('_name', instrument=User.name)
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+        u1 = User(name='someuser')
+        assert u1.name == "SOMENAME someuser", u1.name
+        sess.save(u1)
+        sess.flush()
+        self.assertEquals(sess.query(User).filter(User.name=="SOMENAME someuser").one(), u1)
+
+    @testing.uses_deprecated('Call to deprecated function declared_synonym')
+    def test_decl_synonym_added(self):
         class User(Base, Fixture):
             __tablename__ = 'users'
 

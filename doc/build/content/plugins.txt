@@ -17,7 +17,7 @@ declarative moves these three types of configuration underneath the individual m
 in most cases:
 
     {python}
-    from sqlalchemy.ext.declarative import declarative_base, declared_synonym
+    from sqlalchemy.ext.declarative import declarative_base
     
     engine = create_engine('sqlite://')
     Base = declarative_base(engine)
@@ -81,8 +81,8 @@ using them:
         user_id = Column('user_id', Integer, ForeignKey('users.id'))
         user = relation(User, primaryjoin=user_id==User.id)
 
-Synonyms are one area where `declarative` needs to slightly change the usual SQLAlchemy configurational syntax. To define a getter/setter which
-proxies to an underlying attribute, use `declared_synonym`:
+Synonyms are one area where `declarative` needs to slightly change the usual SQLAlchemy configurational syntax. To define a
+getter/setter which proxies to an underlying attribute, use `synonym` with the `instruments` argument:
 
     {python}
     class MyClass(Base):
@@ -94,7 +94,7 @@ proxies to an underlying attribute, use `declared_synonym`:
             return self._some_attr
         def _set_attr(self, attr)
             self._some_attr = attr
-        attr = declared_synonym(property(_get_attr, _set_attr), '_attr')
+        attr = synonym('_attr', instruments=property(_get_attr, _set_attr))
         
 The above synonym is then usable as an instance attribute as well as a class-level expression construct:
 

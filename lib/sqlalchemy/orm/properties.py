@@ -150,10 +150,10 @@ class CompositeProperty(ColumnProperty):
                                  other.__composite_values__())])
 
 class SynonymProperty(MapperProperty):
-    def __init__(self, name, map_column=None):
+    def __init__(self, name, map_column=None, instrument=None):
         self.name = name
         self.map_column=map_column
-        self.instrument = None
+        self.instrument = instrument
 
     def setup(self, querycontext, **kwargs):
         pass
@@ -177,7 +177,6 @@ class SynonymProperty(MapperProperty):
                         return s
                     return getattr(obj, self.name)
             self.instrument = SynonymProp()
-
         sessionlib.register_attribute(class_, self.key, uselist=False, proxy_property=self.instrument, useobject=False, comparator=comparator)
 
     def merge(self, session, source, dest, _recursive):

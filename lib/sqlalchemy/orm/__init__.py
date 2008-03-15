@@ -547,7 +547,7 @@ def mapper(class_, local_table=None, *args, **params):
 
     return Mapper(class_, local_table, *args, **params)
 
-def synonym(name, map_column=False, proxy=False):
+def synonym(name, map_column=False, instrument=None, proxy=False):
     """Set up `name` as a synonym to another mapped property.
 
     Used with the ``properties`` dictionary sent to  [sqlalchemy.orm#mapper()].
@@ -589,7 +589,7 @@ def synonym(name, map_column=False, proxy=False):
     is not already available.
     """
 
-    return SynonymProperty(name, map_column=map_column)
+    return SynonymProperty(name, map_column=map_column, instrument=instrument)
 
 def compile_mappers():
     """Compile all mappers that have been defined.

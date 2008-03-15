@@ -16,7 +16,13 @@ CHANGES
       from being used with inheritance
 
     - Session.execute can now find binds from metadata
-        
+
+- extensions
+    - the "synonym" function is now directly usable with 
+      "declarative".  Pass in the decorated property using 
+      the "instrument" keyword argument, e.g.:
+      somekey = synonym('_somekey', instrument=property(g, s))
+      
 0.4.4
 ------
 - sql

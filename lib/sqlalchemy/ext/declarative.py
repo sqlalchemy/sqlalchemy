@@ -6,7 +6,7 @@ declarative moves these three types of configuration underneath the
 individual mapped class.   Regular SQLAlchemy schema and ORM 
 constructs are used in most cases::
 
-    from sqlalchemy.ext.declarative import declarative_base, declared_synonym
+    from sqlalchemy.ext.declarative import declarative_base
     
     engine = create_engine('sqlite://')
     Base = declarative_base(engine)
@@ -73,7 +73,7 @@ using them::
 
 Synonyms are one area where ``declarative`` needs to slightly change the usual
 SQLAlchemy configurational syntax.  To define a getter/setter which proxies
-to an underlying attribute, use ``declared_synonym``::
+to an underlying attribute, use ``synonym`` with the ``instruments`` argument::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
@@ -84,7 +84,7 @@ to an underlying attribute, use ``declared_synonym``::
             return self._some_attr
         def _set_attr(self, attr)
             self._some_attr = attr
-        attr = declared_synonym(property(_get_attr, _set_attr), '_attr')
+        attr = synonym('_attr', instruments=property(_get_attr, _set_attr))
         
 The above synonym is then usable as an instance attribute as well as a class-level
 expression construct::
@@ -146,6 +146,7 @@ from sqlalchemy.schema import Table, SchemaItem, Column, MetaData
 from sqlalchemy.orm import synonym as _orm_synonym, mapper
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import PropertyLoader
+from sqlalchemy import util
 
 __all__ = ['declarative_base', 'declared_synonym']
 
@@ -158,13 +159,10 @@ class DeclarativeMeta(type):
         our_stuff = {}
         for k in dict_:
             value = dict_[k]
-            if not isinstance(value, (Column, MapperProperty, declared_synonym)):
+            if not isinstance(value, (Column, MapperProperty)):
                 continue
-            if isinstance(value, declared_synonym):
-                value._setup(cls, k, our_stuff)
-            else:
-                prop = _deferred_relation(cls, value)
-                our_stuff[k] = prop
+            prop = _deferred_relation(cls, value)
+            our_stuff[k] = prop
         
         table = None
         if '__table__' not in cls.__dict__:
@@ -195,8 +193,6 @@ class DeclarativeMeta(type):
                 cls.__mapper__.add_property(key, value)
             elif isinstance(value, MapperProperty):
                 cls.__mapper__.add_property(key, _deferred_relation(cls, value))
-            elif isinstance(value, declared_synonym):
-                value._setup(cls, key, None)
             else:
                 type.__setattr__(cls, key, value)
         else:
@@ -211,23 +207,11 @@ def _deferred_relation(cls, prop):
 
     return prop
 
-class declared_synonym(object):
-    def __init__(self, prop, name, mapperprop=None):
-        self.prop = prop
-        self.name = name
-        self.mapperprop = mapperprop
-        
-    def _setup(self, cls, key, init_dict):
-        prop = self.mapperprop or getattr(cls, self.name)
-        prop = _deferred_relation(cls, prop)
-        setattr(cls, key, self.prop)
-        if init_dict is not None:
-            init_dict[self.name] = prop
-            init_dict[key] = _orm_synonym(self.name)
-        else:
-            setattr(cls, self.name, prop)
-            setattr(cls, key, _orm_synonym(self.name))
-        
+def declared_synonym(prop, name):
+    """deprecated.  use synonym(name, instrument=prop)."""
+    
+    return _orm_synonym(name, instrument=prop)
+declared_synonym = util.deprecated(declared_synonym)
         
 def declarative_base(engine=None, metadata=None):
     lcl_metadata = metadata or MetaData()
