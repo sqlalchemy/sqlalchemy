@@ -121,7 +121,7 @@ class FlushTest(FixtureTest):
         ] == sess.query(User).all()
 
     @testing.fails_on('maxdb')
-    def test_delete(self):
+    def test_delete_nocascade(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), backref='user')
         })
@@ -141,6 +141,9 @@ class FlushTest(FixtureTest):
         sess.delete(u.addresses[3])
         assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
 
+        sess.clear()
+        u = sess.query(User).get(u.id)
+
         sess.delete(u)
 
         # u.addresses relation will have to force the load
@@ -149,6 +152,39 @@ class FlushTest(FixtureTest):
         sess.close()
 
         assert testing.db.scalar(addresses.count(addresses.c.user_id != None)) ==0
+
+    @testing.fails_on('maxdb')
+    def test_delete_cascade(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses), backref='user', cascade="all, delete-orphan")
+        })
+        sess = create_session(autoflush=True)
+        u = User(name='ed')
+        u.addresses.append(Address(email_address='a'))
+        u.addresses.append(Address(email_address='b'))
+        u.addresses.append(Address(email_address='c'))
+        u.addresses.append(Address(email_address='d'))
+        u.addresses.append(Address(email_address='e'))
+        u.addresses.append(Address(email_address='f'))
+        sess.save(u)
+
+        assert Address(email_address='c') == u.addresses[2]
+        sess.delete(u.addresses[2])
+        sess.delete(u.addresses[4])
+        sess.delete(u.addresses[3])
+        assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
+        
+        sess.clear()
+        u = sess.query(User).get(u.id)
+        
+        sess.delete(u)
+
+        # u.addresses relation will have to force the load
+        # of all addresses so that they can be updated
+        sess.flush()
+        sess.close()
+
+        assert testing.db.scalar(addresses.count()) ==0
 
     @testing.fails_on('maxdb')
     def test_remove_orphans(self):

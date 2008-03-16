@@ -1160,7 +1160,7 @@ def get_as_list(state, key, passive=False):
     if x is PASSIVE_NORESULT:
         return None
     elif hasattr(attr, 'get_collection'):
-        return attr.get_collection(state, x)
+        return attr.get_collection(state, x, passive=passive)
     elif isinstance(x, list):
         return x
     else:

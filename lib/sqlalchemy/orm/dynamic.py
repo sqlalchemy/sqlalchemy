@@ -14,12 +14,16 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
     def get(self, state, passive=False):
         if passive:
-            return self._get_collection(state, passive=True).added_items
+            return self._get_collection_history(state, passive=True).added_items
         else:
             return AppenderQuery(self, state)
 
-    def get_collection(self, state, user_data=None):
-        return self._get_collection(state, passive=True).added_items
+    def get_collection(self, state, user_data=None, passive=True):
+        if passive:
+            return self._get_collection_history(state, passive=passive).added_items
+        else:
+            history = self._get_collection_history(state, passive=passive)
+            return history.added_items + history.unchanged_items
 
     def fire_append_event(self, state, value, initiator):
         state.modified = True
@@ -53,10 +57,10 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         raise NotImplementedError()
         
     def get_history(self, state, passive=False):
-        c = self._get_collection(state, passive)
+        c = self._get_collection_history(state, passive)
         return (c.added_items, c.unchanged_items, c.deleted_items)
         
-    def _get_collection(self, state, passive=False):
+    def _get_collection_history(self, state, passive=False):
         try:
             c = state.dict[self.key]
         except KeyError:
@@ -69,12 +73,12 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         
     def append(self, state, value, initiator, passive=False):
         if initiator is not self:
-            self._get_collection(state, passive=True).added_items.append(value)
+            self._get_collection_history(state, passive=True).added_items.append(value)
             self.fire_append_event(state, value, initiator)
     
     def remove(self, state, value, initiator, passive=False):
         if initiator is not self:
-            self._get_collection(state, passive=True).deleted_items.append(value)
+            self._get_collection_history(state, passive=True).deleted_items.append(value)
             self.fire_remove_event(state, value, initiator)
 
             
@@ -100,21 +104,21 @@ class AppenderQuery(Query):
     def __iter__(self):
         sess = self.__session()
         if sess is None:
-            return iter(self.attr._get_collection(self.instance._state, passive=True).added_items)
+            return iter(self.attr._get_collection_history(self.instance._state, passive=True).added_items)
         else:
             return iter(self._clone(sess))
 
     def __getitem__(self, index):
         sess = self.__session()
         if sess is None:
-            return self.attr._get_collection(self.instance._state, passive=True).added_items.__getitem__(index)
+            return self.attr._get_collection_history(self.instance._state, passive=True).added_items.__getitem__(index)
         else:
             return self._clone(sess).__getitem__(index)
     
     def count(self):
         sess = self.__session()
         if sess is None:
-            return len(self.attr._get_collection(self.instance._state, passive=True).added_items)
+            return len(self.attr._get_collection_history(self.instance._state, passive=True).added_items)
         else:
             return self._clone(sess).count()
     
@@ -142,7 +146,7 @@ class AppenderQuery(Query):
             oldlist = list(self)
         else:
             oldlist = []
-        self.attr._get_collection(self.instance._state, passive=True).replace(oldlist, collection)
+        self.attr._get_collection_history(self.instance._state, passive=True).replace(oldlist, collection)
         return oldlist
         
     def append(self, item):
