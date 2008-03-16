@@ -106,7 +106,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         sess = Session()
         mapper(User, users)
         
-        sess.execute(users.insert(user_name='Johnny'))
+        sess.execute(users.insert(), user_name='Johnny')
         
         assert len(sess.query(User).all()) == 1
         
