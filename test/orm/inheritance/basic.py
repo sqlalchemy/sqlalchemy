@@ -89,7 +89,7 @@ class PolymorphicSynonymTest(ORMTest):
                    Column('info', Text))
         t2 = Table('t2', metadata,
                    Column('id', Integer, ForeignKey('t1.id'), primary_key=True),
-                   Column('data', Integer, nullable=False))
+                   Column('data', String(10), nullable=False))
     
     def test_polymorphic_synonym(self):
         class T1(fixtures.Base):
