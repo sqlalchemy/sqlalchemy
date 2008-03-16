@@ -83,8 +83,13 @@ class FalseDiscriminatorTest(ORMTest):
 class PolymorphicSynonymTest(ORMTest):
     def define_tables(self, metadata):
         global t1, t2
-        t1 = Table('t1', metadata, Column('id', Integer, primary_key=True), Column('type', Integer, nullable=False), Column('info', Text))
-        t2 = Table('t2', metadata, Column('id', Integer, ForeignKey('t1.id'), primary_key=True), Column('data', Integer, nullable=False))
+        t1 = Table('t1', metadata,
+                   Column('id', Integer, primary_key=True),
+                   Column('type', String(10), nullable=False),
+                   Column('info', Text))
+        t2 = Table('t2', metadata,
+                   Column('id', Integer, ForeignKey('t1.id'), primary_key=True),
+                   Column('data', Integer, nullable=False))
     
     def test_polymorphic_synonym(self):
         class T1(fixtures.Base):
