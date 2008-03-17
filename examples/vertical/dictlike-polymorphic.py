@@ -30,7 +30,7 @@ Note: Something much like 'comparable_property' is slated for inclusion in a
 """
 
 from sqlalchemy.orm.interfaces import PropComparator, MapperProperty
-from sqlalchemy.orm import session as sessionlib
+from sqlalchemy.orm import session as sessionlib, comparable_property
 
 # Using the VerticalPropertyDictMixin from the base example
 from dictlike import VerticalPropertyDictMixin
@@ -128,27 +128,6 @@ class PolymorphicVerticalProperty(object):
 
     def __repr__(self):
         return '<%s %r=%r>' % (self.__class__.__name__, self.key, self.value)
-
-
-class comparable_property(MapperProperty):
-    """Instruments a Python property for use in query expressions."""
-
-    def __init__(self, comparator, property):
-        self.property = property
-        self.comparator = comparator(self)
-
-    def do_init(self):
-        class_ = self.parent.class_
-        sessionlib.register_attribute(class_, self.key, uselist=False,
-                                      proxy_property=self.property,
-                                      useobject=False,
-                                      comparator=self.comparator)
-
-    def setup(self, querycontext, **kwargs):
-        pass
-
-    def create_row_processor(self, selectcontext, mapper, row):
-        return (None, None, None)
 
 
 if __name__ == '__main__':

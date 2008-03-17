@@ -14,7 +14,7 @@ documentation for an overview of how this module is used.
 from sqlalchemy import util as sautil
 from sqlalchemy.orm.mapper import Mapper, object_mapper, class_mapper, _mapper_registry
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, EXT_STOP, EXT_PASS, ExtensionOption, PropComparator
-from sqlalchemy.orm.properties import SynonymProperty, PropertyLoader, ColumnProperty, CompositeProperty, BackRef
+from sqlalchemy.orm.properties import SynonymProperty, ComparableProperty, PropertyLoader, ColumnProperty, CompositeProperty, BackRef
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import Query
@@ -29,7 +29,7 @@ __all__ = [ 'relation', 'column_property', 'composite', 'backref', 'eagerload',
             'undefer', 'undefer_group', 'extension', 'mapper', 'clear_mappers',
             'compile_mappers', 'class_mapper', 'object_mapper', 'sessionmaker',
             'scoped_session', 'dynamic_loader', 'MapperExtension',
-            'polymorphic_union',
+            'polymorphic_union', 'comparable_property',
             'create_session', 'synonym', 'contains_alias', 'Query',
             'contains_eager', 'EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS',
             'object_session', 'PropComparator' ]
@@ -590,6 +590,43 @@ def synonym(name, map_column=False, instrument=None, proxy=False):
     """
 
     return SynonymProperty(name, map_column=map_column, instrument=instrument)
+
+def comparable_property(comparator_factory, descriptor=None):
+    """Provide query semantics for an unmanaged attribute.
+
+    Allows a regular Python @property (descriptor) to be used in Queries and
+    SQL constructs like a managed attribute.  comparable_property wraps a
+    descriptor with a proxy that directs operator overrides such as ==
+    (__eq__) to the supplied comparator but proxies everything else through
+    to the original descriptor.
+
+      class MyClass(object):
+          @property
+          def myprop(self):
+              return 'foo'
+
+      class MyComparator(sqlalchemy.orm.interfaces.PropComparator):
+          def __eq__(self, other):
+              ....
+
+      mapper(MyClass, mytable, properties=dict(
+               'myprop': comparable_property(MyComparator)))
+
+    Used with the ``properties`` dictionary sent to  [sqlalchemy.orm#mapper()].
+
+    comparator_factory
+      A PropComparator subclass or factory that defines operator behavior
+      for this property.
+
+    descriptor
+
+      Optional when used in a ``properties={}`` declaration.  The Python
+      descriptor or property to layer comparison behavior on top of.
+
+      The like-named descriptor will be automatically retreived from the
+      mapped class if left blank in a ``properties`` declaration.
+    """
+    return ComparableProperty(comparator_factory, descriptor)
 
 def compile_mappers():
     """Compile all mappers that have been defined.

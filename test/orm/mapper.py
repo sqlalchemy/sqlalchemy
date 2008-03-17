@@ -201,6 +201,7 @@ class MapperTest(MapperSuperTest):
 
     def test_add_property(self):
         assert_col = []
+
         class User(object):
             def _get_user_name(self):
                 assert_col.append(('get', self._user_name))
@@ -210,11 +211,31 @@ class MapperTest(MapperSuperTest):
                 self._user_name = name
             user_name = property(_get_user_name, _set_user_name)
 
+            def _uc_user_name(self):
+                if self._user_name is None:
+                    return None
+                return self._user_name.upper()
+            uc_user_name = property(_uc_user_name)
+            uc_user_name2 = property(_uc_user_name)
+
         m = mapper(User, users)
         mapper(Address, addresses)
+
+        class UCComparator(PropComparator):
+            def __eq__(self, other):
+                cls = self.prop.parent.class_
+                col = getattr(cls, 'user_name')
+                if other is None:
+                    return col == None
+                else:
+                    return func.upper(col) == func.upper(other)
+
         m.add_property('_user_name', deferred(users.c.user_name))
         m.add_property('user_name', synonym('_user_name'))
         m.add_property('addresses', relation(Address))
+        m.add_property('uc_user_name', comparable_property(UCComparator))
+        m.add_property('uc_user_name2', comparable_property(
+                UCComparator, User.uc_user_name2))
 
         sess = create_session(transactional=True)
         assert sess.query(User).get(7)
@@ -224,6 +245,8 @@ class MapperTest(MapperSuperTest):
         def go():
             self.assert_result([u], User, user_address_result[0])
             assert u.user_name == 'jack'
+            assert u.uc_user_name == 'JACK'
+            assert u.uc_user_name2 == 'JACK'
             assert assert_col == [('get', 'jack')], str(assert_col)
         self.assert_sql_count(testing.db, go, 2)
 
@@ -645,6 +668,70 @@ class MapperTest(MapperSuperTest):
         u.user_name = 'foo'
         assert u.user_name == 'foo'
         assert assert_col == [('get', 'jack'), ('set', 'foo'), ('get', 'foo')]
+
+    def test_comparable(self):
+        class extendedproperty(property):
+            attribute = 123
+            def __getitem__(self, key):
+                return 'value'
+
+        class UCComparator(PropComparator):
+            def __eq__(self, other):
+                cls = self.prop.parent.class_
+                col = getattr(cls, 'user_name')
+                if other is None:
+                    return col == None
+                else:
+                    return func.upper(col) == func.upper(other)
+
+        def map_(with_explicit_property):
+            class User(object):
+                @extendedproperty
+                def uc_user_name(self):
+                    if self.user_name is None:
+                        return None
+                    return self.user_name.upper()
+            if with_explicit_property:
+                args = (UCComparator, User.uc_user_name)
+            else:
+                args = (UCComparator,)
+
+            mapper(User, users, properties=dict(
+                    uc_user_name = comparable_property(*args)))
+            return User
+
+        for User in (map_(True), map_(False)):
+            sess = create_session()
+            sess.begin()
+            q = sess.query(User)
+
+            assert hasattr(User, 'user_name')
+            assert hasattr(User, 'uc_user_name')
+
+            # test compile
+            assert not isinstance(User.uc_user_name == 'jack', bool)
+            u = q.filter(User.uc_user_name=='JACK').one()
+
+            assert u.uc_user_name == "JACK"
+            assert u not in sess.dirty
+
+            u.user_name = "some user name"
+            assert u.user_name == "some user name"
+            assert u in sess.dirty
+            assert u.uc_user_name == "SOME USER NAME"
+
+            sess.flush()
+            sess.clear()
+
+            q = sess.query(User)
+            u2 = q.filter(User.user_name=='some user name').one()
+            u3 = q.filter(User.uc_user_name=='SOME USER NAME').one()
+
+            assert u2 is u3
+
+            assert User.uc_user_name.attribute == 123
+            assert User.uc_user_name['key'] == 'value'
+            sess.rollback()
 
 class OptionsTest(MapperSuperTest):
     @testing.fails_on('maxdb')

@@ -5,29 +5,31 @@ CHANGES
 0.4.5
 =====
 - orm
-    - when attributes are expired on a pending instance, an 
-      error will not be raised when the "refresh" action 
-      is triggered and returns no result
-      
-    - fixed/covered case when using a False value as a 
-      polymorphic discriminator
-    
-    - fixed bug which was preventing synonym() attributes
-      from being used with inheritance
+    - Added comparable_property(), adds query Comparator behavior
+      to regular, unmanaged Python properties
+
+    - When attributes are expired on a pending instance, an error
+      will not be raised when the "refresh" action is triggered
+      and returns no result
+
+    - Fixed/covered case when using a False value as a polymorphic
+      discriminator
+
+    - Fixed bug which was preventing synonym() attributes from
+      being used with inheritance
 
     - Session.execute can now find binds from metadata
-    
-    - fixed "cascade delete" operation of dynamic relations,
-      which had only been implemented for foreign-key nulling
-      behavior in 0.4.2 and not actual cascading deletes
-      [ticket:895]
-      
+
+    - Fixed "cascade delete" operation of dynamic relations, which
+      had only been implemented for foreign-key nulling behavior
+      in 0.4.2 and not actual cascading deletes [ticket:895]
+
 - extensions
-    - the "synonym" function is now directly usable with 
-      "declarative".  Pass in the decorated property using 
-      the "instrument" keyword argument, e.g.:
-      somekey = synonym('_somekey', instrument=property(g, s))
-      
+    - The "synonym" function is now directly usable with
+      "declarative".  Pass in the decorated property using the
+      "instrument" keyword argument, e.g.: somekey =
+      synonym('_somekey', instrument=property(g, s))
+
 0.4.4
 ------
 - sql

@@ -35,9 +35,11 @@ NO_ATTRIBUTE = util.symbol('NO_ATTRIBUTE')
 # lock used to synchronize the "mapper compile" step
 _COMPILE_MUTEX = util.threading.Lock()
 
-# initialize these two lazily
+# initialize these lazily
 ColumnProperty = None
 SynonymProperty = None
+ComparableProperty = None
+
 
 class Mapper(object):
     """Define the correlation of class attributes to database table
@@ -531,7 +533,7 @@ class Mapper(object):
     _equivalent_columns = property(_equivalent_columns)
 
     class _CompileOnAttr(PropComparator):
-        """placeholder class attribute which fires mapper compilation on access"""
+        """A placeholder descriptor which triggers compilation on access."""
 
         def __init__(self, class_, key):
             self.class_ = class_
@@ -661,6 +663,13 @@ class Mapper(object):
                 if not key in self.mapped_table.c:
                     raise exceptions.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.mapped_table.description, key))
                 self._compile_property(prop.name, ColumnProperty(self.mapped_table.c[key]), init=init, setparent=setparent)
+        elif isinstance(prop, ComparableProperty) and setparent:
+            # refactor me
+            if prop.descriptor is None:
+                prop.descriptor = getattr(self.class_, key, None)
+                if isinstance(prop.descriptor, Mapper._CompileOnAttr):
+                    prop.descriptor = object.__getattribute__(prop.descriptor,
+                                                              'existing_prop')
         self.__props[key] = prop
 
         if setparent:

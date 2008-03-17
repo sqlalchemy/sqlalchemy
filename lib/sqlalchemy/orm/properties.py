@@ -22,7 +22,7 @@ from sqlalchemy.exceptions import ArgumentError
 import weakref
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
-           'PropertyLoader', 'BackRef')
+           'ComparableProperty', 'PropertyLoader', 'BackRef')
 
 
 class ColumnProperty(StrategizedProperty):
@@ -182,6 +182,31 @@ class SynonymProperty(MapperProperty):
     def merge(self, session, source, dest, _recursive):
         pass
 SynonymProperty.logger = logging.class_logger(SynonymProperty)
+
+
+class ComparableProperty(MapperProperty):
+    """Instruments a Python property for use in query expressions."""
+
+    def __init__(self, comparator_factory, descriptor=None):
+        self.descriptor = descriptor
+        self.comparator = comparator_factory(self)
+
+    def do_init(self):
+        """Set up a proxy to the unmanaged descriptor."""
+
+        class_ = self.parent.class_
+        # refactor me
+        sessionlib.register_attribute(class_, self.key, uselist=False,
+                                      proxy_property=self.descriptor,
+                                      useobject=False,
+                                      comparator=self.comparator)
+
+    def setup(self, querycontext, **kwargs):
+        pass
+
+    def create_row_processor(self, selectcontext, mapper, row):
+        return (None, None, None)
+
 
 class PropertyLoader(StrategizedProperty):
     """Describes an object property that holds a single item or list
@@ -857,3 +882,4 @@ class BackRef(object):
 
 mapper.ColumnProperty = ColumnProperty
 mapper.SynonymProperty = SynonymProperty
+mapper.ComparableProperty = ComparableProperty
