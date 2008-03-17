@@ -30,6 +30,10 @@ CHANGES
       "instrument" keyword argument, e.g.: somekey =
       synonym('_somekey', instrument=property(g, s))
 
+    - Declarative also gained @synonym_for(...) and
+      @comparable_using(...), front-ends for synonym and
+      comparable_property.
+
 0.4.4
 ------
 - sql

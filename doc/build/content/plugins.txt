@@ -102,7 +102,33 @@ The above synonym is then usable as an instance attribute as well as a class-lev
     x = MyClass()
     x.attr = "some value"
     session.query(MyClass).filter(MyClass.attr == 'some other value').all()
+
+The `synonyn_for` decorator can accomplish the same task:
+
+    {python}
+    class MyClass(Base):
+        __tablename__ = 'sometable'
         
+        _attr = Column('attr', String)
+
+        @synonyn_for('_attr')
+        @property
+        def attr(self):
+            return self._some_attr
+
+Similarly, `comparable_using` is a front end for the `comparable_property` ORM function:
+
+    {python}
+    class MyClass(Base):
+        __tablename__ = 'sometable'
+
+        name = Column('name', String)
+
+        @comparable_using(MyUpperCaseComparator)
+        @property
+        def uc_name(self):
+            return self.name.upper()
+
 As an alternative to `__tablename__`, a direct `Table` construct may be used:
 
     {python}

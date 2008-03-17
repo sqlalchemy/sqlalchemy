@@ -143,12 +143,13 @@ Mapped instances then make usage of ``Session`` in the usual way.
 
 """
 from sqlalchemy.schema import Table, SchemaItem, Column, MetaData
-from sqlalchemy.orm import synonym as _orm_synonym, mapper
+from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import PropertyLoader
 from sqlalchemy import util
 
-__all__ = ['declarative_base', 'declared_synonym']
+__all__ = ['declarative_base', 'synonym_for', 'comparable_using',
+           'declared_synonym']
 
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
@@ -218,7 +219,50 @@ def declared_synonym(prop, name):
     
     return _orm_synonym(name, instrument=prop)
 declared_synonym = util.deprecated(declared_synonym)
-        
+
+def synonym_for(name, map_column=False):
+    """Decorator, make a Python @property a query synonym for a column.
+    
+    A decorator version of [sqlalchemy.orm#synonym()].  The function being
+    decoratred is the 'instrument', otherwise passes its arguments through
+    to synonym().
+
+      @synonym_for('col')
+      @property
+      def prop(self):
+          return 'special sauce'
+
+    The regular ``synonym()`` is also usable directly in a declarative
+    setting and may be convenient for read/write properties::
+    
+      prop = synonym('col', instrument=property(_read_prop, _write_prop))
+
+    """
+    def decorate(fn):
+        return _orm_synonym(name, map_column=map_column, instrument=fn)
+    return decorate
+
+
+def comparable_using(comparator_factory):
+    """Decorator, allow a Python @property to be used in query criteria.
+
+    A decorator front end to [sqlalchemy.orm#comparable_property()], passes
+    throgh the comparator_factory and the function being decorated.
+
+      @comparable_using(MyComparatorType)
+      @property
+      def prop(self):
+          return 'special sauce'
+
+    The regular ``comparable_property()`` is also usable directly in a
+    declarative setting and may be convenient for read/write properties::
+
+      prop = comparable_property(MyComparatorType)
+    """
+    def decorate(fn):
+        return comparable_property(comparator_factory, fn)
+    return decorate
+
 def declarative_base(engine=None, metadata=None):
     lcl_metadata = metadata or MetaData()
     class Base(object):

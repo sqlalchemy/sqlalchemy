@@ -2,7 +2,8 @@ import testenv; testenv.configure_for_tests()
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.ext.declarative import declarative_base, declared_synonym
+from sqlalchemy.ext.declarative import declarative_base, declared_synonym, \
+                                       synonym_for, comparable_using
 from sqlalchemy import exceptions
 from testlib.fixtures import Base as Fixture
 from testlib import *
@@ -458,6 +459,69 @@ class DeclarativeReflectionTest(TestBase):
         a1 = sess.query(IMHandle).filter(IMHandle.handle=='zomg').one()
         self.assertEquals(a1, IMHandle(network='lol', handle='zomg'))
         self.assertEquals(a1.user, User(name='u1'))
+
+    def test_synonym_for(self):
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+
+            @synonym_for('name')
+            @property
+            def namesyn(self):
+                return self.name
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+        u1 = User(name='someuser')
+        assert u1.name == "someuser", u1.name
+        assert u1.namesyn == 'someuser', u1.namesyn
+        sess.save(u1)
+        sess.flush()
+
+        rt = sess.query(User).filter(User.namesyn=='someuser').one()
+        self.assertEquals(rt, u1)
+
+    def test_comparable_using(self):
+        class NameComparator(PropComparator):
+            @property
+            def upperself(self):
+                cls = self.prop.parent.class_
+                col = getattr(cls, 'name')
+                return func.upper(col)
+
+            def operate(self, op, other, **kw):
+                return op(self.upperself, other, **kw)
+
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+
+            @comparable_using(NameComparator)
+            @property
+            def uc_name(self):
+                return self.name is not None and self.name.upper() or None
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+        u1 = User(name='someuser')
+        assert u1.name == "someuser", u1.name
+        assert u1.uc_name == 'SOMEUSER', u1.uc_name
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        rt = sess.query(User).filter(User.uc_name=='SOMEUSER').one()
+        self.assertEquals(rt, u1)
+        sess.clear()
+
+        rt = sess.query(User).filter(User.uc_name.startswith('SOMEUSE')).one()
+        self.assertEquals(rt, u1)
 
 if __name__ == '__main__':
     testing.main()
