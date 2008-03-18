@@ -217,16 +217,21 @@ class OneToManyDP(DependencyProcessor):
         if delete:
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
-            if not self.post_update and not self.cascade.delete and not self.passive_deletes=='all':
+            if not self.post_update:
+                should_null_fks = not self.cascade.delete and not self.passive_deletes=='all'
                 for state in deplist:
                     (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
                     if unchanged or deleted:
                         for child in deleted:
                             if child is not None and self.hasparent(child) is False:
-                                uowcommit.register_object(child)
-                        for child in unchanged:
-                            if child is not None:
-                                uowcommit.register_object(child)
+                                if self.cascade.delete_orphan:
+                                    uowcommit.register_object(child, isdelete=True)
+                                else:
+                                    uowcommit.register_object(child)
+                        if should_null_fks:
+                            for child in unchanged:
+                                if child is not None:
+                                    uowcommit.register_object(child)
         else:
             for state in deplist:
                 (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=True)
@@ -249,8 +254,6 @@ class OneToManyDP(DependencyProcessor):
                             uowcommit.register_object(child)
 
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
-        if child is not None:
-            child = getattr(child, '_state', child)
         source = state
         dest = child
         if dest is None or (not self.post_update and uowcommit.is_deleted(dest)):
@@ -338,15 +341,19 @@ class ManyToOneDP(DependencyProcessor):
         if self.post_update:
             return
         if delete:
-            if self.cascade.delete:
+            if self.cascade.delete or self.cascade.delete_orphan:
                 for state in deplist:
                     (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
-                    if deleted or unchanged:
-                        for child in deleted + unchanged:
-                            if child is not None and self.hasparent(child) is False:
-                                uowcommit.register_object(child, isdelete=True)
-                                for c, m in self.mapper.cascade_iterator('delete', child):
-                                    uowcommit.register_object(c._state, isdelete=True)
+                    if self.cascade.delete_orphan:
+                        todelete = added + unchanged + deleted
+                    else:
+                        todelete = added + unchanged
+                    for child in todelete:
+                        if child is None:
+                            continue
+                        uowcommit.register_object(child, isdelete=True)
+                        for c, m in self.mapper.cascade_iterator('delete', child):
+                            uowcommit.register_object(c._state, isdelete=True)
         else:
             for state in deplist:
                 uowcommit.register_object(state)

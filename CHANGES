@@ -20,10 +20,22 @@ CHANGES
 
     - Session.execute can now find binds from metadata
 
-    - Fixed "cascade delete" operation of dynamic relations, which
-      had only been implemented for foreign-key nulling behavior
-      in 0.4.2 and not actual cascading deletes [ticket:895]
-
+    - assorted "cascade deletes" fixes:
+        - Fixed "cascade delete" operation of dynamic
+          relations, which had only been implemented for
+          foreign-key nulling behavior in 0.4.2 and not actual
+          cascading deletes [ticket:895]
+    
+        - delete cascade without delete-orphan cascade on a
+          many-to-one will not delete orphans which were
+          disconnected from the parent before session.delete()
+          is called on the parent (one-to-many already had
+          this).
+      
+        - delete cascade with delete-orphan will delete
+          orphans whether or not it remains attached to its
+          also-deleted parent.
+    
     - fixed order_by calculation in Query to properly alias
       mapper-config'ed order_by when using select_from()
 

@@ -349,16 +349,6 @@ class UOWTransaction(object):
         taskelement = task._objects[state]
         taskelement.isdelete = "rowswitch"
         
-    def unregister_object(self, obj):
-        """remove an object from its parent UOWTask.
-        
-        called by mapper._save_obj() when an 'identity switch' is detected, so that
-        no further operations occur upon the instance."""
-        mapper = object_mapper(obj)
-        task = self.get_task_by_mapper(mapper)
-        if obj._state in task._objects:
-            task.delete(obj._state)
-
     def is_deleted(self, state):
         """return true if the given state is marked as deleted within this UOWTransaction."""
         
@@ -590,11 +580,6 @@ class UOWTask(object):
         # convert post_update_cols list to a Set so that __hashcode__ is used to compare columns
         # instead of __eq__
         self.mapper._save_obj([state], self.uowtransaction, postupdate=True, post_update_cols=util.Set(post_update_cols))
-
-    def delete(self, obj):
-        """remove the given object from this UOWTask, if present."""
-
-        self._objects.pop(obj._state, None)
 
     def __contains__(self, state):
         """return True if the given object is contained within this UOWTask or inheriting tasks."""

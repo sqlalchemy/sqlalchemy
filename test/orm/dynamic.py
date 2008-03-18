@@ -91,7 +91,17 @@ class DynamicTest(FixtureTest):
 
         assert o1 in i1.orders.all()
         assert i1 in o1.items.all()
-
+    
+    def test_transient_detached(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        sess = create_session()
+        u1 = User()
+        u1.addresses.append(Address())
+        assert u1.addresses.count() == 1
+        assert u1.addresses[0] == Address()
+        
 class FlushTest(FixtureTest):
     def test_basic(self):
         class Fixture(Base):
