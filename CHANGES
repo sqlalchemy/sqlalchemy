@@ -24,6 +24,9 @@ CHANGES
       had only been implemented for foreign-key nulling behavior
       in 0.4.2 and not actual cascading deletes [ticket:895]
 
+    - fixed order_by calculation in Query to properly alias
+      mapper-config'ed order_by when using select_from()
+
 - sql
     - 'name' is no longer a required constructor argument for
       Column().  It (and .key) may now be deferred until the column

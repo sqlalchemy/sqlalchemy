@@ -1026,6 +1026,30 @@ class SelectFromTest(QueryTest):
             User(name='jack', addresses=[Address(id=1)])
         )
 
+    def test_join_mapper_order_by(self):
+        mapper(User, users, order_by=users.c.id)
+
+        sel = users.select(users.c.id.in_([7, 8]))
+        sess = create_session()
+
+        self.assertEquals(sess.query(User).select_from(sel).all(),
+            [
+                User(name='jack',id=7), User(name='ed',id=8)
+            ]
+        )
+
+    def test_join_no_order_by(self):
+        mapper(User, users)
+
+        sel = users.select(users.c.id.in_([7, 8]))
+        sess = create_session()
+
+        self.assertEquals(sess.query(User).select_from(sel).all(),
+            [
+                User(name='jack',id=7), User(name='ed',id=8)
+            ]
+        )
+
     def test_join(self):
         mapper(User, users, properties = {
             'addresses':relation(Address)
@@ -1052,6 +1076,7 @@ class SelectFromTest(QueryTest):
                 (User(name='ed',id=8), Address(user_id=8,email_address='ed@lala.com',id=4))
             ]
         )
+        
     
     def test_more_joins(self):
         mapper(User, users, properties={

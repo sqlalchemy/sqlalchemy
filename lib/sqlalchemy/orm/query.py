@@ -1128,12 +1128,10 @@ class Query(object):
         if order_by is False:
             order_by = self.select_mapper.order_by
         if order_by is False:
-            order_by = []
-            if self.table.default_order_by() is not None:
+            order_by = from_obj.default_order_by()
+            if order_by is None:
                 order_by = self.table.default_order_by()
-            if from_obj.default_order_by() is not None:
-                order_by = from_obj.default_order_by()
-
+                
         if self._lockmode:
             try:
                 for_update = {'read':'read','update':True,'update_nowait':'nowait',None:False}[self._lockmode]
@@ -1211,15 +1209,16 @@ class Query(object):
 
             statement.append_order_by(*context.eager_order_by)
         else:
+            order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
+            
             if adapter:
                 # TODO: make usage of the ClauseAdapter here to create row adapter, list
                 # of primary columns ?
                 context.primary_columns = [from_obj.corresponding_column(c) or c for c in context.primary_columns]
                 context.row_adapter = mapperutil.create_row_adapter(from_obj, self.table)
-
+                order_by = adapter.copy_and_process(order_by)
+                
             if self._distinct:
-                if order_by:
-                    order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
 
                 if self._distinct and order_by:
                     cf = util.Set()
