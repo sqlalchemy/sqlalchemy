@@ -670,6 +670,7 @@ class ExtraPassiveDeletesTest(ORMTest):
         sess.delete(mc)
         self.assertRaises(exceptions.DBAPIError, sess.commit)
 
+    @testing.unsupported('sqlite')
     def test_extra_passive_2(self):
         class MyClass(object):
             pass
