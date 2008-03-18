@@ -84,7 +84,7 @@ using them::
 
 Synonyms are one area where ``declarative`` needs to slightly change the
 usual SQLAlchemy configurational syntax.  To define a getter/setter which
-proxies to an underlying attribute, use ``synonym`` with the ``instruments``
+proxies to an underlying attribute, use ``synonym`` with the ``descriptor``
 argument::
 
     class MyClass(Base):
@@ -96,7 +96,7 @@ argument::
             return self._some_attr
         def _set_attr(self, attr)
             self._some_attr = attr
-        attr = synonym('_attr', instruments=property(_get_attr, _set_attr))
+        attr = synonym('_attr', descriptor=property(_get_attr, _set_attr))
 
 The above synonym is then usable as an instance attribute as well as a
 class-level expression construct::
@@ -160,7 +160,7 @@ Mapped instances then make usage of ``Session`` in the usual way.
 from sqlalchemy.schema import Table, SchemaItem, Column, MetaData
 from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property
 from sqlalchemy.orm.interfaces import MapperProperty
-from sqlalchemy.orm.properties import PropertyLoader
+from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty
 from sqlalchemy import util
 
 __all__ = ['declarative_base', 'synonym_for', 'comparable_using',
@@ -198,7 +198,12 @@ class DeclarativeMeta(type):
                     table_kw = {}
                 cols = []
                 for key, c in our_stuff.iteritems():
-                    if isinstance(c, Column):
+                    if isinstance(c, ColumnProperty):
+                        for col in c.columns:
+                            if isinstance(col, Column) and col.table is None:
+                                _undefer_column_name(key, col)
+                                cols.append(col)
+                    elif isinstance(c, Column):
                         _undefer_column_name(key, c)
                         cols.append(c)
                 cls.__table__ = table = Table(tablename, cls.metadata,
@@ -236,16 +241,16 @@ def _deferred_relation(cls, prop):
     return prop
 
 def declared_synonym(prop, name):
-    """deprecated.  use synonym(name, instrument=prop)."""
+    """deprecated.  use synonym(name, descriptor=prop)."""
 
-    return _orm_synonym(name, instrument=prop)
+    return _orm_synonym(name, descriptor=prop)
 declared_synonym = util.deprecated(declared_synonym)
 
 def synonym_for(name, map_column=False):
     """Decorator, make a Python @property a query synonym for a column.
 
     A decorator version of [sqlalchemy.orm#synonym()].  The function being
-    decoratred is the 'instrument', otherwise passes its arguments through
+    decoratred is the 'descriptor', otherwise passes its arguments through
     to synonym()::
 
       @synonym_for('col')
@@ -256,11 +261,11 @@ def synonym_for(name, map_column=False):
     The regular ``synonym()`` is also usable directly in a declarative
     setting and may be convenient for read/write properties::
 
-      prop = synonym('col', instrument=property(_read_prop, _write_prop))
+      prop = synonym('col', descriptor=property(_read_prop, _write_prop))
 
     """
     def decorate(fn):
-        return _orm_synonym(name, map_column=map_column, instrument=fn)
+        return _orm_synonym(name, map_column=map_column, descriptor=fn)
     return decorate
 
 

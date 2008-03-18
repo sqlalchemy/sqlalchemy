@@ -35,9 +35,13 @@ CHANGES
 - extensions
     - The "synonym" function is now directly usable with
       "declarative".  Pass in the decorated property using the
-      "instrument" keyword argument, e.g.: somekey =
-      synonym('_somekey', instrument=property(g, s))
-
+      "descriptor" keyword argument, e.g.: somekey =
+      synonym('_somekey', descriptor=property(g, s))
+    
+    - the "deferred" function is usable with "declarative".
+      Simplest usage is to declare deferred and Column together,
+      e.g.:  data = deferred(Column(Text))
+      
     - Declarative also gained @synonym_for(...) and
       @comparable_using(...), front-ends for synonym and
       comparable_property.

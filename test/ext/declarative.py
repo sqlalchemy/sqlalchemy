@@ -9,7 +9,7 @@ from testlib.fixtures import Base as Fixture
 from testlib import *
 
 
-class DeclarativeTest(TestBase):
+class DeclarativeTest(TestBase, AssertsExecutionResults):
     def setUp(self):
         global Base
         Base = declarative_base(testing.db)
@@ -169,6 +169,76 @@ class DeclarativeTest(TestBase):
         self.assertEquals(sess.query(User).all(),
                           [User(name='u1', a='a', b='b')])
 
+    def test_column_properties(self):
+        
+        class Address(Base, Fixture):
+            __tablename__ = 'addresses'
+            id = Column(Integer, primary_key=True)
+            email = Column(String(50))
+            user_id = Column(Integer, ForeignKey('users.id'))
+            
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            adr_count = column_property(select([func.count(Address.id)], Address.user_id==id).as_scalar())
+            addresses = relation(Address)
+        
+        Base.metadata.create_all()
+        
+        u1 = User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])
+        sess = create_session()
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(User).all(), [User(name='u1', adr_count=2, addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])])
+
+    def test_column_properties_2(self):
+
+        class Address(Base, Fixture):
+            __tablename__ = 'addresses'
+            id = Column(Integer, primary_key=True)
+            email = Column(String(50))
+            user_id = Column(Integer, ForeignKey('users.id'))
+
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            # this is not "valid" but we want to test that Address.id doesnt get stuck into user's table
+            adr_count = Address.id
+            
+        self.assertEquals(set(User.__table__.c.keys()), set(['id', 'name']))
+        self.assertEquals(set(Address.__table__.c.keys()), set(['id', 'email', 'user_id']))
+        
+    def test_deferred(self):
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column(Integer, primary_key=True)
+            name = deferred(Column(String(50)))
+            
+        Base.metadata.create_all()
+        sess = create_session()
+        sess.save(User(name='u1'))
+        sess.flush()
+        sess.clear()
+        
+        u1 = sess.query(User).filter(User.name=='u1').one()
+        assert 'name' not in u1.__dict__
+        def go():
+            assert u1.name == 'u1'
+        self.assert_sql_count(testing.db, go, 1)
+        
     def test_synonym_inline(self):
         class User(Base, Fixture):
             __tablename__ = 'users'
@@ -179,7 +249,7 @@ class DeclarativeTest(TestBase):
                 self._name = "SOMENAME " + name
             def _get_name(self):
                 return self._name
-            name = synonym('_name', instrument=property(_get_name, _set_name))
+            name = synonym('_name', descriptor=property(_get_name, _set_name))
 
         Base.metadata.create_all()
 
@@ -223,7 +293,7 @@ class DeclarativeTest(TestBase):
             def _get_name(self):
                 return self._name
             name = property(_get_name, _set_name)
-        User.name = synonym('_name', instrument=User.name)
+        User.name = synonym('_name', descriptor=User.name)
 
         Base.metadata.create_all()
 
