@@ -57,6 +57,47 @@ class DeclarativeTest(TestBase):
         self.assertEquals(a1, Address(email='two'))
         self.assertEquals(a1.user, User(name='u1'))
 
+    def test_add_prop(self):
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+        User.name = Column('name', String(50))
+        User.addresses = relation("Address", backref="user")
+
+        class Address(Base, Fixture):
+            __tablename__ = 'addresses'
+
+            id = Column(Integer, primary_key=True)
+        Address.email = Column(String(50), key='_email')
+        Address.user_id = Column('user_id', Integer, ForeignKey('users.id'),
+                             key='_user_id')
+
+        Base.metadata.create_all()
+
+        assert Address.__table__.c['id'].name == 'id'
+        assert Address.__table__.c['_email'].name == 'email'
+        assert Address.__table__.c['_user_id'].name == 'user_id'
+
+        u1 = User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])
+        sess = create_session()
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(User).all(), [User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])])
+
+        a1 = sess.query(Address).filter(Address.email=='two').one()
+        self.assertEquals(a1, Address(email='two'))
+        self.assertEquals(a1.user, User(name='u1'))
+
+
     @testing.emits_warning('Ignoring declarative-like tuple value of '
                            'attribute id')
     def test_oops(self):
@@ -117,10 +158,9 @@ class DeclarativeTest(TestBase):
 
         Base.metadata.create_all()
 
-        print User.a
-        print User.c
-
         u1 = User(name='u1', a='a', b='b')
+        assert u1.a == 'a'
+        assert User.a.get_history(u1) == (['a'], [], [])
         sess = create_session()
         sess.save(u1)
         sess.flush()

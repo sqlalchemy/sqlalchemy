@@ -649,11 +649,18 @@ class Mapper(object):
             # columns (included in zblog tests)
             if col is None:
                 col = prop.columns[0]
+            else:
+                # if column is coming in after _cols_by_table was initialized, ensure the col is in the 
+                # right set
+                if hasattr(self, '_cols_by_table') and col.table in self._cols_by_table and col not in self._cols_by_table[col.table]:
+                    self._cols_by_table[col.table].add(col)
 
             self.columns[key] = col
             for col in prop.columns:
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
+            
+                
         elif isinstance(prop, SynonymProperty) and setparent:
             if prop.instrument is None:
                 prop.instrument = getattr(self.class_, key, None)
