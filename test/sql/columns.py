@@ -39,6 +39,18 @@ class ColumnDefinitionTest(TestBase):
 
         self.assertRaises(exceptions.ArgumentError, Table, 't', MetaData(), *c)
 
+    def test_incomplete_key(self):
+        c = Column(Integer)
+        assert c.name is None
+        assert c.key is None
+
+        c.name = 'named'
+        t = Table('t', MetaData(), c)
+
+        assert c.name == 'named'
+        assert c.name == c.key
+
+
     def test_bogus(self):
         self.assertRaises(exceptions.ArgumentError, Column, 'foo', name='bar')
         self.assertRaises(exceptions.ArgumentError, Column, 'foo', Integer,

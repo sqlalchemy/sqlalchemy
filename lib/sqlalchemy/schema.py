@@ -412,7 +412,9 @@ class Column(SchemaItem, expression._ColumnClause):
 
         name
           The name of this column.  This should be the identical name as it
-          appears, or will appear, in the database.
+          appears, or will appear, in the database.  Name may be omitted at
+          construction time but must be assigned before adding a Column
+          instance to a Table.
 
         type\_
           The ``TypeEngine`` for this column.  This can be any subclass of
@@ -430,8 +432,10 @@ class Column(SchemaItem, expression._ColumnClause):
           Keyword arguments include:
 
           key
-            Defaults to None: an optional *alias name* for this column.  The
-            column will then be identified everywhere in an application,
+            Defaults to the column name: a Python-only *alias name* for this
+            column.
+
+            The column will then be identified everywhere in an application,
             including the column list on its Table, by this key, and not the
             given name.  Generated SQL, however, will still reference the
             column by its actual name.
@@ -583,6 +587,8 @@ class Column(SchemaItem, expression._ColumnClause):
             raise exceptions.ArgumentError(
                 "Column must be constructed with a name or assign .name "
                 "before adding to a Table.")
+        if self.key is None:
+            self.key = self.name
         self.metadata = table.metadata
         if getattr(self, 'table', None) is not None:
             raise exceptions.ArgumentError("this Column already has a table!")
