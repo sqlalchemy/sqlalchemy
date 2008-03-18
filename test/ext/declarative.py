@@ -28,12 +28,17 @@ class DeclarativeTest(TestBase):
         class Address(Base, Fixture):
             __tablename__ = 'addresses'
             
-            id = Column('id', Integer, primary_key=True)
-            email = Column('email', String(50))
-            user_id = Column('user_id', Integer, ForeignKey('users.id'))
+            id = Column(Integer, primary_key=True)
+            email = Column(String(50), key='_email')
+            user_id = Column('user_id', Integer, ForeignKey('users.id'),
+                             key='_user_id')
             
         Base.metadata.create_all()
-        
+
+        assert Address.__table__.c['id'].name == 'id'
+        assert Address.__table__.c['_email'].name == 'email'
+        assert Address.__table__.c['_user_id'].name == 'user_id'
+
         u1 = User(name='u1', addresses=[
             Address(email='one'),
             Address(email='two'),

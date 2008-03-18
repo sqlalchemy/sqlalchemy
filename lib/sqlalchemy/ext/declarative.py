@@ -157,7 +157,7 @@ class DeclarativeMeta(type):
             return type.__init__(cls, classname, bases, dict_)
         
         cls._decl_class_registry[classname] = cls
-        our_stuff = {}
+        our_stuff = util.OrderedDict()
         for k in dict_:
             value = dict_[k]
             if (isinstance(value, tuple) and len(value) == 1 and
@@ -180,9 +180,17 @@ class DeclarativeMeta(type):
                     table_kw = {'autoload': True}
                 else:
                     table_kw = {}
-                cls.__table__ = table = Table(tablename, cls.metadata, *[
-                    c for c in our_stuff.values() if isinstance(c, Column)
-                ], **table_kw)
+                cols = []
+                for key, c in our_stuff.iteritems():
+                    if not isinstance(c, Column):
+                        continue
+                    if c.key is None:
+                        c.key = key
+                    if c.name is None:
+                        c.name = key
+                    cols.append(c)
+                cls.__table__ = table = Table(tablename, cls.metadata,
+                                              *cols, **table_kw)
         else:
             table = cls.__table__
         

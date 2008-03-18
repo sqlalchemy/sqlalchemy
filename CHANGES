@@ -42,6 +42,13 @@ CHANGES
       @comparable_using(...), front-ends for synonym and
       comparable_property.
 
+    - Declarative will complete setup for Columns lacking names,
+      allows a more DRY syntax.
+
+        class Foo(Base):
+            __tablename__ = 'foos'
+            id = Column(Integer, primary_key=True)
+
 0.4.4
 ------
 - sql
