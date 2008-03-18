@@ -24,6 +24,11 @@ CHANGES
       had only been implemented for foreign-key nulling behavior
       in 0.4.2 and not actual cascading deletes [ticket:895]
 
+- sql
+    - 'name' is no longer a required constructor argument for
+      Column().  It (and .key) may now be deferred until the column
+      is added to a Table.
+
 - extensions
     - The "synonym" function is now directly usable with
       "declarative".  Pass in the decorated property using the

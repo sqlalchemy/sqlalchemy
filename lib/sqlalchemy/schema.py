@@ -405,7 +405,7 @@ class Column(SchemaItem, expression._ColumnClause):
     ``TableClause``/``Table``.
     """
 
-    def __init__(self, name, type_, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Construct a new ``Column`` object.
 
         Arguments are:
@@ -497,6 +497,24 @@ class Column(SchemaItem, expression._ColumnClause):
             auto-detect conditions where quoting is required.
         """
 
+        name = kwargs.pop('name', None)
+        type_ = kwargs.pop('type_', None)
+        if args:
+            args = list(args)
+            if isinstance(args[0], basestring):
+                if name is not None:
+                    raise exceptions.ArgumentError(
+                        "May not pass name positionally and as a keyword.")
+                name = args.pop(0)
+        if args:
+            if (isinstance(args[0], types.AbstractType) or
+                (isinstance(args[0], type) and
+                 issubclass(args[0], types.AbstractType))):
+                if type_ is not None:
+                    raise exceptions.ArgumentError(
+                        "May not pass type_ positionally and as a keyword.")
+                type_ = args.pop(0)
+
         super(Column, self).__init__(name, None, type_)
         self.args = args
         self.key = kwargs.pop('key', name)
@@ -561,6 +579,10 @@ class Column(SchemaItem, expression._ColumnClause):
             ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg])
 
     def _set_parent(self, table):
+        if self.name is None:
+            raise exceptions.ArgumentError(
+                "Column must be constructed with a name or assign .name "
+                "before adding to a Table.")
         self.metadata = table.metadata
         if getattr(self, 'table', None) is not None:
             raise exceptions.ArgumentError("this Column already has a table!")
