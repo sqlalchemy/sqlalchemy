@@ -13,10 +13,10 @@ class DeclarativeTest(TestBase):
     def setUp(self):
         global Base
         Base = declarative_base(testing.db)
-        
+
     def tearDown(self):
         Base.metadata.drop_all()
-        
+
     def test_basic(self):
         class User(Base, Fixture):
             __tablename__ = 'users'
@@ -27,12 +27,12 @@ class DeclarativeTest(TestBase):
 
         class Address(Base, Fixture):
             __tablename__ = 'addresses'
-            
+
             id = Column(Integer, primary_key=True)
             email = Column(String(50), key='_email')
             user_id = Column('user_id', Integer, ForeignKey('users.id'),
                              key='_user_id')
-            
+
         Base.metadata.create_all()
 
         assert Address.__table__.c['id'].name == 'id'
@@ -47,12 +47,12 @@ class DeclarativeTest(TestBase):
         sess.save(u1)
         sess.flush()
         sess.clear()
-        
+
         self.assertEquals(sess.query(User).all(), [User(name='u1', addresses=[
             Address(email='one'),
             Address(email='two'),
         ])])
-        
+
         a1 = sess.query(Address).filter(Address.email=='two').one()
         self.assertEquals(a1, Address(email='two'))
         self.assertEquals(a1.user, User(name='u1'))
@@ -79,7 +79,7 @@ class DeclarativeTest(TestBase):
             id = Column('id', Integer, primary_key=True)
             name = Column('name', String(50))
             addresses = relation("Address", backref="user")
-            
+
         class Address(Base, Fixture):
             __tablename__ = 'addresses'
 
@@ -105,6 +105,30 @@ class DeclarativeTest(TestBase):
             Address(email='two'),
         ])])
 
+    def test_column(self):
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+
+        User.a = Column('a', String(10))
+        User.b = Column(String(10))
+
+        Base.metadata.create_all()
+
+        print User.a
+        print User.c
+
+        u1 = User(name='u1', a='a', b='b')
+        sess = create_session()
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(User).all(),
+                          [User(name='u1', a='a', b='b')])
+
     def test_synonym_inline(self):
         class User(Base, Fixture):
             __tablename__ = 'users'
@@ -116,9 +140,9 @@ class DeclarativeTest(TestBase):
             def _get_name(self):
                 return self._name
             name = synonym('_name', instrument=property(_get_name, _set_name))
-            
+
         Base.metadata.create_all()
-        
+
         sess = create_session()
         u1 = User(name='someuser')
         assert u1.name == "SOMENAME someuser", u1.name
@@ -192,14 +216,14 @@ class DeclarativeTest(TestBase):
         sess.save(u1)
         sess.flush()
         self.assertEquals(sess.query(User).filter(User.name=="SOMENAME someuser").one(), u1)
-    
+
     def test_joined_inheritance(self):
         class Company(Base, Fixture):
             __tablename__ = 'companies'
             id = Column('id', Integer, primary_key=True)
             name = Column('name', String(50))
             employees = relation("Person")
-            
+
         class Person(Base, Fixture):
             __tablename__ = 'people'
             id = Column('id', Integer, primary_key=True)
@@ -207,7 +231,7 @@ class DeclarativeTest(TestBase):
             name = Column('name', String(50))
             discriminator = Column('type', String(50))
             __mapper_args__ = {'polymorphic_on':discriminator}
-            
+
         class Engineer(Person):
             __tablename__ = 'engineers'
             __mapper_args__ = {'polymorphic_identity':'engineer'}
@@ -219,7 +243,7 @@ class DeclarativeTest(TestBase):
             __mapper_args__ = {'polymorphic_identity':'manager'}
             id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
             golf_swing = Column('golf_swing', String(50))
-        
+
         Base.metadata.create_all()
 
         sess = create_session()
@@ -237,7 +261,7 @@ class DeclarativeTest(TestBase):
         sess.save(c2)
         sess.flush()
         sess.clear()
-        
+
         self.assertEquals(sess.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).first(), c2)
 
     def test_relation_reference(self):
@@ -280,7 +304,7 @@ class DeclarativeTest(TestBase):
             id = Column('id', Integer, primary_key=True)
             name = Column('name', String(50))
             employees = relation("Person")
-            
+
         class Person(Base, Fixture):
             __tablename__ = 'people'
             id = Column('id', Integer, primary_key=True)
@@ -290,13 +314,13 @@ class DeclarativeTest(TestBase):
             primary_language = Column('primary_language', String(50))
             golf_swing = Column('golf_swing', String(50))
             __mapper_args__ = {'polymorphic_on':discriminator}
-            
+
         class Engineer(Person):
             __mapper_args__ = {'polymorphic_identity':'engineer'}
 
         class Manager(Person):
             __mapper_args__ = {'polymorphic_identity':'manager'}
-        
+
         Base.metadata.create_all()
 
         sess = create_session()
@@ -314,7 +338,7 @@ class DeclarativeTest(TestBase):
         sess.save(c2)
         sess.flush()
         sess.clear()
-        
+
         self.assertEquals(sess.query(Person).filter(Engineer.primary_language=='cobol').first(), Engineer(name='vlad'))
         self.assertEquals(sess.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).first(), c2)
 
