@@ -246,7 +246,7 @@ def synonym_for(name, map_column=False):
 
     A decorator version of [sqlalchemy.orm#synonym()].  The function being
     decoratred is the 'instrument', otherwise passes its arguments through
-    to synonym().
+    to synonym()::
 
       @synonym_for('col')
       @property
@@ -268,7 +268,7 @@ def comparable_using(comparator_factory):
     """Decorator, allow a Python @property to be used in query criteria.
 
     A decorator front end to [sqlalchemy.orm#comparable_property()], passes
-    throgh the comparator_factory and the function being decorated.
+    throgh the comparator_factory and the function being decorated::
 
       @comparable_using(MyComparatorType)
       @property

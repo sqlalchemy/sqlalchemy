@@ -598,7 +598,7 @@ def comparable_property(comparator_factory, descriptor=None):
     SQL constructs like a managed attribute.  comparable_property wraps a
     descriptor with a proxy that directs operator overrides such as ==
     (__eq__) to the supplied comparator but proxies everything else through
-    to the original descriptor.
+    to the original descriptor::
 
       class MyClass(object):
           @property
@@ -619,7 +619,6 @@ def comparable_property(comparator_factory, descriptor=None):
       for this property.
 
     descriptor
-
       Optional when used in a ``properties={}`` declaration.  The Python
       descriptor or property to layer comparison behavior on top of.
 
