@@ -668,11 +668,31 @@ class ExtraPassiveDeletesTest(ORMTest):
         assert myothertable.count().scalar() == 4
         mc = sess.query(MyClass).get(mc.id)
         sess.delete(mc)
-        try:
-            sess.commit()
-            assert False
-        except exceptions.DBAPIError:
-            assert True
+        self.assertRaises(exceptions.DBAPIError, sess.commit)
+
+    def test_extra_passive_2(self):
+        class MyClass(object):
+            pass
+        class MyOtherClass(object):
+            pass
+
+        mapper(MyOtherClass, myothertable)
+
+        mapper(MyClass, mytable, properties={
+            'children':relation(MyOtherClass, passive_deletes='all', cascade="save-update")
+        })
+
+        sess = Session
+        mc = MyClass()
+        mc.children.append(MyOtherClass())
+        sess.save(mc)
+        sess.commit()
+
+        assert myothertable.count().scalar() == 1
+        mc = sess.query(MyClass).get(mc.id)
+        sess.delete(mc)
+        mc.children[0].data = 'some new data'
+        self.assertRaises(exceptions.DBAPIError, sess.commit)
 
 
 class DefaultTest(ORMTest):

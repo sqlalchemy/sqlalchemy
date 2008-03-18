@@ -182,7 +182,7 @@ class OneToManyDP(DependencyProcessor):
             # the child objects have to have their foreign key to the parent set to NULL
             # this phase can be called safely for any cascade but is unnecessary if delete cascade
             # is on.
-            if (not self.cascade.delete or self.post_update) and not self.passive_deletes=='all':
+            if self.post_update or not self.passive_deletes=='all':
                 for state in deplist:
                     (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key,passive=self.passive_deletes)
                     if unchanged or deleted:
@@ -190,10 +190,11 @@ class OneToManyDP(DependencyProcessor):
                             if child is not None and self.hasparent(child) is False:
                                 self._synchronize(state, child, None, True, uowcommit)
                                 self._conditional_post_update(child, uowcommit, [state])
-                        for child in unchanged:
-                            if child is not None:
-                                self._synchronize(state, child, None, True, uowcommit)
-                                self._conditional_post_update(child, uowcommit, [state])
+                        if self.post_update or not self.cascade.delete:
+                            for child in unchanged:
+                                if child is not None:
+                                    self._synchronize(state, child, None, True, uowcommit)
+                                    self._conditional_post_update(child, uowcommit, [state])
         else:
             for state in deplist:
                 (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key, passive=True)
