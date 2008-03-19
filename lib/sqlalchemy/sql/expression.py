@@ -1146,14 +1146,14 @@ class ColumnOperators(Operators):
     def in_(self, *other):
         return self.operate(operators.in_op, other)
 
-    def startswith(self, other):
-        return self.operate(operators.startswith_op, other)
+    def startswith(self, other, **kwargs):
+        return self.operate(operators.startswith_op, other, **kwargs)
 
-    def endswith(self, other):
-        return self.operate(operators.endswith_op, other)
+    def endswith(self, other, **kwargs):
+        return self.operate(operators.endswith_op, other, **kwargs)
 
-    def contains(self, other):
-        return self.operate(operators.contains_op, other)
+    def contains(self, other, **kwargs):
+        return self.operate(operators.contains_op, other, **kwargs)
 
     def desc(self):
         return self.operate(operators.desc_op)
@@ -1283,21 +1283,21 @@ class _CompareMixin(ColumnOperators):
 
         return self.__compare(op, ClauseList(*args).self_group(against=op), negate=negate_op)
 
-    def startswith(self, other):
+    def startswith(self, other, escape=None):
         """Produce the clause ``LIKE '<other>%'``"""
 
         # use __radd__ to force string concat behavior
-        return self.__compare(operators.like_op, literal_column("'%'", type_=sqltypes.String).__radd__(self._check_literal(other)))
+        return self.__compare(operators.like_op, literal_column("'%'", type_=sqltypes.String).__radd__(self._check_literal(other)), escape=escape)
 
-    def endswith(self, other):
+    def endswith(self, other, escape=None):
         """Produce the clause ``LIKE '%<other>'``"""
 
-        return self.__compare(operators.like_op, literal_column("'%'", type_=sqltypes.String) + self._check_literal(other))
+        return self.__compare(operators.like_op, literal_column("'%'", type_=sqltypes.String) + self._check_literal(other), escape=escape)
 
-    def contains(self, other):
+    def contains(self, other, escape=None):
         """Produce the clause ``LIKE '%<other>%'``"""
 
-        return self.__compare(operators.like_op, literal_column("'%'", type_=sqltypes.String) + self._check_literal(other) + literal_column("'%'", type_=sqltypes.String))
+        return self.__compare(operators.like_op, literal_column("'%'", type_=sqltypes.String) + self._check_literal(other) + literal_column("'%'", type_=sqltypes.String), escape=escape)
 
     def label(self, name):
         """Produce a column label, i.e. ``<columnname> AS <name>``.

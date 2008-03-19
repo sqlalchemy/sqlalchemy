@@ -456,8 +456,11 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             dialect=mysql.dialect()
         )
         self.assert_compile(
-            table1.c.name.endswith('hn'), "mytable.name LIKE '%%' || :mytable_name_1", checkparams = {'mytable_name_1': u'hn'},
+            table1.c.name.contains('jo', escape='\\'), "mytable.name LIKE '%%' || :mytable_name_1 || '%%' ESCAPE '\\'" , checkparams = {'mytable_name_1': u'jo'},
         )
+        self.assert_compile( table1.c.name.startswith('jo', escape='\\'), "mytable.name LIKE :mytable_name_1 || '%%' ESCAPE '\\'" )
+        self.assert_compile( table1.c.name.endswith('jo', escape='\\'), "mytable.name LIKE '%%' || :mytable_name_1 ESCAPE '\\'" )
+        self.assert_compile( table1.c.name.endswith('hn'), "mytable.name LIKE '%%' || :mytable_name_1", checkparams = {'mytable_name_1': u'hn'}, )
         self.assert_compile(
             table1.c.name.endswith('hn'), "mytable.name LIKE concat('%%', %s)",
             checkparams = {'mytable_name_1': u'hn'}, dialect=mysql.dialect()

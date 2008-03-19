@@ -49,14 +49,14 @@ def notin_op(a, b):
 def distinct_op(a):
     return a.distinct()
 
-def startswith_op(a, b):
-    return a.startswith(b)
+def startswith_op(a, b, escape=None):
+    return a.startswith(b, escape=escape)
 
-def endswith_op(a, b):
-    return a.endswith(b)
+def endswith_op(a, b, escape=None):
+    return a.endswith(b, escape=escape)
 
-def contains_op(a, b):
-    return a.contains(b)
+def contains_op(a, b, escape=None):
+    return a.contains(b, escape=escape)
 
 def comma_op(a, b):
     raise NotImplementedError()
