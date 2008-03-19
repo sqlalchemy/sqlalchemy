@@ -389,5 +389,36 @@ class ArgInspectionTest(TestBase):
         test(f3)
         test(f4)
 
+class SymbolTest(TestBase):
+    def test_basic(self):
+        sym1 = util.symbol('foo')
+        assert sym1.name == 'foo'
+        sym2 = util.symbol('foo')
+
+        assert sym1 is sym2
+        assert sym1 == sym2
+
+        sym3 = util.symbol('bar')
+        assert sym1 is not sym3
+        assert sym1 != sym3
+
+    def test_pickle(self):
+        sym1 = util.symbol('foo')
+        sym2 = util.symbol('foo')
+
+        assert sym1 is sym2
+
+        # default
+        s = util.pickle.dumps(sym1)
+        sym3 = util.pickle.loads(s)
+
+        for protocol in 0, 1, 2:
+            print protocol
+            serial = util.pickle.dumps(sym1)
+            rt = util.pickle.loads(serial)
+            assert rt is sym1
+            assert rt is sym2
+
+
 if __name__ == "__main__":
     testenv.main()
