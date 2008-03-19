@@ -250,7 +250,7 @@ def synonym_for(name, map_column=False):
     """Decorator, make a Python @property a query synonym for a column.
 
     A decorator version of [sqlalchemy.orm#synonym()].  The function being
-    decoratred is the 'descriptor', otherwise passes its arguments through
+    decorated is the 'descriptor', otherwise passes its arguments through
     to synonym()::
 
       @synonym_for('col')
