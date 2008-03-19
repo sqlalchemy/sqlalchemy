@@ -25,16 +25,16 @@ def isnot():
 def op(a, opstring, b):
     return a.op(opstring)(b)
 
-def like_op(a, b):
-    return a.like(b)
+def like_op(a, b, escape=None):
+    return a.like(b, escape=escape)
 
-def notlike_op(a, b):
+def notlike_op(a, b, escape=None):
     raise NotImplementedError()
 
-def ilike_op(a, b):
-    return a.ilike(b)
+def ilike_op(a, b, escape=None):
+    return a.ilike(b, escape=escape)
 
-def notilike_op(a, b):
+def notilike_op(a, b, escape=None):
     raise NotImplementedError()
 
 def between_op(a, b, c):

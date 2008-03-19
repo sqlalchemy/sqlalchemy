@@ -429,15 +429,24 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         clause = (table1.c.myid == 12) & table1.c.myid.between(15, 20) & table1.c.myid.like('hoho')
         assert str(clause) == str(util.pickle.loads(util.pickle.dumps(clause)))
 
-        # ILIKE
-        stmt = table1.select(table1.c.name.ilike('%something%'))
-        self.assert_compile(stmt, "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE lower(mytable.name) LIKE lower(:mytable_name_1)")
-        self.assert_compile(stmt, "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name ILIKE %(mytable_name_1)s", dialect=postgres.PGDialect())
 
-        stmt = table1.select(~table1.c.name.ilike('%something%'))
-        self.assert_compile(stmt, "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE lower(mytable.name) NOT LIKE lower(:mytable_name_1)")
-        self.assert_compile(stmt, "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name NOT ILIKE %(mytable_name_1)s", dialect=postgres.PGDialect())
-
+    def test_like(self):
+        for expr, check, dialect in [
+            (table1.c.myid.like('somstr'), "mytable.myid LIKE :mytable_myid_1", None),
+            (~table1.c.myid.like('somstr'), "mytable.myid NOT LIKE :mytable_myid_1", None),
+            (table1.c.myid.like('somstr', escape='\\'), "mytable.myid LIKE :mytable_myid_1 ESCAPE '\\'", None),
+            (~table1.c.myid.like('somstr', escape='\\'), "mytable.myid NOT LIKE :mytable_myid_1 ESCAPE '\\'", None),
+            (table1.c.myid.ilike('somstr', escape='\\'), "lower(mytable.myid) LIKE lower(:mytable_myid_1) ESCAPE '\\'", None),
+            (~table1.c.myid.ilike('somstr', escape='\\'), "lower(mytable.myid) NOT LIKE lower(:mytable_myid_1) ESCAPE '\\'", None),
+            (table1.c.myid.ilike('somstr', escape='\\'), "mytable.myid ILIKE %(mytable_myid_1)s ESCAPE '\\'", postgres.PGDialect()),
+            (~table1.c.myid.ilike('somstr', escape='\\'), "mytable.myid NOT ILIKE %(mytable_myid_1)s ESCAPE '\\'", postgres.PGDialect()),
+            (table1.c.name.ilike('%something%'), "lower(mytable.name) LIKE lower(:mytable_name_1)", None),
+            (table1.c.name.ilike('%something%'), "mytable.name ILIKE %(mytable_name_1)s", postgres.PGDialect()),
+            (~table1.c.name.ilike('%something%'), "lower(mytable.name) NOT LIKE lower(:mytable_name_1)", None),
+            (~table1.c.name.ilike('%something%'), "mytable.name NOT ILIKE %(mytable_name_1)s", postgres.PGDialect()),
+        ]:
+            self.assert_compile(expr, check, dialect=dialect)
+        
     def test_composed_string_comparators(self):
         self.assert_compile(
             table1.c.name.contains('jo'), "mytable.name LIKE '%%' || :mytable_name_1 || '%%'" , checkparams = {'mytable_name_1': u'jo'},

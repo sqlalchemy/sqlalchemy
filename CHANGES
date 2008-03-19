@@ -44,6 +44,11 @@ CHANGES
       Column().  It (and .key) may now be deferred until the column
       is added to a Table.
 
+    - like() and ilike() take an optional keyword argument 
+      "escape=<somestring>", which is set as the escape character
+      using the syntax "x LIKE y ESCAPE '<somestring>'"
+      [ticket:993]
+      
 - extensions
     - The "synonym" function is now directly usable with
       "declarative".  Pass in the decorated property using the

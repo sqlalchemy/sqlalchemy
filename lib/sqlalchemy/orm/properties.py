@@ -87,12 +87,12 @@ class ColumnProperty(StrategizedProperty):
         def clause_element(self):
             return self.prop.columns[0]
 
-        def operate(self, op, *other):
-            return op(self.prop.columns[0], *other)
+        def operate(self, op, *other, **kwargs):
+            return op(self.prop.columns[0], *other, **kwargs)
 
-        def reverse_operate(self, op, other):
+        def reverse_operate(self, op, other, **kwargs):
             col = self.prop.columns[0]
-            return op(col._bind_param(other), col)
+            return op(col._bind_param(other), col, **kwargs)
 
 ColumnProperty.logger = logging.class_logger(ColumnProperty)
 

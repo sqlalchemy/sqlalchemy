@@ -76,10 +76,10 @@ OPERATORS =  {
     operators.eq : '=',
     operators.distinct_op : 'DISTINCT',
     operators.concat_op : '||',
-    operators.like_op : 'LIKE',
-    operators.notlike_op : 'NOT LIKE',
-    operators.ilike_op : lambda x, y: "lower(%s) LIKE lower(%s)" % (x, y),
-    operators.notilike_op : lambda x, y: "lower(%s) NOT LIKE lower(%s)" % (x, y),
+    operators.like_op : lambda x, y, escape=None: '%s LIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
+    operators.notlike_op : lambda x, y, escape=None: '%s NOT LIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
+    operators.ilike_op : lambda x, y, escape=None: "lower(%s) LIKE lower(%s)" % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
+    operators.notilike_op : lambda x, y, escape=None: "lower(%s) NOT LIKE lower(%s)" % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
     operators.between_op : 'BETWEEN',
     operators.in_op : 'IN',
     operators.notin_op : 'NOT IN',
@@ -394,7 +394,7 @@ class DefaultCompiler(engine.Compiled):
     def visit_binary(self, binary, **kwargs):
         op = self.operator_string(binary.operator)
         if callable(op):
-            return op(self.process(binary.left), self.process(binary.right))
+            return op(self.process(binary.left), self.process(binary.right), **binary.modifiers)
         else:
             return self.process(binary.left) + " " + op + " " + self.process(binary.right)
 

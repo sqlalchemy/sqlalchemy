@@ -1137,11 +1137,11 @@ class ColumnOperators(Operators):
     def concat(self, other):
         return self.operate(operators.concat_op, other)
 
-    def like(self, other):
-        return self.operate(operators.like_op, other)
+    def like(self, other, escape=None):
+        return self.operate(operators.like_op, other, escape=escape)
 
-    def ilike(self, other):
-        return self.operate(operators.ilike_op, other)
+    def ilike(self, other, escape=None):
+        return self.operate(operators.ilike_op, other, escape=escape)
 
     def in_(self, *other):
         return self.operate(operators.in_op, other)
@@ -1200,7 +1200,7 @@ class ColumnOperators(Operators):
 class _CompareMixin(ColumnOperators):
     """Defines comparison and math operations for ``ClauseElement`` instances."""
 
-    def __compare(self, op, obj, negate=None, reverse=False):
+    def __compare(self, op, obj, negate=None, reverse=False, **kwargs):
         if obj is None or isinstance(obj, _Null):
             if op == operators.eq:
                 return _BinaryExpression(self.expression_element(), null(), operators.is_, negate=operators.isnot)
@@ -1212,9 +1212,9 @@ class _CompareMixin(ColumnOperators):
             obj = self._check_literal(obj)
 
         if reverse:
-            return _BinaryExpression(obj, self.expression_element(), op, type_=sqltypes.Boolean, negate=negate)
+            return _BinaryExpression(obj, self.expression_element(), op, type_=sqltypes.Boolean, negate=negate, modifiers=kwargs)
         else:
-            return _BinaryExpression(self.expression_element(), obj, op, type_=sqltypes.Boolean, negate=negate)
+            return _BinaryExpression(self.expression_element(), obj, op, type_=sqltypes.Boolean, negate=negate, modifiers=kwargs)
 
     def __operate(self, op, obj, reverse=False):
         obj = self._check_literal(obj)
@@ -1245,13 +1245,13 @@ class _CompareMixin(ColumnOperators):
         operators.ilike_op : (__compare, operators.notilike_op),
     }
 
-    def operate(self, op, *other):
+    def operate(self, op, *other, **kwargs):
         o = _CompareMixin.operators[op]
-        return o[0](self, op, other[0], *o[1:])
+        return o[0](self, op, other[0], *o[1:], **kwargs)
 
-    def reverse_operate(self, op, other):
+    def reverse_operate(self, op, other, **kwargs):
         o = _CompareMixin.operators[op]
-        return o[0](self, op, other, reverse=True, *o[1:])
+        return o[0](self, op, other, reverse=True, *o[1:], **kwargs)
 
     def in_(self, *other):
         return self._in_impl(operators.in_op, operators.notin_op, *other)
@@ -2114,13 +2114,17 @@ class _UnaryExpression(ColumnElement):
 class _BinaryExpression(ColumnElement):
     """Represent an expression that is ``LEFT <operator> RIGHT``."""
 
-    def __init__(self, left, right, operator, type_=None, negate=None):
+    def __init__(self, left, right, operator, type_=None, negate=None, modifiers=None):
         ColumnElement.__init__(self)
         self.left = _literal_as_text(left).self_group(against=operator)
         self.right = _literal_as_text(right).self_group(against=operator)
         self.operator = operator
         self.type = sqltypes.to_instance(type_)
         self.negate = negate
+        if modifiers is None:
+            self.modifiers = {}
+        else:
+            self.modifiers = modifiers
 
     def _get_from_objects(self, **modifiers):
         return self.left._get_from_objects(**modifiers) + self.right._get_from_objects(**modifiers)
@@ -2159,7 +2163,7 @@ class _BinaryExpression(ColumnElement):
 
     def _negate(self):
         if self.negate is not None:
-            return _BinaryExpression(self.left, self.right, self.negate, negate=self.operator, type_=self.type)
+            return _BinaryExpression(self.left, self.right, self.negate, negate=self.operator, type_=self.type, modifiers=self.modifiers)
         else:
             return super(_BinaryExpression, self)._negate()
 
