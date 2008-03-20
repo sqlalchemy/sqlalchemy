@@ -371,7 +371,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                         else:
                             val = drunner.get_column_onupdate(c)
                         if val is not None:
-                            param[self.compiled.binds[c.key].key] = val
+                            param[c.key] = val
                 self.compiled_parameters = params
 
         else:
@@ -385,15 +385,12 @@ class DefaultExecutionContext(base.ExecutionContext):
                     val = drunner.get_column_onupdate(c)
 
                 if val is not None:
-                    compiled_parameters[self.compiled.binds[c.key].key] = val
+                    compiled_parameters[c.key] = val
 
             if self.isinsert:
-                self._last_inserted_ids = [
-                    k and compiled_parameters.get(k.key, None) or None for k in 
-                    [self.compiled.binds.get(c.key, None) for c in self.compiled.statement.table.primary_key]
-                ]
-                self._last_inserted_params = dict([(key, compiled_parameters[self.compiled.bind_names[b]]) for key, b in self.compiled.binds.iteritems()])
+                self._last_inserted_ids = [compiled_parameters.get(c.key, None) for c in self.compiled.statement.table.primary_key]
+                self._last_inserted_params = compiled_parameters
             else:
-                self._last_updated_params = dict([(key, compiled_parameters[self.compiled.bind_names[b]]) for key, b in self.compiled.binds.iteritems()])
+                self._last_updated_params = compiled_parameters
 
             self.postfetch_cols = self.compiled.postfetch

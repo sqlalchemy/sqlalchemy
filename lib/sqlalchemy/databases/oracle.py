@@ -659,16 +659,6 @@ class OracleCompiler(compiler.DefaultCompiler):
         """Need to determine how to get ``LIMIT``/``OFFSET`` into a ``UNION`` for Oracle."""
         pass
 
-    def create_insert_update_bind(self, col, value):
-        key = col.key
-        # TODO: make this check more specific to reserved words
-        if len(key) < 30:
-            key += '_'
-        bindparam = sql.bindparam(key, value, shortname=col.key, type_=col.type)
-        self.binds[col.key] = bindparam
-        return self.bindparam_string(self._truncate_bindparam(bindparam))
-
-
     def visit_select(self, select, **kwargs):
         """Look for ``LIMIT`` and OFFSET in a select statement, and if
         so tries to wrap it in a subquery with ``row_number()`` criterion.
@@ -745,86 +735,3 @@ dialect.schemagenerator = OracleSchemaGenerator
 dialect.schemadropper = OracleSchemaDropper
 dialect.preparer = OracleIdentifierPreparer
 dialect.defaultrunner = OracleDefaultRunner
-
-
-RESERVED_WORDS = util.Set('''
-SHARE
-RAW
-DROP
-BETWEEN
-FROM
-DESC
-OPTION
-PRIOR
-LONG
-THEN
-DEFAULT
-ALTER
-IS
-INTO
-MINUS
-INTEGER
-NUMBER
-GRANT
-IDENTIFIED
-ALL
-TO
-ORDER
-ON
-FLOAT
-DATE
-HAVING
-CLUSTER
-NOWAIT
-RESOURCE
-ANY
-TABLE
-INDEX
-FOR
-UPDATE
-WHERE
-CHECK
-SMALLINT
-WITH
-DELETE
-BY
-ASC
-REVOKE
-LIKE
-SIZE
-RENAME
-NOCOMPRESS
-NULL
-GROUP
-VALUES
-AS
-IN
-VIEW
-EXCLUSIVE
-COMPRESS
-SYNONYM
-SELECT
-INSERT
-EXISTS
-NOT
-TRIGGER
-ELSE
-CREATE
-INTERSECT
-PCTFREE
-DISTINCT
-CONNECT
-SET
-MODE
-OF
-UNIQUE
-VARCHAR2
-VARCHAR
-LOCK
-OR
-CHAR
-DECIMAL
-UNION
-PUBLIC
-AND
-START'''.splitlines())
