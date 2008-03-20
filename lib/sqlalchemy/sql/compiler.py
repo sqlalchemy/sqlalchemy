@@ -649,6 +649,11 @@ class DefaultCompiler(engine.Compiled):
         self.stack.pop(-1)
 
         return text
+    
+    def create_insert_update_bind(self, col, value):
+        bindparam = sql.bindparam(col.key, value, type_=col.type)
+        self.binds[col.key] = bindparam
+        return self.bindparam_string(self._truncate_bindparam(bindparam))
 
     def _get_colparams(self, stmt):
         """create a set of tuples representing column/string pairs for use
@@ -656,18 +661,13 @@ class DefaultCompiler(engine.Compiled):
 
         """
 
-        def create_bind_param(col, value):
-            bindparam = sql.bindparam(col.key, value, type_=col.type)
-            self.binds[col.key] = bindparam
-            return self.bindparam_string(self._truncate_bindparam(bindparam))
-
         self.postfetch = []
         self.prefetch = []
 
         # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
         if self.column_keys is None and stmt.parameters is None:
-            return [(c, create_bind_param(c, None)) for c in stmt.table.columns]
+            return [(c, self.create_insert_update_bind(c, None)) for c in stmt.table.columns]
 
         # if we have statement parameters - set defaults in the
         # compiled params
@@ -686,7 +686,7 @@ class DefaultCompiler(engine.Compiled):
             if c.key in parameters:
                 value = parameters[c.key]
                 if sql._is_literal(value):
-                    value = create_bind_param(c, value)
+                    value = self.create_insert_update_bind(c, value)
                 else:
                     self.postfetch.append(c)
                     value = self.process(value.self_group())
@@ -699,7 +699,7 @@ class DefaultCompiler(engine.Compiled):
                              not self.dialect.supports_pk_autoincrement) or
                             (c.default is not None and
                              not isinstance(c.default, schema.Sequence))):
-                            values.append((c, create_bind_param(c, None)))
+                            values.append((c, self.create_insert_update_bind(c, None)))
                             self.prefetch.append(c)
                     elif isinstance(c.default, schema.ColumnDefault):
                         if isinstance(c.default.arg, sql.ClauseElement):
@@ -708,7 +708,7 @@ class DefaultCompiler(engine.Compiled):
                                 # dont add primary key column to postfetch
                                 self.postfetch.append(c)
                         else:
-                            values.append((c, create_bind_param(c, None)))
+                            values.append((c, self.create_insert_update_bind(c, None)))
                             self.prefetch.append(c)
                     elif isinstance(c.default, schema.PassiveDefault):
                         if not c.primary_key:
@@ -725,7 +725,7 @@ class DefaultCompiler(engine.Compiled):
                             values.append((c, self.process(c.onupdate.arg.self_group())))
                             self.postfetch.append(c)
                         else:
-                            values.append((c, create_bind_param(c, None)))
+                            values.append((c, self.create_insert_update_bind(c, None)))
                             self.prefetch.append(c)
                     elif isinstance(c.onupdate, schema.PassiveDefault):
                         self.postfetch.append(c)
