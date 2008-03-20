@@ -555,7 +555,7 @@ class OracleDialect(default.DefaultDialect):
                          "all_cons_columns%(dblink)s - does the user have "
                          "proper rights to the table?") % {'dblink':dblink})
                     continue
-                refspec = ".".join([remote_table, remote_column])
+                refspec = ".".join(x for x in [remote_owner, remote_table, remote_column] if x)                
                 schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, owner=remote_owner)
                 if local_column not in fk[0]:
                     fk[0].append(local_column)
