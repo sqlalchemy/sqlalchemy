@@ -24,6 +24,10 @@ CHANGES
       any two mappers with a common parent (this affects
       whether or not aliased=True is required when joining
       with Query).
+
+    - made some fixes to the "from_joinpoint" argument to
+      query.join() so that if the previous join was aliased
+      and this one isn't, the join still happens successfully.
       
     - assorted "cascade deletes" fixes:
         - Fixed "cascade delete" operation of dynamic

@@ -575,7 +575,24 @@ class JoinTest(QueryTest):
     def test_overlapping_paths_outerjoin(self):
         result = create_session().query(User).outerjoin(['orders', 'items']).filter_by(id=3).outerjoin(['orders','address']).filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
+    
+    def test_from_joinpoint(self):
+        sess = create_session()
+        
+        for oalias,ialias in [(True, True), (False, False), (True, False), (False, True)]:
+            self.assertEquals(
+                sess.query(User).join('orders', aliased=oalias).join('items', from_joinpoint=True, aliased=ialias).filter(Item.description == 'item 4').all(),
+                [User(name='jack')]
+            )
 
+            # use middle criterion
+            self.assertEquals(
+                sess.query(User).join('orders', aliased=oalias).filter(Order.user_id==9).join('items', from_joinpoint=True, aliased=ialias).filter(Item.description=='item 4').all(),
+                []
+            )
+        
+        
+        
     def test_generative_join(self):
         # test that alised_ids is copied
         sess = create_session()

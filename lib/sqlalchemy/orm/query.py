@@ -490,6 +490,8 @@ class Query(object):
             adapt_against = self.table
         elif start.select_table is not start.mapped_table: # in the middle of a join, look for a polymorphic mapper
             adapt_against = start.select_table
+        elif self._aliases:  # joining against aliases
+            adapt_against = self._aliases.alias
         else:
             adapt_against = None
 
