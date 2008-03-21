@@ -759,7 +759,7 @@ class PropertyLoader(StrategizedProperty):
         return self.parent.mapped_table is self.target or self.parent.select_table is self.target
     
     def _is_self_referential(self):
-        return self.mapper.isa(self.parent)
+        return self.mapper.common_parent(self.parent)
         
     def primary_join_against(self, mapper, selectable=None, toselectable=None):
         return self.__cached_join_against(mapper, selectable, toselectable, True, False)

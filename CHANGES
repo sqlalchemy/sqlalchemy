@@ -20,6 +20,11 @@ CHANGES
 
     - Session.execute can now find binds from metadata
 
+    - adjusted the definition of "self-referential" to be
+      any two mappers with a common parent (this affects
+      whether or not aliased=True is required when joining
+      with Query).
+      
     - assorted "cascade deletes" fixes:
         - Fixed "cascade delete" operation of dynamic
           relations, which had only been implemented for
