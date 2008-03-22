@@ -211,11 +211,13 @@ class DeclarativeMeta(type):
         else:
             table = cls.__table__
 
-        inherits = cls.__mro__[1]
-        inherits = cls._decl_class_registry.get(inherits.__name__, None)
         mapper_args = getattr(cls, '__mapper_args__', {})
-
-        cls.__mapper__ = mapper(cls, table, inherits=inherits, properties=our_stuff, **mapper_args)
+        if 'inherits' not in mapper_args:
+            inherits = cls.__mro__[1]
+            inherits = cls._decl_class_registry.get(inherits.__name__, None)
+            mapper_args['inherits'] = inherits
+            
+        cls.__mapper__ = mapper(cls, table, properties=our_stuff, **mapper_args)
         return type.__init__(cls, classname, bases, dict_)
 
     def __setattr__(cls, key, value):

@@ -80,6 +80,9 @@ CHANGES
             __tablename__ = 'foos'
             id = Column(Integer, primary_key=True)
 
+     - inheritance in declarative can be disabled when sending
+       "inherits=None" to __mapper_args__.
+       
 0.4.4
 ------
 - sql
