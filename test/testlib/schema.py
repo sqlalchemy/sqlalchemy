@@ -55,7 +55,6 @@ def Table(*args, **kw):
 
     return schema.Table(*args, **kw)
 
-generic_counter = itertools.count()
 
 def Column(*args, **kw):
     """A schema.Column wrapper/hook for dialect-specific tweaks."""
@@ -64,8 +63,12 @@ def Column(*args, **kw):
     if schema is None:
         from sqlalchemy import schema
 
+    test_opts = dict([(k,kw.pop(k)) for k in kw.keys()
+                      if k.startswith('test_')])
+
     if testing.against('oracle'):
-        if kw.get('primary_key') == True and kw.get('default') == None: 
-            kw['default'] = generic_counter.next
+        if 'test_needs_autoincrement' in test_opts:
+            args = list(args)
+            args.append(schema.Sequence(args[0], optional=True)) 
 
     return schema.Column(*args, **kw)

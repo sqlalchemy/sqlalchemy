@@ -58,7 +58,29 @@ CHANGES
       which is set as the escape character using the syntax 
       "x LIKE y ESCAPE '<somestring>'" [ticket:993],
       [ticket:791]
-      
+
+- oracle
+    - the "owner" keyword on Table is now deprecated, and is 
+      exactly synonymous with the "schema" keyword.  Tables
+      can now be reflected with alternate "owner" attributes,
+      explicitly stated on the Table object or not using
+      "schema".
+
+    - all of the "magic" searching for synonyms, DBLINKs etc.
+      during table reflection
+      are disabled by default unless you specify 
+      "oracle_resolve_synonyms=True" on the Table object.
+      Resolving synonyms necessarily leads to some messy
+      guessing which we'd rather leave off by default.  
+      When the flag is set, tables and related tables
+      will be resolved against synonyms in all cases, meaning
+      if a synonym exists for a particular table, reflection
+      will use it when reflecting related tables.  This is
+      stickier behavior than before which is why it's
+      off by default.
+
+
+
 - extensions
     - The "synonym" function is now directly usable with
       "declarative".  Pass in the decorated property using the

@@ -31,6 +31,17 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
 class CompileTest(TestBase, AssertsCompiledSQL):
     __dialect__ = oracle.OracleDialect()
 
+    def test_owner(self):
+        meta  = MetaData()
+        parent = Table('parent', meta, Column('id', Integer, primary_key=True), 
+           Column('name', String(50)),
+           owner='ed')
+        child = Table('child', meta, Column('id', Integer, primary_key=True),
+           Column('parent_id', Integer, ForeignKey('ed.parent.id')),
+           owner = 'ed')
+
+        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON parent.id = child.parent_id")
+
     def test_subquery(self):
         t = table('sometable', column('col1'), column('col2'))
         s = select([t])
@@ -135,6 +146,70 @@ myothertable.othername != :myothertable_othername_1 OR EXISTS (select yay from f
             "ON addresses.address_type_id = address_types_1.id WHERE addresses.user_id = :addresses_user_id_1 ORDER BY addresses.rowid, "
             "address_types.rowid")
 
+class SchemaReflectionTest(TestBase, AssertsCompiledSQL):
+    """instructions:
+
+       1. create a user 'ed' in the oracle database.
+       2. in 'ed', issue the following statements:
+           create table parent(id integer primary key, data varchar2(50));
+           create table child(id integer primary key, data varchar2(50), parent_id integer references parent(id));
+           create synonym ptable for parent;
+           create synonym ctable for child;
+           grant all on parent to scott;  (or to whoever you run the oracle tests as)
+           grant all on child to scott;  (same)
+           grant all on ptable to scott;
+           grant all on ctable to scott;
+
+    """
+
+    __only_on__ = 'oracle'
+
+    def test_reflect_alt_owner_explicit(self):
+        meta = MetaData(testing.db)
+        parent = Table('parent', meta, autoload=True, schema='ed')
+        child = Table('child', meta, autoload=True, schema='ed')
+
+        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON parent.id = child.parent_id")
+        select([parent, child]).select_from(parent.join(child)).execute().fetchall()
+
+    def test_reflect_local_to_remote(self):
+        testing.db.execute("CREATE TABLE localtable (id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES ed.parent(id))")
+        try:
+            meta = MetaData(testing.db)
+            lcl = Table('localtable', meta, autoload=True)
+            parent = meta.tables['ed.parent']
+            self.assert_compile(parent.join(lcl), "ed.parent JOIN localtable ON parent.id = localtable.parent_id")
+            select([parent, lcl]).select_from(parent.join(lcl)).execute().fetchall()
+        finally:
+            testing.db.execute("DROP TABLE localtable")
+
+    def test_reflect_alt_owner_implicit(self):
+        meta = MetaData(testing.db)
+        parent = Table('parent', meta, autoload=True, schema='ed')
+        child = Table('child', meta, autoload=True, schema='ed')
+
+        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON parent.id = child.parent_id")
+        select([parent, child]).select_from(parent.join(child)).execute().fetchall()
+      
+    def test_reflect_alt_owner_synonyms(self):
+        testing.db.execute("CREATE TABLE localtable (id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES ed.ptable(id))")
+        try:
+            meta = MetaData(testing.db)
+            lcl = Table('localtable', meta, autoload=True, oracle_resolve_synonyms=True)
+            parent = meta.tables['ed.ptable']
+            self.assert_compile(parent.join(lcl), "ed.ptable JOIN localtable ON ptable.id = localtable.parent_id")
+            select([parent, lcl]).select_from(parent.join(lcl)).execute().fetchall()
+        finally:
+            testing.db.execute("DROP TABLE localtable")
+ 
+    def test_reflect_remote_synonyms(self):
+        meta = MetaData(testing.db)
+        parent = Table('ptable', meta, autoload=True, schema='ed', oracle_resolve_synonyms=True)
+        child = Table('ctable', meta, autoload=True, schema='ed', oracle_resolve_synonyms=True)
+        self.assert_compile(parent.join(child), "ed.ptable JOIN ed.ctable ON ptable.id = ctable.parent_id")
+        select([parent, child]).select_from(parent.join(child)).execute().fetchall()
+
+ 
 class TypesTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
@@ -161,7 +236,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         'all_types', MetaData(testing.db),
             Column('owner', String(30), primary_key=True),
             Column('type_name', String(30), primary_key=True),
-            autoload=True,
+            autoload=True, oracle_resolve_synonyms=True
             )
         [[row[k] for k in row.keys()] for row in types_table.select().execute().fetchall()]
 

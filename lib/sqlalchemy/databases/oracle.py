@@ -362,68 +362,6 @@ class OracleDialect(default.DefaultDialect):
         cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name""", {'name':self._denormalize_name(sequence_name)})
         return bool( cursor.fetchone() is not None )
 
-    def _locate_owner_row(self, owner, name, rows, raiseerr=False):
-        """return the row in the given list of rows which references the given table name and owner name."""
-        if not rows:
-            if raiseerr:
-                raise exceptions.NoSuchTableError(name)
-            else:
-                return None
-        else:
-            if owner is not None:
-                for row in rows:
-                    if owner.upper() in row[0]:
-                        return row
-                else:
-                    if raiseerr:
-                        raise exceptions.AssertionError("Specified owner %s does not own table %s" % (owner, name))
-                    else:
-                        return None
-            else:
-                if len(rows)==1:
-                    return rows[0]
-                else:
-                    if raiseerr:
-                        raise exceptions.AssertionError("There are multiple tables with name '%s' visible to the schema, you must specifiy owner" % name)
-                    else:
-                        return None
-
-    def _resolve_table_owner(self, connection, name, table, dblink=''):
-        """Locate the given table in the ``ALL_TAB_COLUMNS`` view,
-        including searching for equivalent synonyms and dblinks.
-        """
-
-        c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name" % {'dblink':dblink}, {'table_name':name})
-        rows = c.fetchall()
-        try:
-            row = self._locate_owner_row(table.owner, name, rows, raiseerr=True)
-            return name, row['OWNER'], ''
-        except exceptions.SQLAlchemyError:
-            # locate synonyms
-            c = connection.execute ("""select OWNER, TABLE_OWNER, TABLE_NAME, DB_LINK
-                                       from   ALL_SYNONYMS%(dblink)s
-                                       where  SYNONYM_NAME = :synonym_name
-                                       and (DB_LINK IS NOT NULL
-                                               or ((TABLE_NAME, TABLE_OWNER) in
-                                                    (select TABLE_NAME, OWNER from ALL_TAB_COLUMNS%(dblink)s)))""" % {'dblink':dblink},
-                                    {'synonym_name':name})
-            rows = c.fetchall()
-            row = self._locate_owner_row(table.owner, name, rows)
-            if row is None:
-                row = self._locate_owner_row("PUBLIC", name, rows)
-
-            if row is not None:
-                owner, name, dblink = row['TABLE_OWNER'], row['TABLE_NAME'], row['DB_LINK']
-                if dblink:
-                    dblink = '@' + dblink
-                    if not owner:
-                        # re-resolve table owner using new dblink variable
-                        t1, owner, t2 = self._resolve_table_owner(connection, name, table, dblink=dblink)
-                else:
-                    dblink = ''
-                return name, owner, dblink
-            raise
-
     def _normalize_name(self, name):
         if name is None:
             return None
@@ -458,15 +396,66 @@ class OracleDialect(default.DefaultDialect):
             cursor = connection.execute(s,{'owner':self._denormalize_name(schema)})
         return [self._normalize_name(row[0]) for row in cursor]
 
+    def _resolve_synonym(self, connection, desired_owner=None, desired_synonym=None, desired_table=None):
+        """search for a local synonym matching the given desired owner/name.
+
+        if desired_owner is None, attempts to locate a distinct owner.
+
+	returns the actual name, owner, dblink name, and synonym name if found.
+        """
+
+	sql = """select OWNER, TABLE_OWNER, TABLE_NAME, DB_LINK, SYNONYM_NAME
+		   from   ALL_SYNONYMS WHERE """
+
+        clauses = []
+        params = {}
+        if desired_synonym:
+            clauses.append("SYNONYM_NAME=:synonym_name")
+            params['synonym_name'] = desired_synonym
+        if desired_owner:
+            clauses.append("TABLE_OWNER=:desired_owner")
+            params['desired_owner'] = desired_owner
+        if desired_table:
+            clauses.append("TABLE_NAME=:tname")
+            params['tname'] = desired_table
+
+        sql += " AND ".join(clauses) 
+
+	result = connection.execute(sql, **params)
+        if desired_owner:
+            row = result.fetchone()
+            if row:
+                return row['TABLE_NAME'], row['TABLE_OWNER'], row['DB_LINK'], row['SYNONYM_NAME']
+            else:
+                return None, None, None, None
+        else:
+            rows = result.fetchall()
+            if len(rows) > 1:
+                raise exceptions.AssertionError("There are multiple tables with name '%s' visible to the schema, you must specify owner" % name)
+            elif len(rows) == 1:
+                row = rows[0]
+                return row['TABLE_NAME'], row['TABLE_OWNER'], row['DB_LINK'], row['SYNONYM_NAME']
+            else:
+                return None, None, None, None
+
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer
 
-        # search for table, including across synonyms and dblinks.
-        # locate the actual name of the table, the real owner, and any dblink clause needed.
-        actual_name, owner, dblink = self._resolve_table_owner(connection, self._denormalize_name(table.name), table)
+        resolve_synonyms = table.kwargs.get('oracle_resolve_synonyms', False)
+
+	if resolve_synonyms:
+            actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(table.schema), desired_synonym=self._denormalize_name(table.name))
+        else:
+            actual_name, owner, dblink, synonym = None, None, None, None
+
+        if not actual_name:
+            actual_name = self._denormalize_name(table.name)
+        if not dblink:
+            dblink = ''
+        if not owner:
+            owner = self._denormalize_name(table.schema) or self.get_default_schema_name(connection)
 
         c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':actual_name, 'owner':owner})
-
 
         while True:
             row = c.fetchone()
@@ -555,8 +544,20 @@ class OracleDialect(default.DefaultDialect):
                          "all_cons_columns%(dblink)s - does the user have "
                          "proper rights to the table?") % {'dblink':dblink})
                     continue
-                refspec =  ".".join([remote_table, remote_column])               
-                schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, owner=remote_owner)
+
+                if resolve_synonyms:
+                    ref_remote_name, ref_remote_owner, ref_dblink, ref_synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(remote_owner), desired_table=self._denormalize_name(remote_table))
+                    if ref_synonym:
+                        remote_table = self._normalize_name(ref_synonym)
+                        remote_owner = self._normalize_name(ref_remote_owner)
+
+                if not table.schema and self._denormalize_name(remote_owner) == owner:
+                    refspec =  ".".join([remote_table, remote_column])               
+                    t = schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
+                else:
+                    refspec =  ".".join(x for x in [remote_owner, remote_table, remote_column] if x)
+                    t = schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, schema=remote_owner, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
+
                 if local_column not in fk[0]:
                     fk[0].append(local_column)
                 if refspec not in fk[1]:

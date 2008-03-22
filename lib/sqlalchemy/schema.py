@@ -88,7 +88,7 @@ class _TableSingleton(expression._FigureVisitName):
     """A metaclass used by the ``Table`` object to provide singleton behavior."""
 
     def __call__(self, name, metadata, *args, **kwargs):
-        schema = kwargs.get('schema', None)
+        schema = kwargs.get('schema', kwargs.get('owner', None))
         useexisting = kwargs.pop('useexisting', False)
         mustexist = kwargs.pop('mustexist', False)
         key = _get_table_key(name, schema)
@@ -179,8 +179,8 @@ class Table(SchemaItem, expression.TableClause):
             constructor arguments.
 
           owner
-            Defaults to None: optional owning user of this table.  useful for
-            databases such as Oracle to aid in table reflection.
+            Deprecated; this is an oracle-only argument - "schema" should
+            be used in its place.
 
           quote
             Defaults to False: indicates that the Table identifier must be
@@ -195,8 +195,7 @@ class Table(SchemaItem, expression.TableClause):
 
         super(Table, self).__init__(name)
         self.metadata = metadata
-        self.schema = kwargs.pop('schema', None)
-        self.owner = kwargs.pop('owner', None)
+        self.schema = kwargs.pop('schema', kwargs.pop('owner', None))
         self.indexes = util.Set()
         self.constraints = util.Set()
         self._columns = expression.ColumnCollection()
@@ -214,6 +213,9 @@ class Table(SchemaItem, expression.TableClause):
         include_columns = kwargs.pop('include_columns', None)
 
         self._set_parent(metadata)
+
+	self.__extra_kwargs(**kwargs)
+
         # load column definitions from the database if 'autoload' is defined
         # we do it after the table is in the singleton dictionary to support
         # circular foreign keys
@@ -235,20 +237,14 @@ class Table(SchemaItem, expression.TableClause):
             raise exceptions.ArgumentError(
                 "Can't change schema of existing table from '%s' to '%s'",
                 (self.schema, schema))
-        owner = kwargs.pop('owner', None)
-        if owner:
-            if not self.owner:
-                self.owner = owner
-            elif owner != self.owner:
-                raise exceptions.ArgumentError(
-                    "Can't change owner of existing table from '%s' to '%s'",
-                    (self.owner, owner))
 
         include_columns = kwargs.pop('include_columns', None)
         if include_columns:
             for c in self.c:
                 if c.name not in include_columns:
                     self.c.remove(c)
+
+        self.__extra_kwargs(**kwargs)
         self.__post_init(*args, **kwargs)
 
     def _cant_override(self, *args, **kwargs):
@@ -261,7 +257,7 @@ class Table(SchemaItem, expression.TableClause):
         return bool(args) or bool(util.Set(kwargs).difference(
             ['autoload', 'autoload_with', 'schema', 'owner']))
 
-    def __post_init(self, *args, **kwargs):
+    def __extra_kwargs(self, **kwargs):
         self.quote = kwargs.pop('quote', False)
         self.quote_schema = kwargs.pop('quote_schema', False)
         if kwargs.get('info'):
@@ -272,6 +268,8 @@ class Table(SchemaItem, expression.TableClause):
             raise TypeError("Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
         self.kwargs.update(kwargs)
 
+
+    def __post_init(self, *args, **kwargs):
         self._init_items(*args)
 
     def key(self):
