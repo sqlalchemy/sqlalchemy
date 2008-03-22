@@ -161,7 +161,7 @@ from sqlalchemy.schema import Table, SchemaItem, Column, MetaData
 from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty
-from sqlalchemy import util
+from sqlalchemy import util, exceptions
 
 __all__ = ['declarative_base', 'synonym_for', 'comparable_using',
            'declared_synonym']
@@ -237,7 +237,10 @@ def _deferred_relation(cls, prop):
     if isinstance(prop, PropertyLoader) and isinstance(prop.argument, basestring):
         arg = prop.argument
         def return_cls():
-            return cls._decl_class_registry[arg]
+            try:
+                return cls._decl_class_registry[arg]
+            except KeyError:
+                raise exceptions.InvalidRequestError("When compiling mapper %s, could not locate a declarative class named %r.  Consider adding this property to the %r class after both dependent classes have been defined." % (prop.parent, arg, prop.parent.class_))
         prop.argument = return_cls
 
     return prop

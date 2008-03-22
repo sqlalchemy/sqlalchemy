@@ -57,6 +57,20 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         self.assertEquals(a1, Address(email='two'))
         self.assertEquals(a1.user, User(name='u1'))
 
+    def test_nice_dependency_error(self):
+        class User(Base):
+            __tablename__ = 'users'
+            id = Column('id', Integer, primary_key=True)
+            addresses = relation("Address")
+        
+        def go():
+            class Address(Base):
+                __tablename__ = 'addresses'
+
+                id = Column(Integer, primary_key=True)
+                foo = column_property(User.id==5)
+        self.assertRaises(exceptions.InvalidRequestError, go)
+        
     def test_add_prop(self):
         class User(Base, Fixture):
             __tablename__ = 'users'
