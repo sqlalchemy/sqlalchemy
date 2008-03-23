@@ -73,7 +73,25 @@ class MapperTest(MapperSuperTest):
             assert False
         except exceptions.ArgumentError, e:
             assert "could not assemble any primary key columns for mapped table 'foo'" in str(e)
+    
+    def test_recompile_on_othermapper(self):
+        """test the global '__new_mappers' flag such that a compile 
+        trigger on an already-compiled mapper still triggers a check against all mappers."""
 
+        from sqlalchemy.orm import mapperlib
+        
+        mapper(User, users)
+        compile_mappers()
+        assert mapperlib._Mapper__new_mappers is False
+        
+        m = mapper(Address, addresses, properties={'user':relation(User, backref="addresses")})
+        
+        assert m._Mapper__props_init is False
+        assert mapperlib._Mapper__new_mappers is True
+        u = User()
+        assert User.addresses
+        assert mapperlib._Mapper__new_mappers is False
+        
     def test_compileonsession(self):
         m = mapper(User, users)
         session = create_session()

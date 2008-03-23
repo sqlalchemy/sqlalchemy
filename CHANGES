@@ -5,6 +5,9 @@ CHANGES
 0.4.5
 =====
 - orm
+    - added a more aggressive check for "uncompiled mappers", 
+      helps particularly with declarative layer [ticket:995]
+      
     - Added comparable_property(), adds query Comparator behavior
       to regular, unmanaged Python properties
 
@@ -79,8 +82,6 @@ CHANGES
       stickier behavior than before which is why it's
       off by default.
 
-
-
 - extensions
     - The "synonym" function is now directly usable with
       "declarative".  Pass in the decorated property using the
@@ -94,7 +95,11 @@ CHANGES
     - Declarative also gained @synonym_for(...) and
       @comparable_using(...), front-ends for synonym and
       comparable_property.
-
+    
+    - Improvements to mapper compilation when using declarative;
+      already-compiled mappers will still trigger compiles of
+      other uncompiled mappers when used [ticket:995]
+      
     - Declarative will complete setup for Columns lacking names,
       allows a more DRY syntax.
 

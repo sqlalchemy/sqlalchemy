@@ -23,6 +23,7 @@ from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, PropComparat
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', '_mapper_registry']
 
 _mapper_registry = weakref.WeakKeyDictionary()
+__new_mappers = False
 
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
@@ -93,7 +94,7 @@ class Mapper(object):
                 # we make, theres workarounds but it starts to get really crazy (its crazy enough
                 # the SQL that gets generated) so just require an alias
                 raise exceptions.ArgumentError("Mapping against a Select object requires that it has a name.  Use an alias to give it a name, i.e. s = select(...).alias('myselect')")
-
+            
         self.class_ = class_
         self.entity_name = entity_name
         self.primary_key_argument = primary_key
@@ -164,7 +165,8 @@ class Mapper(object):
         self._compile_properties()
         self._compile_pks()
         self._compile_selectable()
-
+        global __new_mappers
+        __new_mappers = True
         self.__log("constructed")
 
     def __log(self, msg):
@@ -224,13 +226,15 @@ class Mapper(object):
     def compile(self):
         """Compile this mapper into its final internal format.
         """
-
-        if self.__props_init:
+        
+        global __new_mappers
+        if self.__props_init and not __new_mappers:
             return self
         _COMPILE_MUTEX.acquire()
         try:
+
             # double-check inside mutex
-            if self.__props_init:
+            if self.__props_init and not __new_mappers:
                 return self
 
             # initialize properties on all mappers
@@ -238,6 +242,7 @@ class Mapper(object):
                 if not mapper.__props_init:
                     mapper.__initialize_properties()
 
+            __new_mappers = False
             return self
         finally:
             _COMPILE_MUTEX.release()

@@ -56,6 +56,30 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         a1 = sess.query(Address).filter(Address.email=='two').one()
         self.assertEquals(a1, Address(email='two'))
         self.assertEquals(a1.user, User(name='u1'))
+    
+    def test_recompile_on_othermapper(self):
+        """declarative version of the same test in mappers.py"""
+
+        from sqlalchemy.orm import mapperlib
+
+        class User(Base):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+
+        class Address(Base):
+            __tablename__ = 'addresses'
+
+            id = Column('id', Integer, primary_key=True)
+            email = Column('email', String(50))
+            user_id = Column('user_id', Integer, ForeignKey('users.id'))
+            user = relation("User", primaryjoin=user_id==User.id, backref="addresses")
+
+        assert mapperlib._Mapper__new_mappers is True
+        u = User()
+        assert User.addresses
+        assert mapperlib._Mapper__new_mappers is False
 
     def test_nice_dependency_error(self):
         class User(Base):
