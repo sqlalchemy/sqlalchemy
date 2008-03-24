@@ -92,7 +92,7 @@ class TraversalTest(TestBase, AssertsExecutionResults):
         s2 = vis.traverse(struct, clone=True)
         assert struct == s2
         assert not struct.is_other(s2)
-
+    
     def test_no_clone(self):
         struct = B(A("expr1"), A("expr2"), B(A("expr1b"), A("expr2b")), A("expr3"))
 
@@ -430,7 +430,38 @@ class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
             "(SELECT foo.col1 AS col1, foo.col2 AS col2, foo.col3 AS col3 FROM "\
             "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo  LIMIT 5 OFFSET 10) AS anon_1 "\
             "LEFT OUTER JOIN table1 AS bar ON anon_1.col1 = bar.col1")
+    
+    def test_recursive(self):
+        metadata = MetaData()
+        a = Table('a', metadata,
+            Column('id', Integer, primary_key=True))
+        b = Table('b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', Integer, ForeignKey('a.id')),
+            )
+        c = Table('c', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('bid', Integer, ForeignKey('b.id')),
+            )
 
+        d = Table('d', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('aid', Integer, ForeignKey('a.id')),
+            )
+
+        u = union(
+            a.join(b).select().apply_labels(),
+            a.join(d).select().apply_labels()
+        ).alias()    
+        
+        self.assert_compile(
+            sql_util.ClauseAdapter(u).traverse(select([c.c.bid]).where(c.c.bid==u.c.b_aid)),
+            "SELECT c.bid "\
+            "FROM c, (SELECT a.id AS a_id, b.id AS b_id, b.aid AS b_aid "\
+            "FROM a JOIN b ON a.id = b.aid UNION SELECT a.id AS a_id, d.id AS d_id, d.aid AS d_aid "\
+            "FROM a JOIN d ON a.id = d.aid) AS anon_1 "\
+            "WHERE c.bid = anon_1.b_aid"
+        )
 
 class SelectTest(TestBase, AssertsCompiledSQL):
     """tests the generative capability of Select"""

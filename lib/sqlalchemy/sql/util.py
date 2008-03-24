@@ -147,102 +147,7 @@ class ColumnsInClause(visitors.ClauseVisitor):
         if self.selectable.c.get(column.key) is column:
             self.result = True
 
-class AbstractClauseProcessor(object):
-    """Traverse and copy a ClauseElement, replacing selected elements based on rules.
-
-    This class implements its own visit-and-copy strategy but maintains the
-    same public interface as visitors.ClauseVisitor.
-    
-    The convert_element() method receives the *un-copied* version of each element.
-    It can return a new element or None for no change.  If None, the element
-    will be cloned afterwards and added to the new structure.  Note this is the
-    opposite behavior of visitors.traverse(clone=True), where visitors receive
-    the cloned element so that it can be mutated.
-    """
-
-    __traverse_options__ = {'column_collections':False}
-
-    def __init__(self, stop_on=None):
-        self.stop_on = stop_on
-
-    def convert_element(self, elem):
-        """Define the *conversion* method for this ``AbstractClauseProcessor``."""
-
-        raise NotImplementedError()
-
-    def chain(self, visitor):
-        # chaining AbstractClauseProcessor and other ClauseVisitor
-        # objects separately.  All the ACP objects are chained on
-        # their convert_element() method whereas regular visitors
-        # chain on their visit_XXX methods.
-        if isinstance(visitor, AbstractClauseProcessor):
-            attr = '_next_acp'
-        else:
-            attr = '_next'
-
-        tail = self
-        while getattr(tail, attr, None) is not None:
-            tail = getattr(tail, attr)
-        setattr(tail, attr, visitor)
-        return self
-
-    def copy_and_process(self, list_):
-        """Copy the given list to a new list, with each element traversed individually."""
-
-        list_ = list(list_)
-        stop_on = util.Set(self.stop_on or [])
-        cloned = {}
-        for i in range(0, len(list_)):
-            list_[i] = self._traverse(list_[i], stop_on, cloned, _clone_toplevel=True)
-        return list_
-
-    def _convert_element(self, elem, stop_on, cloned):
-        v = self
-        while v is not None:
-            newelem = v.convert_element(elem)
-            if newelem:
-                stop_on.add(newelem)
-                return newelem
-            v = getattr(v, '_next_acp', None)
-
-        if elem not in cloned:
-            # the full traversal will only make a clone of a particular element
-            # once.
-            cloned[elem] = elem._clone()
-        return cloned[elem]
-
-    def traverse(self, elem, clone=True):
-        if not clone:
-            raise exceptions.ArgumentError("AbstractClauseProcessor 'clone' argument must be True")
-
-        return self._traverse(elem, util.Set(self.stop_on or []), {}, _clone_toplevel=True)
-
-    def _traverse(self, elem, stop_on, cloned, _clone_toplevel=False):
-        if elem in stop_on:
-            return elem
-
-        if _clone_toplevel:
-            elem = self._convert_element(elem, stop_on, cloned)
-            if elem in stop_on:
-                return elem
-
-        def clone(element):
-            return self._convert_element(element, stop_on, cloned)
-        elem._copy_internals(clone=clone)
-
-        v = getattr(self, '_next', None)
-        while v is not None:
-            meth = getattr(v, "visit_%s" % elem.__visit_name__, None)
-            if meth:
-                meth(elem)
-            v = getattr(v, '_next', None)
-
-        for e in elem.get_children(**self.__traverse_options__):
-            if e not in stop_on:
-                self._traverse(e, stop_on, cloned)
-        return elem
-
-class ClauseAdapter(AbstractClauseProcessor):
+class ClauseAdapter(visitors.ClauseVisitor):
     """Given a clause (like as in a WHERE criterion), locate columns
     which are embedded within a given selectable, and changes those
     columns to be that of the selectable.
@@ -270,13 +175,21 @@ class ClauseAdapter(AbstractClauseProcessor):
       s.c.col1 == table2.c.col1
     """
 
+    __traverse_options__ = {'column_collections':False}
+
     def __init__(self, selectable, include=None, exclude=None, equivalents=None):
-        AbstractClauseProcessor.__init__(self, [selectable])
+        self.__traverse_options__ = self.__traverse_options__.copy()
+        self.__traverse_options__['stop_on'] = [selectable]
         self.selectable = selectable
         self.include = include
         self.exclude = exclude
         self.equivalents = equivalents
-
+    
+    def traverse(self, obj, clone=True):
+        if not clone:
+            raise exceptions.ArgumentError("ClauseAdapter 'clone' argument must be True")
+        return visitors.ClauseVisitor.traverse(self, obj, clone=True)
+        
     def copy_and_chain(self, adapter):
         """create a copy of this adapter and chain to the given adapter.
 
@@ -289,14 +202,14 @@ class ClauseAdapter(AbstractClauseProcessor):
         if adapter is None:
             return self
 
-        if hasattr(self, '_next_acp') or hasattr(self, '_next'):
+        if hasattr(self, '_next'):
             raise NotImplementedError("Can't chain_to on an already chained ClauseAdapter (yet)")
 
         ca = ClauseAdapter(self.selectable, self.include, self.exclude, self.equivalents)
-        ca._next_acp = adapter
+        ca._next = adapter
         return ca
 
-    def convert_element(self, col):
+    def before_clone(self, col):
         if isinstance(col, expression.FromClause):
             if self.selectable.is_derived_from(col):
                 return self.selectable
