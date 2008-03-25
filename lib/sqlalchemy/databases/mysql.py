@@ -158,6 +158,7 @@ from array import array as _array
 
 from sqlalchemy import exceptions, logging, schema, sql, util
 from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy.sql import functions as sql_functions
 from sqlalchemy.sql import compiler
 
 from sqlalchemy.engine import base as engine_base, default
@@ -1898,6 +1899,11 @@ class MySQLCompiler(compiler.DefaultCompiler):
         sql_operators.concat_op: lambda x, y: "concat(%s, %s)" % (x, y),
         sql_operators.mod: '%%'
     })
+    functions = compiler.DefaultCompiler.functions.copy()
+    functions.update ({
+        sql_functions.random: 'rand%(expr)s'
+        })
+
 
     def visit_typeclause(self, typeclause):
         type_ = typeclause.type.dialect_impl(self.dialect)
