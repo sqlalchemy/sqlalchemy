@@ -49,7 +49,7 @@ class ClauseVisitor(object):
                 stack.append(c)
     
     def traverse(self, obj, clone=False):
-        """traverse the given expression structure.
+        """traverse and visit the given expression structure.
         
         Returns the structure given, or a copy of the structure if
         clone=True.
@@ -151,7 +151,7 @@ class ClauseVisitor(object):
         """iterate through this visitor and each 'chained' visitor."""
         
         v = self
-        while v is not None:
+        while v:
             yield v
             v = getattr(v, '_next', None)
     _iterate_visitors = property(_iterate_visitors)
@@ -161,9 +161,7 @@ class ClauseVisitor(object):
         
         the chained visitor will receive all visit events after this one.
         """
-        tail = self
-        while getattr(tail, '_next', None) is not None:
-            tail = tail._next
+        tail = list(self._iterate_visitors)[-1]
         tail._next = visitor
         return self
 
