@@ -777,7 +777,7 @@ class _FunctionGenerator(object):
             except KeyError:
                 raise AttributeError(name)
 
-        elif name.startswith('_'):
+        elif name.endswith('_'):
             name = name[0:-1]
         f = _FunctionGenerator(**self.opts)
         f.__names = list(self.__names) + [name]

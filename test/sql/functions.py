@@ -32,7 +32,10 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             else:
                 self.assert_compile(func.nosuchfunction(), "nosuchfunction()", dialect=dialect)
             self.assert_compile(func.char_length('foo'), "char_length(%s)" % bindtemplate % {'name':'param_1', 'position':1}, dialect=dialect)
-
+    
+    def test_underscores(self):
+        self.assert_compile(func.if_(), "if()")
+        
     def test_generic_now(self):
         assert isinstance(func.now().type, sqltypes.DateTime)
 

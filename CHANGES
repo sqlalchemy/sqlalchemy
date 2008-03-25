@@ -20,7 +20,10 @@ CHANGES
 
     - Fixed bug which was preventing synonym() attributes from
       being used with inheritance
-
+      
+    - fixed SQL function truncation of trailing underscores
+      [ticket:996]
+      
     - Session.execute can now find binds from metadata
 
     - adjusted the definition of "self-referential" to be
