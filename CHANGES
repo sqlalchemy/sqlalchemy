@@ -54,6 +54,11 @@ CHANGES
       mapper-config'ed order_by when using select_from()
 
 - sql
+    - can now allow selects which correlate all FROM clauses
+      and have no FROM themselves.  These are typically
+      used in a scalar context, i.e. SELECT x, (SELECT x WHERE y)
+      FROM table.  Requires explicit correlate() call.
+      
     - 'name' is no longer a required constructor argument for
       Column().  It (and .key) may now be deferred until the
       column is added to a Table.

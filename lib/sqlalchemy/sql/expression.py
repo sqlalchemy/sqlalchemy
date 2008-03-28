@@ -3088,14 +3088,12 @@ class Select(_SelectBaseMixin, FromClause):
         for f in froms:
             froms.difference_update(f._hide_froms)
 
-        if len(froms) > 1:
+        if len(froms) > 1 or self.__correlate:
             if self.__correlate:
                 froms.difference_update(self.__correlate)
             if self._should_correlate and existing_froms is not None:
                 froms.difference_update(existing_froms)
 
-            if not froms:
-                raise exceptions.InvalidRequestError("Select statement '%s' is overcorrelated; returned no 'from' clauses" % str(self.__dont_correlate()))
         return froms
 
     froms = property(_get_display_froms, doc="""Return a list of all FromClause elements which will be applied to the FROM clause of the resulting statement.""")
