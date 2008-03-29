@@ -529,24 +529,26 @@ class Query(object):
         q = self._no_statement("order_by")
 
         if self._aliases_tail:
-            criterion = [expression._literal_as_text(o) for o in util.starargs_as_list(*criterion)]
+            criterion = [expression._literal_as_text(o) for o in criterion]
             criterion = self._aliases_tail.adapt_list(criterion)
 
         if q._order_by is False:
-            q._order_by = util.starargs_as_list(*criterion)
+            q._order_by = criterion
         else:
-            q._order_by = q._order_by + util.starargs_as_list(*criterion)
+            q._order_by = q._order_by + criterion
         return q
-
+    order_by = util.array_as_starargs_decorator(order_by)
+    
     def group_by(self, *criterion):
         """apply one or more GROUP BY criterion to the query and return the newly resulting ``Query``"""
 
         q = self._no_statement("group_by")
         if q._group_by is False:
-            q._group_by = util.starargs_as_list(*criterion)
+            q._group_by = criterion
         else:
-            q._group_by = q._group_by + util.starargs_as_list(*criterion)
+            q._group_by = q._group_by + criterion
         return q
+    group_by = util.array_as_starargs_decorator(group_by)
     
     def having(self, criterion):
         """apply a HAVING criterion to the query and return the newly resulting ``Query``."""

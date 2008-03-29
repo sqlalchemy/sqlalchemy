@@ -26,7 +26,8 @@ CHANGES
       more flexible approach.
 
     - query.order_by() and query.group_by() will accept
-      multiple arguments using *args.
+      multiple arguments using *args (like select() 
+      already does).
       
     - Fixed/covered case when using a False/0 value as a
       polymorphic discriminator.

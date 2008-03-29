@@ -188,15 +188,17 @@ def to_list(x, default=None):
     else:
         return x
 
-def starargs_as_list(*args):
-    """interpret the given *args as either a list of *args, 
-    or detect if it's a single list and return that.
+def array_as_starargs_decorator(func):
+    """Interpret a single positional array argument as
+    *args for the decorated method.
     
     """
-    if len(args) == 1:
-        return to_list(args[0], [])
-    else:
-        return list(args)
+    def starargs_as_list(self, *args, **kwargs):
+        if len(args) == 1:
+            return func(self, *to_list(args[0], []), **kwargs)
+        else:
+            return func(self, *args, **kwargs)
+    return starargs_as_list
     
 def to_set(x):
     if x is None:
