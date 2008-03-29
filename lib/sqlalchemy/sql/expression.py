@@ -1621,6 +1621,15 @@ class FromClause(Selectable):
           from sqlalchemy.sql.util import ClauseAdapter
       return ClauseAdapter(alias).traverse(self, clone=True)
 
+    def correspond_on_equivalents(self, column, equivalents):
+        col = self.corresponding_column(column, require_embedded=True)
+        if col is None and col in equivalents:
+            for equiv in equivalents[col]:
+                nc = self.corresponding_column(equiv, require_embedded=True)
+                if nc:
+                    return nc
+        return col
+
     def corresponding_column(self, column, require_embedded=False):
         """Given a ``ColumnElement``, return the exported ``ColumnElement``
         object from this ``Selectable`` which corresponds to that

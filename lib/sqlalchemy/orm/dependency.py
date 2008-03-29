@@ -34,7 +34,6 @@ class DependencyProcessor(object):
         self.cascade = prop.cascade
         self.mapper = prop.mapper
         self.parent = prop.parent
-        self.association = prop.association
         self.secondary = prop.secondary
         self.direction = prop.direction
         self.is_backref = prop.is_backref

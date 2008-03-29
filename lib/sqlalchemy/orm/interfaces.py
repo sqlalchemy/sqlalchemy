@@ -417,7 +417,12 @@ class MapperProperty(object):
         return operator(self.comparator, value)
 
 class PropComparator(expression.ColumnOperators):
-    """defines comparison operations for MapperProperty objects"""
+    """defines comparison operations for MapperProperty objects.
+    
+    PropComparator instances should also define an accessor 'property'
+    which returns the MapperProperty associated with this
+    PropComparator.
+    """
 
     def expression_element(self):
         return self.clause_element()
@@ -491,6 +496,7 @@ class PropComparator(expression.ColumnOperators):
         """
 
         return self.operate(PropComparator.has_op, criterion, **kwargs)
+
 
 class StrategizedProperty(MapperProperty):
     """A MapperProperty which uses selectable strategies to affect
@@ -618,20 +624,37 @@ class PropertyOption(MapperOption):
             mapper = self.mapper
             if isinstance(self.mapper, type):
                 mapper = class_mapper(mapper)
-            if mapper is not query.mapper and mapper not in [q[0] for q in query._entities]:
-                raise exceptions.ArgumentError("Can't find entity %s in Query.  Current list: %r" % (str(mapper), [str(m) for m in [query.mapper] + query._entities]))
+            if mapper is not query.mapper and mapper not in [q.mapper for q in query._entities]:
+                raise exceptions.ArgumentError("Can't find entity %s in Query.  Current list: %r" % (str(mapper), [str(m) for m in query._entities]))
         else:
             mapper = query.mapper
-        for token in self.key.split('.'):
+        if isinstance(self.key, basestring):
+            tokens = self.key.split('.')
+        else:
+            tokens = util.to_list(self.key)
+            
+        for token in tokens:
+            if isinstance(token, basestring):
+                prop = mapper.get_property(token, resolve_synonyms=True, raiseerr=raiseerr)
+            elif isinstance(token, PropComparator):
+                prop = token.property
+                token = prop.key
+                    
+            else:
+                raise exceptions.ArgumentError("mapper option expects string key or list of attributes")
+                
             if current_path and token == current_path[1]:
                 current_path = current_path[2:]
                 continue
-            prop = mapper.get_property(token, resolve_synonyms=True, raiseerr=raiseerr)
+                
             if prop is None:
                 return []
             path = build_path(mapper, prop.key, path)
             l.append(path)
-            mapper = getattr(prop, 'mapper', None)
+            if getattr(token, '_of_type', None):
+                mapper = token._of_type
+            else:
+                mapper = getattr(prop, 'mapper', None)
         return l
 
 PropertyOption.logger = logging.class_logger(PropertyOption)

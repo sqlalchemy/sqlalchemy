@@ -163,6 +163,23 @@ except ImportError:
             return 'defaultdict(%s, %s)' % (self.default_factory,
                                             dict.__repr__(self))
 
+try:
+    from collections import deque
+except ImportError:
+    class deque(list):
+        def appendleft(self, x):
+            self.insert(0, x)
+        
+        def extendleft(self, iterable):
+            self[0:0] = list(iterable)
+
+        def popleft(self):
+            return self.pop(0)
+            
+        def rotate(self, n):
+            for i in xrange(n):
+                self.appendleft(self.pop())
+                
 def to_list(x, default=None):
     if x is None:
         return default
@@ -171,6 +188,16 @@ def to_list(x, default=None):
     else:
         return x
 
+def starargs_as_list(*args):
+    """interpret the given *args as either a list of *args, 
+    or detect if it's a single list and return that.
+    
+    """
+    if len(args) == 1:
+        return to_list(args[0], [])
+    else:
+        return list(args)
+    
 def to_set(x):
     if x is None:
         return Set()
@@ -1018,7 +1045,36 @@ class symbol(object):
             return sym
         finally:
             symbol._lock.release()
+            
+def conditional_cache_decorator(func):
+    """apply conditional caching to the return value of a function."""
 
+    return cache_decorator(func, conditional=True)
+
+def cache_decorator(func, conditional=False):
+    """apply caching to the return value of a function."""
+
+    name = '_cached_' + func.__name__
+    
+    def do_with_cache(self, *args, **kwargs):
+        if conditional:
+            cache = kwargs.pop('cache', False)
+            if not cache:
+                return func(self, *args, **kwargs)
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            value = func(self, *args, **kwargs)
+            setattr(self, name, value)
+            return value
+    return do_with_cache
+    
+def reset_cached(instance, name):
+    try:
+        delattr(instance, '_cached_' + name)
+    except AttributeError:
+        pass
+    
 def warn(msg):
     if isinstance(msg, basestring):
         warnings.warn(msg, exceptions.SAWarning, stacklevel=3)

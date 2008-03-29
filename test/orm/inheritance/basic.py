@@ -79,6 +79,8 @@ class FalseDiscriminatorTest(ORMTest):
         sess.save(f1)
         sess.flush()
         assert f1.type == 0
+        sess.clear()
+        assert isinstance(sess.query(Foo).one(), Bar)
         
 class PolymorphicSynonymTest(ORMTest):
     def define_tables(self, metadata):

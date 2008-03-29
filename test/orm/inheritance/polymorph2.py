@@ -1,3 +1,7 @@
+"""this is a test suite consisting mainly of end-user test cases, testing all kinds of painful
+inheritance setups for which we maintain compatibility.
+"""
+
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import exceptions, util
@@ -43,11 +47,11 @@ class RelationTest1(ORMTest):
             'manager':relation(Manager, primaryjoin=people.c.manager_id==managers.c.person_id, uselist=False)
         })
         mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id)
-        try:
-            compile_mappers()
-        except exceptions.ArgumentError, ar:
-            assert str(ar) == "Can't determine relation direction for relationship 'Person.manager (Manager)' - foreign key columns are present in both the parent and the child's mapped tables.  Specify 'foreign_keys' argument.", str(ar)
 
+        self.assertRaisesMessage(exceptions.ArgumentError, 
+            r"Can't determine relation direction for relationship 'Person\.manager \(Manager\)' - foreign key columns are present in both the parent and the child's mapped tables\.  Specify 'foreign_keys' argument\.",
+            compile_mappers
+        )
         clear_mappers()
 
         mapper(Person, people, properties={
@@ -357,9 +361,6 @@ class RelationTest4(ORMTest):
         manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
         car_mapper      = mapper(Car, cars, properties= {'employee':relation(person_mapper)})
 
-        print class_mapper(Person).primary_key
-        print person_mapper.get_select_mapper().primary_key
-
         session = create_session()
 
         # creating 5 managers named from M1 to E5
@@ -381,6 +382,11 @@ class RelationTest4(ORMTest):
         session.flush()
 
         session.clear()
+    
+        def go():
+            testcar = session.query(Car).options(eagerload('employee')).get(car1.car_id)
+            assert str(testcar.employee) == "Engineer E4, status X"
+        self.assert_sql_count(testing.db, go, 1)
 
         print "----------------------------"
         car1 = session.query(Car).get(car1.car_id)
@@ -612,6 +618,8 @@ class RelationTest7(ORMTest):
         for p in r:
             assert p.car_id == p.car.car_id
 
+        
+        
 class GenerativeTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         #  cars---owned by---  people (abstract) --- has a --- status
@@ -930,7 +938,6 @@ class CustomPKTest(ORMTest):
         mapper(T1, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1', select_table=pjoin)
         mapper(T2, t2, inherits=T1, polymorphic_identity='t2')
         assert len(class_mapper(T1).primary_key) == 1
-        assert len(class_mapper(T1).get_select_mapper().compile().primary_key) == 1
 
         print [str(c) for c in class_mapper(T1).primary_key]
         ot1 = T1()

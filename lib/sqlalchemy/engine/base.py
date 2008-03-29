@@ -1479,11 +1479,13 @@ class ResultProxy(object):
 
             if isinstance(key, basestring):
                 key = key.lower()
-
             try:
                 rec = props[key]
             except KeyError:
                 # fallback for targeting a ColumnElement to a textual expression
+                # it would be nice to get rid of this but we make use of it in the case where
+                # you say something like query.options(contains_alias('fooalias')) - the matching
+                # is done on strings
                 if isinstance(key, expression.ColumnElement):
                     if key._label.lower() in props:
                         return props[key._label.lower()]

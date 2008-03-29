@@ -932,14 +932,11 @@ class OptionsTest(MapperSuperTest):
         self.assert_sql_count(testing.db, go, 3)
         sess.clear()
 
-
-        print "-------MARK----------"
         # eagerload orders.items.keywords; eagerload_all() implies eager load of orders, orders.items
         q2 = sess.query(User).options(eagerload_all('orders.items.keywords'))
         u = q2.all()
         def go():
             print u[0].orders[1].items[0].keywords[1]
-        print "-------MARK2----------"
         self.assert_sql_count(testing.db, go, 0)
 
         sess.clear()
@@ -953,15 +950,13 @@ class OptionsTest(MapperSuperTest):
 
         sess.clear()
 
-        try:
-            sess.query(User).options(eagerload('items', Order))
-            assert False
-        except exceptions.ArgumentError, e:
-            assert str(e) == "Can't find entity Mapper|Order|orders in Query.  Current list: ['Mapper|User|users']"
+        self.assertRaisesMessage(exceptions.ArgumentError, 
+            r"Can't find entity Mapper\|Order\|orders in Query.  Current list: \['Mapper\|User\|users'\]", 
+            sess.query(User).options, eagerload('items', Order)
+        )
 
         # eagerload "keywords" on items.  it will lazy load "orders", then lazy load
         # the "items" on the order, but on "items" it will eager load the "keywords"
-        print "-------MARK5----------"
         q3 = sess.query(User).options(eagerload('orders.items.keywords'))
         u = q3.all()
         self.assert_sql_count(testing.db, go, 2)

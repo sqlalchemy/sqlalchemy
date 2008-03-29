@@ -64,6 +64,7 @@ class GetTest(QueryTest):
         """test that get()/load() does not use preexisting filter/etc. criterion"""
 
         s = create_session()
+        
         try:
             s.query(User).join('addresses').filter(Address.user_id==8).get(7)
             assert False
@@ -835,7 +836,7 @@ class InstancesTest(QueryTest):
 
         def decorate(row):
             d = {}
-            for c in addresses.columns:
+            for c in addresses.c:
                 d[c] = row[adalias.corresponding_column(c)]
             return d
 
@@ -865,7 +866,40 @@ class InstancesTest(QueryTest):
         self.assert_sql_count(testing.db, go, 1)
         sess.clear()
 
+    def test_columns(self):
+        sess = create_session()
 
+        sel = users.select(User.id.in_([7, 8])).alias()
+        q = sess.query(User)
+        q2 = q.select_from(sel)._values(User.name)
+        self.assertEquals(q2.all(), [(u'jack',), (u'ed',)])
+        
+        q = sess.query(User)
+        q2 = q._values(User.name, User.name + " " + cast(User.id, String)).order_by(User.id)
+        self.assertEquals(q2.all(), [(u'jack', u'jack 7'), (u'ed', u'ed 8'), (u'fred', u'fred 9'), (u'chuck', u'chuck 10')])
+        
+        q2 = q._values(User.name.like('%j%'), func.count(User.name.like('%j%'))).group_by([User.name.like('%j%')]).order_by(desc(User.name.like('%j%')))
+        self.assertEquals(q2.all(), [(True, 1), (False, 3)])
+        
+        q2 = q.join('addresses').filter(User.name.like('%e%')).order_by(User.id, Address.id)._values(User.name, Address.email_address)
+        self.assertEquals(q2.all(), [(u'ed', u'ed@wood.com'), (u'ed', u'ed@bettyboop.com'), (u'ed', u'ed@lala.com'), (u'fred', u'fred@fred.com')])
+        
+        q2 = q.join('addresses').filter(User.name.like('%e%'))._values(User.name, Address.email_address).order_by(desc(Address.email_address))[1:3]
+        self.assertEquals(q2.all(), [(u'ed', u'ed@wood.com'), (u'ed', u'ed@lala.com')])
+        
+        q2 = q.join('addresses', aliased=True).filter(User.name.like('%e%'))._values(User.name, Address.email_address)
+        self.assertEquals(q2.all(), [(u'ed', u'ed@wood.com'), (u'ed', u'ed@bettyboop.com'), (u'ed', u'ed@lala.com'), (u'fred', u'fred@fred.com')])
+        
+        q2 = q._values(func.count(User.name))
+        assert q2.one() == (4,)
+
+        u2 = users.alias()
+        q2 = q.select_from(sel).filter(u2.c.id>1)._values(users.c.name, sel.c.name, u2.c.name).order_by([users.c.id, sel.c.id, u2.c.id])
+        self.assertEquals(q2.all(), [(u'jack', u'jack', u'jack'), (u'jack', u'jack', u'ed'), (u'jack', u'jack', u'fred'), (u'jack', u'jack', u'chuck'), (u'ed', u'ed', u'jack'), (u'ed', u'ed', u'ed'), (u'ed', u'ed', u'fred'), (u'ed', u'ed', u'chuck')])
+        
+        q2 = q.select_from(sel).filter(users.c.id>1)._values(users.c.name, sel.c.name, User.name)
+        self.assertEquals(q2.all(), [(u'jack', u'jack', u'jack'), (u'ed', u'ed', u'ed')])
+        
     def test_multi_mappers(self):
 
         test_session = create_session()
@@ -946,12 +980,7 @@ class InstancesTest(QueryTest):
             assert sess.query(User).add_column(add_col).all() == expected
             sess.clear()
 
-        try:
-            sess.query(User).add_column(object()).all()
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert "Invalid column expression" in str(e)
-
+        self.assertRaises(exceptions.InvalidRequestError, sess.query(User).add_column, object())
 
     def test_multi_columns_2(self):
         """test aliased/nonalised joins with the usage of add_column()"""

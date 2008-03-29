@@ -143,82 +143,74 @@ class AliasedClauses(object):
     """Creates aliases of a mapped tables for usage in ORM queries.
     """
 
-    def __init__(self, mapped_table, alias=None):
-        if alias:
-            self.alias = alias
-        else:
-            self.alias = mapped_table.alias()
-        self.mapped_table = mapped_table
+    def __init__(self, alias, equivalents=None, chain_to=None):
+        self.alias = alias
+        self.equivalents = equivalents
         self.row_decorator = self._create_row_adapter()
-        
+        self.adapter = sql_util.ClauseAdapter(self.alias, equivalents=equivalents)
+        if chain_to:
+            self.adapter.chain(chain_to.adapter)
+            
     def aliased_column(self, column):
-        """return the aliased version of the given column, creating a new label for it if not already
-        present in this AliasedClauses."""
-
+        
         conv = self.alias.corresponding_column(column)
         if conv:
             return conv
-
+            
         aliased_column = column
-        # for column-level subqueries, swap out its selectable with our
-        # eager version as appropriate, and manually build the 
-        # "correlation" list of the subquery.  
         class ModifySubquery(visitors.ClauseVisitor):
             def visit_select(s, select):
                 select._should_correlate = False
                 select.append_correlation(self.alias)
-        aliased_column = sql_util.ClauseAdapter(self.alias).chain(ModifySubquery()).traverse(aliased_column, clone=True)
+        aliased_column = sql_util.ClauseAdapter(self.alias, equivalents=self.equivalents).chain(ModifySubquery()).traverse(aliased_column, clone=True)
         aliased_column = aliased_column.label(None)
-        self.row_decorator.map[column] = aliased_column
+        self.row_decorator({}).map[column] = aliased_column
         return aliased_column
 
     def adapt_clause(self, clause):
-        return sql_util.ClauseAdapter(self.alias).traverse(clause, clone=True)
+        return self.adapter.traverse(clause, clone=True)
     
     def adapt_list(self, clauses):
-        return sql_util.ClauseAdapter(self.alias).copy_and_process(clauses)
+        return self.adapter.copy_and_process(clauses)
         
     def _create_row_adapter(self):
-        """Return a callable which, 
-        when passed a RowProxy, will return a new dict-like object
-        that translates Column objects to that of this object's Alias before calling upon the row.
-
-        This allows a regular Table to be used to target columns in a row that was in reality generated from an alias
-        of that table, in such a way that the row can be passed to logic which knows nothing about the aliased form
-        of the table.
-        """
-        return create_row_adapter(self.alias, self.mapped_table)
+        return create_row_adapter(self.alias, equivalent_columns=self.equivalents)
 
 
 class PropertyAliasedClauses(AliasedClauses):
     """extends AliasedClauses to add support for primary/secondary joins on a relation()."""
     
     def __init__(self, prop, primaryjoin, secondaryjoin, parentclauses=None, alias=None):
-        super(PropertyAliasedClauses, self).__init__(prop.select_table, alias=alias)
-            
+        self.prop = prop
+        self.mapper = self.prop.mapper
+        self.table = self.prop.table
         self.parentclauses = parentclauses
 
-        self.prop = prop
+        if not alias:
+            from_obj = self.mapper._with_polymorphic_selectable()
+            alias = from_obj.alias()
+
+        super(PropertyAliasedClauses, self).__init__(alias, equivalents=self.mapper._equivalent_columns, chain_to=parentclauses)
         
         if prop.secondary:
             self.secondary = prop.secondary.alias()
             if parentclauses is not None:
-                primary_aliasizer = sql_util.ClauseAdapter(self.secondary).chain(sql_util.ClauseAdapter(parentclauses.alias))
-                secondary_aliasizer = sql_util.ClauseAdapter(self.alias).chain(sql_util.ClauseAdapter(self.secondary))
+                primary_aliasizer = sql_util.ClauseAdapter(self.secondary).chain(sql_util.ClauseAdapter(parentclauses.alias, equivalents=parentclauses.equivalents))
+                secondary_aliasizer = sql_util.ClauseAdapter(self.alias, equivalents=self.equivalents).chain(sql_util.ClauseAdapter(self.secondary))
 
             else:
                 primary_aliasizer = sql_util.ClauseAdapter(self.secondary)
-                secondary_aliasizer = sql_util.ClauseAdapter(self.alias).chain(sql_util.ClauseAdapter(self.secondary))
+                secondary_aliasizer = sql_util.ClauseAdapter(self.alias, equivalents=self.equivalents).chain(sql_util.ClauseAdapter(self.secondary))
                 
             self.secondaryjoin = secondary_aliasizer.traverse(secondaryjoin, clone=True)
             self.primaryjoin = primary_aliasizer.traverse(primaryjoin, clone=True)
         else:
             if parentclauses is not None: 
-                primary_aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side)
-                primary_aliasizer.chain(sql_util.ClauseAdapter(parentclauses.alias, exclude=prop.remote_side))
+                primary_aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side, equivalents=self.equivalents)
+                primary_aliasizer.chain(sql_util.ClauseAdapter(parentclauses.alias, exclude=prop.remote_side, equivalents=parentclauses.equivalents))
             else:
-                primary_aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side)
-
+                primary_aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side, equivalents=self.equivalents)
+            
             self.primaryjoin = primary_aliasizer.traverse(primaryjoin, clone=True)
             self.secondary = None
             self.secondaryjoin = None
@@ -233,10 +225,6 @@ class PropertyAliasedClauses(AliasedClauses):
                 
         else:
             self.order_by = None
-    
-    mapper = property(lambda self:self.prop.mapper)
-    table = property(lambda self:self.prop.select_table)
-    
 
 def instance_str(instance):
     """Return a string describing an instance."""

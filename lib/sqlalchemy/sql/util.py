@@ -93,46 +93,51 @@ def reduce_columns(columns, *clauses):
 
     return expression.ColumnSet(columns.difference(omit))
 
-def row_adapter(from_, to, equivalent_columns=None):
-    """create a row adapter between two selectables.
-
-    The returned adapter is a class that can be instantiated repeatedly for any number
-    of rows; this is an inexpensive process.  However, the creation of the row
-    adapter class itself *is* fairly expensive so caching should be used to prevent
-    repeated calls to this function.
-    """
-
-    map = {}
-    for c in to.c:
-        corr = from_.corresponding_column(c)
-        if corr:
-            map[c] = corr
-        elif equivalent_columns:
-            if c in equivalent_columns:
-                for c2 in equivalent_columns[c]:
-                    corr = from_.corresponding_column(c2)
-                    if corr:
-                        map[c] = corr
-                        break
-
-    class AliasedRow(object):
-        def __init__(self, row):
+class AliasedRow(object):
+    
+    def __init__(self, row, map):
+        # AliasedRow objects don't nest, so un-nest
+        # if another AliasedRow was passed
+        if isinstance(row, AliasedRow):
+            self.row = row.row
+        else:
             self.row = row
-        def __contains__(self, key):
-            if key in map:
-                return map[key] in self.row
-            else:
-                return key in self.row
-        def has_key(self, key):
-            return key in self
-        def __getitem__(self, key):
-            if key in map:
-                key = map[key]
-            return self.row[key]
-        def keys(self):
-            return map.keys()
-    AliasedRow.map = map
-    return AliasedRow
+        self.map = map
+        
+    def __contains__(self, key):
+        return self.map[key] in self.row
+
+    def has_key(self, key):
+        return key in self
+
+    def __getitem__(self, key):
+        return self.row[self.map[key]]
+
+    def keys(self):
+        return self.row.keys()
+
+def row_adapter(from_, equivalent_columns=None):
+    """create a row adapter against a selectable."""
+    
+    if equivalent_columns is None:
+        equivalent_columns = {}
+
+    def locate_col(col):
+        c = from_.corresponding_column(col)
+        if c:
+            return c
+        elif col in equivalent_columns:
+            for c2 in equivalent_columns[col]:
+                corr = from_.corresponding_column(c2)
+                if corr:
+                    return corr
+        return col
+        
+    map = util.PopulateDict(locate_col)
+    
+    def adapt(row):
+        return AliasedRow(row, map)
+    return adapt
 
 class ColumnsInClause(visitors.ClauseVisitor):
     """Given a selectable, visit clauses and determine if any columns
@@ -189,7 +194,7 @@ class ClauseAdapter(visitors.ClauseVisitor):
         if not clone:
             raise exceptions.ArgumentError("ClauseAdapter 'clone' argument must be True")
         return visitors.ClauseVisitor.traverse(self, obj, clone=True)
-        
+    
     def copy_and_chain(self, adapter):
         """create a copy of this adapter and chain to the given adapter.
 

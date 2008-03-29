@@ -69,6 +69,6 @@ def Column(*args, **kw):
     if testing.against('oracle'):
         if 'test_needs_autoincrement' in test_opts:
             args = list(args)
-            args.append(schema.Sequence(args[0], optional=True)) 
+            args.append(schema.Sequence(args[0] + "_seq", optional=True)) 
 
     return schema.Column(*args, **kw)

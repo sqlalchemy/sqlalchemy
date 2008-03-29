@@ -28,14 +28,13 @@ from sqlalchemy.orm import interfaces
 
 __all__ = ['Query', 'QueryContext']
 
-    
+
 class Query(object):
     """Encapsulates the object-fetching operations provided by Mappers."""
 
     def __init__(self, class_or_mapper, session=None, entity_name=None):
-        self._init_mapper(_class_to_mapper(class_or_mapper, entity_name=entity_name))
         self._session = session
-
+        
         self._with_options = []
         self._lockmode = None
         
@@ -52,8 +51,6 @@ class Query(object):
         self._joinable_tables = None
         self._having = None
         self._column_aggregate = None
-        self._aliases = None
-        self._alias_ids = {}
         self._populate_existing = False
         self._version_check = False
         self._autoflush = True
@@ -62,49 +59,89 @@ class Query(object):
         self._current_path = ()
         self._only_load_props = None
         self._refresh_instance = None
-    
-    def _init_mapper(self, mapper, select_mapper=None):
+        
+        self._init_mapper(_class_to_mapper(class_or_mapper, entity_name=entity_name))
+
+    def _init_mapper(self, mapper):
         """populate all instance variables derived from this Query's mapper."""
         
         self.mapper = mapper
-        self.select_mapper = select_mapper or self.mapper.get_select_mapper().compile()
-        self.table = self._from_obj = self.select_mapper.mapped_table
+        self.table = self._from_obj = self.mapper.mapped_table
         self._eager_loaders = util.Set(chain(*[mp._eager_loaders for mp in [m for m in self.mapper.iterate_to_root()]]))
         self._extension = self.mapper.extension
-        self._adapter = self.select_mapper._clause_adapter
+        self._aliases_head = self._aliases_tail = None
+        self._alias_ids = {}
         self._joinpoint = self.mapper
-        self._with_polymorphic = []
-    
+        self._entities.append(_PrimaryMapperEntity(self.mapper))
+        if self.mapper.with_polymorphic:
+            self._set_with_polymorphic(*self.mapper.with_polymorphic)
+        else:
+            self._with_polymorphic = []
+
+    def _generate_alias_ids(self):
+        self._alias_ids = dict([
+            (k, list(v)) for k, v in self._alias_ids.iteritems()
+        ])
+
     def _no_criterion(self, meth):
         return self._conditional_clone(meth, [self._no_criterion_condition])
 
     def _no_statement(self, meth):
         return self._conditional_clone(meth, [self._no_statement_condition])
-    
-    def _new_base_mapper(self, mapper, meth):
+
+    def _reset_all(self, mapper, meth):
         q = self._conditional_clone(meth, [self._no_criterion_condition])
         q._init_mapper(mapper, mapper)
         return q
+
+    def _set_select_from(self, from_obj):
+        if isinstance(from_obj, expression._SelectBaseMixin):
+            # alias SELECTs and unions
+            from_obj = from_obj.alias()
+
+        self._from_obj = from_obj
+        self._alias_ids = {}
         
+        if self.table not in self._get_joinable_tables():
+            self._aliases_head = self._aliases_tail = mapperutil.AliasedClauses(self._from_obj, equivalents=self.mapper._equivalent_columns)
+            self._alias_ids.setdefault(self.table, []).append(self._aliases_head)
+        else:
+            self._aliases_head = self._aliases_tail = None
+
+    def _set_with_polymorphic(self, cls_or_mappers, selectable=None):
+        mappers, from_obj = self.mapper._with_polymorphic_args(cls_or_mappers, selectable)
+        self._with_polymorphic = mappers
+        self._set_select_from(from_obj)
+
     def _no_criterion_condition(self, q, meth):
-        if q._criterion or q._statement or q._from_obj is not self.table:
+        if q._criterion or q._statement:
             util.warn(
                 ("Query.%s() being called on a Query with existing criterion; "
                  "criterion is being ignored.") % meth)
 
-        q._from_obj = self.table
-        q._adapter = self.select_mapper._clause_adapter
-        q._alias_ids = {}
         q._joinpoint = self.mapper
-        q._statement = q._aliases = q._criterion = None
+        q._statement = q._criterion = None
         q._order_by = q._group_by = q._distinct = False
-    
+        q._aliases_tail = q._aliases_head
+        q.table = q._from_obj = q.mapper.mapped_table
+        if q.mapper.with_polymorphic:
+            q._set_with_polymorphic(*q.mapper.with_polymorphic)
+
+    def _no_entities(self, meth):
+        q = self._no_statement(meth)
+        if len(q._entities) > 1 and not isinstance(q._entities[0], _PrimaryMapperEntity):
+            raise exceptions.InvalidRequestError(
+                ("Query.%s() being called on a Query with existing  "
+                 "additional entities or columns - can't replace columns") % meth)
+        q._entities = []
+        return q
+
     def _no_statement_condition(self, q, meth):
         if q._statement:
             raise exceptions.InvalidRequestError(
                 ("Query.%s() being called on a Query with an existing full "
                  "statement - can't apply criterion.") % meth)
-    
+
     def _conditional_clone(self, methname=None, conditions=None):
         q = self._clone()
         if conditions:
@@ -117,20 +154,18 @@ class Query(object):
         q.__dict__ = self.__dict__.copy()
         return q
 
-    def _get_session(self):
+    def session(self):
         if self._session is None:
             return self.mapper.get_session()
         else:
             return self._session
-
-    primary_key_columns = property(lambda s:s.select_mapper.primary_key)
-    session = property(_get_session)
+    session = property(session)
 
     def _with_current_path(self, path):
         q = self._clone()
         q._current_path = path
         return q
-    
+
     def with_polymorphic(self, cls_or_mappers, selectable=None):
         """Load columns for descendant mappers of this Query's mapper.
         
@@ -139,12 +174,6 @@ class Query(object):
         criterion to be used against those tables.  The resulting 
         instances will also have those columns already loaded so that
         no "post fetch" of those columns will be required.
-        
-        If this Query's mapper has a ``select_table`` argument, 
-        with_polymorphic() overrides it; the FROM clause will be against
-        the local table of the base mapper outer joined with the local
-        tables of each specified descendant mapper (unless ``selectable``
-        is specified).
         
         ``cls_or_mappers`` is a single class or mapper, or list of class/mappers,
         which inherit from this Query's mapper.  Alternatively, it
@@ -162,30 +191,12 @@ class Query(object):
         clause which will usually lead to incorrect results.
 
         """
-        
-        q = self._new_base_mapper(self.mapper, 'with_polymorphic')
+        q = self._no_criterion('with_polymorphic')
 
-        if cls_or_mappers == '*':
-            cls_or_mappers = self.mapper.polymorphic_iterator()
-        else:
-            cls_or_mappers = util.to_list(cls_or_mappers)
-        
-        if selectable:
-            q = q.select_from(selectable)
-                
-        for cls_or_mapper in cls_or_mappers:
-            poly_mapper = _class_to_mapper(cls_or_mapper)
-            if poly_mapper is self.mapper:
-                continue
-
-            q._with_polymorphic.append(poly_mapper)
-            if not selectable:
-                if poly_mapper.concrete:
-                    raise exceptions.InvalidRequestError("'with_polymorphic()' requires 'selectable' argument when concrete-inheriting mappers are used.")
-                elif not poly_mapper.single:
-                    q._from_obj = q._from_obj.outerjoin(poly_mapper.local_table, poly_mapper.inherit_condition)
+        q._set_with_polymorphic(cls_or_mappers, selectable=selectable)
 
         return q
+    
         
     def yield_per(self, count):
         """Yield only ``count`` rows at a time.
@@ -345,9 +356,22 @@ class Query(object):
         if isinstance(entity, type):
             entity = mapper.class_mapper(entity)
         if alias is not None:
-            alias = mapperutil.AliasedClauses(entity.mapped_table, alias=alias)
+            alias = mapperutil.AliasedClauses(alias)
 
-        q._entities = q._entities + [(entity, alias, id)]
+        q._entities = q._entities + [_MapperEntity(mapper=entity, alias=alias, id=id)]
+        return q
+
+    def _values(self, *columns):
+        """Turn this query into a 'columns only' query.
+        
+        The API for this method hasn't been decided yet and is subject to change.
+        """
+
+        q = self._no_entities('_values')
+        q._only_load_props = q._eager_loaders = util.Set()
+
+        for column in columns:
+            q._entities.append(self._add_column(column, None))
         return q
 
     def add_column(self, column, id=None):
@@ -370,18 +394,18 @@ class Query(object):
         """
 
         q = self._clone()
-
-        # duck type to get a ClauseElement
-        if hasattr(column, 'clause_element'):
+        q._entities = q._entities + [self._add_column(column, id)]
+        return q
+    
+    def _add_column(self, column, id=None):
+        if isinstance(column, interfaces.PropComparator):
             column = column.clause_element()
 
-        # alias non-labeled column elements.
-        if isinstance(column, sql.ColumnElement) and not hasattr(column, '_label'):
-            column = column.label(None)
+        elif not isinstance(column, (sql.ColumnElement, basestring)):
+            raise exceptions.InvalidRequestError("Invalid column expression '%r'" % column)
 
-        q._entities = q._entities + [(column, None, id)]
-        return q
-
+        return _ColumnEntity(column=column, id=id)
+        
     def options(self, *args):
         """Return a new Query object, applying the given list of
         MapperOptions.
@@ -409,6 +433,7 @@ class Query(object):
 
     def with_lockmode(self, mode):
         """Return a new Query object with the specified locking mode."""
+        
         q = self._clone()
         q._lockmode = mode
         return q
@@ -420,12 +445,11 @@ class Query(object):
         as the first positional argument.  The reason for both is that \**kwargs is
         convenient, however some parameter dictionaries contain unicode keys in which case
         \**kwargs cannot be used.
-        """
 
+        """
         q = self._clone()
         if len(args) == 1:
-            d = args[0]
-            kwargs.update(d)
+            kwargs.update(args[0])
         elif len(args) > 0:
             raise exceptions.ArgumentError("params() takes zero or one positional argument, which is a dictionary.")
         q._params = q._params.copy()
@@ -436,16 +460,16 @@ class Query(object):
         """apply the given filtering criterion to the query and return the newly resulting ``Query``
 
         the criterion is any sql.ClauseElement applicable to the WHERE clause of a select.
-        """
 
+        """
         if isinstance(criterion, basestring):
             criterion = sql.text(criterion)
 
         if criterion is not None and not isinstance(criterion, sql.ClauseElement):
             raise exceptions.ArgumentError("filter() argument must be of type sqlalchemy.sql.ClauseElement or string")
 
-        if self._adapter is not None:
-            criterion = self._adapter.traverse(criterion)
+        if self._aliases_tail:
+            criterion = self._aliases_tail.adapt_clause(criterion)
 
         q = self._no_statement("filter")
         if q._criterion is not None:
@@ -462,160 +486,12 @@ class Query(object):
 
         return self.filter(sql.and_(*clauses))
 
-    def _get_joinable_tables(self):
-        if not self._joinable_tables or self._joinable_tables[0] is not self._from_obj:
-            currenttables = [self._from_obj]
-            def visit_join(join):
-                currenttables.append(join.left)
-                currenttables.append(join.right)
-            visitors.traverse(self._from_obj, visit_join=visit_join, traverse_options={'column_collections':False, 'aliased_selectables':False})
-            self._joinable_tables = (self._from_obj, currenttables)
-            return currenttables
-        else:
-            return self._joinable_tables[1]
-
-    def _join_to(self, keys, outerjoin=False, start=None, create_aliases=True):
-        if start is None:
-            start = self._joinpoint
-
-        clause = self._from_obj
-
-        currenttables = self._get_joinable_tables()
-
-        # determine if generated joins need to be aliased on the left
-        # hand side.
-        if self._adapter and not self._aliases:  # at the beginning of a join, look at leftmost adapter
-            adapt_against = self._adapter.selectable
-        elif start is self.select_mapper:  # or if its our base mapper, go against our base table
-            adapt_against = self.table
-        elif start.select_table is not start.mapped_table: # in the middle of a join, look for a polymorphic mapper
-            adapt_against = start.select_table
-        elif self._aliases:  # joining against aliases
-            adapt_against = self._aliases.alias
-        else:
-            adapt_against = None
-
-        mapper = start
-        alias = self._aliases
-        
-        if not isinstance(keys, list):
-            keys = [keys]
-        for key in keys:
-            use_selectable = None
-            of_type = None
-
-            if isinstance(key, tuple):
-                key, use_selectable = key
-
-            if isinstance(key, interfaces.PropComparator):
-                prop = key.property
-                if getattr(key, '_of_type', None):
-                    if use_selectable:
-                        raise exceptions.InvalidRequestError("Can't specify use_selectable along with polymorphic property created via of_type().")
-                    of_type = key._of_type
-                    use_selectable = key._of_type.select_table
-            else:
-                prop = mapper.get_property(key, resolve_synonyms=True)
-
-            if use_selectable:
-                if not use_selectable.is_derived_from(prop.mapper.mapped_table):
-                    raise exceptions.InvalidRequestError("Selectable '%s' is not derived from '%s'" % (use_selectable.description, prop.mapper.mapped_table.description))
-                if not isinstance(use_selectable, expression.Alias):
-                    use_selectable = use_selectable.alias()
-            
-            if prop._is_self_referential() and not create_aliases and not use_selectable:
-                raise exceptions.InvalidRequestError("Self-referential query on '%s' property requires aliased=True argument." % str(prop))
-
-            if prop.select_table not in currenttables or create_aliases or use_selectable:
-                if prop.secondary:
-                    if use_selectable or create_aliases:
-                        alias = mapperutil.PropertyAliasedClauses(prop,
-                            prop.primary_join_against(mapper, adapt_against),
-                            prop.secondary_join_against(mapper, toselectable=use_selectable),
-                            alias,
-                            alias=use_selectable
-                        )
-                        crit = alias.primaryjoin
-                        clause = clause.join(alias.secondary, crit, isouter=outerjoin).join(alias.alias, alias.secondaryjoin, isouter=outerjoin)
-                    else:
-                        crit = prop.primary_join_against(mapper, adapt_against)
-                        clause = clause.join(prop.secondary, crit, isouter=outerjoin)
-                        clause = clause.join(prop.select_table, prop.secondary_join_against(mapper), isouter=outerjoin)
-                else:
-                    if use_selectable or create_aliases:
-                        alias = mapperutil.PropertyAliasedClauses(prop,
-                            prop.primary_join_against(mapper, adapt_against, toselectable=use_selectable),
-                            None,
-                            alias,
-                            alias=use_selectable
-                        )
-                        crit = alias.primaryjoin
-                        clause = clause.join(alias.alias, crit, isouter=outerjoin)
-                    else:
-                        crit = prop.primary_join_against(mapper, adapt_against)
-                        clause = clause.join(prop.select_table, crit, isouter=outerjoin)
-            elif not create_aliases and prop.secondary is not None and prop.secondary not in currenttables:
-                # TODO: this check is not strong enough for different paths to the same endpoint which
-                # does not use secondary tables
-                raise exceptions.InvalidRequestError("Can't join to property '%s'; a path to this table along a different secondary table already exists.  Use the `alias=True` argument to `join()`." % prop.key)
-
-            mapper = of_type or prop.mapper
-
-            if use_selectable:
-                adapt_against = use_selectable
-            elif mapper.select_table is not mapper.mapped_table:
-                adapt_against = mapper.select_table
-
-        return (clause, mapper, alias)
-
-    def _generative_col_aggregate(self, col, func):
-        """apply the given aggregate function to the query and return the newly
-        resulting ``Query``.
-        """
-        if self._column_aggregate is not None:
-            raise exceptions.InvalidRequestError("Query already contains an aggregate column or function")
-        q = self._no_statement("aggregate")
-        q._column_aggregate = (col, func)
-        return q
-
-    def apply_min(self, col):
-        """apply the SQL ``min()`` function against the given column to the
-        query and return the newly resulting ``Query``.
-        
-        DEPRECATED.
-        """
-        return self._generative_col_aggregate(col, sql.func.min)
-
-    def apply_max(self, col):
-        """apply the SQL ``max()`` function against the given column to the
-        query and return the newly resulting ``Query``.
-
-        DEPRECATED.
-        """
-        return self._generative_col_aggregate(col, sql.func.max)
-
-    def apply_sum(self, col):
-        """apply the SQL ``sum()`` function against the given column to the
-        query and return the newly resulting ``Query``.
-
-        DEPRECATED.
-        """
-        return self._generative_col_aggregate(col, sql.func.sum)
-
-    def apply_avg(self, col):
-        """apply the SQL ``avg()`` function against the given column to the
-        query and return the newly resulting ``Query``.
-
-        DEPRECATED.
-        """
-        return self._generative_col_aggregate(col, sql.func.avg)
-
     def _col_aggregate(self, col, func):
         """Execute ``func()`` function against the given column.
 
         For performance, only use subselect if `order_by` attribute is set.
-        """
 
+        """
         ops = {'distinct':self._distinct, 'order_by':self._order_by or None, 'from_obj':self._from_obj}
 
         if self._autoflush and not self._populate_existing:
@@ -647,31 +523,31 @@ class Query(object):
 
         return self._col_aggregate(col, sql.func.avg)
 
-    def order_by(self, criterion):
+    def order_by(self, *criterion):
         """apply one or more ORDER BY criterion to the query and return the newly resulting ``Query``"""
 
         q = self._no_statement("order_by")
 
-        if self._adapter:
-            criterion = [expression._literal_as_text(o) for o in util.to_list(criterion) or []]
-            criterion = self._adapter.copy_and_process(criterion)
+        if self._aliases_tail:
+            criterion = [expression._literal_as_text(o) for o in util.starargs_as_list(*criterion)]
+            criterion = self._aliases_tail.adapt_list(criterion)
 
         if q._order_by is False:
-            q._order_by = util.to_list(criterion)
+            q._order_by = util.starargs_as_list(*criterion)
         else:
-            q._order_by = q._order_by + util.to_list(criterion)
+            q._order_by = q._order_by + util.starargs_as_list(*criterion)
         return q
 
-    def group_by(self, criterion):
+    def group_by(self, *criterion):
         """apply one or more GROUP BY criterion to the query and return the newly resulting ``Query``"""
 
         q = self._no_statement("group_by")
         if q._group_by is False:
-            q._group_by = util.to_list(criterion)
+            q._group_by = util.starargs_as_list(*criterion)
         else:
-            q._group_by = q._group_by + util.to_list(criterion)
+            q._group_by = q._group_by + util.starargs_as_list(*criterion)
         return q
-
+    
     def having(self, criterion):
         """apply a HAVING criterion to the query and return the newly resulting ``Query``."""
 
@@ -681,8 +557,8 @@ class Query(object):
         if criterion is not None and not isinstance(criterion, sql.ClauseElement):
             raise exceptions.ArgumentError("having() argument must be of type sqlalchemy.sql.ClauseElement or string")
 
-        if self._adapter is not None:
-            criterion = self._adapter.traverse(criterion)
+        if self._aliases_tail:
+            criterion = self._aliases_tail.adapt_clause(criterion)
 
         q = self._no_statement("having")
         if q._having is not None:
@@ -733,38 +609,137 @@ class Query(object):
         """
 
         return self._join(prop, id=id, outerjoin=True, aliased=aliased, from_joinpoint=from_joinpoint)
-
+    
     def _join(self, prop, id, outerjoin, aliased, from_joinpoint):
         (clause, mapper, aliases) = self._join_to(prop, outerjoin=outerjoin, start=from_joinpoint and self._joinpoint or self.mapper, create_aliases=aliased)
+        # TODO: improve the generative check here to look for primary mapped entity, etc.
         q = self._no_statement("join")
         q._from_obj = clause
         q._joinpoint = mapper
         q._aliases = aliases
-        
-        q._alias_ids = {}
-        for k, v in self._alias_ids.items():
-            if isinstance(v, list):
-                q._alias_ids[k] = list(v)
-            else:
-                q._alias_ids[k] = v
+        q._generate_alias_ids()
         
         if aliases:
-            q._adapter = sql_util.ClauseAdapter(aliases.alias).copy_and_chain(q._adapter)
-        else:
-            select_mapper = mapper.get_select_mapper()
-            if select_mapper._clause_adapter:
-                q._adapter = select_mapper._clause_adapter.copy_and_chain(q._adapter)
+            q._aliases_tail = aliases
 
         a = aliases
         while a is not None:
-            q._alias_ids.setdefault(a.mapper, []).append(a)
-            q._alias_ids.setdefault(a.table, []).append(a)
-            q._alias_ids.setdefault(a.alias, []).append(a)
-            a = a.parentclauses
+            if isinstance(a, mapperutil.PropertyAliasedClauses):
+                q._alias_ids.setdefault(a.mapper, []).append(a)
+                q._alias_ids.setdefault(a.table, []).append(a)
+                q._alias_ids.setdefault(a.alias, []).append(a)
+                a = a.parentclauses
+            else:
+                break
 
         if id:
-            q._alias_ids[id] = aliases
+            q._alias_ids[id] = [aliases]
         return q
+
+    def _get_joinable_tables(self):
+        if not self._joinable_tables or self._joinable_tables[0] is not self._from_obj:
+            currenttables = [self._from_obj]
+            def visit_join(join):
+                currenttables.append(join.left)
+                currenttables.append(join.right)
+            visitors.traverse(self._from_obj, visit_join=visit_join, traverse_options={'column_collections':False, 'aliased_selectables':False})
+            self._joinable_tables = (self._from_obj, currenttables)
+            return currenttables
+        else:
+            return self._joinable_tables[1]
+
+    def _join_to(self, keys, outerjoin=False, start=None, create_aliases=True):
+        if start is None:
+            start = self._joinpoint
+
+        clause = self._from_obj
+
+        currenttables = self._get_joinable_tables()
+
+        # determine if generated joins need to be aliased on the left
+        # hand side.
+        if self._aliases_head is self._aliases_tail is not None:
+            adapt_against = self._aliases_tail.alias
+        elif start is not self.mapper and self._aliases_tail:
+            adapt_against = self._aliases_tail.alias
+        else:
+            adapt_against = None
+
+        mapper = start
+        alias = self._aliases_tail
+
+        if not isinstance(keys, list):
+            keys = [keys]
+        for key in keys:
+            use_selectable = None
+            of_type = None
+
+            if isinstance(key, tuple):
+                key, use_selectable = key
+
+            if isinstance(key, interfaces.PropComparator):
+                prop = key.property
+                if getattr(key, '_of_type', None):
+                    if use_selectable:
+                        raise exceptions.InvalidRequestError("Can't specify use_selectable along with polymorphic property created via of_type().")
+                    of_type = key._of_type
+                    use_selectable = key._of_type.mapped_table
+            else:
+                prop = mapper.get_property(key, resolve_synonyms=True)
+
+            if use_selectable:
+                if not use_selectable.is_derived_from(prop.mapper.mapped_table):
+                    raise exceptions.InvalidRequestError("Selectable '%s' is not derived from '%s'" % (use_selectable.description, prop.mapper.mapped_table.description))
+                if not isinstance(use_selectable, expression.Alias):
+                    use_selectable = use_selectable.alias()
+            elif prop.mapper.with_polymorphic:
+                use_selectable = prop.mapper._with_polymorphic_selectable()
+                if not isinstance(use_selectable, expression.Alias):
+                    use_selectable = use_selectable.alias()
+
+            if prop._is_self_referential() and not create_aliases and not use_selectable:
+                raise exceptions.InvalidRequestError("Self-referential query on '%s' property requires aliased=True argument." % str(prop))
+
+            if prop.table not in currenttables or create_aliases or use_selectable:
+                if prop.secondary:
+                    if use_selectable or create_aliases:
+                        alias = mapperutil.PropertyAliasedClauses(prop,
+                            prop.primary_join_against(mapper, adapt_against),
+                            prop.secondary_join_against(mapper, toselectable=use_selectable),
+                            alias,
+                            alias=use_selectable
+                        )
+                        crit = alias.primaryjoin
+                        clause = clause.join(alias.secondary, crit, isouter=outerjoin).join(alias.alias, alias.secondaryjoin, isouter=outerjoin)
+                    else:
+                        crit = prop.primary_join_against(mapper, adapt_against)
+                        clause = clause.join(prop.secondary, crit, isouter=outerjoin)
+                        clause = clause.join(prop.table, prop.secondary_join_against(mapper), isouter=outerjoin)
+                else:
+                    if use_selectable or create_aliases:
+                        alias = mapperutil.PropertyAliasedClauses(prop,
+                            prop.primary_join_against(mapper, adapt_against, toselectable=use_selectable),
+                            None,
+                            alias,
+                            alias=use_selectable
+                        )
+                        crit = alias.primaryjoin
+                        clause = clause.join(alias.alias, crit, isouter=outerjoin)
+                    else:
+                        crit = prop.primary_join_against(mapper, adapt_against)
+                        clause = clause.join(prop.table, crit, isouter=outerjoin)
+            elif not create_aliases and prop.secondary is not None and prop.secondary not in currenttables:
+                # TODO: this check is not strong enough for different paths to the same endpoint which
+                # does not use secondary tables
+                raise exceptions.InvalidRequestError("Can't join to property '%s'; a path to this table along a different secondary table already exists.  Use the `alias=True` argument to `join()`." % prop.key)
+
+            mapper = of_type or prop.mapper
+
+            if use_selectable:
+                adapt_against = use_selectable
+
+        return (clause, mapper, alias)
+
 
     def reset_joinpoint(self):
         """return a new Query reset the 'joinpoint' of this Query reset
@@ -777,12 +752,12 @@ class Query(object):
 
         q = self._no_statement("reset_joinpoint")
         q._joinpoint = q.mapper
-        q._aliases = None
         if q.table not in q._get_joinable_tables():
-            q._adapter = sql_util.ClauseAdapter(q._from_obj, equivalents=q.mapper._equivalent_columns)
+            q._aliases_head = q._aliases_tail = mapperutil.AliasedClauses(q._from_obj, equivalents=q.mapper._equivalent_columns)
+        else:
+            q._aliases_head = q._aliases_tail = None
         return q
 
-    
     def select_from(self, from_obj):
         """Set the `from_obj` parameter of the query and return the newly
         resulting ``Query``.  This replaces the table which this Query selects
@@ -797,16 +772,9 @@ class Query(object):
             util.warn_deprecated("select_from() now accepts a single Selectable as its argument, which replaces any existing FROM criterion.")
             from_obj = from_obj[-1]
 
-        if isinstance(from_obj, expression._SelectBaseMixin):
-            # alias SELECTs and unions
-            from_obj = from_obj.alias()
-
-        new._from_obj = from_obj
-
-        if new.table not in new._get_joinable_tables():
-            new._adapter = sql_util.ClauseAdapter(new._from_obj, equivalents=new.mapper._equivalent_columns)
+        new._set_select_from(from_obj)
         return new
-
+    
     def __getitem__(self, item):
         if isinstance(item, slice):
             start = item.start
@@ -938,55 +906,9 @@ class Query(object):
 
         context.runid = _new_runid()
 
-        # for with_polymorphic, instruct descendant mappers that they
-        # don't need to post-fetch anything
-        for m in self._with_polymorphic:
-            context.attributes[('polymorphic_fetch', m)] = (self.select_mapper, [])
-
-        mappers_or_columns = tuple(self._entities) + mappers_or_columns
-        tuples = bool(mappers_or_columns)
-
-        if context.row_adapter:
-            def main(context, row):
-                return self.select_mapper._instance(context, context.row_adapter(row), None,
-                    extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance
-                )
-        else:
-            def main(context, row):
-                return self.select_mapper._instance(context, row, None,
-                    extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance
-                )
-
-        if tuples:
-            process = []
-            process.append(main)
-            for tup in mappers_or_columns:
-                if isinstance(tup, tuple):
-                    (m, alias, alias_id) = tup
-                    clauses = self._get_entity_clauses(tup)
-                else:
-                    clauses = alias = alias_id = None
-                    m = tup
-
-                if isinstance(m, type):
-                    m = mapper.class_mapper(m)
-
-                if isinstance(m, mapper.Mapper):
-                    def x(m):
-                        row_adapter = clauses is not None and clauses.row_decorator or (lambda row: row)
-                        def proc(context, row):
-                            return m._instance(context, row_adapter(row), None)
-                        process.append(proc)
-                    x(m)
-                elif isinstance(m, (sql.ColumnElement, basestring)):
-                    def y(m):
-                        row_adapter = clauses is not None and clauses.row_decorator or (lambda row: row)
-                        def proc(context, row):
-                            return row_adapter(row)[m]
-                        process.append(proc)
-                    y(m)
-                else:
-                    raise exceptions.InvalidRequestError("Invalid column expression '%r'" % m)
+        entities = self._entities + [_QueryEntity.legacy_guess_type(mc) for mc in mappers_or_columns]
+        should_unique = isinstance(entities[0], _PrimaryMapperEntity) and len(entities) == 1
+        process = [query_entity.row_processor(self, context) for query_entity in entities]
 
         while True:
             context.progress = util.Set()
@@ -999,14 +921,14 @@ class Query(object):
             else:
                 fetch = cursor.fetchall()
 
-            if tuples:
+            if not should_unique:
                 rows = util.OrderedSet()
                 for row in fetch:
                     rows.add(tuple([proc(context, row) for proc in process]))
             else:
                 rows = util.UniqueAppender([])
                 for row in fetch:
-                    rows.append(main(context, row))
+                    rows.append(process[0](context, row))
 
             if context.refresh_instance and context.only_load_props and context.refresh_instance in context.progress:
                 context.refresh_instance.commit(context.only_load_props)
@@ -1043,19 +965,19 @@ class Query(object):
         q = self
         
         # dont use 'polymorphic' mapper if we are refreshing an instance
-        if refresh_instance and q.select_mapper is not q.mapper:
-            q = q._new_base_mapper(q.mapper, '_get')
+        if refresh_instance and q.mapper is not q.mapper:
+            q = q._reset_all(q.mapper, '_get')
 
         if ident is not None:
             q = q._no_criterion('get')
             params = {}
-            (_get_clause, _get_params) = q.select_mapper._get_clause
+            (_get_clause, _get_params) = q.mapper._get_clause
             q = q.filter(_get_clause)
-            for i, primary_key in enumerate(q.primary_key_columns):
+            for i, primary_key in enumerate(q.mapper.primary_key):
                 try:
                     params[_get_params[primary_key].key] = ident[i]
                 except IndexError:
-                    raise exceptions.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join(["'%s'" % str(c) for c in self.primary_key_columns]))
+                    raise exceptions.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join(["'%s'" % str(c) for c in q.mapper.primary_key]))
             q = q.params(params)
 
         if lockmode is not None:
@@ -1068,10 +990,14 @@ class Query(object):
         except IndexError:
             return None
 
-    def _nestable(self, **kwargs):
-        """Return true if the given statement options imply it should be nested."""
-
+    def _select_args(self):
+        return {'limit':self._limit, 'offset':self._offset, 'distinct':self._distinct, 'group_by':self._group_by or None, 'having':self._having or None}
+    _select_args = property(_select_args)
+    
+    def _should_nest_selectable(self):
+        kwargs = self._select_args
         return (kwargs.get('limit') is not None or kwargs.get('offset') is not None or kwargs.get('distinct', False))
+    _should_nest_selectable = property(_should_nest_selectable)
 
     def count(self, whereclause=None, params=None, **kwargs):
         """Apply this query's criterion to a SELECT COUNT statement.
@@ -1100,11 +1026,11 @@ class Query(object):
         context = QueryContext(self)
         from_obj = self._from_obj
 
-        if self._nestable(**self._select_args()):
-            s = sql.select([self.table], whereclause, from_obj=from_obj, **self._select_args()).alias('getcount').count()
+        if self._should_nest_selectable:
+            s = sql.select([self.table], whereclause, from_obj=from_obj, **self._select_args).alias('getcount').count()
         else:
-            primary_key = self.primary_key_columns
-            s = sql.select([sql.func.count(list(primary_key)[0])], whereclause, from_obj=from_obj, **self._select_args())
+            primary_key = self.mapper.primary_key
+            s = sql.select([sql.func.count(list(primary_key)[0])], whereclause, from_obj=from_obj, **self._select_args)
         if self._autoflush and not self._populate_existing:
             self.session._autoflush()
         return self.session.scalar(s, params=self._params, mapper=self.mapper)
@@ -1112,7 +1038,7 @@ class Query(object):
     def compile(self):
         """compiles and returns a SQL statement based on the criterion and conditions within this Query."""
         return self._compile_context().statement
-
+    
     def _compile_context(self):
 
         context = QueryContext(self)
@@ -1122,18 +1048,9 @@ class Query(object):
             context.statement = self._statement
             return context
 
-        whereclause = self._criterion
         from_obj = self._from_obj
-        adapter = self._adapter
-        order_by = self._order_by
-
-        if order_by is False:
-            order_by = self.select_mapper.order_by
-        if order_by is False:
-            order_by = from_obj.default_order_by()
-            if order_by is None:
-                order_by = self.table.default_order_by()
-                
+        adapter = self._aliases_head
+        
         if self._lockmode:
             try:
                 for_update = {'read':'read','update':True,'update_nowait':'nowait',None:False}[self._lockmode]
@@ -1142,151 +1059,85 @@ class Query(object):
         else:
             for_update = False
             
-        # if single-table inheritance mapper, add "typecol IN (polymorphic)" criterion so
-        # that we only load the appropriate types
-        if self.select_mapper.single and self.select_mapper.inherits is not None and self.select_mapper.polymorphic_on is not None and self.select_mapper.polymorphic_identity is not None:
-            whereclause = sql.and_(whereclause, self.select_mapper.polymorphic_on.in_([m.polymorphic_identity for m in self.select_mapper.polymorphic_iterator()]))
-
         context.from_clause = from_obj
-
-        # TODO: compile eagerloads from select_mapper if polymorphic ? [ticket:917]
-        if self._with_polymorphic:
-            props = util.Set()
-            for m in [self.select_mapper]  + self._with_polymorphic:
-                for value in m.iterate_properties:
-                    props.add(value)
-        else:
-            props = self.select_mapper.iterate_properties
+        context.whereclause = self._criterion
+        context.order_by = self._order_by
+        
+        for entity in self._entities:
+            entity.setup_context(self, context)
             
-        for value in props:
-            if self._only_load_props and value.key not in self._only_load_props:
-                continue
-            context.exec_with_path(self.select_mapper, value.key, value.setup, context, only_load_props=self._only_load_props)
-
-        # additional entities/columns, add those to selection criterion
-        for tup in self._entities:
-            (m, alias, alias_id) = tup
-            clauses = self._get_entity_clauses(tup)
-            if isinstance(m, mapper.Mapper):
-                for value in m.iterate_properties:
-                    context.exec_with_path(m, value.key, value.setup, context, parentclauses=clauses)
-            elif isinstance(m, sql.ColumnElement):
-                if clauses is not None:
-                    m = clauses.aliased_column(m)
-                context.secondary_columns.append(m)
-
-        if self._eager_loaders and self._nestable(**self._select_args()):
+        if self._eager_loaders and self._should_nest_selectable:
             # eager loaders are present, and the SELECT has limiting criterion
             # produce a "wrapped" selectable.
-
-            # locate all embedded Column clauses so they can be added to the
-            # "inner" select statement where they'll be available to the enclosing
-            # statement's "order by"
-            cf = util.Set()
-            if order_by:
-                order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
-                for o in order_by:
-                    cf.update(sql_util.find_columns(o))
-
+            
+            if context.order_by:
+                context.order_by = [expression._literal_as_text(o) for o in util.to_list(context.order_by) or []]
+                if adapter:
+                    context.order_by = adapter.adapt_list(context.order_by)
+                # locate all embedded Column clauses so they can be added to the
+                # "inner" select statement where they'll be available to the enclosing
+                # statement's "order by"
+                # TODO: this likely doesn't work with very involved ORDER BY expressions,
+                # such as those including subqueries
+                order_by_col_expr = list(chain(*[sql_util.find_columns(o) for o in context.order_by]))
+            else:
+                context.order_by = None
+                order_by_col_expr = []
+                
             if adapter:
-                # TODO: make usage of the ClauseAdapter here to create the list
-                # of primary columns ?
-                context.primary_columns = [from_obj.corresponding_column(c) or c for c in context.primary_columns]
-                cf = [from_obj.corresponding_column(c) or c for c in cf]
+                context.primary_columns = adapter.adapt_list(context.primary_columns)
+            
+            inner = sql.select(context.primary_columns + order_by_col_expr, context.whereclause, from_obj=context.from_clause, use_labels=True, correlate=False, order_by=context.order_by, **self._select_args).alias()
+            local_adapter = sql_util.ClauseAdapter(inner)
 
-            s2 = sql.select(context.primary_columns + list(cf), whereclause, from_obj=context.from_clause, use_labels=True, correlate=False, order_by=util.to_list(order_by), **self._select_args())
+            context.row_adapter = mapperutil.create_row_adapter(inner, equivalent_columns=self.mapper._equivalent_columns)
 
-            s3 = s2.alias()
-
-            context.row_adapter = mapperutil.create_row_adapter(s3, self.table)
-
-            statement = sql.select([s3] + context.secondary_columns, for_update=for_update, use_labels=True)
+            statement = sql.select([inner] + context.secondary_columns, for_update=for_update, use_labels=True)
 
             if context.eager_joins:
-                eager_joins = sql_util.ClauseAdapter(s3).traverse(context.eager_joins)
+                eager_joins = local_adapter.traverse(context.eager_joins)
                 statement.append_from(eager_joins, _copy_collection=False)
 
-            if order_by:
-                statement.append_order_by(*sql_util.ClauseAdapter(s3).copy_and_process(order_by))
+            if context.order_by:
+                statement.append_order_by(*local_adapter.copy_and_process(context.order_by))
 
             statement.append_order_by(*context.eager_order_by)
         else:
-            order_by = [expression._literal_as_text(o) for o in util.to_list(order_by) or []]
+            if context.order_by:
+                context.order_by = [expression._literal_as_text(o) for o in util.to_list(context.order_by) or []]
+                if adapter:
+                    context.order_by = adapter.adapt_list(context.order_by)
+            else:
+                context.order_by = None
             
             if adapter:
-                # TODO: make usage of the ClauseAdapter here to create row adapter, list
-                # of primary columns ?
-                context.primary_columns = [from_obj.corresponding_column(c) or c for c in context.primary_columns]
-                context.row_adapter = mapperutil.create_row_adapter(from_obj, self.table)
-                order_by = adapter.copy_and_process(order_by)
+                context.primary_columns = adapter.adapt_list(context.primary_columns)
+                context.row_adapter = mapperutil.create_row_adapter(adapter.alias, equivalent_columns=self.mapper._equivalent_columns)
                 
-            if self._distinct:
+            if self._distinct and context.order_by:
+                order_by_col_expr = list(chain(*[sql_util.find_columns(o) for o in context.order_by]))
+                context.primary_columns += order_by_col_expr
 
-                if self._distinct and order_by:
-                    cf = util.Set()
-                    for o in order_by:
-                        cf.update(sql_util.find_columns(o))
-                    for c in cf:
-                        context.primary_columns.append(c)
-
-            statement = sql.select(context.primary_columns + context.secondary_columns, whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, order_by=util.to_list(order_by), **self._select_args())
+            statement = sql.select(context.primary_columns + context.secondary_columns, context.whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, order_by=context.order_by, **self._select_args)
 
             if context.eager_joins:
                 if adapter:
-                    context.eager_joins = adapter.traverse(context.eager_joins)
+                    context.eager_joins = adapter.adapt_clause(context.eager_joins)
                 statement.append_from(context.eager_joins, _copy_collection=False)
 
             if context.eager_order_by:
                 if adapter:
-                    context.eager_order_by = adapter.copy_and_process(context.eager_order_by)
+                    context.eager_order_by = adapter.adapt_list(context.eager_order_by)
                 statement.append_order_by(*context.eager_order_by)
 
+        # polymorphic mappers which have concrete tables in their hierarchy usually
+        # require row aliasing unconditionally.  
+        if not context.row_adapter and self.mapper._requires_row_aliasing:
+            context.row_adapter = mapperutil.create_row_adapter(self.table, equivalent_columns=self.mapper._equivalent_columns)
+            
         context.statement = statement
 
         return context
-
-    def _select_args(self):
-        """Return a dictionary of attributes that can be applied to a ``sql.Select`` statement.
-        """
-        return {'limit':self._limit, 'offset':self._offset, 'distinct':self._distinct, 'group_by':self._group_by or None, 'having':self._having or None}
-
-
-    def _get_entity_clauses(self, m):
-        """for tuples added via add_entity() or add_column(), attempt to locate
-        an AliasedClauses object which should be used to formulate the query as well
-        as to process result rows."""
-
-        (m, alias, alias_id) = m
-        if alias is not None:
-            return alias
-        if alias_id is not None:
-            try:
-                return self._alias_ids[alias_id]
-            except KeyError:
-                raise exceptions.InvalidRequestError("Query has no alias identified by '%s'" % alias_id)
-
-        if isinstance(m, type):
-            m = mapper.class_mapper(m)
-        if isinstance(m, mapper.Mapper):
-            l = self._alias_ids.get(m)
-            if l:
-                if len(l) > 1:
-                    raise exceptions.InvalidRequestError("Ambiguous join for entity '%s'; specify id=<someid> to query.join()/query.add_entity()" % str(m))
-                else:
-                    return l[0]
-            else:
-                return None
-        elif isinstance(m, sql.ColumnElement):
-            aliases = []
-            for table in sql_util.find_tables(m, check_columns=True):
-                for a in self._alias_ids.get(table, []):
-                    aliases.append(a)
-            if len(aliases) > 1:
-                raise exceptions.InvalidRequestError("Ambiguous join for entity '%s'; specify id=<someid> to query.join()/query.add_column()" % str(m))
-            elif len(aliases) == 1:
-                return aliases[0]
-            else:
-                return None
 
     def __log_debug(self, msg):
         self.logger.debug(msg)
@@ -1295,6 +1146,48 @@ class Query(object):
         return str(self.compile())
 
     # DEPRECATED LAND !
+
+    def _generative_col_aggregate(self, col, func):
+        """apply the given aggregate function to the query and return the newly
+        resulting ``Query``. (deprecated)
+        """
+        if self._column_aggregate is not None:
+            raise exceptions.InvalidRequestError("Query already contains an aggregate column or function")
+        q = self._no_statement("aggregate")
+        q._column_aggregate = (col, func)
+        return q
+
+    def apply_min(self, col):
+        """apply the SQL ``min()`` function against the given column to the
+        query and return the newly resulting ``Query``.
+        
+        DEPRECATED.
+        """
+        return self._generative_col_aggregate(col, sql.func.min)
+
+    def apply_max(self, col):
+        """apply the SQL ``max()`` function against the given column to the
+        query and return the newly resulting ``Query``.
+
+        DEPRECATED.
+        """
+        return self._generative_col_aggregate(col, sql.func.max)
+
+    def apply_sum(self, col):
+        """apply the SQL ``sum()`` function against the given column to the
+        query and return the newly resulting ``Query``.
+
+        DEPRECATED.
+        """
+        return self._generative_col_aggregate(col, sql.func.sum)
+
+    def apply_avg(self, col):
+        """apply the SQL ``avg()`` function against the given column to the
+        query and return the newly resulting ``Query``.
+
+        DEPRECATED.
+        """
+        return self._generative_col_aggregate(col, sql.func.avg)
 
     def list(self): #pragma: no cover
         """DEPRECATED.  use all()"""
@@ -1521,6 +1414,150 @@ for deprecated_method in ('list', 'scalar', 'count_by',
             util.deprecated(getattr(Query, deprecated_method),
                             add_deprecation_to_docstring=False))
 
+class _QueryEntity(object):
+    """represent an entity column returned within a Query result."""
+    
+    def legacy_guess_type(self, e):
+        if isinstance(e, type):
+            return _MapperEntity(mapper=mapper.class_mapper(e))
+        elif isinstance(e, mapper.Mapper):
+            return _MapperEntity(mapper=e)
+        else:
+            return _ColumnEntity(column=e)
+    legacy_guess_type=classmethod(legacy_guess_type)
+
+class _MapperEntity(_QueryEntity):
+    """entity column corresponding to mapped ORM instances."""
+    
+    def __init__(self, mapper, alias=None, id=None):
+        self.mapper = mapper
+        self.alias = alias
+        self.alias_id = id
+
+    def _get_entity_clauses(self, query):
+        if self.alias:
+            return self.alias
+        elif self.alias_id:
+            try:
+                return query._alias_ids[self.alias_id][0]
+            except KeyError:
+                raise exceptions.InvalidRequestError("Query has no alias identified by '%s'" % self.alias_id)
+
+        l = query._alias_ids.get(self.mapper)
+        if l:
+            if len(l) > 1:
+                raise exceptions.InvalidRequestError("Ambiguous join for entity '%s'; specify id=<someid> to query.join()/query.add_entity()" % str(self.mapper))
+            return l[0]
+        else:
+            return None
+            
+    def row_processor(self, query, context):
+        clauses = self._get_entity_clauses(query) 
+        if clauses:
+            def proc(context, row):
+                return self.mapper._instance(context, clauses.row_decorator(row), None)
+        else:
+            def proc(context, row):
+                return self.mapper._instance(context, row, None)
+            
+        return proc
+    
+    def setup_context(self, query, context):
+        clauses = self._get_entity_clauses(query)
+        for value in self.mapper.iterate_properties:
+            context.exec_with_path(self.mapper, value.key, value.setup, context, parentclauses=clauses)
+
+    def __str__(self):
+        return str(self.mapper)
+
+class _PrimaryMapperEntity(_MapperEntity):
+    """entity column corresponding to the 'primary' (first) mapped ORM instance."""
+
+    def row_processor(self, query, context):
+        if context.row_adapter:
+            def main(context, row):
+                return self.mapper._instance(context, context.row_adapter(row), None,
+                    extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance
+                )
+        else:
+            def main(context, row):
+                return self.mapper._instance(context, row, None,
+                    extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance
+                )
+        return main
+
+    def setup_context(self, query, context):
+        # if single-table inheritance mapper, add "typecol IN (polymorphic)" criterion so
+        # that we only load the appropriate types
+        if self.mapper.single and self.mapper.inherits is not None and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
+            context.whereclause = sql.and_(context.whereclause, self.mapper.polymorphic_on.in_([m.polymorphic_identity for m in self.mapper.polymorphic_iterator()]))
+        
+        if context.order_by is False:
+            if self.mapper.order_by:
+                context.order_by = self.mapper.order_by
+            elif context.from_clause.default_order_by():
+                context.order_by = context.from_clause.default_order_by()
+                
+        for value in self.mapper._iterate_polymorphic_properties(query._with_polymorphic, context.from_clause):
+            if query._only_load_props and value.key not in query._only_load_props:
+                continue
+            context.exec_with_path(self.mapper, value.key, value.setup, context, only_load_props=query._only_load_props)
+
+        
+class _ColumnEntity(_QueryEntity):
+    """entity column corresponding to Table or selectable columns."""
+
+    def __init__(self, column, id=None):
+        if column and isinstance(column, sql.ColumnElement) and not hasattr(column, '_label'):
+            column = column.label(None)
+        self.column = column
+        self.alias_id = id
+        self.__tables = None
+        
+    def _tables(self):
+        if not self.__tables:
+            self.__tables = sql_util.find_tables(self.column, check_columns=True)
+        return self.__tables
+    _tables = property(_tables)
+    
+    def _get_entity_clauses(self, query):
+        if self.alias_id:
+            try:
+                return query._alias_ids[self.alias_id][0]
+            except KeyError:
+                raise exceptions.InvalidRequestError("Query has no alias identified by '%s'" % self.alias_id)
+
+        if isinstance(self.column, sql.ColumnElement):
+            aliases = list(chain(*[query._alias_ids[t] for t in self._tables if t in query._alias_ids]))
+            if len(aliases) > 1:
+                raise exceptions.InvalidRequestError("Ambiguous join for entity '%s'; specify id=<someid> to query.join()/query.add_column()" % str(self.column))
+            elif len(aliases) == 1:
+                return aliases[0]
+
+        return None
+            
+    def row_processor(self, query, context):
+        clauses = self._get_entity_clauses(query)
+        if clauses:
+            def proc(context, row):
+                return clauses.row_decorator(row)[self.column]
+        else:
+            def proc(context, row):
+                return row[self.column]
+        return proc
+    
+    def setup_context(self, query, context):
+        clauses = self._get_entity_clauses(query) 
+        if clauses:
+            context.secondary_columns.append(clauses.aliased_column(self.column))
+        else:
+            context.secondary_columns.append(self.column)
+    
+    def __str__(self):
+        return str(self.column)
+
+    
+        
 Query.logger = logging.class_logger(Query)
 
 class QueryContext(object):

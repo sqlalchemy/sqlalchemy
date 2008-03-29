@@ -4,50 +4,31 @@ import testenv; testenv.configure_for_tests()
 import sets
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy import exceptions
 from testlib import *
+from testlib import fixtures
 
-
-class Person(object):
-    def __init__(self, **kwargs):
-        for key, value in kwargs.iteritems():
-            setattr(self, key, value)
-    def get_name(self):
-        try:
-            return getattr(self, 'person_name')
-        except AttributeError:
-            return getattr(self, 'name')
-    def __repr__(self):
-        return "Ordinary person %s" % self.get_name()
+class Person(fixtures.Base):
+    pass
 class Engineer(Person):
-    def __repr__(self):
-        return "Engineer %s, status %s, engineer_name %s, primary_language %s" % (self.get_name(), self.status, self.engineer_name, self.primary_language)
+    pass
 class Manager(Person):
-    def __repr__(self):
-        return "Manager %s, status %s, manager_name %s" % (self.get_name(), self.status, self.manager_name)
+    pass
 class Boss(Manager):
-    def __repr__(self):
-        return "Boss %s, status %s, manager_name %s golf swing %s" % (self.get_name(), self.status, self.manager_name, self.golf_swing)
-
-class Company(object):
-    def __init__(self, **kwargs):
-        for key, value in kwargs.iteritems():
-            setattr(self, key, value)
-    def __repr__(self):
-        return "Company %s" % self.name
+    pass
+class Company(fixtures.Base):
+    pass
 
 class PolymorphTest(ORMTest):
     def define_tables(self, metadata):
         global companies, people, engineers, managers, boss
 
-        # a table to store companies
         companies = Table('companies', metadata,
-           Column('company_id', Integer, Sequence('company_id_seq', optional=True), primary_key=True),
+           Column('company_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)))
 
-        # we will define an inheritance relationship between the table "people" and "engineers",
-        # and a second inheritance relationship between the table "people" and "managers"
         people = Table('people', metadata,
-           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('company_id', Integer, ForeignKey('companies.company_id')),
            Column('name', String(50)),
            Column('type', String(30)))
@@ -72,46 +53,6 @@ class PolymorphTest(ORMTest):
 
         metadata.create_all()
 
-class CompileTest(PolymorphTest):
-    def testcompile(self):
-        person_join = polymorphic_union( {
-            'engineer':people.join(engineers),
-            'manager':people.join(managers),
-            'person':people.select(people.c.type=='person'),
-            }, None, 'pjoin')
-
-        person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=person_join.c.type, polymorphic_identity='person')
-        mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
-        mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
-
-        session = create_session()
-        session.save(Manager(name='Tom', status='knows how to manage things'))
-        session.save(Engineer(name='Kurt', status='knows how to hack'))
-        session.flush()
-        print session.query(Engineer).all()
-
-        print session.query(Person).all()
-
-    def testcompile2(self):
-        """test that a mapper can reference a property whose mapper inherits from this one."""
-        person_join = polymorphic_union( {
-            'engineer':people.join(engineers),
-            'manager':people.join(managers),
-            'person':people.select(people.c.type=='person'),
-            }, None, 'pjoin')
-
-
-        person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=person_join.c.type,
-                    polymorphic_identity='person',
-                    properties = dict(managers = relation(Manager, lazy=True))
-                )
-
-        mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
-        mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
-
-        #person_mapper.compile()
-        class_mapper(Manager).compile()
-
 class InsertOrderTest(PolymorphTest):
     def test_insert_order(self):
         """test that classes of multiple types mix up mapper inserts
@@ -129,7 +70,6 @@ class InsertOrderTest(PolymorphTest):
         mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
         mapper(Company, companies, properties={
             'employees': relation(Person,
-                                  cascade="all, delete-orphan",
                                   backref='company',
                                   order_by=person_join.c.person_id)
         })
@@ -144,14 +84,10 @@ class InsertOrderTest(PolymorphTest):
         session.save(c)
         session.flush()
         session.clear()
-        c = session.query(Company).get(c.company_id)
-        for e in c.employees:
-            print e, e._instance_key, e.company
-
-        assert [e.get_name() for e in c.employees] == ['pointy haired boss', 'dilbert', 'joesmith', 'wally', 'jsmith']
+        self.assertEquals(session.query(Company).get(c.company_id), c)
 
 class RelationToSubclassTest(PolymorphTest):
-    def testrelationtosubclass(self):
+    def test_basic(self):
         """test a relation to an inheriting mapper where the relation is to a subclass
         but the join condition is expressed by the parent table.
 
@@ -169,7 +105,7 @@ class RelationToSubclassTest(PolymorphTest):
         mapper(Manager, managers, inherits=Person)
 
         mapper(Company, companies, properties={
-            'managers': relation(Manager, lazy=True,backref="company")
+            'managers': relation(Manager, backref="company")
         })
 
         sess = create_session()
@@ -180,8 +116,7 @@ class RelationToSubclassTest(PolymorphTest):
         sess.flush()
         sess.clear()
 
-        sess.query(Company).filter_by(company_id=c.company_id).one()
-        assert sets.Set([e.get_name() for e in c.managers]) == sets.Set(['pointy haired boss'])
+        self.assertEquals(sess.query(Company).filter_by(company_id=c.company_id).one(), c)
         assert c.managers[0].company is c
 
 class RoundTripTest(PolymorphTest):
@@ -241,14 +176,15 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
                                       primaryjoin=(people.c.company_id ==
                                                    companies.c.company_id),
                                       cascade="all,delete-orphan",
-                                      backref="company"
+                                      backref="company", 
+                                      order_by=people.c.person_id
                 )
             })
         else:
             mapper(Company, companies, properties={
                 'employees': relation(Person, lazy=lazy_relation,
                                       cascade="all, delete-orphan",
-                backref="company"
+                backref="company", order_by=people.c.person_id
                 )
             })
 
@@ -257,40 +193,41 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         else:
             person_attribute_name = 'name'
 
+        employees = [
+                Manager(status='AAB', manager_name='manager1', **{person_attribute_name:'pointy haired boss'}),
+                Engineer(status='BBA', engineer_name='engineer1', primary_language='java', **{person_attribute_name:'dilbert'}),
+            ]
+        if include_base:
+            employees.append(Person(**{person_attribute_name:'joesmith'}))
+        employees += [
+            Engineer(status='CGG', engineer_name='engineer2', primary_language='python', **{person_attribute_name:'wally'}),
+            Manager(status='ABA', manager_name='manager2', **{person_attribute_name:'jsmith'})
+        ]
+        
+        pointy = employees[0]
+        jsmith = employees[-1]
+        dilbert = employees[1]
+        
         session = create_session()
         c = Company(name='company1')
-        c.employees.append(Manager(status='AAB', manager_name='manager1', **{person_attribute_name:'pointy haired boss'}))
-        c.employees.append(Engineer(status='BBA', engineer_name='engineer1', primary_language='java', **{person_attribute_name:'dilbert'}))
-        dilbert = c.employees[-1]
-
-        if include_base:
-            c.employees.append(Person(status='HHH', **{person_attribute_name:'joesmith'}))
-        c.employees.append(Engineer(status='CGG', engineer_name='engineer2', primary_language='python', **{person_attribute_name:'wally'}))
-        c.employees.append(Manager(status='ABA', manager_name='manager2', **{person_attribute_name:'jsmith'}))
+        c.employees = employees
         session.save(c)
 
         session.flush()
         session.clear()
-
-        dilbert = session.query(Person).get(dilbert.person_id)
-        assert getattr(dilbert, person_attribute_name) == 'dilbert'
+        
+        self.assertEquals(session.query(Person).get(dilbert.person_id), dilbert)
         session.clear()
 
-        dilbert = session.query(Person).filter(Person.person_id==dilbert.person_id).one()
-        assert getattr(dilbert, person_attribute_name) == 'dilbert'
+        self.assertEquals(session.query(Person).filter(Person.person_id==dilbert.person_id).one(), dilbert)
         session.clear()
 
-        id = c.company_id
         def go():
-            c = session.query(Company).get(id)
-            for e in c.employees:
+            cc = session.query(Company).get(c.company_id)
+            for e in cc.employees:
                 assert e._instance_key[0] == Person
-            if include_base:
-                assert sets.Set([(e.get_name(), getattr(e, 'status', None)) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('joesmith', None), ('wally', 'CGG'), ('jsmith', 'ABA')])
-            else:
-                assert sets.Set([(e.get_name(), e.status) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('wally', 'CGG'), ('jsmith', 'ABA')])
-            print "\n"
-
+            self.assertEquals(cc.employees, employees)
+            
         if not lazy_relation:
             if polymorphic_fetch=='union':
                 self.assert_sql_count(testing.db, go, 1)
@@ -302,15 +239,22 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
                 self.assert_sql_count(testing.db, go, 2)
             else:
                 self.assert_sql_count(testing.db, go, 6)
-
+        
         # test selecting from the query, using the base mapped table (people) as the selection criterion.
         # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"
-        dilbert = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
-        assert dilbert is session.query(Engineer).filter(getattr(Person, person_attribute_name)=='dilbert').first()
-
+        self.assertEquals(
+            session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first(),
+            dilbert
+        )
+        self.assertEquals(
+            session.query(Engineer).filter(getattr(Person, person_attribute_name)=='dilbert').first(),
+            dilbert
+        )
+        
         # test selecting from the query, joining against an alias of the base "people" table.  test that
         # the "palias" alias does *not* get sucked up into the "person_join" conversion.
         palias = people.alias("palias")
+        dilbert = session.query(Person).get(dilbert.person_id)
         assert dilbert is session.query(Person).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
         assert dilbert is session.query(Engineer).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
         assert dilbert is session.query(Person).filter((Engineer.engineer_name=="engineer1") & (engineers.c.person_id==people.c.person_id)).first()
@@ -332,21 +276,24 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
                 d = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
             self.assert_sql_count(testing.db, go, 1)
 
-        # save/load some managers/bosses
-        b = Boss(status='BBB', manager_name='boss', golf_swing='fore', **{person_attribute_name:'daboss'})
-        session.save(b)
+        # test standalone orphans
+        daboss = Boss(status='BBB', manager_name='boss', golf_swing='fore', **{person_attribute_name:'daboss'})
+        session.save(daboss)
+        self.assertRaises(exceptions.FlushError, session.flush)
+        c = session.query(Company).first()
+        daboss.company = c
+        manager_list = [e for e in c.employees if isinstance(e, Manager)]
         session.flush()
         session.clear()
-        c = session.query(Manager).all()
-        assert sets.Set([repr(x) for x in c]) == sets.Set(["Manager pointy haired boss, status AAB, manager_name manager1", "Manager jsmith, status ABA, manager_name manager2", "Boss daboss, status BBB, manager_name boss golf swing fore"]), repr([repr(x) for x in c])
 
-        c = session.query(Company).get(id)
-        for e in c.employees:
-            print e, e._instance_key
-
+        self.assertEquals(session.query(Manager).order_by(Manager.person_id).all(), manager_list)
+        c = session.query(Company).first()
+        
         session.delete(c)
         session.flush()
-
+        
+        self.assertEquals(people.count().scalar(), 0)
+        
     test_roundtrip = _function_named(
         test_roundtrip, "test_%s%s%s%s%s" % (
           (lazy_relation and "lazy" or "eager"),

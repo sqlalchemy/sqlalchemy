@@ -11,18 +11,35 @@ CHANGES
     - Added comparable_property(), adds query Comparator
       behavior to regular, unmanaged Python properties
 
-    - When attributes are expired on a pending instance, an
-      error will not be raised when the "refresh" action is
-      triggered and returns no result
+    - the functionality of query.with_polymorphic() has 
+      been added to mapper() as a configuration option.  
+      It's set via several forms:
+            with_polymorphic='*'
+            with_polymorphic=(mappers, selectable)
+            with_polymorphic=[mappers]
 
-    - Fixed/covered case when using a False value as a
-      polymorphic discriminator
+      The existing select_table flag to mapper() is now 
+      deprecated and is synonymous with 
+      with_polymorphic('*', select_table).  Note that the
+      underlying "guts" of select_table have been 
+      completely removed and replaced with the newer,
+      more flexible approach.
+
+    - query.order_by() and query.group_by() will accept
+      multiple arguments using *args.
+      
+    - Fixed/covered case when using a False/0 value as a
+      polymorphic discriminator.
 
     - Fixed bug which was preventing synonym() attributes from
       being used with inheritance
 
     - Fixed SQL function truncation of trailing underscores
       [ticket:996]
+
+    - When attributes are expired on a pending instance, an
+      error will not be raised when the "refresh" action is
+      triggered and no result is found.
 
     - Session.execute can now find binds from metadata
 
@@ -49,6 +66,9 @@ CHANGES
         - Delete cascade with delete-orphan will delete orphans
           whether or not it remains attached to its also-deleted
           parent.
+          
+        - delete-orphan casacde is properly detected on relations
+          that are present on superclasses when using inheritance.
 
     - fixed order_by calculation in Query to properly alias
       mapper-config'ed order_by when using select_from()
