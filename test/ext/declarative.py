@@ -2,6 +2,7 @@ import testenv; testenv.configure_for_tests()
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.ext.declarative import declarative_base, declared_synonym, \
                                        synonym_for, comparable_using
 from sqlalchemy import exceptions
@@ -134,6 +135,41 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         a1 = sess.query(Address).filter(Address.email=='two').one()
         self.assertEquals(a1, Address(email='two'))
         self.assertEquals(a1.user, User(name='u1'))
+
+    
+    def test_custom_mapper(self):
+        class MyExt(MapperExtension):
+            def create_instance(self):
+                return "CHECK"
+
+        def mymapper(cls, tbl, **kwargs):
+            kwargs['extension'] = MyExt()
+            return mapper(cls, tbl, **kwargs)
+
+        from sqlalchemy.orm.mapper import Mapper
+        class MyMapper(Mapper):
+            def __init__(self, *args, **kwargs):
+                kwargs['extension'] = MyExt()
+                Mapper.__init__(self, *args, **kwargs)
+
+        from sqlalchemy.orm import scoping
+        ss = scoping.ScopedSession(create_session)
+        ss.extension = MyExt()
+        ss_mapper = ss.mapper
+
+        for mapperfunc in (mymapper, MyMapper, ss_mapper):
+            base = declarative_base()
+            class Foo(base):
+                __tablename__ = 'foo'
+                __mapper_cls__ = mapperfunc
+                id = Column(Integer, primary_key=True)
+            assert Foo.__mapper__.compile().extension.create_instance() == 'CHECK'
+
+            base = declarative_base(mapper=mapperfunc)
+            class Foo(base):
+                __tablename__ = 'foo'
+                id = Column(Integer, primary_key=True)
+            assert Foo.__mapper__.compile().extension.create_instance() == 'CHECK'
 
 
     @testing.emits_warning('Ignoring declarative-like tuple value of '

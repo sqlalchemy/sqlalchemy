@@ -279,6 +279,14 @@ def get_func_kwargs(func):
     """Return the full set of legal kwargs for the given `func`."""
     return inspect.getargspec(func)[0]
 
+def unbound_method_to_callable(func_or_cls):
+    """Adjust the incoming callable such that a 'self' argument is not required."""
+    
+    if isinstance(func_or_cls, types.MethodType) and not func_or_cls.im_self:
+        return func_or_cls.im_func
+    else:
+        return func_or_cls
+
 # from paste.deploy.converters
 def asbool(obj):
     if isinstance(obj, (str, unicode)):

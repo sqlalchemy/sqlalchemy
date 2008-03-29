@@ -162,6 +162,7 @@ from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty
 from sqlalchemy import util, exceptions
+import types
 
 __all__ = ['declarative_base', 'synonym_for', 'comparable_using',
            'declared_synonym']
@@ -216,8 +217,12 @@ class DeclarativeMeta(type):
             inherits = cls.__mro__[1]
             inherits = cls._decl_class_registry.get(inherits.__name__, None)
             mapper_args['inherits'] = inherits
-            
-        cls.__mapper__ = mapper(cls, table, properties=our_stuff, **mapper_args)
+        
+        if hasattr(cls, '__mapper_cls__'):
+            mapper_cls = util.unbound_method_to_callable(cls.__mapper_cls__)
+        else:
+            mapper_cls = mapper
+        cls.__mapper__ = mapper_cls(cls, table, properties=our_stuff, **mapper_args)
         return type.__init__(cls, classname, bases, dict_)
 
     def __setattr__(cls, key, value):
@@ -294,13 +299,15 @@ def comparable_using(comparator_factory):
         return comparable_property(comparator_factory, fn)
     return decorate
 
-def declarative_base(engine=None, metadata=None):
+def declarative_base(engine=None, metadata=None, mapper=None):
     lcl_metadata = metadata or MetaData()
+    if engine:
+        lcl_metadata.bind = engine
     class Base(object):
         __metaclass__ = DeclarativeMeta
         metadata = lcl_metadata
-        if engine:
-            metadata.bind = engine
+        if mapper:
+            __mapper_cls__ = mapper
         _decl_class_registry = {}
         def __init__(self, **kwargs):
             for k in kwargs:

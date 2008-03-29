@@ -109,7 +109,7 @@ CHANGES
       it when reflecting related tables.  This is stickier
       behavior than before which is why it's off by default.
 
-- extensions
+- declarative extension
     - The "synonym" function is now directly usable with
       "declarative".  Pass in the decorated property using the
       "descriptor" keyword argument, e.g.: somekey =
@@ -137,6 +137,12 @@ CHANGES
      - inheritance in declarative can be disabled when sending
        "inherits=None" to __mapper_args__.
 
+     - declarative_base() takes optional kwarg "mapper", which 
+       is any callable/class/method that produces a mapper,
+       such as declarative_base(mapper=scopedsession.mapper).
+       This property can also be set on individual declarative
+       classes using the "__mapper_cls__" property.
+     
 0.4.4
 ------
 - sql
