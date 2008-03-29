@@ -464,11 +464,9 @@ class Compiled(object):
         raise NotImplementedError()
 
     def get_params(self, **params):
-        """Use construct_params().  (supports unicode names)
-        """
-
+        """Use construct_params().  (supports unicode names)"""
         return self.construct_params(params)
-    get_params = util.deprecated(get_params)
+    get_params = util.deprecated()(get_params)
 
     def construct_params(self, params):
         """Return the bind params for this compiled object.

@@ -72,16 +72,16 @@ __all__ = [
 def engine_descriptors():
     """Provide a listing of all the database implementations supported.
     
-    deprecated - this method will be removed in 0.5.
-    """
+    This method will be removed in 0.5.
 
+    """
     result = []
     for module in sqlalchemy.databases.__all__:
         module = getattr(
             __import__('sqlalchemy.databases.%s' % module).databases, module)
         result.append(module.descriptor())
     return result
-engine_descriptors = util.deprecated(engine_descriptors)
+engine_descriptors = util.deprecated()(engine_descriptors)
 
 
 default_strategy = 'plain'

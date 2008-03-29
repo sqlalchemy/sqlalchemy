@@ -1413,7 +1413,7 @@ class MetaData(SchemaItem):
             self._bind = create_engine(bind, **kwargs)
         else:
             self._bind = bind
-    connect = util.deprecated(connect)
+    connect = util.deprecated()(connect)
 
     def bind(self):
         """An Engine or Connection to which this MetaData is bound.
@@ -1658,7 +1658,7 @@ class ThreadLocalMetaData(MetaData):
                 engine = create_engine(bind, **kwargs)
             bind = engine
         self._bind_to(bind)
-    connect = util.deprecated(connect)
+    connect = util.deprecated()(connect)
 
     def bind(self):
         """The bound Engine or Connection for this thread.

@@ -69,4 +69,4 @@ def assign_mapper(ctx, class_, *args, **kwargs):
     return m
 
 assign_mapper = util.deprecated(
-    assign_mapper, "assign_mapper is deprecated. Use scoped_session() instead.")
+    "assign_mapper is deprecated. Use scoped_session() instead.")(assign_mapper)

@@ -157,5 +157,8 @@ class NotSupportedError(DatabaseError):
 class SADeprecationWarning(DeprecationWarning):
     """Issued once per usage of a deprecated API."""
 
+class SAPendingDeprecationWarning(PendingDeprecationWarning):
+    """Issued once per usage of a deprecated API."""
+
 class SAWarning(RuntimeWarning):
     """Issued at runtime."""

@@ -1082,7 +1082,7 @@ def reset_cached(instance, name):
         delattr(instance, '_cached_' + name)
     except AttributeError:
         pass
-    
+
 def warn(msg):
     if isinstance(msg, basestring):
         warnings.warn(msg, exceptions.SAWarning, stacklevel=3)
@@ -1092,7 +1092,7 @@ def warn(msg):
 def warn_deprecated(msg):
     warnings.warn(msg, exceptions.SADeprecationWarning, stacklevel=3)
 
-def deprecated(func, message=None, add_deprecation_to_docstring=True):
+def deprecated(message=None, add_deprecation_to_docstring=True):
     """Decorates a function and issues a deprecation warning on use.
 
     message
@@ -1105,21 +1105,62 @@ def deprecated(func, message=None, add_deprecation_to_docstring=True):
       provided, or sensible default if message is omitted.
     """
 
-    if message is not None:
-        warning = message % dict(func=func.__name__)
+    if add_deprecation_to_docstring:
+        header = message is not None and message or 'Deprecated.'
     else:
-        warning = "Call to deprecated function %s" % func.__name__
+        header = None
+
+    if message is None:
+        message = "Call to deprecated function %(func)s"
+
+    def decorate(fn):
+        return _decorate_with_warning(
+            fn, exceptions.SADeprecationWarning,
+            message % dict(func=fn.__name__), header)
+    return decorate
+
+def pending_deprecation(version, message=None,
+                        add_deprecation_to_docstring=True):
+    """Decorates a function and issues a pending deprecation warning on use.
+
+    version
+      An approximate future version at which point the pending deprecation
+      will become deprecated.  Not used in messaging.
+
+    message
+      If provided, issue message in the warning.  A sensible default
+      is used if not provided.
+
+    add_deprecation_to_docstring
+      Default True.  If False, the wrapped function's __doc__ is left
+      as-is.  If True, the 'message' is prepended to the docs if
+      provided, or sensible default if message is omitted.
+    """
+
+    if add_deprecation_to_docstring:
+        header = message is not None and message or 'Deprecated.'
+    else:
+        header = None
+
+    if message is None:
+        message = "Call to deprecated function %(func)s"
+
+    def decorate(fn):
+        return _decorate_with_warning(
+            fn, exceptions.SAPendingDeprecationWarning,
+            message % dict(func=fn.__name__), header)
+    return decorate
+
+def _decorate_with_warning(func, wtype, message, docstring_header=None):
+    """Wrap a function with a warnings.warn and augmented docstring."""
 
     def func_with_warning(*args, **kwargs):
-        warnings.warn(exceptions.SADeprecationWarning(warning),
-                      stacklevel=2)
+        warnings.warn(wtype(message), stacklevel=2)
         return func(*args, **kwargs)
 
     doc = func.__doc__ is not None and func.__doc__ or ''
-
-    if add_deprecation_to_docstring:
-        header = message is not None and warning or 'Deprecated.'
-        doc = '\n'.join((header.rstrip(), doc))
+    if docstring_header is not None:
+        doc = '\n'.join((docstring_header.rstrip(), doc))
 
     func_with_warning.__doc__ = doc
     func_with_warning.__dict__.update(func.__dict__)
@@ -1127,5 +1168,4 @@ def deprecated(func, message=None, add_deprecation_to_docstring=True):
         func_with_warning.__name__ = func.__name__
     except TypeError:
         pass
-
     return func_with_warning

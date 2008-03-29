@@ -1404,15 +1404,15 @@ class Query(object):
 
         return self._legacy_filter_by(*args, **params).one()
 
-for deprecated_method in ('list', 'scalar', 'count_by',
-                          'select_whereclause', 'get_by', 'select_by',
-                          'join_by', 'selectfirst', 'selectone', 'select',
-                          'execute', 'select_statement', 'select_text',
-                          'join_to', 'join_via', 'selectfirst_by',
-                          'selectone_by', 'apply_max', 'apply_min', 'apply_avg', 'apply_sum'):
-    setattr(Query, deprecated_method,
-            util.deprecated(getattr(Query, deprecated_method),
-                            add_deprecation_to_docstring=False))
+    for deprecated_method in ('list', 'scalar', 'count_by',
+                              'select_whereclause', 'get_by', 'select_by',
+                              'join_by', 'selectfirst', 'selectone', 'select',
+                              'execute', 'select_statement', 'select_text',
+                              'join_to', 'join_via', 'selectfirst_by',
+                              'selectone_by', 'apply_max', 'apply_min',
+                              'apply_avg', 'apply_sum'):
+        locals()[deprecated_method] = \
+            util.deprecated(None, False)(locals()[deprecated_method])
 
 class _QueryEntity(object):
     """represent an entity column returned within a Query result."""

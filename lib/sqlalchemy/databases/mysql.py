@@ -1632,7 +1632,7 @@ class MySQLDialect(default.DefaultDialect):
             connectable = connectable.contextual_connect()
 
         return self.server_version_info(connectable)
-    get_version_info = util.deprecated(get_version_info)
+    get_version_info = util.deprecated()(get_version_info)
 
     def reflecttable(self, connection, table, include_columns):
         """Load column definitions from the server."""

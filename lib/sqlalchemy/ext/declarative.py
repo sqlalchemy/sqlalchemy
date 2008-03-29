@@ -251,10 +251,9 @@ def _deferred_relation(cls, prop):
     return prop
 
 def declared_synonym(prop, name):
-    """deprecated.  use synonym(name, descriptor=prop)."""
-
+    """Deprecated.  Use synonym(name, descriptor=prop)."""
     return _orm_synonym(name, descriptor=prop)
-declared_synonym = util.deprecated(declared_synonym)
+declared_synonym = util.deprecated(None, False)(declared_synonym)
 
 def synonym_for(name, map_column=False):
     """Decorator, make a Python @property a query synonym for a column.
