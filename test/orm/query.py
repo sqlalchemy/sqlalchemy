@@ -408,6 +408,22 @@ class FilterTest(QueryTest):
         # o2m
         self.assertEquals([User(id=10)], sess.query(User).filter(User.addresses==None).all())
         self.assertEquals([User(id=7),User(id=8),User(id=9)], sess.query(User).filter(User.addresses!=None).all())
+
+class FromSelfTest(QueryTest):
+    def test_filter(self):
+
+        assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().all()
+
+        assert [User(id=8), User(id=9)] == create_session().query(User)[1:3]._from_self().all()
+        assert [User(id=8)] == list(create_session().query(User).filter(User.id.in_([8,9]))._from_self()[0:1])
+    
+    def test_join(self):
+        assert [
+            (User(id=8), Address(id=2)),
+            (User(id=8), Address(id=3)),
+            (User(id=8), Address(id=4)),
+            (User(id=9), Address(id=5))
+        ] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().join('addresses').add_entity(Address).all()
         
 class AggregateTest(QueryTest):
     def test_sum(self):

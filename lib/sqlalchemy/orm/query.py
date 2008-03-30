@@ -360,7 +360,18 @@ class Query(object):
 
         q._entities = q._entities + [_MapperEntity(mapper=entity, alias=alias, id=id)]
         return q
-
+    
+    def _from_self(self):
+        """return a Query that selects from this Query's SELECT statement.
+        
+        The API for this method hasn't been decided yet and is subject to change.
+        """
+        
+        q = self._clone()
+        q._eager_loaders = util.Set()
+        fromclause = q.compile()
+        return Query(self.mapper, self.session).select_from(fromclause)
+        
     def _values(self, *columns):
         """Turn this query into a 'columns only' query.
         
