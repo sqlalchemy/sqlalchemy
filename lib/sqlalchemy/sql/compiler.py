@@ -418,9 +418,8 @@ class DefaultCompiler(engine.Compiled):
         return bind_name
 
     def _truncated_identifier(self, ident_class, name):
-        key = ident_class + "|" + name
-        if key in self.generated_ids:
-            return self.generated_ids[key]
+        if (ident_class, name) in self.generated_ids:
+            return self.generated_ids[(ident_class, name)]
 
         anonname = ANONYMOUS_LABEL.sub(self._process_anon, name)
 
@@ -430,19 +429,18 @@ class DefaultCompiler(engine.Compiled):
             self.generated_ids[ident_class] = counter + 1
         else:
             truncname = anonname
-        self.generated_ids[key] = truncname
+        self.generated_ids[(ident_class, name)] = truncname
         return truncname
 
     def _process_anon(self, match):
         (ident, derived) = match.group(1,2)
-        key = 'anonymous|' + ident
+        key = ('anonymous', ident)
         if key in self.generated_ids:
             return self.generated_ids[key]
         else:
-            counter_key = "anon_counter|" + derived
-            anonymous_counter = self.generated_ids.get(counter_key, 1)
+            anonymous_counter = self.generated_ids.get(('anon_counter', derived), 1)
             newname = derived + "_" + str(anonymous_counter)
-            self.generated_ids[counter_key] = anonymous_counter + 1
+            self.generated_ids[('anon_counter', derived)] = anonymous_counter + 1
             self.generated_ids[key] = newname
             return newname
 

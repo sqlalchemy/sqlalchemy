@@ -157,6 +157,7 @@ import datetime, inspect, re, sys
 from array import array as _array
 
 from sqlalchemy import exceptions, logging, schema, sql, util
+from sqlalchemy.pool import connection_cache_decorator
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy.sql import functions as sql_functions
 from sqlalchemy.sql import compiler
@@ -1542,13 +1543,9 @@ class MySQLDialect(default.DefaultDialect):
             return False
 
     def get_default_schema_name(self, connection):
-        try:
-            return connection.info['default_schema']
-        except KeyError:
-            connection.info['default_schema'] = schema = \
-              connection.execute('SELECT DATABASE()').scalar()
-            return schema
-
+        return connection.execute('SELECT DATABASE()').scalar()
+    get_default_schema_name = connection_cache_decorator(get_default_schema_name)
+    
     def table_names(self, connection, schema):
         """Return a Unicode SHOW TABLES from a given schema."""
 

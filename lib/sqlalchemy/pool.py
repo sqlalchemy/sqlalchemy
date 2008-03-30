@@ -58,6 +58,21 @@ def clear_managers():
         manager.close()
     proxies.clear()
 
+def connection_cache_decorator(func):
+    """apply caching to the return value of a function, using
+    the 'info' collection on its given connection."""
+
+    name = func.__name__
+
+    def do_with_cache(self, connection):
+        try:
+            return connection.info[name]
+        except KeyError:
+            value = func(self, connection)
+            connection.info[name] = value
+            return value
+    return do_with_cache
+    
 class Pool(object):
     """Base class for connection pools.
 

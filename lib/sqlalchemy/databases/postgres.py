@@ -26,6 +26,7 @@ from sqlalchemy.engine import base, default
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
+from sqlalchemy.pool import connection_cache_decorator
 
 
 class PGInet(sqltypes.TypeEngine):
@@ -368,8 +369,8 @@ class PGDialect(default.DefaultDialect):
 
     def get_default_schema_name(self, connection):
         return connection.scalar("select current_schema()", None)
-    get_default_schema_name = util.cache_decorator(get_default_schema_name)
-    
+    get_default_schema_name = connection_cache_decorator(get_default_schema_name)
+
     def last_inserted_ids(self):
         if self.context.last_inserted_ids is None:
             raise exceptions.InvalidRequestError("no INSERT executed, or can't use cursor.lastrowid without Postgres OIDs enabled")
