@@ -197,6 +197,19 @@ CHANGES
        such as declarative_base(mapper=scopedsession.mapper).
        This property can also be set on individual declarative
        classes using the "__mapper_cls__" property.
+
+- mssql
+     - Reflected tables will now automatically load other tables 
+       which are referenced by Foreign keys in the auto-loaded
+       table, [ticket:979]. 
+
+     - Added executemany check to skip identity fetch, [ticket:916].
+
+     - Added stubs for small date type, [ticket:884]
+
+     - Improvements to pyodbc + Unix. If you couldn't get that
+       combination to work before, please try again.
+
      
 0.4.4
 ------

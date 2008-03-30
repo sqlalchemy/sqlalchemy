@@ -113,6 +113,21 @@ class MSDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATETIME"
 
+class MSSmallDate(sqltypes.Date):
+    def __init__(self, *a, **kw):
+        super(MSDate, self).__init__(False)
+
+    def get_col_spec(self):
+        return "SMALLDATETIME"
+
+    def result_processor(self, dialect):
+        def process(value):
+            # If the DBAPI returns the value as datetime.datetime(), truncate it back to datetime.date()
+            if type(value) is datetime.datetime:
+                return value.date()
+            return value
+        return process
+
 class MSDate(sqltypes.Date):
     def __init__(self, *a, **kw):
         super(MSDate, self).__init__(False)
@@ -331,7 +346,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
         one column).
         """
 
-        if self.compiled.isinsert and self.HASIDENT and not self.IINSERT:
+        if self.compiled.isinsert and (not self.executemany) and self.HASIDENT and not self.IINSERT:
             if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
                 if self.dialect.use_scope_identity:
                     self.cursor.execute("SELECT scope_identity() AS lastrowid")
@@ -652,7 +667,7 @@ class MSSQLDialect(default.DefaultDialect):
                         R.c.table_schema, R.c.table_name, R.c.column_name,
                         RR.c.constraint_name, RR.c.match_option, RR.c.update_rule, RR.c.delete_rule],
                        sql.and_(C.c.table_name == table.name,
-                                C.c.table_schema == current_schema,
+                                C.c.table_schema == (table.schema or current_schema),
                                 C.c.constraint_name == RR.c.constraint_name,
                                 R.c.constraint_name == RR.c.unique_constraint_name,
                                 C.c.ordinal_position == R.c.ordinal_position
@@ -660,19 +675,32 @@ class MSSQLDialect(default.DefaultDialect):
                        order_by = [RR.c.constraint_name, R.c.ordinal_position])
         rows = connection.execute(s).fetchall()
 
+        def _gen_fkref(table, rschema, rtbl, rcol):
+            if table.schema and rschema != table.schema or rschema != current_schema:
+                return '.'.join([rschema, rtbl, rcol])
+            else:
+                return '.'.join([rtbl, rcol])
+
         # group rows by constraint ID, to handle multi-column FKs
         fknm, scols, rcols = (None, [], [])
         for r in rows:
             scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r
+
+            if table.schema and rschema != table.schema or rschema != current_schema:
+                schema.Table(rtbl, table.metadata, schema=rschema, autoload=True, autoload_with=connection)
+            else:
+                schema.Table(rtbl, table.metadata, autoload=True, autoload_with=connection)
+                
             if rfknm != fknm:
                 if fknm:
-                    table.append_constraint(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
+                    table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table,s,t,c) for s,t,c in rcols], fknm))
                 fknm, scols, rcols = (rfknm, [], [])
             if (not scol in scols): scols.append(scol)
             if (not (rschema, rtbl, rcol) in rcols): rcols.append((rschema, rtbl, rcol))
 
         if fknm and scols:
-            table.append_constraint(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
+            table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table,s,t,c) for s,t,c in rcols], fknm))
+
 
 class MSSQLDialect_pymssql(MSSQLDialect):
     supports_sane_rowcount = False
@@ -793,7 +821,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         if 'dsn' in keys:
             connectors = ['dsn=%s' % keys['dsn']]
         else:
-            connectors = ["Driver={SQL Server}"]
+            connectors = ["DRIVER={SQL Server}"]
             if 'port' in keys:
                 connectors.append('Server=%s,%d' % (keys.get('host'), keys.get('port')))
             else:
@@ -1031,6 +1059,7 @@ class MSSQLSchemaDropper(compiler.SchemaDropper):
 
 class MSSQLDefaultRunner(base.DefaultRunner):
     # TODO: does ms-sql have standalone sequences ?
+    # A: No, only auto-incrementing IDENTITY property of a column
     pass
 
 class MSSQLIdentifierPreparer(compiler.IdentifierPreparer):
