@@ -237,16 +237,6 @@ class AbstractRelationLoader(LoaderStrategy):
         self.logger.info("register managed %s attribute %s on class %s" % ((self.uselist and "list-holding" or "scalar"), self.key, self.parent.class_.__name__))
         sessionlib.register_attribute(class_, self.key, uselist=self.uselist, useobject=True, extension=self.attributeext, cascade=self.cascade,  trackparent=True, typecallable=self.parent_property.collection_class, callable_=callable_, comparator=self.parent_property.comparator, **kwargs)
 
-class DynaLoader(AbstractRelationLoader):
-    def init_class_attribute(self):
-        self.is_class_level = True
-        self._register_attribute(self.parent.class_, dynamic=True, target_mapper=self.parent_property.mapper, order_by=self.parent_property.order_by)
-
-    def create_row_processor(self, selectcontext, mapper, row):
-        return (None, None, None)
-
-DynaLoader.logger = logging.class_logger(DynaLoader)
-        
 class NoLoader(AbstractRelationLoader):
     def init_class_attribute(self):
         self.is_class_level = True

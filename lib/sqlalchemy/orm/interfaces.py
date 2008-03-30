@@ -529,9 +529,7 @@ class StrategizedProperty(MapperProperty):
 
     def do_init(self):
         self._all_strategies = {}
-        self.strategy = self.create_strategy()
-        self._all_strategies[self.strategy.__class__] = self.strategy
-        self.strategy.init()
+        self.strategy = self._get_strategy(self.strategy_class)
         if self.is_primary():
             self.strategy.init_class_attribute()
 

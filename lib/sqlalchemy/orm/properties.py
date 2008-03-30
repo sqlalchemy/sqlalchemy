@@ -39,16 +39,14 @@ class ColumnProperty(StrategizedProperty):
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
         self.comparator = ColumnProperty.ColumnComparator(self)
+        if self.deferred:
+            self.strategy_class = strategies.DeferredColumnLoader
+        else:
+            self.strategy_class = strategies.ColumnLoader
         # sanity check
         for col in columns:
             if not isinstance(col, ColumnElement):
                 raise ArgumentError('column_property() must be given a ColumnElement as its argument.  Try .label() or .as_scalar() for Selectables to fix this.')
-
-    def create_strategy(self):
-        if self.deferred:
-            return strategies.DeferredColumnLoader(self)
-        else:
-            return strategies.ColumnLoader(self)
 
     def do_init(self):
         super(ColumnProperty, self).do_init()
@@ -235,7 +233,19 @@ class PropertyLoader(StrategizedProperty):
         self.enable_typechecks = enable_typechecks
         self.comparator = PropertyLoader.Comparator(self)
         self.join_depth = join_depth
-        self.strategy_class = strategy_class
+        
+        if strategy_class:
+            self.strategy_class = strategy_class
+        elif self.lazy == 'dynamic':
+            from sqlalchemy.orm import dynamic
+            self.strategy_class = dynamic.DynaLoader
+        elif self.lazy is False:
+            self.strategy_class = strategies.EagerLoader
+        elif self.lazy is None:
+            self.strategy_class = strategies.NoLoader
+        else:
+            self.strategy_class = strategies.LazyLoader
+
         self._reverse_property = None
         
         if cascade is not None:
@@ -397,18 +407,6 @@ class PropertyLoader(StrategizedProperty):
     def private(self):
         return self.cascade.delete_orphan
     private = property(private)
-
-    def create_strategy(self):
-        if self.strategy_class:
-            return self.strategy_class(self)
-        elif self.lazy == 'dynamic':
-            return strategies.DynaLoader(self)
-        elif self.lazy:
-            return strategies.LazyLoader(self)
-        elif self.lazy is False:
-            return strategies.EagerLoader(self)
-        elif self.lazy is None:
-            return strategies.NoLoader(self)
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key + " (" + str(self.mapper.class_.__name__)  + ")"

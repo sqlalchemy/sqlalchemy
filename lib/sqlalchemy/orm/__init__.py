@@ -287,7 +287,7 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=Non
     A subset of arguments available to relation() are available here.
     """
 
-    from sqlalchemy.orm.strategies import DynaLoader
+    from sqlalchemy.orm.dynamic import DynaLoader
 
     return PropertyLoader(argument, secondary=secondary, primaryjoin=primaryjoin,
             secondaryjoin=secondaryjoin, entity_name=entity_name, foreign_keys=foreign_keys, backref=backref,

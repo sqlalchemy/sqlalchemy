@@ -1,22 +1,34 @@
 """'dynamic' collection API.  returns Query() objects on the 'read' side, alters
 a special AttributeHistory on the 'write' side."""
 
-from sqlalchemy import exceptions, util
-from sqlalchemy.orm import attributes, object_session, util as mapperutil
+from sqlalchemy import exceptions, util, logging
+from sqlalchemy.orm import attributes, object_session, util as mapperutil, strategies
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.mapper import has_identity, object_mapper
+
+
+class DynaLoader(strategies.AbstractRelationLoader):
+    def init_class_attribute(self):
+        self.is_class_level = True
+        self._register_attribute(self.parent.class_, impl_class=DynamicAttributeImpl, target_mapper=self.parent_property.mapper, order_by=self.parent_property.order_by)
+
+    def create_row_processor(self, selectcontext, mapper, row):
+        return (None, None, None)
+
+DynaLoader.logger = logging.class_logger(DynaLoader)
 
 class DynamicAttributeImpl(attributes.AttributeImpl):
     def __init__(self, class_, key, typecallable, target_mapper, order_by, **kwargs):
         super(DynamicAttributeImpl, self).__init__(class_, key, typecallable, **kwargs)
         self.target_mapper = target_mapper
         self.order_by=order_by
+        self.query_class = AppenderQuery
 
     def get(self, state, passive=False):
         if passive:
             return self._get_collection_history(state, passive=True).added_items
         else:
-            return AppenderQuery(self, state)
+            return self.query_class(self, state)
 
     def get_collection(self, state, user_data=None, passive=True):
         if passive:

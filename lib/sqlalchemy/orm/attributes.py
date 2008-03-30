@@ -1169,10 +1169,9 @@ def get_as_list(state, key, passive=False):
 def has_parent(class_, instance, key, optimistic=False):
     return getattr(class_, key).impl.hasparent(instance._state, optimistic=optimistic)
 
-def _create_prop(class_, key, uselist, callable_, typecallable, useobject, mutable_scalars, **kwargs):
-    if kwargs.pop('dynamic', False):
-        from sqlalchemy.orm import dynamic
-        return dynamic.DynamicAttributeImpl(class_, key, typecallable, **kwargs)
+def _create_prop(class_, key, uselist, callable_, typecallable, useobject, mutable_scalars, impl_class, **kwargs):
+    if impl_class:
+        return impl_class(class_, key, typecallable, **kwargs)
     elif uselist:
         return CollectionAttributeImpl(class_, key, callable_, typecallable, **kwargs)
     elif useobject:
@@ -1272,7 +1271,7 @@ def unregister_class(class_):
                 delattr(class_, attr.impl.key)
         delattr(class_, '_class_state')
 
-def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_property=None, mutable_scalars=False, **kwargs):
+def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_property=None, mutable_scalars=False, impl_class=None, **kwargs):
     _init_class_state(class_)
 
     typecallable = kwargs.pop('typecallable', None)
@@ -1291,7 +1290,7 @@ def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_pr
         inst = proxy_type(key, proxy_property, comparator)
     else:
         inst = InstrumentedAttribute(_create_prop(class_, key, uselist, callable_, useobject=useobject,
-                                       typecallable=typecallable, mutable_scalars=mutable_scalars, **kwargs), comparator=comparator)
+                                       typecallable=typecallable, mutable_scalars=mutable_scalars, impl_class=impl_class, **kwargs), comparator=comparator)
 
     setattr(class_, key, inst)
     class_._class_state.attrs[key] = inst
