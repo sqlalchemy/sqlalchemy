@@ -249,14 +249,9 @@ class DefaultCompiler(engine.Compiled):
 
         return " ".join([self.process(label.obj), self.operator_string(operators.as_), self.preparer.format_label(label, labelname)])
 
-    def visit_column(self, column, result_map=None, use_schema=False, **kwargs):
-        # there is actually somewhat of a ruleset when you would *not* necessarily
-        # want to truncate a column identifier, if its mapped to the name of a
-        # physical column.  but thats very hard to identify at this point, and
-        # the identifier length should be greater than the id lengths of any physical
-        # columns so should not matter.
+    def visit_column(self, column, result_map=None, **kwargs):
 
-        if use_schema and getattr(column, 'table', None) and getattr(column.table, 'schema', None):
+        if getattr(column, 'table', None) and getattr(column.table, 'schema', None):
             schema_prefix = self.preparer.quote(column.table, column.table.schema) + '.'
         else:
             schema_prefix = ''
@@ -278,7 +273,7 @@ class DefaultCompiler(engine.Compiled):
                     return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + n
             elif len(column.table.primary_key) != 0:
                 pk = list(column.table.primary_key)[0]
-                return self.visit_column(pk, result_map=result_map, use_schema=use_schema, **kwargs)
+                return self.visit_column(pk, result_map=result_map, **kwargs)
             else:
                 return None
         elif column.table is None or not column.table.named_with_column:

@@ -129,6 +129,11 @@ CHANGES
       mapper-config'ed order_by when using select_from()
 
 - sql
+    - schema-qualified tables now will place the schemaname
+      ahead of the tablename in all column expressions as well
+      as when generating column labels.  This prevents cross-
+      schema name collisions in all cases [ticket:999]
+      
     - can now allow selects which correlate all FROM clauses
       and have no FROM themselves.  These are typically
       used in a scalar context, i.e. SELECT x, (SELECT x WHERE y)

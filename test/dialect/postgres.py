@@ -568,7 +568,31 @@ class MiscTest(TestBase, AssertsExecutionResults):
             self.assert_((subject.c.id==referer.c.ref).compare(subject.join(referer).onclause))
         finally:
             meta1.drop_all()
-
+    
+    def test_schema_roundtrips(self):
+        meta = MetaData(testing.db)
+        users = Table('users', meta, 
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50)), schema='alt_schema')
+        users.create()
+        try:
+            users.insert().execute(id=1, name='name1')
+            users.insert().execute(id=2, name='name2')
+            users.insert().execute(id=3, name='name3')
+            users.insert().execute(id=4, name='name4')
+            
+            self.assertEquals(users.select().where(users.c.name=='name2').execute().fetchall(), [(2, 'name2')])
+            self.assertEquals(users.select(use_labels=True).where(users.c.name=='name2').execute().fetchall(), [(2, 'name2')])
+            
+            users.delete().where(users.c.id==3).execute()
+            self.assertEquals(users.select().where(users.c.name=='name3').execute().fetchall(), [])
+            
+            users.update().where(users.c.name=='name4').execute(name='newname')
+            self.assertEquals(users.select(use_labels=True).where(users.c.id==4).execute().fetchall(), [(4, 'newname')])
+            
+        finally:
+            users.drop()
+            
     def test_preexecute_passivedefault(self):
         """test that when we get a primary key column back
         from reflecting a table which has a default value on it, we pre-execute

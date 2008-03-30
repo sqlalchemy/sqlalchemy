@@ -2632,7 +2632,10 @@ class _ColumnClause(ColumnElement):
             return None
         if self.__label is None:
             if self.table is not None and self.table.named_with_column:
-                self.__label = self.table.name + "_" + self.name
+                if getattr(self.table, 'schema', None):
+                    self.__label = "_".join([self.table.schema, self.table.name, self.name])
+                else:
+                    self.__label = "_".join([self.table.name, self.name])
                 counter = 1
                 while self.__label in self.table.c:
                     self.__label = self.__label + "_%d" % counter

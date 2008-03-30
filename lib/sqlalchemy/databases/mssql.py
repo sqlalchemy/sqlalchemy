@@ -987,8 +987,6 @@ class MSSQLCompiler(compiler.DefaultCompiler):
             t = self._schema_aliased_table(column.table)
             if t is not None:
                 return self.process(expression._corresponding_column_or_error(t, column))
-        else:
-            kwargs['use_schema'] = True
         return super(MSSQLCompiler, self).visit_column(column, **kwargs)
 
     def visit_binary(self, binary, **kwargs):

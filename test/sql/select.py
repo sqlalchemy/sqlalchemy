@@ -1360,16 +1360,16 @@ class SchemaTest(TestBase, AssertsCompiledSQL):
     @testing.fails_on('mssql')
     def test_select(self):
         # these tests will fail with the MS-SQL compiler since it will alias schema-qualified tables
-        self.assert_compile(table4.select(), "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable")
+        self.assert_compile(table4.select(), "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id, remote_owner.remotetable.value FROM remote_owner.remotetable")
         self.assert_compile(table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi')),
-            "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable WHERE "\
-            "remotetable.datatype_id = :remotetable_datatype_id_1 AND remotetable.value = :remotetable_value_1")
+            "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id, remote_owner.remotetable.value FROM remote_owner.remotetable WHERE "\
+            "remote_owner.remotetable.datatype_id = :remote_owner_remotetable_datatype_id_1 AND remote_owner.remotetable.value = :remote_owner_remotetable_value_1")
 
         s = table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi'))
         s.use_labels = True
-        self.assert_compile(s, "SELECT remotetable.rem_id AS remotetable_rem_id, remotetable.datatype_id AS remotetable_datatype_id, remotetable.value "\
-            "AS remotetable_value FROM remote_owner.remotetable WHERE "\
-            "remotetable.datatype_id = :remotetable_datatype_id_1 AND remotetable.value = :remotetable_value_1")
+        self.assert_compile(s, "SELECT remote_owner.remotetable.rem_id AS remote_owner_remotetable_rem_id, remote_owner.remotetable.datatype_id AS remote_owner_remotetable_datatype_id, remote_owner.remotetable.value "\
+            "AS remote_owner_remotetable_value FROM remote_owner.remotetable WHERE "\
+            "remote_owner.remotetable.datatype_id = :remote_owner_remotetable_datatype_id_1 AND remote_owner.remotetable.value = :remote_owner_remotetable_value_1")
 
     def test_alias(self):
         a = alias(table4, 'remtable')
@@ -1378,7 +1378,7 @@ class SchemaTest(TestBase, AssertsCompiledSQL):
 
     def test_update(self):
         self.assert_compile(table4.update(table4.c.value=='test', values={table4.c.datatype_id:12}), "UPDATE remote_owner.remotetable SET datatype_id=:datatype_id "\
-            "WHERE remotetable.value = :remotetable_value_1")
+            "WHERE remote_owner.remotetable.value = :remote_owner_remotetable_value_1")
 
     def test_insert(self):
         self.assert_compile(table4.insert(values=(2, 5, 'test')), "INSERT INTO remote_owner.remotetable (rem_id, datatype_id, value) VALUES "\
