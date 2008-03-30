@@ -379,13 +379,9 @@ class OracleDialect(default.DefaultDialect):
             return name.encode(self.encoding)
 
     def get_default_schema_name(self,connection):
-        try:
-            return self._default_schema_name
-        except AttributeError:
-            name = self._default_schema_name = \
-                connection.execute('SELECT USER FROM DUAL').scalar()
-            return name
-
+        return connection.execute('SELECT USER FROM DUAL').scalar()
+    get_default_schema_name = util.cache_decorator(get_default_schema_name)
+    
     def table_names(self, connection, schema):
         # note that table_names() isnt loading DBLINKed or synonym'ed tables
         if schema is None:

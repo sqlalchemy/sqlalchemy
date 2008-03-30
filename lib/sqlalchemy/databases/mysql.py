@@ -1542,13 +1542,9 @@ class MySQLDialect(default.DefaultDialect):
             return False
 
     def get_default_schema_name(self, connection):
-        try:
-            return self._default_schema_name
-        except AttributeError:
-            name = self._default_schema_name = \
-              connection.execute('SELECT DATABASE()').scalar()
-            return name
-
+        return connection.execute('SELECT DATABASE()').scalar()
+    get_default_schema_name = util.cache_decorator(get_default_schema_name)
+    
     def table_names(self, connection, schema):
         """Return a Unicode SHOW TABLES from a given schema."""
 

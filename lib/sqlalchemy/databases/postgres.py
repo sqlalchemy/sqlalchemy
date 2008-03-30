@@ -367,10 +367,9 @@ class PGDialect(default.DefaultDialect):
         return [row[0] for row in resultset]
 
     def get_default_schema_name(self, connection):
-        if not hasattr(self, '_default_schema_name'):
-            self._default_schema_name = connection.scalar("select current_schema()", None)
-        return self._default_schema_name
-
+        return connection.scalar("select current_schema()", None)
+    get_default_schema_name = util.cache_decorator(get_default_schema_name)
+    
     def last_inserted_ids(self):
         if self.context.last_inserted_ids is None:
             raise exceptions.InvalidRequestError("no INSERT executed, or can't use cursor.lastrowid without Postgres OIDs enabled")
