@@ -1548,7 +1548,6 @@ class MySQLDialect(default.DefaultDialect):
             connection.info['default_schema'] = schema = \
               connection.execute('SELECT DATABASE()').scalar()
             return schema
-        return connection.execute('SELECT DATABASE()').scalar()
 
     def table_names(self, connection, schema):
         """Return a Unicode SHOW TABLES from a given schema."""
