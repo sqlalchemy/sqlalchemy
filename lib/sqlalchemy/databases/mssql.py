@@ -133,7 +133,15 @@ class MSDate(sqltypes.Date):
         super(MSDate, self).__init__(False)
 
     def get_col_spec(self):
-        return "SMALLDATETIME"
+        return "DATETIME"
+
+    def result_processor(self, dialect):
+        def process(value):
+            # If the DBAPI returns the value as datetime.datetime(), truncate it back to datetime.date()
+            if type(value) is datetime.datetime:
+                return value.date()
+            return value
+        return process
 
 class MSTime(sqltypes.Time):
     __zero_date = datetime.date(1900, 1, 1)
@@ -185,23 +193,6 @@ class MSDate_pyodbc(MSDate):
         def process(value):
             if type(value) is datetime.date:
                 return datetime.datetime(value.year, value.month, value.day)
-            return value
-        return process
-
-    def result_processor(self, dialect):
-        def process(value):
-            # pyodbc returns SMALLDATETIME values as datetime.datetime(). truncate it back to datetime.date()
-            if type(value) is datetime.datetime:
-                return value.date()
-            return value
-        return process
-
-class MSDate_pymssql(MSDate):
-    def result_processor(self, dialect):
-        def process(value):
-            # pymssql will return SMALLDATETIME values as datetime.datetime(), truncate it back to datetime.date()
-            if type(value) is datetime.datetime:
-                return value.date()
             return value
         return process
 
@@ -413,7 +404,8 @@ class MSSQLDialect(default.DefaultDialect):
         'numeric' : MSNumeric,
         'float' : MSFloat,
         'datetime' : MSDateTime,
-        'smalldatetime' : MSDate,
+        'date': MSDate,
+        'smalldatetime' : MSSmallDate,
         'binary' : MSBinary,
         'varbinary' : MSBinary,
         'bit': MSBoolean,
@@ -714,11 +706,8 @@ class MSSQLDialect_pymssql(MSSQLDialect):
         return module
     import_dbapi = classmethod(import_dbapi)
 
-    colspecs = MSSQLDialect.colspecs.copy()
-    colspecs[sqltypes.Date] = MSDate_pymssql
-
     ischema_names = MSSQLDialect.ischema_names.copy()
-    ischema_names['smalldatetime'] = MSDate_pymssql
+
 
     def __init__(self, **params):
         super(MSSQLDialect_pymssql, self).__init__(**params)
@@ -799,6 +788,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
             self.use_scope_identity = hasattr(pyodbc.Cursor, 'nextset')
         except:
             pass
+        self.drivername = params.get('driver', 'SQL Server')
 
     def import_dbapi(cls):
         import pyodbc as module
@@ -821,7 +811,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         if 'dsn' in keys:
             connectors = ['dsn=%s' % keys['dsn']]
         else:
-            connectors = ["DRIVER={SQL Server}"]
+            connectors = ["DRIVER={%s}" % self.drivername]
             if 'port' in keys:
                 connectors.append('Server=%s,%d' % (keys.get('host'), keys.get('port')))
             else:

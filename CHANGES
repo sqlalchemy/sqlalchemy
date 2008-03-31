@@ -212,6 +212,10 @@ CHANGES
 
      - Added stubs for small date type, [ticket:884]
 
+     - Added a new 'driver' keyword parameter for the pyodbc dialect.
+       Will substitute into the ODBC connection string if given,
+       defaults to 'SQL Server'.
+
      - Improvements to pyodbc + Unix. If you couldn't get that
        combination to work before, please try again.
 
