@@ -11,78 +11,81 @@ CHANGES
     - Added comparable_property(), adds query Comparator
       behavior to regular, unmanaged Python properties
 
-    - the functionality of query.with_polymorphic() has 
-      been added to mapper() as a configuration option.  
+    - The functionality of query.with_polymorphic() has been
+      added to mapper() as a configuration option.
 
       It's set via several forms:
+
             with_polymorphic='*'
             with_polymorphic=[mappers]
             with_polymorphic=('*', selectable)
             with_polymorphic=([mappers], selectable)
-    
-      This controls the default polymorphic loading strategy
-      for inherited mappers. When a selectable is not given,
-      outer joins are created for all joined-table inheriting
-      mappers requested. Note that the auto-create of joins
-      is not compatible with concrete table inheritance.
 
-      The existing select_table flag on mapper() is now 
-      deprecated and is synonymous with 
-      with_polymorphic('*', select_table).  Note that the
-      underlying "guts" of select_table have been 
-      completely removed and replaced with the newer,
-      more flexible approach.  
-      
-      The new approach also automatically allows eager loads
-      to work for subclasses, if they are present, for
-      example
+      This controls the default polymorphic loading strategy for
+      inherited mappers. When a selectable is not given, outer
+      joins are created for all joined-table inheriting mappers
+      requested. Note that the auto-create of joins is not
+      compatible with concrete table inheritance.
+
+      The existing select_table flag on mapper() is now
+      deprecated and is synonymous with:
+
+        with_polymorphic('*', select_table).
+
+      Note that the underlying "guts" of select_table have been
+      completely removed and replaced with the newer, more
+      flexible approach.
+
+      The new approach also automatically allows eager loads to
+      work for subclasses, if they are present, for example
+
         sess.query(Company).options(
          eagerload_all(
           [Company.employees.of_type(Engineer), 'machines']
         ))
+
       to load Company objects, their employees, and the
       'machines' collection of employees who happen to be
       Engineers. A "with_polymorphic" Query option should be
       introduced soon as well which would allow per-Query
       control of with_polymorphic() on relations.
-    
-    - added two "experimental" features to Query, 
-      "experimental" in that their specific name/behavior
-      is not carved in stone just yet:  _values() and
-      _from_self().  We'd like feedback on these.
-      
-      - _values(*columns) is given a list of column
-        expressions, and returns a new Query that only
-        returns those columns. When evaluated, the return
-        value is a list of tuples just like when using
-        add_column() or add_entity(), the only difference is
-        that "entity zero", i.e. the mapped class, is not
-        included in the results. This means it finally makes
-        sense to use group_by() and having() on Query, which
-        have been sitting around uselessly until now.  
-        
+
+    - Added two "experimental" features to Query, "experimental"
+      in that their specific name/behavior is not carved in
+      stone just yet: _values() and _from_self().  We'd like
+      feedback on these.
+
+      - _values(*columns) is given a list of column expressions,
+        and returns a new Query that only returns those
+        columns. When evaluated, the return value is a list of
+        tuples just like when using add_column() or
+        add_entity(), the only difference is that "entity zero",
+        i.e. the mapped class, is not included in the
+        results. This means it finally makes sense to use
+        group_by() and having() on Query, which have been
+        sitting around uselessly until now.
+
         A future change to this method may include that its
         ability to join, filter and allow other options not
         related to a "resultset" are removed, so the feedback
         we're looking for is how people want to use
-        _values()...i.e. at the very end, or do people prefer
-        to continue generating after it's called.
+        _values()...i.e. at the very end, or do people prefer to
+        continue generating after it's called.
 
-      - _from_self() compiles the SELECT statement for the
-        Query (minus any eager loaders), and returns a new
-        Query that selects from that SELECT. So basically you
-        can query from a Query without needing to extract the
-        SELECT statement manually. This gives meaning to
-        operations like query[3:5]._from_self().filter(some
-        criterion). There's not much controversial here
-        except that you can quickly create highly nested
-        queries that are less efficient, and we want feedback
-        on the naming choice.
-      
-    - query.order_by() and query.group_by() will accept
-      multiple arguments using *args (like select() 
-      already does).
-      
+      - _from_self() compiles the SELECT statement for the Query
+        (minus any eager loaders), and returns a new Query that
+        selects from that SELECT. So basically you can query
+        from a Query without needing to extract the SELECT
+        statement manually. This gives meaning to operations
+        like query[3:5]._from_self().filter(some
+        criterion). There's not much controversial here except
+        that you can quickly create highly nested queries that
+        are less efficient, and we want feedback on the naming
+        choice.
+
+    - query.order_by() and query.group_by() will accept multiple
+      arguments using *args (like select() already does).
+
     - Fixed/covered case when using a False/0 value as a
       polymorphic discriminator.
 
@@ -121,24 +124,25 @@ CHANGES
         - Delete cascade with delete-orphan will delete orphans
           whether or not it remains attached to its also-deleted
           parent.
-          
-        - delete-orphan casacde is properly detected on relations
-          that are present on superclasses when using inheritance.
+
+        - delete-orphan casacde is properly detected on
+          relations that are present on superclasses when using
+          inheritance.
 
     - fixed order_by calculation in Query to properly alias
       mapper-config'ed order_by when using select_from()
 
 - sql
-    - schema-qualified tables now will place the schemaname
+    - Schema-qualified tables now will place the schemaname
       ahead of the tablename in all column expressions as well
       as when generating column labels.  This prevents cross-
       schema name collisions in all cases [ticket:999]
-      
-    - can now allow selects which correlate all FROM clauses
-      and have no FROM themselves.  These are typically
-      used in a scalar context, i.e. SELECT x, (SELECT x WHERE y)
-      FROM table.  Requires explicit correlate() call.
-      
+
+    - Can now allow selects which correlate all FROM clauses and
+      have no FROM themselves.  These are typically used in a
+      scalar context, i.e. SELECT x, (SELECT x WHERE y) FROM
+      table.  Requires explicit correlate() call.
+
     - 'name' is no longer a required constructor argument for
       Column().  It (and .key) may now be deferred until the
       column is added to a Table.
@@ -150,24 +154,6 @@ CHANGES
 
     - random() is now a generic sql function and will compile to
       the database's random implementation, if any.
-
-- oracle
-    - The "owner" keyword on Table is now deprecated, and is
-      exactly synonymous with the "schema" keyword.  Tables can
-      now be reflected with alternate "owner" attributes,
-      explicitly stated on the Table object or not using
-      "schema".
-
-    - All of the "magic" searching for synonyms, DBLINKs etc.
-      during table reflection are disabled by default unless you
-      specify "oracle_resolve_synonyms=True" on the Table
-      object.  Resolving synonyms necessarily leads to some
-      messy guessing which we'd rather leave off by default.
-      When the flag is set, tables and related tables will be
-      resolved against synonyms in all cases, meaning if a
-      synonym exists for a particular table, reflection will use
-      it when reflecting related tables.  This is stickier
-      behavior than before which is why it's off by default.
 
 - declarative extension
     - The "synonym" function is now directly usable with
@@ -197,29 +183,47 @@ CHANGES
      - inheritance in declarative can be disabled when sending
        "inherits=None" to __mapper_args__.
 
-     - declarative_base() takes optional kwarg "mapper", which 
-       is any callable/class/method that produces a mapper,
-       such as declarative_base(mapper=scopedsession.mapper).
-       This property can also be set on individual declarative
+     - declarative_base() takes optional kwarg "mapper", which
+       is any callable/class/method that produces a mapper, such
+       as declarative_base(mapper=scopedsession.mapper).  This
+       property can also be set on individual declarative
        classes using the "__mapper_cls__" property.
 
-- mssql
-     - Reflected tables will now automatically load other tables 
-       which are referenced by Foreign keys in the auto-loaded
-       table, [ticket:979]. 
+- oracle
+    - The "owner" keyword on Table is now deprecated, and is
+      exactly synonymous with the "schema" keyword.  Tables can
+      now be reflected with alternate "owner" attributes,
+      explicitly stated on the Table object or not using
+      "schema".
 
-     - Added executemany check to skip identity fetch, [ticket:916].
+    - All of the "magic" searching for synonyms, DBLINKs etc.
+      during table reflection are disabled by default unless you
+      specify "oracle_resolve_synonyms=True" on the Table
+      object.  Resolving synonyms necessarily leads to some
+      messy guessing which we'd rather leave off by default.
+      When the flag is set, tables and related tables will be
+      resolved against synonyms in all cases, meaning if a
+      synonym exists for a particular table, reflection will use
+      it when reflecting related tables.  This is stickier
+      behavior than before which is why it's off by default.
+
+- mssql
+     - Reflected tables will now automatically load other tables
+       which are referenced by Foreign keys in the auto-loaded
+       table, [ticket:979].
+
+     - Added executemany check to skip identity fetch,
+       [ticket:916].
 
      - Added stubs for small date type, [ticket:884]
 
-     - Added a new 'driver' keyword parameter for the pyodbc dialect.
-       Will substitute into the ODBC connection string if given,
-       defaults to 'SQL Server'.
+     - Added a new 'driver' keyword parameter for the pyodbc
+       dialect.  Will substitute into the ODBC connection string
+       if given, defaults to 'SQL Server'.
 
      - Improvements to pyodbc + Unix. If you couldn't get that
        combination to work before, please try again.
 
-     
 0.4.4
 ------
 - sql
