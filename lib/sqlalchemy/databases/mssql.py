@@ -741,38 +741,6 @@ class MSSQLDialect_pymssql(MSSQLDialect):
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.DatabaseError) and "Error 10054" in str(e)
 
-
-##    This code is leftover from the initial implementation, for reference
-##    def do_begin(self, connection):
-##        """implementations might want to put logic here for turning autocommit on/off, etc."""
-##        pass
-
-##    def do_rollback(self, connection):
-##        """implementations might want to put logic here for turning autocommit on/off, etc."""
-##        try:
-##            # connection.rollback() for pymmsql failed sometimes--the begin tran doesn't show up
-##            # this is a workaround that seems to be handle it.
-##            r = self.raw_connection(connection)
-##            r.query("if @@trancount > 0 rollback tran")
-##            r.fetch_array()
-##            r.query("begin tran")
-##            r.fetch_array()
-##        except:
-##            pass
-
-##    def do_commit(self, connection):
-##        """implementations might want to put logic here for turning autocommit on/off, etc.
-##            do_commit is set for pymmsql connections--ADO seems to handle transactions without any issue
-##        """
-##        # ADO Uses Implicit Transactions.
-##        # This is very pymssql specific.  We use this instead of its commit, because it hangs on failed rollbacks.
-##        # By using the "if" we don't assume an open transaction--much better.
-##        r = self.raw_connection(connection)
-##        r.query("if @@trancount > 0 commit tran")
-##        r.fetch_array()
-##        r.query("begin tran")
-##        r.fetch_array()
-
 class MSSQLDialect_pyodbc(MSSQLDialect):
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
@@ -788,7 +756,6 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
             self.use_scope_identity = hasattr(pyodbc.Cursor, 'nextset')
         except:
             pass
-        self.drivername = params.get('driver', 'SQL Server')
 
     def import_dbapi(cls):
         import pyodbc as module
@@ -811,12 +778,12 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         if 'dsn' in keys:
             connectors = ['dsn=%s' % keys['dsn']]
         else:
-            connectors = ["DRIVER={%s}" % self.drivername]
+            connectors = ["DRIVER={%s}" % keys.get('driver', 'SQL Server'),
+                          'Server=%s' % keys['host'],
+                          'Database=%s' % keys['database'] ]
             if 'port' in keys:
-                connectors.append('Server=%s,%d' % (keys.get('host'), keys.get('port')))
-            else:
-                connectors.append('Server=%s' % keys.get('host'))
-            connectors.append("Database=%s" % keys.get("database"))
+                connectors.append('Port=%d' % int(keys['port']))
+        
         user = keys.get("user")
         if user:
             connectors.append("UID=%s" % user)
