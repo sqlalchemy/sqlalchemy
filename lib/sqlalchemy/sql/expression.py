@@ -3096,9 +3096,9 @@ class Select(_SelectBaseMixin, FromClause):
 
         if self._froms:
             froms.update(self._froms)
-
-        for f in froms:
-            froms.difference_update(f._hide_froms)
+        
+        toremove = itertools.chain(*[f._hide_froms for f in froms])
+        froms.difference_update(toremove)
 
         if len(froms) > 1 or self.__correlate:
             if self.__correlate:

@@ -416,7 +416,6 @@ class PropertyLoader(StrategizedProperty):
             return
             
         if not "merge" in self.cascade:
-            # TODO: lazy callable should merge to the new instance
             dest._state.expire_attributes([self.key])
             return
 
@@ -425,15 +424,18 @@ class PropertyLoader(StrategizedProperty):
             return
         
         if self.uselist:
-            dest_list = attributes.init_collection(dest, self.key)
+            dest_list = []
             for current in instances:
                 _recursive[(current, self)] = True
                 obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
-                    if dont_load:
-                        dest_list.append_without_event(obj)
-                    else:
-                        dest_list.append_with_event(obj)
+                    dest_list.append(obj)
+            if dont_load:
+                coll = attributes.init_collection(dest, self.key)
+                for c in dest_list:
+                    coll.append_without_event(c) 
+            else:
+                getattr(dest.__class__, self.key).impl._set_iterable(dest._state, dest_list)
         else:
             current = instances[0]
             if current is not None:

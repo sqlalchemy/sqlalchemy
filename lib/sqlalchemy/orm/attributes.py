@@ -569,7 +569,7 @@ class CollectionAttributeImpl(AttributeImpl):
             self.fire_remove_event(state, value, initiator)
         else:
             collection.remove_with_event(value, initiator)
-
+    
     def set(self, state, value, initiator):
         """Set a value on the given object.
 
