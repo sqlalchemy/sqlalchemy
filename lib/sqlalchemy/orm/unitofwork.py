@@ -762,11 +762,11 @@ class UOWTask(object):
             make_task_tree(head, t, {})
 
         ret = [t]
+
+        # add tasks that were in the cycle, but didnt get assembled
+        # into the cyclical tree, to the start of the list
         for t2 in cycles:
             if t2 not in used_tasks and t2 is not self:
-                # add tasks that were in the cycle, but didnt get assembled
-                # into the cyclical tree, to the start of the list
-                # TODO: no test coverage for this !!
                 localtask = UOWTask(self.uowtransaction, t2.mapper)
                 for state in t2.elements:
                     localtask.append(state, t2.listonly, isdelete=t2._objects[state].isdelete)

@@ -495,14 +495,11 @@ class CollectionAttributeImpl(AttributeImpl):
         return [y for y in list(collections.collection_adapter(item))]
 
     def get_history(self, state, passive=False):
-        if self.key in state.dict:
-            return _create_history(self, state, state.dict[self.key])
+        current = self.get(state, passive=passive)
+        if current is PASSIVE_NORESULT:
+            return (None, None, None)
         else:
-            current = self.get(state, passive=passive)
-            if current is PASSIVE_NORESULT:
-                return (None, None, None)
-            else:
-                return _create_history(self, state, current)
+            return _create_history(self, state, current)
 
     def fire_append_event(self, state, value, initiator):
         if self.key not in state.committed_state and self.key in state.dict:
@@ -532,13 +529,6 @@ class CollectionAttributeImpl(AttributeImpl):
         instance = state.obj()
         for ext in self.extensions:
             ext.remove(instance, value, initiator or self)
-
-    def get_history(self, state, passive=False):
-        current = self.get(state, passive=passive)
-        if current is PASSIVE_NORESULT:
-            return (None, None, None)
-        else:
-            return _create_history(self, state, current)
 
     def delete(self, state):
         if self.key not in state.dict:
