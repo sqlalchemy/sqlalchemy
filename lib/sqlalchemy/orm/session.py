@@ -742,15 +742,6 @@ class Session(object):
             q = q.add_entity(ent)
         return q
 
-    def sql(self):
-        class SQLProxy(object):
-            def __getattr__(self, key):
-                def call(*args, **kwargs):
-                    kwargs[engine] = self.engine
-                    return getattr(sql, key)(*args, **kwargs)
-
-    sql = property(sql)
-
     def _autoflush(self):
         if self.autoflush and (self.transaction is None or self.transaction.autoflush):
             self.flush()
