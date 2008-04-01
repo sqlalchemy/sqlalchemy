@@ -59,7 +59,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
     def test_delete_schema(self):
         metadata = MetaData()
         tbl = Table('test', metadata, Column('id', Integer, primary_key=True), schema='paj')
-        self.assert_compile(tbl.delete(tbl.c.id == 1), "DELETE FROM paj.test WHERE paj.test.id = :test_id_1")
+        self.assert_compile(tbl.delete(tbl.c.id == 1), "DELETE FROM paj.test WHERE paj.test.id = :paj_test_id_1")
 
     def test_union(self):
         t1 = table('t1',

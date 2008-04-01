@@ -23,13 +23,16 @@ def profile_memory(func):
 
         assert len(_sessions) == 0
 
-        # TODO: this test only finds pure "growing" tests
+        # TODO: this test only finds pure "growing" tests.
+        # if a drop is detected, it's assumed that GC is able
+        # to reduce memory.  better methodology would
+        # make this more accurate.
         for i, x in enumerate(samples):
-            if i < len(samples) - 1 and samples[i+1] <= x:
-                break
+            if i < len(samples) - 1 and x < samples[i+1]:
+                continue
         else:
-            assert False, repr(samples)
-        assert True
+            return
+        assert False, repr(samples)
     return profile
 
 def assert_no_mappers():

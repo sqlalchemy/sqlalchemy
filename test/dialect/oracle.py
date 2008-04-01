@@ -40,7 +40,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
            Column('parent_id', Integer, ForeignKey('ed.parent.id')),
            owner = 'ed')
 
-        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON parent.id = child.parent_id")
+        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id")
 
     def test_subquery(self):
         t = table('sometable', column('col1'), column('col2'))
