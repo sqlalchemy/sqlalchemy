@@ -142,6 +142,11 @@ def function_call_count(count=None, versions={}, variance=0.05):
                         "Function call count %s not within %s%% "
                         "of expected %s. (Python version %s)" % (
                         calls, (variance * 100), count, py_version))
+
+                if testlib.config.options.verbose:
+                    stats.sort_stats('calls', 'cumulative')
+                    stats.print_stats()
+
                 return result
             finally:
                 if os.path.exists(filename):

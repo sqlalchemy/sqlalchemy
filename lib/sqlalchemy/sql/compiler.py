@@ -193,16 +193,6 @@ class DefaultCompiler(engine.Compiled):
     def is_subquery(self, select):
         return self.stack and self.stack[-1].get('is_subquery')
 
-    def get_whereclause(self, obj):
-        """given a FROM clause, return an additional WHERE condition that should be
-        applied to a SELECT.
-
-        Currently used by Oracle to provide WHERE criterion for JOIN and OUTER JOIN
-        constructs in non-ansi mode.
-        """
-
-        return None
-
     def construct_params(self, params=None):
         """return a dictionary of bind parameter keys and values"""
 
@@ -529,18 +519,9 @@ class DefaultCompiler(engine.Compiled):
         text += self.get_select_precolumns(select)
         text += collist
 
-        whereclause = select._whereclause
-
         from_strings = []
         for f in froms:
             from_strings.append(self.process(f, asfrom=True))
-
-            w = self.get_whereclause(f)
-            if w is not None:
-                if whereclause is not None:
-                    whereclause = sql.and_(w, whereclause)
-                else:
-                    whereclause = w
 
         if froms:
             text += " \nFROM "
@@ -548,6 +529,7 @@ class DefaultCompiler(engine.Compiled):
         else:
             text += self.default_from()
 
+        whereclause = select._whereclause
         if whereclause is not None:
             t = self.process(whereclause)
             if t:

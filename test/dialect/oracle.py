@@ -112,9 +112,10 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 )
         self.assert_compile(query,
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
-FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid(+) AND \
+FROM mytable, myothertable WHERE \
 (mytable.name = :mytable_name_1 OR mytable.myid = :mytable_myid_1 OR \
-myothertable.othername != :myothertable_othername_1 OR EXISTS (select yay from foo where boo = lar))",
+myothertable.othername != :myothertable_othername_1 OR EXISTS (select yay from foo where boo = lar)) \
+AND mytable.myid = myothertable.otherid(+)",
             dialect=oracle.OracleDialect(use_ansi = False))
 
         query = table1.outerjoin(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
@@ -123,6 +124,15 @@ myothertable.othername != :myothertable_othername_1 OR EXISTS (select yay from f
 
         query = table1.join(table2, table1.c.myid==table2.c.otherid).join(table3, table3.c.userid==table2.c.otherid)
         self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid AND thirdtable.userid = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))
+
+        query = table1.join(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
+        self.assert_compile(query.select().limit(10).offset(5), "SELECT myid, name, description, otherid, othername, userid, \
+otherstuff FROM (SELECT mytable.myid AS myid, mytable.name AS name, \
+mytable.description AS description, myothertable.otherid AS otherid, \
+myothertable.othername AS othername, thirdtable.userid AS userid, \
+thirdtable.otherstuff AS otherstuff, ROW_NUMBER() OVER (ORDER BY mytable.rowid) AS ora_rn \
+FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid AND thirdtable.userid(+) = myothertable.otherid) \
+WHERE ora_rn>5 AND ora_rn<=15", dialect=oracle.dialect(use_ansi=False))
 
     def test_alias_outer_join(self):
         address_types = table('address_types',

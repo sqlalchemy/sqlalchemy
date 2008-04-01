@@ -2630,16 +2630,20 @@ class _ColumnClause(ColumnElement):
         # therefore no 'label' can be automatically generated
         if self.is_literal:
             return None
-        if self.__label is None:
-            if self.table is not None and self.table.named_with_column:
+        if not self.__label:
+            if self.table and self.table.named_with_column:
                 if getattr(self.table, 'schema', None):
-                    self.__label = "_".join([self.table.schema, self.table.name, self.name])
+                    self.__label = self.table.schema + "_" + self.table.name + "_" + self.name
                 else:
-                    self.__label = "_".join([self.table.name, self.name])
-                counter = 1
-                while self.__label in self.table.c:
-                    self.__label = self.__label + "_%d" % counter
-                    counter += 1
+                    self.__label = self.table.name + "_" + self.name
+                    
+                if self.__label in self.table.c:
+                    label = self.__label
+                    counter = 1
+                    while label in self.table.c:
+                        label = self.__label + "_" + str(counter)
+                        counter +=1
+                    self.__label = label
             else:
                 self.__label = self.name
         return self.__label
