@@ -612,6 +612,43 @@ class CollectionAdapter(object):
         self._data = weakref.ref(d['data'])
 
 
+def bulk_replace(values, existing_adapter, new_adapter):
+    """Load a new collection, firing events based on prior like membership.
+
+    Appends instances in ``values`` onto the ``new_adapter``. Events will be
+    fired for any instance not present in the ``existing_adapter``.  Any
+    instances in ``existing_adapter`` not present in ``values`` will have
+    remove events fired upon them.
+
+    values
+      An iterable of collection member instances
+
+    existing_adapter
+      A CollectionAdapter of instances to be replaced
+
+    new_adapter
+      An empty CollectionAdapter to load with ``values``
+
+
+    """
+    if not isinstance(values, list):
+        values = list(values)
+
+    idset = sautil.IdentitySet
+    constants = idset(existing_adapter or ()).intersection(values or ())
+    additions = idset(values or ()).difference(constants)
+    removals  = idset(existing_adapter or ()).difference(constants)
+
+    for member in values or ():
+        if member in additions:
+            new_adapter.append_with_event(member)
+        elif member in constants:
+            new_adapter.append_without_event(member)
+
+    if existing_adapter:
+        for member in removals:
+            existing_adapter.remove_with_event(member)
+
 __instrumentation_mutex = sautil.threading.Lock()
 def _prepare_instrumentation(factory):
     """Prepare a callable for future use as a collection class factory.

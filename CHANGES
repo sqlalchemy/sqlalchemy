@@ -129,8 +129,12 @@ CHANGES
           relations that are present on superclasses when using
           inheritance.
 
-    - fixed order_by calculation in Query to properly alias
+    - Fixed order_by calculation in Query to properly alias
       mapper-config'ed order_by when using select_from()
+
+    - Refactored the diffing logic that kicks in when replacing
+      one collection with another into collections.bulk_replace,
+      useful to anyone building multi-level collections.
 
 - sql
     - Schema-qualified tables now will place the schemaname

@@ -581,18 +581,34 @@ class CollectionAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
+        self._set_iterable(
+            state, value,
+            lambda adapter, i: adapter.adapt_like_to_iterable(i))
+
+    def _set_iterable(self, state, iterable, adapter=None):
+        """Set a collection value from an interable.
+
+        ``adapter`` is an optional callable invoked with a CollectionAdapter
+        and the iterable.  Should return an iterable of instances suitable for
+        appending via a CollectionAdapter.  Can be used for, e.g., adapting an
+        incoming dictionary iterable to a list.
+
+        """
         # we need a CollectionAdapter to adapt the incoming value to an
         # assignable iterable.  pulling a new collection first so that
         # an adaptation exception does not trigger a lazy load of the
         # old collection.
         new_collection, user_data = self._build_collection(state)
-        new_values = list(new_collection.adapt_like_to_iterable(value))
+        if adapter:
+            new_values = list(adapter(new_collection, iterable))
+        else:
+            new_values = list(iterable)
 
         old = self.get(state)
 
         # ignore re-assignment of the current collection, as happens
         # implicitly with in-place operators (foo.collection |= other)
-        if old is value:
+        if old is iterable:
             return
 
         if self.key not in state.committed_state:
@@ -600,25 +616,12 @@ class CollectionAttributeImpl(AttributeImpl):
 
         old_collection = self.get_collection(state, old)
 
-        idset = util.IdentitySet
-        constants = idset(old_collection or []).intersection(new_values or [])
-        additions = idset(new_values or []).difference(constants)
-        removals  = idset(old_collection or []).difference(constants)
-
-        for member in new_values or ():
-            if member in additions:
-                new_collection.append_with_event(member)
-            elif member in constants:
-                new_collection.append_without_event(member)
-
         state.dict[self.key] = user_data
         state.modified = True
 
-        # mark all the orphaned elements as detached from the parent
-        if old_collection:
-            for member in removals:
-                old_collection.remove_with_event(member)
-            old_collection.unlink(old)
+        collections.bulk_replace(new_values, old_collection, new_collection)
+        old_collection.unlink(old)
+
 
     def set_committed_value(self, state, value):
         """Set an attribute value on the given instance and 'commit' it.
