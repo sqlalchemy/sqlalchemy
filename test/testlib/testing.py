@@ -418,7 +418,9 @@ class ExecutionContextWrapper(object):
                          ) \
                          and \
                          ( (params is None) or (params == parameters)
-                           or params == [dict((k.strip('_'), v) for (k, v) in p.items())for p in parameters]
+                           or params == [dict([(k.strip('_'), v)
+                                               for (k, v) in p.items()])
+                                         for p in parameters]
                          )
             testdata.unittest.assert_(equivalent, 
                     "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))

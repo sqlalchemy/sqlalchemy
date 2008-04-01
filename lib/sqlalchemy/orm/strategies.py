@@ -594,7 +594,7 @@ class EagerLoader(AbstractRelationLoader):
     def create_row_processor(self, selectcontext, mapper, row):
 
         row_decorator = self._create_row_decorator(selectcontext, row, selectcontext.path)
-        pathstr = ','.join(str(x) for x in selectcontext.path)
+        pathstr = ','.join([str(x) for x in selectcontext.path])
         if row_decorator is not None:
             def execute(instance, row, isnew, **flags):
                 decorated_row = row_decorator(row)
