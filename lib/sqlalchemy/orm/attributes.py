@@ -586,18 +586,17 @@ class CollectionAttributeImpl(AttributeImpl):
             lambda adapter, i: adapter.adapt_like_to_iterable(i))
 
     def _set_iterable(self, state, iterable, adapter=None):
-        """Set a collection value from an interable.
+        """Set a collection value from an iterable of state-bearers.
 
         ``adapter`` is an optional callable invoked with a CollectionAdapter
-        and the iterable.  Should return an iterable of instances suitable for
-        appending via a CollectionAdapter.  Can be used for, e.g., adapting an
-        incoming dictionary iterable to a list.
+        and the iterable.  Should return an iterable of state-bearing
+        instances suitable for appending via a CollectionAdapter.  Can be used
+        for, e.g., adapting an incoming dictionary into an iterator of values
+        rather than keys.
 
         """
-        # we need a CollectionAdapter to adapt the incoming value to an
-        # assignable iterable.  pulling a new collection first so that
-        # an adaptation exception does not trigger a lazy load of the
-        # old collection.
+        # pulling a new collection first so that an adaptation exception does
+        # not trigger a lazy load of the old collection.
         new_collection, user_data = self._build_collection(state)
         if adapter:
             new_values = list(adapter(new_collection, iterable))
