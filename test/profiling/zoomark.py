@@ -12,6 +12,8 @@ from testlib import *
 
 ITERATIONS = 1
 
+# Use with conditional_call_count() if VM state of a full-suite run
+# throws off profiling numbers.
 _run_type = 'suite'
 _running_in = lambda: _run_type
 
@@ -26,9 +28,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
     __skip_if__ = ((lambda: sys.version_info < (2, 4)), )
 
-    @profiling.conditional_call_count(
-        _running_in, {'isolation': (2038,),
-                      'suite': (1569, {'2.4': 1579}, 0.20)})
+    @profiling.function_call_count(2028)
     def test_1_create_tables(self):
         global metadata
         metadata = MetaData(testing.db)
