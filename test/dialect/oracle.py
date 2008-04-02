@@ -179,7 +179,7 @@ class SchemaReflectionTest(TestBase, AssertsCompiledSQL):
         parent = Table('parent', meta, autoload=True, schema='ed')
         child = Table('child', meta, autoload=True, schema='ed')
 
-        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON parent.id = child.parent_id")
+        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id")
         select([parent, child]).select_from(parent.join(child)).execute().fetchall()
 
     def test_reflect_local_to_remote(self):
@@ -188,7 +188,7 @@ class SchemaReflectionTest(TestBase, AssertsCompiledSQL):
             meta = MetaData(testing.db)
             lcl = Table('localtable', meta, autoload=True)
             parent = meta.tables['ed.parent']
-            self.assert_compile(parent.join(lcl), "ed.parent JOIN localtable ON parent.id = localtable.parent_id")
+            self.assert_compile(parent.join(lcl), "ed.parent JOIN localtable ON ed.parent.id = localtable.parent_id")
             select([parent, lcl]).select_from(parent.join(lcl)).execute().fetchall()
         finally:
             testing.db.execute("DROP TABLE localtable")
@@ -198,7 +198,7 @@ class SchemaReflectionTest(TestBase, AssertsCompiledSQL):
         parent = Table('parent', meta, autoload=True, schema='ed')
         child = Table('child', meta, autoload=True, schema='ed')
 
-        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON parent.id = child.parent_id")
+        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id")
         select([parent, child]).select_from(parent.join(child)).execute().fetchall()
       
     def test_reflect_alt_owner_synonyms(self):
@@ -207,7 +207,7 @@ class SchemaReflectionTest(TestBase, AssertsCompiledSQL):
             meta = MetaData(testing.db)
             lcl = Table('localtable', meta, autoload=True, oracle_resolve_synonyms=True)
             parent = meta.tables['ed.ptable']
-            self.assert_compile(parent.join(lcl), "ed.ptable JOIN localtable ON ptable.id = localtable.parent_id")
+            self.assert_compile(parent.join(lcl), "ed.ptable JOIN localtable ON ed.ptable.id = localtable.parent_id")
             select([parent, lcl]).select_from(parent.join(lcl)).execute().fetchall()
         finally:
             testing.db.execute("DROP TABLE localtable")
@@ -216,7 +216,7 @@ class SchemaReflectionTest(TestBase, AssertsCompiledSQL):
         meta = MetaData(testing.db)
         parent = Table('ptable', meta, autoload=True, schema='ed', oracle_resolve_synonyms=True)
         child = Table('ctable', meta, autoload=True, schema='ed', oracle_resolve_synonyms=True)
-        self.assert_compile(parent.join(child), "ed.ptable JOIN ed.ctable ON ptable.id = ctable.parent_id")
+        self.assert_compile(parent.join(child), "ed.ptable JOIN ed.ctable ON ed.ptable.id = ed.ctable.parent_id")
         select([parent, child]).select_from(parent.join(child)).execute().fetchall()
 
  

@@ -1251,7 +1251,7 @@ class SelfReferentialTest(ORMTest):
     def define_tables(self, metadata):
         global nodes
         nodes = Table('nodes', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
     
@@ -1330,7 +1330,7 @@ class SelfReferentialM2MTest(ORMTest):
     def define_tables(self, metadata):
         global nodes, node_to_nodes
         nodes = Table('nodes', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)))
             
         node_to_nodes =Table('node_to_nodes', metadata,
