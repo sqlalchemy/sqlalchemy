@@ -241,12 +241,15 @@ class DefaultCompiler(engine.Compiled):
 
     def visit_column(self, column, result_map=None, **kwargs):
 
-        if getattr(column, 'table', None) and getattr(column.table, 'schema', None):
-            schema_prefix = self.preparer.quote(column.table, column.table.schema) + '.'
-        else:
-            schema_prefix = ''
-
-        if not column.is_literal:
+        if column._is_oid:
+            name = self.dialect.oid_column_name(column)
+            if name is None:
+                if len(column.table.primary_key) != 0:
+                    pk = list(column.table.primary_key)[0]
+                    return self.visit_column(pk, result_map=result_map, **kwargs)
+                else:
+                    return None
+        elif not column.is_literal:
             name = self._truncated_identifier("colident", column.name)
         else:
             name = column.name
@@ -254,28 +257,19 @@ class DefaultCompiler(engine.Compiled):
         if result_map is not None:
             result_map[name.lower()] = (name, (column, ), column.type)
 
-        if column._is_oid:
-            n = self.dialect.oid_column_name(column)
-            if n is not None:
-                if column.table is None or not column.table.named_with_column:
-                    return n
-                else:
-                    return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + n
-            elif len(column.table.primary_key) != 0:
-                pk = list(column.table.primary_key)[0]
-                return self.visit_column(pk, result_map=result_map, **kwargs)
-            else:
-                return None
-        elif column.table is None or not column.table.named_with_column:
-            if getattr(column, "is_literal", False):
-                return self.escape_literal_column(name)
-            else:
-                return self.preparer.quote(column, name)
+        if getattr(column, "is_literal", False):
+            name = self.escape_literal_column(name)
         else:
-            if getattr(column, "is_literal", False):
-                return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.escape_literal_column(name)
+            name = self.preparer.quote(column, name)
+
+        if column.table is None or not column.table.named_with_column:
+            return name
+        else:
+            if getattr(column.table, 'schema', None):
+                schema_prefix = self.preparer.quote(column.table, column.table.schema) + '.'
             else:
-                return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + self.preparer.quote(column, name)
+                schema_prefix = ''
+            return schema_prefix + self.preparer.quote(column.table, ANONYMOUS_LABEL.sub(self._process_anon, column.table.name)) + "." + name
 
     def escape_literal_column(self, text):
         """provide escaping for the literal_column() construct."""
@@ -507,17 +501,19 @@ class DefaultCompiler(engine.Compiled):
         self.stack.append(stack_entry)
 
         # the actual list of columns to print in the SELECT column list.
-        inner_columns = util.OrderedSet()
-
-        for co in select.inner_columns:
-            l = self.label_select_column(select, co, asfrom=asfrom)
-            inner_columns.add(self.process(l, **column_clause_args))
-
-        collist = string.join(inner_columns.difference(util.Set([None])), ', ')
+        inner_columns = util.OrderedSet(
+            [c for c in [
+                self.process(
+                    self.label_select_column(select, co, asfrom=asfrom), 
+                    **column_clause_args) 
+                for co in select.inner_columns
+            ]
+            if c is not None]
+        )
 
         text = " ".join(["SELECT"] + [self.process(x) for x in select._prefixes]) + " "
         text += self.get_select_precolumns(select)
-        text += collist
+        text += ', '.join(inner_columns)
 
         from_strings = []
         for f in froms:
@@ -529,9 +525,8 @@ class DefaultCompiler(engine.Compiled):
         else:
             text += self.default_from()
 
-        whereclause = select._whereclause
-        if whereclause is not None:
-            t = self.process(whereclause)
+        if select._whereclause is not None:
+            t = self.process(select._whereclause)
             if t:
                 text += " \nWHERE " + t
 
