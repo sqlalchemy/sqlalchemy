@@ -107,9 +107,6 @@ class OracleText(sqltypes.Text):
                     return value
         return process
 
-class OracleRaw(sqltypes.Binary):
-    def get_col_spec(self):
-        return "RAW(%(length)s)" % {'length' : self.length}
 
 class OracleChar(sqltypes.CHAR):
     def get_col_spec(self):
@@ -133,6 +130,10 @@ class OracleBinary(sqltypes.Binary):
             else:
                 return value
         return process
+
+class OracleRaw(OracleBinary):
+    def get_col_spec(self):
+        return "RAW(%(length)s)" % {'length' : self.length}
 
 class OracleBoolean(sqltypes.Boolean):
     def get_col_spec(self):

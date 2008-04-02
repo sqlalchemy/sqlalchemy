@@ -83,6 +83,7 @@ class AdaptTest(TestBase):
             (oracle_dialect, Unicode(), oracle.OracleText),
             (oracle_dialect, UnicodeText(), oracle.OracleText),
             (oracle_dialect, NCHAR(), oracle.OracleString),
+            (oracle_dialect, oracle.OracleRaw(50), oracle.OracleRaw),
             (mysql_dialect, String(), mysql.MSText),
             (mysql_dialect, VARCHAR(), mysql.MSString),
             (mysql_dialect, String(50), mysql.MSString),
