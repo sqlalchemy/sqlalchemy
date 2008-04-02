@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import inspect, itertools, sets, sys, warnings, weakref
+import inspect, itertools, new, sets, sys, warnings, weakref
 import __builtin__
 types = __import__('types')
 
@@ -1055,7 +1055,22 @@ class symbol(object):
             return sym
         finally:
             symbol._lock.release()
-            
+
+
+def function_named(fn, name):
+    """Return a function with a given __name__.
+
+    Will assign to __name__ and return the original function if possible on
+    the Python implementation, otherwise a new function will be constructed.
+
+    """
+    try:
+        fn.__name__ = name
+    except TypeError:
+        fn = new.function(fn.func_code, fn.func_globals, name,
+                          fn.func_defaults, fn.func_closure)
+    return fn
+
 def conditional_cache_decorator(func):
     """apply conditional caching to the return value of a function."""
 
@@ -1166,8 +1181,5 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
 
     func_with_warning.__doc__ = doc
     func_with_warning.__dict__.update(func.__dict__)
-    try:
-        func_with_warning.__name__ = func.__name__
-    except TypeError:
-        pass
-    return func_with_warning
+
+    return function_named(func_with_warning, func.__name__)

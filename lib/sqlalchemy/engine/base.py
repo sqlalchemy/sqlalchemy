@@ -12,7 +12,7 @@ higher-level statement-construction, connection-management, execution
 and result contexts.
 """
 
-import StringIO, sys
+import inspect, StringIO, sys
 from sqlalchemy import exceptions, schema, util, types, logging
 from sqlalchemy.sql import expression
 
@@ -1864,3 +1864,27 @@ class DefaultRunner(schema.SchemaVisitor):
             return default.arg(self.context)
         else:
             return default.arg
+
+
+def connection_memoize(key):
+    """Decorator, memoize a function in a connection.info stash.
+
+    Only applicable to functions which take no arguments other than a
+    connection.  The memo will be stored in ``connection.info[key]``.
+
+    """
+    def decorate(fn):
+        spec = inspect.getargspec(fn)
+        assert len(spec[0]) == 2
+        assert spec[0][1] == 'connection'
+        assert spec[1:3] == (None, None)
+
+        def decorated(self, connection):
+            try:
+                return connection.info[key]
+            except KeyError:
+                connection.info[key] = val = fn(self, connection)
+                return val
+
+        return util.function_named(decorated, fn.__name__)
+    return decorate

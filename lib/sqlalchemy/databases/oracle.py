@@ -12,7 +12,6 @@ from sqlalchemy.engine import default, base
 from sqlalchemy.sql import compiler, visitors
 from sqlalchemy.sql import operators as sql_operators, functions as sql_functions
 from sqlalchemy import types as sqltypes
-from sqlalchemy.pool import connection_cache_decorator
 
 
 class OracleNumeric(sqltypes.Numeric):
@@ -379,9 +378,10 @@ class OracleDialect(default.DefaultDialect):
         else:
             return name.encode(self.encoding)
 
-    def get_default_schema_name(self,connection):
+    def get_default_schema_name(self, connection):
         return connection.execute('SELECT USER FROM DUAL').scalar()
-    get_default_schema_name = connection_cache_decorator(get_default_schema_name)
+    get_default_schema_name = base.connection_memoize(
+        ('dialect', 'default_schema_name'))(get_default_schema_name)
 
     def table_names(self, connection, schema):
         # note that table_names() isnt loading DBLINKed or synonym'ed tables

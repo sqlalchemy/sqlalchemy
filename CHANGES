@@ -253,6 +253,10 @@ CHANGES
      - Improvements to pyodbc + Unix. If you couldn't get that
        combination to work before, please try again.
 
+- mysql
+     - The connection.info keys the dialect uses to cache server
+       settings have changed and are now namespaced.
+
 0.4.4
 ------
 - sql
