@@ -1294,11 +1294,11 @@ class Mapper(object):
         for dep in self._dependency_processors:
             dep.register_dependencies(uowcommit)
 
-    def cascade_iterator(self, type, state, recursive=None, halt_on=None):
+    def cascade_iterator(self, type_, state, halt_on=None):
         """Iterate each element and its mapper in an object graph,
         for all relations that meet the given cascade rule.
 
-        type
+        type_
           The name of the cascade rule (i.e. save-update, delete,
           etc.)
 
@@ -1306,19 +1306,25 @@ class Mapper(object):
           The lead InstanceState.  child items will be processed per
           the relations defined for this object's mapper.
 
-        recursive
-          Used by the function for internal context during recursive
-          calls, leave as None.
-
         the return value are object instances; this provides a strong
         reference so that they don't fall out of scope immediately.
         """
 
-        if recursive is None:
-            recursive=util.IdentitySet()
-        for prop in self.__props.values():
-            for (c, m) in prop.cascade_iterator(type, state, recursive, halt_on=halt_on):
-                yield (c, m)
+        visited_instances = util.IdentitySet()
+        visitables = [(self.__props.itervalues(), 'property', state)]
+
+        while visitables:
+            iterator,item_type,parent_state = visitables[-1]
+            try:
+                if item_type == 'property':
+                    prop = iterator.next()
+                    visitables.append((prop.cascade_iterator(type_, parent_state, visited_instances, halt_on), 'mapper', None))
+                elif item_type == 'mapper':
+                    instance, instance_mapper, corresponding_state  = iterator.next()
+                    yield (instance, instance_mapper)
+                    visitables.append((instance_mapper.__props.itervalues(), 'property', corresponding_state))
+            except StopIteration:
+                visitables.pop()
 
     def _instance(self, context, row, result=None, polymorphic_from=None, extension=None, only_load_props=None, refresh_instance=None):
         if not extension:

@@ -334,9 +334,9 @@ class MapperProperty(object):
 
         raise NotImplementedError()
 
-    def cascade_iterator(self, type, object, recursive=None, halt_on=None):
-        """Iterate through instances related to the given instance along
-        a particular 'cascade' path, starting with this MapperProperty.
+    def cascade_iterator(self, type_, state, visited_instances=None, halt_on=None):
+        """Iterate through instances related to the given instance for
+        a particular 'cascade', starting with this MapperProperty.
 
         See PropertyLoader for the related instance implementation.
         """

@@ -447,24 +447,22 @@ class PropertyLoader(StrategizedProperty):
                     else:
                         setattr(dest, self.key, obj)
 
-    def cascade_iterator(self, type, state, recursive, halt_on=None):
-        if not type in self.cascade:
+    def cascade_iterator(self, type_, state, visited_instances, halt_on=None):
+        if not type_ in self.cascade:
             return
-        passive = type != 'delete' or self.passive_deletes
+        passive = type_ != 'delete' or self.passive_deletes
         mapper = self.mapper.primary_mapper()
         instances = attributes.get_as_list(state, self.key, passive=passive)
         if instances:
             for c in instances:
-                if c is not None and c not in recursive and (halt_on is None or not halt_on(c)):
+                if c is not None and c not in visited_instances and (halt_on is None or not halt_on(c)):
                     if not isinstance(c, self.mapper.class_):
                         raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
-                    recursive.add(c)
+                    visited_instances.add(c)
 
                     # cascade using the mapper local to this object, so that its individual properties are located
                     instance_mapper = object_mapper(c, entity_name=mapper.entity_name)
-                    yield (c, instance_mapper)
-                    for (c2, m) in instance_mapper.cascade_iterator(type, c._state, recursive):
-                        yield (c2, m)
+                    yield (c, instance_mapper, c._state)
 
     def _get_target_class(self):
         """Return the target class of the relation, even if the

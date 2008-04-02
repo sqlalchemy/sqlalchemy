@@ -155,6 +155,9 @@ CHANGES
       one collection with another into collections.bulk_replace,
       useful to anyone building multi-level collections.
 
+    - Cascade traversal algorithm converted from recursive to
+      iterative to support deep object graphs.
+
 - sql
     - Schema-qualified tables now will place the schemaname
       ahead of the tablename in all column expressions as well
