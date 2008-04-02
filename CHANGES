@@ -261,6 +261,9 @@ CHANGES
        dialect.  Will substitute into the ODBC connection string
        if given, defaults to 'SQL Server'.
 
+     - Added a new 'max_identifier_length' keyword parameter
+       for the pyodbc dialect. 
+
      - Improvements to pyodbc + Unix. If you couldn't get that
        combination to work before, please try again.
 

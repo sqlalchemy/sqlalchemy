@@ -741,6 +741,7 @@ class MSSQLDialect_pymssql(MSSQLDialect):
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.DatabaseError) and "Error 10054" in str(e)
 
+
 class MSSQLDialect_pyodbc(MSSQLDialect):
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
@@ -775,10 +776,12 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
     ischema_names['datetime'] = MSDateTime_pyodbc
 
     def make_connect_string(self, keys):
+        if 'max_identifier_length' in keys:
+            self.max_identifier_length = int(keys.pop('max_identifier_length'))
         if 'dsn' in keys:
             connectors = ['dsn=%s' % keys['dsn']]
         else:
-            connectors = ["DRIVER={%s}" % keys.get('driver', 'SQL Server'),
+            connectors = ["DRIVER={%s}" % keys.pop('driver', 'SQL Server'),
                           'Server=%s' % keys['host'],
                           'Database=%s' % keys['database'] ]
             if 'port' in keys:
