@@ -780,6 +780,37 @@ class TimeStampTest(TestBase, AssertsExecutionResults):
         result = connection.execute(s).fetchone() 
         self.assertEqual(result[0], datetime.datetime(2007, 12, 25, 0, 0)) 
 
-
+class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
+    __only_on__ = 'postgres'
+    
+    def setUpAll(self):
+        global ss_engine
+        ss_engine = engines.testing_engine(options={'server_side_cursors':True})
+        
+    def tearDownAll(self):
+        ss_engine.dispose()
+    
+    def test_roundtrip(self):
+        test_table = Table('test_table', MetaData(ss_engine),
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+        )
+        test_table.create(checkfirst=True)
+        try:
+            test_table.insert().execute(data='data1')
+            
+            nextid = ss_engine.execute(Sequence('test_table_id_seq'))
+            test_table.insert().execute(id=nextid, data='data2')
+            
+            self.assertEquals(test_table.select().execute().fetchall(), [(1, 'data1'), (2, 'data2')])
+            
+            test_table.update().where(test_table.c.id==2).values(data=test_table.c.data + ' updated').execute()
+            self.assertEquals(test_table.select().execute().fetchall(), [(1, 'data1'), (2, 'data2 updated')])
+            test_table.delete().execute()
+            self.assertEquals(test_table.count().scalar(), 0)
+        finally:
+            test_table.drop(checkfirst=True)
+            
+    
 if __name__ == "__main__":
     testenv.main()

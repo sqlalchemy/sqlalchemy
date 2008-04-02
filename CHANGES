@@ -178,6 +178,9 @@ CHANGES
     - random() is now a generic sql function and will compile to
       the database's random implementation, if any.
 
+    - update().values() and insert().values() take keyword 
+      arguments.
+
     - Fixed an issue in select() regarding its generation of FROM
       clauses, in rare circumstances two clauses could be produced
       when one was intended to cancel out the other.  Some ORM
@@ -218,6 +221,11 @@ CHANGES
        property can also be set on individual declarative
        classes using the "__mapper_cls__" property.
 
+- postgres
+    - Got PG server side cursors back into shape, added fixed
+      unit tests as part of the default test suite.  Added
+      better uniqueness to the cursor ID [ticket:1001]
+      
 - oracle
     - The "owner" keyword on Table is now deprecated, and is
       exactly synonymous with the "schema" keyword.  Tables can

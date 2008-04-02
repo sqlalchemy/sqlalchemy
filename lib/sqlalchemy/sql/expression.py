@@ -3496,7 +3496,35 @@ class _UpdateBase(ClauseElement):
         self._bind = bind
     bind = property(bind, _set_bind)
 
-class Insert(_UpdateBase):
+class _ValuesBase(_UpdateBase):
+    def values(self, *args, **kwargs):
+        """specify the VALUES clause for an INSERT statement, or the SET clause for an UPDATE.
+
+            \**kwargs
+                key=<somevalue> arguments
+                
+            \*args
+                deprecated.  A single dictionary can be sent as the first positional argument.
+        """
+        
+        if args:
+            v = args[0]
+        else:
+            v = {}
+        if len(v) == 0 and len(kwargs) == 0:
+            return self
+        u = self._clone()
+        
+        if u.parameters is None:
+            u.parameters = u._process_colparams(v)
+            u.parameters.update(kwargs)
+        else:
+            u.parameters = self.parameters.copy()
+            u.parameters.update(u._process_colparams(v))
+            u.parameters.update(kwargs)
+        return u
+
+class Insert(_ValuesBase):
     def __init__(self, table, values=None, inline=False, bind=None, prefixes=None, **kwargs):
         self._bind = bind
         self.table = table
@@ -3520,17 +3548,6 @@ class Insert(_UpdateBase):
     def _copy_internals(self, clone=_clone):
         self.parameters = self.parameters.copy()
 
-    def values(self, v):
-        if len(v) == 0:
-            return self
-        u = self._clone()
-        if u.parameters is None:
-            u.parameters = u._process_colparams(v)
-        else:
-            u.parameters = self.parameters.copy()
-            u.parameters.update(u._process_colparams(v))
-        return u
-
     def prefix_with(self, clause):
         """Add a word or expression between INSERT and INTO. Generative.
 
@@ -3542,7 +3559,7 @@ class Insert(_UpdateBase):
         gen._prefixes = self._prefixes + [clause]
         return gen
 
-class Update(_UpdateBase):
+class Update(_ValuesBase):
     def __init__(self, table, whereclause, values=None, inline=False, bind=None, **kwargs):
         self._bind = bind
         self.table = table
@@ -3576,16 +3593,6 @@ class Update(_UpdateBase):
             s._whereclause = _literal_as_text(whereclause)
         return s
 
-    def values(self, v):
-        if len(v) == 0:
-            return self
-        u = self._clone()
-        if u.parameters is None:
-            u.parameters = u._process_colparams(v)
-        else:
-            u.parameters = self.parameters.copy()
-            u.parameters.update(u._process_colparams(v))
-        return u
 
 class Delete(_UpdateBase):
     def __init__(self, table, whereclause, bind=None):

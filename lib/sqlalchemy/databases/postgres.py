@@ -224,6 +224,10 @@ def descriptor():
         ('host',"Hostname", None),
     ]}
 
+SERVER_SIDE_CURSOR_RE = re.compile(
+    r'\s*SELECT',
+    re.I | re.UNICODE)
+
 SELECT_RE = re.compile(
     r'\s*(?:SELECT|FETCH|(UPDATE|INSERT))',
     re.I | re.UNICODE)
@@ -252,7 +256,6 @@ RETURNING_QUOTED_RE = re.compile(
         \sRETURNING\s""", re.I | re.UNICODE | re.VERBOSE)
 
 class PGExecutionContext(default.DefaultExecutionContext):
-
     def returns_rows_text(self, statement):
         m = SELECT_RE.match(statement)
         return m and (not m.group(1) or (RETURNING_RE.search(statement)
@@ -265,23 +268,20 @@ class PGExecutionContext(default.DefaultExecutionContext):
             )
 
     def create_cursor(self):
-        # executing a default or Sequence standalone creates an execution context without a statement.
-        # so slightly hacky "if no statement assume we're server side" logic
-        # TODO: dont use regexp if Compiled is used ?
         self.__is_server_side = \
             self.dialect.server_side_cursors and \
-            (self.statement is None or \
-            (SELECT_RE.match(self.statement) and not re.search(r'FOR UPDATE(?: NOWAIT)?\s*$', self.statement, re.I))
-        )
+            ((self.compiled and isinstance(self.compiled.statement, expression.Selectable)) \
+            or \
+            (not self.compiled and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement)))
 
         if self.__is_server_side:
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
-            ident = "c" + hex(random.randint(0, 65535))[2:]
+            ident = "c_%s_%s" % (hex(id(self))[2:], hex(random.randint(0, 65535))[2:])
             return self._connection.connection.cursor(ident)
         else:
             return self._connection.connection.cursor()
-
+    
     def get_result_proxy(self):
         if self.__is_server_side:
             return base.BufferedRowResultProxy(self)
@@ -763,6 +763,11 @@ class PGSchemaDropper(compiler.SchemaDropper):
             self.execute()
 
 class PGDefaultRunner(base.DefaultRunner):
+    def __init__(self, context):
+        base.DefaultRunner.__init__(self, context)
+        # craete cursor which won't conflict with a server-side cursor
+        self.cursor = context._connection.connection.cursor()
+    
     def get_column_default(self, column, isinsert=True):
         if column.primary_key:
             # pre-execute passive defaults on primary keys

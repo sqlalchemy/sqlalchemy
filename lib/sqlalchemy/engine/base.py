@@ -1806,6 +1806,7 @@ class DefaultRunner(schema.SchemaVisitor):
     def __init__(self, context):
         self.context = context
         self.dialect = context.dialect
+        self.cursor = context.cursor
 
     def get_column_default(self, column):
         if column.default is not None:
@@ -1846,8 +1847,8 @@ class DefaultRunner(schema.SchemaVisitor):
         conn = self.context._connection
         if isinstance(stmt, unicode) and not self.dialect.supports_unicode_statements:
             stmt = stmt.encode(self.dialect.encoding)
-        conn._cursor_execute(self.context.cursor, stmt, params)
-        return self.context.cursor.fetchone()[0]
+        conn._cursor_execute(self.cursor, stmt, params)
+        return self.cursor.fetchone()[0]
 
     def visit_column_onupdate(self, onupdate):
         if isinstance(onupdate.arg, expression.ClauseElement):
