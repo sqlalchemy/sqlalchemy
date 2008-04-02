@@ -126,7 +126,7 @@ AND mytable.myid = myothertable.otherid(+)",
         self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid AND thirdtable.userid = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))
 
         query = table1.join(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
-        self.assert_compile(query.select().limit(10).offset(5), "SELECT myid, name, description, otherid, othername, userid, \
+        self.assert_compile(query.select().order_by(table1.oid_column).limit(10).offset(5), "SELECT myid, name, description, otherid, othername, userid, \
 otherstuff FROM (SELECT mytable.myid AS myid, mytable.name AS name, \
 mytable.description AS description, myothertable.otherid AS otherid, \
 myothertable.othername AS othername, thirdtable.userid AS userid, \
