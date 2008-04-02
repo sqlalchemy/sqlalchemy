@@ -155,7 +155,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
             millipede = fullobject(Animal.select(Animal.c.Legs==1000000))
             ticks = fullobject(Animal.select(Animal.c.Species==u'Tick'))
 
-    @profiling.function_call_count(10384, {'2.4': 11777})
+    @profiling.function_call_count(10384, {'2.4': 11177})
     def test_4_expressions(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
