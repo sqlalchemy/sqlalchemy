@@ -552,7 +552,7 @@ class OracleDialect(default.DefaultDialect):
                     refspec =  ".".join([remote_table, remote_column])               
                     t = schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
                 else:
-                    refspec =  ".".join(x for x in [remote_owner, remote_table, remote_column] if x)
+                    refspec =  ".".join([x for x in [remote_owner, remote_table, remote_column] if x])
                     t = schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, schema=remote_owner, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
 
                 if local_column not in fk[0]:
