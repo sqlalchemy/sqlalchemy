@@ -52,7 +52,18 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             schema = 'remote_owner'
         )
 
+        s = table4.select()
+        c = s.compile(dialect=self.__dialect__)
+        assert table4.c.rem_id in set(c.result_map['rem_id'][1])
+
+        s = table4.select(use_labels=True)
+        c = s.compile(dialect=self.__dialect__)
+        print c.result_map
+        assert table4.c.rem_id in set(c.result_map['remote_owner_remotetable_rem_id'][1])
+
         self.assert_compile(table4.select(), "SELECT remotetable_1.rem_id, remotetable_1.datatype_id, remotetable_1.value FROM remote_owner.remotetable AS remotetable_1")
+        
+        self.assert_compile(table4.select(use_labels=True), "SELECT remotetable_1.rem_id AS remote_owner_remotetable_rem_id, remotetable_1.datatype_id AS remote_owner_remotetable_datatype_id, remotetable_1.value AS remote_owner_remotetable_value FROM remote_owner.remotetable AS remotetable_1")
 
         self.assert_compile(table1.join(table4, table1.c.myid==table4.c.rem_id).select(), "SELECT mytable.myid, mytable.name, mytable.description, remotetable_1.rem_id, remotetable_1.datatype_id, remotetable_1.value FROM mytable JOIN remote_owner.remotetable AS remotetable_1 ON remotetable_1.rem_id = mytable.myid")
 
