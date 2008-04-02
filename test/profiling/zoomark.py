@@ -133,7 +133,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
         for x in xrange(ITERATIONS):
             tick = i.execute(Species=u'Tick', Name=u'Tick %d' % x, Legs=8)
 
-    @profiling.function_call_count(2740, {'2.4':2996})
+    @profiling.function_call_count(2740, {'2.4':2764})
     def test_3_properties(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -155,7 +155,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
             millipede = fullobject(Animal.select(Animal.c.Legs==1000000))
             ticks = fullobject(Animal.select(Animal.c.Species==u'Tick'))
 
-    @profiling.function_call_count(10384, {'2.4': 11958})
+    @profiling.function_call_count(10384, {'2.4': 11777})
     def test_4_expressions(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
@@ -249,7 +249,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
                     select([Animal.c.Legs], distinct=True).execute().fetchall()]
             legs.sort()
 
-    @profiling.function_call_count(1116, {'2.4':1192})
+    @profiling.function_call_count(1116, {'2.4':1123})
     def test_6_editing(self):
         Zoo = metadata.tables['Zoo']
 
