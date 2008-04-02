@@ -157,12 +157,12 @@ look like::
 Mapped instances then make usage of ``Session`` in the usual way.
 """
 
-from sqlalchemy.schema import Table, SchemaItem, Column, MetaData
+from sqlalchemy.schema import Table, Column, MetaData
 from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty
 from sqlalchemy import util, exceptions
-import types
+
 
 __all__ = ['declarative_base', 'synonym_for', 'comparable_using',
            'declared_synonym']

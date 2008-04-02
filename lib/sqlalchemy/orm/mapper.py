@@ -15,9 +15,8 @@ import weakref
 from itertools import chain
 from sqlalchemy import sql, util, exceptions, logging
 from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
-from sqlalchemy.sql.expression import _corresponding_column_or_error
 from sqlalchemy.orm import sync, attributes
-from sqlalchemy.orm.util import ExtensionCarrier, create_row_adapter, state_str, instance_str
+from sqlalchemy.orm.util import ExtensionCarrier, state_str, instance_str
 from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, PropComparator
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', '_mapper_registry']
@@ -40,6 +39,7 @@ _COMPILE_MUTEX = util.threading.Lock()
 ColumnProperty = None
 SynonymProperty = None
 ComparableProperty = None
+_expire_state = None
 
 
 class Mapper(object):
