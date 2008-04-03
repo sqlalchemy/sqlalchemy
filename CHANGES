@@ -196,8 +196,13 @@ CHANGES
       symptom.
 
     - The case() function now also takes a dictionary as its whens
-      parameter. But beware that it doesn't escape literals, use
-      the literal construct for that.
+      parameter.  It also interprets the "THEN" expressions
+      as values by default, meaning case([(x==y, "foo")]) will
+      interpret "foo" as a bound value, not a SQL expression.
+      use text(expr) for literal SQL expressions in this case.
+      For the criterion itself, these may be literal strings
+      only if the "value" keyword is present, otherwise SA
+      will force explicit usage of either text() or literal().
 
 - declarative extension
     - The "synonym" function is now directly usable with

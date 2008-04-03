@@ -392,7 +392,7 @@ def not_(clause):
     result.
     """
 
-    return operators.inv(clause)
+    return operators.inv(_literal_as_binds(clause))
 
 def distinct(expr):
     """Return a ``DISTINCT`` clause."""
@@ -416,24 +416,45 @@ def case(whens, value=None, else_=None):
     """Produce a ``CASE`` statement.
 
     whens
-      A sequence of pairs or a dict to be translated into "when / then" clauses.
+      A sequence of pairs, or alternatively a dict,
+      to be translated into "WHEN / THEN" clauses.
 
     value
-      Optional for simple case statements.
+      Optional for simple case statements, produces
+      a column expression as in "CASE <expr> WHEN ..."
 
     else\_
-      Optional as well, for case defaults.
+      Optional as well, for case defaults produces 
+      the "ELSE" portion of the "CASE" statement.
+    
+    The expressions used for THEN and ELSE,
+    when specified as strings, will be interpreted 
+    as bound values. To specify textual SQL expressions 
+    for these, use the text(<string>) construct.
+    
+    The expressions used for the WHEN criterion
+    may only be literal strings when "value" is 
+    present, i.e. CASE table.somecol WHEN "x" THEN "y".  
+    Otherwise, literal strings are not accepted 
+    in this position, and either the text(<string>)
+    or literal(<string>) constructs must be used to 
+    interpret raw string values.
+      
     """
-
     try:
         whens = util.dictlike_iteritems(whens)
     except TypeError:
         pass
-
-    whenlist = [ClauseList('WHEN', c, 'THEN', r, operator=None)
+    
+    if value:
+        crit_filter = _literal_as_binds
+    else:
+        crit_filter = _no_literals
+        
+    whenlist = [ClauseList('WHEN', crit_filter(c), 'THEN', _literal_as_binds(r), operator=None)
                 for (c,r) in whens]
-    if not else_ is None:
-        whenlist.append(ClauseList('ELSE', else_, operator=None))
+    if else_ is not None:
+        whenlist.append(ClauseList('ELSE', _literal_as_binds(else_), operator=None))
     if whenlist:
         type = list(whenlist[-1])[-1].type
     else:
@@ -842,6 +863,14 @@ def _literal_as_binds(element, name=None, type_=None):
     else:
         return element
 
+def _no_literals(element):
+    if isinstance(element, Operators):
+        return element.expression_element()
+    elif _is_literal(element):
+        raise exceptions.ArgumentError("Ambiguous literal: %r.  Use the 'text()' function to indicate a SQL expression literal, or 'literal()' to indicate a bound value." % element)
+    else:
+        return element
+    
 def _corresponding_column_or_error(fromclause, column, require_embedded=False):
     c = fromclause.corresponding_column(column, require_embedded=require_embedded)
     if not c:
