@@ -440,6 +440,15 @@ def case(whens, value=None, else_=None):
     or literal(<string>) constructs must be used to 
     interpret raw string values.
       
+    Usage examples::
+
+      case([(orderline.c.qty > 100, item.c.specialprice),
+            (orderline.c.qty > 10, item.c.bulkprice)
+          ], else_=item.c.regularprice)
+      case(value=emp.c.type, whens={
+              'engineer': emp.c.salary * 1.1,
+              'manager':  emp.c.salary * 3,
+          })
     """
     try:
         whens = util.dictlike_iteritems(whens)
