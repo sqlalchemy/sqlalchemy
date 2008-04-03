@@ -6,33 +6,40 @@ An adaptation of Robert Brewers' ZooMark speed tests.
 import datetime
 import sys
 import time
+import unittest
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 
 ITERATIONS = 1
 
-# Use with conditional_call_count() if VM state of a full-suite run
-# throws off profiling numbers.
-_run_type = 'suite'
-_running_in = lambda: _run_type
+dbapi_session = engines.ReplayableSession()
+metadata = None
 
-class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
+class ZooMarkTest(TestBase):
     """Runs the ZooMark and squawks if method counts vary from the norm.
 
     Each test has an associated `call_range`, the total number of accepted
     function calls made during the test.  The count can vary between Python
     2.4 and 2.5.
+
+    Unlike a unit test, this is a ordered collection of steps.  Running
+    components individually will fail.
+
     """
 
     __only_on__ = 'postgres'
     __skip_if__ = ((lambda: sys.version_info < (2, 4)), )
 
-    @profiling.function_call_count(2028)
-    def test_1_create_tables(self):
+    def test_baseline_0_setup(self):
         global metadata
-        metadata = MetaData(testing.db)
 
+        creator = testing.db.pool._creator
+        recorder = lambda: dbapi_session.recorder(creator())
+        engine = engines.testing_engine(options={'creator':recorder})
+        metadata = MetaData(engine)
+
+    def test_baseline_1_create_tables(self):
         Zoo = Table('Zoo', metadata,
                     Column('ID', Integer, Sequence('zoo_id_seq'),
                            primary_key=True, index=True),
@@ -59,8 +66,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
                        )
         metadata.create_all()
 
-    @profiling.function_call_count(3635)
-    def test_1a_populate(self):
+    def test_baseline_1a_populate(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
 
@@ -126,15 +132,13 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
         Animal.insert().execute(Species=u'Ape', Name=u'Hua Mei', Legs=2,
                                 MotherID=bai_yun)
 
-    @profiling.function_call_count(195)
-    def test_2_insert(self):
+    def test_baseline_2_insert(self):
         Animal = metadata.tables['Animal']
         i = Animal.insert()
         for x in xrange(ITERATIONS):
             tick = i.execute(Species=u'Tick', Name=u'Tick %d' % x, Legs=8)
 
-    @profiling.function_call_count(2740, {'2.4':2764})
-    def test_3_properties(self):
+    def test_baseline_3_properties(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
 
@@ -155,8 +159,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
             millipede = fullobject(Animal.select(Animal.c.Legs==1000000))
             ticks = fullobject(Animal.select(Animal.c.Species==u'Tick'))
 
-    @profiling.function_call_count(10384, {'2.4': 11177})
-    def test_4_expressions(self):
+    def test_baseline_4_expressions(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
 
@@ -208,8 +211,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
             assert len(fulltable(Animal.select(func.date_part('month', Animal.c.LastEscape) == 12))) == 1
             assert len(fulltable(Animal.select(func.date_part('day', Animal.c.LastEscape) == 21))) == 1
 
-    @profiling.function_call_count(1046, {'2.4': 1088})
-    def test_5_aggregates(self):
+    def test_baseline_5_aggregates(self):
         Animal = metadata.tables['Animal']
         Zoo = metadata.tables['Zoo']
 
@@ -249,8 +251,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
                     select([Animal.c.Legs], distinct=True).execute().fetchall()]
             legs.sort()
 
-    @profiling.function_call_count(1116, {'2.4':1123})
-    def test_6_editing(self):
+    def test_baseline_6_editing(self):
         Zoo = metadata.tables['Zoo']
 
         for x in xrange(ITERATIONS):
@@ -277,8 +278,7 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
             SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().fetchone()
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
 
-    @profiling.function_call_count(2139, {'2.4': 2198})
-    def test_7_multiview(self):
+    def test_baseline_7_multiview(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
 
@@ -306,10 +306,56 @@ class ZooMarkTest(testing.TestBase, AssertsExecutionResults):
             e = fulltable(select([Zoo.c.Name, Animal.c.Species],
                                  from_obj=[outerjoin(Animal, Zoo)]))
 
-    def test_8_drop(self):
+    def test_baseline_8_drop(self):
         metadata.drop_all()
+
+    # Now, run all of these tests again with the DB-API driver factored out:
+    # the ReplayableSession playback stands in for the database.
+
+    # How awkward is this in a unittest framework?  Very.
+
+    def test_profile_0(self):
+        global metadata
+
+        player = lambda: dbapi_session.player()
+        engine = create_engine('postgres:///', creator=player)
+        metadata = MetaData(engine)
+
+    @profiling.function_call_count(3230, {'2.4': 1796})
+    def test_profile_1_create_tables(self):
+        self.test_baseline_1_create_tables()
+
+    @profiling.function_call_count(6064, {'2.4': 3635})
+    def test_profile_1a_populate(self):
+        self.test_baseline_1a_populate()
+
+    @profiling.function_call_count(339, {'2.4': 195})
+    def test_profile_2_insert(self):
+        self.test_baseline_2_insert()
+
+    @profiling.function_call_count(4923, {'2.4': 2557})
+    def test_profile_3_properties(self):
+        self.test_baseline_3_properties()
+
+    @profiling.function_call_count(18119, {'2.4': 10549})
+    def test_profile_4_expressions(self):
+        self.test_baseline_4_expressions()
+
+    @profiling.function_call_count(1617, {'2.4': 1032})
+    def test_profile_5_aggregates(self):
+        self.test_baseline_5_aggregates()
+
+    @profiling.function_call_count(1988, {'2.4': 1048})
+    def test_profile_6_editing(self):
+        self.test_baseline_6_editing()
+
+    @profiling.function_call_count(3614, {'2.4': 2198})
+    def test_profile_7_multiview(self):
+        self.test_baseline_7_multiview()
+
+    def test_profile_8_drop(self):
+        self.test_baseline_8_drop()
 
 
 if __name__ == '__main__':
-    _run_type = 'isolation'
     testenv.main()

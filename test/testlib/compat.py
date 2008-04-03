@@ -1,6 +1,6 @@
 import itertools, new, sys, warnings
 
-__all__ = 'set', 'frozenset', 'sorted', '_function_named'
+__all__ = 'set', 'frozenset', 'sorted', '_function_named', 'deque'
 
 try:
     set = set
@@ -67,6 +67,20 @@ except NameError:
         else:
             l.sort()
         return l
+
+try:
+    from collections import deque
+except ImportError:
+    class deque(list):
+        def appendleft(self, x):
+            self.insert(0, x)
+        def popleft(self):
+            return self.pop(0)
+        def extendleft(self, iterable):
+            items = list(iterable)
+            items.reverse()
+            for x in items:
+                self.insert(0, x)
 
 def _function_named(fn, newname):
     try:

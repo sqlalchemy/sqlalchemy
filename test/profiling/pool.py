@@ -2,12 +2,18 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 from sqlalchemy.pool import QueuePool
-from sqlalchemy.databases import sqlite
+
 
 class QueuePoolTest(TestBase, AssertsExecutionResults):
+    class Connection(object):
+        def close(self):
+            pass
+
     def setUp(self):
         global pool
-        pool = QueuePool(creator = lambda: sqlite.SQLiteDialect.dbapi().connect(':memory:'), pool_size = 3, max_overflow = -1, use_threadlocal = True)
+        pool = QueuePool(creator=lambda: self.Connection,
+                         pool_size=3, max_overflow=-1,
+                         use_threadlocal=True)
 
     # the WeakValueDictionary used for the pool's "threadlocal" idea adds 1-6
     # method calls to each of these.  however its just a lot easier stability
@@ -16,7 +22,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
     # and though the solution there is simple, it still doesn't solve the
     # issue of "dead" weakrefs sitting in the dict taking up space
 
-    @profiling.profiled('pooltest_connect', call_range=(40, 50), always=True)
+    @profiling.function_call_count(63, {'2.3': 42, '2.4': 43})
     def test_first_connect(self):
         conn = pool.connect()
 
@@ -24,7 +30,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
         conn = pool.connect()
         conn.close()
 
-        @profiling.profiled('pooltest_second_connect', call_range=(24, 24), always=True)
+        @profiling.function_call_count(39, {'2.3': 26, '2.4': 26})
         def go():
             conn2 = pool.connect()
             return conn2
@@ -33,10 +39,11 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
     def test_second_samethread_connect(self):
         conn = pool.connect()
 
-        @profiling.profiled('pooltest_samethread_connect', call_range=(4, 4), always=True)
+        @profiling.function_call_count(7, {'2.3': 4, '2.4': 4})
         def go():
             return pool.connect()
         c2 = go()
+
 
 if __name__ == '__main__':
     testenv.main()

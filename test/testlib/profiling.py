@@ -12,6 +12,7 @@ profile_config = { 'targets': set(),
                    'report': True,
                    'sort': ('time', 'calls'),
                    'limit': None }
+profiler = None
 
 def profiled(target=None, **target_opts):
     """Optional function profiling.
@@ -42,19 +43,12 @@ def profiled(target=None, **target_opts):
                 not target_opts.get('always', None)):
                 return fn(*args, **kw)
 
-            prof = hotshot.Profile(filename)
-            began = time.time()
-            prof.start()
-            try:
-                result = fn(*args, **kw)
-            finally:
-                prof.stop()
-                ended = time.time()
-                prof.close()
+            elapsed, load_stats, result = _profile(
+                filename, fn, *args, **kw)
 
             if not testlib.config.options.quiet:
                 print "Profiled target '%s', wall time: %.2f seconds" % (
-                    target, ended - began)
+                    target, elapsed)
 
             report = target_opts.get('report', profile_config['report'])
             if report and testlib.config.options.verbose:
@@ -63,19 +57,12 @@ def profiled(target=None, **target_opts):
                 print "Profile report for target '%s' (%s)" % (
                     target, filename)
 
-                stats = hotshot.stats.load(filename)
+                stats = load_stats()
                 stats.sort_stats(*sort_)
                 if limit:
                     stats.print_stats(limit)
                 else:
                     stats.print_stats()
-
-            assert_range = target_opts.get('call_range')
-            if assert_range:
-                if isinstance(assert_range, dict):
-                    assert_range = assert_range.get(testlib.config.db, 'default')
-                stats = hotshot.stats.load(filename)
-                assert stats.total_calls >= assert_range[0] and stats.total_calls <= assert_range[1], stats.total_calls
 
             os.unlink(filename)
             return result
@@ -118,23 +105,21 @@ def function_call_count(count=None, versions={}, variance=0.05):
     if count is None:
         return lambda fn: fn
 
-    import hotshot, hotshot.stats
-
     def decorator(fn):
         def counted(*args, **kw):
             try:
                 filename = "%s.prof" % fn.__name__
 
-                prof = hotshot.Profile(filename)
-                prof.start()
-                try:
-                    result = fn(*args, **kw)
-                finally:
-                    prof.stop()
-                    prof.close()
+                elapsed, stat_loader, result = _profile(
+                    filename, fn, *args, **kw)
 
-                stats = hotshot.stats.load(filename)
+                stats = stat_loader()
                 calls = stats.total_calls
+
+                if testlib.config.options.verbose:
+                    stats.sort_stats('calls', 'cumulative')
+                    stats.print_stats()
+
                 deviance = int(count * variance)
                 if (calls < (count - deviance) or
                     calls > (count + deviance)):
@@ -142,10 +127,6 @@ def function_call_count(count=None, versions={}, variance=0.05):
                         "Function call count %s not within %s%% "
                         "of expected %s. (Python version %s)" % (
                         calls, (variance * 100), count, py_version))
-
-                if testlib.config.options.verbose:
-                    stats.sort_stats('calls', 'cumulative')
-                    stats.print_stats()
 
                 return result
             finally:
@@ -179,3 +160,49 @@ def conditional_call_count(discriminator, categories):
             return rewrapped(*args, **kw)
         return _function_named(at_runtime, fn.__name__)
     return decorator
+
+
+def _profile(filename, fn, *args, **kw):
+    global profiler
+    if not profiler:
+        try:
+            import cProfile
+            profiler = 'cProfile'
+        except ImportError:
+            profiler = 'hotshot'
+
+    if profiler == 'cProfile':
+        return _profile_cProfile(filename, fn, *args, **kw)
+    else:
+        return _profile_hotshot(filename, fn, *args, **kw)
+
+def _profile_cProfile(filename, fn, *args, **kw):
+    import cProfile, gc, pstats, time
+
+    load_stats = lambda: pstats.Stats(filename)
+    gc.collect()
+
+    began = time.time()
+    cProfile.runctx('result = fn(*args, **kw)', globals(), locals(),
+                    filename=filename)
+    ended = time.time()
+
+    return ended - began, load_stats, locals()['result']
+
+def _profile_hotshot(filename, fn, *args, **kw):
+    import gc, hotshot, hotshot.stats, time
+    load_stats = lambda: hotshot.stats.load(filename)
+
+    gc.collect()
+    prof = hotshot.Profile(filename)
+    began = time.time()
+    prof.start()
+    try:
+        result = fn(*args, **kw)
+    finally:
+        prof.stop()
+        ended = time.time()
+        prof.close()
+
+    return ended - began, load_stats, result
+
