@@ -416,7 +416,7 @@ def case(whens, value=None, else_=None):
     """Produce a ``CASE`` statement.
 
     whens
-      A sequence of pairs to be translated into "when / then" clauses.
+      A sequence of pairs or a dict to be translated into "when / then" clauses.
 
     value
       Optional for simple case statements.
@@ -424,6 +424,11 @@ def case(whens, value=None, else_=None):
     else\_
       Optional as well, for case defaults.
     """
+
+    try:
+        whens = util.dictlike_iteritems(whens)
+    except TypeError:
+        pass
 
     whenlist = [ClauseList('WHEN', c, 'THEN', r, operator=None)
                 for (c,r) in whens]

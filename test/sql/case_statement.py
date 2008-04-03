@@ -2,6 +2,7 @@ import testenv; testenv.configure_for_tests()
 import sys
 from sqlalchemy import *
 from testlib import *
+from sqlalchemy import util
 
 
 class CaseTest(TestBase):
@@ -84,6 +85,38 @@ class CaseTest(TestBase):
             (6, 4, 'pk_4_data'),
             (6, 5, 'pk_5_data'),
             (0, 6, 'pk_6_data')
+        ]
+
+    @testing.fails_on('maxdb')
+    def testcase_with_dict(self):
+        query = select([case({
+                    info_table.c.pk < 3: literal('lessthan3'),
+                    info_table.c.pk >= 3: literal('gt3'),
+                }, else_=literal('other')),
+                info_table.c.pk, info_table.c.info
+            ],
+            from_obj=[info_table])
+        assert query.execute().fetchall() == [
+            ('lessthan3', 1, 'pk_1_data'),
+            ('lessthan3', 2, 'pk_2_data'),
+            ('gt3', 3, 'pk_3_data'),
+            ('gt3', 4, 'pk_4_data'),
+            ('gt3', 5, 'pk_5_data'),
+            ('gt3', 6, 'pk_6_data')
+        ]
+
+        simple_query = select([case({
+                    1: literal('one'),
+                    2: literal('two'),
+                }, value=info_table.c.pk, else_=literal('other')),
+                info_table.c.pk
+            ],
+            whereclause=info_table.c.pk < 4,
+            from_obj=[info_table])
+        assert simple_query.execute().fetchall() == [
+            ('one', 1),
+            ('two', 2),
+            ('other', 3),
         ]
 
 if __name__ == "__main__":

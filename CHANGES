@@ -195,6 +195,10 @@ CHANGES
       queries with lots of eager loads might have seen this
       symptom.
 
+    - The case() function now also takes a dictionary as its whens
+      parameter. But beware that it doesn't escape literals, use
+      the literal construct for that.
+
 - declarative extension
     - The "synonym" function is now directly usable with
       "declarative".  Pass in the decorated property using the
