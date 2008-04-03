@@ -105,6 +105,11 @@ CHANGES
     - query.order_by() and query.group_by() will accept multiple
       arguments using *args (like select() already does).
 
+    - Added some convenience descriptors to Query: 
+      query.statement returns the full SELECT construct,
+      query.whereclause returns just the WHERE part of the
+      SELECT construct.
+
     - Fixed/covered case when using a False/0 value as a
       polymorphic discriminator.
 

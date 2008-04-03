@@ -161,6 +161,16 @@ class Query(object):
             return self._session
     session = property(session)
 
+    def statement(self):
+        """return the full SELECT statement represented by this Query."""
+        return self._compile_context().statement
+    statement = property(statement)
+
+    def whereclause(self):
+        """return the WHERE criterion for this Query."""
+        return self._criterion
+    whereclause = property(whereclause)
+
     def _with_current_path(self, path):
         q = self._clone()
         q._current_path = path
