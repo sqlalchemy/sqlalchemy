@@ -11,7 +11,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
 
     def setUp(self):
         global pool
-        pool = QueuePool(creator=lambda: self.Connection,
+        pool = QueuePool(creator=self.Connection,
                          pool_size=3, max_overflow=-1,
                          use_threadlocal=True)
 

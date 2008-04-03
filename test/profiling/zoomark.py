@@ -6,7 +6,6 @@ An adaptation of Robert Brewers' ZooMark speed tests.
 import datetime
 import sys
 import time
-import unittest
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
