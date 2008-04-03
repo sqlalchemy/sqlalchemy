@@ -194,22 +194,18 @@ class PropertyAliasedClauses(AliasedClauses):
         
         if prop.secondary:
             self.secondary = prop.secondary.alias()
-            if parentclauses is not None:
-                primary_aliasizer = sql_util.ClauseAdapter(self.secondary).chain(sql_util.ClauseAdapter(parentclauses.alias, equivalents=parentclauses.equivalents))
-                secondary_aliasizer = sql_util.ClauseAdapter(self.alias, equivalents=self.equivalents).chain(sql_util.ClauseAdapter(self.secondary))
+            primary_aliasizer = sql_util.ClauseAdapter(self.secondary)
+            secondary_aliasizer = sql_util.ClauseAdapter(self.alias, equivalents=self.equivalents).chain(sql_util.ClauseAdapter(self.secondary))
 
-            else:
-                primary_aliasizer = sql_util.ClauseAdapter(self.secondary)
-                secondary_aliasizer = sql_util.ClauseAdapter(self.alias, equivalents=self.equivalents).chain(sql_util.ClauseAdapter(self.secondary))
-                
+            if parentclauses is not None:
+                primary_aliasizer.chain(sql_util.ClauseAdapter(parentclauses.alias, equivalents=parentclauses.equivalents))
+
             self.secondaryjoin = secondary_aliasizer.traverse(secondaryjoin, clone=True)
             self.primaryjoin = primary_aliasizer.traverse(primaryjoin, clone=True)
         else:
+            primary_aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side, equivalents=self.equivalents)
             if parentclauses is not None: 
-                primary_aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side, equivalents=self.equivalents)
                 primary_aliasizer.chain(sql_util.ClauseAdapter(parentclauses.alias, exclude=prop.remote_side, equivalents=parentclauses.equivalents))
-            else:
-                primary_aliasizer = sql_util.ClauseAdapter(self.alias, exclude=prop.local_side, equivalents=self.equivalents)
             
             self.primaryjoin = primary_aliasizer.traverse(primaryjoin, clone=True)
             self.secondary = None
