@@ -31,11 +31,11 @@ CHANGES
       been refactored.  Behavior should be slightly more
       intelligent, primarily in terms of error messages which
       have been pared down to be more readable.  In a slight
-      number of scenarios it can better resolve the correct 
+      number of scenarios it can better resolve the correct
       foreign key than before.
 
-    - Added comparable_property(), adds query Comparator behavior
-      to regular, unmanaged Python properties
+    - Added comparable_property(), adds query Comparator
+      behavior to regular, unmanaged Python properties
 
     - The functionality of query.with_polymorphic() has been
       added to mapper() as a configuration option.
@@ -112,7 +112,7 @@ CHANGES
     - query.order_by() and query.group_by() will accept multiple
       arguments using *args (like select() already does).
 
-    - Added some convenience descriptors to Query: 
+    - Added some convenience descriptors to Query:
       query.statement returns the full SELECT construct,
       query.whereclause returns just the WHERE part of the
       SELECT construct.
@@ -193,23 +193,24 @@ CHANGES
     - random() is now a generic sql function and will compile to
       the database's random implementation, if any.
 
-    - update().values() and insert().values() take keyword 
+    - update().values() and insert().values() take keyword
       arguments.
 
-    - Fixed an issue in select() regarding its generation of FROM
-      clauses, in rare circumstances two clauses could be produced
-      when one was intended to cancel out the other.  Some ORM
-      queries with lots of eager loads might have seen this
-      symptom.
+    - Fixed an issue in select() regarding its generation of
+      FROM clauses, in rare circumstances two clauses could be
+      produced when one was intended to cancel out the other.
+      Some ORM queries with lots of eager loads might have seen
+      this symptom.
 
-    - The case() function now also takes a dictionary as its whens
-      parameter.  It also interprets the "THEN" expressions
-      as values by default, meaning case([(x==y, "foo")]) will
-      interpret "foo" as a bound value, not a SQL expression.
-      use text(expr) for literal SQL expressions in this case.
-      For the criterion itself, these may be literal strings
-      only if the "value" keyword is present, otherwise SA
-      will force explicit usage of either text() or literal().
+    - The case() function now also takes a dictionary as its
+      whens parameter.  It also interprets the "THEN"
+      expressions as values by default, meaning case([(x==y,
+      "foo")]) will interpret "foo" as a bound value, not a SQL
+      expression.  use text(expr) for literal SQL expressions in
+      this case.  For the criterion itself, these may be literal
+      strings only if the "value" keyword is present, otherwise
+      SA will force explicit usage of either text() or
+      literal().
 
 - declarative extension
     - The "synonym" function is now directly usable with
@@ -249,7 +250,7 @@ CHANGES
     - Got PG server side cursors back into shape, added fixed
       unit tests as part of the default test suite.  Added
       better uniqueness to the cursor ID [ticket:1001]
-      
+
 - oracle
     - The "owner" keyword on Table is now deprecated, and is
       exactly synonymous with the "schema" keyword.  Tables can
@@ -282,8 +283,8 @@ CHANGES
        dialect.  Will substitute into the ODBC connection string
        if given, defaults to 'SQL Server'.
 
-     - Added a new 'max_identifier_length' keyword parameter
-       for the pyodbc dialect. 
+     - Added a new 'max_identifier_length' keyword parameter for
+       the pyodbc dialect.
 
      - Improvements to pyodbc + Unix. If you couldn't get that
        combination to work before, please try again.
