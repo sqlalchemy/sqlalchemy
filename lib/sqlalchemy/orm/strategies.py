@@ -354,7 +354,7 @@ class LazyLoader(AbstractRelationLoader):
         equated_columns = {}
 
         secondaryjoin = prop.secondaryjoin
-        equated = dict(prop.equated_pairs)
+        equated = dict(prop.local_remote_pairs)
         
         def should_bind(targetcol, othercol):
             if reverse_direction and not secondaryjoin:

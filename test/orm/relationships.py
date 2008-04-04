@@ -973,7 +973,7 @@ class InvalidRelationEscalationTest(ORMTest):
             'foos':relation(Foo, primaryjoin=foos.c.id>foos.c.fid, viewonly=True, foreign_keys=[foos.c.fid])
         })
         compile_mappers()
-        self.assertEquals(Foo.foos.property.equated_pairs, [(foos.c.id, foos.c.fid)])
+        self.assertEquals(Foo.foos.property.local_remote_pairs, [(foos.c.id, foos.c.fid)])
 
     def test_equated(self):
         mapper(Foo, foos, properties={

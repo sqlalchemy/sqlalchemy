@@ -590,9 +590,9 @@ class PropertyLoader(StrategizedProperty):
         else:
             self.secondary_synchronize_pairs = None
     
-    def equated_pairs(self):
+    def local_remote_pairs(self):
         return zip(self.local_side, self.remote_side)
-    equated_pairs = property(equated_pairs)
+    local_remote_pairs = property(local_remote_pairs)
     
     def __determine_remote_side(self):
         if self.remote_side:
@@ -667,11 +667,12 @@ class PropertyLoader(StrategizedProperty):
 
     def _post_init(self):
         if logging.is_info_enabled(self.logger):
-            self.logger.info(str(self) + " setup primary join " + str(self.primaryjoin))
-            self.logger.info(str(self) + " setup secondary join " + str(self.secondaryjoin))
-            self.logger.info(str(self) + " synchronize pairs " + ",".join(["(%s => %s)" % (l, r) for l, r in self.synchronize_pairs]))
-            self.logger.info(str(self) + " equated pairs " + ",".join(["(%s == %s)" % (l, r) for l, r in self.equated_pairs]))
-            self.logger.info(str(self) + " relation direction " + (self.direction is ONETOMANY and "one-to-many" or (self.direction is MANYTOONE and "many-to-one" or "many-to-many")))
+            self.logger.info(str(self) + " setup primary join %s" % self.primaryjoin)
+            self.logger.info(str(self) + " setup secondary join %s" % self.secondaryjoin)
+            self.logger.info(str(self) + " synchronize pairs [%s]" % ",".join(["(%s => %s)" % (l, r) for l, r in self.synchronize_pairs]))
+            self.logger.info(str(self) + " secondary synchronize pairs [%s]" % ",".join(["(%s => %s)" % (l, r) for l, r in self.secondary_synchronize_pairs or []]))
+            self.logger.info(str(self) + " local/remote pairs [%s]" % ",".join(["(%s / %s)" % (l, r) for l, r in self.local_remote_pairs]))
+            self.logger.info(str(self) + " relation direction %s" % self.direction)
 
         if self.uselist is None and self.direction is MANYTOONE:
             self.uselist = False
