@@ -863,6 +863,7 @@ class ViewOnlyTest2(ORMTest):
         assert set([x.t2id for x in c1.t2_view]) == set([c2b.t2id])
 
 class ViewOnlyTest3(ORMTest):
+    """test relating on a join that has no equated columns"""
     def define_tables(self, metadata):
         global foos, bars
         foos = Table('foos', metadata, Column('id', Integer, primary_key=True))
@@ -893,6 +894,88 @@ class ViewOnlyTest3(ORMTest):
         self.assertEquals(sess.query(Foo).filter_by(id=4).one(), Foo(id=4, bars=[Bar(fid=2), Bar(fid=3)]))
         self.assertEquals(sess.query(Foo).filter_by(id=9).one(), Foo(id=9, bars=[Bar(fid=2), Bar(fid=3), Bar(fid=6), Bar(fid=7)]))
 
+class ViewOnlyTest4(ORMTest):
+    """test relating on a join that contains the same 'remote' column twice"""
+    def define_tables(self, metadata):
+        global foos, bars
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True), 
+            Column('bid1', Integer,ForeignKey('bars.id')),
+            Column('bid2', Integer,ForeignKey('bars.id')))
+            
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True), Column('data', String(50)))
+        
+    def test_relation_on_or(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=or_(bars.c.id==foos.c.bid1, bars.c.id==foos.c.bid2), uselist=True, viewonly=True)
+        })
+
+        mapper(Bar, bars)
+        sess = create_session()
+        b1 = Bar(id=1, data='b1')
+        b2 = Bar(id=2, data='b2')
+        b3 = Bar(id=3, data='b3')
+        f1 = Foo(bid1=1, bid2=2)
+        f2 = Foo(bid1=3, bid2=None)
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.save(f1)
+        sess.save(f2)
+        sess.flush()
+        
+        sess.clear()
+        self.assertEquals(sess.query(Foo).filter_by(id=f1.id).one(), Foo(bars=[Bar(data='b1'), Bar(data='b2')]))
+        self.assertEquals(sess.query(Foo).filter_by(id=f2.id).one(), Foo(bars=[Bar(data='b3')]))
+
+class ViewOnlyTest5(ORMTest):
+    """test relating on a join that contains the same 'local' column twice"""
+    def define_tables(self, metadata):
+        global foos, bars
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True), 
+            Column('data', String(50))
+            )
+
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True), 
+                Column('fid1', Integer, ForeignKey('foos.id')),
+                Column('fid2', Integer, ForeignKey('foos.id')),
+                Column('data', String(50))
+            )
+
+    def test_relation_on_or(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=or_(bars.c.fid1==foos.c.id, bars.c.fid2==foos.c.id), viewonly=True)
+        })
+
+        mapper(Bar, bars)
+        sess = create_session()
+        f1 = Foo(id=1, data='f1')
+        f2 = Foo(id=2, data='f2')
+        b1 = Bar(fid1=1, data='b1')
+        b2 = Bar(fid2=1, data='b2')
+        b3 = Bar(fid1=2, data='b3')
+        b4 = Bar(fid1=1, fid2=2, data='b4')
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.save(b4)
+        sess.save(f1)
+        sess.save(f2)
+        sess.flush()
+
+        sess.clear()
+        self.assertEquals(sess.query(Foo).filter_by(id=f1.id).one(), Foo(bars=[Bar(data='b1'), Bar(data='b2'), Bar(data='b4')]))
+        self.assertEquals(sess.query(Foo).filter_by(id=f2.id).one(), Foo(bars=[Bar(data='b3'), Bar(data='b4')]))
+    
 class InvalidRelationEscalationTest(ORMTest):
     def define_tables(self, metadata):
         global foos, bars, Foo, Bar

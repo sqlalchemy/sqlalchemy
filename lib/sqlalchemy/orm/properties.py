@@ -572,7 +572,7 @@ class PropertyLoader(StrategizedProperty):
         self.synchronize_pairs = eq_pairs
         
         if self.secondaryjoin:
-            sq_pairs = criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=arg_foreign_keys)
+            sq_pairs = criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=self.viewonly)
             sq_pairs = [(l, r) for l, r in sq_pairs if self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)]
             
             if not sq_pairs:
@@ -590,24 +590,23 @@ class PropertyLoader(StrategizedProperty):
         else:
             self.secondary_synchronize_pairs = None
     
-    def local_remote_pairs(self):
-        return zip(self.local_side, self.remote_side)
-    local_remote_pairs = property(local_remote_pairs)
-    
     def __determine_remote_side(self):
         if self.remote_side:
             if self.direction is MANYTOONE:
                 eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_referenced_keys=self.remote_side, any_operator=True)
             else:
                 eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self.remote_side, any_operator=True)
-
-            if self.secondaryjoin:
-                sq_pairs = criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=self.foreign_keys, any_operator=True)
-                sq_pairs = [(l, r) for l, r in sq_pairs if self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)]
-                eq_pairs += sq_pairs
         else:
-            eq_pairs = zip(self._opposite_side, self.foreign_keys)
-
+            if self.viewonly:
+                eq_pairs = self.synchronize_pairs
+            else:
+                eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self.foreign_keys, any_operator=True)
+                if self.secondaryjoin:
+                    sq_pairs = criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=self.foreign_keys, any_operator=True)
+                    eq_pairs += sq_pairs
+                eq_pairs = [(l, r) for l, r in eq_pairs if self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)]
+        
+        self.local_remote_pairs = eq_pairs
         if self.direction is MANYTOONE:
             self.remote_side, self.local_side = [util.OrderedSet(s) for s in zip(*eq_pairs)]
         else:

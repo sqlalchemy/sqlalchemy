@@ -354,13 +354,13 @@ class LazyLoader(AbstractRelationLoader):
         equated_columns = {}
 
         secondaryjoin = prop.secondaryjoin
-        equated = dict(prop.local_remote_pairs)
+        local = prop.local_side
         
         def should_bind(targetcol, othercol):
             if reverse_direction and not secondaryjoin:
-                return othercol in equated
+                return othercol in local
             else:
-                return targetcol in equated
+                return targetcol in local
 
         def visit_binary(binary):
             leftcol = binary.left

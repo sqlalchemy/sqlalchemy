@@ -4,6 +4,12 @@ CHANGES
 
 0.4.6
 =====
+- orm
+    - Fix to the recent relation() refactoring which fixes
+      exotic relations which join between local and remote table
+      multiple times, with a common column shared between the 
+      joins.
+      
 - sql
     - Fixed bug with union() when applied to non-Table connected
       select statements
