@@ -276,11 +276,6 @@ class Table(SchemaItem, expression.TableClause):
         return _get_table_key(self.name, self.schema)
     key = property(key)
 
-    def _export_columns(self, columns=None):
-        # override FromClause's collection initialization logic; Table
-        # implements it differently
-        pass
-
     def _set_primary_key(self, pk):
         if getattr(self, '_primary_key', None) in self.constraints:
             self.constraints.remove(self._primary_key)

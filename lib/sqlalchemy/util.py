@@ -495,7 +495,10 @@ class OrderedProperties(object):
 
     def __contains__(self, key):
         return key in self._data
-
+    
+    def update(self, value):
+        self._data.update(value)
+        
     def get(self, key, default=None):
         if key in self:
             return self[key]
