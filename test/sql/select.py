@@ -888,6 +888,13 @@ SELECT thirdtable.userid FROM thirdtable)"
             "SELECT myothertable.otherid FROM myothertable EXCEPT SELECT thirdtable.userid FROM thirdtable \
 UNION SELECT mytable.myid FROM mytable"
         )
+        
+        # test unions working with non-oid selectables
+        s = select([column('foo'), column('bar')])
+        s = union(s, s)
+        s = union(s, s)
+        self.assert_compile(s, "SELECT foo, bar UNION SELECT foo, bar UNION (SELECT foo, bar UNION SELECT foo, bar)")
+        
 
     @testing.uses_deprecated('//get_params')
     def test_binds(self):

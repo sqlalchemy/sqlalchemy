@@ -2993,11 +2993,14 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                 self.selects.append(s)
 
         _SelectBaseMixin.__init__(self, **kwargs)
-
+        
+        self.oid_column = None
         for s in self.selects:
+            # TODO: need to repair proxy_column here to 
+            # not require full traversal
             if s.oid_column:
                 self.oid_column = self._proxy_column(s.oid_column)
-
+    
     def self_group(self, against=None):
         return _FromGrouping(self)
 

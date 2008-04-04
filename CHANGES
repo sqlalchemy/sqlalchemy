@@ -1,7 +1,12 @@
 =======
 CHANGES
 =======
-
+0.4.6
+=====
+- sql
+    - Fixed bug with union() when applied to non-Table connected
+      select statements
+      
 0.4.5
 =====
 - orm
