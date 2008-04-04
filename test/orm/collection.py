@@ -1436,5 +1436,293 @@ class DictHelpersTest(ORMTest):
         collection_class = lambda: Ordered2(lambda v: (v.a, v.b))
         self._test_composite_mapped(collection_class)
 
+# TODO: are these tests redundant vs. the above tests ?
+# remove if so
+class CustomCollectionsTest(ORMTest):
+    def define_tables(self, metadata):
+        global sometable, someothertable
+        sometable = Table('sometable', metadata,
+            Column('col1',Integer, primary_key=True),
+            Column('data', String(30)))
+        someothertable = Table('someothertable', metadata,
+            Column('col1', Integer, primary_key=True),
+            Column('scol1', Integer, ForeignKey(sometable.c.col1)),
+            Column('data', String(20))
+        )
+    def test_basic(self):
+        class MyList(list):
+            pass
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar, collection_class=MyList)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        assert isinstance(f.bars, MyList)
+        
+    def test_lazyload(self):
+        """test that a 'set' can be used as a collection and can lazyload."""
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar, collection_class=set)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        f.bars.add(Bar())
+        f.bars.add(Bar())
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+        f.bars.clear()
+
+    def test_dict(self):
+        """test that a 'dict' can be used as a collection and can lazyload."""
+
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        class AppenderDict(dict):
+            @collection.appender
+            def set(self, item):
+                self[id(item)] = item
+            @collection.remover
+            def remove(self, item):
+                if id(item) in self:
+                    del self[id(item)]
+
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar, collection_class=AppenderDict)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        f.bars.set(Bar())
+        f.bars.set(Bar())
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+        f.bars.clear()
+
+    def test_dict_wrapper(self):
+        """test that the supplied 'dict' wrapper can be used as a collection and can lazyload."""
+
+        class Foo(object):
+            pass
+        class Bar(object):
+            def __init__(self, data): self.data = data
+
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar,
+                collection_class=collections.column_mapped_collection(someothertable.c.data))
+        })
+        mapper(Bar, someothertable)
+
+        f = Foo()
+        col = collections.collection_adapter(f.bars)
+        col.append_with_event(Bar('a'))
+        col.append_with_event(Bar('b'))
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+
+        existing = set([id(b) for b in f.bars.values()])
+
+        col = collections.collection_adapter(f.bars)
+        col.append_with_event(Bar('b'))
+        f.bars['a'] = Bar('a')
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+
+        replaced = set([id(b) for b in f.bars.values()])
+        self.assert_(existing != replaced)
+
+    def test_list(self):
+        class Parent(object):
+            pass
+        class Child(object):
+            pass
+
+        mapper(Parent, sometable, properties={
+            'children':relation(Child, collection_class=list)
+        })
+        mapper(Child, someothertable)
+
+        control = list()
+        p = Parent()
+
+        o = Child()
+        control.append(o)
+        p.children.append(o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child(), Child(), Child(), Child()]
+        control.extend(o)
+        p.children.extend(o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        assert control[0] == p.children[0]
+        assert control[-1] == p.children[-1]
+        assert control[1:3] == p.children[1:3]
+
+        del control[1]
+        del p.children[1]
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child()]
+        control[1:3] = o
+        p.children[1:3] = o
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child(), Child(), Child(), Child()]
+        control[1:3] = o
+        p.children[1:3] = o
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child(), Child(), Child(), Child()]
+        control[-1:-2] = o
+        p.children[-1:-2] = o
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child(), Child(), Child(), Child()]
+        control[4:] = o
+        p.children[4:] = o
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = Child()
+        control.insert(0, o)
+        p.children.insert(0, o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = Child()
+        control.insert(3, o)
+        p.children.insert(3, o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = Child()
+        control.insert(999, o)
+        p.children.insert(999, o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        del control[0:1]
+        del p.children[0:1]
+        assert control == p.children
+        assert control == list(p.children)
+
+        del control[1:1]
+        del p.children[1:1]
+        assert control == p.children
+        assert control == list(p.children)
+
+        del control[1:3]
+        del p.children[1:3]
+        assert control == p.children
+        assert control == list(p.children)
+
+        del control[7:]
+        del p.children[7:]
+        assert control == p.children
+        assert control == list(p.children)
+
+        assert control.pop() == p.children.pop()
+        assert control == p.children
+        assert control == list(p.children)
+
+        assert control.pop(0) == p.children.pop(0)
+        assert control == p.children
+        assert control == list(p.children)
+
+        assert control.pop(2) == p.children.pop(2)
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = Child()
+        control.insert(2, o)
+        p.children.insert(2, o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        control.remove(o)
+        p.children.remove(o)
+        assert control == p.children
+        assert control == list(p.children)
+
+    def test_custom(self):
+        class Parent(object):
+            pass
+        class Child(object):
+            pass
+
+        class MyCollection(object):
+            def __init__(self):
+                self.data = []
+            @collection.appender
+            def append(self, value):
+                self.data.append(value)
+            @collection.remover
+            def remove(self, value):
+                self.data.remove(value)
+            @collection.iterator
+            def __iter__(self):
+                return iter(self.data)
+
+        mapper(Parent, sometable, properties={
+            'children':relation(Child, collection_class=MyCollection)
+        })
+        mapper(Child, someothertable)
+
+        control = list()
+        p1 = Parent()
+
+        o = Child()
+        control.append(o)
+        p1.children.append(o)
+        assert control == list(p1.children)
+
+        o = Child()
+        control.append(o)
+        p1.children.append(o)
+        assert control == list(p1.children)
+
+        o = Child()
+        control.append(o)
+        p1.children.append(o)
+        assert control == list(p1.children)
+
+        sess = create_session()
+        sess.save(p1)
+        sess.flush()
+        sess.clear()
+
+        p2 = sess.query(Parent).get(p1.col1)
+        o = list(p2.children)
+        assert len(o) == 3
+
 if __name__ == "__main__":
     testenv.main()

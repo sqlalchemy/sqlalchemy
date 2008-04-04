@@ -6,6 +6,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.orm import collections
 from sqlalchemy.orm.collections import collection
 from testlib import *
+from testlib import fixtures
 
 class RelationTest(TestBase):
     """An extended topological sort test
@@ -757,291 +758,8 @@ class TypedAssociationTable(ORMTest):
 
         assert t3.count().scalar() == 1
 
-# TODO: move these tests to either attributes.py test or its own module
-class CustomCollectionsTest(ORMTest):
-    def define_tables(self, metadata):
-        global sometable, someothertable
-        sometable = Table('sometable', metadata,
-            Column('col1',Integer, primary_key=True),
-            Column('data', String(30)))
-        someothertable = Table('someothertable', metadata,
-            Column('col1', Integer, primary_key=True),
-            Column('scol1', Integer, ForeignKey(sometable.c.col1)),
-            Column('data', String(20))
-        )
-    def testbasic(self):
-        class MyList(list):
-            pass
-        class Foo(object):
-            pass
-        class Bar(object):
-            pass
-        mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=MyList)
-        })
-        mapper(Bar, someothertable)
-        f = Foo()
-        assert isinstance(f.bars, MyList)
-    def testlazyload(self):
-        """test that a 'set' can be used as a collection and can lazyload."""
-        class Foo(object):
-            pass
-        class Bar(object):
-            pass
-        mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=set)
-        })
-        mapper(Bar, someothertable)
-        f = Foo()
-        f.bars.add(Bar())
-        f.bars.add(Bar())
-        sess = create_session()
-        sess.save(f)
-        sess.flush()
-        sess.clear()
-        f = sess.query(Foo).get(f.col1)
-        assert len(list(f.bars)) == 2
-        f.bars.clear()
-
-    def testdict(self):
-        """test that a 'dict' can be used as a collection and can lazyload."""
-
-        class Foo(object):
-            pass
-        class Bar(object):
-            pass
-        class AppenderDict(dict):
-            @collection.appender
-            def set(self, item):
-                self[id(item)] = item
-            @collection.remover
-            def remove(self, item):
-                if id(item) in self:
-                    del self[id(item)]
-
-        mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=AppenderDict)
-        })
-        mapper(Bar, someothertable)
-        f = Foo()
-        f.bars.set(Bar())
-        f.bars.set(Bar())
-        sess = create_session()
-        sess.save(f)
-        sess.flush()
-        sess.clear()
-        f = sess.query(Foo).get(f.col1)
-        assert len(list(f.bars)) == 2
-        f.bars.clear()
-
-    def testdictwrapper(self):
-        """test that the supplied 'dict' wrapper can be used as a collection and can lazyload."""
-
-        class Foo(object):
-            pass
-        class Bar(object):
-            def __init__(self, data): self.data = data
-
-        mapper(Foo, sometable, properties={
-            'bars':relation(Bar,
-                collection_class=collections.column_mapped_collection(someothertable.c.data))
-        })
-        mapper(Bar, someothertable)
-
-        f = Foo()
-        col = collections.collection_adapter(f.bars)
-        col.append_with_event(Bar('a'))
-        col.append_with_event(Bar('b'))
-        sess = create_session()
-        sess.save(f)
-        sess.flush()
-        sess.clear()
-        f = sess.query(Foo).get(f.col1)
-        assert len(list(f.bars)) == 2
-
-        existing = set([id(b) for b in f.bars.values()])
-
-        col = collections.collection_adapter(f.bars)
-        col.append_with_event(Bar('b'))
-        f.bars['a'] = Bar('a')
-        sess.flush()
-        sess.clear()
-        f = sess.query(Foo).get(f.col1)
-        assert len(list(f.bars)) == 2
-
-        replaced = set([id(b) for b in f.bars.values()])
-        self.assert_(existing != replaced)
-
-    def testlist(self):
-        class Parent(object):
-            pass
-        class Child(object):
-            pass
-
-        mapper(Parent, sometable, properties={
-            'children':relation(Child, collection_class=list)
-        })
-        mapper(Child, someothertable)
-
-        control = list()
-        p = Parent()
-
-        o = Child()
-        control.append(o)
-        p.children.append(o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child(), Child(), Child(), Child()]
-        control.extend(o)
-        p.children.extend(o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        assert control[0] == p.children[0]
-        assert control[-1] == p.children[-1]
-        assert control[1:3] == p.children[1:3]
-
-        del control[1]
-        del p.children[1]
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child()]
-        control[1:3] = o
-        p.children[1:3] = o
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child(), Child(), Child(), Child()]
-        control[1:3] = o
-        p.children[1:3] = o
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child(), Child(), Child(), Child()]
-        control[-1:-2] = o
-        p.children[-1:-2] = o
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child(), Child(), Child(), Child()]
-        control[4:] = o
-        p.children[4:] = o
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = Child()
-        control.insert(0, o)
-        p.children.insert(0, o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = Child()
-        control.insert(3, o)
-        p.children.insert(3, o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = Child()
-        control.insert(999, o)
-        p.children.insert(999, o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        del control[0:1]
-        del p.children[0:1]
-        assert control == p.children
-        assert control == list(p.children)
-
-        del control[1:1]
-        del p.children[1:1]
-        assert control == p.children
-        assert control == list(p.children)
-
-        del control[1:3]
-        del p.children[1:3]
-        assert control == p.children
-        assert control == list(p.children)
-
-        del control[7:]
-        del p.children[7:]
-        assert control == p.children
-        assert control == list(p.children)
-
-        assert control.pop() == p.children.pop()
-        assert control == p.children
-        assert control == list(p.children)
-
-        assert control.pop(0) == p.children.pop(0)
-        assert control == p.children
-        assert control == list(p.children)
-
-        assert control.pop(2) == p.children.pop(2)
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = Child()
-        control.insert(2, o)
-        p.children.insert(2, o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        control.remove(o)
-        p.children.remove(o)
-        assert control == p.children
-        assert control == list(p.children)
-
-    def testobj(self):
-        class Parent(object):
-            pass
-        class Child(object):
-            pass
-
-        class MyCollection(object):
-            def __init__(self):
-                self.data = []
-            @collection.appender
-            def append(self, value):
-                self.data.append(value)
-            @collection.remover
-            def remove(self, value):
-                self.data.remove(value)
-            @collection.iterator
-            def __iter__(self):
-                return iter(self.data)
-
-        mapper(Parent, sometable, properties={
-            'children':relation(Child, collection_class=MyCollection)
-        })
-        mapper(Child, someothertable)
-
-        control = list()
-        p1 = Parent()
-
-        o = Child()
-        control.append(o)
-        p1.children.append(o)
-        assert control == list(p1.children)
-
-        o = Child()
-        control.append(o)
-        p1.children.append(o)
-        assert control == list(p1.children)
-
-        o = Child()
-        control.append(o)
-        p1.children.append(o)
-        assert control == list(p1.children)
-
-        sess = create_session()
-        sess.save(p1)
-        sess.flush()
-        sess.clear()
-
-        p2 = sess.query(Parent).get(p1.col1)
-        o = list(p2.children)
-        assert len(o) == 3
+        
+    
 
 class ViewOnlyTest(ORMTest):
     """test a view_only mapping where a third table is pulled into the primary join condition,
@@ -1143,6 +861,191 @@ class ViewOnlyTest2(ORMTest):
         c1 = sess.query(C1).get(c1.t1id)
         assert set([x.t2id for x in c1.t2s]) == set([c2a.t2id, c2b.t2id])
         assert set([x.t2id for x in c1.t2_view]) == set([c2b.t2id])
+
+class ViewOnlyTest3(ORMTest):
+    def define_tables(self, metadata):
+        global foos, bars
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True))
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True), Column('fid', Integer))
+
+    def test_viewonly_join(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id>bars.c.fid, foreign_keys=[bars.c.fid], viewonly=True)
+        })
+
+        mapper(Bar, bars)
+
+        sess = create_session()
+        sess.save(Foo(id=4))
+        sess.save(Foo(id=9))
+        sess.save(Bar(id=1, fid=2))
+        sess.save(Bar(id=2, fid=3))
+        sess.save(Bar(id=3, fid=6))
+        sess.save(Bar(id=4, fid=7))
+        sess.flush()
+
+        sess = create_session()
+        self.assertEquals(sess.query(Foo).filter_by(id=4).one(), Foo(id=4, bars=[Bar(fid=2), Bar(fid=3)]))
+        self.assertEquals(sess.query(Foo).filter_by(id=9).one(), Foo(id=9, bars=[Bar(fid=2), Bar(fid=3), Bar(fid=6), Bar(fid=7)]))
+
+class InvalidRelationEscalationTest(ORMTest):
+    def define_tables(self, metadata):
+        global foos, bars, Foo, Bar
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True), Column('fid', Integer))
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True), Column('fid', Integer))
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+            
+    def test_no_join(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+
+    def test_no_join_self_ref(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+        
+    def test_no_equated(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id>bars.c.fid)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_fks(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id>bars.c.fid, foreign_keys=bars.c.fid)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated column pairs for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_self_ref(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id>foos.c.fid)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_self_ref(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id>foos.c.fid, foreign_keys=[foos.c.fid])
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated column pairs for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_viewonly(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id>bars.c.fid, viewonly=True)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_self_ref_viewonly(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id>foos.c.fid, viewonly=True)
+        })
+
+        mapper(Bar, bars)
+
+        self.assertRaisesMessage(exceptions.ArgumentError, "Specify the foreign_keys argument to indicate which columns on the relation are foreign.", compile_mappers)
+
+    def test_no_equated_self_ref_viewonly_fks(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id>foos.c.fid, viewonly=True, foreign_keys=[foos.c.fid])
+        })
+        compile_mappers()
+        self.assertEquals(Foo.foos.property.equated_pairs, [(foos.c.id, foos.c.fid)])
+
+    def test_equated(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id==bars.c.fid)
+        })
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+    
+    def test_equated_self_ref(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id==foos.c.fid)
+        })
+
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_equated_self_ref_wrong_fks(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id==foos.c.fid, foreign_keys=[bars.c.id])
+        })
+
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+class InvalidRelationEscalationTestM2M(ORMTest):
+    def define_tables(self, metadata):
+        global foos, bars, Foo, Bar, foobars
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True))
+        foobars = Table('foobars', metadata, Column('fid', Integer), Column('bid', Integer))
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True))
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+
+    def test_no_join(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+
+    def test_no_secondaryjoin(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars, primaryjoin=foos.c.id>foobars.c.fid)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+
+    def test_bad_primaryjoin(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars, primaryjoin=foos.c.id>foobars.c.fid, secondaryjoin=foobars.c.bid<=bars.c.id)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_bad_secondaryjoin(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars, primaryjoin=foos.c.id==foobars.c.fid, secondaryjoin=foobars.c.bid<=bars.c.id, foreign_keys=[foobars.c.fid])
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for secondaryjoin condition", compile_mappers)
+
+    def test_no_equated_secondaryjoin(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars, primaryjoin=foos.c.id==foobars.c.fid, secondaryjoin=foobars.c.bid<=bars.c.id, foreign_keys=[foobars.c.fid, foobars.c.bid])
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated column pairs for secondaryjoin condition", compile_mappers)
 
 
 if __name__ == "__main__":

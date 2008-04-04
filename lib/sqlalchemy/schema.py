@@ -553,7 +553,7 @@ class Column(SchemaItem, expression._ColumnClause):
     def references(self, column):
         """Return True if this references the given column via a foreign key."""
         for fk in self.foreign_keys:
-            if fk.column is column:
+            if fk.references(column.table):
                 return True
         else:
             return False

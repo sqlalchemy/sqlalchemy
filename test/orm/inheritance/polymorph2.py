@@ -42,27 +42,19 @@ class RelationTest1(ORMTest):
             pass
         class Manager(Person):
             pass
-
-        mapper(Person, people, properties={
-            'manager':relation(Manager, primaryjoin=people.c.manager_id==managers.c.person_id, uselist=False)
-        })
-        mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id)
-
-        self.assertRaisesMessage(exceptions.ArgumentError, 
-            r"Can't determine relation direction for relationship 'Person\.manager \(Manager\)' - foreign key columns are present in both the parent and the child's mapped tables\.  Specify 'foreign_keys' argument\.",
-            compile_mappers
-        )
-        clear_mappers()
-
+        
+        # note that up until recently (0.4.4), we had to specify "foreign_keys" here
+        # for this primary join.  
         mapper(Person, people, properties={
             'manager':relation(Manager, primaryjoin=(people.c.manager_id ==
                                                      managers.c.person_id),
-                               foreign_keys=[people.c.manager_id],
                                uselist=False, post_update=True)
         })
         mapper(Manager, managers, inherits=Person,
                inherit_condition=people.c.person_id==managers.c.person_id)
-
+        
+        self.assertEquals(class_mapper(Person).get_property('manager').foreign_keys, set([people.c.manager_id]))
+        
         session = create_session()
         p = Person(name='some person')
         m = Manager(name='some manager')

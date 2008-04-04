@@ -111,7 +111,8 @@ class Mapper(object):
         self._dependency_processors = []
         self._clause_adapter = None
         self._requires_row_aliasing = False
-
+        self.__inherits_equated_pairs = None
+        
         if not issubclass(class_, object):
             raise exceptions.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
 
@@ -171,11 +172,11 @@ class Mapper(object):
         self.__should_log_info = logging.is_info_enabled(self.logger)
         self.__should_log_debug = logging.is_debug_enabled(self.logger)
 
-        self._compile_class()
-        self._compile_inheritance()
-        self._compile_extensions()
-        self._compile_properties()
-        self._compile_pks()
+        self.__compile_class()
+        self.__compile_inheritance()
+        self.__compile_extensions()
+        self.__compile_properties()
+        self.__compile_pks()
         global __new_mappers
         __new_mappers = True
         self.__log("constructed")
@@ -352,17 +353,17 @@ class Mapper(object):
         to execute once all mappers have been constructed.
         """
 
-        self.__log("_initialize_properties() started")
+        self.__log("__initialize_properties() started")
         l = [(key, prop) for key, prop in self.__props.iteritems()]
         for key, prop in l:
             self.__log("initialize prop " + key)
             if getattr(prop, 'key', None) is None:
                 prop.init(key, self)
-        self.__log("_initialize_properties() complete")
+        self.__log("__initialize_properties() complete")
         self.__props_init = True
 
 
-    def _compile_extensions(self):
+    def __compile_extensions(self):
         """Go through the global_extensions list as well as the list
         of ``MapperExtensions`` specified for this ``Mapper`` and
         creates a linked list of those extensions.
@@ -393,7 +394,7 @@ class Mapper(object):
         for ext in extlist:
             self.extension.append(ext)
 
-    def _compile_inheritance(self):
+    def __compile_inheritance(self):
         """Configure settings related to inherting and/or inherited mappers being present."""
 
         if self.inherits:
@@ -412,7 +413,6 @@ class Mapper(object):
                 self.single = True
             if not self.local_table is self.inherits.local_table:
                 if self.concrete:
-                    self._synchronizer = None
                     self.mapped_table = self.local_table
                     for mapper in self.iterate_to_root():
                         if mapper.polymorphic_on:
@@ -424,17 +424,10 @@ class Mapper(object):
                         # stuff we dont want (allows test/inheritance.InheritTest4 to pass)
                         self.inherit_condition = sql.join(self.inherits.local_table, self.local_table).onclause
                     self.mapped_table = sql.join(self.inherits.mapped_table, self.local_table, self.inherit_condition)
-                    # generate sync rules.  similarly to creating the on clause, specify a
-                    # stricter set of tables to create "sync rules" by,based on the immediate
-                    # inherited table, rather than all inherited tables
-                    self._synchronizer = sync.ClauseSynchronizer(self, self, sync.ONETOMANY)
-                    if self.inherit_foreign_keys:
-                        fks = util.Set(self.inherit_foreign_keys)
-                    else:
-                        fks = None
-                    self._synchronizer.compile(self.mapped_table.onclause, foreign_keys=fks)
+                    
+                    fks = util.to_set(self.inherit_foreign_keys)
+                    self.__inherits_equated_pairs = sqlutil.criterion_as_pairs(self.mapped_table.onclause, consider_as_foreign_keys=fks)
             else:
-                self._synchronizer = None
                 self.mapped_table = self.local_table
             if self.polymorphic_identity is not None:
                 self.inherits.polymorphic_map[self.polymorphic_identity] = self
@@ -470,7 +463,6 @@ class Mapper(object):
         else:
             self._all_tables = util.Set()
             self.base_mapper = self
-            self._synchronizer = None
             self.mapped_table = self.local_table
             if self.polymorphic_identity:
                 if self.polymorphic_on is None:
@@ -481,7 +473,7 @@ class Mapper(object):
         if self.mapped_table is None:
             raise exceptions.ArgumentError("Mapper '%s' does not have a mapped_table specified.  (Are you using the return value of table.create()?  It no longer has a return value.)" % str(self))
 
-    def _compile_pks(self):
+    def __compile_pks(self):
 
         self.tables = sqlutil.find_tables(self.mapped_table)
 
@@ -634,7 +626,7 @@ class Mapper(object):
 
             return getattr(getattr(cls, clskey), key)
 
-    def _compile_properties(self):
+    def __compile_properties(self):
 
         # object attribute names mapped to MapperProperty objects
         self.__props = util.OrderedDict()
@@ -770,7 +762,7 @@ class Mapper(object):
         for mapper in self._inheriting_mappers:
             mapper._adapt_inherited_property(key, prop)
 
-    def _compile_class(self):
+    def __compile_class(self):
         """If this mapper is to be a primary mapper (i.e. the
         non_primary flag is not set), associate this Mapper with the
         given class_ and entity name.
@@ -1169,8 +1161,8 @@ class Mapper(object):
                     # TODO: this fires off more than needed, try to organize syncrules
                     # per table
                     for m in util.reversed(list(mapper.iterate_to_root())):
-                        if m._synchronizer:
-                            m._synchronizer.execute(state, state)
+                        if m.__inherits_equated_pairs:
+                            m._synchronize_inherited(state)
 
                     # testlib.pragma exempt:__hash__
                     inserted_objects.add((state, connection))
@@ -1185,6 +1177,9 @@ class Mapper(object):
                 else:
                     if 'after_update' in mapper.extension.methods:
                         mapper.extension.after_update(mapper, connection, state.obj())
+
+    def _synchronize_inherited(self, state):
+        sync.populate(state, self, state, self, self.__inherits_equated_pairs)
 
     def _postfetch(self, uowtransaction, connection, table, state, resultproxy, params, value_params):
         """After an ``INSERT`` or ``UPDATE``, assemble newly generated

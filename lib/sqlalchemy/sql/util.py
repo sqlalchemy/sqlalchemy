@@ -1,10 +1,12 @@
-from sqlalchemy import exceptions, schema, topological, util
+from sqlalchemy import exceptions, schema, topological, util, sql
 from sqlalchemy.sql import expression, operators, visitors
 from itertools import chain
 
 """Utility functions that build upon SQL and Schema constructs."""
 
 def sort_tables(tables, reverse=False):
+    """sort a collection of Table objects in order of their foreign-key dependency."""
+    
     tuples = []
     class TVisitor(schema.SchemaVisitor):
         def visit_foreign_key(_self, fkey):
@@ -24,6 +26,8 @@ def sort_tables(tables, reverse=False):
         return sequence
 
 def find_tables(clause, check_columns=False, include_aliases=False):
+    """locate Table objects within the given expression."""
+    
     tables = []
     kwargs = {}
     if include_aliases:
@@ -44,6 +48,8 @@ def find_tables(clause, check_columns=False, include_aliases=False):
     return tables
 
 def find_columns(clause):
+    """locate Column objects within the given expression."""
+    
     cols = util.Set()
     def visit_column(col):
         cols.add(col)
@@ -93,6 +99,38 @@ def reduce_columns(columns, *clauses):
 
     return expression.ColumnSet(columns.difference(omit))
 
+def criterion_as_pairs(expression, consider_as_foreign_keys=None, consider_as_referenced_keys=None, any_operator=False):
+    """traverse an expression and locate binary criterion pairs."""
+    
+    if consider_as_foreign_keys and consider_as_referenced_keys:
+        raise exceptions.ArgumentError("Can only specify one of 'consider_as_foreign_keys' or 'consider_as_referenced_keys'")
+        
+    def visit_binary(binary):
+        if not any_operator and binary.operator != operators.eq:
+            return
+        if not isinstance(binary.left, sql.ColumnElement) or not isinstance(binary.right, sql.ColumnElement):
+            return
+
+        if consider_as_foreign_keys:
+            if binary.left in consider_as_foreign_keys:
+                pairs.append((binary.right, binary.left))
+            elif binary.right in consider_as_foreign_keys:
+                pairs.append((binary.left, binary.right))
+        elif consider_as_referenced_keys:
+            if binary.left in consider_as_referenced_keys:
+                pairs.append((binary.left, binary.right))
+            elif binary.right in consider_as_referenced_keys:
+                pairs.append((binary.right, binary.left))
+        else:
+            if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column):
+                if binary.left.references(binary.right):
+                    pairs.append((binary.right, binary.left))
+                elif binary.right.references(binary.left):
+                    pairs.append((binary.left, binary.right))
+    pairs = []
+    visitors.traverse(expression, visit_binary=visit_binary)
+    return pairs
+    
 class AliasedRow(object):
     
     def __init__(self, row, map):
@@ -117,7 +155,7 @@ class AliasedRow(object):
         return self.row.keys()
 
 def row_adapter(from_, equivalent_columns=None):
-    """create a row adapter against a selectable."""
+    """create a row adapter callable against a selectable."""
     
     if equivalent_columns is None:
         equivalent_columns = {}

@@ -27,6 +27,13 @@ CHANGES
     - Added a more aggressive check for "uncompiled mappers",
       helps particularly with declarative layer [ticket:995]
 
+    - The methodology behind "primaryjoin"/"secondaryjoin" has
+      been refactored.  Behavior should be slightly more
+      intelligent, primarily in terms of error messages which
+      have been pared down to be more readable.  In a slight
+      number of scenarios it can better resolve the correct 
+      foreign key than before.
+
     - Added comparable_property(), adds query Comparator behavior
       to regular, unmanaged Python properties
 
