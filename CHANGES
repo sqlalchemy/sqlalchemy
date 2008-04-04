@@ -1,12 +1,18 @@
 =======
 CHANGES
 =======
+
 0.4.6
 =====
 - sql
     - Fixed bug with union() when applied to non-Table connected
       select statements
-      
+
+- engines
+    - Pool listeners can now be provided as a dictionary of
+      callables or a (possibly partial) duck-type of
+      PoolListener, your choice.
+
 0.4.5
 =====
 - orm

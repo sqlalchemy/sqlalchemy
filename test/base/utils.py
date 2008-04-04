@@ -419,6 +419,100 @@ class SymbolTest(TestBase):
             assert rt is sym1
             assert rt is sym2
 
+class AsInterfaceTest(TestBase):
+    class Something(object):
+        def _ignoreme(self): pass
+        def foo(self): pass
+        def bar(self): pass
+
+    class Partial(object):
+        def bar(self): pass
+
+    class Object(object): pass
+
+    def test_instance(self):
+        obj = object()
+        self.assertRaises(TypeError, util.as_interface, obj,
+                          cls=self.Something)
+
+        self.assertRaises(TypeError, util.as_interface, obj,
+                          methods=('foo'))
+
+        self.assertRaises(TypeError, util.as_interface, obj,
+                          cls=self.Something, required=('foo'))
+
+        obj = self.Something()
+        self.assertEqual(obj, util.as_interface(obj, cls=self.Something))
+        self.assertEqual(obj, util.as_interface(obj, methods=('foo',)))
+        self.assertEqual(
+            obj, util.as_interface(obj, cls=self.Something,
+                                   required=('outofband',)))
+        partial = self.Partial()
+
+        slotted = self.Object()
+        slotted.bar = lambda self: 123
+
+        for obj in partial, slotted:
+            self.assertEqual(obj, util.as_interface(obj, cls=self.Something))
+            self.assertRaises(TypeError, util.as_interface, obj,
+                              methods=('foo'))
+            self.assertEqual(obj, util.as_interface(obj, methods=('bar',)))
+            self.assertEqual(
+                obj, util.as_interface(obj, cls=self.Something,
+                                       required=('bar',)))
+            self.assertRaises(TypeError, util.as_interface, obj,
+                              cls=self.Something, required=('foo',))
+
+            self.assertRaises(TypeError, util.as_interface, obj,
+                              cls=self.Something, required=self.Something)
+
+    def test_dict(self):
+        obj = {}
+
+        self.assertRaises(TypeError, util.as_interface, obj,
+                          cls=self.Something)
+        self.assertRaises(TypeError, util.as_interface, obj,
+                          methods=('foo'))
+        self.assertRaises(TypeError, util.as_interface, obj,
+                          cls=self.Something, required=('foo'))
+
+        def assertAdapted(obj, *methods):
+            assert isinstance(obj, type)
+            found = set([m for m in dir(obj) if not m.startswith('_')])
+            for method in methods:
+                assert method in found
+                found.remove(method)
+            assert not found
+
+        fn = lambda self: 123
+
+        obj = {'foo': fn, 'bar': fn}
+
+        res = util.as_interface(obj, cls=self.Something)
+        assertAdapted(res, 'foo', 'bar')
+
+        res = util.as_interface(obj, cls=self.Something, required=self.Something)
+        assertAdapted(res, 'foo', 'bar')
+
+        res = util.as_interface(obj, cls=self.Something, required=('foo',))
+        assertAdapted(res, 'foo', 'bar')
+
+        res = util.as_interface(obj, methods=('foo', 'bar'))
+        assertAdapted(res, 'foo', 'bar')
+
+        res = util.as_interface(obj, methods=('foo', 'bar', 'baz'))
+        assertAdapted(res, 'foo', 'bar')
+
+        res = util.as_interface(obj, methods=('foo', 'bar'), required=('foo',))
+        assertAdapted(res, 'foo', 'bar')
+
+        self.assertRaises(TypeError, util.as_interface, obj, methods=('foo',))
+
+        self.assertRaises(TypeError, util.as_interface, obj,
+                          methods=('foo', 'bar', 'baz'), required=('baz',))
+
+        obj = {'foo': 123}
+        self.assertRaises(TypeError, util.as_interface, obj, cls=self.Something)
 
 if __name__ == "__main__":
     testenv.main()
