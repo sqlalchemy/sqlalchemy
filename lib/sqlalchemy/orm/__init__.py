@@ -551,7 +551,8 @@ def mapper(class_, local_table=None, *args, **params):
         UNION queries.
         
       select_table
-        Deprecated.  Synonymous with ``with_polymorphic=('*', <selectable>)`.
+        Deprecated.  Synonymous with 
+        ``with_polymorphic=('*', <selectable>)``.
 
       version_id_col
         A ``Column`` which must have an integer type that will be

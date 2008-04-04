@@ -1026,7 +1026,7 @@ class _symbol(object):
     def __reduce__(self):
         return symbol, (self.name,)
     def __repr__(self):
-        return "<symbol '%s'>" % self.name
+        return "<symbol '%s>" % self.name
 _symbol.__name__ = 'symbol'
 
 class symbol(object):

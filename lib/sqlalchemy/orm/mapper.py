@@ -1293,7 +1293,7 @@ class Mapper(object):
         """Iterate each element and its mapper in an object graph,
         for all relations that meet the given cascade rule.
 
-        type_
+        type\_
           The name of the cascade rule (i.e. save-update, delete,
           etc.)
 
