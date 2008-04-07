@@ -306,29 +306,15 @@ class PropertyLoader(StrategizedProperty):
                     return sql.and_(*clauses)
             else:
                 return self.prop._optimized_compare(other)
-        
-        def _join_and_criterion(self, criterion=None, **kwargs):
-            adapt_against = None
 
+        def _join_and_criterion(self, criterion=None, **kwargs):
             if getattr(self, '_of_type', None):
                 target_mapper = self._of_type
-                to_selectable = target_mapper.mapped_table
-                adapt_against = to_selectable
+                to_selectable = target_mapper._with_polymorphic_selectable() #mapped_table
             else:
-                target_mapper = self.prop.mapper
                 to_selectable = None
-                adapt_against = None
-                
-            if self.prop._is_self_referential():
-                pj = self.prop.primary_join_against(self.prop.parent, None)
-                sj = self.prop.secondary_join_against(self.prop.parent, toselectable=to_selectable)
 
-                pac = PropertyAliasedClauses(self.prop, pj, sj)
-                j = pac.primaryjoin
-                if pac.secondaryjoin:
-                    j = j & pac.secondaryjoin
-            else:
-                j = self.prop.full_join_against(self.prop.parent, None, toselectable=to_selectable)
+            pj, sj, source, dest, target_adapter = self.prop._create_joins(dest_polymorphic=True, dest_selectable=to_selectable)
 
             for k in kwargs:
                 crit = (getattr(self.prop.mapper.class_, k) == kwargs[k])
@@ -337,13 +323,15 @@ class PropertyLoader(StrategizedProperty):
                 else:
                     criterion = criterion & crit
             
-            if criterion:
-                if adapt_against:
-                    criterion = ClauseAdapter(adapt_against).traverse(criterion)
-                if self.prop._is_self_referential():
-                    criterion = pac.adapt_clause(criterion)
+            if sj:
+                j = pj & sj
+            else:
+                j = pj
+                
+            if criterion and target_adapter:
+                criterion = target_adapter.traverse(criterion)
             
-            return j, criterion, to_selectable
+            return j, criterion, dest
             
         def any(self, criterion=None, **kwargs):
             if not self.prop.uselist:
@@ -701,55 +689,63 @@ class PropertyLoader(StrategizedProperty):
     
     def _is_self_referential(self):
         return self.mapper.common_parent(self.parent)
-        
-    def primary_join_against(self, mapper, selectable=None, toselectable=None):
-        return self.__join_against(mapper, selectable, toselectable, True, False)
-        
-    def secondary_join_against(self, mapper, toselectable=None):
-        return self.__join_against(mapper, None, toselectable, False, True)
-        
-    def full_join_against(self, mapper, selectable=None, toselectable=None):
-        return self.__join_against(mapper, selectable, toselectable, True, True)
     
-    def __join_against(self, frommapper, fromselectable, toselectable, primary, secondary):
-        if fromselectable is None:
-            fromselectable = frommapper.local_table
-            
-        parent_equivalents = frommapper._equivalent_columns
-        
-        if primary:
-            primaryjoin = self.primaryjoin
-            
-            if fromselectable is not frommapper.local_table:
-                if self.direction is ONETOMANY:
-                    primaryjoin = ClauseAdapter(fromselectable, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(primaryjoin)
-                elif self.direction is MANYTOONE:
-                    primaryjoin = ClauseAdapter(fromselectable, include=self.foreign_keys, equivalents=parent_equivalents).traverse(primaryjoin)
-                elif self.secondaryjoin:
-                    primaryjoin = ClauseAdapter(fromselectable, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(primaryjoin)
-                
-            if secondary:
-                secondaryjoin = self.secondaryjoin
-                return primaryjoin & secondaryjoin
+    def _create_joins(self, source_polymorphic=False, source_selectable=None, dest_polymorphic=False, dest_selectable=None):
+        if source_selectable is None:
+            if source_polymorphic and self.parent.with_polymorphic:
+                source_selectable = self.parent._with_polymorphic_selectable()
             else:
-                return primaryjoin
-        elif secondary:
-            return self.secondaryjoin
-        else:
-            raise AssertionError("illegal condition")
+                source_selectable = None
+        if dest_selectable is None:
+            if dest_polymorphic and self.mapper.with_polymorphic:
+                dest_selectable = self.mapper._with_polymorphic_selectable()
+            else:
+                dest_selectable = None
+            if self._is_self_referential():
+                if dest_selectable:
+                    dest_selectable = dest_selectable.alias()
+                else:
+                    dest_selectable = self.mapper.local_table.alias()
+                
+        primaryjoin = self.primaryjoin
+        if source_selectable:
+            if self.direction in (ONETOMANY, MANYTOMANY):
+                primaryjoin = ClauseAdapter(source_selectable, exclude=self.foreign_keys, equivalents=self.parent._equivalent_columns).traverse(primaryjoin)
+            else:
+                primaryjoin = ClauseAdapter(source_selectable, include=self.foreign_keys, equivalents=self.parent._equivalent_columns).traverse(primaryjoin)
         
-    def get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
+        secondaryjoin = self.secondaryjoin
+        target_adapter = None
+        if dest_selectable:
+            if self.direction == ONETOMANY:
+                target_adapter = ClauseAdapter(dest_selectable, include=self.foreign_keys, equivalents=self.mapper._equivalent_columns)
+            elif self.direction == MANYTOMANY:
+                target_adapter = ClauseAdapter(dest_selectable, equivalents=self.mapper._equivalent_columns)
+            else:
+                target_adapter = ClauseAdapter(dest_selectable, exclude=self.foreign_keys, equivalents=self.mapper._equivalent_columns)
+            if secondaryjoin:
+                secondaryjoin = target_adapter.traverse(secondaryjoin)
+            else:
+                primaryjoin = target_adapter.traverse(primaryjoin)
+            target_adapter.include = target_adapter.exclude = None
+            
+        return primaryjoin, secondaryjoin, source_selectable or self.parent.local_table, dest_selectable or self.mapper.local_table, target_adapter
+        
+    def _get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
         """deprecated.  use primary_join_against(), secondary_join_against(), full_join_against()"""
         
+        pj, sj, source, dest, adapter = self._create_joins(source_polymorphic=polymorphic_parent)
+        
         if primary and secondary:
-            return self.full_join_against(parent, parent.mapped_table)
+            return pj & sj
         elif primary:
-            return self.primary_join_against(parent, parent.mapped_table)
+            return pj
         elif secondary:
-            return self.secondary_join_against(parent)
+            return sj
         else:
             raise AssertionError("illegal condition")
-
+        
+        
     def register_dependencies(self, uowcommit):
         if not self.viewonly:
             self._dependency_processor.register_dependencies(uowcommit)

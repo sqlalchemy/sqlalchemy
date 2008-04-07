@@ -951,7 +951,6 @@ class OrderedIdentitySet(IdentitySet):
             for o in iterable:
                 self.add(o)
 
-
 class UniqueAppender(object):
     """Only adds items to a collection once.
 

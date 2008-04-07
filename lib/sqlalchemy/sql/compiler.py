@@ -18,7 +18,7 @@ creating database-specific compilers and schema generators, the module
 is otherwise internal to SQLAlchemy.
 """
 
-import string, re
+import string, re, itertools
 from sqlalchemy import schema, engine, util, exceptions
 from sqlalchemy.sql import operators, functions
 from sqlalchemy.sql import expression as sql
@@ -47,7 +47,7 @@ ILLEGAL_INITIAL_CHARACTERS = re.compile(r'[0-9$]')
 
 BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
 BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
-ANONYMOUS_LABEL = re.compile(r'{ANON (-?\d+) (.*?)}')
+ANONYMOUS_LABEL = re.compile(r'{ANON (-?\d+) ([^{}]+)}')
 
 BIND_TEMPLATES = {
     'pyformat':"%%(%(name)s)s",
@@ -404,7 +404,7 @@ class DefaultCompiler(engine.Compiled):
     def _truncated_identifier(self, ident_class, name):
         if (ident_class, name) in self.generated_ids:
             return self.generated_ids[(ident_class, name)]
-
+        
         anonname = ANONYMOUS_LABEL.sub(self._process_anon, name)
 
         if len(anonname) > self.dialect.max_identifier_length:
@@ -415,9 +415,10 @@ class DefaultCompiler(engine.Compiled):
             truncname = anonname
         self.generated_ids[(ident_class, name)] = truncname
         return truncname
-
+    
     def _process_anon(self, match):
         (ident, derived) = match.group(1,2)
+
         key = ('anonymous', ident)
         if key in self.generated_ids:
             return self.generated_ids[key]
@@ -460,7 +461,7 @@ class DefaultCompiler(engine.Compiled):
             not isinstance(column.table, sql.Select):
             return column.label(column.name)
         elif not isinstance(column, (sql._UnaryExpression, sql._TextClause)) and (not hasattr(column, 'name') or isinstance(column, sql._Function)):
-            return column.anon_label
+            return column.label(column.anon_label)
         else:
             return column
 
@@ -488,10 +489,7 @@ class DefaultCompiler(engine.Compiled):
 
         froms = select._get_display_froms(existingfroms)
 
-        correlate_froms = util.Set()
-        for f in froms:
-            correlate_froms.add(f)
-            correlate_froms.update(f._get_from_objects())
+        correlate_froms = util.Set(itertools.chain(*([froms] + [f._get_from_objects() for f in froms])))
 
         # TODO: might want to propigate existing froms for select(select(select))
         # where innermost select should correlate to outermost

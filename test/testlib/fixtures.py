@@ -4,6 +4,10 @@ from sqlalchemy import *
 from sqlalchemy import util
 from testlib import *
 
+__all__ = ['keywords', 'addresses', 'Base', 'Keyword', 'FixtureTest', 'Dingaling', 'item_keywords', 
+            'dingalings', 'User', 'items', 'Fixtures', 'orders', 'install_fixture_data', 'Address', 'users', 
+            'order_items', 'Item', 'Order', 'fixtures']
+            
 _recursion_stack = util.Set()
 class Base(object):
     def __init__(self, **kwargs):

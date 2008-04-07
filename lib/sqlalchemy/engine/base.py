@@ -1485,7 +1485,7 @@ class ResultProxy(object):
                 # you say something like query.options(contains_alias('fooalias')) - the matching
                 # is done on strings
                 if isinstance(key, expression.ColumnElement):
-                    if key._label.lower() in props:
+                    if key._label and key._label.lower() in props:
                         return props[key._label.lower()]
                     elif key.name.lower() in props:
                         return props[key.name.lower()]

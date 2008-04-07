@@ -265,11 +265,28 @@ def make_test(select_type):
                 c1
                 )
 
+            if select_type != '':
+                self.assertEquals(
+                    sess.query(Person).filter(Engineer.machines.any(Machine.name=="Commodore 64")).all(), [e2, e3]
+                )
+
+            self.assertEquals(
+                sess.query(Person).filter(Person.paperwork.any(Paperwork.description=="review #2")).all(), [m1]
+            )
+            
             if select_type == '':
+                # this tests that a hand-rolled criterion in the any() doesn't get clobbered by
+                # aliasing, when the mapper is not set up for polymorphic joins
                 self.assertEquals(
                     sess.query(Company).filter(Company.employees.any(and_(Engineer.primary_language=='cobol', people.c.person_id==engineers.c.person_id))).one(),
                     c2
                     )
+            else:
+                self.assertEquals(
+                    sess.query(Company).filter(Company.employees.any(and_(Engineer.primary_language=='cobol'))).one(),
+                    c2
+                    )
+                
         
         def test_expire(self):
             """test that individual column refresh doesn't get tripped up by the select_table mapper"""

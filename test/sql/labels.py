@@ -120,7 +120,7 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
       self.assert_compile(x, "SELECT anon_1.this_is_the_primarykey_column AS anon_1_this_is_the_prim_1, anon_1.this_is_the_data_column AS anon_1_this_is_the_data_2 "
             "FROM (SELECT some_large_named_table.this_is_the_primarykey_column AS this_is_the_primarykey_column, some_large_named_table.this_is_the_data_column AS this_is_the_data_column "
             "FROM some_large_named_table "
-            "WHERE some_large_named_table.this_is_the_primarykey_column = :some_large_named_table__1) AS anon_1", dialect=compile_dialect)
+            "WHERE some_large_named_table.this_is_the_primarykey_column = :this_is_the_primarykey__1) AS anon_1", dialect=compile_dialect)
 
       print x.execute().fetchall()
 

@@ -309,16 +309,16 @@ class DontDereferenceTest(ORMTest):
         session.clear()
 
         def query1():
-            session = create_session(metadata.bind)
+            session = create_session(testing.db)
             user = session.query(User).first()
             return user.addresses.all()
 
         def query2():
-            session = create_session(metadata.bind)
+            session = create_session(testing.db)
             return session.query(User).first().addresses.all()
 
         def query3():
-            session = create_session(metadata.bind)
+            session = create_session(testing.db)
             user = session.query(User).first()
             return session.query(User).first().addresses.all()
 

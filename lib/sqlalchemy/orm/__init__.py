@@ -16,7 +16,7 @@ from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, EXT_STOP, E
 from sqlalchemy.orm.properties import SynonymProperty, ComparableProperty, PropertyLoader, ColumnProperty, CompositeProperty, BackRef
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm import strategies
-from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.query import Query, aliased
 from sqlalchemy.orm.util import polymorphic_union, create_row_adapter
 from sqlalchemy.orm.session import Session as _Session
 from sqlalchemy.orm.session import object_session, sessionmaker
@@ -29,7 +29,7 @@ __all__ = [ 'relation', 'column_property', 'composite', 'backref', 'eagerload',
             'compile_mappers', 'class_mapper', 'object_mapper', 'sessionmaker',
             'scoped_session', 'dynamic_loader', 'MapperExtension',
             'polymorphic_union', 'comparable_property',
-            'create_session', 'synonym', 'contains_alias', 'Query',
+            'create_session', 'synonym', 'contains_alias', 'Query', 'aliased',
             'contains_eager', 'EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS',
             'object_session', 'PropComparator' ]
 

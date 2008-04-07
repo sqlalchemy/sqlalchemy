@@ -130,7 +130,43 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None, consider_as_re
     pairs = []
     visitors.traverse(expression, visit_binary=visit_binary)
     return pairs
+
+def folded_equivalents(join, equivs=None):
+    """Returns the column list of the given Join with all equivalently-named,
+    equated columns folded into one column, where 'equated' means they are
+    equated to each other in the ON clause of this join.
+
+    This function is used by Join.select(fold_equivalents=True).
     
+    TODO: deprecate ?
+    """
+
+    if equivs is None:
+        equivs = util.Set()
+    def visit_binary(binary):
+        if binary.operator == operators.eq and binary.left.name == binary.right.name:
+            equivs.add(binary.right)
+            equivs.add(binary.left)
+    visitors.traverse(join.onclause, visit_binary=visit_binary)
+    collist = []
+    if isinstance(join.left, expression.Join):
+        left = folded_equivalents(join.left, equivs)
+    else:
+        left = list(join.left.columns)
+    if isinstance(join.right, expression.Join):
+        right = folded_equivalents(join.right, equivs)
+    else:
+        right = list(join.right.columns)
+    used = util.Set()
+    for c in left + right:
+        if c in equivs:
+            if c.name not in used:
+                collist.append(c)
+                used.add(c.name)
+        else:
+            collist.append(c)
+    return collist
+
 class AliasedRow(object):
     
     def __init__(self, row, map):

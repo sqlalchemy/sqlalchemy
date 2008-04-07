@@ -16,9 +16,11 @@ from itertools import chain
 from sqlalchemy import sql, util, exceptions, logging
 from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
 from sqlalchemy.orm import sync, attributes
-from sqlalchemy.orm.util import ExtensionCarrier, state_str, instance_str
 from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, PropComparator
-
+from sqlalchemy.orm.util import has_identity, _state_has_identity, _is_mapped_class, has_mapper, \
+    _state_mapper, class_mapper, object_mapper, _class_to_mapper,\
+    ExtensionCarrier, state_str, instance_str
+    
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', '_mapper_registry']
 
 _mapper_registry = weakref.WeakKeyDictionary()
@@ -1583,19 +1585,6 @@ class Mapper(object):
 Mapper.logger = logging.class_logger(Mapper)
 
 
-def has_identity(object):
-    return hasattr(object, '_instance_key')
-
-def _state_has_identity(state):
-    return '_instance_key' in state.dict
-
-def has_mapper(object):
-    """Return True if the given object has had a mapper association
-    set up, either through loading, or via insertion in a session.
-    """
-
-    return hasattr(object, '_entity_name')
-
 object_session = None
 
 def _load_scalar_attributes(instance, attribute_names):
@@ -1622,58 +1611,3 @@ def _load_scalar_attributes(instance, attribute_names):
     if session.query(mapper)._get(identity_key, refresh_instance=state, only_load_props=attribute_names) is None and shouldraise:
         raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % instance_str(instance))
 
-def _state_mapper(state, entity_name=None):
-    return state.class_._class_state.mappers[state.dict.get('_entity_name', entity_name)]
-
-def object_mapper(object, entity_name=None, raiseerror=True):
-    """Given an object, return the primary Mapper associated with the object instance.
-
-        object
-            The object instance.
-
-        entity_name
-            Entity name of the mapper to retrieve, if the given instance is
-            transient.  Otherwise uses the entity name already associated
-            with the instance.
-
-        raiseerror
-            Defaults to True: raise an ``InvalidRequestError`` if no mapper can
-            be located.  If False, return None.
-
-    """
-
-    try:
-        mapper = object.__class__._class_state.mappers[getattr(object, '_entity_name', entity_name)]
-    except (KeyError, AttributeError):
-        if raiseerror:
-            raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (object.__class__.__name__, getattr(object, '_entity_name', entity_name)))
-        else:
-            return None
-    return mapper
-
-def class_mapper(class_, entity_name=None, compile=True, raiseerror=True):
-    """Given a class and optional entity_name, return the primary Mapper associated with the key.
-
-    If no mapper can be located, raises ``InvalidRequestError``.
-    """
-
-    try:
-        mapper = class_._class_state.mappers[entity_name]
-    except (KeyError, AttributeError):
-        if raiseerror:
-            raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (class_.__name__, entity_name))
-        else:
-            return None
-    if compile:
-        return mapper.compile()
-    else:
-        return mapper
-
-def _class_to_mapper(class_or_mapper, entity_name=None, compile=True):
-    if isinstance(class_or_mapper, type):
-        return class_mapper(class_or_mapper, entity_name=entity_name, compile=compile)
-    else:
-        if compile:
-            return class_or_mapper.compile()
-        else:
-            return class_or_mapper
