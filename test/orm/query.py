@@ -562,7 +562,7 @@ class ParentTest(QueryTest):
         assert [Keyword(name='red'), Keyword(name='small'), Keyword(name='square')] == k
 
 
-class JoinTest(QueryTest, AssertsCompiledSQL):
+class JoinTest(QueryTest):
 
     def test_getjoinable_tables(self):
         sess = create_session()
@@ -672,7 +672,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             (order4, item5),
             (order5, item5),
         ]
-        self.assert_compile(join(Order, Item, 'items'), "orders JOIN order_items ON orders.id = order_items.order_id JOIN items ON items.id = order_items.item_id")
         
         q = sess.query(Order)
         q = q.add_entity(Item).select_from(join(Order, Item, 'items'))
