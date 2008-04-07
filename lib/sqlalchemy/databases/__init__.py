@@ -7,5 +7,5 @@
 
 __all__ = [
     'sqlite', 'postgres', 'mysql', 'oracle', 'mssql', 'firebird',
-    'sybase', 'access', 'maxdb', 'monetdb'
+    'sybase', 'access', 'maxdb'
     ]
