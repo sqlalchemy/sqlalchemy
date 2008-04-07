@@ -309,12 +309,12 @@ class PGDialect(default.DefaultDialect):
     supports_sane_multi_rowcount = False
     preexecute_pk_sequences = True
     supports_pk_autoincrement = False
+    default_paramstyle = 'pyformat'
 
     def __init__(self, use_oids=False, server_side_cursors=False, **kwargs):
-        default.DefaultDialect.__init__(self, default_paramstyle='pyformat', **kwargs)
+        default.DefaultDialect.__init__(self, **kwargs)
         self.use_oids = use_oids
         self.server_side_cursors = server_side_cursors
-        self.paramstyle = 'pyformat'
 
     def dbapi(cls):
         import psycopg2 as psycopg

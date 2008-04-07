@@ -244,7 +244,7 @@ class QueryTest(TestBase):
         assert len(r) == 1
 
     def test_bindparam_detection(self):
-        dialect = default.DefaultDialect(default_paramstyle='qmark')
+	dialect = default.DefaultDialect(paramstyle='qmark')
         prep = lambda q: str(sql.text(q).compile(dialect=dialect))
 
         def a_eq(got, wanted):

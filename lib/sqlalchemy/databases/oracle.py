@@ -240,9 +240,10 @@ class OracleDialect(default.DefaultDialect):
     supports_sane_multi_rowcount = False
     preexecute_pk_sequences = True
     supports_pk_autoincrement = False
+    default_paramstyle = 'named'
 
     def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, **kwargs):
-        default.DefaultDialect.__init__(self, default_paramstyle='named', **kwargs)
+        default.DefaultDialect.__init__(self, **kwargs)
         self.use_ansi = use_ansi
         self.threaded = threaded
         self.allow_twophase = allow_twophase

@@ -195,9 +195,10 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
 class SQLiteDialect(default.DefaultDialect):
     supports_alter = False
     supports_unicode_statements = True
+    default_paramstyle = 'qmark'
 
     def __init__(self, **kwargs):
-        default.DefaultDialect.__init__(self, default_paramstyle='qmark', **kwargs)
+        default.DefaultDialect.__init__(self, **kwargs)
         def vers(num):
             return tuple([int(x) for x in num.split('.')])
         if self.dbapi is not None:

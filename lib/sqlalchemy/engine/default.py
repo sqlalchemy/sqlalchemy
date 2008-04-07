@@ -39,8 +39,9 @@ class DefaultDialect(base.Dialect):
     preexecute_pk_sequences = False
     supports_pk_autoincrement = True
     dbapi_type_map = {}
+    default_paramstyle = 'named'
 
-    def __init__(self, convert_unicode=False, assert_unicode=False, encoding='utf-8', default_paramstyle='named', paramstyle=None, dbapi=None, **kwargs):
+    def __init__(self, convert_unicode=False, assert_unicode=False, encoding='utf-8', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode
         self.assert_unicode = assert_unicode
         self.encoding = encoding
@@ -52,7 +53,7 @@ class DefaultDialect(base.Dialect):
         elif self.dbapi is not None:
             self.paramstyle = self.dbapi.paramstyle
         else:
-            self.paramstyle = default_paramstyle
+            self.paramstyle = self.default_paramstyle
         self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
         self.identifier_preparer = self.preparer(self)
 

@@ -206,13 +206,13 @@ class InfoExecutionContext(default.DefaultExecutionContext):
         return informix_cursor( self.connection.connection )
 
 class InfoDialect(default.DefaultDialect):
+    default_paramstyle = 'qmark'
     # for informix 7.31
     max_identifier_length = 18
 
     def __init__(self, use_ansi=True,**kwargs):
         self.use_ansi = use_ansi
         default.DefaultDialect.__init__(self, **kwargs)
-        self.paramstyle = 'qmark'
 
     def dbapi(cls):
         import informixdb

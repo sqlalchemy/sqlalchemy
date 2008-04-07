@@ -1420,10 +1420,10 @@ class MySQLDialect(default.DefaultDialect):
     # identifiers are 64, however aliases can be 255...
     max_identifier_length = 255
     supports_sane_rowcount = True
+    default_paramstyle = 'format'
 
     def __init__(self, use_ansiquotes=None, **kwargs):
         self.use_ansiquotes = use_ansiquotes
-        kwargs.setdefault('default_paramstyle', 'format')
         default.DefaultDialect.__init__(self, **kwargs)
 
     def dbapi(cls):
