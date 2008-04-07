@@ -1990,10 +1990,7 @@ class ClauseList(ClauseElement):
         return self.clauses
 
     def _get_from_objects(self, **modifiers):
-        f = []
-        for c in self.clauses:
-            f += c._get_from_objects(**modifiers)
-        return f
+        return list(itertools.chain(*[c._get_from_objects(**modifiers) for c in self.clauses]))
 
     def self_group(self, against=None):
         if self.group and self.operator != against and operators.is_precedent(self.operator, against):
@@ -3129,7 +3126,6 @@ class Select(_SelectBaseMixin, FromClause):
             column = column.self_group(against=operators.comma_op)
 
         s._raw_columns = s._raw_columns + [column]
-
         return s
 
     def where(self, whereclause):
@@ -3201,7 +3197,7 @@ class Select(_SelectBaseMixin, FromClause):
         """append the given correlation expression to this select() construct."""
         
         self._should_correlate=False
-        self._correlate.add(fromclause)
+        self._correlate = self._correlate.union([fromclause])
 
     def append_column(self, column):
         """append the given column expression to the columns clause of this select() construct."""
@@ -3211,14 +3207,14 @@ class Select(_SelectBaseMixin, FromClause):
         if isinstance(column, _ScalarSelect):
             column = column.self_group(against=operators.comma_op)
 
-        self._raw_columns.append(column)
+        self._raw_columns = self._raw_columns + [column]
         self._reset_exported()
 
     def append_prefix(self, clause):
         """append the given columns clause prefix expression to this select() construct."""
 
         clause = _literal_as_text(clause)
-        self._prefixes.append(clause)
+        self._prefixes = self._prefixes.union([clause])
 
     def append_whereclause(self, whereclause):
         """append the given expression to this select() construct's WHERE criterion.
@@ -3249,7 +3245,7 @@ class Select(_SelectBaseMixin, FromClause):
         if _is_literal(fromclause):
             fromclause = _TextFromClause(fromclause)
 
-        self._froms.add(fromclause)
+        self._froms = self._froms.union([fromclause])
 
     def __exportable_columns(self):
         for column in self._raw_columns:
