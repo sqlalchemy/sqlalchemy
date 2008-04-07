@@ -135,13 +135,13 @@ class Mapper(object):
                 raise exceptions.ArgumentError("Invalid setting for with_polymorphic")
             else:
                 self.with_polymorphic = None
-
-        check_tables = [self.local_table]
-        if self.with_polymorphic:
-            check_tables.append(self.with_polymorphic[1])
-        for table in check_tables:
-            if table and isinstance(table, expression._SelectBaseMixin):
-                raise exceptions.ArgumentError("Mapping against a Select object requires that it has a name.  Use an alias to give it a name, i.e. s = select(...).alias('myselect')")
+        
+        if isinstance(self.local_table, expression._SelectBaseMixin):
+            util.warn("mapper %s creating an alias for the given selectable - use Class attributes for queries." % self)
+            self.local_table = self.local_table.alias()
+        
+        if self.with_polymorphic and isinstance(self.with_polymorphic[1], expression._SelectBaseMixin):
+            self.with_polymorphic[1] = self.with_polymorphic[1].alias()
 
         # our 'polymorphic identity', a string name that when located in a result set row
         # indicates this Mapper should be used to construct the object instance for that row.
@@ -485,7 +485,7 @@ class Mapper(object):
         self._pks_by_table = {}
         self._cols_by_table = {}
 
-        all_cols = util.Set(chain(*[c2 for c2 in [col.proxy_set for col in [c for c in self._columntoproperty]]]))
+        all_cols = util.Set(chain(*[col.proxy_set for col in self._columntoproperty]))
         pk_cols = util.Set([c for c in all_cols if c.primary_key])
 
         # identify primary key columns which are also mapped by this mapper.
@@ -528,8 +528,8 @@ class Mapper(object):
         by primary key.
         
         """
-        params = dict([(primary_key, sql.bindparam(None, type_=primary_key.type)) for primary_key in self.primary_key])
-        return sql.and_(*[k==v for (k, v) in params.iteritems()]), params
+        params = [(primary_key, sql.bindparam(None, type_=primary_key.type)) for primary_key in self.primary_key]
+        return sql.and_(*[k==v for (k, v) in params]), dict(params)
     _get_clause = property(util.cache_decorator(_get_clause))
     
     def _equivalent_columns(self):

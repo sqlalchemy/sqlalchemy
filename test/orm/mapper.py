@@ -31,28 +31,15 @@ class MapperTest(MapperSuperTest):
             properties={
             'addresses':relation(Address, backref='email_address')
         })
-        try:
-            class_mapper(Address)
-            class_mapper(User)
-            assert False
-        except exceptions.ArgumentError:
-            pass
+        self.assertRaises(exceptions.ArgumentError, compile_mappers)
 
     def test_prop_accessor(self):
         mapper(User, users)
-        try:
-            class_mapper(User).properties
-            assert False
-        except NotImplementedError, uoe:
-            assert str(uoe) == "Public collection of MapperProperty objects is provided by the get_property() and iterate_properties accessors."
+        self.assertRaises(NotImplementedError, getattr, class_mapper(User), 'properties')
 
     def test_badcascade(self):
         mapper(Address, addresses)
-        try:
-            mapper(User, users, properties={'addresses':relation(Address, cascade="fake, all, delete-orphan")})
-            assert False
-        except exceptions.ArgumentError, e:
-            assert str(e) == "Invalid cascade option 'fake'"
+        self.assertRaises(exceptions.ArgumentError, relation, Address, cascade="fake, all, delete-orphan")
 
     def test_columnprefix(self):
         mapper(User, users, column_prefix='_', properties={
@@ -68,11 +55,7 @@ class MapperTest(MapperSuperTest):
 
     def test_no_pks(self):
         s = select([users.c.user_name]).alias('foo')
-        try:
-            mapper(User, s)
-            assert False
-        except exceptions.ArgumentError, e:
-            assert "could not assemble any primary key columns for mapped table 'foo'" in str(e)
+        self.assertRaises(exceptions.ArgumentError, mapper, User, s)
     
     def test_recompile_on_othermapper(self):
         """test the global '__new_mappers' flag such that a compile 
@@ -115,16 +98,9 @@ class MapperTest(MapperSuperTest):
                 pass
         mapper(Foo, users)
         sess = create_session()
-        try:
-            Foo('one', _sa_session=sess)
-            assert False
-        except:
-            assert len(list(sess)) == 0
-        try:
-            Foo('one')
-            assert False
-        except TypeError, e:
-            pass
+        self.assertRaises(TypeError, Foo, 'one', _sa_session=sess)
+        assert len(list(sess)) == 0
+        self.assertRaises(TypeError, Foo, 'one')
 
     @testing.uses_deprecated('SessionContext', 'SessionContextExt')
     def test_constructorexceptions(self):
