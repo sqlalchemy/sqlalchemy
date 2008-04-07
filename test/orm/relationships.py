@@ -924,10 +924,11 @@ class ViewOnlyTest4(ORMTest):
         sess.save(b1)
         sess.save(b2)
         sess.save(b3)
+        sess.flush()
         sess.save(f1)
         sess.save(f2)
         sess.flush()
-        
+            
         sess.clear()
         self.assertEquals(sess.query(Foo).filter_by(id=f1.id).one(), Foo(bars=[Bar(data='b1'), Bar(data='b2')]))
         self.assertEquals(sess.query(Foo).filter_by(id=f2.id).one(), Foo(bars=[Bar(data='b3')]))
@@ -964,12 +965,13 @@ class ViewOnlyTest5(ORMTest):
         b2 = Bar(fid2=1, data='b2')
         b3 = Bar(fid1=2, data='b3')
         b4 = Bar(fid1=1, fid2=2, data='b4')
+        sess.save(f1)
+        sess.save(f2)
+        sess.flush()
         sess.save(b1)
         sess.save(b2)
         sess.save(b3)
         sess.save(b4)
-        sess.save(f1)
-        sess.save(f2)
         sess.flush()
 
         sess.clear()
