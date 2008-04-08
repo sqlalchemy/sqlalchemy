@@ -792,7 +792,14 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
             connectors.append("UID=%s" % user)
             connectors.append("PWD=%s" % keys.get("password", ""))
         else:
-            connectors.append ("TrustedConnection=Yes")
+            connectors.append("TrustedConnection=Yes")
+
+        # if set to 'Yes', the ODBC layer will try to automagically convert 
+        # textual data from your database encoding to your client encoding 
+        # This should obviously be set to 'No' if you query a cp1253 encoded 
+        # database from a latin1 client... 
+        if 'odbc_autotranslate' in keys: 
+            connectors.append("AutoTranslate=%s" % keys.pop("odbc_autotranslate")) 
         return [[";".join (connectors)], {}]
 
     def is_disconnect(self, e):

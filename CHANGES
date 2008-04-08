@@ -25,6 +25,16 @@ CHANGES
       callables or a (possibly partial) duck-type of
       PoolListener, your choice.
 
+- mssql
+    - Added "odbc_autotranslate" parameter to engine / dburi
+      parameters. Any given string will be passed through to 
+      the ODBC connection string as 
+            "AutoTranslat=%s" % odbc_autotranslate
+      [ticket:1005]
+
+
+
+
 0.4.5
 =====
 - orm
