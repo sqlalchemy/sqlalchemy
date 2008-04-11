@@ -547,6 +547,15 @@ class FBDialect(default.DefaultDialect):
         connection.commit(True)
 
 
+def _substring(s, start, length=None):
+    "Helper function to handle Firebird 2 SUBSTRING builtin"
+
+    if length is None:
+        return "SUBSTRING(%s FROM %s)" % (s, start)
+    else:
+        return "SUBSTRING(%s FROM %s FOR %s)" % (s, start, length)
+
+
 class FBCompiler(sql.compiler.DefaultCompiler):
     """Firebird specific idiosincrasies"""
 
@@ -563,6 +572,9 @@ class FBCompiler(sql.compiler.DefaultCompiler):
             return self.process(alias.original, asfrom=True, **kwargs) + " " + self.preparer.format_alias(alias, self._anonymize(alias.name))
         else:
             return self.process(alias.original, **kwargs)
+
+    functions = sql.compiler.DefaultCompiler.functions.copy()
+    functions['substring'] = _substring
 
     def function_argspec(self, func):
         if func.clauses:

@@ -35,7 +35,8 @@ CHANGES
             "AutoTranslat=%s" % odbc_autotranslate
       [ticket:1005]
 
-
+- firebird
+    - Handle the "SUBSTRING(:string FROM :start FOR :length)" builtin.
 
 
 0.4.5
