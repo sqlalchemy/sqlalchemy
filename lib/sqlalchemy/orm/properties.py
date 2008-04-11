@@ -544,12 +544,12 @@ class PropertyLoader(StrategizedProperty):
         arg_foreign_keys = self.foreign_keys
         
         eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=self.viewonly)
-        eq_pairs = [(l, r) for l, r in eq_pairs if self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)]
+        eq_pairs = [(l, r) for l, r in eq_pairs if (self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)) or r in arg_foreign_keys]
 
         if not eq_pairs:
             if not self.viewonly and criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=True):
-                raise exceptions.ArgumentError("Could not locate any equated column pairs for primaryjoin condition '%s' on relation %s. "
-                    "If no equated pairs exist, the relation must be marked as viewonly=True." % (self.primaryjoin, self)
+                raise exceptions.ArgumentError("Could not locate any equated, locally mapped column pairs for primaryjoin condition '%s' on relation %s. "
+                    "For more relaxed rules on join conditions, the relation may be marked as viewonly=True." % (self.primaryjoin, self)
                 )
             else:
                 raise exceptions.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
@@ -561,12 +561,12 @@ class PropertyLoader(StrategizedProperty):
         
         if self.secondaryjoin:
             sq_pairs = criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=self.viewonly)
-            sq_pairs = [(l, r) for l, r in sq_pairs if self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)]
+            sq_pairs = [(l, r) for l, r in sq_pairs if (self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)) or r in arg_foreign_keys]
             
             if not sq_pairs:
                 if not self.viewonly and criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=True):
-                    raise exceptions.ArgumentError("Could not locate any equated column pairs for secondaryjoin condition '%s' on relation %s. "
-                        "If no equated pairs exist, the relation must be marked as viewonly=True." % (self.secondaryjoin, self)
+                    raise exceptions.ArgumentError("Could not locate any equated, locally mapped column pairs for secondaryjoin condition '%s' on relation %s. "
+                        "For more relaxed rules on join conditions, the relation may be marked as viewonly=True." % (self.secondaryjoin, self)
                     )
                 else:
                     raise exceptions.ArgumentError("Could not determine relation direction for secondaryjoin condition '%s', on relation %s. "
@@ -599,6 +599,15 @@ class PropertyLoader(StrategizedProperty):
             self.remote_side, self.local_side = [util.OrderedSet(s) for s in zip(*eq_pairs)]
         else:
             self.local_side, self.remote_side = [util.OrderedSet(s) for s in zip(*eq_pairs)]
+        
+        if self.direction is ONETOMANY:
+            for l in self.local_side:
+                if not self.__col_is_part_of_mappings(l):
+                    raise exceptions.ArgumentError("Local column '%s' is not part of mapping %s.  Specify remote_side argument to indicate which column lazy join condition should compare against." % (l, self.parent))
+        elif self.direction is MANYTOONE:
+            for r in self.remote_side:
+                if not self.__col_is_part_of_mappings(r):
+                    raise exceptions.ArgumentError("Remote column '%s' is not part of mapping %s.  Specify remote_side argument to indicate which column lazy join condition should bind." % (r, self.mapper))
             
     def __determine_direction(self):
         """Determine our *direction*, i.e. do we represent one to

@@ -6,9 +6,12 @@ CHANGES
 =====
 - orm
     - Fix to the recent relation() refactoring which fixes
-      exotic relations which join between local and remote table
+      exotic viewonly relations which join between local and remote table
       multiple times, with a common column shared between the 
       joins.
+    
+    - Also re-established viewonly relation() configurations that
+      join across multiple tables.
       
     - removed ancient assertion that mapped selectables require
       "alias names" - the mapper creates its own alias now if

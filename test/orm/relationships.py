@@ -977,6 +977,81 @@ class ViewOnlyTest5(ORMTest):
         sess.clear()
         self.assertEquals(sess.query(Foo).filter_by(id=f1.id).one(), Foo(bars=[Bar(data='b1'), Bar(data='b2'), Bar(data='b4')]))
         self.assertEquals(sess.query(Foo).filter_by(id=f2.id).one(), Foo(bars=[Bar(data='b3'), Bar(data='b4')]))
+
+class ViewOnlyTest6(ORMTest):
+    """test a long primaryjoin condition"""
+    def define_tables(self, metadata):
+        global t1, t2, t3, t2tot3
+        t1 = Table('t1', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+            )
+        t2 = Table('t2', metadata,     
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+            Column('t1id', Integer, ForeignKey('t1.id')),
+        )
+        t3 = Table('t3', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+            )
+        t2tot3 = Table('t2tot3', metadata, 
+            Column('t2id', Integer, ForeignKey('t2.id')),
+            Column('t3id', Integer, ForeignKey('t3.id')),
+        )
+    
+    def test_basic(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        class T3(fixtures.Base):
+            pass
+    
+        mapper(T1, t1, properties={
+            't3s':relation(T3, primaryjoin=and_(
+                t1.c.id==t2.c.t1id,
+                t2.c.id==t2tot3.c.t2id,
+                t3.c.id==t2tot3.c.t3id
+            ),
+            viewonly=True, 
+            foreign_keys=t3.c.id, remote_side=t2.c.t1id)
+        })
+        mapper(T2, t2, properties={
+            't1':relation(T1),
+            't3s':relation(T3, secondary=t2tot3)
+        })
+        mapper(T3, t3)
+        
+        sess = create_session()
+        sess.save(T2(data='t2', t1=T1(data='t1'), t3s=[T3(data='t3')]))
+        sess.flush()
+        sess.clear()
+        
+        a = sess.query(T1).first()
+        self.assertEquals(a.t3s, [T3(data='t3')])
+        
+    def test_remote_side_escalation(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        class T3(fixtures.Base):
+            pass
+
+        mapper(T1, t1, properties={
+            't3s':relation(T3, primaryjoin=and_(
+                t1.c.id==t2.c.t1id,
+                t2.c.id==t2tot3.c.t2id,
+                t3.c.id==t2tot3.c.t3id
+            ),viewonly=True, foreign_keys=t3.c.id) 
+        })
+        mapper(T2, t2, properties={
+            't1':relation(T1),
+            't3s':relation(T3, secondary=t2tot3)
+        })
+        mapper(T3, t3)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Specify remote_side argument", compile_mappers)
     
 class InvalidRelationEscalationTest(ORMTest):
     def define_tables(self, metadata):
@@ -1018,7 +1093,7 @@ class InvalidRelationEscalationTest(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated column pairs for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated, locally mapped column pairs for primaryjoin condition", compile_mappers)
 
     def test_no_equated_self_ref(self):
         mapper(Foo, foos, properties={
@@ -1034,7 +1109,7 @@ class InvalidRelationEscalationTest(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated column pairs for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated, locally mapped column pairs for primaryjoin condition", compile_mappers)
 
     def test_no_equated_viewonly(self):
         mapper(Foo, foos, properties={
@@ -1130,7 +1205,7 @@ class InvalidRelationEscalationTestM2M(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated column pairs for secondaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated, locally mapped column pairs for secondaryjoin condition", compile_mappers)
 
 
 if __name__ == "__main__":
