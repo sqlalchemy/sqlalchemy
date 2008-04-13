@@ -677,7 +677,7 @@ class SchemaTest(TestBase):
         elif testing.against('postgres'):
             schema = 'public'
         else:
-            schema = engine.dialect.get_default_schema_name(engine)
+            schema = engine.dialect.get_default_schema_name(engine.connect())
 
         metadata = MetaData(engine)
         table1 = Table('table1', metadata,
