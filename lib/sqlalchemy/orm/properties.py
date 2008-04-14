@@ -566,8 +566,12 @@ class PropertyLoader(StrategizedProperty):
                         "For more relaxed rules on join conditions, the relation may be marked as viewonly=True." % (self.primaryjoin, self)
                     )
                 else:
-                    raise exceptions.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
-                    "Specify the foreign_keys argument to indicate which columns on the relation are foreign." % (self.primaryjoin, self))
+                    if arg_foreign_keys:
+                        raise exceptions.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
+                            "Specify _local_remote_pairs=[(local, remote), (local, remote), ...] to explicitly establish the local/remote column pairs." % (self.primaryjoin, self))
+                    else:
+                        raise exceptions.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
+                            "Specify the foreign_keys argument to indicate which columns on the relation are foreign." % (self.primaryjoin, self))
         
             self.foreign_keys = util.OrderedSet([r for l, r in eq_pairs])
             self._opposite_side = util.OrderedSet([l for l, r in eq_pairs])
