@@ -210,7 +210,7 @@ class PropertyLoader(StrategizedProperty):
     of items that correspond to a related database table.
     """
 
-    def __init__(self, argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, passive_updates=True, remote_side=None, enable_typechecks=True, join_depth=None, strategy_class=None):
+    def __init__(self, argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, passive_updates=True, remote_side=None, enable_typechecks=True, join_depth=None, strategy_class=None, _local_remote_pairs=None):
         self.uselist = uselist
         self.argument = argument
         self.entity_name = entity_name
@@ -232,6 +232,7 @@ class PropertyLoader(StrategizedProperty):
         self.enable_typechecks = enable_typechecks
         self.comparator = PropertyLoader.Comparator(self)
         self.join_depth = join_depth
+        self._arg_local_remote_pairs = _local_remote_pairs
         
         if strategy_class:
             self.strategy_class = strategy_class
@@ -538,26 +539,39 @@ class PropertyLoader(StrategizedProperty):
                 self.secondary.c.contains_column(column) is not None
         
     def __determine_fks(self):
+
         if self._legacy_foreignkey and not self._refers_to_parent_table():
             self.foreign_keys = self._legacy_foreignkey
 
         arg_foreign_keys = self.foreign_keys
-        
-        eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=self.viewonly)
-        eq_pairs = [(l, r) for l, r in eq_pairs if (self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)) or r in arg_foreign_keys]
 
-        if not eq_pairs:
-            if not self.viewonly and criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=True):
-                raise exceptions.ArgumentError("Could not locate any equated, locally mapped column pairs for primaryjoin condition '%s' on relation %s. "
-                    "For more relaxed rules on join conditions, the relation may be marked as viewonly=True." % (self.primaryjoin, self)
-                )
-            else:
-                raise exceptions.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
-                "Specify the foreign_keys argument to indicate which columns on the relation are foreign." % (self.primaryjoin, self))
+        if self._arg_local_remote_pairs:
+            if not arg_foreign_keys:
+                raise exceptions.ArgumentError("foreign_keys argument is required with _local_remote_pairs argument")
+            self.foreign_keys = util.OrderedSet(arg_foreign_keys)
+            self._opposite_side = util.OrderedSet()
+            for l, r in self._arg_local_remote_pairs:
+                if r in self.foreign_keys:
+                    self._opposite_side.add(l)
+                elif l in self.foreign_keys:
+                    self._opposite_side.add(r)
+            self.synchronize_pairs = zip(self._opposite_side, self.foreign_keys)
+        else:
+            eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=self.viewonly)
+            eq_pairs = [(l, r) for l, r in eq_pairs if (self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)) or r in arg_foreign_keys]
+
+            if not eq_pairs:
+                if not self.viewonly and criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=True):
+                    raise exceptions.ArgumentError("Could not locate any equated, locally mapped column pairs for primaryjoin condition '%s' on relation %s. "
+                        "For more relaxed rules on join conditions, the relation may be marked as viewonly=True." % (self.primaryjoin, self)
+                    )
+                else:
+                    raise exceptions.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
+                    "Specify the foreign_keys argument to indicate which columns on the relation are foreign." % (self.primaryjoin, self))
         
-        self.foreign_keys = util.OrderedSet([r for l, r in eq_pairs])
-        self._opposite_side = util.OrderedSet([l for l, r in eq_pairs])
-        self.synchronize_pairs = eq_pairs
+            self.foreign_keys = util.OrderedSet([r for l, r in eq_pairs])
+            self._opposite_side = util.OrderedSet([l for l, r in eq_pairs])
+            self.synchronize_pairs = eq_pairs
         
         if self.secondaryjoin:
             sq_pairs = criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=arg_foreign_keys, any_operator=self.viewonly)
@@ -579,7 +593,14 @@ class PropertyLoader(StrategizedProperty):
             self.secondary_synchronize_pairs = None
     
     def __determine_remote_side(self):
-        if self.remote_side:
+        if self._arg_local_remote_pairs:
+            if self.remote_side:
+                raise exceptions.ArgumentError("remote_side argument is redundant against more detailed _local_remote_side argument.")
+            if self.direction is MANYTOONE:
+                eq_pairs = [(r, l) for l, r in self._arg_local_remote_pairs]
+            else:
+                eq_pairs = self._arg_local_remote_pairs
+        elif self.remote_side:
             if self.direction is MANYTOONE:
                 eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_referenced_keys=self.remote_side, any_operator=True)
             else:
@@ -594,11 +615,11 @@ class PropertyLoader(StrategizedProperty):
                     eq_pairs += sq_pairs
                 eq_pairs = [(l, r) for l, r in eq_pairs if self.__col_is_part_of_mappings(l) and self.__col_is_part_of_mappings(r)]
         
-        self.local_remote_pairs = eq_pairs
         if self.direction is MANYTOONE:
             self.remote_side, self.local_side = [util.OrderedSet(s) for s in zip(*eq_pairs)]
         else:
             self.local_side, self.remote_side = [util.OrderedSet(s) for s in zip(*eq_pairs)]
+        self.local_remote_pairs = zip(self.local_side, self.remote_side)
         
         if self.direction is ONETOMANY:
             for l in self.local_side:

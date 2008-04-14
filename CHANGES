@@ -13,6 +13,12 @@ CHANGES
     - Also re-established viewonly relation() configurations that
       join across multiple tables.
       
+    - added experimental relation() flag to help with primaryjoins
+      across functions, etc., _local_remote_pairs=[tuples].  
+      This complements a complex primaryjoin condition allowing 
+      you to provide the individual column pairs which comprise
+      the relation's local and remote sides.
+      
     - removed ancient assertion that mapped selectables require
       "alias names" - the mapper creates its own alias now if
       none is present.  Though in this case you need to use 
