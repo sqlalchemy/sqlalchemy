@@ -17,8 +17,11 @@ CHANGES
       across functions, etc., _local_remote_pairs=[tuples].  
       This complements a complex primaryjoin condition allowing 
       you to provide the individual column pairs which comprise
-      the relation's local and remote sides.
-      
+      the relation's local and remote sides.  Also improved 
+      lazy load SQL generation to handle placing bind params 
+      inside of functions and other expressions.
+      (partial progress towards [ticket:610])
+    
     - removed ancient assertion that mapped selectables require
       "alias names" - the mapper creates its own alias now if
       none is present.  Though in this case you need to use 

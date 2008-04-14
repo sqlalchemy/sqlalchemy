@@ -1066,7 +1066,7 @@ class ExplicitLocalRemoteTest(ORMTest):
             Column('t1id', String(50)),
         )
 
-    def test_onetomany(self):
+    def test_onetomany_funcfk(self):
         class T1(fixtures.Base):
             pass
         class T2(fixtures.Base):
@@ -1084,17 +1084,21 @@ class ExplicitLocalRemoteTest(ORMTest):
         
         sess = create_session()
         a1 = T1(id='number1', data='a1')
+        a2 = T1(id='number2', data='a2')
         b1 = T2(data='b1', t1id='NuMbEr1')
         b2 = T2(data='b2', t1id='Number1')
+        b3 = T2(data='b3', t1id='Number2')
         sess.save(a1)
+        sess.save(a2)
         sess.save(b1)
         sess.save(b2)
+        sess.save(b3)
         sess.flush()
         sess.clear()
         
         self.assertEquals(sess.query(T1).first(), T1(id='number1', data='a1', t2s=[T2(data='b1', t1id='NuMbEr1'), T2(data='b2', t1id='Number1')]))
     
-    def test_manytoone(self):
+    def test_manytoone_funcfk(self):
         class T1(fixtures.Base):
             pass
         class T2(fixtures.Base):
@@ -1103,25 +1107,95 @@ class ExplicitLocalRemoteTest(ORMTest):
         mapper(T2, t2, properties={
             't1':relation(T1, primaryjoin=t1.c.id==func.lower(t2.c.t1id),
                 _local_remote_pairs=[(t2.c.t1id, t1.c.id)],
-                foreign_keys=[t2.c.t1id]
+                foreign_keys=[t2.c.t1id],
+                uselist=True
             )
         })
         sess = create_session()
         a1 = T1(id='number1', data='a1')
+        a2 = T1(id='number2', data='a2')
         b1 = T2(data='b1', t1id='NuMbEr1')
         b2 = T2(data='b2', t1id='Number1')
+        b3 = T2(data='b3', t1id='Number2')
         sess.save(a1)
+        sess.save(a2)
         sess.save(b1)
         sess.save(b2)
+        sess.save(b3)
         sess.flush()
         sess.clear()
-        self.assertEquals(sess.query(T2).all(), 
+        self.assertEquals(sess.query(T2).filter(T2.data.in_(['b1', 'b2'])).all(), 
             [
-                T2(data='b1', t1=T1(id='number1', data='a1')),
-                T2(data='b2', t1=T1(id='number1', data='a1'))
+                T2(data='b1', t1=[T1(id='number1', data='a1')]),
+                T2(data='b2', t1=[T1(id='number1', data='a1')])
             ]
         )
     
+    def test_onetomany_func_referent(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        
+        mapper(T1, t1, properties={
+            't2s':relation(T2, primaryjoin=func.lower(t1.c.id)==t2.c.t1id, 
+                _local_remote_pairs=[(t1.c.id, t2.c.t1id)],
+                foreign_keys=[t2.c.t1id]
+            )
+        })
+        mapper(T2, t2)
+        
+        sess = create_session()
+        a1 = T1(id='NuMbeR1', data='a1')
+        a2 = T1(id='NuMbeR2', data='a2')
+        b1 = T2(data='b1', t1id='number1')
+        b2 = T2(data='b2', t1id='number1')
+        b3 = T2(data='b2', t1id='number2')
+        sess.save(a1)
+        sess.save(a2)
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.flush()
+        sess.clear()
+        
+        self.assertEquals(sess.query(T1).first(), T1(id='NuMbeR1', data='a1', t2s=[T2(data='b1', t1id='number1'), T2(data='b2', t1id='number1')]))
+
+    def test_manytoone_func_referent(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+
+        mapper(T1, t1)
+        mapper(T2, t2, properties={
+            't1':relation(T1, primaryjoin=func.lower(t1.c.id)==t2.c.t1id,
+                _local_remote_pairs=[(t2.c.t1id, t1.c.id)],
+                foreign_keys=[t2.c.t1id], uselist=True
+            )
+        })
+
+        sess = create_session()
+        a1 = T1(id='NuMbeR1', data='a1')
+        a2 = T1(id='NuMbeR2', data='a2')
+        b1 = T2(data='b1', t1id='number1')
+        b2 = T2(data='b2', t1id='number1')
+        b3 = T2(data='b3', t1id='number2')
+        sess.save(a1)
+        sess.save(a2)
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(T2).filter(T2.data.in_(['b1', 'b2'])).all(), 
+            [
+                T2(data='b1', t1=[T1(id='NuMbeR1', data='a1')]),
+                T2(data='b2', t1=[T1(id='NuMbeR1', data='a1')])
+            ]
+        )
+        
     def test_escalation(self):
         class T1(fixtures.Base):
             pass

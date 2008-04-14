@@ -621,9 +621,10 @@ class PropertyLoader(StrategizedProperty):
         
         if self.direction is MANYTOONE:
             self.remote_side, self.local_side = [util.OrderedSet(s) for s in zip(*eq_pairs)]
+            self.local_remote_pairs = [(r, l) for l, r in eq_pairs]
         else:
             self.local_side, self.remote_side = [util.OrderedSet(s) for s in zip(*eq_pairs)]
-        self.local_remote_pairs = zip(self.local_side, self.remote_side)
+            self.local_remote_pairs = eq_pairs
         
         if self.direction is ONETOMANY:
             for l in self.local_side:
@@ -651,12 +652,15 @@ class PropertyLoader(StrategizedProperty):
                         self.direction = ONETOMANY
                     else:
                         self.direction = MANYTOONE
-
+            elif self._arg_local_remote_pairs:
+                remote = util.Set([r for l, r in self._arg_local_remote_pairs])
+                if self.foreign_keys.intersection(remote):
+                    self.direction = ONETOMANY
+                else:
+                    self.direction = MANYTOONE
             elif self.remote_side:
-                for f in self.foreign_keys:
-                    if f in self.remote_side:
-                        self.direction = ONETOMANY
-                        return
+                if self.foreign_keys.intersection(self.remote_side):
+                    self.direction = ONETOMANY
                 else:
                     self.direction = MANYTOONE
             else:
