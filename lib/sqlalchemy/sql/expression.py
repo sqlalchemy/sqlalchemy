@@ -40,7 +40,7 @@ __all__ = [
     'Select', 'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc',
     'between', 'bindparam', 'case', 'cast', 'column', 'delete',
     'desc', 'distinct', 'except_', 'except_all', 'exists', 'extract', 'func',
-    'modifier',
+    'modifier', 'collate',
     'insert', 'intersect', 'intersect_all', 'join', 'literal',
     'literal_column', 'not_', 'null', 'or_', 'outparam', 'outerjoin', 'select',
     'subquery', 'table', 'text', 'union', 'union_all', 'update', ]
@@ -492,6 +492,14 @@ def extract(field, expr):
 
     expr = _BinaryExpression(text(field), expr, operators.from_)
     return func.extract(expr)
+
+def collate(expression, collation):
+    """Return the clause ``expression COLLATE collation``."""
+
+    expr = _literal_as_binds(expression)
+    return _CalculatedClause(
+        expr, expr, _literal_as_text(collation),
+        operator=operators.collate, group=False)
 
 def exists(*args, **kwargs):
     """Return an ``EXISTS`` clause as applied to a [sqlalchemy.sql.expression#Select] object.
@@ -1226,6 +1234,9 @@ class ColumnOperators(Operators):
     def asc(self):
         return self.operate(operators.asc_op)
 
+    def collate(self, collation):
+        return self.operate(operators.collate, collation)
+
     def __radd__(self, other):
         return self.reverse_operate(operators.add, other)
 
@@ -1389,6 +1400,13 @@ class _CompareMixin(ColumnOperators):
         """Produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND <cright>``"""
 
         return _BinaryExpression(self, ClauseList(self._check_literal(cleft), self._check_literal(cright), operator=operators.and_, group=False), operators.between_op)
+
+    def collate(self, collation):
+        """Produce a COLLATE clause, i.e. ``<column> COLLATE utf8_bin``"""
+        name = getattr(self, 'name', None)
+        return _CalculatedClause(
+           None, self, _literal_as_text(collation),
+            operator=operators.collate, group=False)
 
     def op(self, operator):
         """produce a generic operator function.

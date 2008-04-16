@@ -751,6 +751,35 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
         self.assert_compile(select([extract("day", func.to_date("03/20/2005", "MM/DD/YYYY"))]), "SELECT extract(day FROM to_date(:to_date_1, :to_date_2)) AS extract_1")
 
+    def test_collate(self):
+        for expr in (select([table1.c.name.collate('somecol')]),
+                     select([collate(table1.c.name, 'somecol')])):
+            self.assert_compile(
+                expr, "SELECT mytable.name COLLATE somecol FROM mytable")
+
+        expr = select([table1.c.name.collate('somecol').like('%x%')])
+        self.assert_compile(expr,
+                            "SELECT mytable.name COLLATE somecol "
+                            "LIKE :param_1 AS anon_1 FROM mytable")
+
+        expr = select([table1.c.name.like(collate('%x%', 'somecol'))])
+        self.assert_compile(expr,
+                            "SELECT mytable.name "
+                            "LIKE :param_1 COLLATE somecol AS anon_1 "
+                            "FROM mytable")
+
+        expr = select([table1.c.name.collate('col1').like(
+            collate('%x%', 'col2'))])
+        self.assert_compile(expr,
+                            "SELECT mytable.name COLLATE col1 "
+                            "LIKE :param_1 COLLATE col2 AS anon_1 "
+                            "FROM mytable")
+
+        expr = select([func.concat('a', 'b').collate('somecol').label('x')])
+        self.assert_compile(expr,
+                            "SELECT concat(:param_1, :param_2) "
+                            "COLLATE somecol AS x")
+
     def test_joins(self):
         self.assert_compile(
             join(table2, table1, table1.c.myid == table2.c.otherid).select(),

@@ -22,6 +22,9 @@ def is_():
 def isnot():
     raise NotImplementedError()
 
+def collate():
+    raise NotImplementedError()
+
 def op(a, opstring, b):
     return a.op(opstring)(b)
 
@@ -105,6 +108,7 @@ _PRECEDENCE = {
     and_:3,
     or_:2,
     comma_op:-1,
+    collate: -2,
     as_:-1,
     exists:0,
     _smallest: -1000,

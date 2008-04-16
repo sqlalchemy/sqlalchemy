@@ -6,29 +6,34 @@ CHANGES
 =====
 - orm
     - Fix to the recent relation() refactoring which fixes
-      exotic viewonly relations which join between local and remote table
-      multiple times, with a common column shared between the 
-      joins.
-    
-    - Also re-established viewonly relation() configurations that
-      join across multiple tables.
-      
-    - added experimental relation() flag to help with primaryjoins
-      across functions, etc., _local_remote_pairs=[tuples].  
-      This complements a complex primaryjoin condition allowing 
-      you to provide the individual column pairs which comprise
-      the relation's local and remote sides.  Also improved 
-      lazy load SQL generation to handle placing bind params 
-      inside of functions and other expressions.
-      (partial progress towards [ticket:610])
-    
-    - removed ancient assertion that mapped selectables require
+      exotic viewonly relations which join between local and
+      remote table multiple times, with a common column shared
+      between the joins.
+
+    - Also re-established viewonly relation() configurations
+      that join across multiple tables.
+
+    - Added experimental relation() flag to help with
+      primaryjoins across functions, etc.,
+      _local_remote_pairs=[tuples].  This complements a complex
+      primaryjoin condition allowing you to provide the
+      individual column pairs which comprise the relation's
+      local and remote sides.  Also improved lazy load SQL
+      generation to handle placing bind params inside of
+      functions and other expressions.  (partial progress
+      towards [ticket:610])
+
+    - Removed ancient assertion that mapped selectables require
       "alias names" - the mapper creates its own alias now if
-      none is present.  Though in this case you need to use 
-      the class, not the mapped selectable, as the source of
-      column attributes - so a warning is still issued.
-      
+      none is present.  Though in this case you need to use the
+      class, not the mapped selectable, as the source of column
+      attributes - so a warning is still issued.
+
 - sql
+    - Added COLLATE support via the .collate(<collation>)
+      expression operator and collate(<expr>, <collation>) sql
+      function.
+
     - Fixed bug with union() when applied to non-Table connected
       select statements
 
@@ -39,13 +44,16 @@ CHANGES
 
 - mssql
     - Added "odbc_autotranslate" parameter to engine / dburi
-      parameters. Any given string will be passed through to 
-      the ODBC connection string as 
-            "AutoTranslat=%s" % odbc_autotranslate
+      parameters. Any given string will be passed through to the
+      ODBC connection string as:
+
+            "AutoTranslate=%s" % odbc_autotranslate
+
       [ticket:1005]
 
 - firebird
-    - Handle the "SUBSTRING(:string FROM :start FOR :length)" builtin.
+    - Handle the "SUBSTRING(:string FROM :start FOR :length)"
+      builtin.
 
 
 0.4.5

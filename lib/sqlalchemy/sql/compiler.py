@@ -90,7 +90,8 @@ OPERATORS =  {
     operators.as_ : 'AS',
     operators.exists : 'EXISTS',
     operators.is_ : 'IS',
-    operators.isnot : 'IS NOT'
+    operators.isnot : 'IS NOT',
+    operators.collate : 'COLLATE',
 }
 
 FUNCTIONS = {

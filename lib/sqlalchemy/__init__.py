@@ -16,7 +16,7 @@ from sqlalchemy.sql import \
     and_, or_, not_, \
     select, subquery, union, union_all, insert, update, delete, \
     join, outerjoin, \
-    bindparam, outparam, asc, desc, \
+    bindparam, outparam, asc, desc, collate, \
     except_, except_all, exists, intersect, intersect_all, \
     between, case, cast, distinct, extract
 
