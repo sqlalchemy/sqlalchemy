@@ -345,7 +345,6 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                     self.cursor.execute("SELECT @@identity AS lastrowid")
                 row = self.cursor.fetchone()
                 self._last_inserted_ids = [int(row[0])] + self._last_inserted_ids[1:]
-                # print "LAST ROW ID", self._last_inserted_ids
         super(MSSQLExecutionContext, self).post_exec()
 
     _ms_is_select = re.compile(r'\s*(?:SELECT|sp_columns|EXEC)',
@@ -799,7 +798,12 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         # This should obviously be set to 'No' if you query a cp1253 encoded 
         # database from a latin1 client... 
         if 'odbc_autotranslate' in keys: 
-            connectors.append("AutoTranslate=%s" % keys.pop("odbc_autotranslate")) 
+            connectors.append("AutoTranslate=%s" % keys.pop("odbc_autotranslate"))
+
+        # Allow specification of partial ODBC connect string
+        if 'odbc_options' in keys: 
+            connectors.append(keys.pop('odbc_options'))
+        
         return [[";".join (connectors)], {}]
 
     def is_disconnect(self, e):

@@ -51,6 +51,14 @@ CHANGES
 
       [ticket:1005]
 
+    - Added "odbc_options" parameter to engine / dburi
+      parameters. The given string is simply appended to the
+      SQLAlchemy-generated odbc connection string.
+
+      This should obviate the need of adding a myriad of ODBC
+      options in the future.
+
+
 - firebird
     - Handle the "SUBSTRING(:string FROM :start FOR :length)"
       builtin.
