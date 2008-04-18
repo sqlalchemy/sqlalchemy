@@ -954,16 +954,17 @@ class Query(object):
         
         if getattr(self, '_no_filters', False):
             filter = None
-            as_instances = False
+            single_entity = custom_rows = False
         else:
-            as_instances = isinstance(entities[0], _PrimaryMapperEntity) and len(entities) == 1
-
-            if as_instances:
+            single_entity = isinstance(entities[0], _PrimaryMapperEntity) and len(entities) == 1
+            custom_rows = single_entity and 'append_result' in context.extension.methods
+            
+            if single_entity:
                 filter = util.OrderedIdentitySet
             else:
                 filter = util.OrderedSet
         
-        process = [query_entity.row_processor(self, context) for query_entity in entities]
+        process = [query_entity.row_processor(self, context, single_entity) for query_entity in entities]
 
         while True:
             context.progress = util.Set()
@@ -975,8 +976,12 @@ class Query(object):
                     return
             else:
                 fetch = cursor.fetchall()
-
-            if as_instances:
+            
+            if custom_rows:
+                rows = []
+                for row in fetch:
+                    process[0](context, row, rows)
+            elif single_entity:
                 rows = [process[0](context, row) for row in fetch]
             else:
                 rows = [tuple([proc(context, row) for proc in process]) for row in fetch]
@@ -1502,7 +1507,7 @@ class _MapperEntity(_QueryEntity):
         else:
             return None
             
-    def row_processor(self, query, context):
+    def row_processor(self, query, context, single_entity):
         clauses = self._get_entity_clauses(query) 
         if clauses:
             def proc(context, row):
@@ -1524,8 +1529,15 @@ class _MapperEntity(_QueryEntity):
 class _PrimaryMapperEntity(_MapperEntity):
     """entity column corresponding to the 'primary' (first) mapped ORM instance."""
 
-    def row_processor(self, query, context):
-        if context.row_adapter:
+    def row_processor(self, query, context, single_entity):
+        if single_entity and 'append_result' in context.extension.methods:    
+            def main(context, row, result):
+                if context.row_adapter:
+                    row = context.row_adapter(row)
+                self.mapper._instance(context, row, result,
+                    extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance
+                )
+        elif context.row_adapter:
             def main(context, row):
                 return self.mapper._instance(context, context.row_adapter(row), None,
                     extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance
@@ -1535,6 +1547,7 @@ class _PrimaryMapperEntity(_MapperEntity):
                 return self.mapper._instance(context, row, None,
                     extension=context.extension, only_load_props=context.only_load_props, refresh_instance=context.refresh_instance
                 )
+        
         return main
 
     def setup_context(self, query, context):
@@ -1608,7 +1621,7 @@ class _ColumnEntity(_QueryEntity):
         context.attributes[('_ColumnEntity', expr)] = ret = Adapter().traverse(expr, clone=True)
         return ret
         
-    def row_processor(self, query, context):
+    def row_processor(self, query, context, single_entity):
         column = self.__resolve_expr_against_query_aliases(query, self.column, context)
         def proc(context, row):
             return row[column]

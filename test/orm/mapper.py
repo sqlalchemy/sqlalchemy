@@ -1407,8 +1407,10 @@ class MapperExtensionTest(TestBase):
         sess.flush()
         sess.delete(u)
         sess.flush()
-        self.assertEquals(methods, ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'get',
-            'translate_row', 'create_instance', 'populate_instance', 'before_update', 'after_update', 'before_delete', 'after_delete'])
+        self.assertEquals(methods, 
+            ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'append_result', 'get', 'translate_row', 
+            'create_instance', 'populate_instance', 'append_result', 'before_update', 'after_update', 'before_delete', 'after_delete']        
+        )
 
     def test_inheritance(self):
         # test using inheritance
@@ -1429,8 +1431,9 @@ class MapperExtensionTest(TestBase):
         sess.flush()
         sess.delete(am)
         sess.flush()
-        self.assertEquals(methods, ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'get',
-            'translate_row', 'create_instance', 'populate_instance', 'before_update', 'after_update', 'before_delete', 'after_delete'])
+        self.assertEquals(methods, 
+        ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'append_result', 'get', 
+        'translate_row', 'create_instance', 'populate_instance', 'append_result', 'before_update', 'after_update', 'before_delete', 'after_delete'])
 
     def test_after_with_no_changes(self):
         # test that after_update is called even if no cols were updated
@@ -1474,8 +1477,10 @@ class MapperExtensionTest(TestBase):
         sess.flush()
         sess.delete(am)
         sess.flush()
-        self.assertEquals(methods, ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'get',
-            'translate_row', 'create_instance', 'populate_instance', 'before_update', 'after_update', 'before_delete', 'after_delete'])
+        self.assertEquals(methods, 
+            ['before_insert', 'after_insert', 'load', 'translate_row', 'populate_instance', 'append_result', 'get', 'translate_row', 
+            'create_instance', 'populate_instance', 'append_result', 'before_update', 'after_update', 'before_delete', 'after_delete']
+            )
 
 class RequirementsTest(TestBase, AssertsExecutionResults):
     """Tests the contract for user classes."""

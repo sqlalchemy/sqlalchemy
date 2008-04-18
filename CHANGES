@@ -29,6 +29,10 @@ CHANGES
       class, not the mapped selectable, as the source of column
       attributes - so a warning is still issued.
 
+    - restored usage of append_result() extension method for primary 
+      query rows, when the extension is present and only a single-
+      entity result is being returned.
+      
 - sql
     - Added COLLATE support via the .collate(<collation>)
       expression operator and collate(<expr>, <collation>) sql
