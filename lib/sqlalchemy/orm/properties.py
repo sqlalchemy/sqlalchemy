@@ -288,7 +288,7 @@ class PropertyLoader(StrategizedProperty):
             
         def __eq__(self, other):
             if other is None:
-                if self.prop.direction == ONETOMANY:
+                if self.prop.direction in [ONETOMANY, MANYTOMANY]:
                     return ~sql.exists([1], self.prop.primaryjoin)
                 else:
                     return self.prop._optimized_compare(None)

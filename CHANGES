@@ -33,6 +33,9 @@ CHANGES
       query rows, when the extension is present and only a single-
       entity result is being returned.
       
+    - fixed Class.collection==None for m2m relationships
+      [ticket:4213]
+      
 - sql
     - Added COLLATE support via the .collate(<collation>)
       expression operator and collate(<expr>, <collation>) sql
