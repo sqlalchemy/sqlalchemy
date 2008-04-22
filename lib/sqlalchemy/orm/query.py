@@ -910,7 +910,7 @@ class Query(object):
             return None
 
     def one(self):
-        """Return the first result of this ``Query``, raising an exception if more than one row exists.
+        """Return the first result, raising an exception unless exactly one row exists.
 
         This results in an execution of the underlying query.
 
