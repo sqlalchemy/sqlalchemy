@@ -750,10 +750,18 @@ class Session(object):
         """Flush all the object modifications present in this session
         to the database.
 
-        `objects` is a list or tuple of objects specifically to be
+        `objects` is a collection or iterator of objects specifically to be
         flushed; if ``None``, all new and modified objects are flushed.
-        """
 
+        """
+        if objects is not None:
+            try:
+                if not len(objects):
+                    return
+            except TypeError:
+                objects = list(objects)
+                if not objects:
+                    return
         self.uow.flush(self, objects)
 
     def get(self, class_, ident, **kwargs):

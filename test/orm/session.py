@@ -134,6 +134,20 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert testing.db.connect().execute("select count(1) from users").scalar() == 1
         sess.close()
 
+    def test_flush_noop(self):
+        session = create_session()
+        session.uow = object()
+
+        self.assertRaises(AttributeError, session.flush)
+
+        session = create_session()
+        session.uow = object()
+
+        session.flush(objects=[])
+        session.flush(objects=set())
+        session.flush(objects=())
+        session.flush(objects=iter([]))
+
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
     @engines.close_open_connections
     def test_autoflush(self):
