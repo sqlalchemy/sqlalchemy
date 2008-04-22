@@ -1017,7 +1017,7 @@ class ScopedMapperTest(TestBase):
         metadata = MetaData(testing.db)
         table = Table('sometable', metadata,
             Column('id', Integer, primary_key=True),
-            Column('data', String(30)))
+            Column('data', String(30), nullable=False))
         table2 = Table('someothertable', metadata,
             Column('id', Integer, primary_key=True),
             Column('someid', None, ForeignKey('sometable.id'))
@@ -1097,6 +1097,36 @@ class ScopedMapperTest(TestBase):
         Session.mapper(MyClass, table2)
 
         assert MyClass().expunge() == "an expunge !"
+
+    def _test_autoflush_saveoninit(self, on_init, autoflush=None):
+        Session = scoped_session(
+            sessionmaker(transactional=True, autoflush=True))
+
+        class Foo(object):
+            def __init__(self, data=None):
+                if autoflush is not None:
+                    friends = Session.query(Foo).autoflush(autoflush).all()
+                else:
+                    friends = Session.query(Foo).all()
+                self.data = data
+
+        Session.mapper(Foo, table, save_on_init=on_init)
+
+        a1 = Foo('an address')
+        Session.flush()
+
+    def test_autoflush_saveoninit(self):
+        """Test save_on_init + query.autoflush()"""
+        self._test_autoflush_saveoninit(False)
+        self._test_autoflush_saveoninit(False, True)
+        self._test_autoflush_saveoninit(False, False)
+
+        self.assertRaises(exceptions.DBAPIError,
+                          self._test_autoflush_saveoninit, True)
+        self.assertRaises(exceptions.DBAPIError,
+                          self._test_autoflush_saveoninit, True, True)
+        self._test_autoflush_saveoninit(True, False)
+
 
 class ScopedMapperTest2(ORMTest):
     def define_tables(self, metadata):
