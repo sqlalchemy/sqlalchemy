@@ -805,7 +805,7 @@ class ForeignKey(SchemaItem):
             else:
                 self._column = self._colspec
 
-        # propigate TypeEngine to parent if it didnt have one
+        # propagate TypeEngine to parent if it didn't have one
         if isinstance(self.parent.type, types.NullType):
             self.parent.type = self._column.type
         return self._column
