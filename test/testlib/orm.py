@@ -98,6 +98,12 @@ def mapper(type_, *args, **kw):
     forbidden = [
         ('__hash__', 'unhashable', lambda s: id(s)),
         ('__eq__', 'noncomparable', lambda s, o: s is o),
+        ('__ne__', 'noncomparable', lambda s, o: s is not o),
+        ('__cmp__', 'noncomparable', lambda s, o: object.__cmp__(s, o)),
+        ('__le__', 'noncomparable', lambda s, o: object.__le__(s, o)),
+        ('__lt__', 'noncomparable', lambda s, o: object.__lt__(s, o)),
+        ('__ge__', 'noncomparable', lambda s, o: object.__ge__(s, o)),
+        ('__gt__', 'noncomparable', lambda s, o: object.__gt__(s, o)),
         ('__nonzero__', 'truthless', lambda s: 1), ]
 
     if type_.__bases__ == (object,):

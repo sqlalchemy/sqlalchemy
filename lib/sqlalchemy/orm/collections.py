@@ -1376,6 +1376,7 @@ class MappedCollection(dict):
 
         key = self.keyfunc(value)
         # Let self[key] raise if key is not in this collection
+        # testlib.pragma exempt:__ne__
         if self[key] != value:
             raise exceptions.InvalidRequestError(
                 "Can not remove '%s': collection holds '%s' for key '%s'. "
