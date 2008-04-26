@@ -678,7 +678,7 @@ class JoinTest(QueryTest):
         ]
         
         q = sess.query(Order)
-        q = q.add_entity(Item).select_from(join(Order, Item, 'items'))
+        q = q.add_entity(Item).select_from(join(Order, Item, 'items')).order_by(Order.id, Item.id)
         l = q.all()
         self.assertEquals(l, expected)
 

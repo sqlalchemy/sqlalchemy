@@ -683,6 +683,8 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
                 checkparams={'bar':4, 'whee': 7},
                 dialect=dialect
         )
+        
+        # test escaping out text() params with a backslash
         self.assert_compile(
             text("select * from foo where clock='05:06:07' and mork='\:mindy'"),
             "select * from foo where clock='05:06:07' and mork=':mindy'",
