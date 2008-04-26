@@ -36,6 +36,9 @@ CHANGES
     - fixed Class.collection==None for m2m relationships
       [ticket:4213]
       
+    - refined mapper._save_obj() which was unnecessarily calling
+      __ne__() on scalar values during flush [ticket:1015]
+      
 - sql
     - Added COLLATE support via the .collate(<collation>)
       expression operator and collate(<expr>, <collation>) sql

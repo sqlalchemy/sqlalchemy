@@ -428,6 +428,7 @@ class SimpleProperty(object):
         else:
             return getattr(obj, self.key)
 
+
 class NotImplProperty(object):
   """a property that raises ``NotImplementedError``."""
 

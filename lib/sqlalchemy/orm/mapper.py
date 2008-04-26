@@ -1133,7 +1133,7 @@ class Mapper(object):
                 for rec in update:
                     (state, params, mapper, connection, value_params) = rec
                     c = connection.execute(statement.values(value_params), params)
-                    mapper._postfetch(uowtransaction, connection, table, state, c, c.last_updated_params(), value_params)
+                    mapper.__postfetch(uowtransaction, connection, table, state, c, c.last_updated_params(), value_params)
 
                     # testlib.pragma exempt:__hash__
                     updated_objects.add((state, connection))
@@ -1157,14 +1157,14 @@ class Mapper(object):
                         for i, col in enumerate(mapper._pks_by_table[table]):
                             if mapper._get_state_attr_by_column(state, col) is None and len(primary_key) > i:
                                 mapper._set_state_attr_by_column(state, col, primary_key[i])
-                    mapper._postfetch(uowtransaction, connection, table, state, c, c.last_inserted_params(), value_params)
+                    mapper.__postfetch(uowtransaction, connection, table, state, c, c.last_inserted_params(), value_params)
 
                     # synchronize newly inserted ids from one table to the next
                     # TODO: this fires off more than needed, try to organize syncrules
                     # per table
                     for m in util.reversed(list(mapper.iterate_to_root())):
                         if m.__inherits_equated_pairs:
-                            m._synchronize_inherited(state)
+                            m.__synchronize_inherited(state)
 
                     # testlib.pragma exempt:__hash__
                     inserted_objects.add((state, connection))
@@ -1180,25 +1180,31 @@ class Mapper(object):
                     if 'after_update' in mapper.extension.methods:
                         mapper.extension.after_update(mapper, connection, state.obj())
 
-    def _synchronize_inherited(self, state):
+    def __synchronize_inherited(self, state):
         sync.populate(state, self, state, self, self.__inherits_equated_pairs)
 
-    def _postfetch(self, uowtransaction, connection, table, state, resultproxy, params, value_params):
+    def __postfetch(self, uowtransaction, connection, table, state, resultproxy, params, value_params):
         """After an ``INSERT`` or ``UPDATE``, assemble newly generated
         values on an instance.  For columns which are marked as being generated
         on the database side, set up a group-based "deferred" loader
         which will populate those attributes in one query when next accessed.
         """
 
-        postfetch_cols = util.Set(resultproxy.postfetch_cols()).union(util.Set(value_params.keys()))
-        deferred_props = []
+        postfetch_cols = resultproxy.postfetch_cols()
+        generated_cols = list(resultproxy.prefetch_cols())
 
-        for c in self._cols_by_table[table]:
-            if c in postfetch_cols and (not c.key in params or c in value_params):
-                prop = self._columntoproperty[c]
-                deferred_props.append(prop.key)
-            elif not c.primary_key and c.key in params and self._get_state_attr_by_column(state, c) != params[c.key]:
+        if self.polymorphic_on:
+            po = table.corresponding_column(self.polymorphic_on)
+            if po:
+                generated_cols.append(po)
+        if self.version_id_col:
+            generated_cols.append(self.version_id_col)
+
+        for c in generated_cols:
+            if c.key in params:
                 self._set_state_attr_by_column(state, c, params[c.key])
+
+        deferred_props = [prop.key for prop in [self._columntoproperty[c] for c in postfetch_cols]]
 
         if deferred_props:
             if self.eager_defaults:

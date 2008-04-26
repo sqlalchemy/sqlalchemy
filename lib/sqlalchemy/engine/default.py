@@ -395,3 +395,4 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self._last_updated_params = compiled_parameters
 
             self.postfetch_cols = self.compiled.postfetch
+            self.prefetch_cols = self.compiled.prefetch
