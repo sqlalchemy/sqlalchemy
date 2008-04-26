@@ -717,6 +717,15 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         ),
         "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, (select f from bar where lala=heyhey) foo WHERE foo.f = t.id")
 
+        # test Text embedded within select_from(), using binds
+        generate_series = text("generate_series(:x, :y, :z) as s(a)", bindparams=[bindparam('x'), bindparam('y'), bindparam('z')])
+
+        s =select([(func.current_date() + literal_column("s.a")).label("dates")]).select_from(generate_series)
+        self.assert_compile(s, "SELECT CURRENT_DATE + s.a AS dates FROM generate_series(:x, :y, :z) as s(a)", checkparams={'y': None, 'x': None, 'z': None})
+        
+        self.assert_compile(s.params(x=5, y=6, z=7), "SELECT CURRENT_DATE + s.a AS dates FROM generate_series(:x, :y, :z) as s(a)", checkparams={'y': 6, 'x': 5, 'z': 7})
+        
+
     def test_literal(self):
         self.assert_compile(select([literal("foo") + literal("bar")], from_obj=[table1]),
             "SELECT :param_1 || :param_2 AS anon_1 FROM mytable")
@@ -1041,6 +1050,8 @@ UNION SELECT mytable.myid FROM mytable"
 
         s = select([table1], or_(table1.c.myid==7, table1.c.myid==8, table1.c.myid==bindparam('myid_1')))
         self.assertRaisesMessage(exceptions.CompileError, "conflicts with unique bind parameter of the same name", str, s)
+
+
 
     def test_bind_as_col(self):
         t = table('foo', column('id'))

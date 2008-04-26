@@ -1788,12 +1788,6 @@ class FromClause(Selectable):
     def _populate_column_collection(self):
         pass
 
-class _TextFromClause(FromClause):
-    __visit_name__ = 'fromclause'
-
-    def __init__(self, text):
-        self.name = text
-
 class _BindParamClause(ClauseElement, _CompareMixin):
     """Represent a bind parameter.
 
@@ -1914,6 +1908,9 @@ class _TextClause(ClauseElement):
 
     _bind_params_regex = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
 
+    _hide_froms = []
+    oid_column = None
+
     def __init__(self, text = "", bind=None, bindparams=None, typemap=None, autocommit=False):
         self._bind = bind
         self.bindparams = {}
@@ -1949,7 +1946,7 @@ class _TextClause(ClauseElement):
 
     def _get_from_objects(self, **modifiers):
         return []
-
+    
     def supports_execution(self):
         return True
 
@@ -3007,7 +3004,7 @@ class Select(_SelectBaseMixin, FromClause):
         
         if from_obj:
             self._froms = util.Set([
-                _is_literal(f) and _TextFromClause(f) or f
+                _is_literal(f) and _TextClause(f) or f
                 for f in util.to_list(from_obj)
             ])
         else:
@@ -3184,7 +3181,7 @@ class Select(_SelectBaseMixin, FromClause):
 
         s = self._generate()
         if _is_literal(fromclause):
-            fromclause = _TextFromClause(fromclause)
+            fromclause = _TextClause(fromclause)
 
         s._froms = s._froms.union([fromclause])
         return s
@@ -3261,7 +3258,7 @@ class Select(_SelectBaseMixin, FromClause):
 
         """
         if _is_literal(fromclause):
-            fromclause = _TextFromClause(fromclause)
+            fromclause = _TextClause(fromclause)
 
         self._froms = self._froms.union([fromclause])
 
