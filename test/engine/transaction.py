@@ -160,7 +160,7 @@ class TransactionTest(TestBase):
         connection.close()
 
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
+    @testing.unsupported('sqlite', 'mssql', 'sybase', 'access')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactionrollback(self):
         connection = testing.db.connect()
@@ -178,7 +178,7 @@ class TransactionTest(TestBase):
         )
         connection.close()
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
+    @testing.unsupported('sqlite', 'mssql', 'sybase', 'access')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactioncommit(self):
         connection = testing.db.connect()
@@ -196,7 +196,7 @@ class TransactionTest(TestBase):
         )
         connection.close()
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
+    @testing.unsupported('sqlite', 'mssql', 'sybase', 'access')
     @testing.exclude('mysql', '<', (5, 0, 3))
     def testrollbacktosubtransaction(self):
         connection = testing.db.connect()
