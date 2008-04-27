@@ -8,8 +8,7 @@ used in most cases::
 
     from sqlalchemy.ext.declarative import declarative_base
 
-    engine = create_engine('sqlite://')
-    Base = declarative_base(engine)
+    Base = declarative_base()
 
     class SomeClass(Base):
         __tablename__ = 'some_table'
@@ -42,7 +41,17 @@ with declarative classes.  The ``declarative_base`` base class contains a
 ``MetaData`` object as well as a dictionary of all classes created against
 the base.  So to access the above metadata and create tables we can say::
 
-    Base.metadata.create_all()
+    engine = create_engine('sqlite://')
+    Base.metadata.create_all(engine)
+
+The `Engine` created above may also be directly associated with the 
+declarative base class using the `engine` keyword argument, where it will 
+be associated with the underlying `MetaData` object and allow SQL 
+operations involving that metadata and its tables to make use of that
+engine automatically::
+
+    {python}
+    Base = declarative_base(engine=create_engine('sqlite://'))
 
 The ``declarative_base`` can also receive a pre-created ``MetaData``
 object::
