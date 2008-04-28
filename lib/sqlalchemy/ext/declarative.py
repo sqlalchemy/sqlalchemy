@@ -22,7 +22,7 @@ via the ``__table__`` and ``__mapper__`` attributes on the ``SomeClass``
 class.
 
 You may omit the names from the Column definitions.  Declarative will fill
-them in for you.
+them in for you::
 
     class SomeClass(Base):
         __tablename__ = 'some_table'
@@ -37,24 +37,30 @@ appropriate::
     SomeClass.related = relation(RelatedInfo)
 
 Classes which are mapped explicitly using ``mapper()`` can interact freely
-with declarative classes.  The ``declarative_base`` base class contains a
-``MetaData`` object as well as a dictionary of all classes created against
-the base.  So to access the above metadata and create tables we can say::
+with declarative classes.  
+
+The ``declarative_base`` base class contains a
+``MetaData`` object where newly defined ``Table`` objects are collected.  
+This is accessed via the ``metadata`` class level accessor, so to 
+create tables we can say::
 
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
 
-The `Engine` created above may also be directly associated with the 
-declarative base class using the `engine` keyword argument, where it will 
-be associated with the underlying `MetaData` object and allow SQL 
+The ``Engine`` created above may also be directly associated with the 
+declarative base class using the ``engine`` keyword argument, where it will 
+be associated with the underlying ``MetaData`` object and allow SQL 
 operations involving that metadata and its tables to make use of that
 engine automatically::
 
-    {python}
     Base = declarative_base(engine=create_engine('sqlite://'))
 
+Or, as ``MetaData`` allows, at any time using the ``bind`` attribute::
+
+    Base.metadata.bind = create_engine('sqlite://')
+
 The ``declarative_base`` can also receive a pre-created ``MetaData``
-object::
+object, which allows a declarative setup to be associated with an already existing traditional collection of ``Table`` objects::
 
     mymetadata = MetaData()
     Base = declarative_base(metadata=mymetadata)
@@ -91,6 +97,15 @@ using them::
         user_id = Column(Integer, ForeignKey('users.id'))
         user = relation(User, primaryjoin=user_id==User.id)
 
+When an explicit join condition or other configuration which depends 
+on multiple classes cannot be defined immediately due to some classes
+not yet being available, these can be defined after all classes have
+been created.  Attributes which are added to the class after
+its creation are associated with the Table/mapping in the same
+way as if they had been defined inline::
+
+    User.addresses = relation(Address, primaryjoin=Address.user_id==User.id)
+ 
 Synonyms are one area where ``declarative`` needs to slightly change the
 usual SQLAlchemy configurational syntax.  To define a getter/setter which
 proxies to an underlying attribute, use ``synonym`` with the ``descriptor``
@@ -115,12 +130,13 @@ class-level expression construct::
     session.query(MyClass).filter(MyClass.attr == 'some other value').all()
 
 As an alternative to ``__tablename__``, a direct ``Table`` construct may be
-used::
+used.  The ``Column`` objects, which in this case require their names,
+will be added to the mapping just like a regular mapping to a table::
 
     class MyClass(Base):
         __table__ = Table('my_table', Base.metadata,
-            Column(Integer, primary_key=True),
-            Column(String(50))
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50))
         )
 
 This is the preferred approach when using reflected tables, as below::
