@@ -863,5 +863,16 @@ class ReconstitutionTest(TestBase):
         p = session.query(self.Parent).filter_by(name='p1').one()
         assert set(p.kids) == set(['c1', 'c2']), p.kids
 
+    def test_copy(self):
+        import copy
+        p = self.Parent('p1')
+        p.kids.extend(['c1', 'c2'])
+        p_copy = copy.copy(p)
+        del p
+        gc.collect()
+
+        assert set(p_copy.kids) == set(['c1', 'c2']), p.kids
+
+
 if __name__ == "__main__":
     testenv.main()
