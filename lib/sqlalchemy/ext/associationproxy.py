@@ -155,11 +155,16 @@ class AssociationProxy(object):
             return self._scalar_get(getattr(obj, self.target_collection))
         else:
             try:
-                return getattr(obj, self.key)
+                # If the owning instance is reborn (orm session resurrect,
+                # etc.), refresh the proxy cache.
+                creator_id, proxy = getattr(obj, self.key)
+                if id(obj) == creator_id:
+                    return proxy
             except AttributeError:
-                proxy = self._new(self._lazy_collection(weakref.ref(obj)))
-                setattr(obj, self.key, proxy)
-                return proxy
+                pass
+            proxy = self._new(self._lazy_collection(weakref.ref(obj)))
+            setattr(obj, self.key, (id(obj), proxy))
+            return proxy
 
     def __set__(self, obj, values):
         if self.scalar is None:
