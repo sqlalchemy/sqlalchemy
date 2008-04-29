@@ -5,7 +5,7 @@ from testlib import *
 
 class ConcreteTest(ORMTest):
     def define_tables(self, metadata):
-        global managers_table, engineers_table, companies
+        global managers_table, engineers_table, hackers_table, companies
 
         companies = Table('companies', metadata,
            Column('id', Integer, primary_key=True),
@@ -23,6 +23,14 @@ class ConcreteTest(ORMTest):
             Column('name', String(50)),
             Column('engineer_info', String(50)),
             Column('company_id', Integer, ForeignKey('companies.id'))
+        )
+
+        hackers_table = Table('hackers', metadata,
+            Column('employee_id', Integer, primary_key=True),
+            Column('name', String(50)),
+            Column('engineer_info', String(50)),
+            Column('company_id', Integer, ForeignKey('companies.id')),
+            Column('nickname', String(50))
         )
 
     def test_basic(self):
@@ -65,6 +73,71 @@ class ConcreteTest(ORMTest):
         assert set([repr(x) for x in session.query(Employee).all()]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
         assert set([repr(x) for x in session.query(Manager).all()]) == set(["Manager Tom knows how to manage things"])
         assert set([repr(x) for x in session.query(Engineer).all()]) == set(["Engineer Kurt knows how to hack"])
+
+    def test_multi_level(self):
+        class Employee(object):
+            def __init__(self, name):
+                self.name = name
+            def __repr__(self):
+                return self.__class__.__name__ + " " + self.name
+
+        class Manager(Employee):
+            def __init__(self, name, manager_data):
+                self.name = name
+                self.manager_data = manager_data
+            def __repr__(self):
+                return self.__class__.__name__ + " " + self.name + " " +  self.manager_data
+
+        class Engineer(Employee):
+            def __init__(self, name, engineer_info):
+                self.name = name
+                self.engineer_info = engineer_info
+            def __repr__(self):
+                return self.__class__.__name__ + " " + self.name + " " +  self.engineer_info
+
+        class Hacker(Engineer):
+            def __init__(self, name, nickname, engineer_info):
+                self.name = name
+                self.nickname = nickname
+                self.engineer_info = engineer_info
+            def __repr__(self):
+                return self.__class__.__name__ + " " + self.name + " '" + \
+                       self.nickname + "' " +  self.engineer_info
+
+        pjoin = polymorphic_union({
+            'manager': managers_table,
+            'engineer': engineers_table,
+            'hacker': hackers_table
+        }, 'type', 'pjoin')
+
+        pjoin2 = polymorphic_union({
+            'engineer': engineers_table,
+            'hacker': hackers_table
+        }, 'type', 'pjoin2')
+
+        employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
+        manager_mapper = mapper(Manager, managers_table, 
+                                inherits=employee_mapper, concrete=True, 
+                                polymorphic_identity='manager')
+        engineer_mapper = mapper(Engineer, engineers_table, 
+                                 with_polymorphic=('*', pjoin2), 
+                                 polymorphic_on=pjoin2.c.type,
+                                 inherits=employee_mapper, concrete=True,
+                                 polymorphic_identity='engineer')
+        hacker_mapper = mapper(Hacker, hackers_table, 
+                               inherits=engineer_mapper,
+                               concrete=True, polymorphic_identity='hacker')
+
+        session = create_session()
+        session.save(Manager('Tom', 'knows how to manage things'))
+        session.save(Engineer('Jerry', 'knows how to program'))
+        session.save(Hacker('Kurt', 'Badass', 'knows how to hack'))
+        session.flush()
+        session.clear()
+
+        assert set([repr(x) for x in session.query(Employee).all()]) == set(["Engineer Jerry knows how to program", "Manager Tom knows how to manage things", "Hacker Kurt 'Badass' knows how to hack"])
+        assert set([repr(x) for x in session.query(Manager).all()]) == set(["Manager Tom knows how to manage things"])
+        assert set([repr(x) for x in session.query(Engineer).all()]) == set(["Engineer Jerry knows how to program", "Hacker Kurt 'Badass' knows how to hack"])
 
     def test_relation(self):
         class Employee(object):
