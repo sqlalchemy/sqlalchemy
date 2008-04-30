@@ -975,5 +975,75 @@ class CyclicalInheritingEagerTest(ORMTest):
         # testing a particular endless loop condition in eager join setup
         create_session().query(SubT).all()
 
+class SubqueryTest(ORMTest):
+    def define_tables(self, metadata):
+        global users_table, tags_table
+        
+        users_table = Table('users', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('name', String(16))
+        )
+
+        tags_table = Table('tags', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('user_id', Integer, ForeignKey("users.id")),
+            Column('score1', Float),
+            Column('score2', Float),
+        )
+
+    def test_label_anonymizing(self):
+        """test that eager loading works with subqueries with labels, 
+        even if an explicit labelname which conflicts with a label on the parent.
+        
+        There's not much reason a column_property() would ever need to have a label
+        of a specific name (and they don't even need labels these days), 
+        unless you'd like the name to line up with a name
+        that you may be using for a straight textual statement used for loading
+        instances of that type.
+        
+        """
+        class User(Base):
+            @property
+            def prop_score(self):
+                return sum(tag.prop_score for tag in self.tags)
+
+        class Tag(Base):
+            @property
+            def prop_score(self):
+                return self.score1 * self.score2
+        
+        for labeled, labelname in [(True, 'score'), (True, None), (False, None)]:
+            clear_mappers()
+            
+            tag_score = (tags_table.c.score1 * tags_table.c.score2)
+            user_score = select([func.sum(tags_table.c.score1 *
+                                          tags_table.c.score2)],
+                                tags_table.c.user_id == users_table.c.id)
+            
+            if labeled:
+                tag_score = tag_score.label(labelname)
+                user_score = user_score.label(labelname)
+            else:
+                user_score = user_score.as_scalar()
+            
+            mapper(Tag, tags_table, properties={
+                'query_score': column_property(tag_score),
+            })
+
+
+            mapper(User, users_table, properties={
+                'tags': relation(Tag, backref='user', lazy=False), 
+                'query_score': column_property(user_score),
+            })
+
+            session = create_session()
+            session.save(User(name='joe', tags=[Tag(score1=5.0, score2=3.0), Tag(score1=55.0, score2=1.0)]))
+            session.save(User(name='bar', tags=[Tag(score1=5.0, score2=4.0), Tag(score1=50.0, score2=1.0), Tag(score1=15.0, score2=2.0)]))
+            session.flush()
+            session.clear()
+
+            for user in session.query(User).all():
+                self.assertEquals(user.query_score, user.prop_score)
+
 if __name__ == '__main__':
     testenv.main()

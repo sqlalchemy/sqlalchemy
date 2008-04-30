@@ -166,6 +166,10 @@ class AliasedClauses(object):
         # process column-level subqueries    
         aliased_column = sql_util.ClauseAdapter(self.alias, equivalents=self.equivalents).traverse(column, clone=True)
 
+        # anonymize labels which might have specific names
+        if isinstance(aliased_column, expression._Label):
+            aliased_column = aliased_column.label(None)
+
         # add to row decorator explicitly
         self.row_decorator({}).map[column] = aliased_column
         return aliased_column

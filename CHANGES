@@ -39,6 +39,13 @@ CHANGES
     - refined mapper._save_obj() which was unnecessarily calling
       __ne__() on scalar values during flush [ticket:1015]
       
+    - added a feature to eager loading whereby subqueries set
+      as column_property() with explicit label names (which is not
+      necessary, btw) will have the label anonymized when
+      the instance is part of the eager join, to prevent
+      conflicts with a subquery or column of the same name 
+      on the parent object.  [ticket:1019]
+      
 - sql
     - Added COLLATE support via the .collate(<collation>)
       expression operator and collate(<expr>, <collation>) sql
