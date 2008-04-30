@@ -1005,7 +1005,7 @@ class SubqueryTest(ORMTest):
         class User(Base):
             @property
             def prop_score(self):
-                return sum(tag.prop_score for tag in self.tags)
+                return sum([tag.prop_score for tag in self.tags])
 
         class Tag(Base):
             @property
