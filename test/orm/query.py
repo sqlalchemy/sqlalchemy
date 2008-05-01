@@ -349,6 +349,32 @@ class FilterTest(QueryTest):
 
         assert [User(id=9)] == sess.query(User).filter(User.addresses.any(email_address='fred@fred.com')).all()
 
+    @testing.fails_on_everything_except()
+    def test_broken_any_1(self):
+        sess = create_session()
+        
+        # overcorrelates
+        assert [User(id=7), User(id=8)] == sess.query(User).join("addresses").filter(~User.addresses.any(Address.email_address=='fred@fred.com')).all()
+
+    def test_broken_any_2(self):
+        sess = create_session()
+        
+        # works, filter is before the join
+        assert [User(id=7), User(id=8)] == sess.query(User).filter(~User.addresses.any(Address.email_address=='fred@fred.com')).join("addresses", aliased=True).all()
+        
+    def test_broken_any_3(self):
+        sess = create_session()
+        
+        # works, filter is after the join, but reset_joinpoint is called, removing aliasing
+        assert [User(id=7), User(id=8)] == sess.query(User).join("addresses", aliased=True).filter(Address.email_address != None).reset_joinpoint().filter(~User.addresses.any(email_address='fred@fred.com')).all()
+
+    @testing.fails_on_everything_except()
+    def test_broken_any_4(self):
+        sess = create_session()
+        
+        # filter is after the join, gets aliased.  in 0.5 any(), has() and not contains() are shielded from aliasing
+        assert [User(id=10)] == sess.query(User).outerjoin("addresses", aliased=True).filter(~User.addresses.any()).all()
+
     @testing.unsupported('maxdb') # can core
     def test_has(self):
         sess = create_session()
