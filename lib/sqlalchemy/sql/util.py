@@ -56,7 +56,63 @@ def find_columns(clause):
     visitors.traverse(clause, visit_column=visit_column)
     return cols
 
+def join_condition(a, b, ignore_nonexistent_tables=False):
+    """create a join condition between two tables.
+    
+    ignore_nonexistent_tables=True allows a join condition to be
+    determined between two tables which may contain references to
+    other not-yet-defined tables.  In general the NoSuchTableError
+    raised is only required if the user is trying to join selectables
+    across multiple MetaData objects (which is an extremely rare use 
+    case).
+    
+    """
+    crit = []
+    constraints = util.Set()
+    for fk in b.foreign_keys:
+        try:
+            col = fk.get_referent(a)
+        except exceptions.NoSuchTableError:
+            if ignore_nonexistent_tables:
+                continue
+            else:
+                raise
+                
+        if col:
+            crit.append(col == fk.parent)
+            constraints.add(fk.constraint)
 
+    if a is not b:
+        for fk in a.foreign_keys:
+            try:
+                col = fk.get_referent(b)
+            except exceptions.NoSuchTableError:
+                if ignore_nonexistent_tables:
+                    continue
+                else:
+                    raise
+            
+            if col:
+                crit.append(col == fk.parent)
+                constraints.add(fk.constraint)
+
+    if len(crit) == 0:
+        raise exceptions.ArgumentError(
+            "Can't find any foreign key relationships "
+            "between '%s' and '%s'" % (a.description, b.description))
+    elif len(constraints) > 1:
+        raise exceptions.ArgumentError(
+            "Can't determine join between '%s' and '%s'; "
+            "tables have more than one foreign key "
+            "constraint relationship between them. "
+            "Please specify the 'onclause' of this "
+            "join explicitly." % (a.description, b.description))
+    elif len(crit) == 1:
+        return (crit[0])
+    else:
+        return and_(*crit)
+    
+    
 def reduce_columns(columns, *clauses):
     """given a list of columns, return a 'reduced' set based on natural equivalents.
 

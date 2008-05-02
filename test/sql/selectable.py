@@ -6,6 +6,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy import exceptions
 
 metadata = MetaData()
 table = Table('table1', metadata,
@@ -222,6 +223,18 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert u.corresponding_column(s.oid_column) is u.oid_column
         assert u.corresponding_column(s2.oid_column) is u.oid_column
     
+    def test_two_metadata_join_raises(self):
+        m = MetaData()
+        m2 = MetaData()
+
+        t1 = Table('t1', m, Column('id', Integer), Column('id2', Integer))
+        t2 = Table('t2', m, Column('id', Integer, ForeignKey('t1.id')))
+        t3 = Table('t3', m2, Column('id', Integer, ForeignKey('t1.id2')))
+
+        s = select([t2, t3], use_labels=True)
+
+        self.assertRaises(exceptions.NoSuchTableError, s.join, t1)
+        
 class PrimaryKeyTest(TestBase, AssertsExecutionResults):
     def test_join_pk_collapse_implicit(self):
         """test that redundant columns in a join get 'collapsed' into a minimal primary key,

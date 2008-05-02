@@ -447,7 +447,33 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         sess.clear()
 
         self.assertEquals(sess.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).first(), c2)
+    
+    def test_inheritance_with_undefined_relation(self):
+        Base = declarative_base()
 
+        class Parent(Base):
+           __tablename__ = 'parent'
+           id = Column('id', Integer, primary_key=True)
+           tp = Column('type', String(50))
+           __mapper_args__ = dict(polymorphic_on = tp)
+
+          
+        class Child1(Parent):
+           __tablename__ = 'child1'
+           id = Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
+           related_child2 = Column('c2', Integer, ForeignKey('child2.id'))
+           __mapper_args__ = dict(polymorphic_identity = 'child1')
+        
+        # no exception is raised by the ForeignKey to "child2" even though child2 doesn't exist yet
+           
+        class Child2(Parent):
+           __tablename__ = 'child2'
+           id = Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
+           related_child1 = Column('c1', Integer)
+           __mapper_args__ = dict(polymorphic_identity = 'child2')
+           
+        compile_mappers()  # no exceptions here
+        
     def test_relation_reference(self):
         class Address(Base, Fixture):
             __tablename__ = 'addresses'

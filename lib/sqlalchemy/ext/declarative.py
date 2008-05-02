@@ -187,6 +187,7 @@ from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty
 from sqlalchemy import util, exceptions
+from sqlalchemy.sql import util as sql_util
 
 
 __all__ = ['declarative_base', 'synonym_for', 'comparable_using',
@@ -241,7 +242,13 @@ class DeclarativeMeta(type):
         if 'inherits' not in mapper_args:
             inherits = cls.__mro__[1]
             inherits = cls._decl_class_registry.get(inherits.__name__, None)
-            mapper_args['inherits'] = inherits
+            if inherits:
+                mapper_args['inherits'] = inherits
+                if not mapper_args.get('concrete', False) and table:
+                    # figure out the inherit condition with relaxed rules about nonexistent tables,
+                    # to allow for ForeignKeys to not-yet-defined tables (since we know for sure that our parent
+                    # table is defined within the same MetaData)
+                    mapper_args['inherit_condition'] = sql_util.join_condition(inherits.__table__, table, ignore_nonexistent_tables=True)
         
         if hasattr(cls, '__mapper_cls__'):
             mapper_cls = util.unbound_method_to_callable(cls.__mapper_cls__)

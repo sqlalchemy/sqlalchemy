@@ -424,7 +424,7 @@ class Mapper(object):
                         # figure out inherit condition from our table to the immediate table
                         # of the inherited mapper, not its full table which could pull in other
                         # stuff we dont want (allows test/inheritance.InheritTest4 to pass)
-                        self.inherit_condition = sql.join(self.inherits.local_table, self.local_table).onclause
+                        self.inherit_condition = sqlutil.join_condition(self.inherits.local_table, self.local_table)
                     self.mapped_table = sql.join(self.inherits.mapped_table, self.local_table, self.inherit_condition)
                     
                     fks = util.to_set(self.inherit_foreign_keys)

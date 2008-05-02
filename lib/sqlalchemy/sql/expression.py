@@ -2308,34 +2308,10 @@ class Join(FromClause):
         return self.left, self.right, self.onclause
 
     def __match_primaries(self, primary, secondary):
-        crit = []
-        constraints = util.Set()
-        for fk in secondary.foreign_keys:
-            col = fk.get_referent(primary)
-            if col:
-                crit.append(col == fk.parent)
-                constraints.add(fk.constraint)
-        if primary is not secondary:
-            for fk in primary.foreign_keys:
-                col = fk.get_referent(secondary)
-                if col:
-                    crit.append(col == fk.parent)
-                    constraints.add(fk.constraint)
-        if len(crit) == 0:
-            raise exceptions.ArgumentError(
-                "Can't find any foreign key relationships "
-                "between '%s' and '%s'" % (primary.description, secondary.description))
-        elif len(constraints) > 1:
-            raise exceptions.ArgumentError(
-                "Can't determine join between '%s' and '%s'; "
-                "tables have more than one foreign key "
-                "constraint relationship between them. "
-                "Please specify the 'onclause' of this "
-                "join explicitly." % (primary.description, secondary.description))
-        elif len(crit) == 1:
-            return (crit[0])
-        else:
-            return and_(*crit)
+        global sql_util
+        if not sql_util:
+            from sqlalchemy.sql import util as sql_util
+        return sql_util.join_condition(primary, secondary)
 
     def select(self, whereclause=None, fold_equivalents=False, **kwargs):
         """Create a ``Select`` from this ``Join``.

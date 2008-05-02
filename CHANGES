@@ -46,6 +46,12 @@ CHANGES
       conflicts with a subquery or column of the same name 
       on the parent object.  [ticket:1019]
       
+- declarative extension
+    - Joined table inheritance mappers use a slightly relaxed
+      function to create the "inherit condition" to the parent
+      table, so that other foreign keys to not-yet-declared 
+      Table objects don't trigger an error.
+      
 - sql
     - Added COLLATE support via the .collate(<collation>)
       expression operator and collate(<expr>, <collation>) sql
