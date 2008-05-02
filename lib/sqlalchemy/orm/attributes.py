@@ -1197,12 +1197,6 @@ def _init_class_state(class_):
         class_._class_state = ClassState()
 
 def register_class(class_, extra_init=None, on_exception=None, deferred_scalar_loader=None):
-    # do a sweep first, this also helps some attribute extensions
-    # (like associationproxy) become aware of themselves at the
-    # class level
-    for key in dir(class_):
-        getattr(class_, key, None)
-
     _init_class_state(class_)
     class_._class_state.deferred_scalar_loader=deferred_scalar_loader
 

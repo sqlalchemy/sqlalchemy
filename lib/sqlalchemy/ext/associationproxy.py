@@ -143,9 +143,10 @@ class AssociationProxy(object):
         return lazy_collection
 
     def __get__(self, obj, class_):
+        if self.owning_class is None:
+            self.owning_class = class_ and class_ or type(obj)
         if obj is None:
-            self.owning_class = class_
-            return
+            return None
         elif self.scalar is None:
             self.scalar = self._target_is_scalar()
             if self.scalar:
@@ -167,6 +168,8 @@ class AssociationProxy(object):
             return proxy
 
     def __set__(self, obj, values):
+        if self.owning_class is None:
+            self.owning_class = type(obj)
         if self.scalar is None:
             self.scalar = self._target_is_scalar()
             if self.scalar:
@@ -186,6 +189,8 @@ class AssociationProxy(object):
                 self._set(proxy, values)
 
     def __delete__(self, obj):
+        if self.owning_class is None:
+            self.owning_class = type(obj)
         delattr(obj, self.key)
 
     def _initialize_scalar_accessors(self):
