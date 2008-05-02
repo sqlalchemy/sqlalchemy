@@ -233,7 +233,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
 
         s = select([t2, t3], use_labels=True)
 
-        self.assertRaises(exceptions.NoSuchTableError, s.join, t1)
+        self.assertRaises(exceptions.NoReferencedTableError, s.join, t1)
         
 class PrimaryKeyTest(TestBase, AssertsExecutionResults):
     def test_join_pk_collapse_implicit(self):

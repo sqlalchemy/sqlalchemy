@@ -72,7 +72,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False):
     for fk in b.foreign_keys:
         try:
             col = fk.get_referent(a)
-        except exceptions.NoSuchTableError:
+        except exceptions.NoReferencedTableError:
             if ignore_nonexistent_tables:
                 continue
             else:
@@ -86,7 +86,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False):
         for fk in a.foreign_keys:
             try:
                 col = fk.get_referent(b)
-            except exceptions.NoSuchTableError:
+            except exceptions.NoReferencedTableError:
                 if ignore_nonexistent_tables:
                     continue
                 else:
@@ -110,7 +110,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False):
     elif len(crit) == 1:
         return (crit[0])
     else:
-        return and_(*crit)
+        return sql.and_(*crit)
     
     
 def reduce_columns(columns, *clauses):

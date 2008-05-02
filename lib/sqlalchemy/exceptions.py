@@ -65,7 +65,7 @@ class AssertionError(SQLAlchemyError):
 class NoSuchColumnError(KeyError, SQLAlchemyError):
     """Raised by ``RowProxy`` when a nonexistent column is requested from a row."""
     
-class NoSuchTableError(InvalidRequestError):
+class NoReferencedTableError(InvalidRequestError):
     """Raised by ``ForeignKey`` when the referred ``Table`` cannot be located."""
 
 class DisconnectionError(SQLAlchemyError):
