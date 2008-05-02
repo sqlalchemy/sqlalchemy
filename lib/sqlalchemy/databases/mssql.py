@@ -802,7 +802,10 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
 
         # Allow specification of partial ODBC connect string
         if 'odbc_options' in keys: 
-            connectors.append(keys.pop('odbc_options'))
+            odbc_options=keys.pop('odbc_options')
+            if odbc_options[0]=="'" and odbc_options[-1]=="'":
+                odbc_options=odbc_options[1:-1]
+            connectors.append(odbc_options)
         
         return [[";".join (connectors)], {}]
 
