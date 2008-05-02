@@ -56,6 +56,10 @@ CHANGES
       table, so that other foreign keys to not-yet-declared 
       Table objects don't trigger an error.
       
+    - fixed reentrant mapper compile hang when 
+      a declared attribute is used within ForeignKey, 
+      ie. ForeignKey(MyOtherClass.someattribute)
+      
 - sql
     - Added COLLATE support via the .collate(<collation>)
       expression operator and collate(<expr>, <collation>) sql

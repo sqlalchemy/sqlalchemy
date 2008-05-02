@@ -59,23 +59,23 @@ class MapperTest(MapperSuperTest):
         self.assertRaises(exceptions.ArgumentError, mapper, User, s)
     
     def test_recompile_on_othermapper(self):
-        """test the global '__new_mappers' flag such that a compile 
+        """test the global '_new_mappers' flag such that a compile 
         trigger on an already-compiled mapper still triggers a check against all mappers."""
 
         from sqlalchemy.orm import mapperlib
         
         mapper(User, users)
         compile_mappers()
-        assert mapperlib._Mapper__new_mappers is False
+        assert mapperlib._new_mappers is False
         
         m = mapper(Address, addresses, properties={'user':relation(User, backref="addresses")})
         
         assert m._Mapper__props_init is False
-        assert mapperlib._Mapper__new_mappers is True
+        assert mapperlib._new_mappers is True
         u = User()
         assert User.addresses
-        assert mapperlib._Mapper__new_mappers is False
-        
+        assert mapperlib._new_mappers is False
+    
     def test_compileonsession(self):
         m = mapper(User, users)
         session = create_session()

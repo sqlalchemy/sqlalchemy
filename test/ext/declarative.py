@@ -77,10 +77,10 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
             user_id = Column('user_id', Integer, ForeignKey('users.id'))
             user = relation("User", primaryjoin=user_id==User.id, backref="addresses")
 
-        assert mapperlib._Mapper__new_mappers is True
+        assert mapperlib._new_mappers is True
         u = User()
         assert User.addresses
-        assert mapperlib._Mapper__new_mappers is False
+        assert mapperlib._new_mappers is False
 
     def test_nice_dependency_error(self):
         class User(Base):
@@ -449,8 +449,6 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         self.assertEquals(sess.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).first(), c2)
     
     def test_inheritance_with_undefined_relation(self):
-        Base = declarative_base()
-
         class Parent(Base):
            __tablename__ = 'parent'
            id = Column('id', Integer, primary_key=True)
@@ -473,6 +471,39 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
            __mapper_args__ = dict(polymorphic_identity = 'child2')
            
         compile_mappers()  # no exceptions here
+    
+    def test_reentrant_compile_via_foreignkey(self):
+        
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            addresses = relation("Address", backref="user")
+
+        class Address(Base, Fixture):
+            __tablename__ = 'addresses'
+
+            id = Column('id', Integer, primary_key=True)
+            email = Column('email', String(50))
+            user_id = Column('user_id', Integer, ForeignKey(User.id))
+        
+        compile_mappers() # this forces a re-entrant compile() due to the User.id within the ForeignKey
+
+        Base.metadata.create_all()
+        u1 = User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])
+        sess = create_session()
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(User).all(), [User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])])
         
     def test_relation_reference(self):
         class Address(Base, Fixture):

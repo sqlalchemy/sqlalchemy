@@ -24,7 +24,8 @@ from sqlalchemy.orm.util import has_identity, _state_has_identity, _is_mapped_cl
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', '_mapper_registry']
 
 _mapper_registry = weakref.WeakKeyDictionary()
-__new_mappers = False
+_new_mappers = False
+_already_compiling = False
 
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
@@ -35,7 +36,7 @@ global_extensions = []
 NO_ATTRIBUTE = util.symbol('NO_ATTRIBUTE')
 
 # lock used to synchronize the "mapper compile" step
-_COMPILE_MUTEX = util.threading.Lock()
+_COMPILE_MUTEX = util.threading.RLock()
 
 # initialize these lazily
 ColumnProperty = None
@@ -179,8 +180,8 @@ class Mapper(object):
         self.__compile_extensions()
         self.__compile_properties()
         self.__compile_pks()
-        global __new_mappers
-        __new_mappers = True
+        global _new_mappers
+        _new_mappers = True
         self.__log("constructed")
 
     def __log(self, msg):
@@ -327,14 +328,20 @@ class Mapper(object):
         repeatedly.
         """
         
-        global __new_mappers
-        if self.__props_init and not __new_mappers:
+        global _new_mappers
+        if self.__props_init and not _new_mappers:
             return self
+            
         _COMPILE_MUTEX.acquire()
+        global _already_compiling
+        if _already_compiling:
+            self.__initialize_properties()
+            return
+        _already_compiling = True
         try:
 
             # double-check inside mutex
-            if self.__props_init and not __new_mappers:
+            if self.__props_init and not _new_mappers:
                 return self
 
             # initialize properties on all mappers
@@ -342,9 +349,10 @@ class Mapper(object):
                 if not mapper.__props_init:
                     mapper.__initialize_properties()
 
-            __new_mappers = False
+            _new_mappers = False
             return self
         finally:
+            _already_compiling = False
             _COMPILE_MUTEX.release()
 
     def __initialize_properties(self):

@@ -802,6 +802,9 @@ class ForeignKey(SchemaItem):
                         "Could not create ForeignKey '%s' on table '%s': "
                         "table '%s' has no column named '%s'" % (
                         self._colspec, parenttable.name, table.name, str(e)))
+            
+            elif isinstance(self._colspec, expression.Operators):
+                self._column = self._colspec.clause_element()
             else:
                 self._column = self._colspec
 
