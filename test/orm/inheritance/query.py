@@ -274,18 +274,10 @@ def make_test(select_type):
                 sess.query(Person).filter(Person.paperwork.any(Paperwork.description=="review #2")).all(), [m1]
             )
             
-            if select_type == '':
-                # this tests that a hand-rolled criterion in the any() doesn't get clobbered by
-                # aliasing, when the mapper is not set up for polymorphic joins
-                self.assertEquals(
-                    sess.query(Company).filter(Company.employees.any(and_(Engineer.primary_language=='cobol', people.c.person_id==engineers.c.person_id))).one(),
-                    c2
-                    )
-            else:
-                self.assertEquals(
-                    sess.query(Company).filter(Company.employees.any(and_(Engineer.primary_language=='cobol'))).one(),
-                    c2
-                    )
+            self.assertEquals(
+                sess.query(Company).filter(Company.employees.of_type(Engineer).any(and_(Engineer.primary_language=='cobol'))).one(),
+                c2
+                )
                 
         
         def test_expire(self):
@@ -514,5 +506,70 @@ class SelfReferentialTest(ORMTest):
             sess.query(Engineer).join('reports_to')
         self.assertRaises(exceptions.InvalidRequestError, go)
 
+class M2MFilterTest(ORMTest):
+    keep_mappers = True
+    keep_data = True
+    
+    def define_tables(self, metadata):
+        global people, engineers, Organization
+        
+        organizations = Table('organizations', metadata,
+            Column('id', Integer, Sequence('org_id_seq', optional=True), primary_key=True),
+            Column('name', String(50)),
+            )
+        engineers_to_org = Table('engineers_org', metadata,
+            Column('org_id', Integer, ForeignKey('organizations.id')),
+            Column('engineer_id', Integer, ForeignKey('engineers.person_id')),
+        )
+        
+        people = Table('people', metadata,
+           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('name', String(50)),
+           Column('type', String(30)))
+
+        engineers = Table('engineers', metadata,
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('primary_language', String(50)),
+          )
+        
+        class Organization(fixtures.Base):
+            pass
+            
+        mapper(Organization, organizations, properties={
+            'engineers':relation(Engineer, secondary=engineers_to_org, backref='organizations')
+        })
+        
+        mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
+        mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer')
+    
+    def insert_data(self):
+        e1 = Engineer(name='e1')
+        e2 = Engineer(name='e2')
+        e3 = Engineer(name='e3')
+        e4 = Engineer(name='e4')
+        org1 = Organization(name='org1', engineers=[e1, e2])
+        org2 = Organization(name='org2', engineers=[e3, e4])
+        
+        sess = create_session()
+        sess.save(org1)
+        sess.save(org2)
+        sess.flush()
+        
+    def test_not_contains(self):
+        sess = create_session()
+        
+        e1 = sess.query(Person).filter(Engineer.name=='e1').one()
+        
+        # this works
+        self.assertEquals(sess.query(Organization).filter(~Organization.engineers.of_type(Engineer).contains(e1)).all(), [Organization(name='org2')])
+
+        # this had a bug
+        self.assertEquals(sess.query(Organization).filter(~Organization.engineers.contains(e1)).all(), [Organization(name='org2')])
+    
+    def test_any(self):
+        sess = create_session()
+        self.assertEquals(sess.query(Organization).filter(Organization.engineers.of_type(Engineer).any(Engineer.name=='e1')).all(), [Organization(name='org1')])
+        self.assertEquals(sess.query(Organization).filter(Organization.engineers.any(Engineer.name=='e1')).all(), [Organization(name='org1')])
+        
 if __name__ == "__main__":
     testenv.main()

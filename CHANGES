@@ -29,6 +29,10 @@ CHANGES
       class, not the mapped selectable, as the source of column
       attributes - so a warning is still issued.
 
+    - fixes to the "exists" function involving inheritance (any(), has(),
+      ~contains()); the full target join will be rendered into the
+      EXISTS clause for relations that link to subclasses.
+      
     - restored usage of append_result() extension method for primary 
       query rows, when the extension is present and only a single-
       entity result is being returned.
