@@ -46,9 +46,9 @@ CHANGES
       conflicts with a subquery or column of the same name 
       on the parent object.  [ticket:1019]
 
-    - Removed a class-member inspection step from attribute
-      instrumentation that could be problematic when integrating
-      with other frameworks.
+    - Adjusted class-member inspection durint attribute and
+      collection instrumentation that could be problematic when
+      integrating with other frameworks.
 
 - declarative extension
     - Joined table inheritance mappers use a slightly relaxed

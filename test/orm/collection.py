@@ -1724,5 +1724,23 @@ class CustomCollectionsTest(ORMTest):
         o = list(p2.children)
         assert len(o) == 3
 
+
+class InstrumentationTest(TestBase):
+
+    def test_uncooperative_descriptor_in_sweep(self):
+        class DoNotTouch(object):
+            def __get__(self, obj, owner):
+                raise AttributeError
+
+        class Touchy(list):
+            no_touch = DoNotTouch()
+
+        assert 'no_touch' in Touchy.__dict__
+        assert not hasattr(Touchy, 'no_touch')
+        assert 'no_touch' in dir(Touchy)
+
+        instrumented = collections._instrument_class(Touchy)
+        assert True
+
 if __name__ == "__main__":
     testenv.main()

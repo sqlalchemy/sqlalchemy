@@ -750,7 +750,7 @@ def _instrument_class(cls):
     methods = roles.pop('methods', {})
 
     for name in dir(cls):
-        method = getattr(cls, name)
+        method = getattr(cls, name, None)
         if not callable(method):
             continue
 
