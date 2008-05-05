@@ -96,7 +96,7 @@ CHANGES
       PoolListener, your choice.
 
     - added "reset_on_return" option to Pool which will disable
-      the databsae state cleanup (eg. issuing a rollback()) when
+      the database state cleanup (eg. issuing a rollback()) when
       connections are returned to the pool.
 
 -ext
