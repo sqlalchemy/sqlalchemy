@@ -534,6 +534,7 @@ class SetTest(_CollectionOperations):
                 for other in (set(['a','b','c']), set(['a','b','c','d']),
                               set(['a']), set(['a','b']),
                               set(['c','d']), set(['e', 'f', 'g']),
+                              frozenset(['e', 'f', 'g']),
                               set()):
                     p = Parent('p')
                     p.children = base[:]

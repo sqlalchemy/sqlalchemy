@@ -60,6 +60,11 @@ CHANGES
     - Fixed duplicate append event emission on repeated
       instrumented set.add() operations.
 
+    - set-based collections |=, -=, ^= and &= are stricter about
+      their operands and only operate on sets, frozensets or
+      subclasses of the collection type. Previously, they would
+      accept any duck-typed set.
+
 - declarative extension
     - Joined table inheritance mappers use a slightly relaxed
       function to create the "inherit condition" to the parent
@@ -93,6 +98,12 @@ CHANGES
     - added "reset_on_return" option to Pool which will disable
       the databsae state cleanup (eg. issuing a rollback()) when
       connections are returned to the pool.
+
+-ext
+    - set-based association proxies |=, -=, ^= and &= are
+      stricter about their operands and only operate on sets,
+      frozensets or other association proxies. Previously, they
+      would accept any duck-typed set.
 
 - mssql
     - Added "odbc_autotranslate" parameter to engine / dburi

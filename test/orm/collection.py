@@ -484,6 +484,11 @@ class CollectionsTest(TestBase):
             control |= values
             assert_eq()
 
+            values = frozenset([e, creator()])
+            obj.attr |= values
+            control |= values
+            assert_eq()
+
             try:
                 direct |= [e, creator()]
                 assert False
@@ -525,6 +530,11 @@ class CollectionsTest(TestBase):
             assert_eq()
 
             values = set([creator()])
+            obj.attr -= values
+            control -= values
+            assert_eq()
+
+            values = frozenset([creator()])
             obj.attr -= values
             control -= values
             assert_eq()
