@@ -48,7 +48,10 @@ CHANGES
       necessary, btw) will have the label anonymized when
       the instance is part of the eager join, to prevent
       conflicts with a subquery or column of the same name 
-      on the parent object.  [ticket:1019]
+      on the parent object.  [ticket:1019] 
+      
+    - same as [ticket:1019] but repaired the non-labeled use case
+      [ticket:1022]
 
     - Adjusted class-member inspection durint attribute and
       collection instrumentation that could be problematic when

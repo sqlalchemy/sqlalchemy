@@ -1045,5 +1045,11 @@ class SubqueryTest(ORMTest):
             for user in session.query(User).all():
                 self.assertEquals(user.query_score, user.prop_score)
 
+            u = session.query(User).filter_by(name='joe').one()
+            self.assertEquals(u.query_score, u.prop_score)
+            
+            for t in (tags_table, users_table):
+                t.delete().execute()
+            
 if __name__ == '__main__':
     testenv.main()

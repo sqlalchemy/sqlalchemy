@@ -2446,7 +2446,10 @@ class _ColumnElementAdapter(ColumnElement):
     key = property(key)
 
     def _label(self):
-        return self.elem._label
+        try:
+            return self.elem._label
+        except AttributeError:
+            return self.anon_label
     _label = property(_label)
 
     def _copy_internals(self, clone=_clone):
