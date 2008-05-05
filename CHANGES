@@ -75,6 +75,9 @@ CHANGES
     - improved behavior of text() expressions when used as 
       FROM clauses, such as select().select_from(text("sometext"))
       [ticket:1014]
+
+    - Column.copy() respects the value of "autoincrement",
+      fixes usage with Migrate [ticket:1021]
       
 - engines
     - Pool listeners can now be provided as a dictionary of

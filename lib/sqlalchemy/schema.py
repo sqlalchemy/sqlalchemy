@@ -634,7 +634,7 @@ class Column(SchemaItem, expression._ColumnClause):
         This is used in ``Table.tometadata``.
         """
 
-        return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, quote=self.quote, index=self.index, *[c.copy() for c in self.constraints])
+        return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, quote=self.quote, index=self.index, autoincrement=self.autoincrement, *[c.copy() for c in self.constraints])
 
     def _make_proxy(self, selectable, name = None):
         """Create a *proxy* for this column.
