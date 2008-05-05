@@ -110,19 +110,24 @@ class Pool(object):
       that receive events when DB-API connections are created, checked out and
       checked in to the pool.
 
-    """
+    reset_on_return
+      Defaults to True.  Reset the database state of connections returned to
+      the pool.  This is typically a ROLLBACK to release locks and transaction
+      resources.  Disable at your own peril.
 
-    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=True, rollback_returned=True,
-                 listeners=None):
+    """
+    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=True,
+                 reset_on_return=True, listeners=None):
         self.logger = logging.instance_logger(self, echoflag=echo)
-        # the WeakValueDictionary works more nicely than a regular dict
-        # of weakrefs.  the latter can pile up dead reference objects which don't
-        # get cleaned out.  WVD adds from 1-6 method calls to a checkout operation.
+        # the WeakValueDictionary works more nicely than a regular dict of
+        # weakrefs.  the latter can pile up dead reference objects which don't
+        # get cleaned out.  WVD adds from 1-6 method calls to a checkout
+        # operation.
         self._threadconns = weakref.WeakValueDictionary()
         self._creator = creator
         self._recycle = recycle
         self._use_threadlocal = use_threadlocal
-        self._rollback_returned = rollback_returned
+        self._reset_on_return = reset_on_return
         self.echo = echo
         self.listeners = []
         self._on_connect = []
@@ -289,7 +294,7 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
         return
     if connection is not None:
         try:
-            if pool._rollback_returned:
+            if pool._reset_on_return:
                 connection.rollback()
             # Immediately close detached instances
             if connection_record is None:
