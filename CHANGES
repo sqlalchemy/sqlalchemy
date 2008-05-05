@@ -86,11 +86,10 @@ CHANGES
     - Pool listeners can now be provided as a dictionary of
       callables or a (possibly partial) duck-type of
       PoolListener, your choice.
-      
-    - added "rollback_returned" option to Pool which will 
-      disable the rollback() issued when connections are 
-      returned.  This flag is only safe to use with a database
-      which does not support transactions (i.e. MySQL/MyISAM).
+
+    - added "reset_on_return" option to Pool which will disable
+      the databsae state cleanup (eg. issuing a rollback()) when
+      connections are returned to the pool.
 
 - mssql
     - Added "odbc_autotranslate" parameter to engine / dburi
