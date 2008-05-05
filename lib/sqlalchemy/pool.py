@@ -112,7 +112,7 @@ class Pool(object):
 
     """
 
-    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=True,
+    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=True, rollback_returned=True,
                  listeners=None):
         self.logger = logging.instance_logger(self, echoflag=echo)
         # the WeakValueDictionary works more nicely than a regular dict
@@ -122,6 +122,7 @@ class Pool(object):
         self._creator = creator
         self._recycle = recycle
         self._use_threadlocal = use_threadlocal
+        self._rollback_returned = rollback_returned
         self.echo = echo
         self.listeners = []
         self._on_connect = []
@@ -288,7 +289,8 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
         return
     if connection is not None:
         try:
-            connection.rollback()
+            if pool._rollback_returned:
+                connection.rollback()
             # Immediately close detached instances
             if connection_record is None:
                 connection.close()
