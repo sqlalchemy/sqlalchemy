@@ -53,9 +53,12 @@ CHANGES
     - same as [ticket:1019] but repaired the non-labeled use case
       [ticket:1022]
 
-    - Adjusted class-member inspection durint attribute and
+    - Adjusted class-member inspection during attribute and
       collection instrumentation that could be problematic when
       integrating with other frameworks.
+
+    - Fixed duplicate append event emission on repeated
+      instrumented set.add() operations.
 
 - declarative extension
     - Joined table inheritance mappers use a slightly relaxed

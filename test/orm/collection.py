@@ -415,8 +415,11 @@ class CollectionsTest(TestBase):
                 direct.remove(item)
             control.clear()
 
-        # assume add() is available for list tests
         addall(creator())
+
+        e = creator()
+        addall(e)
+        addall(e)
 
         if hasattr(direct, 'pop'):
             direct.pop()
