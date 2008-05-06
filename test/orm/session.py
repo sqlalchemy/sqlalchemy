@@ -881,19 +881,20 @@ class SessionTest(TestBase, AssertsExecutionResults):
                 log.append('after_flush')
             def after_flush_postexec(self, session, flush_context):
                 log.append('after_flush_postexec')
+            def after_begin(self, session, transaction, connection):
+                log.append('after_begin')
         sess = create_session(extension = MyExt())
         u = User()
         sess.save(u)
         sess.flush()
-
-        assert log == ['before_flush', 'after_flush', 'before_commit', 'after_commit', 'after_flush_postexec']
+        assert log == ['before_flush', 'after_begin', 'after_flush', 'before_commit', 'after_commit', 'after_flush_postexec']
 
         log = []
         sess = create_session(transactional=True, extension=MyExt())
         u = User()
         sess.save(u)
         sess.flush()
-        assert log == ['before_flush', 'after_flush', 'after_flush_postexec']
+        assert log == ['before_flush', 'after_begin', 'after_flush', 'after_flush_postexec']
 
         log = []
         u.user_name = 'ed'
@@ -903,6 +904,11 @@ class SessionTest(TestBase, AssertsExecutionResults):
         log = []
         sess.commit()
         assert log == ['before_commit', 'after_commit']
+        
+        log = []
+        sess = create_session(transactional=True, extension=MyExt(), bind=testing.db)
+        conn = sess.connection()
+        assert log == ['after_begin']
 
     def test_pickled_update(self):
         mapper(User, users)

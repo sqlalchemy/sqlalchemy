@@ -127,6 +127,13 @@ class SessionExtension(object):
         state.  An actual commit() may or may not have occured, depending on whether or not
         the flush started its own transaction or participated in a larger transaction.
         """
+    
+    def after_begin(self, session, transaction, connection):
+        """Execute after a transaction is begun on a connection
+        
+        `transaction` is the SessionTransaction. This method is called after an
+        engine level transaction is begun on a connection.
+        """
 
 class SessionTransaction(object):
     """Represents a Session-level Transaction.
@@ -214,6 +221,8 @@ class SessionTransaction(object):
             transaction = conn.begin()
         
         self._connections[conn] = self._connections[conn.engine] = (conn, transaction, conn is not bind)
+        if self.session.extension is not None:
+            self.session.extension.after_begin(self.session, self, conn)
         return conn
 
     def prepare(self):
@@ -266,7 +275,7 @@ class SessionTransaction(object):
             for subtransaction in self.session.transaction._iterate_parents(upto=self):
                 subtransaction.close()
         
-        if self.is_active:
+        if self.is_active or self._prepared:
             for transaction in self._iterate_parents():
                 if transaction._parent is None or transaction.nested:
                     transaction._rollback_impl()
@@ -274,6 +283,7 @@ class SessionTransaction(object):
                     break
                 else:
                     transaction._deactivate()
+
         self.close()
         return self._parent
     
