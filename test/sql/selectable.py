@@ -174,6 +174,15 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         print str(j)
         self.assert_(criterion.compare(j.onclause))
 
+    def test_labeled_select_correspoinding(self):
+        l1 = select([func.max(table.c.col1)]).label('foo')
+
+        s = select([l1])
+        assert s.corresponding_column(l1).name == s.c.foo
+
+        s = select([table.c.col1, l1])
+        assert s.corresponding_column(l1).name == s.c.foo
+
     def testselectaliaslabels(self):
         a = table2.select(use_labels=True).alias('a')
         print str(a.select())

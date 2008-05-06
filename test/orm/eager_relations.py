@@ -1047,14 +1047,16 @@ class SubqueryTest(ORMTest):
                     self.assertEquals(user.query_score, user.prop_score)
             self.assert_sql_count(testing.db, go, 1)
 
-            u = session.query(User).filter_by(name='joe').one()
-            self.assertEquals(u.query_score, u.prop_score)
 
-            # fails:
-            #def go():
-            #    u = session.query(User).filter_by(name='joe').one()
-            #    self.assertEquals(u.query_score, u.prop_score)
-            #self.assert_sql_count(testing.db, go, 1)
+            # fails for non labeled (fixed in 0.5):
+            if labeled:
+                def go():
+                    u = session.query(User).filter_by(name='joe').one()
+                    self.assertEquals(u.query_score, u.prop_score)
+                self.assert_sql_count(testing.db, go, 1)
+            else:
+                u = session.query(User).filter_by(name='joe').one()
+                self.assertEquals(u.query_score, u.prop_score)
             
             for t in (tags_table, users_table):
                 t.delete().execute()
