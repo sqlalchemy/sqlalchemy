@@ -1335,8 +1335,10 @@ class Query(object):
     def _build_select(self, arg=None, params=None, **kwargs): #pragma: no cover
         if isinstance(arg, sql.FromClause) and arg.supports_execution():
             return self.from_statement(arg)
-        else:
+        elif arg is not None:
             return self.filter(arg)._legacy_select_kwargs(**kwargs)
+        else:
+            return self._legacy_select_kwargs(**kwargs)
 
     def selectfirst(self, arg=None, **kwargs): #pragma: no cover
         """DEPRECATED.  use query.filter(whereclause).first()"""
