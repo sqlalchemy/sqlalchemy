@@ -1016,7 +1016,7 @@ class CheckConstraint(Constraint):
     def __init__(self, sqltext, name=None, deferrable=None, initially=None):
         """Construct a CHECK constraint.
 
-        sqltest
+        sqltext
           A string containing the constraint definition.  Will be used
           verbatim.
 
@@ -1033,6 +1033,9 @@ class CheckConstraint(Constraint):
         """
 
         super(CheckConstraint, self).__init__(name, deferrable, initially)
+        if not isinstance(sqltext, basestring):
+            raise exc.ArgumentError(
+                "sqltext must be a string and will be used verbatim.")
         self.sqltext = sqltext
 
     def __visit_name__(self):
