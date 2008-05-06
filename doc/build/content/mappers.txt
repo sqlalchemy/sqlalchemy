@@ -1105,9 +1105,10 @@ When using `primaryjoin` and `secondaryjoin`, SQLAlchemy also needs to be aware 
     {python}
     mapper(Address, addresses_table)
     mapper(User, users_table, properties={
-        'addresses' : relation(Address, primaryjoin=
-                    users_table.c.user_id==addresses_table.c.user_id)
-    }, foreign_keys=[addresses_table.c.user_id])
+        'addresses' : relation(Address, 
+             primaryjoin=users_table.c.user_id==addresses_table.c.user_id,
+             foreign_keys=[addresses_table.c.user_id])
+    })
 
 ##### Building Query-Enabled Properties {@name=properties}
 
