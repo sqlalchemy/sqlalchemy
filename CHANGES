@@ -5,7 +5,7 @@ CHANGES
 0.4.6
 =====
 - orm
-    - Fix to the recent relation() refactoring which fixes
+    - A fix to the recent relation() refactoring which fixes
       exotic viewonly relations which join between local and
       remote table multiple times, with a common column shared
       between the joins.
@@ -13,7 +13,7 @@ CHANGES
     - Also re-established viewonly relation() configurations
       that join across multiple tables.
 
-    - Added experimental relation() flag to help with
+    - Added an experimental relation() flag to help with
       primaryjoins across functions, etc.,
       _local_remote_pairs=[tuples].  This complements a complex
       primaryjoin condition allowing you to provide the
@@ -23,35 +23,36 @@ CHANGES
       functions and other expressions.  (partial progress
       towards [ticket:610])
 
-    - Removed ancient assertion that mapped selectables require
-      "alias names" - the mapper creates its own alias now if
-      none is present.  Though in this case you need to use the
-      class, not the mapped selectable, as the source of column
-      attributes - so a warning is still issued.
+    - Removed an ancient assertion that mapped selectables
+      require "alias names" - the mapper creates its own alias
+      now if none is present.  Though in this case you need to
+      use the class, not the mapped selectable, as the source of
+      column attributes - so a warning is still issued.
 
-    - fixes to the "exists" function involving inheritance (any(), has(),
-      ~contains()); the full target join will be rendered into the
-      EXISTS clause for relations that link to subclasses.
-      
-    - restored usage of append_result() extension method for primary 
-      query rows, when the extension is present and only a single-
-      entity result is being returned.
-      
-    - fixed Class.collection==None for m2m relationships
+    - Fixes to the "exists" function involving inheritance
+      (any(), has(), ~contains()); the full target join will be
+      rendered into the EXISTS clause for relations that link to
+      subclasses.
+
+    - Restored usage of append_result() extension method for
+      primary query rows, when the extension is present and only
+      a single- entity result is being returned.
+
+    - Fixed Class.collection==None for m2m relationships
       [ticket:4213]
-      
-    - refined mapper._save_obj() which was unnecessarily calling
+
+    - Refined mapper._save_obj() which was unnecessarily calling
       __ne__() on scalar values during flush [ticket:1015]
-      
-    - added a feature to eager loading whereby subqueries set
-      as column_property() with explicit label names (which is not
-      necessary, btw) will have the label anonymized when
-      the instance is part of the eager join, to prevent
-      conflicts with a subquery or column of the same name 
-      on the parent object.  [ticket:1019] 
-      
-    - same as [ticket:1019] but repaired the non-labeled use case
-      [ticket:1022]
+
+    - Added a feature to eager loading whereby subqueries set as
+      column_property() with explicit label names (which is not
+      necessary, btw) will have the label anonymized when the
+      instance is part of the eager join, to prevent conflicts
+      with a subquery or column of the same name on the parent
+      object.  [ticket:1019]
+
+    - Same as [ticket:1019] but repaired the non-labeled use
+      case [ticket:1022]
 
     - Adjusted class-member inspection during attribute and
       collection instrumentation that could be problematic when
@@ -65,16 +66,6 @@ CHANGES
       subclasses of the collection type. Previously, they would
       accept any duck-typed set.
 
-- declarative extension
-    - Joined table inheritance mappers use a slightly relaxed
-      function to create the "inherit condition" to the parent
-      table, so that other foreign keys to not-yet-declared 
-      Table objects don't trigger an error.
-      
-    - fixed reentrant mapper compile hang when 
-      a declared attribute is used within ForeignKey, 
-      ie. ForeignKey(MyOtherClass.someattribute)
-      
 - sql
     - Added COLLATE support via the .collate(<collation>)
       expression operator and collate(<expr>, <collation>) sql
@@ -83,27 +74,37 @@ CHANGES
     - Fixed bug with union() when applied to non-Table connected
       select statements
 
-    - improved behavior of text() expressions when used as 
-      FROM clauses, such as select().select_from(text("sometext"))
+    - Improved behavior of text() expressions when used as FROM
+      clauses, such as select().select_from(text("sometext"))
       [ticket:1014]
 
-    - Column.copy() respects the value of "autoincrement",
-      fixes usage with Migrate [ticket:1021]
-      
+    - Column.copy() respects the value of "autoincrement", fixes
+      usage with Migrate [ticket:1021]
+
 - engines
     - Pool listeners can now be provided as a dictionary of
       callables or a (possibly partial) duck-type of
       PoolListener, your choice.
 
-    - added "reset_on_return" option to Pool which will disable
-      the database state cleanup (eg. issuing a rollback()) when
-      connections are returned to the pool.
+    - Added "reset_on_return" option to Pool which will disable
+      the database state cleanup step (e.g. issuing a
+      rollback()) when connections are returned to the pool.
 
--ext
+-extensions
     - set-based association proxies |=, -=, ^= and &= are
       stricter about their operands and only operate on sets,
       frozensets or other association proxies. Previously, they
       would accept any duck-typed set.
+
+- declarative extension
+    - Joined table inheritance mappers use a slightly relaxed
+      function to create the "inherit condition" to the parent
+      table, so that other foreign keys to not-yet-declared
+      Table objects don't trigger an error.
+
+    - Fixed re-entrant mapper compile hang when a declared
+      attribute is used within ForeignKey,
+      i.e. ForeignKey(MyOtherClass.someattribute)
 
 - mssql
     - Added "odbc_autotranslate" parameter to engine / dburi
