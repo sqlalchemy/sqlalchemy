@@ -651,6 +651,12 @@ class JoinTest(QueryTest):
             sess.query(User).join([('orders', orderalias), ('items', itemalias)]).filter(orderalias.user_id==9).filter(itemalias.description=='item 4').all(),
             []
         )
+
+    def test_orderby_arg_bug(self):
+        sess = create_session()
+        
+        # no arg error
+        result = sess.query(User).join('orders', aliased=True).order_by([Order.id]).reset_joinpoint().order_by(users.c.id).all()
         
     def test_aliased_classes(self):
         sess = create_session()
@@ -741,7 +747,7 @@ class JoinTest(QueryTest):
 
             result = create_session().query(User).outerjoin(['orders', 'items'], aliased=aliased).filter_by(id=3).reset_joinpoint().outerjoin(['orders','address'], aliased=aliased).filter_by(id=1).all()
             assert [User(id=7, name='jack')] == result
-
+    
     def test_overlap_with_aliases(self):
         oalias = orders.alias('oalias')
 

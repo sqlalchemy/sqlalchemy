@@ -22,7 +22,11 @@ CHANGES
       generation to handle placing bind params inside of
       functions and other expressions.  (partial progress
       towards [ticket:610])
-
+    
+    - Fixed "concatenate tuple" bug which could occur with
+      Query.order_by() if clause adaption had taken place.
+      [ticket:1027]
+      
     - Removed an ancient assertion that mapped selectables
       require "alias names" - the mapper creates its own alias
       now if none is present.  Though in this case you need to

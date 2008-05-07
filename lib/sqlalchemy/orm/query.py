@@ -571,8 +571,9 @@ class Query(object):
         q = self.__no_statement("order_by")
 
         if self._aliases_tail:
-            criterion = [expression._literal_as_text(o) for o in criterion]
-            criterion = self._aliases_tail.adapt_list(criterion)
+            criterion = tuple(self._aliases_tail.adapt_list(
+                    [expression._literal_as_text(o) for o in criterion]
+                    ))
 
         if q._order_by is False:
             q._order_by = criterion
