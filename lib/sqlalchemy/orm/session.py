@@ -572,7 +572,7 @@ class Session(object):
 
         self.transaction.prepare()
 
-    def connection(self, mapper=None, **kwargs):
+    def connection(self, mapper=None, clause=None, instance=None):
         """Return a ``Connection`` corresponding to this session's
         transactional context, if any.
 
@@ -590,7 +590,7 @@ class Session(object):
         subclass takes a different get_bind() argument signature.
         """
 
-        return self.__connection(self.get_bind(mapper, **kwargs))
+        return self.__connection(self.get_bind(mapper, clause, instance))
 
     def __connection(self, engine, **kwargs):
         if self.transaction is not None:
@@ -598,28 +598,38 @@ class Session(object):
         else:
             return engine.contextual_connect(**kwargs)
 
-    def execute(self, clause, params=None, mapper=None, **kwargs):
-        """Using the given mapper to identify the appropriate ``Engine``
-        or ``Connection`` to be used for statement execution, execute the
-        given ``ClauseElement`` using the provided parameter dictionary.
+    def execute(self, clause, params=None, mapper=None, instance=None):
+        """Execute the given clause, using the current transaction (if any).
 
-        Return a ``ResultProxy`` corresponding to the execution's results.
-
-        If this method allocates a new ``Connection`` for the operation,
-        then the ``ResultProxy`` 's ``close()`` method will release the
-        resources of the underlying ``Connection``.
+        Returns a ``ResultProxy`` corresponding to the execution's results.
+        
+        clause
+            a ClauseElement (i.e. select(), text(), etc.) or 
+            string SQL statement to be executed
+            
+        params 
+            a dictionary of bind parameters.
+        
+        mapper
+            a mapped class or Mapper instance which may be needed
+            in order to locate the proper bind.  This is typically
+            if the Session is not directly bound to a single engine.
+            
+        instance
+            used by some Query operations to further identify
+            the proper bind, in the case of ShardedSession.
+            
         """
-
-        engine = self.get_bind(mapper, clause=clause, **kwargs)
+        engine = self.get_bind(mapper, clause=clause, instance=instance)
 
         return self.__connection(engine, close_with_result=True).execute(clause, params or {})
 
-    def scalar(self, clause, params=None, mapper=None, **kwargs):
+    def scalar(self, clause, params=None, mapper=None, instance=None):
         """Like execute() but return a scalar result."""
 
-        engine = self.get_bind(mapper, clause=clause)
+        engine = self.get_bind(mapper, clause=clause, instance=instance)
 
-        return self.__connection(engine, close_with_result=True).scalar(clause, params or {}, **kwargs)
+        return self.__connection(engine, close_with_result=True).scalar(clause, params or {})
 
     def close(self):
         """Close this Session.
@@ -684,23 +694,24 @@ class Session(object):
 
         self.__binds[table] = bind
 
-    def get_bind(self, mapper, clause=None, **kwargs):
+    def get_bind(self, mapper, clause=None, instance=None):
         """Return an engine corresponding to the given arguments.
 
         mapper
-            mapper relative to the desired operation
+            mapper relative to the desired operation.
 
         clause
             a ClauseElement which is to be executed.  if
             mapper is not present, this may be used to locate
             Table objects, which are then associated with mappers
             which have associated binds.
-
-        \**kwargs
-            Subclasses (i.e. ShardedSession) may add additional arguments
-            to get_bind() which are passed through here.
+        
+        instance
+            an ORM mapped instance which may be used to further
+            locate the correct bind.  This is currently used by 
+            the ShardedSession subclass.
+            
         """
-
         if mapper is None and clause is None:
             if self.bind is not None:
                 return self.bind
@@ -739,8 +750,8 @@ class Session(object):
     def query(self, mapper_or_class, *addtl_entities, **kwargs):
         """Return a new ``Query`` object corresponding to this ``Session`` and
         the mapper, or the classes' primary mapper.
-        """
 
+        """
         entity_name = kwargs.pop('entity_name', None)
 
         if isinstance(mapper_or_class, type):
