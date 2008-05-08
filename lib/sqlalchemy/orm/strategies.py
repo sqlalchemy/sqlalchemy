@@ -502,6 +502,28 @@ class EagerLoader(AbstractRelationLoader):
                 if self.mapper.base_mapper in path:
                     return
 
+        if ("eager_row_processor", path) in context.attributes:
+            # if user defined eager_row_processor, that's contains_eager().
+            # don't render LEFT OUTER JOIN, generate an AliasedClauses from 
+            # the decorator (this is a hack here, cleaned up in 0.5)
+            cl = context.attributes[("eager_row_processor", path)]
+            if cl:
+                row = cl(None)
+                class ActsLikeAliasedClauses(object):
+                    def aliased_column(self, col):
+                        return row.map[col]
+                clauses = ActsLikeAliasedClauses()
+            else:
+                clauses = None
+        else:
+            clauses = self.__create_eager_join(context, path, parentclauses, parentmapper, **kwargs)
+            if not clauses:
+                return
+
+        for value in self.mapper._iterate_polymorphic_properties():
+            context.exec_with_path(self.mapper, value.key, value.setup, context, parentclauses=clauses, parentmapper=self.mapper)
+
+    def __create_eager_join(self, context, path, parentclauses, parentmapper, **kwargs):
         if parentmapper is None:
             localparent = context.mapper
         else:
@@ -546,8 +568,7 @@ class EagerLoader(AbstractRelationLoader):
         if clauses.order_by:
             context.eager_order_by += util.to_list(clauses.order_by)
         
-        for value in self.mapper._iterate_polymorphic_properties():
-            context.exec_with_path(self.mapper, value.key, value.setup, context, parentclauses=clauses, parentmapper=self.mapper)
+        return clauses
         
     def _create_row_decorator(self, selectcontext, row, path):
         """Create a *row decorating* function that will apply eager

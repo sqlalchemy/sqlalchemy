@@ -13,6 +13,11 @@ CHANGES
     - Also re-established viewonly relation() configurations
       that join across multiple tables.
 
+    - contains_eager(), the hot function of the week, suppresses
+      the eager loader's own generation of the LEFT OUTER JOIN,
+      so that it is reasonable to use any Query, not just those
+      which use from_statement().  
+      
     - Added an experimental relation() flag to help with
       primaryjoins across functions, etc.,
       _local_remote_pairs=[tuples].  This complements a complex
