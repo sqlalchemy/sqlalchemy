@@ -183,14 +183,14 @@ class Table(SchemaItem, expression.TableClause):
             be used in its place.
 
           quote
-            Defaults to False: indicates that the Table identifier must be
-            properly escaped and quoted before being sent to the
-            database. This flag overrides all other quoting behavior.
+            When True, indicates that the Table identifier must be quoted.
+            This flag does *not* disable quoting; for case-insensitive names,
+            use an all lower case identifier.
 
           quote_schema
-            Defaults to False: indicates that the Namespace identifier must be
-            properly escaped and quoted before being sent to the
-            database. This flag overrides all other quoting behavior.
+            When True, indicates that the schema identifier must be quoted.
+            This flag does *not* disable quoting; for case-insensitive names,
+            use an all lower case identifier.
         """
 
         super(Table, self).__init__(name)
@@ -488,10 +488,9 @@ class Column(SchemaItem, expression._ColumnClause):
             or subtype of Integer.
 
           quote
-            Defaults to False: indicates that the Column identifier must be
-            properly escaped and quoted before being sent to the database.
-            This flag should normally not be required as dialects can
-            auto-detect conditions where quoting is required.
+            When True, indicates that the Column identifier must be quoted.
+            This flag does *not* disable quoting; for case-insensitive names,
+            use an all lower case identifier.
         """
 
         name = kwargs.pop('name', None)
