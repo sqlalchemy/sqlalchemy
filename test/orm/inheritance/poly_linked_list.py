@@ -73,8 +73,8 @@ class PolymorphicCircularTest(ORMTest):
                                         backref=backref('prev', primaryjoin=join.c.id==join.c.related_id, foreignkey=join.c.id, uselist=False),
                                         uselist=False, primaryjoin=join.c.id==join.c.related_id),
                                     'data':relation(mapper(Data, data))
-                                    }
-                            )
+                                    },
+                            order_by=table1.c.id)
             table1_mapper.compile()
             assert False
         except:
@@ -94,8 +94,9 @@ class PolymorphicCircularTest(ORMTest):
                                'next': relation(Table1,
                                    backref=backref('prev', primaryjoin=table1.c.id==table1.c.related_id, remote_side=table1.c.id, uselist=False),
                                    uselist=False, primaryjoin=table1.c.id==table1.c.related_id),
-                               'data':relation(mapper(Data, data), lazy=False)
-                                }
+                               'data':relation(mapper(Data, data), lazy=False, order_by=data.c.id)
+                                },
+                                order_by=table1.c.id
                         )
 
         table1b_mapper = mapper(Table1B, inherits=table1_mapper, polymorphic_identity='table1b')

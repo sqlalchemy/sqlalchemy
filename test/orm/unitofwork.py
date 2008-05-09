@@ -1987,7 +1987,7 @@ class BooleanColTest(_base.MappedTest):
         # use the regular mapper
         class T(_base.ComparableEntity):
             pass
-        orm_mapper(T, t1_t)
+        orm_mapper(T, t1_t, order_by=t1_t.c.id)
 
         sess = create_session()
         t1 = T(value=True, name="t1")

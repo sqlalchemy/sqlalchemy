@@ -25,7 +25,7 @@ table2 = Table('table2', metadata,
 )
 
 class SelectableTest(TestBase, AssertsExecutionResults):
-    def testdistance(self):
+    def test_distance(self):
         # same column three times
         s = select([table.c.col1.label('c2'), table.c.col1, table.c.col1.label('c1')])
 
@@ -34,7 +34,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert s.corresponding_column(s.c.col1) is s.c.col1
         assert s.corresponding_column(s.c.c1) is s.c.c1
 
-    def testjoinagainstself(self):
+    def test_join_against_self(self):
         jj = select([table.c.col1.label('bar_col1')])
         jjj = join(table, jj, table.c.col1==jj.c.bar_col1)
 
@@ -50,14 +50,14 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         j2 = jjj.alias('foo')
         assert j2.corresponding_column(table.c.col1) is j2.c.table1_col1
 
-    def testselectontable(self):
+    def test_select_on_table(self):
         sel = select([table, table2], use_labels=True)
         assert sel.corresponding_column(table.c.col1) is sel.c.table1_col1
         assert sel.corresponding_column(table.c.col1, require_embedded=True) is sel.c.table1_col1
         assert table.corresponding_column(sel.c.table1_col1) is table.c.col1
         assert table.corresponding_column(sel.c.table1_col1, require_embedded=True) is None
 
-    def testjoinagainstjoin(self):
+    def test_join_against_join(self):
         j  = outerjoin(table, table2, table.c.col1==table2.c.col2)
         jj = select([ table.c.col1.label('bar_col1')],from_obj=[j]).alias('foo')
         jjj = join(table, jj, table.c.col1==jj.c.bar_col1)
@@ -69,7 +69,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
 
         assert jjj.corresponding_column(jj.c.bar_col1) is jj.c.bar_col1
 
-    def testtablealias(self):
+    def test_table_alias(self):
         a = table.alias('a')
 
         j = join(a, table2)
@@ -77,7 +77,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         criterion = a.c.col1 == table2.c.col2
         self.assert_(criterion.compare(j.onclause))
 
-    def testunion(self):
+    def test_union(self):
         # tests that we can correspond a column in a Select statement with a certain Table, against
         # a column in a Union where one of its underlying Selects matches to that same Table
         u = select([table.c.col1, table.c.col2, table.c.col3, table.c.colx, null().label('coly')]).union(
@@ -103,7 +103,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert u.c.col2
         assert u.c.col3
         
-    def testaliasunion(self):
+    def test_alias_union(self):
         # same as testunion, except its an alias of the union
         u = select([table.c.col1, table.c.col2, table.c.col3, table.c.colx, null().label('coly')]).union(
                 select([table2.c.col1, table2.c.col2, table2.c.col3, null().label('colx'), table2.c.coly])
@@ -115,7 +115,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert u.corresponding_column(s2.c.table2_coly) is u.c.coly
         assert s2.corresponding_column(u.c.coly) is s2.c.table2_coly
 
-    def testselectunion(self):
+    def test_select_union(self):
         # like testaliasunion, but off a Select off the union.
         u = select([table.c.col1, table.c.col2, table.c.col3, table.c.colx, null().label('coly')]).union(
                 select([table2.c.col1, table2.c.col2, table2.c.col3, null().label('colx'), table2.c.coly])
@@ -126,7 +126,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert s.corresponding_column(s1.c.table1_col2) is s.c.col2
         assert s.corresponding_column(s2.c.table2_col2) is s.c.col2
 
-    def testunionagainstjoin(self):
+    def test_union_against_join(self):
         # same as testunion, except its an alias of the union
         u = select([table.c.col1, table.c.col2, table.c.col3, table.c.colx, null().label('coly')]).union(
                 select([table2.c.col1, table2.c.col2, table2.c.col3, null().label('colx'), table2.c.coly])
@@ -135,7 +135,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert u.corresponding_column(j1.c.table1_colx) is u.c.colx
         assert j1.corresponding_column(u.c.colx) is j1.c.table1_colx
 
-    def testjoin(self):
+    def test_join(self):
         a = join(table, table2)
         print str(a.select(use_labels=True))
         b = table2.alias('b')
@@ -144,7 +144,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         criterion = a.c.table1_col1 == b.c.col2
         self.assert_(criterion.compare(j.onclause))
 
-    def testselectalias(self):
+    def test_select_alias(self):
         a = table.select().alias('a')
         print str(a.select())
         j = join(a, table2)
@@ -154,7 +154,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         print j.onclause
         self.assert_(criterion.compare(j.onclause))
 
-    def testselectlabels(self):
+    def test_select_labels(self):
         a = table.select(use_labels=True)
         print str(a.select())
         j = join(a, table2)
@@ -183,7 +183,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         s = select([table.c.col1, l1])
         assert s.corresponding_column(l1).name == s.c.foo
 
-    def testselectaliaslabels(self):
+    def test_select_alias_labels(self):
         a = table2.select(use_labels=True).alias('a')
         print str(a.select())
         j = join(a, table)
@@ -476,5 +476,25 @@ class DerivedTest(TestBase, AssertsExecutionResults):
         assert select([t1, t2]).alias('foo').is_derived_from(t1)
         assert not t2.select().alias('foo').is_derived_from(t1)
 
+class AnnotationsTest(TestBase):
+    def test_annotated_corresponding_column(self):
+        from sqlalchemy.sql import table, column
+        
+        table1 = table('table1', column("col1"))
+        
+        s1 = select([table1.c.col1])
+        t1 = s1._annotate({})
+        t2 = s1
+        
+        # t1 needs to share the same _make_proxy() columns as t2, even though it's
+        # annotated.  otherwise paths will diverge once they are corresponded against "inner" below.
+        assert t1.c is t2.c
+        assert t1.c.col1 is t2.c.col1
+
+        inner = select([s1]) 
+        assert inner.corresponding_column(t2.c.col1, require_embedded=False) is inner.corresponding_column(t2.c.col1, require_embedded=True) is inner.c.col1
+        assert inner.corresponding_column(t1.c.col1, require_embedded=False) is inner.corresponding_column(t1.c.col1, require_embedded=True) is inner.c.col1
+
+        
 if __name__ == "__main__":
     testenv.main()

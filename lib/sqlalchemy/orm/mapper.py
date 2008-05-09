@@ -111,7 +111,12 @@ class Mapper(object):
         self.entity_name = entity_name
         self.primary_key_argument = primary_key
         self.non_primary = non_primary
-        self.order_by = order_by
+        
+        if order_by:
+            self.order_by = util.to_list(order_by)
+        else:
+            self.order_by = order_by
+            
         self.always_refresh = always_refresh
         self.version_id_col = version_id_col
         self.concrete = concrete
@@ -460,8 +465,9 @@ class Mapper(object):
             for mapper in self.iterate_to_root():
                 util.reset_cached(mapper, '_equivalent_columns')
 
-            if self.order_by is False:
+            if self.order_by is False and not self.concrete and self.inherits.order_by is not False:
                 self.order_by = self.inherits.order_by
+                
             self.polymorphic_map = self.inherits.polymorphic_map
             self.batch = self.inherits.batch
             self.inherits._inheriting_mappers.add(self)
@@ -489,7 +495,7 @@ class Mapper(object):
                     raise sa_exc.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
                 self.polymorphic_map[self.polymorphic_identity] = self
             self._identity_class = self.class_
-
+            
         if self.mapped_table is None:
             raise sa_exc.ArgumentError("Mapper '%s' does not have a mapped_table specified.  (Are you using the return value of table.create()?  It no longer has a return value.)" % str(self))
 

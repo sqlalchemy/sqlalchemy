@@ -147,6 +147,11 @@ class Annotated(object):
             )
 
     def __init__(self, element, values):
+        # force FromClause to generate their internal 
+        # collections into __dict__
+        if isinstance(element, expression.FromClause):
+            element.c
+        
         self.__dict__ = element.__dict__.copy()
         self.__element = element
         self._annotations = values
@@ -357,7 +362,7 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
         self.include = include
         self.exclude = exclude
         self.equivalents = equivalents or {}
-
+        
     def _corresponding_column(self, col, require_embedded):
         newcol = self.selectable.corresponding_column(col, require_embedded=require_embedded)
 

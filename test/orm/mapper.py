@@ -513,7 +513,7 @@ class MapperTest(MapperSuperTest):
                    users.c.user_id == addresses.c.user_id,
                    group_by=[c for c in users.c]).alias('myselect')
 
-        mapper(User, s)
+        mapper(User, s, order_by=s.default_order_by())
         sess = create_session()
         l = sess.query(User).all()
         for u in l:
@@ -728,9 +728,9 @@ class OptionsTest(MapperSuperTest):
     def test_synonymoptions(self):
         sess = create_session()
         mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True),
+            addresses = relation(mapper(Address, addresses), lazy = True, order_by=addresses.c.address_id),
             adlist = synonym('addresses', proxy=True)
-        ))
+        ), order_by=users.c.user_id)
 
         def go():
             u = sess.query(User).options(eagerload('adlist')).filter_by(user_name='jack').one()
@@ -820,13 +820,13 @@ class OptionsTest(MapperSuperTest):
         # (previous users in session fell out of scope and were removed from session's identity map)
         usermapper = mapper(User, users,
             properties = {
-                'addresses':relation(mapper(Address, addresses), lazy=False),
+                'addresses':relation(mapper(Address, addresses), lazy=False, order_by=addresses.default_order_by()),
                 'orders': relation(mapper(Order, orders, properties = {
                     'items' : relation(mapper(Item, orderitems, properties = {
-                        'keywords' : relation(mapper(Keyword, keywords), itemkeywords, lazy=False)
-                    }), lazy=False)
-                }), lazy=False)
-            })
+                        'keywords' : relation(mapper(Keyword, keywords), itemkeywords, lazy=False, order_by=itemkeywords.default_order_by())
+                    }), order_by=orderitems.default_order_by(), lazy=False)
+                }), order_by=orders.default_order_by(), lazy=False)
+            }, order_by=users.default_order_by())
 
         sess.clear()
 
@@ -859,13 +859,13 @@ class OptionsTest(MapperSuperTest):
         self.assert_sql_count(testing.db, go, 3)
 
     def test_deepoptions(self):
-        mapper(User, users,
+        mapper(User, users, order_by=users.default_order_by(),
             properties = {
                 'orders': relation(mapper(Order, orders, properties = {
                     'items' : relation(mapper(Item, orderitems, properties = {
-                        'keywords' : relation(mapper(Keyword, keywords), itemkeywords)
-                    }))
-                }))
+                        'keywords' : relation(mapper(Keyword, keywords), itemkeywords, order_by=itemkeywords.default_order_by())
+                    }), order_by=orderitems.default_order_by())
+                }), order_by=orders.default_order_by())
             })
 
         sess = create_session()
@@ -914,7 +914,7 @@ class DeferredTest(MapperSuperTest):
 
         m = mapper(Order, orders, properties={
             'description':deferred(orders.c.description)
-        })
+        }, order_by=orders.c.order_id)
 
         o = Order()
         self.assert_(o.description is None)
@@ -925,9 +925,8 @@ class DeferredTest(MapperSuperTest):
             o2 = l[2]
             print o2.description
 
-        orderby = str(orders.default_order_by()[0].compile(bind=testing.db))
         self.assert_sql(testing.db, go, [
-            ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.isopen AS orders_isopen FROM orders ORDER BY %s" % orderby, {}),
+            ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.isopen AS orders_isopen FROM orders ORDER BY orders.order_id", {}),
             ("SELECT orders.description AS orders_description FROM orders WHERE orders.order_id = :param_1", {'param_1':3})
         ])
 
@@ -935,7 +934,7 @@ class DeferredTest(MapperSuperTest):
         """test that deferred loading doesnt kick in when just PK cols are set"""
         m = mapper(Order, orders, properties={
             'description':deferred(orders.c.description)
-        })
+        }, order_by=orders.c.order_id)
 
         sess = create_session()
         o = Order()
@@ -950,7 +949,7 @@ class DeferredTest(MapperSuperTest):
         m = mapper(Order, orders, properties={
             'description':deferred(orders.c.description, group='primary'),
             'opened':deferred(orders.c.isopen, group='primary')
-        })
+        }, order_by=orders.c.order_id)
 
         sess = create_session()
         o = Order()
@@ -963,7 +962,7 @@ class DeferredTest(MapperSuperTest):
     def test_save(self):
         m = mapper(Order, orders, properties={
             'description':deferred(orders.c.description)
-        })
+        }, order_by=orders.c.order_id)
 
         sess = create_session()
         q = sess.query(m)
@@ -978,7 +977,7 @@ class DeferredTest(MapperSuperTest):
             'userident':deferred(orders.c.user_id, group='primary'),
             'description':deferred(orders.c.description, group='primary'),
             'opened':deferred(orders.c.isopen, group='primary')
-        })
+        }, order_by=orders.c.order_id)
         sess = create_session()
         q = sess.query(m)
         def go():
@@ -988,14 +987,13 @@ class DeferredTest(MapperSuperTest):
             assert o2.opened == 1
             assert o2.userident == 7
             assert o2.description == 'order 3'
-        orderby = str(orders.default_order_by()[0].compile(testing.db))
+
         self.assert_sql(testing.db, go, [
-            ("SELECT orders.order_id AS orders_order_id FROM orders ORDER BY %s" % orderby, {}),
+            ("SELECT orders.order_id AS orders_order_id FROM orders ORDER BY orders.order_id", {}),
             ("SELECT orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders WHERE orders.order_id = :param_1", {'param_1':3})
         ])
 
         o2 = q.all()[2]
-#        assert o2.opened == 1
         assert o2.description == 'order 3'
         assert o2 not in sess.dirty
         o2.description = 'order 3'
@@ -1010,7 +1008,7 @@ class DeferredTest(MapperSuperTest):
             'userident':deferred(orders.c.user_id, group='primary'),
             'description':deferred(orders.c.description, group='primary'),
             'opened':deferred(orders.c.isopen, group='primary')
-        })
+        }, order_by=orders.c.order_id)
         sess = create_session()
         o = sess.query(Order).get(3)
         assert 'userident' not in o.__dict__
@@ -1047,7 +1045,7 @@ class DeferredTest(MapperSuperTest):
 
     def test_options(self):
         """tests using options on a mapper to create deferred and undeferred columns"""
-        m = mapper(Order, orders)
+        m = mapper(Order, orders, order_by=orders.c.order_id)
         sess = create_session()
         q = sess.query(m)
         q2 = q.options(defer('user_id'))
@@ -1055,9 +1053,8 @@ class DeferredTest(MapperSuperTest):
             l = q2.all()
             print l[2].user_id
 
-        orderby = str(orders.default_order_by()[0].compile(testing.db))
         self.assert_sql(testing.db, go, [
-            ("SELECT orders.order_id AS orders_order_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY %s" % orderby, {}),
+            ("SELECT orders.order_id AS orders_order_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY orders.order_id", {}),
             ("SELECT orders.user_id AS orders_user_id FROM orders WHERE orders.order_id = :param_1", {'param_1':3})
         ])
         sess.clear()
@@ -1066,16 +1063,17 @@ class DeferredTest(MapperSuperTest):
             l = q3.all()
             print l[3].user_id
         self.assert_sql(testing.db, go, [
-            ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY %s" % orderby, {}),
+            ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY orders.order_id", {}),
         ])
 
     def test_undefergroup(self):
         """tests undefer_group()"""
+
         m = mapper(Order, orders, properties = {
             'userident':deferred(orders.c.user_id, group='primary'),
             'description':deferred(orders.c.description, group='primary'),
             'opened':deferred(orders.c.isopen, group='primary')
-        })
+        }, order_by=orders.c.order_id)
         sess = create_session()
         q = sess.query(m)
         def go():
@@ -1085,16 +1083,17 @@ class DeferredTest(MapperSuperTest):
             assert o2.opened == 1
             assert o2.userident == 7
             assert o2.description == 'order 3'
-        orderby = str(orders.default_order_by()[0].compile(testing.db))
+
         self.assert_sql(testing.db, go, [
-            ("SELECT orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen, orders.order_id AS orders_order_id FROM orders ORDER BY %s" % orderby, {}),
+            ("SELECT orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen, orders.order_id AS orders_order_id FROM orders ORDER BY orders.order_id", {}),
         ])
 
     def test_locates_col(self):
         """test that manually adding a col to the result undefers the column"""
+
         mapper(Order, orders, properties={
             'description':deferred(orders.c.description)
-        })
+        }, order_by=orders.c.order_id)
 
         sess = create_session()
         o1 = sess.query(Order).first()

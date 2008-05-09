@@ -614,17 +614,17 @@ class EagerTest7(_base.MappedTest):
         mapper(Phone, phones_table, extension=ctx.extension)
 
         mapper(Address, addresses_table, properties={
-            'phones': relation(Phone, lazy=False, backref='address')
+            'phones': relation(Phone, lazy=False, backref='address', order_by=phones_table.default_order_by())
             }, extension=ctx.extension)
 
         mapper(Company, companies_table, properties={
-            'addresses' : relation(Address, lazy=False, backref='company'),
+            'addresses' : relation(Address, lazy=False, backref='company', order_by=addresses_table.default_order_by()),
             }, extension=ctx.extension)
 
         mapper(Item, items_table, extension=ctx.extension)
 
         mapper(Invoice, invoice_table, properties={
-            'items': relation(Item, lazy=False, backref='invoice'),
+            'items': relation(Item, lazy=False, backref='invoice', order_by=items_table.default_order_by()),
             'company': relation(Company, lazy=False, backref='invoices')
             }, extension=ctx.extension)
 
@@ -842,8 +842,8 @@ class EagerTest9(_base.MappedTest):
         mapper(Account, accounts_table)
         mapper(Transaction, transactions_table)
         mapper(Entry, entries_table, properties = dict(
-            account = relation(Account, uselist=False, backref=backref('entries', lazy=True)),
-            transaction = relation(Transaction, uselist=False, backref=backref('entries', lazy=False)),
+            account = relation(Account, uselist=False, backref=backref('entries', lazy=True, order_by=entries_table.c.entry_id)),
+            transaction = relation(Transaction, uselist=False, backref=backref('entries', lazy=False, order_by=entries_table.c.entry_id)),
         ))
 
         session = create_session()
@@ -867,7 +867,7 @@ class EagerTest9(_base.MappedTest):
             # load just the first Account.  eager loading will actually load all objects saved thus far,
             # but will not eagerly load the "accounts" off the immediate "entries"; only the
             # "accounts" off the entries->transaction->entries
-            acc = session.query(Account).options(eagerload_all('entries.transaction.entries.account')).first()
+            acc = session.query(Account).options(eagerload_all('entries.transaction.entries.account')).order_by(Account.account_id).first()
 
             # no sql occurs
             assert acc.name == 'acc1'

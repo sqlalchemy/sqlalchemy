@@ -66,8 +66,8 @@ class MemUsageTest(EnsureZeroed):
         metadata.create_all()
 
         m1 = mapper(A, table1, properties={
-            "bs":relation(B, cascade="all, delete")})
-
+            "bs":relation(B, cascade="all, delete", order_by=table2.c.col1)},
+            order_by=table1.c.col1)
         m2 = mapper(B, table2)
 
         m3 = mapper(A, table1, non_primary=True)
@@ -119,7 +119,7 @@ class MemUsageTest(EnsureZeroed):
         @profile_memory
         def go():
             m1 = mapper(A, table1, properties={
-                "bs":relation(B)
+                "bs":relation(B, order_by=table2.c.col1)
             })
             m2 = mapper(B, table2)
 
@@ -137,7 +137,7 @@ class MemUsageTest(EnsureZeroed):
             sess.flush()
             sess.clear()
 
-            alist = sess.query(A).all()
+            alist = sess.query(A).order_by(A.col1).all()
             self.assertEquals(
                 [
                     A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]),
@@ -197,7 +197,7 @@ class MemUsageTest(EnsureZeroed):
             sess.flush()
             sess.clear()
 
-            alist = sess.query(A).all()
+            alist = sess.query(A).order_by(A.col1).all()
             self.assertEquals(
                 [
                     A(), A(), B(col3='b1'), B(col3='b2')
@@ -245,7 +245,7 @@ class MemUsageTest(EnsureZeroed):
                 pass
 
             mapper(A, table1, properties={
-                'bs':relation(B, secondary=table3, backref='as')
+                'bs':relation(B, secondary=table3, backref='as', order_by=table3.c.t1)
             })
             mapper(B, table2)
 
@@ -261,7 +261,7 @@ class MemUsageTest(EnsureZeroed):
             sess.flush()
             sess.clear()
 
-            alist = sess.query(A).all()
+            alist = sess.query(A).order_by(A.col1).all()
             self.assertEquals(
                 [
                     A(bs=[B(col2='b1')]), A(bs=[B(col2='b2')])

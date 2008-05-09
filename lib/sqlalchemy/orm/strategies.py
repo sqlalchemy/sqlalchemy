@@ -476,11 +476,9 @@ class LoadLazyAttribute(object):
             if self.options:
                 q = q._conditional_options(*self.options)
             return q.get(ident)
-            
-        if prop.order_by is not False:
+
+        if prop.order_by:
             q = q.order_by(prop.order_by)
-        elif prop.secondary is not None and prop.secondary.default_order_by() is not None:
-            q = q.order_by(prop.secondary.default_order_by())
 
         if self.options:
             q = q._conditional_options(*self.options)
@@ -605,14 +603,7 @@ class EagerLoader(AbstractRelationLoader):
                         col = adapter.columns[col]
                     context.primary_columns.append(col)
         
-        if self.parent_property.order_by is False:
-            if self.parent_property.secondaryjoin:
-                default_order_by = eagerjoin.left.right.default_order_by()
-            else:
-                default_order_by = eagerjoin.right.default_order_by()
-            if default_order_by:
-                context.eager_order_by += default_order_by
-        elif self.parent_property.order_by:
+        if self.parent_property.order_by:
             context.eager_order_by += eagerjoin._target_adapter.copy_and_process(util.to_list(self.parent_property.order_by))
             
         return clauses

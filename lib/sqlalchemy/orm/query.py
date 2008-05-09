@@ -1274,7 +1274,7 @@ class Query(object):
             context.adapter = sql_util.ColumnAdapter(inner, equivs)
 
             statement = sql.select([inner] + context.secondary_columns, for_update=for_update, use_labels=labels)
-
+            
             from_clause = inner
             for eager_join in eager_joins:
                 # EagerLoader places a 'stop_on' attribute on the join, 
@@ -1443,19 +1443,12 @@ class _MapperEntity(_QueryEntity):
 
         adapter = self._get_entity_clauses(query, context)
 
-        if self.primary_entity:
-            if context.order_by is False:
-                # the "default" ORDER BY use case applies only to "mapper zero".  the "from clause" default should
-                # go away in 0.5 (or...maybe 0.6).
-                if self.mapper.order_by:
-                    context.order_by = self.mapper.order_by
-                elif context.from_clause:
-                    context.order_by = context.from_clause.default_order_by()
-                else:
-                    context.order_by = self.selectable.default_order_by()
-            if context.order_by and adapter:
-                context.order_by = adapter.adapt_list(util.to_list(context.order_by))
-
+        if context.order_by is False and self.mapper.order_by:
+            context.order_by = self.mapper.order_by
+                
+        if context.order_by and adapter:
+            context.order_by = adapter.adapt_list(util.to_list(context.order_by))
+            
         for value in self.mapper._iterate_polymorphic_properties(self._with_polymorphic):
             if query._only_load_props and value.key not in query._only_load_props:
                 continue
