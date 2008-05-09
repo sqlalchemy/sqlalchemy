@@ -479,6 +479,8 @@ class Session(object):
     a thread-managed Session adapter, provided by the [sqlalchemy.orm#scoped_session()] function.
     
     """
+    public_methods = ('get', 'load', 'close', 'add', 'add_all', 'expire_all', 'save', 'commit', 'update', 'save_or_update', 'flush', 'query', 'delete', 'merge', 'clear', 'refresh', 'expire', 'expunge', 'rollback', 'begin', 'begin_nested', 'connection', 'execute', 'scalar', 'get_bind', 'is_modified', '__contains__', '__iter__')
+    
     def __init__(self, bind=None, autoflush=True, autoexpire=True, autocommit=False, twophase=False, echo_uow=False, weak_identity_map=True, binds=None, extension=None):
         """Construct a new Session.
         

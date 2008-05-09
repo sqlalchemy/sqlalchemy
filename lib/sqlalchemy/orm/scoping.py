@@ -106,7 +106,7 @@ def instrument(name):
     def do(self, *args, **kwargs):
         return getattr(self.registry(), name)(*args, **kwargs)
     return do
-for meth in ('get', 'load', 'close', 'add', 'add_all', 'expire_all', 'save', 'commit', 'update', 'save_or_update', 'flush', 'query', 'delete', 'merge', 'clear', 'refresh', 'expire', 'expunge', 'rollback', 'begin', 'begin_nested', 'connection', 'execute', 'scalar', 'get_bind', 'is_modified', '__contains__', '__iter__'):
+for meth in Session.public_methods:
     setattr(ScopedSession, meth, instrument(meth))
 
 def makeprop(name):
