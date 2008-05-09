@@ -977,7 +977,9 @@ class MixedEntitiesTest(FixtureTest, AssertsCompiledSQL):
                     (User(id=9, addresses=[Address(id=5)]), Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)])),
                     (User(id=9, addresses=[Address(id=5)]), Order(id=4, items=[Item(id=1), Item(id=5)])),
                 ],
-                sess.query(User, Order).filter(User.id==Order.user_id).options(eagerload(User.addresses), eagerload(Order.items)).filter(User.id==9).all(),
+                sess.query(User, Order).filter(User.id==Order.user_id).\
+                    options(eagerload(User.addresses), eagerload(Order.items)).filter(User.id==9).\
+                        order_by(User.id, Order.id).all(),
             )
         self.assert_sql_count(testing.db, go, 1)
 
@@ -1004,7 +1006,9 @@ class MixedEntitiesTest(FixtureTest, AssertsCompiledSQL):
                     (User(id=9, addresses=[Address(id=5)]), Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)])),
                     (User(id=9, addresses=[Address(id=5)]), Order(id=4, items=[Item(id=1), Item(id=5)])),
                 ],
-                sess.query(User, oalias).filter(User.id==oalias.user_id).options(eagerload(User.addresses), eagerload(oalias.items)).filter(User.id==9).all(),
+                sess.query(User, oalias).filter(User.id==oalias.user_id).\
+                    options(eagerload(User.addresses), eagerload(oalias.items)).filter(User.id==9).\
+                    order_by(User.id, oalias.id).all(),
             )
         self.assert_sql_count(testing.db, go, 1)
 

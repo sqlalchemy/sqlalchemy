@@ -194,7 +194,7 @@ def make_test(select_type):
             sess = create_session()
 
             # assert the JOINs dont over JOIN
-            assert sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).limit(2).offset(1).with_labels().statement.count().scalar() == 2
+            assert sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).limit(2).offset(1).with_labels().subquery().count().scalar() == 2
 
             def go():
                 self.assertEquals(sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines))[1:3].all(), all_employees[1:3])
@@ -778,7 +778,7 @@ class SelfReferentialM2MTest(ORMTest, AssertsCompiledSQL):
         , dialect=default.DefaultDialect())
 
         # another way to check
-        assert q.limit(1).with_labels().statement.count().scalar() == 1
+        assert q.limit(1).with_labels().subquery().count().scalar() == 1
         
         assert q.first() is c1
 
