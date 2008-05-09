@@ -748,6 +748,8 @@ class ForeignKey(SchemaItem):
         else:
             return "%s.%s" % (self._colspec.table.name, self._colspec.key)
 
+    target_fullname = property(_get_colspec)
+
     def references(self, table):
         """Return True if the given table is referenced by this ForeignKey."""
         return table.corresponding_column(self.column) is not None
