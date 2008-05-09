@@ -6,6 +6,8 @@ A work in progress describing the changes from 0.4 is at:
 
     http://www.sqlalchemy.org/trac/wiki/05Migration
 
+IMPORTANT: some file names have changed in this branch.  Remove all existing *.pyc files before using !
+
 To continue working with the current development revision of 
 version 0.4, switch this working copy to the 0.4 maintenance branch:
 

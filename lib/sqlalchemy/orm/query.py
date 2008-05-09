@@ -258,10 +258,8 @@ class Query(object):
         return equivs
 
     def __no_criterion_condition(self, meth):
-        if self._criterion or self._statement or self._from_obj:
-            util.warn(
-                ("Query.%s() being called on a Query with existing criterion; "
-                 "criterion is being ignored.  This usage is deprecated.") % meth)
+        if self._criterion or self._statement or self._from_obj or self._limit or self._offset or self._group_by or self._order_by:
+            raise sa_exc.InvalidRequestError("Query.%s() being called on a Query with existing criterion. " % meth)
 
         self._statement = self._criterion = self._from_obj = None
         self._order_by = self._group_by = self._distinct = False
@@ -279,10 +277,9 @@ class Query(object):
 
     def __no_limit_offset(self, meth):
         if self._limit or self._offset:
-            util.warn("Query.%s() being called on a Query which already has LIMIT or OFFSET applied. "
-            "This usage is deprecated. Apply filtering and joins before LIMIT or OFFSET are applied, "
-            "or to filter/join to the row-limited results of the query, call from_self() first."
-            "In release 0.5, from_self() will be called automatically in this scenario."
+            # TODO: do we want from_self() to be implicit here ?  i vote explicit for the time being
+            raise sa_exc.InvalidRequestError("Query.%s() being called on a Query which already has LIMIT or OFFSET applied. "
+            "To filter/join to the row-limited results of the query, call from_self() first."
             )
 
     def __no_criterion(self):

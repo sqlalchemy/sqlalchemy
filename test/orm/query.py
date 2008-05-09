@@ -70,31 +70,9 @@ class GetTest(QueryTest):
         s = create_session()
         
         q = s.query(User).join('addresses').filter(Address.user_id==8)
-        self.assertRaises(sa_exc.SAWarning, q.get, 7)
-
-        @testing.emits_warning('Query.*')
-        def warns():
-            assert s.query(User).filter(User.id==7).get(19) is None
-
-            u = s.query(User).get(7)
-            assert s.query(User).filter(User.id==9).get(7) is u
-            s.clear()
-            assert s.query(User).filter(User.id==9).get(7).id == u.id
-
-            # user 10 has no addresses
-            u = s.query(User).get(10)
-            assert s.query(User).join('addresses').get(10) is u
-            s.clear()
-            assert s.query(User).join('addresses').get(10).id == u.id
-
-            u = s.query(User).get(7)
-            assert s.query(User).join('addresses').filter(Address.user_id==8).filter(User.id==7).first() is None
-            assert s.query(User).join('addresses').filter(Address.user_id==8).get(7) is u
-            s.clear()
-            assert s.query(User).join('addresses').filter(Address.user_id==8).get(7).id == u.id
-
-            assert s.query(User).join('addresses').filter(Address.user_id==8).load(7).id == u.id
-        warns()
+        self.assertRaises(sa_exc.InvalidRequestError, q.get, 7)
+        self.assertRaises(sa_exc.InvalidRequestError, s.query(User).filter(User.id==7).get, 19)
+        self.assertRaises(sa_exc.InvalidRequestError, s.query(User).filter(User.id==7).load, 19)
 
     def test_unique_param_names(self):
         class SomeUser(object):
@@ -196,11 +174,11 @@ class InvalidGenerationsTest(QueryTest):
         s = create_session()
         
         q = s.query(User).limit(2)
-        self.assertRaises(sa_exc.SAWarning, q.join, "addresses")
+        self.assertRaises(sa_exc.InvalidRequestError, q.join, "addresses")
 
-        self.assertRaises(sa_exc.SAWarning, q.filter, User.name=='ed')
+        self.assertRaises(sa_exc.InvalidRequestError, q.filter, User.name=='ed')
 
-        self.assertRaises(sa_exc.SAWarning, q.filter_by, name='ed')
+        self.assertRaises(sa_exc.InvalidRequestError, q.filter_by, name='ed')
     
     def test_no_from(self):
         s = create_session()
@@ -213,6 +191,24 @@ class InvalidGenerationsTest(QueryTest):
         
         # this is fine, however
         q.from_self()
+    
+    def test_from_statement(self):
+        s = create_session()
+        
+        q = s.query(User).filter(User.id==5)
+        self.assertRaises(sa_exc.InvalidRequestError, q.from_statement, "x")
+
+        q = s.query(User).filter_by(id=5)
+        self.assertRaises(sa_exc.InvalidRequestError, q.from_statement, "x")
+
+        q = s.query(User).limit(5)
+        self.assertRaises(sa_exc.InvalidRequestError, q.from_statement, "x")
+
+        q = s.query(User).group_by(User.name)
+        self.assertRaises(sa_exc.InvalidRequestError, q.from_statement, "x")
+
+        q = s.query(User).order_by(User.name)
+        self.assertRaises(sa_exc.InvalidRequestError, q.from_statement, "x")
         
 class OperatorTest(QueryTest):
     """test sql.Comparator implementation for MapperProperties"""
