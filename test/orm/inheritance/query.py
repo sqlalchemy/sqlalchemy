@@ -187,40 +187,14 @@ def make_test(select_type):
         def test_primary_eager_aliasing(self):
             sess = create_session()
             
-            # assert the SQL itself here to ensure no over-joining is taking place
-            if select_type == '':
-                self.assert_compile(
-                    sess.query(Person).options(eagerload(Engineer.machines)).limit(2).offset(1).with_labels().statement, 
-                    "SELECT people.person_id AS people_person_id, people.company_id AS people_company_id, "\
-                    "people.name AS people_name, people.type AS people_type FROM people ORDER BY people.person_id  LIMIT 2 OFFSET 1", 
-                    dialect=default.DefaultDialect())
-                
             def go():
                 self.assertEquals(sess.query(Person).options(eagerload(Engineer.machines))[1:3].all(), all_employees[1:3])
             self.assert_sql_count(testing.db, go, {'':6, 'Polymorphic':3}.get(select_type, 4))
 
             sess = create_session()
 
-            if select_type == '':
-                self.assert_compile(
-                    sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).limit(2).offset(1).with_labels().statement, 
-                    "SELECT anon_1.people_person_id AS anon_1_people_person_id, anon_1.people_company_id AS anon_1_people_company_id, "\
-                    "anon_1.people_name AS anon_1_people_name, anon_1.people_type AS anon_1_people_type, anon_1.engineers_person_id AS "\
-                    "anon_1_engineers_person_id, anon_1.engineers_status AS anon_1_engineers_status, anon_1.engineers_engineer_name AS "\
-                    "anon_1_engineers_engineer_name, anon_1.engineers_primary_language AS anon_1_engineers_primary_language, "\
-                    "anon_1.managers_person_id AS anon_1_managers_person_id, anon_1.managers_status AS anon_1_managers_status, "\
-                    "anon_1.managers_manager_name AS anon_1_managers_manager_name, anon_1.boss_boss_id AS anon_1_boss_boss_id, "\
-                    "anon_1.boss_golf_swing AS anon_1_boss_golf_swing, machines_1.machine_id AS machines_1_machine_id, machines_1.name AS "\
-                    "machines_1_name, machines_1.engineer_id AS machines_1_engineer_id FROM (SELECT people.person_id AS people_person_id, "\
-                    "people.company_id AS people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id AS "\
-                    "engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "\
-                    "engineers.primary_language AS engineers_primary_language, managers.person_id AS managers_person_id, managers.status "\
-                    "AS managers_status, managers.manager_name AS managers_manager_name, boss.boss_id AS boss_boss_id, boss.golf_swing "\
-                    "AS boss_golf_swing FROM people LEFT OUTER JOIN engineers ON people.person_id = engineers.person_id LEFT OUTER JOIN "\
-                    "managers ON people.person_id = managers.person_id LEFT OUTER JOIN boss ON managers.person_id = boss.boss_id ORDER BY "\
-                    "people.person_id  LIMIT 2 OFFSET 1) AS anon_1 LEFT OUTER JOIN machines AS machines_1 ON anon_1.engineers_person_id = "\
-                    "machines_1.engineer_id ORDER BY anon_1.people_person_id, machines_1.machine_id", 
-                    dialect=default.DefaultDialect())
+            # assert the JOINs dont over JOIN
+            assert sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).limit(2).offset(1).with_labels().statement.count().scalar() == 2
 
             def go():
                 self.assertEquals(sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines))[1:3].all(), all_employees[1:3])
@@ -802,6 +776,10 @@ class SelfReferentialM2MTest(ORMTest, AssertsCompiledSQL):
         "(SELECT parent.id AS parent_id, parent.cls AS parent_cls, child2.id AS child2_id FROM parent JOIN child2 ON parent.id = child2.id) "\
         "AS anon_2 ON anon_2.parent_id = secondary_1.left_id ORDER BY anon_1.child1_id"
         , dialect=default.DefaultDialect())
+
+        # another way to check
+        assert q.limit(1).with_labels().statement.count().scalar() == 1
+        
         assert q.first() is c1
 
 if __name__ == "__main__":
