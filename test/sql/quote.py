@@ -84,7 +84,8 @@ class QuoteTest(TestBase, AssertsCompiledSQL):
             Column('ColumnOne', Integer, quote=False), quote=False, schema="FooBar", quote_schema=False)
         self.assert_compile(t1.select(), '''SELECT FooBar.TableOne.ColumnOne FROM FooBar.TableOne''')
         
-    @testing.unsupported('oracle')
+    @testing.unsupported('oracle', 'FIXME: unknown, verify not fails_on')
+    @testing.requires.subqueries
     def testlabels(self):
         """test the quoting of labels.
 

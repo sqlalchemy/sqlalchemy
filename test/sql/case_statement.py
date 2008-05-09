@@ -28,6 +28,7 @@ class CaseTest(TestBase, AssertsCompiledSQL):
         info_table.drop()
 
     @testing.fails_on('maxdb')
+    @testing.requires.subqueries
     def testcase(self):
         inner = select([case([
                 [info_table.c.pk < 3,

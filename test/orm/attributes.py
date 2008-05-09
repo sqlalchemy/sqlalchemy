@@ -5,13 +5,15 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from testlib import *
-from testlib import fixtures
+from testlib.testing import eq_
+from orm import _base
 
 # global for pickling tests
 MyTest = None
 MyTest2 = None
 
-class AttributesTest(TestBase):
+
+class AttributesTest(_base.ORMTest):
     def setUp(self):
         global MyTest, MyTest2
         class MyTest(object): pass
@@ -25,9 +27,9 @@ class AttributesTest(TestBase):
         class User(object):pass
 
         attributes.register_class(User)
-        attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
-        attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
-        attributes.register_attribute(User, 'email_address', uselist = False, useobject=False)
+        attributes.register_attribute(User, 'user_id', uselist=False, useobject=False)
+        attributes.register_attribute(User, 'user_name', uselist=False, useobject=False)
+        attributes.register_attribute(User, 'email_address', uselist=False, useobject=False)
 
         u = User()
         u.user_id = 7
@@ -45,11 +47,11 @@ class AttributesTest(TestBase):
     def test_pickleness(self):
         attributes.register_class(MyTest)
         attributes.register_class(MyTest2)
-        attributes.register_attribute(MyTest, 'user_id', uselist = False, useobject=False)
-        attributes.register_attribute(MyTest, 'user_name', uselist = False, useobject=False)
-        attributes.register_attribute(MyTest, 'email_address', uselist = False, useobject=False)
-        attributes.register_attribute(MyTest2, 'a', uselist = False, useobject=False)
-        attributes.register_attribute(MyTest2, 'b', uselist = False, useobject=False)
+        attributes.register_attribute(MyTest, 'user_id', uselist=False, useobject=False)
+        attributes.register_attribute(MyTest, 'user_name', uselist=False, useobject=False)
+        attributes.register_attribute(MyTest, 'email_address', uselist=False, useobject=False)
+        attributes.register_attribute(MyTest2, 'a', uselist=False, useobject=False)
+        attributes.register_attribute(MyTest2, 'b', uselist=False, useobject=False)
         # shouldnt be pickling callables at the class level
         def somecallable(*args):
             return None
@@ -118,30 +120,30 @@ class AttributesTest(TestBase):
 
         f = Foo()
         attributes.instance_state(f).expire_attributes(None)
-        self.assertEquals(f.a, "this is a")
-        self.assertEquals(f.b, 12)
+        eq_(f.a, "this is a")
+        eq_(f.b, 12)
 
         f.a = "this is some new a"
         attributes.instance_state(f).expire_attributes(None)
-        self.assertEquals(f.a, "this is a")
-        self.assertEquals(f.b, 12)
+        eq_(f.a, "this is a")
+        eq_(f.b, 12)
 
         attributes.instance_state(f).expire_attributes(None)
         f.a = "this is another new a"
-        self.assertEquals(f.a, "this is another new a")
-        self.assertEquals(f.b, 12)
+        eq_(f.a, "this is another new a")
+        eq_(f.b, 12)
 
         attributes.instance_state(f).expire_attributes(None)
-        self.assertEquals(f.a, "this is a")
-        self.assertEquals(f.b, 12)
+        eq_(f.a, "this is a")
+        eq_(f.b, 12)
 
         del f.a
-        self.assertEquals(f.a, None)
-        self.assertEquals(f.b, 12)
+        eq_(f.a, None)
+        eq_(f.b, 12)
 
         attributes.instance_state(f).commit_all()
-        self.assertEquals(f.a, None)
-        self.assertEquals(f.b, 12)
+        eq_(f.a, None)
+        eq_(f.b, 12)
 
     def test_deferred_pickleable(self):
         data = {'a':'this is a', 'b':12}
@@ -161,8 +163,8 @@ class AttributesTest(TestBase):
         assert 'a' not in m.__dict__
         m2 = pickle.loads(pickle.dumps(m))
         assert 'a' not in m2.__dict__
-        self.assertEquals(m2.a, "this is a")
-        self.assertEquals(m2.b, 12)
+        eq_(m2.a, "this is a")
+        eq_(m2.b, 12)
 
     def test_list(self):
         class User(object):pass
@@ -170,11 +172,11 @@ class AttributesTest(TestBase):
 
         attributes.register_class(User)
         attributes.register_class(Address)
-        attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
-        attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
+        attributes.register_attribute(User, 'user_id', uselist=False, useobject=False)
+        attributes.register_attribute(User, 'user_name', uselist=False, useobject=False)
         attributes.register_attribute(User, 'addresses', uselist = True, useobject=True)
-        attributes.register_attribute(Address, 'address_id', uselist = False, useobject=False)
-        attributes.register_attribute(Address, 'email_address', uselist = False, useobject=False)
+        attributes.register_attribute(Address, 'address_id', uselist=False, useobject=False)
+        attributes.register_attribute(Address, 'email_address', uselist=False, useobject=False)
 
         u = User()
         u.user_id = 7
@@ -225,7 +227,7 @@ class AttributesTest(TestBase):
         f.y = [4,5,6]
         del f.y
         
-        self.assertEquals(results, [
+        eq_(results, [
             ('set', f, 5, None),
             ('set', f, 17, 5),
             ('remove', f, 17),
@@ -313,8 +315,8 @@ class AttributesTest(TestBase):
         attributes.register_class(Bar)
 
         b = Bar()
-        self.assertEquals(len(states), 1)
-        self.assertEquals(list(states)[0].obj(), b)
+        eq_(len(states), 1)
+        eq_(list(states)[0].obj(), b)
 
 
     def test_inheritance2(self):
@@ -332,7 +334,7 @@ class AttributesTest(TestBase):
         el = Element()
         x = Bar()
         x.element = el
-        self.assertEquals(attributes.get_history(attributes.instance_state(x), 'element'), ([el],[], []))
+        eq_(attributes.get_history(attributes.instance_state(x), 'element'), ([el],[], []))
         attributes.instance_state(x).commit_all()
 
         (added, unchanged, deleted) = attributes.get_history(attributes.instance_state(x), 'element')
@@ -342,9 +344,9 @@ class AttributesTest(TestBase):
     def test_lazyhistory(self):
         """tests that history functions work with lazy-loading attributes"""
 
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
-        class Bar(fixtures.Base):
+        class Bar(_base.BasicEntity):
             pass
 
         attributes.register_class(Foo)
@@ -363,7 +365,7 @@ class AttributesTest(TestBase):
         x = Foo()
         attributes.instance_state(x).commit_all()
         x.col2.append(bar4)
-        self.assertEquals(attributes.get_history(attributes.instance_state(x), 'col2'), ([bar4], [bar1, bar2, bar3], []))
+        eq_(attributes.get_history(attributes.instance_state(x), 'col2'), ([bar4], [bar1, bar2, bar3], []))
 
     def test_parenttrack(self):
         class Foo(object):pass
@@ -492,7 +494,7 @@ class AttributesTest(TestBase):
             assert False
 
 
-class BackrefTest(TestBase):
+class BackrefTest(_base.ORMTest):
 
     def test_manytomany(self):
         class Student(object):pass
@@ -565,7 +567,7 @@ class BackrefTest(TestBase):
         j.port = None
         self.assert_(p.jack is None)
 
-class PendingBackrefTest(TestBase):
+class PendingBackrefTest(_base.ORMTest):
     def setUp(self):
         global Post, Blog, called, lazy_load
 
@@ -627,7 +629,7 @@ class PendingBackrefTest(TestBase):
         p4 = Post("post 5")
         p4.blog = b
         assert called[0] == 0
-        self.assertEquals(attributes.instance_state(b).get_history('posts'), ([p, p4], [p1, p2, p3], []))
+        eq_(attributes.instance_state(b).get_history('posts'), ([p, p4], [p1, p2, p3], []))
         assert called[0] == 1
 
     def test_lazy_remove(self):
@@ -669,7 +671,7 @@ class PendingBackrefTest(TestBase):
 
         called[0] = 0
         lazy_load = (p1, p2, p3) = [Post("post 1"), Post("post 2"), Post("post 3")]
-    
+
     def test_commit_removes_pending(self):
         global lazy_load
         lazy_load = (p1, ) = [Post("post 1"), ]
@@ -680,32 +682,31 @@ class PendingBackrefTest(TestBase):
         attributes.instance_state(b).commit_all()
         attributes.instance_state(p1).commit_all()
         assert b.posts == [Post("post 1")]
-        
-        
-        
-class HistoryTest(TestBase):
+
+class HistoryTest(_base.ORMTest):
+
     def test_get_committed_value(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
 
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=False)
 
         f = Foo()
-        self.assertEquals(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), None)
+        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), None)
 
         f.someattr = 3
-        self.assertEquals(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), None)
+        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), None)
 
         f = Foo()
         f.someattr = 3
-        self.assertEquals(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), None)
+        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), None)
         
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), 3)
+        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), 3)
 
     def test_scalar(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
 
         attributes.register_class(Foo)
@@ -713,61 +714,61 @@ class HistoryTest(TestBase):
 
         # case 1.  new object
         f = Foo()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
 
         f.someattr = "hi"
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), (['hi'], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['hi'], [], []))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['hi'], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['hi'], []))
 
         f.someattr = 'there'
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), (['there'], [], ['hi']))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['there'], [], ['hi']))
         attributes.instance_state(f).commit(['someattr'])
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['there'], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['there'], []))
 
         del f.someattr
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], ['there']))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], ['there']))
 
         # case 2.  object with direct dictionary settings (similar to a load operation)
         f = Foo()
         f.__dict__['someattr'] = 'new'
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['new'], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['new'], []))
 
         f.someattr = 'old'
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), (['old'], [], ['new']))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['old'], [], ['new']))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['old'], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['old'], []))
 
         # setting None on uninitialized is currently a change for a scalar attribute
         # no lazyload occurs so this allows overwrite operation to proceed
         f = Foo()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
         print f._foostate.committed_state
         f.someattr = None
         print f._foostate.committed_state, f._foostate.dict
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([None], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([None], [], []))
 
         f = Foo()
         f.__dict__['someattr'] = 'new'
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['new'], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['new'], []))
         f.someattr = None
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([None], [], ['new']))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([None], [], ['new']))
 
         # set same value twice
         f = Foo()
         attributes.instance_state(f).commit(['someattr'])
         f.someattr = 'one'
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), (['one'], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['one'], [], []))
         f.someattr = 'two'
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), (['two'], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['two'], [], []))
         
         
     def test_mutable_scalar(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
 
         attributes.register_class(Foo)
@@ -775,40 +776,40 @@ class HistoryTest(TestBase):
 
         # case 1.  new object
         f = Foo()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
 
         f.someattr = {'foo':'hi'}
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([{'foo':'hi'}], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([{'foo':'hi'}], [], []))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [{'foo':'hi'}], []))
-        self.assertEquals(attributes.instance_state(f).committed_state['someattr'], {'foo':'hi'})
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [{'foo':'hi'}], []))
+        eq_(attributes.instance_state(f).committed_state['someattr'], {'foo':'hi'})
 
         f.someattr['foo'] = 'there'
-        self.assertEquals(attributes.instance_state(f).committed_state['someattr'], {'foo':'hi'})
+        eq_(attributes.instance_state(f).committed_state['someattr'], {'foo':'hi'})
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([{'foo':'there'}], [], [{'foo':'hi'}]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([{'foo':'there'}], [], [{'foo':'hi'}]))
         attributes.instance_state(f).commit(['someattr'])
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [{'foo':'there'}], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [{'foo':'there'}], []))
 
         # case 2.  object with direct dictionary settings (similar to a load operation)
         f = Foo()
         f.__dict__['someattr'] = {'foo':'new'}
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [{'foo':'new'}], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [{'foo':'new'}], []))
 
         f.someattr = {'foo':'old'}
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([{'foo':'old'}], [], [{'foo':'new'}]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([{'foo':'old'}], [], [{'foo':'new'}]))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [{'foo':'old'}], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [{'foo':'old'}], []))
 
 
     def test_use_object(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
 
-        class Bar(fixtures.Base):
+        class Bar(_base.BasicEntity):
             _state = None
             def __nonzero__(self):
                 assert False
@@ -823,61 +824,61 @@ class HistoryTest(TestBase):
 
         # case 1.  new object
         f = Foo()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [None], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [None], []))
 
         f.someattr = hi
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi], []))
 
         f.someattr = there
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [], [hi]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [], [hi]))
         attributes.instance_state(f).commit(['someattr'])
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [there], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [there], []))
 
         del f.someattr
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([None], [], [there]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([None], [], [there]))
 
         # case 2.  object with direct dictionary settings (similar to a load operation)
         f = Foo()
         f.__dict__['someattr'] = 'new'
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['new'], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['new'], []))
 
         f.someattr = old
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old], [], ['new']))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old], [], ['new']))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [old], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [old], []))
 
         # setting None on uninitialized is currently not a change for an object attribute
         # (this is different than scalar attribute).  a lazyload has occured so if its
         # None, its really None
         f = Foo()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [None], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [None], []))
         f.someattr = None
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [None], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [None], []))
 
         f = Foo()
         f.__dict__['someattr'] = 'new'
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['new'], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], ['new'], []))
         f.someattr = None
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([None], [], ['new']))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([None], [], ['new']))
 
         # set same value twice
         f = Foo()
         attributes.instance_state(f).commit(['someattr'])
         f.someattr = 'one'
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), (['one'], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['one'], [], []))
         f.someattr = 'two'
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), (['two'], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['two'], [], []))
 
     def test_object_collections_set(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
-        class Bar(fixtures.Base):
+        class Bar(_base.BasicEntity):
             def __nonzero__(self):
                 assert False
 
@@ -891,44 +892,44 @@ class HistoryTest(TestBase):
 
         # case 1.  new object
         f = Foo()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
 
         f.someattr = [hi]
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi], []))
 
         f.someattr = [there]
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [], [hi]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [], [hi]))
         attributes.instance_state(f).commit(['someattr'])
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [there], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [there], []))
 
         f.someattr = [hi]
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], [there]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], [there]))
 
         f.someattr = [old, new]
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old, new], [], [there]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old, new], [], [there]))
 
         # case 2.  object with direct settings (similar to a load operation)
         f = Foo()
         collection = attributes.init_collection(attributes.instance_state(f), 'someattr')
         collection.append_without_event(new)
         attributes.instance_state(f).commit_all()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [new], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [new], []))
 
         f.someattr = [old]
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old], [], [new]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old], [], [new]))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [old], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [old], []))
 
     def test_dict_collections(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
-        class Bar(fixtures.Base):
+        class Bar(_base.BasicEntity):
             pass
 
         from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -942,21 +943,21 @@ class HistoryTest(TestBase):
         new = Bar(name='new')
 
         f = Foo()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
 
         f.someattr['hi'] = hi
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
 
         f.someattr['there'] = there
-        self.assertEquals(tuple([set(x) for x in attributes.get_history(attributes.instance_state(f), 'someattr')]), (set([hi, there]), set([]), set([])))
+        eq_(tuple([set(x) for x in attributes.get_history(attributes.instance_state(f), 'someattr')]), (set([hi, there]), set([]), set([])))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(tuple([set(x) for x in attributes.get_history(attributes.instance_state(f), 'someattr')]), (set([]), set([hi, there]), set([])))
+        eq_(tuple([set(x) for x in attributes.get_history(attributes.instance_state(f), 'someattr')]), (set([]), set([hi, there]), set([])))
 
     def test_object_collections_mutate(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
-        class Bar(fixtures.Base):
+        class Bar(_base.BasicEntity):
             pass
 
         attributes.register_class(Foo)
@@ -970,32 +971,32 @@ class HistoryTest(TestBase):
 
         # case 1.  new object
         f = Foo(id=1)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
 
         f.someattr.append(hi)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi], []))
 
         f.someattr.append(there)
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [hi], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [hi], []))
         attributes.instance_state(f).commit(['someattr'])
 
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi, there], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi, there], []))
 
         f.someattr.remove(there)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi], [there]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi], [there]))
 
         f.someattr.append(old)
         f.someattr.append(new)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old, new], [hi], [there]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old, new], [hi], [there]))
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi, old, new], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [hi, old, new], []))
 
         f.someattr.pop(0)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [old, new], [hi]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [old, new], [hi]))
 
         # case 2.  object with direct settings (similar to a load operation)
         f = Foo()
@@ -1003,37 +1004,37 @@ class HistoryTest(TestBase):
         collection = attributes.init_collection(attributes.instance_state(f), 'someattr')
         collection.append_without_event(new)
         attributes.instance_state(f).commit_all()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [new], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [new], []))
 
         f.someattr.append(old)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old], [new], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old], [new], []))
 
         attributes.instance_state(f).commit(['someattr'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [new, old], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [new, old], []))
 
         f = Foo()
         collection = attributes.init_collection(attributes.instance_state(f), 'someattr')
         collection.append_without_event(new)
         attributes.instance_state(f).commit_all()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [new], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [new], []))
 
         f.id = 1
         f.someattr.remove(new)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], [new]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], [new]))
 
         # case 3.  mixing appends with sets
         f = Foo()
         f.someattr.append(hi)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
         f.someattr.append(there)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi, there], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi, there], [], []))
         f.someattr = [there]
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [], []))
 
     def test_collections_via_backref(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
-        class Bar(fixtures.Base):
+        class Bar(_base.BasicEntity):
             pass
 
         attributes.register_class(Foo)
@@ -1043,24 +1044,24 @@ class HistoryTest(TestBase):
 
         f1 = Foo()
         b1 = Bar()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'bars'), ([], [], []))
-        self.assertEquals(attributes.get_history(attributes.instance_state(b1), 'foo'), ([], [None], []))
+        eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ([], [], []))
+        eq_(attributes.get_history(attributes.instance_state(b1), 'foo'), ([], [None], []))
 
         #b1.foo = f1
         f1.bars.append(b1)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b1], [], []))
-        self.assertEquals(attributes.get_history(attributes.instance_state(b1), 'foo'), ([f1], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b1], [], []))
+        eq_(attributes.get_history(attributes.instance_state(b1), 'foo'), ([f1], [], []))
 
         b2 = Bar()
         f1.bars.append(b2)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b1, b2], [], []))
-        self.assertEquals(attributes.get_history(attributes.instance_state(b1), 'foo'), ([f1], [], []))
-        self.assertEquals(attributes.get_history(attributes.instance_state(b2), 'foo'), ([f1], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b1, b2], [], []))
+        eq_(attributes.get_history(attributes.instance_state(b1), 'foo'), ([f1], [], []))
+        eq_(attributes.get_history(attributes.instance_state(b2), 'foo'), ([f1], [], []))
 
     def test_lazy_backref_collections(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
-        class Bar(fixtures.Base):
+        class Bar(_base.BasicEntity):
             pass
 
         lazy_load = []
@@ -1080,22 +1081,22 @@ class HistoryTest(TestBase):
         f = Foo()
         bar4 = Bar()
         bar4.foo = f
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar4], [bar1, bar2, bar3], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar4], [bar1, bar2, bar3], []))
 
         lazy_load = None
         f = Foo()
         bar4 = Bar()
         bar4.foo = f
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar4], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar4], [], []))
 
         lazy_load = [bar1, bar2, bar3]
         attributes.instance_state(f).expire_attributes(['bars'])
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bars'), ([], [bar1, bar2, bar3], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bars'), ([], [bar1, bar2, bar3], []))
 
     def test_collections_via_lazyload(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
-        class Bar(fixtures.Base):
+        class Bar(_base.BasicEntity):
             pass
 
         lazy_load = []
@@ -1113,29 +1114,29 @@ class HistoryTest(TestBase):
 
         f = Foo()
         f.bars = []
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bars'), ([], [], [bar1, bar2, bar3]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bars'), ([], [], [bar1, bar2, bar3]))
 
         f = Foo()
         f.bars.append(bar4)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar4], [bar1, bar2, bar3], []) )
+        eq_(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar4], [bar1, bar2, bar3], []) )
 
         f = Foo()
         f.bars.remove(bar2)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bars'), ([], [bar1, bar3], [bar2]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bars'), ([], [bar1, bar3], [bar2]))
         f.bars.append(bar4)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar4], [bar1, bar3], [bar2]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar4], [bar1, bar3], [bar2]))
 
         f = Foo()
         del f.bars[1]
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bars'), ([], [bar1, bar3], [bar2]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bars'), ([], [bar1, bar3], [bar2]))
 
         lazy_load = None
         f = Foo()
         f.bars.append(bar2)
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar2], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bars'), ([bar2], [], []))
 
     def test_scalar_via_lazyload(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
 
         lazy_load = None
@@ -1152,30 +1153,30 @@ class HistoryTest(TestBase):
         # operations
 
         f = Foo()
-        self.assertEquals(f.bar, "hi")
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([], ["hi"], []))
+        eq_(f.bar, "hi")
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([], ["hi"], []))
 
         f = Foo()
         f.bar = None
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], []))
 
         f = Foo()
         f.bar = "there"
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), (["there"], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), (["there"], [], []))
         f.bar = "hi"
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), (["hi"], [], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), (["hi"], [], []))
 
         f = Foo()
-        self.assertEquals(f.bar, "hi")
+        eq_(f.bar, "hi")
         del f.bar
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([], [], ["hi"]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([], [], ["hi"]))
         assert f.bar is None
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], ["hi"]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], ["hi"]))
 
     def test_scalar_object_via_lazyload(self):
-        class Foo(fixtures.Base):
+        class Foo(_base.BasicEntity):
             pass
-        class Bar(fixtures.Base):
+        class Bar(_base.BasicEntity):
             pass
 
         lazy_load = None
@@ -1194,24 +1195,24 @@ class HistoryTest(TestBase):
         # operations
 
         f = Foo()
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([], [bar1], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([], [bar1], []))
 
         f = Foo()
         f.bar = None
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], [bar1]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], [bar1]))
 
         f = Foo()
         f.bar = bar2
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([bar2], [], [bar1]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([bar2], [], [bar1]))
         f.bar = bar1
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([], [bar1], []))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([], [bar1], []))
 
         f = Foo()
-        self.assertEquals(f.bar, bar1)
+        eq_(f.bar, bar1)
         del f.bar
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], [bar1]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], [bar1]))
         assert f.bar is None
-        self.assertEquals(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], [bar1]))
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], [], [bar1]))
 
     
 if __name__ == "__main__":

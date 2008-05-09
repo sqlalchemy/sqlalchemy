@@ -38,7 +38,7 @@ class MetaDataTest(TestBase, ComparesTables):
         finally:
             metadata.drop_all()
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
+    @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_to_metadata(self):
         meta = MetaData()
 

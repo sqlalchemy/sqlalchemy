@@ -197,7 +197,7 @@ class DialectTest(TestBase, AssertsExecutionResults):
         finally:
             cx.execute('DETACH DATABASE alt_schema')
 
-    @testing.exclude('sqlite', '<', (2, 6))
+    @testing.exclude('sqlite', '<', (2, 6), 'no database support')
     def test_temp_table_reflection(self):
         cx = testing.db.connect()
         try:
@@ -238,13 +238,13 @@ class InsertTest(TestBase, AssertsExecutionResults):
         finally:
             table.drop()
 
-    @testing.exclude('sqlite', '<', (3, 4))
+    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
     def test_empty_insert_pk1(self):
         self._test_empty_insert(
             Table('a', MetaData(testing.db),
                   Column('id', Integer, primary_key=True)))
 
-    @testing.exclude('sqlite', '<', (3, 4))
+    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
     def test_empty_insert_pk2(self):
         self.assertRaises(
             exc.DBAPIError,
@@ -253,7 +253,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
                   Column('x', Integer, primary_key=True),
                   Column('y', Integer, primary_key=True)))
 
-    @testing.exclude('sqlite', '<', (3, 4))
+    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
     def test_empty_insert_pk3(self):
         self.assertRaises(
             exc.DBAPIError,
@@ -263,20 +263,20 @@ class InsertTest(TestBase, AssertsExecutionResults):
                   Column('y', Integer, PassiveDefault('123'),
                          primary_key=True)))
 
-    @testing.exclude('sqlite', '<', (3, 4))
+    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
     def test_empty_insert_pk4(self):
         self._test_empty_insert(
             Table('d', MetaData(testing.db),
                   Column('x', Integer, primary_key=True),
                   Column('y', Integer, PassiveDefault('123'))))
 
-    @testing.exclude('sqlite', '<', (3, 4))
+    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
     def test_empty_insert_nopk1(self):
         self._test_empty_insert(
             Table('e', MetaData(testing.db),
                   Column('id', Integer)))
 
-    @testing.exclude('sqlite', '<', (3, 4))
+    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
     def test_empty_insert_nopk2(self):
         self._test_empty_insert(
             Table('f', MetaData(testing.db),

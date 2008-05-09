@@ -381,13 +381,17 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             testing.db.engine.dialect.convert_unicode = prev_unicode
             testing.db.engine.dialect.convert_unicode = prev_assert
 
-    @testing.unsupported('oracle')
+    @testing.unsupported('oracle', 'FIXME: unknown, verify not fails_on')
     def testlength(self):
         """checks the database correctly understands the length of a unicode string"""
         teststr = u'aaa\x1234'
         self.assert_(testing.db.func.length(teststr).scalar() == len(teststr))
 
 class BinaryTest(TestBase, AssertsExecutionResults):
+    __excluded_on__ = (
+        ('mysql', '<', (4, 1, 1)),  # screwy varbinary types
+        )
+
     def setUpAll(self):
         global binary_table, MyPickleType
 
@@ -650,20 +654,18 @@ class DateTest(TestBase, AssertsExecutionResults):
             t.drop(checkfirst=True)
 
 class StringTest(TestBase, AssertsExecutionResults):
-    
     @testing.fails_on('mysql')
     def test_nolength_string(self):
-        # this tests what happens with String DDL with no length.
-        # seems like we need to decide amongst "VARCHAR" (sqlite, postgres), "TEXT" (mysql)
-        # i.e. theres some inconsisency here.
-        
+        # this tests what happens with String DDL with no length.  seems like
+        # we need to decide amongst "VARCHAR" (sqlite, postgres), "TEXT"
+        # (mysql) i.e. theres some inconsisency here.
+
         metadata = MetaData(testing.db)
-        foo =Table('foo', metadata,
-            Column('one', String))
-        
+        foo = Table('foo', metadata, Column('one', String))
+
         foo.create()
         foo.drop()
-        
+
 def _missing_decimal():
     """Python implementation supports decimals"""
     try:

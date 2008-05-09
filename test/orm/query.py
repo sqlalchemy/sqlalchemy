@@ -116,7 +116,7 @@ class GetTest(QueryTest):
         assert u2.name =='jack'
         assert a not in u2.addresses
 
-    @testing.exclude('mysql', '<', (4, 1))
+    @testing.requires.unicode_connections
     def test_unicode(self):
         """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail
         on postgres, mysql and oracle unless it is converted to an encoded string"""
@@ -406,7 +406,7 @@ class FilterTest(QueryTest):
 
         assert [User(id=10)] == sess.query(User).outerjoin("addresses", aliased=True).filter(~User.addresses.any()).all()
         
-    @testing.unsupported('maxdb') # can core
+    @testing.unsupported('maxdb', 'can dump core')
     def test_has(self):
         sess = create_session()
         assert [Address(id=5)] == sess.query(Address).filter(Address.user.has(name='fred')).all()

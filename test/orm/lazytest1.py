@@ -1,46 +1,47 @@
 import testenv; testenv.configure_for_tests()
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from testlib import *
+from testlib import sa, testing
+from testlib.sa import Table, Column, Integer, String, ForeignKey
+from testlib.sa.orm import mapper, relation, create_session
+from orm import _base
 
-class LazyTest(TestBase, AssertsExecutionResults):
-    def setUpAll(self):
-        global info_table, data_table, rel_table, metadata
-        metadata = MetaData(testing.db)
-        info_table = Table('infos', metadata,
-                           Column('pk', Integer, primary_key=True),
-                           Column('info', String(128)))
 
-        data_table = Table('data', metadata,
-                           Column('data_pk', Integer, primary_key=True),
-                           Column('info_pk', Integer,
-                                  ForeignKey(info_table.c.pk)),
-                           Column('timeval', Integer),
-                           Column('data_val', String(128)))
+class LazyTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        Table('infos', metadata,
+              Column('pk', Integer, primary_key=True),
+              Column('info', String(128)))
 
-        rel_table = Table('rels', metadata,
-                          Column('rel_pk', Integer, primary_key=True),
-                          Column('info_pk', Integer,
-                                 ForeignKey(info_table.c.pk)),
-                          Column('start', Integer),
-                          Column('finish', Integer))
+        Table('data', metadata,
+              Column('data_pk', Integer, primary_key=True),
+              Column('info_pk', Integer,
+                     ForeignKey('infos.pk')),
+              Column('timeval', Integer),
+              Column('data_val', String(128)))
 
-        metadata.create_all()
-        info_table.insert().execute(
+        Table('rels', metadata,
+              Column('rel_pk', Integer, primary_key=True),
+              Column('info_pk', Integer,
+                     ForeignKey('infos.pk')),
+              Column('start', Integer),
+              Column('finish', Integer))
+
+    @testing.resolve_artifact_names
+    def insert_data(self):
+        infos.insert().execute(
             {'pk':1, 'info':'pk_1_info'},
             {'pk':2, 'info':'pk_2_info'},
             {'pk':3, 'info':'pk_3_info'},
             {'pk':4, 'info':'pk_4_info'},
             {'pk':5, 'info':'pk_5_info'})
 
-        rel_table.insert().execute(
+        rels.insert().execute(
             {'rel_pk':1, 'info_pk':1, 'start':10, 'finish':19},
             {'rel_pk':2, 'info_pk':1, 'start':100, 'finish':199},
             {'rel_pk':3, 'info_pk':2, 'start':20, 'finish':29},
             {'rel_pk':4, 'info_pk':3, 'start':13, 'finish':23},
             {'rel_pk':5, 'info_pk':5, 'start':15, 'finish':25})
 
-        data_table.insert().execute(
+        data.insert().execute(
             {'data_pk':1, 'info_pk':1, 'timeval':11, 'data_val':'11_data'},
             {'data_pk':2, 'info_pk':1, 'timeval':9, 'data_val':'9_data'},
             {'data_pk':3, 'info_pk':1, 'timeval':13, 'data_val':'13_data'},
@@ -48,16 +49,13 @@ class LazyTest(TestBase, AssertsExecutionResults):
             {'data_pk':5, 'info_pk':2, 'timeval':13, 'data_val':'13_data'},
             {'data_pk':6, 'info_pk':1, 'timeval':15, 'data_val':'15_data'})
 
-
-    def tearDownAll(self):
-        metadata.drop_all()
-
+    @testing.resolve_artifact_names
     def testone(self):
-        """Tests a lazy load which has multiple join conditions.
+        """A lazy load which has multiple join conditions.
 
-        ...including two that are against the same column in the child table.
+        Including two that are against the same column in the child table.
+
         """
-
         class Information(object):
             pass
 
@@ -69,16 +67,16 @@ class LazyTest(TestBase, AssertsExecutionResults):
 
         session = create_session()
 
-        mapper(Data, data_table)
-        mapper(Relation, rel_table, properties={
+        mapper(Data, data)
+        mapper(Relation, rels, properties={
             'datas': relation(Data,
-                              primaryjoin=and_(
-                                rel_table.c.info_pk ==
-                                data_table.c.info_pk,
-                                data_table.c.timeval >= rel_table.c.start,
-                                data_table.c.timeval <= rel_table.c.finish),
-                              foreign_keys=[data_table.c.info_pk])})
-        mapper(Information, info_table, properties={
+                              primaryjoin=sa.and_(
+                                rels.c.info_pk ==
+                                data.c.info_pk,
+                                data.c.timeval >= rels.c.start,
+                                data.c.timeval <= rels.c.finish),
+                              foreign_keys=[data.c.info_pk])})
+        mapper(Information, infos, properties={
             'rels': relation(Relation)
         })
 
@@ -86,6 +84,7 @@ class LazyTest(TestBase, AssertsExecutionResults):
         assert info
         assert len(info.rels) == 2
         assert len(info.rels[0].datas) == 3
+
 
 if __name__ == "__main__":
     testenv.main()

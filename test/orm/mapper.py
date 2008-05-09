@@ -503,7 +503,7 @@ class MapperTest(MapperSuperTest):
         #l = create_session().query(User).select(order_by=None)
 
 
-    @testing.unsupported('firebird')
+    @testing.unsupported('firebird', 'FIXME: verify not fails_on')
     def test_function(self):
         """Test mapping to a SELECT statement that has functions in it."""
 
@@ -521,7 +521,7 @@ class MapperTest(MapperSuperTest):
         assert l[0].concat == l[0].user_id * 2 == 14
         assert l[1].concat == l[1].user_id * 2 == 16
 
-    @testing.unsupported('firebird')
+    @testing.unsupported('firebird', 'FIXME: verify not fails_on')
     def test_count(self):
         """test the count function on Query.
 

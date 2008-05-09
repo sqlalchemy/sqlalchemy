@@ -1,14 +1,18 @@
 import testenv; testenv.configure_for_tests()
 import gc
-from sqlalchemy import MetaData, Integer, String, ForeignKey
-from sqlalchemy.orm import mapper, relation, clear_mappers, create_session
-from sqlalchemy.orm.mapper import Mapper, _mapper_registry
-from sqlalchemy.orm.session import _sessions 
-from testlib import *
-from testlib.fixtures import Base
+from sqlalchemy.orm import mapper, relation, create_session, clear_mappers
+from sqlalchemy.orm.mapper import _mapper_registry
+from sqlalchemy.orm.session import _sessions
 
-class A(Base):pass
-class B(Base):pass
+from testlib import testing
+from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
+from orm import _base
+
+
+class A(_base.ComparableEntity):
+    pass
+class B(_base.ComparableEntity):
+    pass
 
 def profile_memory(func):
     # run the test 50 times.  if length of gc.get_objects()
@@ -40,11 +44,11 @@ def assert_no_mappers():
     gc.collect()
     assert len(_mapper_registry) == 0
 
-class EnsureZeroed(TestBase, AssertsExecutionResults):
+class EnsureZeroed(_base.ORMTest):
     def setUp(self):
         _sessions.clear()
         _mapper_registry.clear()
-        
+
 class MemUsageTest(EnsureZeroed):
 
     def test_session(self):
@@ -52,20 +56,18 @@ class MemUsageTest(EnsureZeroed):
 
         table1 = Table("mytable", metadata,
             Column('col1', Integer, primary_key=True),
-            Column('col2', String(30))
-            )
+            Column('col2', String(30)))
 
         table2 = Table("mytable2", metadata,
             Column('col1', Integer, primary_key=True),
             Column('col2', String(30)),
-            Column('col3', Integer, ForeignKey("mytable.col1"))
-            )
+            Column('col3', Integer, ForeignKey("mytable.col1")))
 
         metadata.create_all()
 
         m1 = mapper(A, table1, properties={
-            "bs":relation(B, cascade="all, delete")
-        })
+            "bs":relation(B, cascade="all, delete")})
+
         m2 = mapper(B, table2)
 
         m3 = mapper(A, table1, non_primary=True)
@@ -107,14 +109,12 @@ class MemUsageTest(EnsureZeroed):
 
         table1 = Table("mytable", metadata,
             Column('col1', Integer, primary_key=True),
-            Column('col2', String(30))
-            )
+            Column('col2', String(30)))
 
         table2 = Table("mytable2", metadata,
             Column('col1', Integer, primary_key=True),
             Column('col2', String(30)),
-            Column('col3', Integer, ForeignKey("mytable.col1"))
-            )
+            Column('col3', Integer, ForeignKey("mytable.col1")))
 
         @profile_memory
         def go():
@@ -168,19 +168,24 @@ class MemUsageTest(EnsureZeroed):
             )
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, ForeignKey('mytable.col1'), primary_key=True),
+            Column('col1', Integer, ForeignKey('mytable.col1'),
+                   primary_key=True),
             Column('col3', String(30)),
             )
 
         @profile_memory
         def go():
-            class A(Base):
+            class A(_base.ComparableEntity):
                 pass
             class B(A):
                 pass
 
-            mapper(A, table1, polymorphic_on=table1.c.col2, polymorphic_identity='a')
-            mapper(B, table2, inherits=A, polymorphic_identity='b')
+            mapper(A, table1,
+                   polymorphic_on=table1.c.col2,
+                   polymorphic_identity='a')
+            mapper(B, table2,
+                   inherits=A,
+                   polymorphic_identity='b')
 
             sess = create_session()
             a1 = A()
@@ -234,9 +239,9 @@ class MemUsageTest(EnsureZeroed):
 
         @profile_memory
         def go():
-            class A(Base):
+            class A(_base.ComparableEntity):
                 pass
-            class B(Base):
+            class B(_base.ComparableEntity):
                 pass
 
             mapper(A, table1, properties={

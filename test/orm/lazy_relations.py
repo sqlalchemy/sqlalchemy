@@ -1,19 +1,21 @@
 """basic tests of lazy loaded attributes"""
 
 import testenv; testenv.configure_for_tests()
-from sqlalchemy import *
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.orm import *
-from testlib import *
-from testlib.fixtures import *
-from query import QueryTest
 import datetime
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import attributes
+from testlib import sa, testing
+from testlib.sa import Table, Column, Integer, String, ForeignKey
+from testlib.sa.orm import mapper, relation, create_session
+from testlib.testing import eq_
+from orm import _base, _fixtures
 
-class LazyTest(FixtureTest):
-    keep_mappers = False
-    keep_data = True
 
+class LazyTest(_fixtures.FixtureTest):
+    run_inserts = 'once'
+    run_deletes = None
+
+    @testing.resolve_artifact_names
     def test_basic(self):
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses), lazy=True)
@@ -22,6 +24,7 @@ class LazyTest(FixtureTest):
         q = sess.query(User)
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(users.c.id == 7).all()
 
+    @testing.resolve_artifact_names
     def test_needs_parent(self):
         """test the error raised when parent object is not bound."""
 
@@ -34,6 +37,7 @@ class LazyTest(FixtureTest):
         sess.expunge(u)
         self.assertRaises(sa_exc.InvalidRequestError, getattr, u, 'addresses')
 
+    @testing.resolve_artifact_names
     def test_orderby(self):
         mapper(User, users, properties = {
             'addresses':relation(mapper(Address, addresses), lazy=True, order_by=addresses.c.email_address),
@@ -54,6 +58,7 @@ class LazyTest(FixtureTest):
             User(id=10, addresses=[])
         ] == q.all()
 
+    @testing.resolve_artifact_names
     def test_orderby_secondary(self):
         """tests that a regular mapper select on a single table can order by a relation to a second table"""
 
@@ -78,11 +83,12 @@ class LazyTest(FixtureTest):
             ]),
         ] == l
 
+    @testing.resolve_artifact_names
     def test_orderby_desc(self):
         mapper(Address, addresses)
 
         mapper(User, users, properties = dict(
-            addresses = relation(Address, lazy=True,  order_by=[desc(addresses.c.email_address)]),
+            addresses = relation(Address, lazy=True,  order_by=[sa.desc(addresses.c.email_address)]),
         ))
         sess = create_session()
         assert [
@@ -100,6 +106,7 @@ class LazyTest(FixtureTest):
             User(id=10, addresses=[])
         ] == sess.query(User).all()
 
+    @testing.resolve_artifact_names
     def test_no_orphan(self):
         """test that a lazily loaded child object is not marked as an orphan"""
 
@@ -111,9 +118,9 @@ class LazyTest(FixtureTest):
         sess = create_session()
         user = sess.query(User).get(7)
         assert getattr(User, 'addresses').hasparent(attributes.instance_state(user.addresses[0]), optimistic=True)
-        assert not class_mapper(Address)._is_orphan(attributes.instance_state(user.addresses[0]))
+        assert not sa.orm.class_mapper(Address)._is_orphan(attributes.instance_state(user.addresses[0]))
 
-
+    @testing.resolve_artifact_names
     def test_limit(self):
         """test limit operations combined with lazy-load relationships."""
 
@@ -131,11 +138,12 @@ class LazyTest(FixtureTest):
 
         if testing.against('maxdb', 'mssql'):
             l = q.limit(2).all()
-            assert fixtures.user_all_result[:2] == l
+            assert self.static.user_all_result[:2] == l
         else:
             l = q.limit(2).offset(1).all()
-            assert fixtures.user_all_result[1:3] == l
+            assert self.static.user_all_result[1:3] == l
 
+    @testing.resolve_artifact_names
     def test_distinct(self):
         mapper(Item, items)
         mapper(Order, orders, properties={
@@ -151,11 +159,12 @@ class LazyTest(FixtureTest):
 
         # use a union all to get a lot of rows to join against
         u2 = users.alias('u2')
-        s = union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
+        s = sa.union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
         print [key for key in s.c.keys()]
         l = q.filter(s.c.u2_id==User.id).distinct().all()
-        assert fixtures.user_all_result == l
+        assert self.static.user_all_result == l
 
+    @testing.resolve_artifact_names
     def test_one_to_many_scalar(self):
         mapper(User, users, properties = dict(
             address = relation(mapper(Address, addresses), lazy=True, uselist=False)
@@ -164,17 +173,18 @@ class LazyTest(FixtureTest):
         l = q.filter(users.c.id == 7).all()
         assert [User(id=7, address=Address(id=1))] == l
 
+    @testing.resolve_artifact_names
     def test_double(self):
         """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
-        openorders = alias(orders, 'openorders')
-        closedorders = alias(orders, 'closedorders')
+        openorders = sa.alias(orders, 'openorders')
+        closedorders = sa.alias(orders, 'closedorders')
 
         mapper(Address, addresses)
 
         mapper(User, users, properties = dict(
             addresses = relation(Address, lazy = True),
-            open_orders = relation(mapper(Order, openorders, entity_name='open'), primaryjoin = and_(openorders.c.isopen == 1, users.c.id==openorders.c.user_id), lazy=True),
-            closed_orders = relation(mapper(Order, closedorders,entity_name='closed'), primaryjoin = and_(closedorders.c.isopen == 0, users.c.id==closedorders.c.user_id), lazy=True)
+            open_orders = relation(mapper(Order, openorders, entity_name='open'), primaryjoin = sa.and_(openorders.c.isopen == 1, users.c.id==openorders.c.user_id), lazy=True),
+            closed_orders = relation(mapper(Order, closedorders,entity_name='closed'), primaryjoin = sa.and_(closedorders.c.isopen == 0, users.c.id==closedorders.c.user_id), lazy=True)
         ))
         q = create_session().query(User)
 
@@ -206,6 +216,7 @@ class LazyTest(FixtureTest):
         assert [Order(id=1), Order(id=5)] == create_session().query(Order, entity_name='closed').with_parent(user, property='closed_orders').all()
         assert [Order(id=3)] == create_session().query(Order, entity_name='open').with_parent(user, property='open_orders').all()
 
+    @testing.resolve_artifact_names
     def test_many_to_many(self):
 
         mapper(Keyword, keywords)
@@ -214,10 +225,11 @@ class LazyTest(FixtureTest):
         ))
 
         q = create_session().query(Item)
-        assert fixtures.item_keyword_result == q.all()
+        assert self.static.item_keyword_result == q.all()
 
-        assert fixtures.item_keyword_result[0:2] == q.join('keywords').filter(keywords.c.name == 'red').all()
+        assert self.static.item_keyword_result[0:2] == q.join('keywords').filter(keywords.c.name == 'red').all()
 
+    @testing.resolve_artifact_names
     def test_uses_get(self):
         """test that a simple many-to-one lazyload optimizes to use query.get()."""
 
@@ -242,8 +254,9 @@ class LazyTest(FixtureTest):
                 # lazy load of a1.user should get it from the session
                 assert a1.user is u1
             self.assert_sql_count(testing.db, go, 0)
-            clear_mappers()
+            sa.orm.clear_mappers()
 
+    @testing.resolve_artifact_names
     def test_many_to_one(self):
         mapper(Address, addresses, properties = dict(
             user = relation(mapper(User, users), lazy=True)
@@ -258,6 +271,7 @@ class LazyTest(FixtureTest):
 
         assert a.user is u1
 
+    @testing.resolve_artifact_names
     def test_backrefs_dont_lazyload(self):
         mapper(User, users, properties={
             'addresses':relation(Address, backref='user')
@@ -292,10 +306,12 @@ class LazyTest(FixtureTest):
             assert ad2 in u1.addresses
         self.assert_sql_count(testing.db, go, 1)
 
-class M2OGetTest(FixtureTest):
-    keep_mappers = False
-    keep_data = True
 
+class M2OGetTest(_fixtures.FixtureTest):
+    run_inserts = 'once'
+    run_deletes = None
+
+    @testing.resolve_artifact_names
     def test_m2o_noload(self):
         """test that a NULL foreign key doesn't trigger a lazy load"""
         mapper(User, users)
@@ -319,60 +335,56 @@ class M2OGetTest(FixtureTest):
             assert ad3.user is None
         self.assert_sql_count(testing.db, go, 1)
 
-class CorrelatedTest(ORMTest):
-    keep_mappers = False
-    keep_data = False
-    
-    def define_tables(self, meta):
-        global user_t, stuff
-        
-        user_t = Table('users', meta,
-            Column('id', Integer, primary_key=True),
-            Column('name', String(50))
-            )
+class CorrelatedTest(_base.MappedTest):
 
-        stuff = Table('stuff', meta,
-            Column('id', Integer, primary_key=True),
-            Column('date', Date),
-            Column('user_id', Integer, ForeignKey('users.id')))
-    
+    def define_tables(self, meta):
+        Table('user_t', meta,
+              Column('id', Integer, primary_key=True),
+              Column('name', String(50)))
+
+        Table('stuff', meta,
+              Column('id', Integer, primary_key=True),
+              Column('date', sa.Date),
+              Column('user_id', Integer, ForeignKey('user_t.id')))
+
+    @testing.resolve_artifact_names
     def insert_data(self):
         user_t.insert().execute(
             {'id':1, 'name':'user1'},
             {'id':2, 'name':'user2'},
-            {'id':3, 'name':'user3'},
-        )
+            {'id':3, 'name':'user3'})
 
         stuff.insert().execute(
             {'id':1, 'user_id':1, 'date':datetime.date(2007, 10, 15)},
             {'id':2, 'user_id':1, 'date':datetime.date(2007, 12, 15)},
             {'id':3, 'user_id':1, 'date':datetime.date(2007, 11, 15)},
             {'id':4, 'user_id':2, 'date':datetime.date(2008, 1, 15)},
-            {'id':5, 'user_id':3, 'date':datetime.date(2007, 6, 15)},
-        )        
-        
+            {'id':5, 'user_id':3, 'date':datetime.date(2007, 6, 15)})
+
+    @testing.resolve_artifact_names
     def test_correlated_lazyload(self):
-        class User(Base):
+        class User(_base.ComparableEntity):
             pass
 
-        class Stuff(Base):
+        class Stuff(_base.ComparableEntity):
             pass
-            
+
         mapper(Stuff, stuff)
 
-        stuff_view = select([stuff.c.id]).where(stuff.c.user_id==user_t.c.id).correlate(user_t).order_by(desc(stuff.c.date)).limit(1)
+        stuff_view = sa.select([stuff.c.id]).where(stuff.c.user_id==user_t.c.id).correlate(user_t).order_by(sa.desc(stuff.c.date)).limit(1)
 
         mapper(User, user_t, properties={
-            'stuff':relation(Stuff, primaryjoin=and_(user_t.c.id==stuff.c.user_id, stuff.c.id==(stuff_view.as_scalar())))
+            'stuff':relation(Stuff, primaryjoin=sa.and_(user_t.c.id==stuff.c.user_id, stuff.c.id==(stuff_view.as_scalar())))
         })
 
         sess = create_session()
 
-        self.assertEquals(sess.query(User).all(), [
-            User(name='user1', stuff=[Stuff(date=datetime.date(2007, 12, 15), id=2)]), 
-            User(name='user2', stuff=[Stuff(id=4, date=datetime.date(2008, 1 , 15))]), 
+        eq_(sess.query(User).all(), [
+            User(name='user1', stuff=[Stuff(date=datetime.date(2007, 12, 15), id=2)]),
+            User(name='user2', stuff=[Stuff(id=4, date=datetime.date(2008, 1 , 15))]),
             User(name='user3', stuff=[Stuff(id=5, date=datetime.date(2007, 6, 15))])
         ])
+
 
 if __name__ == '__main__':
     testenv.main()

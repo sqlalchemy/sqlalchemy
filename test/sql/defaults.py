@@ -268,6 +268,8 @@ class DefaultTest(TestBase):
             testing.db.execute("drop table speedy_users", None)
 
 class PKDefaultTest(TestBase):
+    __requires__ = ('subqueries',)
+
     def setUpAll(self):
         global metadata, t1, t2
 
@@ -277,7 +279,8 @@ class PKDefaultTest(TestBase):
             Column('nextid', Integer))
 
         t1 = Table('t1', metadata,
-            Column('id', Integer, primary_key=True, default=select([func.max(t2.c.nextid)]).as_scalar()),
+            Column('id', Integer, primary_key=True,
+                   default=select([func.max(t2.c.nextid)]).as_scalar()),
             Column('data', String(30)))
 
         metadata.create_all()
@@ -285,7 +288,7 @@ class PKDefaultTest(TestBase):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.unsupported('mssql')
+    @testing.unsupported('mssql', 'FIXME: unknown, verify not fails_on')
     def test_basic(self):
         t2.insert().execute(nextid=1)
         r = t1.insert().execute(data='hi')
@@ -407,8 +410,8 @@ class AutoIncrementTest(TestBase):
 
 
 class SequenceTest(TestBase):
-    __unsupported_on__ = ('sqlite', 'mysql', 'mssql', 'firebird',
-                          'sybase', 'access')
+    __requires__ = ('sequences',)
+    # TODO: 'firebird' was in __unsupported__.  are they, truly?
 
     def setUpAll(self):
         global cartitems, sometable, metadata

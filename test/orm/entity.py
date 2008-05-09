@@ -4,8 +4,10 @@ from sqlalchemy.orm import *
 from testlib import *
 from testlib.tables import *
 from testlib import fixtures
+from orm import _base
 
-class EntityTest(TestBase, AssertsExecutionResults):
+
+class EntityTest(_base.ORMTest):
     """tests mappers that are constructed based on "entity names", which allows the same class
     to have multiple primary mappers """
 
@@ -224,7 +226,7 @@ class EntityTest(TestBase, AssertsExecutionResults):
         assert u1list[0].name == 'this is user 1'
         assert u2list[0].name == 'this is user 2'
 
-class SelfReferentialTest(ORMTest):
+class SelfReferentialTest(_base.MappedTest):
     def define_tables(self, metadata):
         global nodes
             

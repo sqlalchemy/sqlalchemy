@@ -69,7 +69,6 @@ class TransactionTest(TestBase):
         assert len(result.fetchall()) == 0
         connection.close()
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_nested_rollback(self):
         connection = testing.db.connect()
 
@@ -99,7 +98,6 @@ class TransactionTest(TestBase):
                 connection.close()
 
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_nesting(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -117,7 +115,6 @@ class TransactionTest(TestBase):
         assert len(result.fetchall()) == 0
         connection.close()
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_close(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -138,7 +135,6 @@ class TransactionTest(TestBase):
         assert len(result.fetchall()) == 5
         connection.close()
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_close2(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -343,7 +339,6 @@ class AutoRollbackTest(TestBase):
     def tearDownAll(self):
         metadata.drop_all(testing.db)
 
-    @testing.unsupported('sqlite')
     def test_rollback_deadlock(self):
         """test that returning connections to the pool clears any object locks."""
         conn1 = testing.db.connect()
@@ -592,8 +587,6 @@ class TLTransactionTest(TestBase):
         finally:
             external_connection.close()
 
-    @testing.unsupported('sqlite')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_nesting(self):
         """tests nesting of transactions"""
         external_connection = tlengine.connect()
@@ -612,7 +605,6 @@ class TLTransactionTest(TestBase):
         finally:
             external_connection.close()
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_mixed_nesting(self):
         """tests nesting of transactions off the TLEngine directly inside of
         tranasctions off the connection from the TLEngine"""
@@ -641,7 +633,6 @@ class TLTransactionTest(TestBase):
         finally:
             external_connection.close()
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_more_mixed_nesting(self):
         """tests nesting of transactions off the connection from the TLEngine
         inside of tranasctions off thbe TLEngine directly."""
@@ -664,8 +655,6 @@ class TLTransactionTest(TestBase):
             self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
         finally:
             external_connection.close()
-
-
 
     def test_connections(self):
         """tests that contextual_connect is threadlocal"""
@@ -743,15 +732,18 @@ class ForUpdateTest(TestBase):
                 break
         con.close()
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
-
+    @testing.unsupported('sqlite', 'needs n threads -> 1 :memory: db')
+    @testing.unsupported('mssql', 'FIXME: unknown')
+    @testing.unsupported('firebird', 'FIXME: unknown')
+    @testing.unsupported('sybase', 'FIXME: unknown')
+    @testing.unsupported('access', 'FIXME: unknown')
     def test_queued_update(self):
         """Test SELECT FOR UPDATE with concurrent modifications.
 
         Runs concurrent modifications on a single row in the users table,
         with each mutator trying to increment a value stored in user_name.
-        """
 
+        """
         db = testing.db
         db.execute(counters.insert(), counter_id=1, counter_value=0)
 
@@ -768,7 +760,7 @@ class ForUpdateTest(TestBase):
             thread.join()
 
         for e in errors:
-            sys.stderr.write("Failure: %s\n" % e)
+            sys.stdout.write("Failure: %s\n" % e)
 
         self.assert_(len(errors) == 0)
 
@@ -806,7 +798,11 @@ class ForUpdateTest(TestBase):
 
         return errors
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
+    @testing.unsupported('sqlite', 'needs n threads -> 1 memory db')
+    @testing.unsupported('mssql', 'FIXME: unknown')
+    @testing.unsupported('firebird', 'FIXME: unknown')
+    @testing.unsupported('sybase', 'FIXME: unknown')
+    @testing.unsupported('access', 'FIXME: unknown')
     def test_queued_select(self):
         """Simple SELECT FOR UPDATE conflict test"""
 
@@ -815,8 +811,12 @@ class ForUpdateTest(TestBase):
             sys.stderr.write("Failure: %s\n" % e)
         self.assert_(len(errors) == 0)
 
-    @testing.unsupported('sqlite', 'mysql', 'mssql', 'firebird',
-                         'sybase', 'access')
+    @testing.unsupported('sqlite', 'needs n threads -> 1 memory db')
+    @testing.unsupported('mssql', 'FIXME: unknown')
+    @testing.unsupported('mysql', 'no support for NOWAIT')
+    @testing.unsupported('firebird', 'FIXME: unknown')
+    @testing.unsupported('sybase', 'FIXME: unknown')
+    @testing.unsupported('access', 'FIXME: unknown')
     def test_nowait_select(self):
         """Simple SELECT FOR UPDATE NOWAIT conflict test"""
 

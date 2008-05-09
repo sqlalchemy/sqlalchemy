@@ -3,6 +3,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
 from testlib.tables import *
+from orm import _base
 
 """
 Tests cyclical mapper relationships.
@@ -20,7 +21,7 @@ class Tester(object):
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, repr(self.data))
 
-class SelfReferentialTest(TestBase, AssertsExecutionResults):
+class SelfReferentialTest(_base.ORMTest):
     """tests a self-referential mapper, with an additional list of child objects."""
     def setUpAll(self):
         global t1, t2, metadata
@@ -152,7 +153,7 @@ class SelfReferentialNoPKTest(TestBase, AssertsExecutionResults):
         assert t.uuid == t2.uuid
         assert t.parent.uuid == t1.uuid
 
-class InheritTestOne(TestBase, AssertsExecutionResults):
+class InheritTestOne(_base.ORMTest):
     def setUpAll(self):
         global parent, child1, child2, meta
         meta = MetaData(testing.db)
@@ -216,7 +217,7 @@ class InheritTestOne(TestBase, AssertsExecutionResults):
         # attached to a task corresponding to c1, since "child1_id" is not nullable
         session.flush()
 
-class InheritTestTwo(ORMTest):
+class InheritTestTwo(_base.MappedTest):
     """the fix in BiDirectionalManyToOneTest raised this issue, regarding
     the 'circular sort' containing UOWTasks that were still polymorphic, which could
     create duplicate entries in the final sort
@@ -264,7 +265,7 @@ class InheritTestTwo(ORMTest):
         sess.flush()
 
 
-class BiDirectionalManyToOneTest(ORMTest):
+class BiDirectionalManyToOneTest(_base.MappedTest):
     def define_tables(self, metadata):
         global t1, t2, t3, t4
         t1 = Table('t1', metadata,
@@ -400,7 +401,7 @@ class BiDirectionalOneToManyTest(TestBase, AssertsExecutionResults):
         [sess.save(x) for x in [a,b,c,d,e,f]]
         sess.flush()
 
-class BiDirectionalOneToManyTest2(TestBase, AssertsExecutionResults):
+class BiDirectionalOneToManyTest2(_base.ORMTest):
     """tests two mappers with a one-to-many relation to each other, with a second one-to-many on one of the mappers"""
     def setUpAll(self):
         global t1, t2, t3, metadata
@@ -460,7 +461,7 @@ class BiDirectionalOneToManyTest2(TestBase, AssertsExecutionResults):
         sess.delete(c)
         sess.flush()
 
-class OneToManyManyToOneTest(TestBase, AssertsExecutionResults):
+class OneToManyManyToOneTest(_base.ORMTest):
     """tests two mappers, one has a one-to-many on the other mapper, the other has a separate many-to-one relationship to the first.
     two tests will have a row for each item that is dependent on the other.  without the "post_update" flag, such relationships
     raise an exception when dependencies are sorted."""
@@ -751,7 +752,7 @@ class OneToManyManyToOneTest(TestBase, AssertsExecutionResults):
             )
         ])
 
-class SelfReferentialPostUpdateTest(TestBase, AssertsExecutionResults):
+class SelfReferentialPostUpdateTest(_base.ORMTest):
     """test using post_update on a single self-referential mapper"""
     def setUpAll(self):
         global metadata, node_table
@@ -855,7 +856,7 @@ class SelfReferentialPostUpdateTest(TestBase, AssertsExecutionResults):
             ),
         ])
 
-class SelfReferentialPostUpdateTest2(TestBase, AssertsExecutionResults):
+class SelfReferentialPostUpdateTest2(_base.ORMTest):
     def setUpAll(self):
         global metadata, a_table
         metadata = MetaData(testing.db)

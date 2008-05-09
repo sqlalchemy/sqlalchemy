@@ -1,6 +1,6 @@
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import attributes
-from testlib import ORMTest
+from testlib.testing import ORMTest
 from testlib.compat import set
 
 

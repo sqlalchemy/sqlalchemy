@@ -10,7 +10,7 @@ metadata, users = None, None
 
 class ReflectionTest(TestBase, ComparesTables):
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
+    @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_basic_reflection(self):
         meta = MetaData(testing.db)
 
@@ -239,6 +239,7 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             meta.drop_all()
 
+    @testing.exclude('mysql', '<', (4, 1, 1), 'innodb funkiness')
     def test_override_existing_fk(self):
         """test that you can override columns and specify new foreign keys to other reflected tables,
         on columns which *do* already have that foreign key, and that the FK is not duped.
@@ -271,7 +272,7 @@ class ReflectionTest(TestBase, ComparesTables):
             assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
 
             meta2 = MetaData(testing.db)
-            u2 = Table('users', meta2, 
+            u2 = Table('users', meta2,
                 Column('id', sa.Integer, primary_key=True),
                 autoload=True)
             a2 = Table('addresses', meta2,
@@ -289,6 +290,7 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             meta.drop_all()
 
+    @testing.exclude('mysql', '<', (4, 1, 1), 'innodb funkiness')
     def test_use_existing(self):
         meta = MetaData(testing.db)
         users = Table('users', meta,
@@ -310,18 +312,18 @@ class ReflectionTest(TestBase, ComparesTables):
                 assert False
             except tsa.exc.InvalidRequestError, err:
                 assert str(err) == "Table 'users' is already defined for this MetaData instance.  Specify 'useexisting=True' to redefine options and columns on an existing Table object."
-            
+
             users = Table('users', meta2, Column('name', sa.Unicode), autoload=True, useexisting=True)
             assert isinstance(users.c.name.type, sa.Unicode)
 
             assert not users.quote
-            
+
             users = Table('users', meta2, quote=True, autoload=True, useexisting=True)
             assert users.quote
-            
+
         finally:
             meta.drop_all()
-            
+
     def test_pks_not_uniques(self):
         """test that primary key reflection not tripped up by unique indexes"""
 
@@ -379,7 +381,7 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             testing.db.execute("drop table book")
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
+    @testing.exclude('mysql', '<', (4, 1, 1), 'innodb funkiness')
     def test_composite_fk(self):
         """test reflection of composite foreign keys"""
 
@@ -416,7 +418,7 @@ class ReflectionTest(TestBase, ComparesTables):
             meta.drop_all()
 
 
-    @testing.unsupported('oracle')
+    @testing.unsupported('oracle', 'FIXME: unknown, confirm not fails_on')
     def testreserved(self):
         # check a table that uses an SQL reserved name doesn't cause an error
         meta = MetaData(testing.db)
@@ -572,7 +574,6 @@ class CreateDropTest(TestBase):
         finally:
             metadata.drop_all(bind=testing.db)
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_createdrop(self):
         metadata.create_all(bind=testing.db)
         self.assertEqual( testing.db.has_table('items'), True )
@@ -598,19 +599,19 @@ class CreateDropTest(TestBase):
 class SchemaManipulationTest(TestBase):
     def test_append_constraint_unique(self):
         meta = MetaData()
-        
+
         users = Table('users', meta, Column('id', sa.Integer))
         addresses = Table('addresses', meta, Column('id', sa.Integer), Column('user_id', sa.Integer))
-        
+
         fk = sa.ForeignKeyConstraint(['user_id'],[users.c.id])
-        
+
         addresses.append_constraint(fk)
         addresses.append_constraint(fk)
         assert len(addresses.c.user_id.foreign_keys) == 1
         assert addresses.constraints == set([addresses.primary_key, fk])
-        
-class UnicodeReflectionTest(TestBase):
 
+class UnicodeReflectionTest(TestBase):
+    @testing.requires.unicode_connections
     def test_basic(self):
         try:
             # the 'convert_unicode' should not get in the way of the reflection
@@ -675,9 +676,10 @@ class SchemaTest(TestBase):
             assert buf.index("CREATE TABLE someschema.table1") > -1
             assert buf.index("CREATE TABLE someschema.table2") > -1
 
-    @testing.unsupported('sqlite', 'firebird')
+    @testing.unsupported('firebird', 'FIXME: unknown- no schema support in db?')
+    @testing.fails_on('sqlite')
     # fixme: revisit these below.
-    @testing.fails_on('oracle', 'mssql', 'sybase', 'access')
+    @testing.fails_on('access', 'oracle', 'mssql', 'sybase')
     def test_explicit_default_schema(self):
         engine = testing.db
 
@@ -685,6 +687,11 @@ class SchemaTest(TestBase):
             schema = testing.db.url.database
         elif testing.against('postgres'):
             schema = 'public'
+        elif testing.against('sqlite'):
+            # Works for CREATE TABLE main.foo, SELECT FROM main.foo, etc.,
+            # but fails on:
+            #   FOREIGN KEY(col2) REFERENCES main.table1 (col1)
+            schema = 'main'
         else:
             schema = engine.dialect.get_default_schema_name(engine.connect())
 
@@ -717,7 +724,7 @@ class HasSequenceTest(TestBase):
                       Column('user_name', sa.String(40)),
                       )
 
-    @testing.unsupported('sqlite', 'mysql', 'mssql', 'access', 'sybase')
+    @testing.requires.sequences
     def test_hassequence(self):
         metadata.create_all(bind=testing.db)
         self.assertEqual(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), True)

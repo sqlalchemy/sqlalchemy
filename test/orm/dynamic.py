@@ -1,16 +1,16 @@
 import testenv; testenv.configure_for_tests()
 import operator
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from testlib import *
-from testlib.fixtures import *
+from sqlalchemy.orm import dynamic_loader, backref
+from testlib import testing
+from testlib.sa import Table, Column, Integer, String, ForeignKey, desc
+from testlib.sa.orm import mapper, relation, create_session
+from testlib.testing import eq_
+from testlib.compat import _function_named
+from orm import _base, _fixtures
 
-from query import QueryTest
 
-class DynamicTest(FixtureTest):
-    keep_mappers = False
-    refresh_data = True
-
+class DynamicTest(_fixtures.FixtureTest):
+    @testing.resolve_artifact_names
     def test_basic(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
@@ -18,36 +18,40 @@ class DynamicTest(FixtureTest):
         sess = create_session()
         q = sess.query(User)
 
-        print q.filter(User.id==7).all()
         u = q.filter(User.id==7).first()
-        print list(u.addresses)
-        assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
-        assert fixtures.user_address_result == q.all()
-    
+        eq_([User(id=7,
+                  addresses=[Address(id=1, email_address='jack@bean.com')])],
+            q.filter(User.id==7).all())
+        eq_(self.static.user_address_result, q.all())
+
+    @testing.resolve_artifact_names
     def test_order_by(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
         sess = create_session()
         u = sess.query(User).get(8)
-        self.assertEquals(list(u.addresses.order_by(desc(Address.email_address))), [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@bettyboop.com')])
+        eq_(list(u.addresses.order_by(desc(Address.email_address))), [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@bettyboop.com')])
 
+    @testing.resolve_artifact_names
     def test_configured_order_by(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=desc(Address.email_address))
         })
         sess = create_session()
         u = sess.query(User).get(8)
-        self.assertEquals(list(u.addresses), [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@bettyboop.com')])
-        
+        eq_(list(u.addresses), [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@bettyboop.com')])
+
+    @testing.resolve_artifact_names
     def test_count(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
         sess = create_session()
         u = sess.query(User).first()
-        assert u.addresses.count() == 1, u.addresses.count()
+        eq_(u.addresses.count(), 1)
 
+    @testing.resolve_artifact_names
     def test_backref(self):
         mapper(Address, addresses, properties={
             'user':relation(User, backref=backref('addresses', lazy='dynamic'))
@@ -63,6 +67,7 @@ class DynamicTest(FixtureTest):
         u = sess.query(User).get(7)
         assert ad not in u.addresses
 
+    @testing.resolve_artifact_names
     def test_no_count(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
@@ -70,15 +75,21 @@ class DynamicTest(FixtureTest):
         sess = create_session()
         q = sess.query(User)
 
-        # dynamic collection cannot implement __len__() (at least one that returns a live database
-        # result), else additional count() queries are issued when evaluating in a list context
+        # dynamic collection cannot implement __len__() (at least one that
+        # returns a live database result), else additional count() queries are
+        # issued when evaluating in a list context
         def go():
-            assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
+            eq_([User(id=7,
+                      addresses=[Address(id=1,
+                                         email_address='jack@bean.com')])],
+                q.filter(User.id==7).all())
         self.assert_sql_count(testing.db, go, 2)
 
+    @testing.resolve_artifact_names
     def test_m2m(self):
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, lazy="dynamic", backref=backref('orders', lazy="dynamic"))
+            'items':relation(Item, secondary=order_items, lazy="dynamic",
+                             backref=backref('orders', lazy="dynamic"))
         })
         mapper(Item, items)
 
@@ -91,7 +102,8 @@ class DynamicTest(FixtureTest):
 
         assert o1 in i1.orders.all()
         assert i1 in o1.items.all()
-    
+
+    @testing.resolve_artifact_names
     def test_transient_detached(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
@@ -101,12 +113,12 @@ class DynamicTest(FixtureTest):
         u1.addresses.append(Address())
         assert u1.addresses.count() == 1
         assert u1.addresses[0] == Address()
-        
-class FlushTest(FixtureTest):
-    def test_basic(self):
-        class Fixture(Base):
-            pass
 
+class FlushTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @testing.resolve_artifact_names
+    def test_basic(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -129,11 +141,9 @@ class FlushTest(FixtureTest):
             User(name='jack', addresses=[Address(email_address='lala@hoho.com')]),
             User(name='ed', addresses=[Address(email_address='foo@bar.com')])
         ] == sess.query(User).all()
-    
-    def test_rollback(self):
-        class Fixture(Base):
-            pass
 
+    @testing.resolve_artifact_names
+    def test_rollback(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -144,11 +154,12 @@ class FlushTest(FixtureTest):
         sess.flush()
         sess.commit()
         u1.addresses.append(Address(email_address='foo@bar.com'))
-        self.assertEquals(u1.addresses.all(), [Address(email_address='lala@hoho.com'), Address(email_address='foo@bar.com')])
+        eq_(u1.addresses.all(), [Address(email_address='lala@hoho.com'), Address(email_address='foo@bar.com')])
         sess.rollback()
-        self.assertEquals(u1.addresses.all(), [Address(email_address='lala@hoho.com')])
-        
+        eq_(u1.addresses.all(), [Address(email_address='lala@hoho.com')])
+
     @testing.fails_on('maxdb')
+    @testing.resolve_artifact_names
     def test_delete_nocascade(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), backref='user')
@@ -182,6 +193,7 @@ class FlushTest(FixtureTest):
         assert testing.db.scalar(addresses.count(addresses.c.user_id != None)) ==0
 
     @testing.fails_on('maxdb')
+    @testing.resolve_artifact_names
     def test_delete_cascade(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), backref='user', cascade="all, delete-orphan")
@@ -201,10 +213,10 @@ class FlushTest(FixtureTest):
         sess.delete(u.addresses[4])
         sess.delete(u.addresses[3])
         assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
-        
+
         sess.clear()
         u = sess.query(User).get(u.id)
-        
+
         sess.delete(u)
 
         # u.addresses relation will have to force the load
@@ -215,6 +227,7 @@ class FlushTest(FixtureTest):
         assert testing.db.scalar(addresses.count()) ==0
 
     @testing.fails_on('maxdb')
+    @testing.resolve_artifact_names
     def test_remove_orphans(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), cascade="all, delete-orphan", backref='user')
@@ -252,6 +265,8 @@ class FlushTest(FixtureTest):
 
 
 def create_backref_test(autoflush, saveuser):
+
+    @testing.resolve_artifact_names
     def test_backref(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), backref='user')
@@ -293,27 +308,34 @@ for autoflush in (False, True):
     for saveuser in (False, True):
         create_backref_test(autoflush, saveuser)
 
-class DontDereferenceTest(ORMTest):
+class DontDereferenceTest(_base.MappedTest):
     def define_tables(self, metadata):
-        global users_table, addresses_table
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('name', String(40)),
+              Column('fullname', String(100)),
+              Column('password', String(15)))
 
-        users_table = Table('users', metadata,
-                           Column('id', Integer, primary_key=True),
-                           Column('name', String(40)),
-                           Column('fullname', String(100)),
-                           Column('password', String(15)))
+        Table('addresses', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('email_address', String(100), nullable=False),
+              Column('user_id', Integer, ForeignKey('users.id')))
 
-        addresses_table = Table('addresses', metadata,
-                                Column('id', Integer, primary_key=True),
-                                Column('email_address', String(100), nullable=False),
-                                Column('user_id', Integer, ForeignKey('users.id')))
-    def test_no_deref(self):
-        mapper(User, users_table, properties={
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        class User(_base.ComparableEntity):
+            pass
+
+        class Address(_base.ComparableEntity):
+            pass
+
+        mapper(User, users, properties={
             'addresses': relation(Address, backref='user', lazy='dynamic')
             })
+        mapper(Address, addresses)
 
-        mapper(Address, addresses_table)
-
+    @testing.resolve_artifact_names
+    def test_no_deref(self):
         session = create_session()
         user = User()
         user.name = 'joe'
@@ -340,9 +362,9 @@ class DontDereferenceTest(ORMTest):
             user = session.query(User).first()
             return session.query(User).first().addresses.all()
 
-        self.assertEquals(query1(), [Address(email_address='joe@joesdomain.example')]  )
-        self.assertEquals(query2(), [Address(email_address='joe@joesdomain.example')]  )
-        self.assertEquals(query3(), [Address(email_address='joe@joesdomain.example')]  )
+        eq_(query1(), [Address(email_address='joe@joesdomain.example')])
+        eq_(query2(), [Address(email_address='joe@joesdomain.example')])
+        eq_(query3(), [Address(email_address='joe@joesdomain.example')])
 
 
 if __name__ == '__main__':

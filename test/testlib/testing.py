@@ -147,26 +147,30 @@ def fails_on_everything_except(*dbs):
         return _function_named(maybe, fn_name)
     return decorate
 
-def unsupported(*dbs):
-    """Mark a test as unsupported by one or more database implementations.
+def unsupported(db, reason):
+    """Mark a test as unsupported by a database implementation.
 
     'unsupported' tests will be skipped unconditionally.  Useful for feature
     tests that cause deadlocks or other fatal problems.
     """
 
+    carp = _should_carp_about_exclusion(reason)
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
-            if config.db.name in dbs:
-                print "'%s' unsupported on DB implementation '%s'" % (
-                    fn_name, config.db.name)
+            if config.db.name == db:
+                msg = "'%s' unsupported on DB implementation '%s': %s" % (
+                    fn_name, config.db.name, reason)
+                print msg
+                if carp:
+                    print >> sys.stderr, msg
                 return True
             else:
                 return fn(*args, **kw)
         return _function_named(maybe, fn_name)
     return decorate
 
-def exclude(db, op, spec):
+def exclude(db, op, spec, reason):
     """Mark a test as unsupported by specific database server versions.
 
     Stackable, both with other excludes and other decorators. Examples::
@@ -176,19 +180,33 @@ def exclude(db, op, spec):
       # Other operators work too
       @exclude('bigdb', '==', (9,0,9))
       @exclude('yikesdb', 'in', ((0, 3, 'alpha2'), (0, 3, 'alpha3')))
-    """
 
+    """
+    carp = _should_carp_about_exclusion(reason)
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
             if _is_excluded(db, op, spec):
-                print "'%s' unsupported on DB %s version '%s'" % (
-                    fn_name, config.db.name, _server_version())
+                msg = "'%s' unsupported on DB %s version '%s': %s" % (
+                    fn_name, config.db.name, _server_version(), reason)
+                print msg
+                if carp:
+                    print >> sys.stderr, msg
                 return True
             else:
                 return fn(*args, **kw)
         return _function_named(maybe, fn_name)
     return decorate
+
+def _should_carp_about_exclusion(reason):
+    """Guard against forgotten exclusions."""
+    assert reason
+    for _ in ('todo', 'fixme', 'xxx'):
+        if _ in reason.lower():
+            return True
+    else:
+        if len(reason) < 4:
+            return True
 
 def _is_excluded(db, op, spec):
     """Return True if the configured db matches an exclusion specification.
@@ -344,6 +362,12 @@ def against(*queries):
                 return True
     return False
 
+def _chain_decorators_on(fn, *decorators):
+    """Apply a series of decorators to fn, returning a decorated function."""
+    for decorator in reversed(decorators):
+        fn = decorator(fn)
+    return fn
+
 def rowset(results):
     """Converts the results of sql execution into a plain set of column tuples.
 
@@ -369,6 +393,20 @@ def is_not_(a, b, msg=None):
     """Assert a is not b, with repr messaging on failure."""
     assert a is not b, msg or "%r is %r" % (a, b)
 
+def startswith_(a, fragment, msg=None):
+    """Assert a.startswith(fragment), with repr messaging on failure."""
+    assert a.startswith(fragment), msg or "%r does not start with %r" % (
+        a, fragment)
+
+
+def fixture(table, columns, *rows):
+    """Insert data into table after creation."""
+    def onload(event, schema_item, connection):
+        insert = table.insert()
+        column_names = [col.key for col in columns]
+        connection.execute(insert, [dict(zip(column_names, column_values))
+                                    for column_values in rows])
+    table.append_ddl_listener('after-create', onload)
 
 class TestData(object):
     """Tracks SQL expressions as they are executed via an instrumented ExecutionContext."""
@@ -511,7 +549,53 @@ class CompositeModule(types.ModuleType):
         raise AttributeError(key)
 
 
+def resolve_artifact_names(fn):
+    """Decorator, augment function globals with tables and classes.
+
+    Swaps out the function's globals at execution time. The 'global' statement
+    will not work as expected inside a decorated function.
+
+    """
+    # This could be automatically applied to framework and test_ methods in
+    # the MappedTest-derived test suites but... *some* explicitness for this
+    # magic is probably good.  Especially as 'global' won't work- these
+    # rebound functions aren't regular Python..
+    #
+    # Also: it's lame that CPython accepts a dict-subclass for globals, but
+    # only calls dict methods.  Taht would allow 'global' to pass through to
+    # the func_globals.
+    def resolved(*args, **kwargs):
+        self = args[0]
+        context = dict(fn.func_globals)
+        for source in self._artifact_registries:
+            context.update(getattr(self, source))
+        # jython bug #1034
+        rebound = types.FunctionType(
+            fn.func_code, context, fn.func_name, fn.func_defaults,
+            fn.func_closure)
+        return rebound(*args, **kwargs)
+    return _function_named(resolved, fn.func_name)
+
+class adict(dict):
+    """Dict keys available as attributes.  Shadows."""
+    def __getattribute__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            return dict.__getattribute__(self, key)
+
+    def get_all(self, *keys):
+        return tuple([self[key] for key in keys])
+
+
 class TestBase(unittest.TestCase):
+    # A sequence of database names to always run, regardless of the
+    # constraints below.
+    __whitelist__ = ()
+
+    # A sequence of requirement names matching testing.requires decorators
+    __requires__ = ()
+
     # A sequence of dialect names to exclude from the test class.
     __unsupported_on__ = ()
 
@@ -522,6 +606,12 @@ class TestBase(unittest.TestCase):
     # A sequence of no-arg callables. If any are True, the entire testcase is
     # skipped.
     __skip_if__ = None
+
+
+    _artifact_registries = ()
+
+    _sa_first_test = False
+    _sa_last_test = False
 
     def __init__(self, *args, **params):
         unittest.TestCase.__init__(self, *args, **params)
@@ -786,6 +876,15 @@ class TTestSuite(unittest.TestSuite):
             self._initTest = tests[0]
         else:
             self._initTest = None
+
+        for t in tests:
+            if isinstance(t, TestBase):
+                t._sa_first_test = True
+                break
+        for t in reversed(tests):
+            if isinstance(t, TestBase):
+                t._sa_last_test = True
+                break
         unittest.TestSuite.__init__(self, tests)
 
     def do_run(self, result):
@@ -800,29 +899,48 @@ class TTestSuite(unittest.TestSuite):
     def run(self, result):
         return self(result)
 
+    def __should_skip_for(self, cls):
+        if hasattr(cls, '__requires__'):
+            global requires
+            if requires is None:
+                from testing import requires
+            def test_suite(): return 'ok'
+            for requirement in cls.__requires__:
+                check = getattr(requires, requirement)
+                if check(test_suite)() != 'ok':
+                    # The requirement will perform messaging.
+                    return True
+        if (hasattr(cls, '__unsupported_on__') and
+            config.db.name in cls.__unsupported_on__):
+            print "'%s' unsupported on DB implementation '%s'" % (
+                cls.__class__.__name__, config.db.name)
+            return True
+        if (getattr(cls, '__only_on__', None) not in (None,config.db.name)):
+            print "'%s' unsupported on DB implementation '%s'" % (
+                cls.__class__.__name__, config.db.name)
+            return True
+        if (getattr(cls, '__skip_if__', False)):
+            for c in getattr(cls, '__skip_if__'):
+                if c():
+                    print "'%s' skipped by %s" % (
+                        cls.__class__.__name__, c.__name__)
+                    return True
+        for rule in getattr(cls, '__excluded_on__', ()):
+            if _is_excluded(*rule):
+                print "'%s' unsupported on DB %s version %s" % (
+                    cls.__class__.__name__, config.db.name,
+                    _server_version())
+                return True
+        return False
+
     def __call__(self, result):
         init = getattr(self, '_initTest', None)
         if init is not None:
-            if (hasattr(init, '__unsupported_on__') and
-                config.db.name in init.__unsupported_on__):
-                print "'%s' unsupported on DB implementation '%s'" % (
-                    init.__class__.__name__, config.db.name)
-                return True
-            if (getattr(init, '__only_on__', None) not in (None,config.db.name)):
-                print "'%s' unsupported on DB implementation '%s'" % (
-                    init.__class__.__name__, config.db.name)
-                return True
-            if (getattr(init, '__skip_if__', False)):
-                for c in getattr(init, '__skip_if__'):
-                    if c():
-                        print "'%s' skipped by %s" % (
-                            init.__class__.__name__, c.__name__)
-                        return True
-            for rule in getattr(init, '__excluded_on__', ()):
-                if _is_excluded(*rule):
-                    print "'%s' unsupported on DB %s version %s" % (
-                        init.__class__.__name__, config.db.name,
-                        _server_version())
+            if (hasattr(init, '__whitelist__') and
+                config.db.name in init.__whitelist__):
+                pass
+            else:
+                if self.__should_skip_for(init):
                     return True
             try:
                 resetwarnings()

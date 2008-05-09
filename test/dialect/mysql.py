@@ -177,7 +177,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             raise
         numeric_table.drop()
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
+    @testing.exclude('mysql', '<', (4, 1, 1), 'no charset support')
     def test_charset(self):
         """Exercise CHARACTER SET and COLLATE-ish options on string types."""
 
@@ -261,7 +261,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             raise
         charset_table.drop()
 
-    @testing.exclude('mysql', '<', (5, 0, 5))
+    @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
     def test_bit_50(self):
         """Exercise BIT types on 5.0+ (not valid for all engine types)"""
 
@@ -381,7 +381,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
         finally:
             meta.drop_all()
 
-    @testing.exclude('mysql', '<', (4, 1, 0))
+    @testing.exclude('mysql', '<', (4, 1, 0), '4.1+ syntax')
     def test_timestamp(self):
         """Exercise funky TIMESTAMP default syntax."""
 
@@ -579,7 +579,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
         self.assert_eq(res, expected)
         enum_table.drop()
 
-    @testing.exclude('mysql', '>', (3))
+    @testing.exclude('mysql', '<', (4,), "3.23 can't handle an ENUM of ''")
     def test_enum_parse(self):
         """More exercises for the ENUM type."""
 
@@ -626,7 +626,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
         finally:
             def_table.drop()
 
-    @testing.exclude('mysql', '<', (5, 0, 0))
+    @testing.exclude('mysql', '<', (5, 0, 0), 'early types are squirrely')
     @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)

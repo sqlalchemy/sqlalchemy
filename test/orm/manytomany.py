@@ -1,73 +1,68 @@
 import testenv; testenv.configure_for_tests()
-from sqlalchemy import *
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.orm import *
-from testlib import *
+from testlib import sa, testing
+from testlib.sa import Table, Column, Integer, String, ForeignKey
+from testlib.sa.orm import mapper, relation, create_session
+from orm import _base
 
-class Place(object):
-    '''represents a place'''
-    def __init__(self, name=None):
-        self.name = name
-    def __str__(self):
-        return "(Place '%s')" % self.name
-    def __repr__(self):
-        return str(self)
 
-class PlaceThingy(object):
-    '''represents a thingy attached to a Place'''
-    def __init__(self, name=None):
-        self.name = name
-
-class Transition(object):
-    '''represents a transition'''
-    def __init__(self, name=None):
-        self.name = name
-        self.inputs = []
-        self.outputs = []
-    def __repr__(self):
-        return object.__repr__(self)+ " " + repr(self.inputs) + " " + repr(self.outputs)
-
-class M2MTest(ORMTest):
+class M2MTest(_base.MappedTest):
     def define_tables(self, metadata):
-        global place
-        place = Table('place', metadata,
-            Column('place_id', Integer, Sequence('pid_seq', optional=True), primary_key=True),
-            Column('name', String(30), nullable=False),
-            )
+        Table('place', metadata,
+            Column('place_id', Integer, sa.Sequence('pid_seq', optional=True),
+                   primary_key=True),
+            Column('name', String(30), nullable=False))
 
-        global transition
-        transition = Table('transition', metadata,
-            Column('transition_id', Integer, Sequence('tid_seq', optional=True), primary_key=True),
-            Column('name', String(30), nullable=False),
-            )
+        Table('transition', metadata,
+            Column('transition_id', Integer,
+                   sa.Sequence('tid_seq', optional=True), primary_key=True),
+            Column('name', String(30), nullable=False))
 
-        global place_thingy
-        place_thingy = Table('place_thingy', metadata,
-            Column('thingy_id', Integer, Sequence('thid_seq', optional=True), primary_key=True),
-            Column('place_id', Integer, ForeignKey('place.place_id'), nullable=False),
-            Column('name', String(30), nullable=False)
-            )
+        Table('place_thingy', metadata,
+            Column('thingy_id', Integer, sa.Sequence('thid_seq', optional=True),
+                   primary_key=True),
+            Column('place_id', Integer, ForeignKey('place.place_id'),
+                   nullable=False),
+            Column('name', String(30), nullable=False))
 
         # association table #1
-        global place_input
-        place_input = Table('place_input', metadata,
+        Table('place_input', metadata,
             Column('place_id', Integer, ForeignKey('place.place_id')),
-            Column('transition_id', Integer, ForeignKey('transition.transition_id')),
-            )
+            Column('transition_id', Integer,
+                   ForeignKey('transition.transition_id')))
 
         # association table #2
-        global place_output
-        place_output = Table('place_output', metadata,
+        Table('place_output', metadata,
             Column('place_id', Integer, ForeignKey('place.place_id')),
-            Column('transition_id', Integer, ForeignKey('transition.transition_id')),
-            )
+            Column('transition_id', Integer,
+                   ForeignKey('transition.transition_id')))
 
-        global place_place
-        place_place = Table('place_place', metadata,
-            Column('pl1_id', Integer, ForeignKey('place.place_id')),
-            Column('pl2_id', Integer, ForeignKey('place.place_id')),
-            )
+        Table('place_place', metadata,
+              Column('pl1_id', Integer, ForeignKey('place.place_id')),
+              Column('pl2_id', Integer, ForeignKey('place.place_id')))
 
+    def setup_classes(self):
+        class Place(_base.BasicEntity):
+            def __init__(self, name=None):
+                self.name = name
+            def __str__(self):
+                return "(Place '%s')" % self.name
+            __repr__ = __str__
+
+        class PlaceThingy(_base.BasicEntity):
+            def __init__(self, name=None):
+                self.name = name
+
+        class Transition(_base.BasicEntity):
+            def __init__(self, name=None):
+                self.name = name
+                self.inputs = []
+                self.outputs = []
+            def __repr__(self):
+                return ' '.join((object.__repr__(self),
+                                 repr(self.inputs),
+                                 repr(self.outputs)))
+
+    @testing.resolve_artifact_names
     def testerror(self):
         mapper(Place, place, properties={
             'transitions':relation(Transition, secondary=place_input, backref='places')
@@ -75,9 +70,10 @@ class M2MTest(ORMTest):
         mapper(Transition, transition, properties={
             'places':relation(Place, secondary=place_input, backref='transitions')
         })
-        self.assertRaisesMessage(sa_exc.ArgumentError, "Error creating backref", compile_mappers)
+        self.assertRaisesMessage(sa.exc.ArgumentError, "Error creating backref",
+                                 sa.orm.compile_mappers)
 
-
+    @testing.resolve_artifact_names
     def testcircular(self):
         """tests a many-to-many relationship from a table to itself."""
 
@@ -127,6 +123,7 @@ class M2MTest(ORMTest):
         [sess.delete(p) for p in p1,p2,p3,p4,p5,p6,p7]
         sess.flush()
 
+    @testing.resolve_artifact_names
     def testdouble(self):
         """tests that a mapper can have two eager relations to the same table, via
         two different association tables.  aliases are required."""
@@ -157,6 +154,7 @@ class M2MTest(ORMTest):
             'outputs': (Place, [{'name':'place2'}, {'name':'place3'}])
             })
 
+    @testing.resolve_artifact_names
     def testbidirectional(self):
         """tests a many-to-many backrefs"""
         Place.mapper = mapper(Place, place)
@@ -187,17 +185,22 @@ class M2MTest(ORMTest):
         self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
         self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
 
-class M2MTest2(ORMTest):
-    def define_tables(self, metadata):
-        global studentTbl
-        studentTbl = Table('student', metadata, Column('name', String(20), primary_key=True))
-        global courseTbl
-        courseTbl = Table('course', metadata, Column('name', String(20), primary_key=True))
-        global enrolTbl
-        enrolTbl = Table('enrol', metadata,
-            Column('student_id', String(20), ForeignKey('student.name'),primary_key=True),
-            Column('course_id', String(20), ForeignKey('course.name'), primary_key=True))
 
+class M2MTest2(_base.MappedTest):
+    def define_tables(self, metadata):
+        Table('student', metadata,
+              Column('name', String(20), primary_key=True))
+
+        Table('course', metadata,
+              Column('name', String(20), primary_key=True))
+
+        Table('enroll', metadata,
+              Column('student_id', String(20), ForeignKey('student.name'),
+                     primary_key=True),
+            Column('course_id', String(20), ForeignKey('course.name'),
+                   primary_key=True))
+
+    @testing.resolve_artifact_names
     def testcircular(self):
         class Student(object):
             def __init__(self, name=''):
@@ -205,10 +208,11 @@ class M2MTest2(ORMTest):
         class Course(object):
             def __init__(self, name=''):
                 self.name = name
-        Student.mapper = mapper(Student, studentTbl)
-        Course.mapper = mapper(Course, courseTbl, properties = {
-            'students': relation(Student.mapper, enrolTbl, lazy=True, backref='courses')
-        })
+
+        mapper(Student, student)
+        mapper(Course, course, properties={
+            'students': relation(Student, enroll, lazy=True, backref='courses')})
+
         sess = create_session()
         s1 = Student('Student1')
         c1 = Course('Course1')
@@ -228,18 +232,21 @@ class M2MTest2(ORMTest):
         del s.courses[1]
         self.assert_(len(s.courses) == 2)
 
+    @testing.resolve_artifact_names
     def test_delete(self):
-        """test that many-to-many table gets cleared out with deletion from the backref side"""
+        """A many-to-many table gets cleared out with deletion from the backref side"""
         class Student(object):
             def __init__(self, name=''):
                 self.name = name
         class Course(object):
             def __init__(self, name=''):
                 self.name = name
-        Student.mapper = mapper(Student, studentTbl)
-        Course.mapper = mapper(Course, courseTbl, properties = {
-            'students': relation(Student.mapper, enrolTbl, lazy=True, backref='courses')
-        })
+
+        mapper(Student, student)
+        mapper(Course, course, properties = {
+            'students': relation(Student, enroll, lazy=True,
+                                 backref='courses')})
+
         sess = create_session()
         s1 = Student('Student1')
         c1 = Course('Course1')
@@ -252,37 +259,33 @@ class M2MTest2(ORMTest):
         sess.flush()
         sess.delete(s1)
         sess.flush()
-        assert enrolTbl.count().scalar() == 0
+        assert enroll.count().scalar() == 0
 
-class M2MTest3(ORMTest):
+class M2MTest3(_base.MappedTest):
     def define_tables(self, metadata):
-        global c, c2a1, c2a2, b, a
-        c = Table('c', metadata,
+        Table('c', metadata,
             Column('c1', Integer, primary_key = True),
-            Column('c2', String(20)),
-        )
+            Column('c2', String(20)))
 
-        a = Table('a', metadata,
+        Table('a', metadata,
             Column('a1', Integer, primary_key=True),
             Column('a2', String(20)),
-            Column('c1', Integer, ForeignKey('c.c1'))
-            )
+            Column('c1', Integer, ForeignKey('c.c1')))
 
-        c2a1 = Table('ctoaone', metadata,
+        Table('c2a1', metadata,
             Column('c1', Integer, ForeignKey('c.c1')),
-            Column('a1', Integer, ForeignKey('a.a1'))
-        )
-        c2a2 = Table('ctoatwo', metadata,
-            Column('c1', Integer, ForeignKey('c.c1')),
-            Column('a1', Integer, ForeignKey('a.a1'))
-        )
+            Column('a1', Integer, ForeignKey('a.a1')))
 
-        b = Table('b', metadata,
+        Table('c2a2', metadata,
+            Column('c1', Integer, ForeignKey('c.c1')),
+            Column('a1', Integer, ForeignKey('a.a1')))
+
+        Table('b', metadata,
             Column('b1', Integer, primary_key=True),
             Column('a1', Integer, ForeignKey('a.a1')),
-            Column('b2', Boolean)
-        )
+            Column('b2', sa.Boolean))
 
+    @testing.resolve_artifact_names
     def testbasic(self):
         class C(object):pass
         class A(object):pass
@@ -290,20 +293,16 @@ class M2MTest3(ORMTest):
 
         mapper(B, b)
 
-        mapper(A, a,
-            properties = {
-                'tbs' : relation(B, primaryjoin=and_(b.c.a1==a.c.a1, b.c.b2 == True), lazy=False),
-            }
-        )
+        mapper(A, a, properties={
+            'tbs': relation(B, primaryjoin=sa.and_(b.c.a1 == a.c.a1,
+                                                   b.c.b2 == True),
+                            lazy=False)})
 
-        mapper(C, c,
-            properties = {
-                'a1s' : relation(A, secondary=c2a1, lazy=False),
-                'a2s' : relation(A, secondary=c2a2, lazy=False)
-            }
-        )
+        mapper(C, c, properties={
+            'a1s': relation(A, secondary=c2a1, lazy=False),
+            'a2s': relation(A, secondary=c2a2, lazy=False)})
 
-        o1 = create_session().query(C).get(1)
+        assert create_session().query(C).compile()
 
 
 if __name__ == "__main__":

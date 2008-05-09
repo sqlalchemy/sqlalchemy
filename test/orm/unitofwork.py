@@ -3,121 +3,128 @@
 """Tests unitofwork operations."""
 
 import testenv; testenv.configure_for_tests()
+import datetime
+import operator
+from sqlalchemy.orm import mapper as orm_mapper
+
+from testlib import engines, sa, testing
+from testlib.sa import Table, Column, Integer, String, ForeignKey
+from testlib.sa.orm import mapper, relation, create_session
+from testlib.testing import eq_, ne_
+from testlib.compat import set
+from orm import _base, _fixtures
+from engine import _base as engine_base
 import pickleable
-from sqlalchemy import *
-from sqlalchemy import exc as sa_exc, sql
-from sqlalchemy.orm import *
-from sqlalchemy.orm import attributes, exc as orm_exc
-from testlib import *
-from testlib.tables import *
-from testlib import engines, tables, fixtures
-
-
-# TODO: convert suite to not use Session.mapper, use fixtures.Base
-# with explicit session.save()
-Session = scoped_session(sessionmaker(autoflush=True, autocommit=False, autoexpire=False))
-orm_mapper = mapper
-mapper = Session.mapper
 
 class UnitOfWorkTest(object):
     pass
 
-class HistoryTest(ORMTest):
-    metadata = tables.metadata
-    def define_tables(self, metadata):
-        pass
+class HistoryTest(_fixtures.FixtureTest):
+    run_inserts = None
 
+    def setup_classes(self):
+        class User(_base.ComparableEntity):
+            pass
+        class Address(_base.ComparableEntity):
+            pass
+
+    @testing.resolve_artifact_names
     def test_backref(self):
-        s = Session()
-        class User(object):
-            def __init__(self, **kw): pass
-        class Address(object):
-            def __init__(self, _sa_session=None): pass
         am = mapper(Address, addresses)
-        m = mapper(User, users, properties = dict(
-            addresses = relation(am, backref='user', lazy=False))
-        )
+        m = mapper(User, users, properties=dict(
+            addresses = relation(am, backref='user', lazy=False)))
 
-        u = User(_sa_session=s)
-        a = Address(_sa_session=s)
+        session = create_session(autocommit=False)
+
+        u = User(name='u1')
+        a = Address(email_address='u1@e')
         a.user = u
+        session.add(u)
 
         self.assert_(u.addresses == [a])
-        s.commit()
+        session.commit()
+        session.clear()
 
-        s.close()
-        u = s.query(m).all()[0]
-        print u.addresses[0].user
+        u = session.query(m).one()
+        assert u.addresses[0].user == u
+        session.close()
 
-class VersioningTest(ORMTest):
+
+class VersioningTest(_base.MappedTest):
     def define_tables(self, metadata):
-        global version_table
-        version_table = Table('version_test', metadata,
-        Column('id', Integer, Sequence('version_test_seq', optional=True),
-               primary_key=True ),
-        Column('version_id', Integer, nullable=False),
-        Column('value', String(40), nullable=False)
-        )
+        Table('version_table', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('version_id', Integer, nullable=False),
+              Column('value', String(40), nullable=False))
+
+    def setup_classes(self):
+        class Foo(_base.ComparableEntity):
+            pass
 
     @engines.close_open_connections
+    @testing.resolve_artifact_names
     def test_basic(self):
-        s = Session(scope=None)
-        class Foo(object):
-            def __init__(self, value, _sa_session=None):
-                self.value = value
         mapper(Foo, version_table, version_id_col=version_table.c.version_id)
-        f1 = Foo(value='f1', _sa_session=s)
-        f2 = Foo(value='f2', _sa_session=s)
-        s.commit()
+
+        s1 = create_session(autocommit=False)
+        f1 = Foo(value='f1')
+        f2 = Foo(value='f2')
+        s1.add_all((f1, f2))
+        s1.commit()
 
         f1.value='f1rev2'
-        s.commit()
+        s1.commit()
 
-        s2 = Session()
+        s2 = create_session(autocommit=False)
         f1_s = s2.query(Foo).get(f1.id)
         f1_s.value='f1rev3'
         s2.commit()
 
         f1.value='f1rev3mine'
 
-        # Only dialects with a sane rowcount can detect the ConcurrentModificationError
+        # Only dialects with a sane rowcount can detect the
+        # ConcurrentModificationError
         if testing.db.dialect.supports_sane_rowcount:
-            self.assertRaises(orm_exc.ConcurrentModificationError, s.commit)
-            s.rollback()
+            self.assertRaises(sa.orm.exc.ConcurrentModificationError, s1.commit)
+            s1.rollback()
         else:
-            s.commit()
-        
+            s1.commit()
+
         # new in 0.5 !  dont need to close the session
-        f1 = s.query(Foo).get(f1.id)
-        f2 = s.query(Foo).get(f2.id)
+        f1 = s1.query(Foo).get(f1.id)
+        f2 = s1.query(Foo).get(f2.id)
 
         f1_s.value='f1rev4'
         s2.commit()
 
-        s.delete(f1)
-        s.delete(f2)
+        s1.delete(f1)
+        s1.delete(f2)
 
         if testing.db.dialect.supports_sane_multi_rowcount:
-            self.assertRaises(orm_exc.ConcurrentModificationError, s.commit)
+            self.assertRaises(sa.orm.exc.ConcurrentModificationError, s1.commit)
         else:
-            s.commit()
+            s1.commit()
 
     @engines.close_open_connections
+    @testing.resolve_artifact_names
     def test_versioncheck(self):
-        """test that query.with_lockmode performs a 'version check' on an already loaded instance"""
-        s1 = Session(scope=None)
-        class Foo(object):
-            def __init__(self, _sa_session=None): pass
+        """query.with_lockmode performs a 'version check' on an already loaded instance"""
+
+        s1 = create_session(autocommit=False)
+
         mapper(Foo, version_table, version_id_col=version_table.c.version_id)
-        f1s1 = Foo(_sa_session=s1)
-        f1s1.value = 'f1 value'
+        f1s1 = Foo(value='f1 value')
+        s1.add(f1s1)
         s1.commit()
-        s2 = Session()
+
+        s2 = create_session(autocommit=False)
         f1s2 = s2.query(Foo).get(f1s1.id)
         f1s2.value='f1 new value'
         s2.commit()
+
         # load, version is wrong
-        self.assertRaises(orm_exc.ConcurrentModificationError, s1.query(Foo).with_lockmode('read').get, f1s1.id)
+        self.assertRaises(sa.orm.exc.ConcurrentModificationError, s1.query(Foo).with_lockmode('read').get, f1s1.id)
 
         # reload it
         s1.query(Foo).load(f1s1.id)
@@ -129,584 +136,689 @@ class VersioningTest(ORMTest):
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
 
     @engines.close_open_connections
+    @testing.resolve_artifact_names
     def test_noversioncheck(self):
-        """test that query.with_lockmode works OK when the mapper has no version id col"""
-        s1 = Session()
-        class Foo(object):
-            def __init__(self, _sa_session=None): pass
+        """test query.with_lockmode works when the mapper has no version id col"""
+        s1 = create_session(autocommit=False)
         mapper(Foo, version_table)
-        f1s1 =Foo(_sa_session=s1)
-        f1s1.value = 'foo'
-        f1s1.version_id=0
+        f1s1 = Foo(value="foo", version_id=0)
+        s1.add(f1s1)
         s1.commit()
-        s2 = Session()
+
+        s2 = create_session(autocommit=False)
         f1s2 = s2.query(Foo).with_lockmode('read').get(f1s1.id)
         assert f1s2.id == f1s1.id
         assert f1s2.value == f1s1.value
 
-class UnicodeTest(ORMTest):
-    def define_tables(self, metadata):
-        global uni_table, uni_table2
-        uni_table = Table('uni_test', metadata,
-            Column('id',  Integer, Sequence("uni_test_id_seq", optional=True), primary_key=True),
-            Column('txt', Unicode(50), unique=True))
-        uni_table2 = Table('uni2', metadata,
-            Column('id',  Integer, Sequence("uni2_test_id_seq", optional=True), primary_key=True),
-            Column('txt', Unicode(50), ForeignKey(uni_table.c.txt)))
+class UnicodeTest(_base.MappedTest):
+    __requires__ = ('unicode_connections',)
 
+    def define_tables(self, metadata):
+        Table('uni_t1', metadata,
+            Column('id',  Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('txt', sa.Unicode(50), unique=True))
+        Table('uni_t2', metadata,
+            Column('id',  Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('txt', sa.Unicode(50), ForeignKey('uni_t1')))
+
+    def setup_classes(self):
+        class Test(_base.BasicEntity):
+            pass
+        class Test2(_base.BasicEntity):
+            pass
+
+    @testing.resolve_artifact_names
     def test_basic(self):
-        class Test(object):
-            def __init__(self, id, txt):
-                self.id = id
-                self.txt = txt
-        mapper(Test, uni_table)
+        mapper(Test, uni_t1)
 
         txt = u"\u0160\u0110\u0106\u010c\u017d"
-        t1 = Test(id=1, txt = txt)
-        self.assert_(t1.txt == txt)
-        Session.commit()
+        t1 = Test(id=1, txt=txt)
         self.assert_(t1.txt == txt)
 
+        session = create_session(autocommit=False)
+        session.add(t1)
+        session.commit()
+
+        self.assert_(t1.txt == txt)
+
+    @testing.resolve_artifact_names
     def test_relation(self):
-        class Test(object):
-            def __init__(self, txt):
-                self.txt = txt
-        class Test2(object):pass
-
-        mapper(Test, uni_table, properties={
-            't2s':relation(Test2)
-        })
-        mapper(Test2, uni_table2)
+        mapper(Test, uni_t1, properties={
+            't2s': relation(Test2)})
+        mapper(Test2, uni_t2)
 
         txt = u"\u0160\u0110\u0106\u010c\u017d"
         t1 = Test(txt=txt)
         t1.t2s.append(Test2())
         t1.t2s.append(Test2())
-        Session.commit()
-        Session.close()
-        t1 = Session.query(Test).filter_by(id=t1.id).one()
+        session = create_session(autocommit=False)
+        session.add(t1)
+        session.commit()
+        session.close()
+
+        session = create_session()
+        t1 = session.query(Test).filter_by(id=t1.id).one()
         assert len(t1.t2s) == 2
 
-class UnicodeSchemaTest(ORMTest):
-    __unsupported_on__ = ('oracle', 'mssql', 'firebird', 'sybase',
-                          'access', 'maxdb')
-    __excluded_on__ = (('mysql', '<', (4, 1, 1)),)
+class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
+    __requires__ = ('unicode_connections', 'unicode_ddl',)
 
-    metadata = MetaData(engines.utf8_engine())
+    def create_engine(self):
+        return engines.utf8_engine()
 
     def define_tables(self, metadata):
-        global t1, t2
-
         t1 = Table('unitable1', metadata,
-            Column(u'méil', Integer, primary_key=True, key='a'),
-            Column(u'\u6e2c\u8a66', Integer, key='b'),
-            Column('type',  String(20)),
-            test_needs_fk=True,
-            )
+              Column(u'méil', Integer, primary_key=True, key='a'),
+              Column(u'\u6e2c\u8a66', Integer, key='b'),
+              Column('type',  String(20)),
+              test_needs_fk=True,
+              test_needs_autoincrement=True)
         t2 = Table(u'Unitéble2', metadata,
-            Column(u'méil', Integer, primary_key=True, key="cc"),
-            Column(u'\u6e2c\u8a66', Integer, ForeignKey(u'unitable1.a'), key="d"),
-           Column(u'\u6e2c\u8a66_2', Integer, key="e"),
-                  test_needs_fk=True,
-            )
+              Column(u'méil', Integer, primary_key=True, key="cc"),
+              Column(u'\u6e2c\u8a66', Integer,
+                     ForeignKey(u'unitable1.a'), key="d"),
+              Column(u'\u6e2c\u8a66_2', Integer, key="e"),
+              test_needs_fk=True,
+              test_needs_autoincrement=True)
 
+        self.tables['t1'] = t1
+        self.tables['t2'] = t2
+
+    def setUpAll(self):
+        engine_base.AltEngineTest.setUpAll(self)
+        _base.MappedTest.setUpAll(self)
+
+    def tearDownAll(self):
+        _base.MappedTest.tearDownAll(self)
+        engine_base.AltEngineTest.tearDownAll(self)
+
+    @testing.resolve_artifact_names
     def test_mapping(self):
-        class A(fixtures.Base):pass
-        class B(fixtures.Base):pass
+        class A(_base.ComparableEntity):
+            pass
+        class B(_base.ComparableEntity):
+            pass
 
         mapper(A, t1, properties={
-            't2s':relation(B),
-        })
+            't2s':relation(B)})
         mapper(B, t2)
+
         a1 = A()
         b1 = B()
         a1.t2s.append(b1)
-        Session.flush()
-        Session.clear()
-        new_a1 = Session.query(A).filter(t1.c.a == a1.a).one()
+
+        session = create_session()
+        session.add(a1)
+        session.flush()
+        session.clear()
+
+        new_a1 = session.query(A).filter(t1.c.a == a1.a).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].d == b1.d
-        Session.clear()
+        session.clear()
 
-        new_a1 = Session.query(A).options(eagerload('t2s')).filter(t1.c.a == a1.a).one()
+        new_a1 = (session.query(A).options(sa.orm.eagerload('t2s')).
+                  filter(t1.c.a == a1.a)).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].d == b1.d
-        Session.clear()
+        session.clear()
 
-        new_a1 = Session.query(A).filter(A.a == a1.a).one()
+        new_a1 = session.query(A).filter(A.a == a1.a).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].d == b1.d
-        Session.clear()
+        session.clear()
 
+    @testing.resolve_artifact_names
     def test_inheritance_mapping(self):
-        class A(fixtures.Base):pass
-        class B(A):pass
-        mapper(A, t1, polymorphic_on=t1.c.type, polymorphic_identity='a')
-        mapper(B, t2, inherits=A, polymorphic_identity='b')
+        class A(_base.ComparableEntity):
+            pass
+        class B(A):
+            pass
+
+        mapper(A, t1,
+               polymorphic_on=t1.c.type,
+               polymorphic_identity='a')
+        mapper(B, t2,
+               inherits=A,
+               polymorphic_identity='b')
         a1 = A(b=5)
         b1 = B(e=7)
 
-        Session.flush()
-        Session.clear()
-        # TODO: somehow, not assigning to "l" first
-        # breaks the comparison ?????
-        l = Session.query(A).all()
-        assert [A(b=5), B(e=7)] == l
+        session = create_session()
+        session.add_all((a1, b1))
+        session.flush()
+        session.clear()
 
-class MutableTypesTest(ORMTest):
+        eq_([A(b=5), B(e=7)], session.query(A).all())
+
+
+class MutableTypesTest(_base.MappedTest):
+
     def define_tables(self, metadata):
-        global table
-        table = Table('mutabletest', metadata,
-            Column('id', Integer, Sequence('mutableidseq', optional=True), primary_key=True),
-            Column('data', PickleType),
-            Column('val', Unicode(30)))
+        Table('mutable_t', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('data', sa.PickleType),
+            Column('val', sa.Unicode(30)))
 
+    def setup_classes(self):
+        class Foo(_base.BasicEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        mapper(Foo, mutable_t)
+
+    @testing.resolve_artifact_names
     def test_basic(self):
-        """test that types marked as MutableType get changes detected on them"""
-        class Foo(object):pass
-        mapper(Foo, table)
+        """Changes are detected for types marked as MutableType."""
+
         f1 = Foo()
         f1.data = pickleable.Bar(4,5)
-        Session.commit()
-        Session.close()
-        f2 = Session.query(Foo).filter_by(id=f1.id).one()
-        assert 'data' in attributes.instance_state(f2).unmodified
-        assert f2.data == f1.data
+
+        session = create_session()
+        session.add(f1)
+        session.flush()
+        session.clear()
+
+        f2 = session.query(Foo).filter_by(id=f1.id).one()
+        assert 'data' in sa.orm.attributes.instance_state(f2).unmodified
+        eq_(f2.data, f1.data)
+
         f2.data.y = 19
-        assert f2 in Session.dirty
-        assert 'data' not in attributes.instance_state(f2).unmodified
-        Session.commit()
-        Session.close()
-        f3 = Session.query(Foo).filter_by(id=f1.id).one()
-        print f2.data, f3.data
-        assert f3.data != f1.data
-        assert f3.data == pickleable.Bar(4, 19)
+        assert f2 in session.dirty
+        assert 'data' not in sa.orm.attributes.instance_state(f2).unmodified
+        session.flush()
+        session.clear()
 
-    def test_mutablechanges(self):
-        """test that mutable changes are detected or not detected correctly"""
-        class Foo(object):pass
-        mapper(Foo, table)
+        f3 = session.query(Foo).filter_by(id=f1.id).one()
+        ne_(f3.data,f1.data)
+        eq_(f3.data, pickleable.Bar(4, 19))
+
+    @testing.resolve_artifact_names
+    def test_mutable_changes(self):
+        """Mutable changes are detected or not detected correctly"""
+
         f1 = Foo()
         f1.data = pickleable.Bar(4,5)
-        f1.val = unicode('hi')
-        Session.commit()
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 0)
-        f1.val = unicode('someothervalue')
-        self.assert_sql(testing.db, lambda: Session.commit(), [
-            (
-                "UPDATE mutabletest SET val=:val WHERE mutabletest.id = :mutabletest_id",
-                {'mutabletest_id': f1.id, 'val': u'someothervalue'}
-            ),
-        ])
-        f1.val = unicode('hi')
-        f1.data.x = 9
-        self.assert_sql(testing.db, lambda: Session.commit(), [
-            (
-                "UPDATE mutabletest SET data=:data, val=:val WHERE mutabletest.id = :mutabletest_id",
-                {'mutabletest_id': f1.id, 'val': u'hi', 'data':f1.data}
-            ),
-        ])
+        f1.val = u'hi'
 
+        session = create_session(autocommit=False)
+        session.add(f1)
+        session.commit()
+
+        bind = self.metadata.bind
+
+        self.sql_count_(0, session.commit)
+        f1.val = u'someothervalue'
+        self.assert_sql(bind, session.commit, [
+            ("UPDATE mutable_t SET val=:val "
+             "WHERE mutable_t.id = :mutable_t_id",
+             {'mutable_t_id': f1.id, 'val': u'someothervalue'})])
+
+        f1.val = u'hi'
+        f1.data.x = 9
+        self.assert_sql(bind, session.commit, [
+            ("UPDATE mutable_t SET data=:data, val=:val "
+             "WHERE mutable_t.id = :mutable_t_id",
+             {'mutable_t_id': f1.id, 'val': u'hi', 'data':f1.data})])
+
+    @testing.resolve_artifact_names
     def test_nocomparison(self):
-        """test that types marked as MutableType get changes detected on them when the type has no __eq__ method"""
-        class Foo(object):pass
-        mapper(Foo, table)
+        """Changes are detected on MutableTypes lacking an __eq__ method."""
+
         f1 = Foo()
         f1.data = pickleable.BarWithoutCompare(4,5)
-        Session.commit()
+        session = create_session(autocommit=False)
+        session.add(f1)
+        session.commit()
 
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 0)
+        self.sql_count_(0, session.commit)
+        session.close()
 
-        Session.close()
-
-        f2 = Session.query(Foo).filter_by(id=f1.id).one()
-
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 0)
+        session = create_session(autocommit=False)
+        f2 = session.query(Foo).filter_by(id=f1.id).one()
+        self.sql_count_(0, session.commit)
 
         f2.data.y = 19
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 1)
+        self.sql_count_(1, session.commit)
+        session.close()
 
-        Session.close()
-        f3 = Session.query(Foo).filter_by(id=f1.id).one()
-        print f2.data, f3.data
-        assert (f3.data.x, f3.data.y) == (4,19)
+        session = create_session(autocommit=False)
+        f3 = session.query(Foo).filter_by(id=f1.id).one()
+        eq_((f3.data.x, f3.data.y), (4,19))
+        self.sql_count_(0, session.commit)
+        session.close()
 
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 0)
-
+    @testing.resolve_artifact_names
     def test_unicode(self):
-        """test that two equivalent unicode values dont get flagged as changed.
+        """Equivalent Unicode values are not flagged as changed."""
 
-        apparently two equal unicode objects dont compare via "is" in all cases, so this
-        tests the compare_values() call on types.String and its usage via types.Unicode."""
-        class Foo(object):pass
-        mapper(Foo, table)
-        f1 = Foo()
-        f1.val = u'hi'
-        Session.commit()
-        Session.close()
-        f1 = Session.get(Foo, f1.id)
-        f1.val = u'hi'
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 0)
+        f1 = Foo(val=u'hi')
 
-class MutableTypesTest2(ORMTest):
+        session = create_session(autocommit=False)
+        session.add(f1)
+        session.commit()
+        session.clear()
+
+        f1 = session.get(Foo, f1.id)
+        f1.val = u'hi'
+        self.sql_count_(0, session.commit)
+
+
+class PickledDicts(_base.MappedTest):
+
     def define_tables(self, metadata):
-        global table
-        import operator
-        table = Table('mutabletest', metadata,
-            Column('id', Integer, Sequence('mutableidseq', optional=True), primary_key=True),
-            Column('data', PickleType(comparator=operator.eq)),
-            )
+        Table('mutable_t', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('data', sa.PickleType(comparator=operator.eq)))
 
+    def setup_classes(self):
+        class Foo(_base.BasicEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        mapper(Foo, mutable_t)
+
+    @testing.resolve_artifact_names
     def test_dicts(self):
-        """dictionaries dont pickle the same way twice, sigh."""
+        """Dictionaries may not pickle the same way twice."""
 
-        class Foo(object):pass
-        mapper(Foo, table)
         f1 = Foo()
-        f1.data = [{'personne': {'nom': u'Smith', 'pers_id': 1, 'prenom': u'john', 'civilite': u'Mr', \
-                    'int_3': False, 'int_2': False, 'int_1': u'23', 'VenSoir': True, 'str_1': u'Test', \
-                    'SamMidi': False, 'str_2': u'chien', 'DimMidi': False, 'SamSoir': True, 'SamAcc': False}}]
+        f1.data = [ {
+            'personne': {'nom': u'Smith',
+                         'pers_id': 1,
+                         'prenom': u'john',
+                         'civilite': u'Mr',
+                         'int_3': False,
+                         'int_2': False,
+                         'int_1': u'23',
+                         'VenSoir': True,
+                         'str_1': u'Test',
+                         'SamMidi': False,
+                         'str_2': u'chien',
+                         'DimMidi': False,
+                         'SamSoir': True,
+                         'SamAcc': False} } ]
 
-        Session.commit()
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 0)
+        session = create_session(autocommit=False)
+        session.add(f1)
+        session.commit()
 
-        f1.data = [{'personne': {'nom': u'Smith', 'pers_id': 1, 'prenom': u'john', 'civilite': u'Mr', \
-                    'int_3': False, 'int_2': False, 'int_1': u'23', 'VenSoir': True, 'str_1': u'Test', \
-                    'SamMidi': False, 'str_2': u'chien', 'DimMidi': False, 'SamSoir': True, 'SamAcc': False}}]
+        self.sql_count_(0, session.commit)
 
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 0)
+        f1.data = [ {
+            'personne': {'nom': u'Smith',
+                         'pers_id': 1,
+                         'prenom': u'john',
+                         'civilite': u'Mr',
+                         'int_3': False,
+                         'int_2': False,
+                         'int_1': u'23',
+                         'VenSoir': True,
+                         'str_1': u'Test',
+                         'SamMidi': False,
+                         'str_2': u'chien',
+                         'DimMidi': False,
+                         'SamSoir': True,
+                         'SamAcc': False} } ]
+
+        self.sql_count_(0, session.commit)
 
         f1.data[0]['personne']['VenSoir']= False
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 1)
+        self.sql_count_(1, session.commit)
 
-        Session.clear()
-        f = Session.query(Foo).get(f1.id)
-        assert f.data == [{'personne': {'nom': u'Smith', 'pers_id': 1, 'prenom': u'john', 'civilite': u'Mr', \
-                    'int_3': False, 'int_2': False, 'int_1': u'23', 'VenSoir': False, 'str_1': u'Test', \
-                    'SamMidi': False, 'str_2': u'chien', 'DimMidi': False, 'SamSoir': True, 'SamAcc': False}}]
+        session.clear()
+        f = session.query(Foo).get(f1.id)
+        eq_(f.data,
+            [ {
+            'personne': {'nom': u'Smith',
+                         'pers_id': 1,
+                         'prenom': u'john',
+                         'civilite': u'Mr',
+                         'int_3': False,
+                         'int_2': False,
+                         'int_1': u'23',
+                         'VenSoir': False,
+                         'str_1': u'Test',
+                         'SamMidi': False,
+                         'str_2': u'chien',
+                         'DimMidi': False,
+                         'SamSoir': True,
+                         'SamAcc': False} } ])
 
-class PKTest(ORMTest):
+
+class PKTest(_base.MappedTest):
+
     def define_tables(self, metadata):
-        global table, table2, table3
+        Table('multipk1', metadata,
+              Column('multi_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('multi_rev', Integer, primary_key=True),
+              Column('name', String(50), nullable=False),
+              Column('value', String(100)))
 
-        table = Table(
-            'multipk', metadata,
-            Column('multi_id', Integer, Sequence("multi_id_seq", optional=True), primary_key=True),
-            Column('multi_rev', Integer, primary_key=True),
-            Column('name', String(50), nullable=False),
-            Column('value', String(100))
-        )
+        Table('multipk2', metadata,
+              Column('pk_col_1', String(30), primary_key=True),
+              Column('pk_col_2', String(30), primary_key=True),
+              Column('data', String(30)))
+        Table('multipk3', metadata,
+              Column('pri_code', String(30), key='primary', primary_key=True),
+              Column('sec_code', String(30), key='secondary', primary_key=True),
+              Column('date_assigned', sa.Date, key='assigned', primary_key=True),
+              Column('data', String(30)))
 
-        table2 = Table('multipk2', metadata,
-            Column('pk_col_1', String(30), primary_key=True),
-            Column('pk_col_2', String(30), primary_key=True),
-            Column('data', String(30), )
-            )
-        table3 = Table('multipk3', metadata,
-            Column('pri_code', String(30), key='primary', primary_key=True),
-            Column('sec_code', String(30), key='secondary', primary_key=True),
-            Column('date_assigned', Date, key='assigned', primary_key=True),
-            Column('data', String(30), )
-            )
+    def setup_classes(self):
+        class Entry(_base.BasicEntity):
+            pass
 
     # not supported on sqlite since sqlite's auto-pk generation only works with
     # single column primary keys
     @testing.fails_on('sqlite')
-    def test_primarykey(self):
-        class Entry(object):
-            pass
-        Entry.mapper = mapper(Entry, table)
-        e = Entry()
-        e.name = 'entry1'
-        e.value = 'this is entry 1'
-        e.multi_rev = 2
-        Session.commit()
-        Session.close()
-        e2 = Session.query(Entry).get((e.multi_id, 2))
+    @testing.resolve_artifact_names
+    def test_primary_key(self):
+        mapper(Entry, multipk1)
+
+        e = Entry(name='entry1', value='this is entry 1', multi_rev=2)
+
+        session = create_session()
+        session.add(e)
+        session.flush()
+        session.clear()
+
+        e2 = session.query(Entry).get((e.multi_id, 2))
         self.assert_(e is not e2)
-        state = attributes.instance_state(e)
-        state2 = attributes.instance_state(e2)
-        self.assert_(state.key == state2.key)
+        state = sa.orm.attributes.instance_state(e)
+        state2 = sa.orm.attributes.instance_state(e2)
+        eq_(state.key, state2.key)
 
     # this one works with sqlite since we are manually setting up pk values
-    def test_manualpk(self):
-        class Entry(object):
-            pass
-        Entry.mapper = mapper(Entry, table2)
-        e = Entry()
-        e.pk_col_1 = 'pk1'
-        e.pk_col_2 = 'pk1_related'
-        e.data = 'im the data'
-        Session.commit()
+    @testing.resolve_artifact_names
+    def test_manual_pk(self):
+        mapper(Entry, multipk2)
 
-    def test_keypks(self):
-        import datetime
-        class Entity(object):
-            pass
-        Entity.mapper = mapper(Entity, table3)
-        e = Entity()
-        e.primary = 'pk1'
-        e.secondary = 'pk2'
-        e.assigned = datetime.date.today()
-        e.data = 'some more data'
-        Session.commit()
+        e = Entry(pk_col_1='pk1', pk_col_2='pk1_related', data='im the data')
 
-class ForeignPKTest(ORMTest):
-    """tests mapper detection of the relationship direction when parent/child tables are joined on their
-    primary keys"""
+        session = create_session()
+        session.add(e)
+        session.flush()
+
+    @testing.resolve_artifact_names
+    def test_key_pks(self):
+        mapper(Entry, multipk3)
+
+        e = Entry(primary= 'pk1', secondary='pk2',
+                   assigned=datetime.date.today(), data='some more data')
+
+        session = create_session()
+        session.add(e)
+        session.flush()
+
+
+class ForeignPKTest(_base.MappedTest):
+    """Detection of the relationship direction on PK joins."""
 
     def define_tables(self, metadata):
-        global people, peoplesites
+        Table("people", metadata,
+              Column('person', String(10), primary_key=True),
+              Column('firstname', String(10)),
+              Column('lastname', String(10)))
 
-        people = Table("people", metadata,
-           Column('person', String(10), primary_key=True),
-           Column('firstname', String(10)),
-           Column('lastname', String(10)),
-        )
+        Table("peoplesites", metadata,
+              Column('person', String(10), ForeignKey("people.person"),
+                     primary_key=True),
+              Column('site', String(10)))
 
-        peoplesites = Table("peoplesites", metadata,
-            Column('person', String(10), ForeignKey("people.person"),
-        primary_key=True),
-            Column('site', String(10)),
-        )
+    def setup_classes(self):
+        class Person(_base.BasicEntity):
+            pass
+        class PersonSite(_base.BasicEntity):
+            pass
 
+    @testing.resolve_artifact_names
     def test_basic(self):
-        class PersonSite(object):pass
-        class Person(object):pass
         m1 = mapper(PersonSite, peoplesites)
+        m2 = mapper(Person, people, properties={
+            'sites' : relation(PersonSite)})
 
-        m2 = mapper(Person, people,
-              properties = {
-                      'sites' : relation(PersonSite),
-              },
-            )
-        compile_mappers()
-        assert list(m2.get_property('sites').foreign_keys) == [peoplesites.c.person]
-        p = Person()
-        p.person = 'im the key'
-        p.firstname = 'asdf'
-        ps = PersonSite()
-        ps.site = 'asdf'
+        sa.orm.compile_mappers()
+        eq_(list(m2.get_property('sites').foreign_keys),
+            [peoplesites.c.person])
+
+        p = Person(person='im the key', firstname='asdf')
+        ps = PersonSite(site='asdf')
         p.sites.append(ps)
-        Session.commit()
-        assert people.count(people.c.person=='im the key').scalar() == peoplesites.count(peoplesites.c.person=='im the key').scalar() == 1
 
-class ClauseAttributesTest(ORMTest):
+        session = create_session()
+        session.add(p)
+        session.flush()
+
+        p_count = people.count(people.c.person=='im the key').scalar()
+        eq_(p_count, 1)
+        eq_(peoplesites.count(peoplesites.c.person=='im the key').scalar(), 1)
+
+
+class ClauseAttributesTest(_base.MappedTest):
+
     def define_tables(self, metadata):
-        global users_table
-        users_table = Table('users', metadata,
-            Column('id', Integer, Sequence('users_id_seq', optional=True), primary_key=True),
+        Table('users_t', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
             Column('name', String(30)),
             Column('counter', Integer, default=1))
 
+    def setup_classes(self):
+        class User(_base.ComparableEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        mapper(User, users_t)
+
+    @testing.resolve_artifact_names
     def test_update(self):
-        class User(fixtures.Base): pass
-        mapper(User, users_table)
         u = User(name='test')
-        sess = Session()
-        sess.save(u)
-        sess.flush()
-        assert u.counter == 1
+
+        session = create_session()
+        session.add(u)
+        session.flush()
+
+        eq_(u.counter, 1)
         u.counter = User.counter + 1
-        sess.flush()
+        session.flush()
 
         def go():
             assert (u.counter == 2) is True  # ensure its not a ClauseElement
-        self.assert_sql_count(testing.db, go, 1)
+        self.sql_count_(1, go)
 
+    @testing.resolve_artifact_names
     def test_multi_update(self):
-        class User(fixtures.Base): pass
-        mapper(User, users_table)
         u = User(name='test')
-        sess = Session()
-        sess.save(u)
-        sess.flush()
-        assert u.counter == 1
+
+        session = create_session()
+        session.add(u)
+        session.flush()
+
+        eq_(u.counter, 1)
         u.name = 'test2'
         u.counter = User.counter + 1
-        sess.flush()
+        session.flush()
+
         def go():
-            assert u.name == 'test2'
+            eq_(u.name, 'test2')
             assert (u.counter == 2) is True
-        self.assert_sql_count(testing.db, go, 1)
+        self.sql_count_(1, go)
 
-        sess.clear()
-        u = sess.query(User).get(u.id)
-        assert u.name == 'test2'
-        assert u.counter == 2
+        session.clear()
+        u = session.query(User).get(u.id)
+        eq_(u.name, 'test2')
+        eq_(u.counter,  2)
 
-    @testing.unsupported('mssql')
+    @testing.unsupported('mssql', 'FIXME: unknown, verify not fails_on()')
+    @testing.resolve_artifact_names
     def test_insert(self):
-        class User(fixtures.Base): pass
-        mapper(User, users_table)
-        u = User(name='test', counter=select([5]))
-        sess = Session()
-        sess.save(u)
-        sess.flush()
+        u = User(name='test', counter=sa.select([5]))
+
+        session = create_session()
+        session.add(u)
+        session.flush()
+
         assert (u.counter == 5) is True
 
 
-class PassiveDeletesTest(ORMTest):
+class PassiveDeletesTest(_base.MappedTest):
+    __requires__ = ('foreign_keys',)
+
     def define_tables(self, metadata):
-        global mytable,myothertable
+        Table('mytable', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('data', String(30)),
+              test_needs_fk=True)
 
-        mytable = Table('mytable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String(30)),
-            test_needs_fk=True,
-            )
+        Table('myothertable', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('parent_id', Integer),
+              Column('data', String(30)),
+              sa.ForeignKeyConstraint(['parent_id'],
+                                      ['mytable.id'],
+                                      ondelete="CASCADE"),
+              test_needs_fk=True)
 
-        myothertable = Table('myothertable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('parent_id', Integer),
-            Column('data', String(30)),
-            ForeignKeyConstraint(['parent_id'],['mytable.id'], ondelete="CASCADE"),
-            test_needs_fk=True,
-            )
-
-    @testing.unsupported('sqlite')
-    def test_basic(self):
-        class MyClass(object):
+    def setup_classes(self):
+        class MyClass(_base.BasicEntity):
             pass
-        class MyOtherClass(object):
+        class MyOtherClass(_base.BasicEntity):
             pass
 
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
         mapper(MyOtherClass, myothertable)
-
         mapper(MyClass, mytable, properties={
-            'children':relation(MyOtherClass, passive_deletes=True, cascade="all")
-        })
+            'children':relation(MyOtherClass,
+                                passive_deletes=True,
+                                cascade="all")})
 
-        sess = Session
+    @testing.resolve_artifact_names
+    def test_basic(self):
+        session = create_session()
         mc = MyClass()
         mc.children.append(MyOtherClass())
         mc.children.append(MyOtherClass())
         mc.children.append(MyOtherClass())
         mc.children.append(MyOtherClass())
-        sess.save(mc)
-        sess.commit()
-        sess.close()
+
+        session.add(mc)
+        session.flush()
+        session.clear()
+
         assert myothertable.count().scalar() == 4
-        mc = sess.query(MyClass).get(mc.id)
-        sess.delete(mc)
-        sess.commit()
+        mc = session.query(MyClass).get(mc.id)
+        session.delete(mc)
+        session.flush()
+
         assert mytable.count().scalar() == 0
         assert myothertable.count().scalar() == 0
 
-class ExtraPassiveDeletesTest(ORMTest):
+class ExtraPassiveDeletesTest(_base.MappedTest):
+    __requires__ = ('foreign_keys',)
+
     def define_tables(self, metadata):
-        global mytable,myothertable
+        Table('mytable', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('data', String(30)),
+              test_needs_fk=True)
 
-        mytable = Table('mytable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String(30)),
-            test_needs_fk=True,
-            )
+        Table('myothertable', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('parent_id', Integer),
+              Column('data', String(30)),
+              # no CASCADE, the same as ON DELETE RESTRICT
+              sa.ForeignKeyConstraint(['parent_id'],
+                                      ['mytable.id']),
+              test_needs_fk=True)
 
-        myothertable = Table('myothertable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('parent_id', Integer),
-            Column('data', String(30)),
-            ForeignKeyConstraint(['parent_id'],['mytable.id']),  # no CASCADE, the same as ON DELETE RESTRICT
-            test_needs_fk=True,
-            )
+    def setup_classes(self):
+        class MyClass(_base.BasicEntity):
+            pass
+        class MyOtherClass(_base.BasicEntity):
+            pass
 
+    @testing.resolve_artifact_names
     def test_assertions(self):
-        class MyClass(object):
-            pass
-        class MyOtherClass(object):
-            pass
-
         mapper(MyOtherClass, myothertable)
-
         try:
             mapper(MyClass, mytable, properties={
-                'children':relation(MyOtherClass, passive_deletes='all', cascade="all")
-            })
+                'children':relation(MyOtherClass,
+                                    passive_deletes='all',
+                                    cascade="all")})
             assert False
-        except sa_exc.ArgumentError, e:
-            assert str(e) == "Can't set passive_deletes='all' in conjunction with 'delete' or 'delete-orphan' cascade"
+        except sa.exc.ArgumentError, e:
+            eq_(str(e),
+                "Can't set passive_deletes='all' in conjunction with 'delete' "
+                "or 'delete-orphan' cascade")
 
-    @testing.unsupported('sqlite')
+    @testing.resolve_artifact_names
     def test_extra_passive(self):
-        class MyClass(object):
-            pass
-        class MyOtherClass(object):
-            pass
-
         mapper(MyOtherClass, myothertable)
-
         mapper(MyClass, mytable, properties={
-            'children':relation(MyOtherClass, passive_deletes='all', cascade="save-update")
-        })
+            'children': relation(MyOtherClass,
+                                 passive_deletes='all',
+                                 cascade="save-update")})
 
-        sess = Session
+        session = create_session()
         mc = MyClass()
         mc.children.append(MyOtherClass())
         mc.children.append(MyOtherClass())
         mc.children.append(MyOtherClass())
         mc.children.append(MyOtherClass())
-        sess.save(mc)
-        sess.commit()
+        session.add(mc)
+        session.flush()
+        session.clear()
 
         assert myothertable.count().scalar() == 4
-        mc = sess.query(MyClass).get(mc.id)
-        sess.delete(mc)
-        self.assertRaises(sa_exc.DBAPIError, sess.commit)
+        mc = session.query(MyClass).get(mc.id)
+        session.delete(mc)
+        self.assertRaises(sa.exc.DBAPIError, session.flush)
 
-    @testing.unsupported('sqlite')
+    @testing.resolve_artifact_names
     def test_extra_passive_2(self):
-        class MyClass(object):
-            pass
-        class MyOtherClass(object):
-            pass
-
         mapper(MyOtherClass, myothertable)
-
         mapper(MyClass, mytable, properties={
-            'children':relation(MyOtherClass, passive_deletes='all', cascade="save-update")
-        })
+            'children': relation(MyOtherClass,
+                                 passive_deletes='all',
+                                 cascade="save-update")})
 
-        sess = Session
+        session = create_session()
         mc = MyClass()
         mc.children.append(MyOtherClass())
-        sess.save(mc)
-        sess.commit()
+        session.add(mc)
+        session.flush()
+        session.clear()
 
         assert myothertable.count().scalar() == 1
-        mc = sess.query(MyClass).get(mc.id)
-        sess.delete(mc)
+
+        mc = session.query(MyClass).get(mc.id)
+        session.delete(mc)
         mc.children[0].data = 'some new data'
-        self.assertRaises(sa_exc.DBAPIError, sess.commit)
+        self.assertRaises(sa.exc.DBAPIError, session.flush)
 
 
-class DefaultTest(ORMTest):
-    """tests that when saving objects whose table contains DefaultGenerators, either python-side, preexec or database-side,
-    the newly saved instances receive all the default values either through a post-fetch or getting the pre-exec'ed
-    defaults back from the engine."""
+class DefaultTest(_base.MappedTest):
+    """Exercise mappings on columns with DefaultGenerators.
+
+    Tests that when saving objects whose table contains DefaultGenerators,
+    either python-side, preexec or database-side, the newly saved instances
+    receive all the default values either through a post-fetch or getting the
+    pre-exec'ed defaults back from the engine.
+
+    """
 
     def define_tables(self, metadata):
-        db = testing.db
-        use_string_defaults = testing.against('postgres', 'oracle', 'sqlite') 
-        global hohoval, althohoval
+        use_string_defaults = testing.against('postgres', 'oracle', 'sqlite')
 
         if use_string_defaults:
             hohotype = String(30)
@@ -717,437 +829,473 @@ class DefaultTest(ORMTest):
             hohoval = 9
             althohoval = 15
 
-        global default_table, secondary_table
-        default_table = Table('default_test', metadata,
-            Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
-            Column('hoho', hohotype, PassiveDefault(str(hohoval))),
-            Column('counter', Integer, default=func.length("1234567")),
-            Column('foober', String(30), default="im foober", onupdate="im the update"),
-        )
-        
-        secondary_table = Table('secondary_table', metadata, 
-            Column('id', Integer, primary_key=True),
-            Column('data', String(50))
-            )
-        
-        if testing.against('postgres', 'oracle'):
-            default_table.append_column(Column('secondary_id', Integer, Sequence('sec_id_seq'), unique=True))
-            secondary_table.append_column(Column('fk_val', Integer, ForeignKey('default_test.secondary_id')))
-        else:
-            secondary_table.append_column(Column('hoho', hohotype, ForeignKey('default_test.hoho')))
+        self.other_artifacts['hohoval'] = hohoval
+        self.other_artifacts['althohoval'] = althohoval
 
+        dt = Table('default_t', metadata,
+            Column('id', Integer, primary_key=True,
+                   test_needs_autoincrement=True),
+            Column('hoho', hohotype, sa.PassiveDefault(str(hohoval))),
+            Column('counter', Integer, default=sa.func.length("1234567")),
+            Column('foober', String(30), default="im foober",
+                   onupdate="im the update"))
+
+        st = Table('secondary_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)))
+
+        if testing.against('postgres', 'oracle'):
+            dt.append_column(
+                Column('secondary_id', Integer, sa.Sequence('sec_id_seq'),
+                       unique=True))
+            st.append_column(
+                Column('fk_val', Integer,
+                       ForeignKey('default_t.secondary_id')))
+        else:
+            st.append_column(
+                Column('hoho', hohotype, ForeignKey('default_t.hoho')))
+
+    def setup_classes(self):
+        class Hoho(_base.ComparableEntity):
+            pass
+        class Secondary(_base.ComparableEntity):
+            pass
+
+    @testing.resolve_artifact_names
     def test_insert(self):
-        class Hoho(fixtures.Base): pass
-        mapper(Hoho, default_table)
+        mapper(Hoho, default_t)
 
         h1 = Hoho(hoho=althohoval)
         h2 = Hoho(counter=12)
         h3 = Hoho(hoho=althohoval, counter=12)
         h4 = Hoho()
         h5 = Hoho(foober='im the new foober')
-        Session.commit()
 
-        self.assert_(h1.hoho==althohoval)
-        self.assert_(h3.hoho==althohoval)
+        session = create_session(autocommit=False)
+        session.add_all((h1, h2, h3, h4, h5))
+        session.commit()
+
+        eq_(h1.hoho, althohoval)
+        eq_(h3.hoho, althohoval)
 
         def go():
             # test deferred load of attribues, one select per instance
-            self.assert_(h2.hoho==h4.hoho==h5.hoho==hohoval)
-        self.assert_sql_count(testing.db, go, 3)
+            self.assert_(h2.hoho == h4.hoho == h5.hoho == hohoval)
+        self.sql_count_(3, go)
 
         def go():
-            self.assert_(h1.counter ==  h4.counter==h5.counter==7)
-        self.assert_sql_count(testing.db, go, 1)
+            self.assert_(h1.counter == h4.counter == h5.counter == 7)
+        self.sql_count_(1, go)
 
         def go():
             self.assert_(h3.counter == h2.counter == 12)
             self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
-            self.assert_(h5.foober=='im the new foober')
-        self.assert_sql_count(testing.db, go, 0)
+            self.assert_(h5.foober == 'im the new foober')
+        self.sql_count_(0, go)
 
-        Session.close()
+        session.clear()
 
-        l = Hoho.query.all()
+        (h1, h2, h3, h4, h5) = session.query(Hoho).order_by(Hoho.id).all()
 
-        (h1, h2, h3, h4, h5) = l
-
-        self.assert_(h1.hoho==althohoval)
-        self.assert_(h3.hoho==althohoval)
-        self.assert_(h2.hoho==h4.hoho==h5.hoho==hohoval)
+        eq_(h1.hoho, althohoval)
+        eq_(h3.hoho, althohoval)
+        self.assert_(h2.hoho == h4.hoho == h5.hoho == hohoval)
         self.assert_(h3.counter == h2.counter == 12)
-        self.assert_(h1.counter ==  h4.counter==h5.counter==7)
+        self.assert_(h1.counter ==  h4.counter == h5.counter == 7)
         self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
-        self.assert_(h5.foober=='im the new foober')
+        eq_(h5.foober, 'im the new foober')
 
+    @testing.resolve_artifact_names
     def test_eager_defaults(self):
-        class Hoho(object):pass
-        mapper(Hoho, default_table, eager_defaults=True)
+        mapper(Hoho, default_t, eager_defaults=True)
+
         h1 = Hoho()
-        Session.commit()
 
-        def go():
-            self.assert_(h1.hoho==hohoval)
-        self.assert_sql_count(testing.db, go, 0)
+        session = create_session()
+        session.add(h1)
+        session.flush()
 
+        self.sql_count_(0, lambda: eq_(h1.hoho, hohoval))
+
+    @testing.resolve_artifact_names
     def test_insert_nopostfetch(self):
-        # populates the PassiveDefaults explicitly so there is no "post-update"
-        class Hoho(fixtures.Base): pass
-        mapper(Hoho, default_table)
+        # populates the PassiveDefaults explicitly so there is no
+        # "post-update"
+        mapper(Hoho, default_t)
 
         h1 = Hoho(hoho="15", counter="15")
+        session = create_session()
+        session.add(h1)
+        session.flush()
 
-        Session.commit()
         def go():
-            self.assert_(h1.hoho=="15")
-            self.assert_(h1.counter=="15")
-            self.assert_(h1.foober=="im foober")
-        self.assert_sql_count(testing.db, go, 0)
+            eq_(h1.hoho, "15")
+            eq_(h1.counter, "15")
+            eq_(h1.foober, "im foober")
+        self.sql_count_(0, go)
 
+    @testing.resolve_artifact_names
     def test_update(self):
-        class Hoho(fixtures.Base): pass
-        mapper(Hoho, default_table)
+        mapper(Hoho, default_t)
+
         h1 = Hoho()
-        Session.commit()
-        self.assertEquals(h1.foober, 'im foober')
+        session = create_session()
+        session.add(h1)
+        session.flush()
+
+        eq_(h1.foober, 'im foober')
         h1.counter = 19
-        Session.commit()
-        self.assertEquals(h1.foober, 'im the update')
-    
+        session.flush()
+        eq_(h1.foober, 'im the update')
+
+    @testing.resolve_artifact_names
     def test_used_in_relation(self):
-        """test that a server-side generated default can be used as the target of a foreign key"""
-        
-        class Hoho(fixtures.Base):
-            pass
-        class Secondary(fixtures.Base):
-            pass
-        mapper(Hoho, default_table, properties={
-            'secondaries':relation(Secondary)
-        }, save_on_init=False)
-        
-        mapper(Secondary, secondary_table, save_on_init=False)
+        """A server-side default can be used as the target of a foreign key"""
+
+        mapper(Hoho, default_t, properties={
+            'secondaries':relation(Secondary)})
+        mapper(Secondary, secondary_table)
+
         h1 = Hoho()
         s1 = Secondary(data='s1')
         h1.secondaries.append(s1)
-        Session.save(h1)
-        Session.commit()
-        Session.clear()
-        
-        self.assertEquals(Session.query(Hoho).get(h1.id), Hoho(hoho=hohoval, secondaries=[Secondary(data='s1')]))
-        
-        h1 = Session.query(Hoho).get(h1.id)
+
+        session = create_session()
+        session.add(h1)
+        session.flush()
+        session.clear()
+
+        eq_(session.query(Hoho).get(h1.id),
+            Hoho(hoho=hohoval,
+                 secondaries=[
+                   Secondary(data='s1')]))
+
+        h1 = session.query(Hoho).get(h1.id)
         h1.secondaries.append(Secondary(data='s2'))
-        Session.commit()
-        Session.clear()
+        session.flush()
+        session.clear()
 
-        self.assertEquals(Session.query(Hoho).get(h1.id), 
-            Hoho(hoho=hohoval, secondaries=[Secondary(data='s1'), Secondary(data='s2')])
-        )
-        
-            
-class OneToManyTest(ORMTest):
-    metadata = tables.metadata
+        eq_(session.query(Hoho).get(h1.id),
+            Hoho(hoho=hohoval,
+                 secondaries=[
+                    Secondary(data='s1'),
+                    Secondary(data='s2')]))
 
-    def define_tables(self, metadata):
-        pass
 
-    def test_onetomany_1(self):
-        """test basic save of one to many."""
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True)
+class OneToManyTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @testing.resolve_artifact_names
+    def test_one_to_many_1(self):
+        """Basic save of one to many."""
+
+        m = mapper(User, users, properties=dict(
+            addresses = relation(mapper(Address, addresses), lazy=True)
         ))
-        u = User()
-        u.user_name = 'one2manytester'
-        u.addresses = []
-        a = Address()
-        a.email_address = 'one2many@test.org'
+        u = User(name= 'one2manytester')
+        a = Address(email_address='one2many@test.org')
         u.addresses.append(a)
-        a2 = Address()
-        a2.email_address = 'lala@test.org'
+
+        a2 = Address(email_address='lala@test.org')
         u.addresses.append(a2)
-        print repr(u.addresses)
-        Session.commit()
 
-        usertable = users.select(users.c.user_id.in_([u.user_id])).execute().fetchall()
-        self.assertEqual(usertable[0].values(), [u.user_id, 'one2manytester'])
-        addresstable = addresses.select(addresses.c.address_id.in_([a.address_id, a2.address_id]), order_by=[addresses.c.email_address]).execute().fetchall()
-        self.assertEqual(addresstable[0].values(), [a2.address_id, u.user_id, 'lala@test.org'])
-        self.assertEqual(addresstable[1].values(), [a.address_id, u.user_id, 'one2many@test.org'])
+        session = create_session()
+        session.add(u)
+        session.flush()
 
-        userid = u.user_id
-        addressid = a2.address_id
+        user_rows = users.select(users.c.id.in_([u.id])).execute().fetchall()
+        eq_(user_rows[0].values(), [u.id, 'one2manytester'])
+
+        address_rows = addresses.select(
+            addresses.c.id.in_([a.id, a2.id]),
+            order_by=[addresses.c.email_address]).execute().fetchall()
+        eq_(address_rows[0].values(), [a2.id, u.id, 'lala@test.org'])
+        eq_(address_rows[1].values(), [a.id, u.id, 'one2many@test.org'])
+
+        userid = u.id
+        addressid = a2.id
 
         a2.email_address = 'somethingnew@foo.com'
 
-        Session.commit()
+        session.flush()
 
-        addresstable = addresses.select(addresses.c.address_id == addressid).execute().fetchall()
-        self.assertEqual(addresstable[0].values(), [addressid, userid, 'somethingnew@foo.com'])
-        self.assert_(u.user_id == userid and a2.address_id == addressid)
+        address_rows = addresses.select(
+            addresses.c.id == addressid).execute().fetchall()
+        eq_(address_rows[0].values(),
+            [addressid, userid, 'somethingnew@foo.com'])
+        self.assert_(u.id == userid and a2.id == addressid)
 
-    def test_onetomany_2(self):
-        """digs deeper into modifying the child items of an object to insure the correct
-        updates take place"""
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True)
-        ))
-        u1 = User()
-        u1.user_name = 'user1'
+    @testing.resolve_artifact_names
+    def test_one_to_many_2(self):
+        """Modifying the child items of an object."""
+
+        m = mapper(User, users, properties=dict(
+            addresses = relation(mapper(Address, addresses), lazy=True)))
+
+        u1 = User(name='user1')
         u1.addresses = []
-        a1 = Address()
-        a1.email_address = 'emailaddress1'
+        a1 = Address(email_address='emailaddress1')
         u1.addresses.append(a1)
-        u2 = User()
-        u2.user_name = 'user2'
+
+        u2 = User(name='user2')
         u2.addresses = []
-        a2 = Address()
-        a2.email_address = 'emailaddress2'
+        a2 = Address(email_address='emailaddress2')
         u2.addresses.append(a2)
 
-        a3 = Address()
-        a3.email_address = 'emailaddress3'
+        a3 = Address(email_address='emailaddress3')
 
-        Session.commit()
+        session = create_session()
+        session.add_all((u1, u2, a3))
+        session.flush()
 
         # modify user2 directly, append an address to user1.
         # upon commit, user2 should be updated, user1 should not
         # both address1 and address3 should be updated
-        u2.user_name = 'user2modified'
+        u2.name = 'user2modified'
         u1.addresses.append(a3)
         del u1.addresses[0]
-        self.assert_sql(testing.db, lambda: Session.commit(),
-                [
-                    (
-                        "UPDATE users SET user_name=:user_name WHERE users.user_id = :users_user_id",
-                        {'users_user_id': u2.user_id, 'user_name': 'user2modified'}
-                    ),
-                    ("UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
-                        {'user_id': None, 'email_addresses_address_id': a1.address_id}
-                    ),
-                    (
-                        "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
-                        {'user_id': u1.user_id, 'email_addresses_address_id': a3.address_id}
-                    ),
-                ])
 
-    def test_childmove(self):
-        """tests moving a child from one parent to the other, then deleting the first parent, properly
-        updates the child with the new parent.  this tests the 'trackparent' option in the attributes module."""
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True)
-        ))
-        u1 = User()
-        u1.user_name = 'user1'
-        u2 = User()
-        u2.user_name = 'user2'
-        a = Address()
-        a.email_address = 'address1'
+        self.assert_sql(testing.db, session.flush, [
+            ("UPDATE users SET name=:name "
+             "WHERE users.id = :users_id",
+             {'users_id': u2.id, 'name': 'user2modified'}),
+
+            ("UPDATE addresses SET user_id=:user_id "
+             "WHERE addresses.id = :email_addresses_id",
+             {'user_id': None, 'addresses_id': a1.id}),
+
+            ("UPDATE addresses SET user_id=:user_id "
+             "WHERE addresses.id = :addresses_id",
+             {'user_id': u1.id, 'addresses_id': a3.id})])
+
+    @testing.resolve_artifact_names
+    def test_child_move(self):
+        """Moving a child from one parent to another, with a delete.
+
+        Tests that deleting the first parent properly updates the child with
+        the new parent.  This tests the 'trackparent' option in the attributes
+        module.
+
+        """
+        m = mapper(User, users, properties=dict(
+            addresses = relation(mapper(Address, addresses), lazy=True)))
+
+        u1 = User(name='user1')
+        u2 = User(name='user2')
+        a = Address(email_address='address1')
         u1.addresses.append(a)
-        Session.commit()
+
+        session = create_session()
+        session.add_all((u1, u2))
+        session.flush()
+
         del u1.addresses[0]
         u2.addresses.append(a)
-        Session.delete(u1)
-        Session.commit()
-        Session.close()
-        u2 = Session.get(User, u2.user_id)
-        assert len(u2.addresses) == 1
+        session.delete(u1)
 
-    def test_childmove_2(self):
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True)
-        ))
-        u1 = User()
-        u1.user_name = 'user1'
-        u2 = User()
-        u2.user_name = 'user2'
-        a = Address()
-        a.email_address = 'address1'
+        session.flush()
+        session.clear()
+
+        u2 = session.get(User, u2.id)
+        eq_(len(u2.addresses), 1)
+
+    @testing.resolve_artifact_names
+    def test_child_move_2(self):
+        m = mapper(User, users, properties=dict(
+            addresses = relation(mapper(Address, addresses), lazy=True)))
+
+        u1 = User(name='user1')
+        u2 = User(name='user2')
+        a = Address(email_address='address1')
         u1.addresses.append(a)
-        Session.commit()
+
+        session = create_session()
+        session.add_all((u1, u2))
+        session.flush()
+
         del u1.addresses[0]
         u2.addresses.append(a)
-        Session.commit()
-        Session.close()
-        u2 = Session.get(User, u2.user_id)
-        assert len(u2.addresses) == 1
 
+        session.flush()
+        session.clear()
+
+        u2 = session.get(User, u2.id)
+        eq_(len(u2.addresses), 1)
+
+    @testing.resolve_artifact_names
     def test_o2m_delete_parent(self):
-        m = mapper(User, users, properties = dict(
-            address = relation(mapper(Address, addresses), lazy=True, uselist=False)
-        ))
-        u = User()
-        a = Address()
-        u.user_name = 'one2onetester'
+        m = mapper(User, users, properties=dict(
+            address = relation(mapper(Address, addresses),
+                               lazy=True,
+                               uselist=False)))
+
+        u = User(name='one2onetester')
+        a = Address(email_address='myonlyaddress@foo.com')
         u.address = a
-        u.address.email_address = 'myonlyaddress@foo.com'
-        Session.commit()
-        Session.delete(u)
-        Session.commit()
-        self.assert_(a.address_id is not None)
-        self.assert_(a.user_id is None)
-        self.assert_(attributes.instance_state(a).key in Session.identity_map)
-        self.assert_(attributes.instance_state(u).key not in Session.identity_map)
 
-    def test_onetoone(self):
-        m = mapper(User, users, properties = dict(
-            address = relation(mapper(Address, addresses), lazy = True, uselist = False)
-        ))
-        u = User()
-        u.user_name = 'one2onetester'
-        u.address = Address()
-        u.address.email_address = 'myonlyaddress@foo.com'
-        Session.commit()
-        u.user_name = 'imnew'
-        Session.commit()
+        session = create_session()
+        session.add(u)
+        session.flush()
+
+        session.delete(u)
+        session.flush()
+
+        assert a.id is not None
+        assert a.user_id is None
+        assert sa.orm.attributes.instance_state(a).key in session.identity_map
+        assert sa.orm.attributes.instance_state(u).key not in session.identity_map
+
+    @testing.resolve_artifact_names
+    def test_one_to_one(self):
+        m = mapper(User, users, properties=dict(
+            address = relation(mapper(Address, addresses),
+                               lazy=True,
+                               uselist=False)))
+
+        u = User(name='one2onetester')
+        u.address = Address(email_address='myonlyaddress@foo.com')
+
+        session = create_session()
+        session.add(u)
+        session.flush()
+
+        u.name = 'imnew'
+        session.flush()
+
         u.address.email_address = 'imnew@foo.com'
-        Session.commit()
+        session.flush()
 
+    @testing.resolve_artifact_names
     def test_bidirectional(self):
         m1 = mapper(User, users)
-
-        m2 = mapper(Address, addresses, properties = dict(
-            user = relation(m1, lazy = False, backref='addresses')
-        ))
+        m2 = mapper(Address, addresses, properties=dict(
+            user = relation(m1, lazy=False, backref='addresses')))
 
 
-        u = User()
-        print repr(u.addresses)
-        u.user_name = 'test'
-        a = Address()
-        a.email_address = 'testaddress'
-        a.user = u
-        Session.commit()
-        print repr(u.addresses)
-        x = False
-        try:
-            u.addresses.append('hi')
-            x = True
-        except:
-            pass
+        u = User(name='test')
+        a = Address(email_address='testaddress', user=u)
 
-        if x:
-            self.assert_(False, "User addresses element should be scalar based")
+        session = create_session()
+        session.add(u)
+        session.flush()
+        session.delete(u)
+        session.flush()
 
-        Session.delete(u)
-        Session.commit()
-
-    def test_doublerelation(self):
+    @testing.resolve_artifact_names
+    def test_double_relation(self):
         m2 = mapper(Address, addresses)
         m = mapper(User, users, properties={
             'boston_addresses' : relation(m2, primaryjoin=
-                        and_(users.c.user_id==addresses.c.user_id,
-                        addresses.c.email_address.like('%boston%'))),
+                        sa.and_(users.c.id==addresses.c.user_id,
+                                addresses.c.email_address.like('%boston%'))),
             'newyork_addresses' : relation(m2, primaryjoin=
-                        and_(users.c.user_id==addresses.c.user_id,
-                        addresses.c.email_address.like('%newyork%'))),
-        })
-        u = User()
-        a = Address()
-        a.email_address = 'foo@boston.com'
-        b = Address()
-        b.email_address = 'bar@newyork.com'
+                        sa.and_(users.c.id==addresses.c.user_id,
+                                addresses.c.email_address.like('%newyork%')))})
 
+        u = User(name='u1')
+        a = Address(email_address='foo@boston.com')
+        b = Address(email_address='bar@newyork.com')
         u.boston_addresses.append(a)
         u.newyork_addresses.append(b)
-        Session.commit()
 
-class SaveTest(ORMTest):
-    metadata = tables.metadata
-    def define_tables(self, metadata):
-        pass
+        session = create_session()
+        session.add(u)
+        session.flush()
 
-    def setUp(self):
-        super(SaveTest, self).setUp()
-        keywords.insert().execute(
-            dict(name='blue'),
-            dict(name='red'),
-            dict(name='green'),
-            dict(name='big'),
-            dict(name='small'),
-            dict(name='round'),
-            dict(name='square')
-        )
+class SaveTest(_fixtures.FixtureTest):
+    run_inserts = None
 
+    @testing.resolve_artifact_names
     def test_basic(self):
-        # save two users
-        u = User()
-        u.user_name = 'savetester'
         m = mapper(User, users)
-        u2 = User()
-        u2.user_name = 'savetester2'
 
-        Session.save(u)
+        # save two users
+        u = User(name='savetester')
+        u2 = User(name='savetester2')
 
-        Session.flush([u])
-        Session.commit()
+        session = create_session()
+        session.add_all((u, u2))
+        session.flush()
 
         # assert the first one retreives the same from the identity map
-        nu = Session.get(m, u.user_id)
-        print "U: " + repr(u) + "NU: " + repr(nu)
-        self.assert_(u is nu)
+        nu = session.get(m, u.id)
+        assert u is nu
 
         # clear out the identity map, so next get forces a SELECT
-        Session.close()
+        session.clear()
 
         # check it again, identity should be different but ids the same
-        nu = Session.get(m, u.user_id)
-        self.assert_(u is not nu and u.user_id == nu.user_id and nu.user_name == 'savetester')
-        Session.close()
+        nu = session.get(m, u.id)
+        assert u is not nu and u.id == nu.id and nu.name == 'savetester'
 
         # change first users name and save
-        Session.update(u)
-        u.user_name = 'modifiedname'
-        assert u in Session.dirty
-        Session.commit()
+        session = create_session()
+        session.update(u)
+        u.name = 'modifiedname'
+        assert u in session.dirty
+        session.flush()
 
         # select both
-        #Session.close()
-        userlist = User.query.filter(users.c.user_id.in_([u.user_id, u2.user_id])).order_by([users.c.user_name]).all()
-        print repr(u.user_id), repr(userlist[0].user_id), repr(userlist[0].user_name)
-        self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
-        self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
+        userlist = session.query(User).filter(
+            users.c.id.in_([u.id, u2.id])).order_by([users.c.name]).all()
 
+        eq_(u.id, userlist[0].id)
+        eq_(userlist[0].name, 'modifiedname')
+        eq_(u2.id, userlist[1].id)
+        eq_(userlist[1].name, 'savetester2')
+
+    @testing.resolve_artifact_names
     def test_synonym(self):
-        class User(object):
+        class SUser(_base.BasicEntity):
             def _get_name(self):
-                return "User:" + self.user_name
+                return "User:" + self.name
             def _set_name(self, name):
-                self.user_name = name + ":User"
-            name = property(_get_name, _set_name)
+                self.name = name + ":User"
+            syn_name = property(_get_name, _set_name)
 
-        mapper(User, users, properties={
-            'name':synonym('user_name')
+        mapper(SUser, users, properties={
+            'syn_name': sa.orm.synonym('name')
         })
 
-        u = User()
-        u.name = "some name"
-        assert u.name == 'User:some name:User'
-        Session.save(u)
-        Session.flush()
-        Session.clear()
-        u = Session.query(User).first()
-        assert u.name == 'User:some name:User'
+        u = SUser(syn_name="some name")
+        eq_(u.syn_name, 'User:some name:User')
 
+        session = create_session()
+        session.add(u)
+        session.flush()
+        session.clear()
+
+        u = session.query(SUser).first()
+        eq_(u.syn_name, 'User:some name:User')
+
+    @testing.resolve_artifact_names
     def test_lazyattr_commit(self):
-        """tests that when a lazy-loaded list is unloaded, and a commit occurs, that the
-        'passive' call on that list does not blow away its value"""
+        """Lazily loaded relations.
 
-        m1 = mapper(User, users, properties = {
-            'addresses': relation(mapper(Address, addresses))
-        })
+        When a lazy-loaded list is unloaded, and a commit occurs, that the
+        'passive' call on that list does not blow away its value
 
-        u = User()
-        u.addresses.append(Address())
-        u.addresses.append(Address())
-        u.addresses.append(Address())
-        u.addresses.append(Address())
-        Session.commit()
-        Session.close()
-        ulist = Session.query(m1).all()
-        u1 = ulist[0]
-        u1.user_name = 'newname'
-        Session.commit()
-        self.assert_(len(u1.addresses) == 4)
+        """
+        mapper(User, users, properties = {
+            'addresses': relation(mapper(Address, addresses))})
 
+        u = User(name='u1')
+        u.addresses.append(Address(email_address='u1@e1'))
+        u.addresses.append(Address(email_address='u1@e2'))
+        u.addresses.append(Address(email_address='u1@e3'))
+        u.addresses.append(Address(email_address='u1@e4'))
+
+        session = create_session()
+        session.add(u)
+        session.flush()
+        session.clear()
+
+        u = session.query(User).one()
+        u.name = 'newname'
+        session.flush()
+        eq_(len(u.addresses), 4)
+
+    @testing.resolve_artifact_names
     def test_inherits(self):
         m1 = mapper(User, users)
 
@@ -1155,683 +1303,691 @@ class SaveTest(ORMTest):
             """a user object that also has the users mailing address."""
             pass
 
-        # define a mapper for AddressUser that inherits the User.mapper, and joins on the user_id column
-        AddressUser.mapper = mapper(
-                AddressUser,
-                addresses, inherits=m1
-                )
+        # define a mapper for AddressUser that inherits the User.mapper, and
+        # joins on the id column
+        mapper(AddressUser, addresses, inherits=m1)
 
-        au = AddressUser()
-        Session.commit()
-        Session.close()
-        l = Session.query(AddressUser).one()
-        self.assert_(l.user_id == au.user_id and l.address_id == au.address_id)
+        au = AddressUser(name='u', email_address='u@e')
 
+        session = create_session()
+        session.add(au)
+        session.flush()
+        session.clear()
+
+        rt = session.query(AddressUser).one()
+        eq_(au.user_id, rt.user_id)
+        eq_(rt.id, rt.id)
+
+    @testing.resolve_artifact_names
     def test_deferred(self):
-        """test deferred column operations"""
+        """Deferred column operations"""
 
-        mapper(User, users, properties={
-            'user_name':deferred(users.c.user_name)
-        })
+        mapper(Order, orders, properties={
+            'description': sa.orm.deferred(orders.c.description)})
 
         # dont set deferred attribute, commit session
-        u = User()
-        u.user_id=42
-        Session.commit()
+        o = Order(id=42)
+        session = create_session(autocommit=False)
+        session.add(o)
+        session.commit()
 
-        #  assert that changes get picked up
-        u.user_name = 'some name'
-        Session.commit()
-        assert list(Session.execute(users.select(), mapper=User)) == [(42, 'some name')]
-        Session.clear()
+        # assert that changes get picked up
+        o.description = 'foo'
+        session.commit()
+
+        eq_(list(session.execute(orders.select(), mapper=Order)),
+            [(42, None, None, 'foo', None)])
+        session.clear()
 
         # assert that a set operation doesn't trigger a load operation
-        u = Session.query(User).filter(User.user_name=='some name').one()
+        o = session.query(Order).filter(Order.description == 'foo').one()
         def go():
-            u.user_name = 'some other name'
-        self.assert_sql_count(testing.db, go, 0)
-        Session.flush()
-        assert list(Session.execute(users.select(), mapper=User)) == [(42, 'some other name')]
+            o.description = 'hoho'
+        self.sql_count_(0, go)
+        session.flush()
 
-        Session.clear()
+        eq_(list(session.execute(orders.select(), mapper=Order)),
+            [(42, None, None, 'hoho', None)])
+
+        session.clear()
 
         # test assigning None to an unloaded deferred also works
-        u = Session.query(User).filter(User.user_name=='some other name').one()
-        u.user_name = None
-        Session.flush()
-        assert list(Session.execute(users.select(), mapper=User)) == [(42, None)]
-
+        o = session.query(Order).filter(Order.description == 'hoho').one()
+        o.description = None
+        session.flush()
+        eq_(list(session.execute(orders.select(), mapper=Order)),
+            [(42, None, None, None, None)])
+        session.close()
 
     # why no support on oracle ?  because oracle doesn't save
     # "blank" strings; it saves a single space character.
-    @testing.unsupported('oracle')
+    @testing.fails_on('oracle')
+    @testing.resolve_artifact_names
     def test_dont_update_blanks(self):
         mapper(User, users)
-        u = User()
-        u.user_name = ""
-        Session.commit()
-        Session.close()
-        u = Session.query(User).get(u.user_id)
-        u.user_name = ""
-        def go():
-            Session.commit()
-        self.assert_sql_count(testing.db, go, 0)
 
-    def test_multitable(self):
-        """tests a save of an object where each instance spans two tables. also tests
-        redefinition of the keynames for the column properties."""
-        usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
+        u = User(name='')
+        session = create_session()
+        session.add(u)
+        session.flush()
+        session.clear()
+
+        u = session.query(User).get(u.id)
+        u.name = ''
+        self.sql_count_(0, session.flush)
+
+    @testing.resolve_artifact_names
+    def test_multi_table_selectable(self):
+        """Mapped selectables that span tables.
+
+        Also tests redefinition of the keynames for the column properties.
+
+        """
+        usersaddresses = sa.join(users, addresses,
+                                 users.c.id == addresses.c.user_id)
+
         m = mapper(User, usersaddresses,
-            properties = dict(
+            properties=dict(
                 email = addresses.c.email_address,
-                foo_id = [users.c.user_id, addresses.c.user_id],
-                )
-            )
+                foo_id = [users.c.id, addresses.c.user_id]))
 
-        u = User()
-        u.user_name = 'multitester'
-        u.email = 'multi@test.org'
+        u = User(name='multitester', email='multi@test.org')
+        session = create_session()
+        session.add(u)
+        session.flush()
+        session.clear()
 
-        Session.commit()
         id = m.primary_key_from_instance(u)
 
-        Session.close()
+        u = session.get(User, id)
+        assert u.name == 'multitester'
 
-        u = Session.get(User, id)
-        assert u.user_name == 'multitester'
-
-        usertable = users.select(users.c.user_id.in_([u.foo_id])).execute().fetchall()
-        self.assertEqual(usertable[0].values(), [u.foo_id, 'multitester'])
-        addresstable = addresses.select(addresses.c.address_id.in_([u.address_id])).execute().fetchall()
-        self.assertEqual(addresstable[0].values(), [u.address_id, u.foo_id, 'multi@test.org'])
+        user_rows = users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
+        eq_(user_rows[0].values(), [u.foo_id, 'multitester'])
+        address_rows = addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
+        eq_(address_rows[0].values(), [u.id, u.foo_id, 'multi@test.org'])
 
         u.email = 'lala@hey.com'
-        u.user_name = 'imnew'
-        Session.commit()
+        u.name = 'imnew'
+        session.flush()
 
-        usertable = users.select(users.c.user_id.in_([u.foo_id])).execute().fetchall()
-        self.assertEqual(usertable[0].values(), [u.foo_id, 'imnew'])
-        addresstable = addresses.select(addresses.c.address_id.in_([u.address_id])).execute().fetchall()
-        self.assertEqual(addresstable[0].values(), [u.address_id, u.foo_id, 'lala@hey.com'])
+        user_rows = users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
+        eq_(user_rows[0].values(), [u.foo_id, 'imnew'])
+        address_rows = addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
+        eq_(address_rows[0].values(), [u.id, u.foo_id, 'lala@hey.com'])
 
-        Session.close()
-        u = Session.get(User, id)
-        assert u.user_name == 'imnew'
+        session.clear()
+        u = session.get(User, id)
+        assert u.name == 'imnew'
 
+    @testing.resolve_artifact_names
     def test_history_get(self):
-        """tests that the history properly lazy-fetches data when it wasnt otherwise loaded"""
+        """The history lazy-fetches data when it wasn't otherwise loaded."""
         mapper(User, users, properties={
-            'addresses':relation(Address, cascade="all, delete-orphan")
-        })
+            'addresses':relation(Address, cascade="all, delete-orphan")})
         mapper(Address, addresses)
 
-        u = User()
-        u.addresses.append(Address())
-        u.addresses.append(Address())
-        Session.commit()
-        Session.close()
-        u = Session.query(User).get(u.user_id)
-        Session.delete(u)
-        Session.commit()
+        u = User(name='u1')
+        u.addresses.append(Address(email_address='u1@e1'))
+        u.addresses.append(Address(email_address='u1@e2'))
+        session = create_session()
+        session.add(u)
+        session.flush()
+        session.clear()
+
+        u = session.query(User).get(u.id)
+        session.delete(u)
+        session.flush()
         assert users.count().scalar() == 0
         assert addresses.count().scalar() == 0
 
+    @testing.resolve_artifact_names
+    def test_batch_mode(self):
+        """The 'batch=False' flag on mapper()"""
 
-
-    def test_batchmode(self):
-        """test the 'batch=False' flag on mapper()"""
-
-        class TestExtension(MapperExtension):
+        class TestExtension(sa.orm.MapperExtension):
             def before_insert(self, mapper, connection, instance):
                 self.current_instance = instance
             def after_insert(self, mapper, connection, instance):
                 assert instance is self.current_instance
-        m = mapper(User, users, extension=TestExtension(), batch=False)
-        u1 = User()
-        u1.username = 'user1'
-        u2 = User()
-        u2.username = 'user2'
-        Session.commit()
 
-        clear_mappers()
+        mapper(User, users, extension=TestExtension(), batch=False)
+        u1 = User(name='user1')
+        u2 = User(name='user2')
+
+        session = create_session()
+        session.add_all((u1, u2))
+        session.flush()
+        session.clear()
+
+        sa.orm.clear_mappers()
 
         m = mapper(User, users, extension=TestExtension())
-        u1 = User()
-        u1.username = 'user1'
-        u2 = User()
-        u2.username = 'user2'
+        u1 = User(name='user1')
+        u2 = User(name='user2')
         try:
-            Session.commit()
+            session.flush()
             assert False
         except AssertionError:
             assert True
 
 
-class ManyToOneTest(ORMTest):
-    metadata = tables.metadata
+class ManyToOneTest(_fixtures.FixtureTest):
 
-    def define_tables(self, metadata):
-        pass
-
-    def test_m2o_onetoone(self):
+    @testing.resolve_artifact_names
+    def test_m2o_one_to_one(self):
         # TODO: put assertion in here !!!
-        m = mapper(Address, addresses, properties = dict(
-            user = relation(mapper(User, users), lazy = True, uselist = False)
-        ))
+        m = mapper(Address, addresses, properties=dict(
+            user = relation(mapper(User, users), lazy=True, uselist=False)))
+
+        session = create_session()
+
         data = [
-            {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},
-            {'user_name' : 'assdkfj' , 'email_address' : 'thesdf@asdf.com'},
-            {'user_name' : 'n4knd' , 'email_address' : 'asf3@bar.org'},
-            {'user_name' : 'v88f4' , 'email_address' : 'adsd5@llala.net'},
-            {'user_name' : 'asdf8d' , 'email_address' : 'theater@foo.com'}
+            {'name': 'thesub' ,  'email_address': 'bar@foo.com'},
+            {'name': 'assdkfj' , 'email_address': 'thesdf@asdf.com'},
+            {'name': 'n4knd' ,   'email_address': 'asf3@bar.org'},
+            {'name': 'v88f4' ,   'email_address': 'adsd5@llala.net'},
+            {'name': 'asdf8d' ,  'email_address': 'theater@foo.com'}
         ]
         objects = []
         for elem in data:
             a = Address()
             a.email_address = elem['email_address']
             a.user = User()
-            a.user.user_name = elem['user_name']
+            a.user.name = elem['name']
             objects.append(a)
+            session.add(a)
 
-        Session.commit()
+        session.flush()
+
         objects[2].email_address = 'imnew@foo.bar'
         objects[3].user = User()
-        objects[3].user.user_name = 'imnewlyadded'
-        self.assert_sql(testing.db, lambda: Session.commit(), [
-                (
-                    "INSERT INTO users (user_name) VALUES (:user_name)",
-                    {'user_name': 'imnewlyadded'}
-                ),
-                {
-                    "UPDATE email_addresses SET email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id":
-                    lambda ctx: {'email_address': 'imnew@foo.bar', 'email_addresses_address_id': objects[2].address_id}
-                ,
+        objects[3].user.name = 'imnewlyadded'
+        self.assert_sql(testing.db,
+                        session.flush,
+                        [
+            ("INSERT INTO users (name) VALUES (:name)",
+             {'name': 'imnewlyadded'} ),
 
-                    "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id":
-                    lambda ctx: {'user_id': objects[3].user.user_id, 'email_addresses_address_id': objects[3].address_id}
-                },
+            {"UPDATE addresses SET email_address=:email_address "
+             "WHERE addresses.id = :addresses_id":
+             lambda ctx: {'email_address': 'imnew@foo.bar',
+                          'addresses_id': objects[2].id},
+             "UPDATE addresses SET user_id=:user_id "
+             "WHERE addresses.id = :addresses_id":
+             lambda ctx: {'user_id': objects[3].user.id,
+                          'addresses_id': objects[3].id}},
+                        ],
+                        with_sequences=[
+            ("INSERT INTO users (id, name) VALUES (:id, :name)",
+             lambda ctx:{'name': 'imnewlyadded',
+                         'id':ctx.last_inserted_ids()[0]}),
+            {"UPDATE addresses SET email_address=:email_address "
+             "WHERE addresses.id = :addresses_id":
+             lambda ctx: {'email_address': 'imnew@foo.bar',
+                          'addresses_id': objects[2].id},
+             ("UPDATE addresses SET user_id=:user_id "
+              "WHERE addresses.id = :addresses_id"):
+             lambda ctx: {'user_id': objects[3].user.id,
+                          'addresses_id': objects[3].id}}])
 
-        ],
-        with_sequences=[
-                (
-                    "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
-                    lambda ctx:{'user_name': 'imnewlyadded', 'user_id':ctx.last_inserted_ids()[0]}
-                ),
-                {
-                    "UPDATE email_addresses SET email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id":
-                    lambda ctx: {'email_address': 'imnew@foo.bar', 'email_addresses_address_id': objects[2].address_id}
-                ,
+        l = sa.select([users, addresses],
+                      sa.and_(users.c.id==addresses.c.user_id,
+                              addresses.c.id==a.id)).execute()
+        eq_(l.fetchone().values(),
+            [a.user.id, 'asdf8d', a.id, a.user_id, 'theater@foo.com'])
 
-                    "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id":
-                    lambda ctx: {'user_id': objects[3].user.user_id, 'email_addresses_address_id': objects[3].address_id}
-                },
+    @testing.resolve_artifact_names
+    def test_many_to_one_1(self):
+        m = mapper(Address, addresses, properties=dict(
+            user = relation(mapper(User, users), lazy=True)))
 
-        ])
-        l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.user_id, addresses.c.address_id==a.address_id)).execute()
-        assert l.fetchone().values() == [a.user.user_id, 'asdf8d', a.address_id, a.user_id, 'theater@foo.com']
-
-
-    def test_manytoone_1(self):
-        m = mapper(Address, addresses, properties = dict(
-            user = relation(mapper(User, users), lazy = True)
-        ))
-        a1 = Address()
-        a1.email_address = 'emailaddress1'
-        u1 = User()
-        u1.user_name='user1'
-
+        a1 = Address(email_address='emailaddress1')
+        u1 = User(name='user1')
         a1.user = u1
-        Session.commit()
-        Session.close()
-        a1 = Session.query(Address).get(a1.address_id)
-        u1 = Session.query(User).get(u1.user_id)
+
+        session = create_session()
+        session.add(a1)
+        session.flush()
+        session.clear()
+
+        a1 = session.query(Address).get(a1.id)
+        u1 = session.query(User).get(u1.id)
         assert a1.user is u1
 
         a1.user = None
-        Session.commit()
-        Session.close()
-        a1 = Session.query(Address).get(a1.address_id)
-        u1 = Session.query(User).get(u1.user_id)
+        session.flush()
+        session.clear()
+        a1 = session.query(Address).get(a1.id)
+        u1 = session.query(User).get(u1.id)
         assert a1.user is None
 
-    def test_manytoone_2(self):
-        m = mapper(Address, addresses, properties = dict(
-            user = relation(mapper(User, users), lazy = True)
-        ))
-        a1 = Address()
-        a1.email_address = 'emailaddress1'
-        a2 = Address()
-        a2.email_address = 'emailaddress2'
-        u1 = User()
-        u1.user_name='user1'
+    @testing.resolve_artifact_names
+    def test_many_to_one_2(self):
+        m = mapper(Address, addresses, properties=dict(
+            user = relation(mapper(User, users), lazy=True)))
 
+        a1 = Address(email_address='emailaddress1')
+        a2 = Address(email_address='emailaddress2')
+        u1 = User(name='user1')
         a1.user = u1
-        Session.commit()
-        Session.close()
-        a1 = Session.query(Address).get(a1.address_id)
-        a2 = Session.query(Address).get(a2.address_id)
-        u1 = Session.query(User).get(u1.user_id)
+
+        session = create_session()
+        session.add_all((a1, a2))
+        session.flush()
+        session.clear()
+
+        a1 = session.query(Address).get(a1.id)
+        a2 = session.query(Address).get(a2.id)
+        u1 = session.query(User).get(u1.id)
         assert a1.user is u1
+
         a1.user = None
         a2.user = u1
-        Session.commit()
-        Session.close()
-        a1 = Session.query(Address).get(a1.address_id)
-        a2 = Session.query(Address).get(a2.address_id)
-        u1 = Session.query(User).get(u1.user_id)
+        session.flush()
+        session.clear()
+
+        a1 = session.query(Address).get(a1.id)
+        a2 = session.query(Address).get(a2.id)
+        u1 = session.query(User).get(u1.id)
         assert a1.user is None
         assert a2.user is u1
 
-    def test_manytoone_3(self):
-        m = mapper(Address, addresses, properties = dict(
-            user = relation(mapper(User, users), lazy = True)
-        ))
-        a1 = Address()
-        a1.email_address = 'emailaddress1'
-        u1 = User()
-        u1.user_name='user1'
-        u2 = User()
-        u2.user_name='user2'
+    @testing.resolve_artifact_names
+    def test_many_to_one_3(self):
+        m = mapper(Address, addresses, properties=dict(
+            user = relation(mapper(User, users), lazy=True)))
 
+        a1 = Address(email_address='emailaddress1')
+        u1 = User(name='user1')
+        u2 = User(name='user2')
         a1.user = u1
-        Session.commit()
-        Session.close()
-        a1 = Session.query(Address).get(a1.address_id)
-        u1 = Session.query(User).get(u1.user_id)
-        u2 = Session.query(User).get(u2.user_id)
+
+        session = create_session()
+        session.add_all((a1, u1, u2))
+        session.flush()
+        session.clear()
+
+        a1 = session.query(Address).get(a1.id)
+        u1 = session.query(User).get(u1.id)
+        u2 = session.query(User).get(u2.id)
         assert a1.user is u1
 
         a1.user = u2
-        Session.commit()
-        Session.close()
-        a1 = Session.query(Address).get(a1.address_id)
-        u1 = Session.query(User).get(u1.user_id)
-        u2 = Session.query(User).get(u2.user_id)
+        session.flush()
+        session.clear()
+        a1 = session.query(Address).get(a1.id)
+        u1 = session.query(User).get(u1.id)
+        u2 = session.query(User).get(u2.id)
         assert a1.user is u2
 
-    def test_bidirectional_noload(self):
+    @testing.resolve_artifact_names
+    def test_bidirectional_no_load(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', lazy=None)
-        })
+            'addresses':relation(Address, backref='user', lazy=None)})
         mapper(Address, addresses)
 
-        sess = Session()
-
         # try it on unsaved objects
-        u1 = User()
-        a1 = Address()
+        u1 = User(name='u1')
+        a1 = Address(email_address='e1')
         a1.user = u1
-        sess.save(u1)
-        sess.flush()
-        sess.clear()
 
-        a1 = sess.query(Address).get(a1.address_id)
+        session = create_session()
+        session.add(u1)
+        session.flush()
+        session.clear()
+
+        a1 = session.query(Address).get(a1.id)
 
         a1.user = None
-        sess.flush()
-        sess.clear()
-        assert sess.query(Address).get(a1.address_id).user is None
-        assert sess.query(User).get(u1.user_id).addresses == []
+        session.flush()
+        session.clear()
+        assert session.query(Address).get(a1.id).user is None
+        assert session.query(User).get(u1.id).addresses == []
 
 
-class ManyToManyTest(ORMTest):
-    metadata = tables.metadata
+class ManyToManyTest(_fixtures.FixtureTest):
+    run_inserts = None
 
-    def define_tables(self, metadata):
-        pass
+    @testing.resolve_artifact_names
+    def test_many_to_many(self):
+        mapper(Keyword, keywords)
 
-    def test_manytomany(self):
-        items = orderitems
-
-        keywordmapper = mapper(Keyword, keywords)
-
-        m = mapper(Item, items, properties = dict(
-                keywords = relation(keywordmapper, itemkeywords, lazy = False, order_by=keywords.c.name),
-            ))
+        m = mapper(Item, items, properties=dict(
+                keywords=relation(Keyword,
+                                  item_keywords,
+                                  lazy=False,
+                                  order_by=keywords.c.name)))
 
         data = [Item,
-            {'item_name': 'mm_item1', 'keywords' : (Keyword,[{'name': 'big'},{'name': 'green'}, {'name': 'purple'},{'name': 'round'}])},
-            {'item_name': 'mm_item2', 'keywords' : (Keyword,[{'name':'blue'}, {'name':'imnew'},{'name':'round'}, {'name':'small'}])},
-            {'item_name': 'mm_item3', 'keywords' : (Keyword,[])},
-            {'item_name': 'mm_item4', 'keywords' : (Keyword,[{'name':'big'}, {'name':'blue'},])},
-            {'item_name': 'mm_item5', 'keywords' : (Keyword,[{'name':'big'},{'name':'exacting'},{'name':'green'}])},
-            {'item_name': 'mm_item6', 'keywords' : (Keyword,[{'name':'red'},{'name':'round'},{'name':'small'}])},
-        ]
+            {'description': 'mm_item1',
+             'keywords' : (Keyword, [{'name': 'big'},
+                                     {'name': 'green'},
+                                     {'name': 'purple'},
+                                     {'name': 'round'}])},
+            {'description': 'mm_item2',
+             'keywords' : (Keyword, [{'name':'blue'},
+                                     {'name':'imnew'},
+                                     {'name':'round'},
+                                     {'name':'small'}])},
+            {'description': 'mm_item3',
+             'keywords' : (Keyword, [])},
+            {'description': 'mm_item4',
+             'keywords' : (Keyword, [{'name':'big'},
+                                    {'name':'blue'},])},
+            {'description': 'mm_item5',
+             'keywords' : (Keyword, [{'name':'big'},
+                                     {'name':'exacting'},
+                                     {'name':'green'}])},
+            {'description': 'mm_item6',
+             'keywords' : (Keyword, [{'name':'red'},
+                                     {'name':'round'},
+                                     {'name':'small'}])}]
+
+        _fixtures.run_inserts_for(keywords)
+        session = create_session()
+
         objects = []
+        _keywords = dict([(k.name, k) for k in session.query(Keyword)])
+
         for elem in data[1:]:
-            item = Item()
+            item = Item(description=elem['description'])
             objects.append(item)
-            item.item_name = elem['item_name']
-            item.keywords = []
-            if elem['keywords'][1]:
-                klist = Session.query(keywordmapper).filter(keywords.c.name.in_([e['name'] for e in elem['keywords'][1]]))
-            else:
-                klist = []
-            khash = {}
-            for k in klist:
-                khash[k.name] = k
-            for kname in [e['name'] for e in elem['keywords'][1]]:
+
+            for spec in elem['keywords'][1]:
+                keyword_name = spec['name']
                 try:
-                    k = khash[kname]
+                    kw = _keywords[keyword_name]
                 except KeyError:
-                    k = Keyword()
-                    k.name = kname
-                item.keywords.append(k)
+                    _keywords[keyword_name] = kw = Keyword(name=keyword_name)
+                item.keywords.append(kw)
 
-        Session.commit()
+        session.add_all(objects)
+        session.flush()
 
-        l = Session.query(m).filter(items.c.item_name.in_([e['item_name'] for e in data[1:]])).order_by(items.c.item_name).all()
+        l = (session.query(Item).
+             filter(Item.description.in_([e['description']
+                                          for e in data[1:]])).
+             order_by(Item.description).all())
         self.assert_result(l, *data)
 
-        objects[4].item_name = 'item4updated'
+        objects[4].description = 'item4updated'
         k = Keyword()
         k.name = 'yellow'
         objects[5].keywords.append(k)
-        self.assert_sql(testing.db, lambda:Session.commit(), [
-            {
-                "UPDATE items SET item_name=:item_name WHERE items.item_id = :items_item_id":
-                {'item_name': 'item4updated', 'items_item_id': objects[4].item_id}
-            ,
-                "INSERT INTO keywords (name) VALUES (:name)":
-                {'name': 'yellow'}
-            },
-            ("INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
-            lambda ctx: [{'item_id': objects[5].item_id, 'keyword_id': k.keyword_id}]
-            )
-        ],
+        self.assert_sql(testing.db, session.flush, [
+            {"UPDATE items SET description=:description "
+             "WHERE items.id = :items_id":
+             {'description': 'item4updated',
+              'items_id': objects[4].id},
+             "INSERT INTO keywords (name) "
+             "VALUES (:name)":
+             {'name': 'yellow'}},
+            ("INSERT INTO item_keywords (item_id, keyword_id) "
+             "VALUES (:item_id, :keyword_id)",
+             lambda ctx: [{'item_id': objects[5].id,
+                           'keyword_id': k.id}])],
+                        with_sequences = [
+              {"UPDATE items SET description=:description "
+               "WHERE items.id = :items_id":
+               {'description': 'item4updated',
+                'items_id': objects[4].id},
+               "INSERT INTO keywords (id, name) "
+               "VALUES (:id, :name)":
+               lambda ctx: {'name': 'yellow',
+                            'id':ctx.last_inserted_ids()[0]}},
+              ("INSERT INTO item_keywords (item_id, keyword_id) "
+               "VALUES (:item_id, :keyword_id)",
+               lambda ctx: [{'item_id': objects[5].id,
+                             'keyword_id': k.id}])])
 
-        with_sequences = [
-            {
-                "UPDATE items SET item_name=:item_name WHERE items.item_id = :items_item_id":
-                {'item_name': 'item4updated', 'items_item_id': objects[4].item_id}
-            ,
-                "INSERT INTO keywords (keyword_id, name) VALUES (:keyword_id, :name)":
-                lambda ctx: {'name': 'yellow', 'keyword_id':ctx.last_inserted_ids()[0]}
-            },
-            ("INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
-            lambda ctx: [{'item_id': objects[5].item_id, 'keyword_id': k.keyword_id}]
-            )
-        ]
-        )
         objects[2].keywords.append(k)
-        dkid = objects[5].keywords[1].keyword_id
+        dkid = objects[5].keywords[1].id
         del objects[5].keywords[1]
-        self.assert_sql(testing.db, lambda:Session.commit(), [
-                (
-                    "DELETE FROM itemkeywords WHERE itemkeywords.item_id = :item_id AND itemkeywords.keyword_id = :keyword_id",
-                    [{'item_id': objects[5].item_id, 'keyword_id': dkid}]
-                ),
-                (
-                    "INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
-                    lambda ctx: [{'item_id': objects[2].item_id, 'keyword_id': k.keyword_id}]
-                )
-        ])
+        self.assert_sql(testing.db, session.flush, [
+            ("DELETE FROM item_keywords "
+             "WHERE item_keywords.item_id = :item_id AND "
+             "item_keywords.keyword_id = :keyword_id",
+             [{'item_id': objects[5].id, 'keyword_id': dkid}]),
+            ("INSERT INTO item_keywords (item_id, keyword_id) "
+             "VALUES (:item_id, :keyword_id)",
+             lambda ctx: [{'item_id': objects[2].id, 'keyword_id': k.id}]
+             )])
 
-        Session.delete(objects[3])
-        Session.commit()
+        session.delete(objects[3])
+        session.flush()
 
-    def test_manytomany_remove(self):
-        """tests that setting a list-based attribute to '[]' properly affects the history and allows
-        the many-to-many rows to be deleted"""
-        keywordmapper = mapper(Keyword, keywords)
+    @testing.resolve_artifact_names
+    def test_many_to_many_remove(self):
+        """Setting a collection to empty deletes many-to-many rows.
 
-        m = mapper(Item, orderitems, properties = dict(
-                keywords = relation(keywordmapper, itemkeywords, lazy = False),
+        Tests that setting a list-based attribute to '[]' properly affects the
+        history and allows the many-to-many rows to be deleted
+
+        """
+        mapper(Keyword, keywords)
+        mapper(Item, items, properties=dict(
+            keywords = relation(Keyword, item_keywords, lazy=False),
             ))
 
-        i = Item()
-        k1 = Keyword()
-        k2 = Keyword()
+        i = Item(description='i1')
+        k1 = Keyword(name='k1')
+        k2 = Keyword(name='k2')
         i.keywords.append(k1)
         i.keywords.append(k2)
-        Session.commit()
 
-        assert itemkeywords.count().scalar() == 2
+        session = create_session()
+        session.add(i)
+        session.flush()
+
+        assert item_keywords.count().scalar() == 2
         i.keywords = []
-        Session.commit()
-        assert itemkeywords.count().scalar() == 0
+        session.flush()
+        assert item_keywords.count().scalar() == 0
 
+    @testing.resolve_artifact_names
     def test_scalar(self):
-        """test that dependency.py doesnt try to delete an m2m relation referencing None."""
+        """sa.dependency won't delete an m2m relation referencing None."""
 
         mapper(Keyword, keywords)
 
-        mapper(Item, orderitems, properties = dict(
-                keyword = relation(Keyword, secondary=itemkeywords, uselist=False),
-            ))
+        mapper(Item, items, properties=dict(
+            keyword=relation(Keyword, secondary=item_keywords, uselist=False)))
 
-        i = Item()
-        Session.commit()
-        Session.delete(i)
-        Session.commit()
+        i = Item(description='x')
+        session = create_session()
+        session.add(i)
+        session.flush()
+        session.delete(i)
+        session.flush()
 
-
-
-    def test_manytomany_update(self):
-        """tests some history operations on a many to many"""
-        class Keyword(object):
-            def __init__(self, name):
-                self.name = name
-            def __eq__(self, other):
-                return other.__class__ == Keyword and other.name == self.name
-            def __repr__(self):
-                return "Keyword(%s, %s)" % (getattr(self, 'keyword_id', 'None'), self.name)
-
+    @testing.resolve_artifact_names
+    def test_many_to_many_update(self):
+        """Assorted history operations on a many to many"""
         mapper(Keyword, keywords)
-        mapper(Item, orderitems, properties = dict(
-                keywords = relation(Keyword, secondary=itemkeywords, lazy=False, order_by=keywords.c.name),
-            ))
+        mapper(Item, items, properties=dict(
+            keywords=relation(Keyword,
+                              secondary=item_keywords,
+                              lazy=False,
+                              order_by=keywords.c.name)))
 
-        (k1, k2, k3) = (Keyword('keyword 1'), Keyword('keyword 2'), Keyword('keyword 3'))
-        item = Item()
-        item.item_name = 'item 1'
-        item.keywords.append(k1)
-        item.keywords.append(k2)
-        item.keywords.append(k3)
-        Session.commit()
+        k1 = Keyword(name='keyword 1')
+        k2 = Keyword(name='keyword 2')
+        k3 = Keyword(name='keyword 3')
+
+        item = Item(description='item 1')
+        item.keywords.extend([k1, k2, k3])
+
+        session = create_session()
+        session.add(item)
+        session.flush()
 
         item.keywords = []
         item.keywords.append(k1)
         item.keywords.append(k2)
-        Session.commit()
+        session.flush()
 
-        Session.close()
-        item = Session.query(Item).get(item.item_id)
-        print [k1, k2]
-        print item.keywords
+        session.clear()
+        item = session.query(Item).get(item.id)
         assert item.keywords == [k1, k2]
 
+    @testing.resolve_artifact_names
     def test_association(self):
-        """basic test of an association object"""
-        class IKAssociation(object):
-            def __repr__(self):
-                return "\nIKAssociation " + repr(self.item_id) + " " + repr(self.keyword)
+        """Basic test of an association object"""
 
-        items = orderitems
+        class IKAssociation(_base.ComparableEntity):
+            pass
 
-        keywordmapper = mapper(Keyword, keywords)
+        mapper(Keyword, keywords)
 
-        # note that we are breaking a rule here, making a second mapper(Keyword, keywords)
-        # the reorganization of mapper construction affected this, but was fixed again
-        m = mapper(Item, items, properties = dict(
-                keywords = relation(mapper(IKAssociation, itemkeywords, properties = dict(
-                    keyword = relation(mapper(Keyword, keywords, non_primary=True), lazy = False, uselist = False, order_by=keywords.c.name)
-                ), primary_key = [itemkeywords.c.item_id, itemkeywords.c.keyword_id]),
-                lazy = False)
-            ))
+        # note that we are breaking a rule here, making a second
+        # mapper(Keyword, keywords) the reorganization of mapper construction
+        # affected this, but was fixed again
 
-        data = [Item,
-            {'item_name': 'a_item1', 'keywords' : (IKAssociation,
-                                                    [
-                                                        {'keyword' : (Keyword, {'name': 'big'})},
-                                                        {'keyword' : (Keyword, {'name': 'green'})},
-                                                        {'keyword' : (Keyword, {'name': 'purple'})},
-                                                        {'keyword' : (Keyword, {'name': 'round'})}
-                                                    ]
-                                                 )
-            },
-            {'item_name': 'a_item2', 'keywords' : (IKAssociation,
-                                                    [
-                                                        {'keyword' : (Keyword, {'name': 'huge'})},
-                                                        {'keyword' : (Keyword, {'name': 'violet'})},
-                                                        {'keyword' : (Keyword, {'name': 'yellow'})}
-                                                    ]
-                                                 )
-            },
-            {'item_name': 'a_item3', 'keywords' : (IKAssociation,
-                                                    [
-                                                        {'keyword' : (Keyword, {'name': 'big'})},
-                                                        {'keyword' : (Keyword, {'name': 'blue'})},
-                                                    ]
-                                                 )
-            }
-        ]
-        for elem in data[1:]:
-            item = Item()
-            item.item_name = elem['item_name']
-            item.keywords = []
-            for kname in [e['keyword'][1]['name'] for e in elem['keywords'][1]]:
-                try:
-                    k = Keyword.query.filter(keywords.c.name == kname)[0]
-                except IndexError:
-                    k = Keyword()
-                    k.name= kname
-                ik = IKAssociation()
-                ik.keyword = k
-                item.keywords.append(ik)
+        mapper(IKAssociation, item_keywords,
+               primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id],
+               properties=dict(
+                 keyword=relation(mapper(Keyword, keywords, non_primary=True),
+                                  lazy=False,
+                                  uselist=False,
+                                  order_by=keywords.c.name)))
 
-        Session.commit()
-        Session.close()
-        l = Item.query.filter(items.c.item_name.in_([e['item_name'] for e in data[1:]])).order_by(items.c.item_name).all()
-        self.assert_result(l, *data)
+        mapper(Item, items, properties=dict(
+            keywords=relation(IKAssociation, lazy=False)))
 
-class SaveTest2(ORMTest):
+        _fixtures.run_inserts_for(keywords)
+        session = create_session()
 
-    def define_tables(self, metadata):
-        global users, addresses
-        users = Table('users', metadata,
-            Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
-            Column('user_name', String(20)),
-        )
+        def fixture():
+            _kw = dict([(k.name, k) for k in session.query(Keyword)])
+            for n in ('big', 'green', 'purple', 'round', 'huge',
+                      'violet', 'yellow', 'blue'):
+                if n not in _kw:
+                    _kw[n] = Keyword(name=n)
 
-        addresses = Table('email_addresses', metadata,
-            Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key = True),
-            Column('rel_user_id', Integer, ForeignKey(users.c.user_id)),
-            Column('email_address', String(20)),
-        )
+            def assocs(*names):
+                return [IKAssociation(keyword=kw)
+                        for kw in [_kw[n] for n in names]]
 
+            return [
+                Item(description='a_item1',
+                     keywords=assocs('big', 'green', 'purple', 'round')),
+                Item(description='a_item2',
+                     keywords=assocs('huge', 'violet', 'yellow')),
+                Item(description='a_item3',
+                     keywords=assocs('big', 'blue'))]
+
+        session.add_all(fixture())
+        session.flush()
+        eq_(fixture(), session.query(Item).order_by(Item.description).all())
+
+
+class SaveTest2(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @testing.resolve_artifact_names
     def test_m2o_nonmatch(self):
-        m = mapper(Address, addresses, properties = dict(
-            user = relation(mapper(User, users), lazy = True, uselist = False)
-        ))
-        data = [
-            {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},
-            {'user_name' : 'assdkfj' , 'email_address' : 'thesdf@asdf.com'},
-        ]
-        objects = []
-        for elem in data:
-            a = Address()
-            a.email_address = elem['email_address']
-            a.user = User()
-            a.user.user_name = elem['user_name']
-            objects.append(a)
-        self.assert_sql(testing.db, lambda: Session.commit(), [
-                (
-                    "INSERT INTO users (user_name) VALUES (:user_name)",
-                    {'user_name': 'thesub'}
-                ),
-                (
-                    "INSERT INTO users (user_name) VALUES (:user_name)",
-                    {'user_name': 'assdkfj'}
-                ),
-                (
-                "INSERT INTO email_addresses (rel_user_id, email_address) VALUES (:rel_user_id, :email_address)",
-                {'rel_user_id': 1, 'email_address': 'bar@foo.com'}
-                ),
-                (
-                "INSERT INTO email_addresses (rel_user_id, email_address) VALUES (:rel_user_id, :email_address)",
-                {'rel_user_id': 2, 'email_address': 'thesdf@asdf.com'}
-                )
-                ],
+        mapper(User, users)
+        mapper(Address, addresses, properties=dict(
+            user = relation(User, lazy=True, uselist=False)))
 
-                with_sequences = [
-                        (
-                            "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
-                            lambda ctx: {'user_name': 'thesub', 'user_id':ctx.last_inserted_ids()[0]}
-                        ),
-                        (
-                        "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
-                            lambda ctx: {'user_name': 'assdkfj', 'user_id':ctx.last_inserted_ids()[0]}
-                        ),
-                        (
-                        "INSERT INTO email_addresses (address_id, rel_user_id, email_address) VALUES (:address_id, :rel_user_id, :email_address)",
-                        lambda ctx:{'rel_user_id': 1, 'email_address': 'bar@foo.com', 'address_id':ctx.last_inserted_ids()[0]}
-                        ),
-                        (
-                        "INSERT INTO email_addresses (address_id, rel_user_id, email_address) VALUES (:address_id, :rel_user_id, :email_address)",
-                        lambda ctx:{'rel_user_id': 2, 'email_address': 'thesdf@asdf.com', 'address_id':ctx.last_inserted_ids()[0]}
-                        )
-                        ]
-        )
+        session = create_session()
+
+        def fixture():
+            return [
+                Address(email_address='a1', user=User(name='u1')),
+                Address(email_address='a2', user=User(name='u2'))]
+
+        session.add_all(fixture())
+
+        self.assert_sql(testing.db, session.flush, [
+            ("INSERT INTO users (name) VALUES (:name)",
+             {'name': 'u1'}),
+            ("INSERT INTO users (name) VALUES (:name)",
+             {'name': 'u2'}),
+            ("INSERT INTO addresses (user_id, email_address) "
+             "VALUES (:user_id, :email_address)",
+             {'user_id': 1, 'email_address': 'a1'}),
+            ("INSERT INTO addresses (user_id, email_address) "
+             "VALUES (:user_id, :email_address)",
+             {'user_id': 2, 'email_address': 'a2'})],
+            with_sequences = [
+            ("INSERT INTO users (id, name) "
+             "VALUES (:id, :name)",
+             lambda ctx: {'name': 'u1', 'id':ctx.last_inserted_ids()[0]}),
+            ("INSERT INTO users (id, name) "
+             "VALUES (:id, :name)",
+             lambda ctx: {'name': 'u2', 'id':ctx.last_inserted_ids()[0]}),
+            ("INSERT INTO addresses (id, user_id, email_address) "
+             "VALUES (:id, :user_id, :email_address)",
+             lambda ctx:{'user_id': 1, 'email_address': 'a1',
+                         'id':ctx.last_inserted_ids()[0]}),
+            ("INSERT INTO addresses (id, user_id, email_address) "
+             "VALUES (:id, :user_id, :email_address)",
+             lambda ctx:{'user_id': 2, 'email_address': 'a2',
+                         'id':ctx.last_inserted_ids()[0]})])
 
 
-class SaveTest3(ORMTest):
+class SaveTest3(_base.MappedTest):
     def define_tables(self, metadata):
-        global t1, t2, t3
+        Table('items', metadata,
+              Column('item_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('item_name', String(50)))
 
-        t1 = Table('items', metadata,
-            Column('item_id', INT, Sequence('items_id_seq', optional=True), primary_key = True),
-            Column('item_name', VARCHAR(50)),
-        )
+        Table('keywords', metadata,
+              Column('keyword_id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(50)))
 
-        t3 = Table('keywords', metadata,
-            Column('keyword_id', Integer, Sequence('keyword_id_seq', optional=True), primary_key = True),
-            Column('name', VARCHAR(50)),
+        Table('assoc', metadata,
+              Column('item_id', Integer, ForeignKey("items")),
+              Column('keyword_id', Integer, ForeignKey("keywords")),
+              Column('foo', sa.Boolean, default=True))
 
-        )
-        t2 = Table('assoc', metadata,
-            Column('item_id', INT, ForeignKey("items")),
-            Column('keyword_id', INT, ForeignKey("keywords")),
-            Column('foo', Boolean, default=True)
-        )
+    def setup_classes(self):
+        class Keyword(_base.BasicEntity):
+            pass
+        class Item(_base.BasicEntity):
+            pass
 
+    @testing.resolve_artifact_names
     def test_manytomany_xtracol_delete(self):
-        """test that a many-to-many on a table that has an extra column can properly delete rows from the table
-        without referencing the extra column"""
-        mapper(Keyword, t3)
+        """A many-to-many on a table that has an extra column can properly delete rows from the table without referencing the extra column"""
 
-        mapper(Item, t1, properties = dict(
-                keywords = relation(Keyword, secondary=t2, lazy = False),
-            ))
+        mapper(Keyword, keywords)
+        mapper(Item, items, properties=dict(
+                keywords = relation(Keyword, secondary=assoc, lazy=False),))
 
         i = Item()
         k1 = Keyword()
         k2 = Keyword()
         i.keywords.append(k1)
         i.keywords.append(k2)
-        Session.commit()
 
-        assert t2.count().scalar() == 2
+        session = create_session()
+        session.add(i)
+        session.flush()
+
+        assert assoc.count().scalar() == 2
         i.keywords = []
         print i.keywords
-        Session.commit()
-        assert t2.count().scalar() == 0
+        session.flush()
+        assert assoc.count().scalar() == 0
 
-class BooleanColTest(ORMTest):
+class BooleanColTest(_base.MappedTest):
     def define_tables(self, metadata):
-        global t
-        t =Table('t1', metadata,
+        Table('t1_t', metadata,
             Column('id', Integer, primary_key=True),
             Column('name', String(30)),
-            Column('value', Boolean))
+            Column('value', sa.Boolean))
 
+    @testing.resolve_artifact_names
     def test_boolean(self):
         # use the regular mapper
-        from sqlalchemy.orm import mapper
-
-        class T(fixtures.Base):
+        class T(_base.ComparableEntity):
             pass
-        mapper(T, t)
+        orm_mapper(T, t1_t)
 
         sess = create_session()
         t1 = T(value=True, name="t1")
@@ -1846,75 +2002,64 @@ class BooleanColTest(ORMTest):
         for clear in (False, True):
             if clear:
                 sess.clear()
-            self.assertEquals(sess.query(T).all(), [T(value=True, name="t1"), T(value=False, name="t2"), T(value=True, name="t3")])
+            eq_(sess.query(T).all(), [T(value=True, name="t1"), T(value=False, name="t2"), T(value=True, name="t3")])
             if clear:
                 sess.clear()
-            self.assertEquals(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
+            eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
             if clear:
                 sess.clear()
-            self.assertEquals(sess.query(T).filter(T.value==False).all(), [T(value=False, name="t2")])
+            eq_(sess.query(T).filter(T.value==False).all(), [T(value=False, name="t2")])
 
         t2 = sess.query(T).get(t2.id)
         t2.value = True
         sess.flush()
-        self.assertEquals(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"), T(value=True, name="t2"), T(value=True, name="t3")])
+        eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"), T(value=True, name="t2"), T(value=True, name="t3")])
         t2.value = False
         sess.flush()
-        self.assertEquals(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
+        eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
 
 
-class RowSwitchTest(ORMTest):
+class RowSwitchTest(_base.MappedTest):
     def define_tables(self, metadata):
-        global t1, t2, t3, t1t3
-
-        global T1, T2, T3
-
-        Session.remove()
-
         # parent
-        t1 = Table('t1', metadata,
+        Table('t1', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30), nullable=False))
 
         # onetomany
-        t2 = Table('t2', metadata,
+        Table('t2', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30), nullable=False),
-            Column('t1id', Integer, ForeignKey('t1.id'),nullable=False),
-            )
+            Column('t1id', Integer, ForeignKey('t1.id'),nullable=False))
 
         # associated
-        t3 = Table('t3', metadata,
+        Table('t3', metadata,
             Column('id', Integer, primary_key=True),
-            Column('data', String(30), nullable=False),
-            )
+            Column('data', String(30), nullable=False))
 
         #manytomany
-        t1t3 = Table('t1t3', metadata,
+        Table('t1t3', metadata,
             Column('t1id', Integer, ForeignKey('t1.id'),nullable=False),
-            Column('t3id', Integer, ForeignKey('t3.id'),nullable=False),
-        )
+            Column('t3id', Integer, ForeignKey('t3.id'),nullable=False))
 
-        class T1(fixtures.Base):
+    def setup_classes(self):
+        class T1(_base.ComparableEntity):
             pass
 
-        class T2(fixtures.Base):
+        class T2(_base.ComparableEntity):
             pass
 
-        class T3(fixtures.Base):
+        class T3(_base.ComparableEntity):
             pass
 
-    def tearDown(self):
-        Session.remove()
-        super(RowSwitchTest, self).tearDown()
-
+    @testing.resolve_artifact_names
     def test_onetomany(self):
         mapper(T1, t1, properties={
             't2s':relation(T2, cascade="all, delete-orphan")
         })
         mapper(T2, t2)
 
-        sess = Session(autoflush=False)
+        sess = create_session()
 
         o1 = T1(data='some t1', id=1)
         o1.t2s.append(T2(data='some t2', id=1))
@@ -1937,13 +2082,14 @@ class RowSwitchTest(ORMTest):
         assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some other t1')]
         assert list(sess.execute(t2.select(), mapper=T1)) == [(3, 'third t2', 1), (4, 'fourth t2', 1)]
 
+    @testing.resolve_artifact_names
     def test_manytomany(self):
         mapper(T1, t1, properties={
             't3s':relation(T3, secondary=t1t3, cascade="all, delete-orphan")
         })
         mapper(T3, t3)
 
-        sess = Session(autoflush=False)
+        sess = create_session()
 
         o1 = T1(data='some t1', id=1)
         o1.t3s.append(T3(data='some t3', id=1))
@@ -1953,7 +2099,7 @@ class RowSwitchTest(ORMTest):
         sess.flush()
 
         assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
-        assert rowset(sess.execute(t1t3.select(), mapper=T1)) == set([(1,1), (1, 2)])
+        assert testing.rowset(sess.execute(t1t3.select(), mapper=T1)) == set([(1,1), (1, 2)])
         assert list(sess.execute(t3.select(), mapper=T1)) == [(1, 'some t3'), (2, 'some other t3')]
 
         o2 = T1(data='some other t1', id=1, t3s=[
@@ -1967,6 +2113,7 @@ class RowSwitchTest(ORMTest):
         assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some other t1')]
         assert list(sess.execute(t3.select(), mapper=T1)) == [(3, 'third t3'), (4, 'fourth t3')]
 
+    @testing.resolve_artifact_names
     def test_manytoone(self):
 
         mapper(T2, t2, properties={
@@ -1974,7 +2121,7 @@ class RowSwitchTest(ORMTest):
         })
         mapper(T1, t1)
 
-        sess = Session(autoflush=False)
+        sess = create_session()
 
         o1 = T2(data='some t2', id=1)
         o1.t1 = T1(data='some t1', id=1)
@@ -1994,18 +2141,15 @@ class RowSwitchTest(ORMTest):
         assert list(sess.execute(t1.select(), mapper=T1)) == [(2, 'some other t1')]
         assert list(sess.execute(t2.select(), mapper=T1)) == [(1, 'some other t2', 2)]
 
-class TransactionTest(ORMTest):
-    __unsupported_on__ = ('mysql', 'mssql')
+class TransactionTest(_base.MappedTest):
+    __requires__ = ('deferrable_constraints',)
 
+    __whitelist__ = ('sqlite',)
     # sqlite doesn't have deferrable constraints, but it allows them to
     # be specified.  it'll raise immediately post-INSERT, instead of at
     # COMMIT. either way, this test should pass.
 
     def define_tables(self, metadata):
-        global t1, T1, t2, T2
-
-        Session.remove()
-
         t1 = Table('t1', metadata,
             Column('id', Integer, primary_key=True))
 
@@ -2014,43 +2158,38 @@ class TransactionTest(ORMTest):
             Column('t1_id', Integer,
                    ForeignKey('t1.id', deferrable=True, initially='deferred')
                    ))
-
-        # deferred_constraint = \
-        #   DDL("ALTER TABLE t2 ADD CONSTRAINT t2_t1_id_fk FOREIGN KEY (t1_id) "
-        #       "REFERENCES t1 (id) DEFERRABLE INITIALLY DEFERRED")
-        # deferred_constraint.execute_at('after-create', t2)
-        # t1.create()
-        # t2.create()
-        # t2.append_constraint(ForeignKeyConstraint(['t1_id'], ['t1.id']))
-
-        class T1(fixtures.Base):
+    def setup_classes(self):
+        class T1(_base.ComparableEntity):
             pass
 
-        class T2(fixtures.Base):
+        class T2(_base.ComparableEntity):
             pass
 
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
         orm_mapper(T1, t1)
         orm_mapper(T2, t2)
 
+    @testing.resolve_artifact_names
     def test_close_transaction_on_commit_fail(self):
-        Session = sessionmaker(autoflush=False, autocommit=True)
-        sess = Session()
+        session = create_session(autocommit=True)
 
         # with a deferred constraint, this fails at COMMIT time instead
         # of at INSERT time.
-        sess.save(T2(t1_id=123))
+        session.add(T2(t1_id=123))
 
         try:
-            sess.flush()
+            session.flush()
             assert False
         except:
             # Flush needs to rollback also when commit fails
-            assert sess.transaction is None
+            assert session.transaction is None
 
         # todo: on 8.3 at least, the failed commit seems to close the cursor?
         # needs investigation.  leaving in the DDL above now to help verify
         # that the new deferrable support on FK isn't involved in this issue.
         if testing.against('postgres'):
             t1.bind.engine.dispose()
+
 if __name__ == "__main__":
     testenv.main()

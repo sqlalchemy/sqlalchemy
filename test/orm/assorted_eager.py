@@ -5,9 +5,9 @@ import random, datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
-from testlib import fixtures
+from orm import _base
 
-class EagerTest(TestBase, AssertsExecutionResults):
+class EagerTest(_base.ORMTest):
     def setUpAll(self):
         global dbmeta, owners, categories, tests, options, Owner, Category, Test, Option, false
         dbmeta = MetaData(testing.db)
@@ -22,20 +22,20 @@ class EagerTest(TestBase, AssertsExecutionResults):
         else:
             false = str(False)
 
-        owners = Table ( 'owners', dbmeta ,
-            Column ( 'id', Integer, primary_key=True, nullable=False ),
-            Column('data', String(30)) )
-        categories=Table( 'categories', dbmeta,
-            Column ( 'id', Integer,primary_key=True, nullable=False ),
-            Column ( 'name', VARCHAR(20), index=True ) )
-        tests = Table ( 'tests', dbmeta ,
-            Column ( 'id', Integer, primary_key=True, nullable=False ),
-            Column ( 'owner_id',Integer, ForeignKey('owners.id'), nullable=False,index=True ),
-            Column ( 'category_id', Integer, ForeignKey('categories.id'),nullable=False,index=True ))
-        options = Table ( 'options', dbmeta ,
-            Column ( 'test_id', Integer, ForeignKey ( 'tests.id' ), primary_key=True, nullable=False ),
-            Column ( 'owner_id', Integer, ForeignKey ( 'owners.id' ), primary_key=True, nullable=False ),
-            Column ( 'someoption', Boolean, PassiveDefault(false), nullable=False ) )
+        owners = Table('owners', dbmeta ,
+            Column('id', Integer, primary_key=True, nullable=False),
+            Column('data', String(30)))
+        categories=Table('categories', dbmeta,
+            Column('id', Integer,primary_key=True, nullable=False),
+            Column('name', VARCHAR(20), index=True))
+        tests = Table('tests', dbmeta ,
+            Column('id', Integer, primary_key=True, nullable=False ),
+            Column('owner_id',Integer, ForeignKey('owners.id'), nullable=False,index=True ),
+            Column('category_id', Integer, ForeignKey('categories.id'),nullable=False,index=True ))
+        options = Table('options', dbmeta ,
+            Column('test_id', Integer, ForeignKey('tests.id'), primary_key=True, nullable=False ),
+            Column('owner_id', Integer, ForeignKey('owners.id'), primary_key=True, nullable=False ),
+            Column('someoption', Boolean, PassiveDefault(false), nullable=False ) )
 
         dbmeta.create_all()
 
@@ -154,7 +154,7 @@ class EagerTest(TestBase, AssertsExecutionResults):
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
 
-    @testing.unsupported('sybase')
+    @testing.unsupported('sybase', 'FIXME: unknown, verify not fails_on')
     def test_withoutouterjoin_literal(self):
         s = create_session()
         q = s.query(Test).options(eagerload('category'))
@@ -175,7 +175,7 @@ class EagerTest(TestBase, AssertsExecutionResults):
         print result
         assert result == [u'3 Some Category']
 
-class EagerTest2(TestBase, AssertsExecutionResults):
+class EagerTest2(_base.ORMTest):
     def setUpAll(self):
         global metadata, middle, left, right
         metadata = MetaData(testing.db)
@@ -230,22 +230,22 @@ class EagerTest2(TestBase, AssertsExecutionResults):
         obj = session.query(Left).filter_by(tag='tag1').one()
         print obj.middle.right[0]
 
-class EagerTest3(ORMTest):
+class EagerTest3(_base.MappedTest):
     """test eager loading combined with nested SELECT statements, functions, and aggregates"""
     def define_tables(self, metadata):
         global datas, foo, stats
-        datas=Table( 'datas',metadata,
-         Column ( 'id', Integer, primary_key=True,nullable=False ),
-         Column ( 'a', Integer , nullable=False ) )
+        datas=Table('datas',metadata,
+         Column('id', Integer, primary_key=True,nullable=False ),
+         Column('a', Integer , nullable=False ) )
 
         foo=Table('foo',metadata,
-         Column ( 'data_id', Integer, ForeignKey('datas.id'),nullable=False,primary_key=True ),
-         Column ( 'bar', Integer ) )
+         Column('data_id', Integer, ForeignKey('datas.id'),nullable=False,primary_key=True ),
+         Column('bar', Integer))
 
-        stats=Table('stats',metadata,
-        Column ( 'id', Integer, primary_key=True, nullable=False ),
-        Column ( 'data_id', Integer, ForeignKey('datas.id')),
-        Column ( 'somedata', Integer, nullable=False ))
+        stats=Table('stats', metadata,
+        Column('id', Integer, primary_key=True, nullable=False ),
+        Column('data_id', Integer, ForeignKey('datas.id')),
+        Column('somedata', Integer, nullable=False ))
 
     @testing.fails_on('maxdb')
     def test_nesting_with_functions(self):
@@ -300,7 +300,7 @@ class EagerTest3(ORMTest):
         # algorithms and there are repeated 'somedata' values in the list)
         assert verify_result == arb_result
 
-class EagerTest4(ORMTest):
+class EagerTest4(_base.MappedTest):
     def define_tables(self, metadata):
         global departments, employees
         departments = Table('departments', metadata,
@@ -353,7 +353,7 @@ class EagerTest4(ORMTest):
         assert q.count() == 2
         assert q[0] is d2
 
-class EagerTest5(ORMTest):
+class EagerTest5(_base.MappedTest):
     """test the construction of AliasedClauses for the same eager load property but different
     parent mappers, due to inheritance"""
     def define_tables(self, metadata):
@@ -444,7 +444,7 @@ class EagerTest5(ORMTest):
         # eager load had to succeed
         assert len([c for c in d2.comments]) == 1
 
-class EagerTest6(ORMTest):
+class EagerTest6(_base.MappedTest):
     def define_tables(self, metadata):
         global designType, design, part, inheritedPart
         designType = Table('design_types', metadata,
@@ -502,7 +502,7 @@ class EagerTest6(ORMTest):
         x = sess.query(Design).get(1)
         x.inheritedParts
 
-class EagerTest7(ORMTest):
+class EagerTest7(_base.MappedTest):
     def define_tables(self, metadata):
         global companies_table, addresses_table, invoice_table, phones_table, items_table, ctx
         global Company, Address, Phone, Item,Invoice
@@ -707,7 +707,7 @@ class EagerTest7(ORMTest):
 
         assert repr(i.company) == repr(c), repr(i.company) +  " does not match " + repr(c)
 
-class EagerTest8(ORMTest):
+class EagerTest8(_base.MappedTest):
     def define_tables(self, metadata):
         global project_t, task_t, task_status_t, task_type_t, message_t, message_type_t
 
@@ -803,7 +803,7 @@ class EagerTest8(ORMTest):
         for t in session.query(cls.mapper).limit(10).offset(0).all():
             print t.id, t.title, t.props_cnt
 
-class EagerTest9(ORMTest):
+class EagerTest9(_base.MappedTest):
     """test the usage of query options to eagerly load specific paths.
 
     this relies upon the 'path' construct used by PropertyOption to relate
@@ -830,13 +830,13 @@ class EagerTest9(ORMTest):
 
     @testing.fails_on('maxdb')
     def test_eagerload_on_path(self):
-        class Account(fixtures.Base):
+        class Account(_base.BasicEntity):
             pass
 
-        class Transaction(fixtures.Base):
+        class Transaction(_base.BasicEntity):
             pass
 
-        class Entry(fixtures.Base):
+        class Entry(_base.BasicEntity):
             pass
 
         mapper(Account, accounts_table)

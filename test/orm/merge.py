@@ -1,25 +1,15 @@
 import testenv; testenv.configure_for_tests()
-from sqlalchemy import *
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.orm import *
-from sqlalchemy.orm import mapperlib, attributes
-from sqlalchemy.util import OrderedSet
-from testlib import *
-from testlib import fixtures
-from testlib.tables import *
-import testlib.tables as tables
+from testlib import sa, testing
+from testlib.sa.util import OrderedSet
+from testlib.sa.orm import mapper, relation, create_session
+from testlib.testing import eq_
+from orm import _base, _fixtures
 
-class MergeTest(TestBase, AssertsExecutionResults):
-    """tests session.merge() functionality"""
-    def setUpAll(self):
-        tables.create()
 
-    def tearDownAll(self):
-        tables.drop()
+class MergeTest(_fixtures.FixtureTest):
+    """Session..merge() functionality"""
 
-    def tearDown(self):
-        clear_mappers()
-        tables.delete()
+    run_inserts = None
 
     def on_load_tracker(self, cls, canary=None):
         if canary is None:
@@ -27,41 +17,37 @@ class MergeTest(TestBase, AssertsExecutionResults):
                 canary.called += 1
             canary.called = 0
 
-        manager = attributes.manager_of_class(cls)
+        manager = sa.orm.attributes.manager_of_class(cls)
         manager.events.add_listener('on_load', canary)
 
         return canary
 
+    @testing.resolve_artifact_names
     def test_transient_to_pending(self):
-        class User(fixtures.Base):
-            pass
         mapper(User, users)
         sess = create_session()
         on_load = self.on_load_tracker(User)
 
-        u = User(user_id=7, user_name='fred')
+        u = User(id=7, name='fred')
         assert on_load.called == 0
         u2 = sess.merge(u)
         assert on_load.called == 1
         assert u2 in sess
-        self.assertEquals(u2, User(user_id=7, user_name='fred'))
+        self.assertEquals(u2, User(id=7, name='fred'))
         sess.flush()
         sess.clear()
-        self.assertEquals(sess.query(User).first(), User(user_id=7, user_name='fred'))
+        self.assertEquals(sess.query(User).first(), User(id=7, name='fred'))
 
+    @testing.resolve_artifact_names
     def test_transient_to_pending_collection(self):
-        class User(fixtures.Base):
-            pass
-        class Address(fixtures.Base):
-            pass
         mapper(User, users, properties={'addresses':relation(Address, backref='user', collection_class=OrderedSet)})
         mapper(Address, addresses)
         on_load = self.on_load_tracker(User)
         self.on_load_tracker(Address, on_load)
 
-        u = User(user_id=7, user_name='fred', addresses=OrderedSet([
-            Address(address_id=1, email_address='fred1'),
-            Address(address_id=2, email_address='fred2'),
+        u = User(id=7, name='fred', addresses=OrderedSet([
+            Address(id=1, email_address='fred1'),
+            Address(id=2, email_address='fred2'),
             ]))
         assert on_load.called == 0
 
@@ -77,54 +63,50 @@ class MergeTest(TestBase, AssertsExecutionResults):
         sess.clear()
 
         self.assertEquals(sess.query(User).one(),
-            User(user_id=7, user_name='fred', addresses=OrderedSet([
-                Address(address_id=1, email_address='fred1'),
-                Address(address_id=2, email_address='fred2'),
+            User(id=7, name='fred', addresses=OrderedSet([
+                Address(id=1, email_address='fred1'),
+                Address(id=2, email_address='fred2'),
             ]))
         )
 
+    @testing.resolve_artifact_names
     def test_transient_to_persistent(self):
-        class User(fixtures.Base):
-            pass
         mapper(User, users)
         on_load = self.on_load_tracker(User)
 
         sess = create_session()
-        u = User(user_id=7, user_name='fred')
+        u = User(id=7, name='fred')
         sess.save(u)
         sess.flush()
         sess.clear()
 
         assert on_load.called == 0
 
-        _u2 = u2 = User(user_id=7, user_name='fred jones')
+        _u2 = u2 = User(id=7, name='fred jones')
         assert on_load.called == 0
         u2 = sess.merge(u2)
         assert u2 is not _u2
         assert on_load.called == 1
         sess.flush()
         sess.clear()
-        self.assertEquals(sess.query(User).first(), User(user_id=7, user_name='fred jones'))
+        self.assertEquals(sess.query(User).first(), User(id=7, name='fred jones'))
         assert on_load.called == 2
 
+    @testing.resolve_artifact_names
     def test_transient_to_persistent_collection(self):
-        class User(fixtures.Base):
-            pass
-        class Address(fixtures.Base):
-            pass
         mapper(User, users, properties={
-            'addresses':relation(Address, 
-                        backref='user', 
+            'addresses':relation(Address,
+                        backref='user',
                         collection_class=OrderedSet, cascade="all, delete-orphan")
         })
         mapper(Address, addresses)
-        
+
         on_load = self.on_load_tracker(User)
         self.on_load_tracker(Address, on_load)
 
-        u = User(user_id=7, user_name='fred', addresses=OrderedSet([
-            Address(address_id=1, email_address='fred1'),
-            Address(address_id=2, email_address='fred2'),
+        u = User(id=7, name='fred', addresses=OrderedSet([
+            Address(id=1, email_address='fred1'),
+            Address(id=2, email_address='fred2'),
         ]))
         sess = create_session()
         sess.save(u)
@@ -133,54 +115,51 @@ class MergeTest(TestBase, AssertsExecutionResults):
 
         assert on_load.called == 0
 
-        u = User(user_id=7, user_name='fred', addresses=OrderedSet([
-            Address(address_id=3, email_address='fred3'),
-            Address(address_id=4, email_address='fred4'),
+        u = User(id=7, name='fred', addresses=OrderedSet([
+            Address(id=3, email_address='fred3'),
+            Address(id=4, email_address='fred4'),
         ]))
 
         u = sess.merge(u)
-        
+
         assert on_load.called == 5, on_load.called    # 1. merges User object.  updates into session.
                                                       # 2.,3. merges Address ids 3 & 4, saves into session.
-                                                      # 4.,5. loads pre-existing elements in "addresses" collection, 
+                                                      # 4.,5. loads pre-existing elements in "addresses" collection,
                                                       # marks as deleted, Address ids 1 and 2.
         self.assertEquals(u,
-            User(user_id=7, user_name='fred', addresses=OrderedSet([
-                Address(address_id=3, email_address='fred3'),
-                Address(address_id=4, email_address='fred4'),
+            User(id=7, name='fred', addresses=OrderedSet([
+                Address(id=3, email_address='fred3'),
+                Address(id=4, email_address='fred4'),
             ]))
         )
         sess.flush()
         sess.clear()
         self.assertEquals(sess.query(User).one(),
-            User(user_id=7, user_name='fred', addresses=OrderedSet([
-                Address(address_id=3, email_address='fred3'),
-                Address(address_id=4, email_address='fred4'),
+            User(id=7, name='fred', addresses=OrderedSet([
+                Address(id=3, email_address='fred3'),
+                Address(id=4, email_address='fred4'),
             ]))
         )
 
+    @testing.resolve_artifact_names
     def test_detached_to_persistent_collection(self):
-        class User(fixtures.Base):
-            pass
-        class Address(fixtures.Base):
-            pass
         mapper(User, users, properties={'addresses':relation(Address, backref='user', collection_class=OrderedSet)})
         mapper(Address, addresses)
         on_load = self.on_load_tracker(User)
         self.on_load_tracker(Address, on_load)
 
-        a = Address(address_id=1, email_address='fred1')
-        u = User(user_id=7, user_name='fred', addresses=OrderedSet([
+        a = Address(id=1, email_address='fred1')
+        u = User(id=7, name='fred', addresses=OrderedSet([
             a,
-            Address(address_id=2, email_address='fred2'),
+            Address(id=2, email_address='fred2'),
         ]))
         sess = create_session()
         sess.save(u)
         sess.flush()
         sess.clear()
 
-        u.user_name='fred jones'
-        u.addresses.add(Address(address_id=3, email_address='fred3'))
+        u.name='fred jones'
+        u.addresses.add(Address(id=3, email_address='fred3'))
         u.addresses.remove(a)
 
         assert on_load.called == 0
@@ -190,19 +169,15 @@ class MergeTest(TestBase, AssertsExecutionResults):
         sess.clear()
 
         self.assertEquals(sess.query(User).first(),
-            User(user_id=7, user_name='fred jones', addresses=OrderedSet([
-                Address(address_id=2, email_address='fred2'),
-                Address(address_id=3, email_address='fred3'),
+            User(id=7, name='fred jones', addresses=OrderedSet([
+                Address(id=2, email_address='fred2'),
+                Address(id=3, email_address='fred3'),
             ]))
         )
 
+    @testing.resolve_artifact_names
     def test_unsaved_cascade(self):
         """test merge of a transient entity with two child transient entities, with a bidirectional relation."""
-
-        class User(fixtures.Base):
-            pass
-        class Address(fixtures.Base):
-            pass
 
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses), cascade="all", backref="user")
@@ -211,7 +186,7 @@ class MergeTest(TestBase, AssertsExecutionResults):
         self.on_load_tracker(Address, on_load)
         sess = create_session()
 
-        u = User(user_id=7, user_name='fred')
+        u = User(id=7, name='fred')
         a1 = Address(email_address='foo@bar.com')
         a2 = Address(email_address='hoho@bar.com')
         u.addresses.append(a1)
@@ -220,22 +195,18 @@ class MergeTest(TestBase, AssertsExecutionResults):
         u2 = sess.merge(u)
         assert on_load.called == 3
 
-        self.assertEquals(u, User(user_id=7, user_name='fred', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@bar.com')]))
-        self.assertEquals(u2, User(user_id=7, user_name='fred', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@bar.com')]))
+        self.assertEquals(u, User(id=7, name='fred', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@bar.com')]))
+        self.assertEquals(u2, User(id=7, name='fred', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@bar.com')]))
         sess.flush()
         sess.clear()
         u2 = sess.query(User).get(7)
-        self.assertEquals(u2, User(user_id=7, user_name='fred', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@bar.com')]))
+        self.assertEquals(u2, User(id=7, name='fred', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@bar.com')]))
         assert on_load.called == 6
 
 
+    @testing.resolve_artifact_names
     def test_attribute_cascade(self):
         """test merge of a persistent entity with two child persistent entities."""
-
-        class User(fixtures.Base):
-            pass
-        class Address(fixtures.Base):
-            pass
 
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses), backref='user')
@@ -246,7 +217,7 @@ class MergeTest(TestBase, AssertsExecutionResults):
         sess = create_session()
 
         # set up data and save
-        u = User(user_id=7, user_name='fred', addresses=[
+        u = User(id=7, name='fred', addresses=[
             Address(email_address='foo@bar.com'),
             Address(email_address = 'hoho@la.com')
         ])
@@ -256,10 +227,10 @@ class MergeTest(TestBase, AssertsExecutionResults):
         # assert data was saved
         sess2 = create_session()
         u2 = sess2.query(User).get(7)
-        self.assertEquals(u2, User(user_id=7, user_name='fred', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@la.com')]))
+        self.assertEquals(u2, User(id=7, name='fred', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@la.com')]))
 
         # make local changes to data
-        u.user_name = 'fred2'
+        u.name = 'fred2'
         u.addresses[1].email_address = 'hoho@lalala.com'
 
         assert on_load.called == 3
@@ -270,15 +241,15 @@ class MergeTest(TestBase, AssertsExecutionResults):
         assert on_load.called == 6
 
         # ensure local changes are pending
-        self.assertEquals(u3, User(user_id=7, user_name='fred2', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@lalala.com')]))
-        
+        self.assertEquals(u3, User(id=7, name='fred2', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@lalala.com')]))
+
         # save merged data
         sess3.flush()
 
         # assert modified/merged data was saved
         sess.clear()
         u = sess.query(User).get(7)
-        self.assertEquals(u, User(user_id=7, user_name='fred2', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@lalala.com')]))
+        self.assertEquals(u, User(id=7, name='fred2', addresses=[Address(email_address='foo@bar.com'), Address(email_address='hoho@lalala.com')]))
         assert on_load.called == 9
 
         # merge persistent object into another session
@@ -318,61 +289,95 @@ class MergeTest(TestBase, AssertsExecutionResults):
         assert on_load.called == 18
 
         sess5 = create_session()
-        u2 = sess5.query(User).get(u.user_id)
-        assert u2.user_name == 'fred2'
+        u2 = sess5.query(User).get(u.id)
+        assert u2.name == 'fred2'
         assert u2.addresses[1].email_address == 'afafds'
         assert on_load.called == 21
 
+    @testing.resolve_artifact_names
     def test_one_to_many_cascade(self):
 
-        mapper(Order, orders, properties={
-            'items':relation(mapper(Item, orderitems))
-        })
-
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses)),
-            'orders':relation(Order, backref='customer')
-        })
+            'addresses':relation(mapper(Address, addresses))})
+
         on_load = self.on_load_tracker(User)
         self.on_load_tracker(Address, on_load)
-        self.on_load_tracker(Order, on_load)
 
         sess = create_session()
-        u = User()
-        u.user_name='fred'
-        o = Order()
-        i1 = Item()
-        i1.item_name='item 1'
-        i2 = Item()
-        i2.item_name = 'item 2'
-        o.description = 'order description'
-        o.items.append(i1)
-        o.items.append(i2)
-        u.orders.append(o)
+        u = User(name='fred')
+        a1 = Address(email_address='foo@bar')
+        a2 = Address(email_address='foo@quux')
+        u.addresses.extend([a1, a2])
 
         sess.save(u)
         sess.flush()
 
-        assert on_load.called == 0
+        eq_(on_load.called, 0)
 
         sess2 = create_session()
-        u2 = sess2.query(User).get(u.user_id)
-        assert on_load.called == 1
+        u2 = sess2.query(User).get(u.id)
+        eq_(on_load.called, 1)
 
-        u.orders[0].items[1].item_name = 'item 2 modified'
+        u.addresses[1].email_address = 'addr 2 modified'
         sess2.merge(u)
-        assert u2.orders[0].items[1].item_name == 'item 2 modified'
-        assert on_load.called == 2
+        eq_(u2.addresses[1].email_address, 'addr 2 modified')
+        eq_(on_load.called, 3)
 
         sess3 = create_session()
-        o2 = sess3.query(Order).get(o.order_id)
-        assert on_load.called == 3
+        u3 = sess3.query(User).get(u.id)
+        eq_(on_load.called, 4)
 
-        o.customer.user_name = 'also fred'
+        u.name = 'also fred'
+        sess3.merge(u)
+        eq_(on_load.called, 6)
+        eq_(u3.name, 'also fred')
+
+    @testing.resolve_artifact_names
+    def test_many_to_many_cascade(self):
+
+        mapper(Order, orders, properties={
+            'items':relation(mapper(Item, items), secondary=order_items)})
+
+        on_load = self.on_load_tracker(Order)
+        self.on_load_tracker(Item, on_load)
+
+        sess = create_session()
+
+        i1 = Item()
+        i1.description='item 1'
+
+        i2 = Item()
+        i2.description = 'item 2'
+
+        o = Order()
+        o.description = 'order description'
+        o.items.append(i1)
+        o.items.append(i2)
+
+        sess.save(o)
+        sess.flush()
+
+        eq_(on_load.called, 0)
+
+        sess2 = create_session()
+        o2 = sess2.query(Order).get(o.id)
+        eq_(on_load.called, 1)
+
+        o.items[1].description = 'item 2 modified'
+        sess2.merge(o)
+        eq_(o2.items[1].description, 'item 2 modified')
+        eq_(on_load.called,  3)
+
+        sess3 = create_session()
+        o3 = sess3.query(Order).get(o.id)
+        eq_( on_load.called, 4)
+
+        o.description = 'desc modified'
         sess3.merge(o)
-        assert on_load.called == 4
-        assert o2.customer.user_name == 'also fred'
+        eq_(on_load.called, 6)
+        eq_(o3.description, 'desc modified')
 
+    @testing.resolve_artifact_names
     def test_one_to_one_cascade(self):
 
         mapper(User, users, properties={
@@ -383,8 +388,8 @@ class MergeTest(TestBase, AssertsExecutionResults):
         sess = create_session()
 
         u = User()
-        u.user_id = 7
-        u.user_name = "fred"
+        u.id = 7
+        u.name = "fred"
         a1 = Address()
         a1.email_address='foo@bar.com'
         u.address = a1
@@ -397,7 +402,7 @@ class MergeTest(TestBase, AssertsExecutionResults):
         sess2 = create_session()
         u2 = sess2.query(User).get(7)
         assert on_load.called == 1
-        u2.user_name = 'fred2'
+        u2.name = 'fred2'
         u2.address.email_address = 'hoho@lalala.com'
         assert on_load.called == 2
 
@@ -405,37 +410,35 @@ class MergeTest(TestBase, AssertsExecutionResults):
         assert on_load.called == 2
         assert u3 is u
 
+    @testing.resolve_artifact_names
     def test_transient_dontload(self):
         mapper(User, users)
 
         sess = create_session()
         u = User()
-        self.assertRaisesMessage(sa_exc.InvalidRequestError, "dont_load=True option does not support", sess.merge, u, dont_load=True)
+        self.assertRaisesMessage(sa.exc.InvalidRequestError, "dont_load=True option does not support", sess.merge, u, dont_load=True)
 
 
+    @testing.resolve_artifact_names
     def test_dontload_with_backrefs(self):
         """test that dontload populates relations in both directions without requiring a load"""
-        
-        class User(fixtures.Base):
-            pass
-        class Address(fixtures.Base):
-            pass
+
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses), backref='user')
         })
-        
-        u = User(user_id=7, user_name='fred', addresses=[Address(email_address='ad1'), Address(email_address='ad2')])
+
+        u = User(id=7, name='fred', addresses=[Address(email_address='ad1'), Address(email_address='ad2')])
         sess = create_session()
         sess.save(u)
         sess.flush()
         sess.close()
         assert 'user' in u.addresses[1].__dict__
-        
+
         sess = create_session()
         u2 = sess.merge(u, dont_load=True)
         assert 'user' in u2.addresses[1].__dict__
-        self.assertEquals(u2.addresses[1].user, User(user_id=7, user_name='fred'))
-        
+        self.assertEquals(u2.addresses[1].user, User(id=7, name='fred'))
+
         sess.expire(u2.addresses[1], ['user'])
         assert 'user' not in u2.addresses[1].__dict__
         sess.close()
@@ -443,9 +446,10 @@ class MergeTest(TestBase, AssertsExecutionResults):
         sess = create_session()
         u = sess.merge(u2, dont_load=True)
         assert 'user' not in u.addresses[1].__dict__
-        self.assertEquals(u.addresses[1].user, User(user_id=7, user_name='fred'))
-        
-        
+        self.assertEquals(u.addresses[1].user, User(id=7, name='fred'))
+
+
+    @testing.resolve_artifact_names
     def test_dontload_with_eager(self):
         """this test illustrates that with dont_load=True, we can't just
         copy the committed_state of the merged instance over; since it references collection objects
@@ -460,8 +464,8 @@ class MergeTest(TestBase, AssertsExecutionResults):
         })
         sess = create_session()
         u = User()
-        u.user_id = 7
-        u.user_name = "fred"
+        u.id = 7
+        u.name = "fred"
         a1 = Address()
         a1.email_address='foo@bar.com'
         u.addresses.append(a1)
@@ -470,7 +474,7 @@ class MergeTest(TestBase, AssertsExecutionResults):
         sess.flush()
 
         sess2 = create_session()
-        u2 = sess2.query(User).options(eagerload('addresses')).get(7)
+        u2 = sess2.query(User).options(sa.orm.eagerload('addresses')).get(7)
 
         sess3 = create_session()
         u3 = sess3.merge(u2, dont_load=True)
@@ -478,6 +482,7 @@ class MergeTest(TestBase, AssertsExecutionResults):
             sess3.flush()
         self.assert_sql_count(testing.db, go, 0)
 
+    @testing.resolve_artifact_names
     def test_dont_load_disallows_dirty(self):
         """dont_load doesnt support 'dirty' objects right now (see test_dont_load_with_eager()).
         Therefore lets assert it."""
@@ -485,17 +490,17 @@ class MergeTest(TestBase, AssertsExecutionResults):
         mapper(User, users)
         sess = create_session()
         u = User()
-        u.user_id = 7
-        u.user_name = "fred"
+        u.id = 7
+        u.name = "fred"
         sess.save(u)
         sess.flush()
 
-        u.user_name = 'ed'
+        u.name = 'ed'
         sess2 = create_session()
         try:
             sess2.merge(u, dont_load=True)
             assert False
-        except sa_exc.InvalidRequestError, e:
+        except sa.exc.InvalidRequestError, e:
             assert "merge() with dont_load=True option does not support objects marked as 'dirty'.  flush() all changes on mapped instances before merging with dont_load=True." in str(e)
 
         u2 = sess2.query(User).get(7)
@@ -507,6 +512,7 @@ class MergeTest(TestBase, AssertsExecutionResults):
             sess3.flush()
         self.assert_sql_count(testing.db, go, 0)
 
+    @testing.resolve_artifact_names
     def test_dont_load_sets_entityname(self):
         """test that a dont_load-merged entity has entity_name set, has_mapper() passes, and lazyloads work"""
         mapper(User, users, properties={
@@ -514,8 +520,8 @@ class MergeTest(TestBase, AssertsExecutionResults):
         })
         sess = create_session()
         u = User()
-        u.user_id = 7
-        u.user_name = "fred"
+        u.id = 7
+        u.name = "fred"
         a1 = Address()
         a1.email_address='foo@bar.com'
         u.addresses.append(a1)
@@ -531,22 +537,23 @@ class MergeTest(TestBase, AssertsExecutionResults):
         u2 = sess2.merge(u, dont_load=True)
         assert not sess2.dirty
         # assert merged instance has a mapper and lazy load proceeds
-        state = attributes.instance_state(u2)
-        assert state.entity_name is not attributes.NO_ENTITY_NAME
-        assert mapperlib.has_mapper(u2)
+        state = sa.orm.attributes.instance_state(u2)
+        assert state.entity_name is not sa.orm.attributes.NO_ENTITY_NAME
+        assert sa.orm.mapperlib.has_mapper(u2)
         def go():
             assert u2.addresses != []
             assert len(u2.addresses) == 1
         self.assert_sql_count(testing.db, go, 1)
 
+    @testing.resolve_artifact_names
     def test_dont_load_sets_backrefs(self):
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses),backref='user')
         })
         sess = create_session()
         u = User()
-        u.user_id = 7
-        u.user_name = "fred"
+        u.id = 7
+        u.name = "fred"
         a1 = Address()
         a1.email_address='foo@bar.com'
         u.addresses.append(a1)
@@ -563,6 +570,7 @@ class MergeTest(TestBase, AssertsExecutionResults):
             assert u2.addresses[0].user is u2
         self.assert_sql_count(testing.db, go, 0)
 
+    @testing.resolve_artifact_names
     def test_dont_load_preserves_parents(self):
         """test that merge with dont_load does not trigger a 'delete-orphan' operation.
 
@@ -579,8 +587,8 @@ class MergeTest(TestBase, AssertsExecutionResults):
         })
         sess = create_session()
         u = User()
-        u.user_id = 7
-        u.user_name = "fred"
+        u.id = 7
+        u.name = "fred"
         a1 = Address()
         a1.email_address='foo@bar.com'
         u.addresses.append(a1)
@@ -594,10 +602,11 @@ class MergeTest(TestBase, AssertsExecutionResults):
         assert not sess2.dirty
         a2 = u2.addresses[0]
         a2.email_address='somenewaddress'
-        assert not object_mapper(a2)._is_orphan(attributes.instance_state(a2))
+        assert not sa.orm.object_mapper(a2)._is_orphan(
+            sa.orm.attributes.instance_state(a2))
         sess2.flush()
         sess2.clear()
-        assert sess2.query(User).get(u2.user_id).addresses[0].email_address == 'somenewaddress'
+        assert sess2.query(User).get(u2.id).addresses[0].email_address == 'somenewaddress'
 
         # this use case is not supported; this is with a pending Address on the pre-merged
         # object, and we currently dont support 'dirty' objects being merged with dont_load=True.
@@ -615,11 +624,12 @@ class MergeTest(TestBase, AssertsExecutionResults):
             # if dont_load is changed to support dirty objects, this code needs to pass
             a2 = u2.addresses[0]
             a2.email_address='somenewaddress'
-            assert not object_mapper(a2)._is_orphan(attributes.instance_state(a2))
+            assert not sa.orm.object_mapper(a2)._is_orphan(
+                sa.orm.attributes.instance_state(a2))
             sess2.flush()
             sess2.clear()
-            assert sess2.query(User).get(u2.user_id).addresses[0].email_address == 'somenewaddress'
-        except sa_exc.InvalidRequestError, e:
+            assert sess2.query(User).get(u2.id).addresses[0].email_address == 'somenewaddress'
+        except sa.exc.InvalidRequestError, e:
             assert "dont_load=True option does not support" in str(e)
 
 

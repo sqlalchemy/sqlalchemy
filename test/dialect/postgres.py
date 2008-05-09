@@ -61,7 +61,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 class ReturningTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
 
-    @testing.exclude('postgres', '<', (8, 2))
+    @testing.exclude('postgres', '<', (8, 2), '8.3+ feature')
     def test_update_returning(self):
         meta = MetaData(testing.db)
         table = Table('tables', meta,
@@ -81,7 +81,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         finally:
             table.drop()
 
-    @testing.exclude('postgres', '<', (8, 2))
+    @testing.exclude('postgres', '<', (8, 2), '8.3+ feature')
     def test_insert_returning(self):
         meta = MetaData(testing.db)
         table = Table('tables', meta,

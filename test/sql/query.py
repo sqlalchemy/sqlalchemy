@@ -140,6 +140,7 @@ class QueryTest(TestBase):
             l.append(row)
         self.assert_(len(l) == 3)
 
+    @testing.requires.subqueries
     def test_anonymous_rows(self):
         users.insert().execute(
             {'user_id':7, 'user_name':'jack'},
@@ -294,7 +295,7 @@ class QueryTest(TestBase):
         r = users.select(limit=3, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
 
-    @testing.unsupported('mssql')
+    @testing.unsupported('mssql', 'FIXME: guessing')
     @testing.fails_on('maxdb')
     def test_select_limit_offset(self):
         users.insert().execute(user_id=1, user_name='john')
@@ -309,7 +310,7 @@ class QueryTest(TestBase):
         r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
 
-    @testing.exclude('mysql', '<', (5, 0, 37))
+    @testing.exclude('mysql', '<', (5, 0, 37), 'database bug')
     def test_scalar_select(self):
         """test that scalar subqueries with labels get their type propigated to the result set."""
         # mysql and/or mysqldb has a bug here, type isn't propagated for scalar
@@ -430,6 +431,7 @@ class QueryTest(TestBase):
             assert str(e) == "Ambiguous column name 'user_id' in result set! try 'use_labels' option on select statement." or \
                    str(e) == "Ambiguous column name 'USER_ID' in result set! try 'use_labels' option on select statement."
 
+    @testing.requires.subqueries
     def test_column_label_targeting(self):
         users.insert().execute(user_id=7, user_name='ed')
 
@@ -489,7 +491,9 @@ class QueryTest(TestBase):
         self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
 
-    @testing.unsupported('oracle', 'firebird', 'maxdb')
+    @testing.unsupported('oracle', 'FIXME: unknown, varify not fails_on()')
+    @testing.unsupported('firebird', 'FIXME: unknown, verify not fails_on()')
+    @testing.unsupported('maxdb', 'FIXME: unknown, verify not fails_on()')
     def test_column_accessor_shadow(self):
         meta = MetaData(testing.db)
         shadowed = Table('test_shadowed', meta,
@@ -617,6 +621,7 @@ class CompoundTest(TestBase):
     def _fetchall_sorted(self, executed):
         return sorted([tuple(row) for row in executed.fetchall()])
 
+    @testing.requires.subqueries
     def test_union(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
@@ -648,6 +653,7 @@ class CompoundTest(TestBase):
         self.assertEquals(u.execute().fetchall(), wanted)
 
     @testing.fails_on('maxdb')
+    @testing.requires.subqueries
     def test_union_ordered_alias(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
@@ -661,7 +667,9 @@ class CompoundTest(TestBase):
                   ('ccc', 'aaa')]
         self.assertEquals(u.alias('bar').select().execute().fetchall(), wanted)
 
-    @testing.unsupported('sqlite', 'mysql', 'oracle')
+    @testing.unsupported('oracle', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('mysql')
+    @testing.fails_on('sqlite')
     def test_union_all(self):
         e = union_all(
             select([t1.c.col3]),
@@ -678,7 +686,9 @@ class CompoundTest(TestBase):
         found2 = self._fetchall_sorted(e.alias('foo').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.unsupported('firebird', 'mysql', 'sybase')
+    @testing.unsupported('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.unsupported('sybase', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('mysql')
     def test_intersect(self):
         i = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -693,7 +703,10 @@ class CompoundTest(TestBase):
         found2 = self._fetchall_sorted(i.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.unsupported('firebird', 'mysql', 'oracle', 'sybase')
+    @testing.unsupported('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.unsupported('oracle', 'FIXME: unknown, verify not fails_on')
+    @testing.unsupported('sybase', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('mysql')
     def test_except_style1(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -707,7 +720,10 @@ class CompoundTest(TestBase):
         found = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found, wanted)
 
-    @testing.unsupported('firebird', 'mysql', 'oracle', 'sybase')
+    @testing.unsupported('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.unsupported('oracle', 'FIXME: unknown, verify not fails_on')
+    @testing.unsupported('sybase', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('mysql')
     def test_except_style2(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -724,7 +740,11 @@ class CompoundTest(TestBase):
         found2 = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.unsupported('firebird', 'mysql', 'oracle', 'sqlite', 'sybase')
+    @testing.unsupported('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.unsupported('oracle', 'FIXME: unknown, verify not fails_on')
+    @testing.unsupported('sybase', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('mysql')
+    @testing.fails_on('sqlite')
     def test_except_style3(self):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
         e = except_(
@@ -738,7 +758,8 @@ class CompoundTest(TestBase):
         self.assertEquals(e.alias('foo').select().execute().fetchall(),
                           [('ccc',)])
 
-    @testing.unsupported('firebird', 'mysql')
+    @testing.unsupported('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('mysql')
     def test_composite(self):
         u = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -753,7 +774,8 @@ class CompoundTest(TestBase):
 
         self.assertEquals(found, wanted)
 
-    @testing.unsupported('firebird', 'mysql')
+    @testing.unsupported('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('mysql')
     def test_composite_alias(self):
         ua = intersect(
             select([t2.c.col3, t2.c.col4]),

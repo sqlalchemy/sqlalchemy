@@ -3,15 +3,16 @@ from sqlalchemy import *
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from testlib import *
+from orm import _base
 
 
-class CompileTest(TestBase, AssertsExecutionResults):
+class CompileTest(_base.ORMTest):
     """test various mapper compilation scenarios"""
+
     def tearDown(self):
         clear_mappers()
 
     def testone(self):
-        global metadata, order, employee, product, tax, orderproduct
         metadata = MetaData(testing.db)
 
         order = Table('orders', metadata,
@@ -66,13 +67,13 @@ class CompileTest(TestBase, AssertsExecutionResults):
 
         mapper(OrderProduct, orderproduct)
 
-        # this requires that the compilation of order_mapper's "surrogate mapper" occur after
-        # the initial setup of MapperProperty objects on the mapper.
+        # this requires that the compilation of order_mapper's "surrogate
+        # mapper" occur after the initial setup of MapperProperty objects on
+        # the mapper.
         class_mapper(Product).compile()
 
     def testtwo(self):
         """test that conflicting backrefs raises an exception"""
-        global metadata, order, employee, product, tax, orderproduct
         metadata = MetaData(testing.db)
 
         order = Table('orders', metadata,
@@ -179,6 +180,7 @@ class CompileTest(TestBase, AssertsExecutionResults):
             assert False
         except sa_exc.ArgumentError, e:
             assert str(e).index("Error creating backref") > -1
+
 
 if __name__ == '__main__':
     testenv.main()

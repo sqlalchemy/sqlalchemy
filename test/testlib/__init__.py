@@ -6,7 +6,6 @@ Load after sqlalchemy imports to use instrumented stand-ins like Table.
 import sys
 import testlib.config
 from testlib.schema import Table, Column
-from testlib.orm import mapper
 import testlib.testing as testing
 from testlib.testing import \
      AssertsCompiledSQL, \
@@ -15,6 +14,7 @@ from testlib.testing import \
      ORMTest, \
      TestBase, \
      rowset
+from testlib.orm import mapper
 import testlib.profiling as profiling
 import testlib.engines as engines
 import testlib.requires as requires

@@ -9,7 +9,7 @@ from sqlalchemy.orm import relation
 
 from testlib.testing import eq_, ne_
 from testlib.compat import _function_named
-from testlib import TestBase
+from orm import _base
 
 
 def modifies_instrumentation_finders(fn):
@@ -35,7 +35,7 @@ def with_lookup_strategy(strategy):
     return decorate
 
 
-class InitTest(TestBase):
+class InitTest(_base.ORMTest):
     def fixture(self):
         return Table('t', MetaData(),
                      Column('id', Integer, primary_key=True),
@@ -408,7 +408,7 @@ class InitTest(TestBase):
         eq_(inits, [(C, 'on_init', C)])
 
 
-class MapperInitTest(TestBase):
+class MapperInitTest(_base.ORMTest):
 
     def fixture(self):
         return Table('t', MetaData(),
@@ -443,7 +443,7 @@ class MapperInitTest(TestBase):
         self.assertRaises((AttributeError, TypeError),
                           attributes.instance_state, cobj)
 
-class InstrumentationCollisionTest(TestBase):
+class InstrumentationCollisionTest(_base.ORMTest):
     def test_none(self):
         class A(object): pass
         attributes.register_class(A)
@@ -513,7 +513,7 @@ class InstrumentationCollisionTest(TestBase):
         self.assertRaises(TypeError, attributes.register_class, B1)
 
 
-class OnLoadTest(TestBase):
+class OnLoadTest(_base.ORMTest):
     """Check that Events.on_load is not hit in regular attributes operations."""
 
     def test_basic(self):
@@ -537,7 +537,7 @@ class OnLoadTest(TestBase):
             del A
 
 
-class ExtendedEventsTest(TestBase):
+class ExtendedEventsTest(_base.ORMTest):
     """Allow custom Events implementations."""
 
     @modifies_instrumentation_finders
@@ -556,7 +556,7 @@ class ExtendedEventsTest(TestBase):
         assert isinstance(manager.events, MyEvents)
 
 
-class NativeInstrumentationTest(TestBase):
+class NativeInstrumentationTest(_base.ORMTest):
     @with_lookup_strategy(util.symbol('native'))
     def test_register_reserved_attribute(self):
         class T(object): pass
@@ -595,7 +595,7 @@ class NativeInstrumentationTest(TestBase):
         self.assertRaises(KeyError, mapper, T, t)
 
 
-class MiscTest(TestBase):
+class MiscTest(_base.ORMTest):
     """Seems basic, but not directly covered elsewhere!"""
 
     def test_compileonattr(self):
@@ -696,7 +696,7 @@ class MiscTest(TestBase):
         a = A()
         assert not a.bs
 
-class FinderTest(TestBase):
+class FinderTest(_base.ORMTest):
     def test_standard(self):
         class A(object): pass
 

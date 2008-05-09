@@ -1,6 +1,10 @@
 import inspect, re
-from testlib import config
+from testlib import config, testing
+from testlib.compat import sorted
+
+sa = None
 orm = None
+
 
 __all__ = 'mapper',
 

@@ -6,8 +6,8 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribute, is_instrumented
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import InstrumentationManager
-
 from testlib import *
+from orm import _base
 
 class MyTypesManager(InstrumentationManager):
 
@@ -96,7 +96,7 @@ class MyClass(object):
         else:
             del self._goofy_dict[key]
 
-class UserDefinedExtensionTest(TestBase):
+class UserDefinedExtensionTest(_base.ORMTest):
     def tearDownAll(self):
         clear_mappers()
         attributes._install_lookup_strategy(util.symbol('native'))

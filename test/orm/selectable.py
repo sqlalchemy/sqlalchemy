@@ -1,52 +1,52 @@
-"""all tests involving generic mapping to Select statements"""
-
+"""Generic mapping to Select statements"""
 import testenv; testenv.configure_for_tests()
-from sqlalchemy import *
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.orm import *
-from testlib import *
-from testlib.fixtures import *
-from query import QueryTest
+from testlib import sa, testing
+from testlib.sa import Table, Column, String, Integer, select
+from testlib.sa.orm import mapper, create_session
+from testlib.testing import eq_
+from orm import _base
 
-class SelectableNoFromsTest(ORMTest):
+
+# TODO: more tests mapping to selects
+
+class SelectableNoFromsTest(_base.MappedTest):
     def define_tables(self, metadata):
-        global common_table
-        common_table = Table('common', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', Integer),
-            Column('extra', String(45)),
-        )
+        Table('common', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('data', Integer),
+              Column('extra', String(45)))
 
-    def test_no_tables(self):
-        class Subset(object):
+    def setup_classes(self):
+        class Subset(_base.ComparableEntity):
             pass
+
+    @testing.resolve_artifact_names
+    def test_no_tables(self):
+
         selectable = select(["x", "y", "z"])
-        self.assertRaisesMessage(sa_exc.InvalidRequestError, "Could not find any Table objects", mapper, Subset, selectable)
+        self.assertRaisesMessage(sa.exc.InvalidRequestError,
+                                 "Could not find any Table objects",
+                                 mapper, Subset, selectable)
 
     @testing.emits_warning('.*creating an Alias.*')
+    @testing.resolve_artifact_names
     def test_basic(self):
-        class Subset(Base):
-            pass
-
-        subset_select = select([common_table.c.id, common_table.c.data])
+        subset_select = select([common.c.id, common.c.data])
         subset_mapper = mapper(Subset, subset_select)
 
         sess = create_session(bind=testing.db)
-        l = Subset()
-        l.data = 1
-        sess.save(l)
+        sess.add(Subset(data=1))
         sess.flush()
         sess.clear()
 
-        self.assertEquals(sess.query(Subset).all(), [Subset(data=1)])
-        self.assertEquals(sess.query(Subset).filter(Subset.data==1).one(), Subset(data=1))
-        self.assertEquals(sess.query(Subset).filter(Subset.data!=1).first(), None)
-        
-        subset_select = class_mapper(Subset).mapped_table
-        self.assertEquals(sess.query(Subset).filter(subset_select.c.data==1).one(), Subset(data=1))
+        eq_(sess.query(Subset).all(), [Subset(data=1)])
+        eq_(sess.query(Subset).filter(Subset.data==1).one(), Subset(data=1))
+        eq_(sess.query(Subset).filter(Subset.data!=1).first(), None)
 
-        
-    # TODO: more tests mapping to selects
+        subset_select = sa.orm.class_mapper(Subset).mapped_table
+        eq_(sess.query(Subset).filter(subset_select.c.data==1).one(),
+            Subset(data=1))
+
 
 if __name__ == '__main__':
     testenv.main()
