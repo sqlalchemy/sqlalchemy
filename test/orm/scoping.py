@@ -34,7 +34,7 @@ class ScopedSessionTest(ORMTest):
         s = SomeObject(id=1, data="hello")
         sso = SomeOtherObject()
         s.options.append(sso)
-        Session.save(s)
+        Session.add(s)
         Session.commit()
         Session.refresh(sso)
         Session.remove()
