@@ -1,6 +1,6 @@
-import itertools, new, sys, warnings
+import new
 
-__all__ = 'set', 'frozenset', 'sorted', '_function_named', 'deque'
+__all__ = 'set', 'frozenset', 'sorted', '_function_named', 'deque', 'reversed'
 
 try:
     set = set
@@ -69,6 +69,16 @@ except NameError:
         return l
 
 try:
+    reversed = reversed
+except NameError:
+    def reversed(seq):
+        i = len(seq) - 1
+        while  i >= 0:
+            yield seq[i]
+            i -= 1
+        raise StopIteration()
+
+try:
     from collections import deque
 except ImportError:
     class deque(list):
@@ -77,9 +87,7 @@ except ImportError:
         def popleft(self):
             return self.pop(0)
         def extendleft(self, iterable):
-            items = list(iterable)
-            items.reverse()
-            for x in items:
+            for x in reversed(list(iterable)):
                 self.insert(0, x)
 
 def _function_named(fn, newname):

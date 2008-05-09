@@ -18,7 +18,7 @@ SQLAlchemy connection pool.
 
 import weakref, time
 
-from sqlalchemy import exceptions, logging
+from sqlalchemy import exc, log
 from sqlalchemy import queue as Queue
 from sqlalchemy.util import thread, threading, pickle, as_interface
 
@@ -118,7 +118,7 @@ class Pool(object):
     """
     def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=True,
                  reset_on_return=True, listeners=None):
-        self.logger = logging.instance_logger(self, echoflag=echo)
+        self.logger = log.instance_logger(self, echoflag=echo)
         # the WeakValueDictionary works more nicely than a regular dict of
         # weakrefs.  the latter can pile up dead reference objects which don't
         # get cleaned out.  WVD adds from 1-6 method calls to a checkout
@@ -342,7 +342,7 @@ class _ConnectionFairy(object):
             return self._connection_record.info
         except AttributeError:
             if self.connection is None:
-                raise exceptions.InvalidRequestError("This connection is closed")
+                raise exc.InvalidRequestError("This connection is closed")
             try:
                 return self._detached_info
             except AttributeError:
@@ -359,7 +359,7 @@ class _ConnectionFairy(object):
         """
 
         if self.connection is None:
-            raise exceptions.InvalidRequestError("This connection is closed")
+            raise exc.InvalidRequestError("This connection is closed")
         if self._connection_record is not None:
             self._connection_record.invalidate(e=e)
         self.connection = None
@@ -378,8 +378,8 @@ class _ConnectionFairy(object):
 
     def checkout(self):
         if self.connection is None:
-            raise exceptions.InvalidRequestError("This connection is closed")
-        self.__counter +=1
+            raise exc.InvalidRequestError("This connection is closed")
+        self.__counter += 1
 
         if not self._pool._on_checkout or self.__counter != 1:
             return self
@@ -391,7 +391,7 @@ class _ConnectionFairy(object):
                 for l in self._pool._on_checkout:
                     l.checkout(self.connection, self._connection_record, self)
                 return self
-            except exceptions.DisconnectionError, e:
+            except exc.DisconnectionError, e:
                 if self._pool._should_log_info:
                     self._pool.log(
                     "Disconnection detected on checkout: %s" % e)
@@ -402,7 +402,7 @@ class _ConnectionFairy(object):
         if self._pool._should_log_info:
             self._pool.log("Reconnection attempts exhausted on checkout")
         self.invalidate()
-        raise exceptions.InvalidRequestError("This connection is closed")
+        raise exc.InvalidRequestError("This connection is closed")
 
     def detach(self):
         """Separate this connection from its Pool.
@@ -426,7 +426,7 @@ class _ConnectionFairy(object):
             self._connection_record = None
 
     def close(self):
-        self.__counter -=1
+        self.__counter -= 1
         if self.__counter == 0:
             self._close()
 
@@ -601,7 +601,7 @@ class QueuePool(Pool):
                 if not wait:
                     return self.do_get()
                 else:
-                    raise exceptions.TimeoutError("QueuePool limit of size %d overflow %d reached, connection timed out, timeout %d" % (self.size(), self.overflow(), self._timeout))
+                    raise exc.TimeoutError("QueuePool limit of size %d overflow %d reached, connection timed out, timeout %d" % (self.size(), self.overflow(), self._timeout))
 
             if self._overflow_lock is not None:
                 self._overflow_lock.acquire()
@@ -658,10 +658,10 @@ class NullPool(Pool):
         return "NullPool"
 
     def do_return_conn(self, conn):
-       conn.close()
+        conn.close()
 
     def do_return_invalid(self, conn):
-       pass
+        pass
 
     def do_get(self):
         return self.create_connection()

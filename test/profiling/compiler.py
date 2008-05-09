@@ -15,11 +15,11 @@ class CompileTest(TestBase, AssertsExecutionResults):
             Column('c1', Integer, primary_key=True),
             Column('c2', String(30)))
 
-    @profiling.function_call_count(74, {'2.3': 44, '2.4': 42})
+    @profiling.function_call_count(67, {'2.3': 44, '2.4': 42})
     def test_insert(self):
         t1.insert().compile()
 
-    @profiling.function_call_count(75, {'2.3': 47, '2.4': 42})
+    @profiling.function_call_count(68, {'2.3': 47, '2.4': 42})
     def test_update(self):
         t1.update().compile()
 

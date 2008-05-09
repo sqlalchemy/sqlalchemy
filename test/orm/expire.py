@@ -2,8 +2,9 @@
 
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
+from sqlalchemy.orm import attributes, exc as orm_exc
 from testlib import *
 from testlib.fixtures import *
 import gc
@@ -39,12 +40,12 @@ class ExpireTest(FixtureTest):
         sess.expire(u)
         # object isnt refreshed yet, using dict to bypass trigger
         assert u.__dict__.get('name') != 'jack'
-        assert 'name' in u._state.expired_attributes
+        assert 'name' in attributes.instance_state(u).expired_attributes
 
         sess.query(User).all()
         # test that it refreshed
         assert u.__dict__['name'] == 'jack'
-        assert 'name' not in u._state.expired_attributes
+        assert 'name' not in attributes.instance_state(u).expired_attributes
 
         def go():
             assert u.name == 'jack'
@@ -56,8 +57,49 @@ class ExpireTest(FixtureTest):
         u = s.get(User, 7)
         s.clear()
 
-        self.assertRaisesMessage(exceptions.InvalidRequestError, r"is not persistent within this Session", lambda: s.expire(u))
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, r"is not persistent within this Session", s.expire, u)
+    
+    def test_get_refreshes(self):
+        mapper(User, users)
+        s = create_session()
+        u = s.get(User, 10)
+        s.expire_all()
 
+        def go():
+            u = s.get(User, 10)  # get() refreshes
+        self.assert_sql_count(testing.db, go, 1)
+        def go():
+            self.assertEquals(u.name, 'chuck')  # attributes unexpired
+        self.assert_sql_count(testing.db, go, 0)
+        def go():
+            u = s.get(User, 10)  # expire flag reset, so not expired
+        self.assert_sql_count(testing.db, go, 0)
+
+        s.expire_all()
+        users.delete().where(User.id==10).execute()
+        
+        # object is gone, get() returns None
+        assert u in s
+        assert s.get(User, 10) is None
+        assert u not in s # and expunges
+    
+        # add it back
+        s.add(u)
+        # nope, raises ObjectDeletedError
+        self.assertRaises(orm_exc.ObjectDeletedError, getattr, u, 'name')
+        
+    def test_refresh_cancels_expire(self):
+        mapper(User, users)
+        s = create_session()
+        u = s.get(User, 7)
+        s.expire(u)
+        s.refresh(u)
+        
+        def go():
+            u = s.get(User, 7)
+            self.assertEquals(u.name, 'jack')
+        self.assert_sql_count(testing.db, go, 0)
+        
     def test_expire_doesntload_on_set(self):
         mapper(User, users)
 
@@ -79,18 +121,16 @@ class ExpireTest(FixtureTest):
 
         sess.expire(u, attribute_names=['name'])
         sess.expunge(u)
-        try:
-            u.name
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Instance <class 'testlib.fixtures.User'> is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed"
+        self.assertRaises(sa_exc.UnboundExecutionError, getattr, u, 'name')
     
-    def test_pending_doesnt_raise(self):
+    def test_pending_raises(self):
+        # this was the opposite in 0.4, but the reasoning there seemed off.
+        # expiring a pending instance makes no sense, so should raise
         mapper(User, users)
         sess = create_session()
         u = User(id=15)
         sess.save(u)
-        sess.expire(u, ['name'])
-        assert u.name is None
+        self.assertRaises(sa_exc.InvalidRequestError, sess.expire, u, ['name'])
         
     def test_no_instance_key(self):
         # this tests an artificial condition such that 
@@ -103,11 +143,11 @@ class ExpireTest(FixtureTest):
 
         sess.expire(u, attribute_names=['name'])
         sess.expunge(u)
-        del u._instance_key
+        attributes.instance_state(u).key = None
         assert 'name' not in u.__dict__
         sess.save(u)
         assert u.name == 'jack'
-        
+
     def test_expire_preserves_changes(self):
         """test that the expire load operation doesn't revert post-expire changes"""
 
@@ -163,7 +203,7 @@ class ExpireTest(FixtureTest):
 
         orders.update(id=3).execute(description='order 3 modified')
         assert o.isopen == 1
-        assert o._state.dict['description'] == 'order 3 modified'
+        assert attributes.instance_state(o).dict['description'] == 'order 3 modified'
         def go():
             sess.flush()
         self.assert_sql_count(testing.db, go, 0)
@@ -180,7 +220,7 @@ class ExpireTest(FixtureTest):
         u.addresses[0].email_address = 'someotheraddress'
         s.expire(u)
         u.name
-        print u._state.dict
+        print attributes.instance_state(u).dict
         assert u.addresses[0].email_address == 'ed@wood.com'
 
     def test_expired_lazy(self):
@@ -307,28 +347,28 @@ class ExpireTest(FixtureTest):
         sess.expire(o, attribute_names=['description'])
         assert 'id' in o.__dict__
         assert 'description' not in o.__dict__
-        assert o._state.dict['isopen'] == 1
+        assert attributes.instance_state(o).dict['isopen'] == 1
 
         orders.update(orders.c.id==3).execute(description='order 3 modified')
 
         def go():
             assert o.description == 'order 3 modified'
         self.assert_sql_count(testing.db, go, 1)
-        assert o._state.dict['description'] == 'order 3 modified'
+        assert attributes.instance_state(o).dict['description'] == 'order 3 modified'
 
         o.isopen = 5
         sess.expire(o, attribute_names=['description'])
         assert 'id' in o.__dict__
         assert 'description' not in o.__dict__
         assert o.__dict__['isopen'] == 5
-        assert o._state.committed_state['isopen'] == 1
+        assert attributes.instance_state(o).committed_state['isopen'] == 1
 
         def go():
             assert o.description == 'order 3 modified'
         self.assert_sql_count(testing.db, go, 1)
         assert o.__dict__['isopen'] == 5
-        assert o._state.dict['description'] == 'order 3 modified'
-        assert o._state.committed_state['isopen'] == 1
+        assert attributes.instance_state(o).dict['description'] == 'order 3 modified'
+        assert attributes.instance_state(o).committed_state['isopen'] == 1
 
         sess.flush()
 
@@ -578,44 +618,8 @@ class PolymorphicExpireTest(ORMTest):
             {'person_id':3, 'status':'old engineer'},
         )
 
-    def test_poly_select(self):
-        mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
-        mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer')
-        
-        sess = create_session()
-        [p1, e1, e2] = sess.query(Person).order_by(people.c.person_id).all()
-        
-        sess.expire(p1)
-        sess.expire(e1, ['status'])
-        sess.expire(e2)
-        
-        for p in [p1, e2]:
-            assert 'name' not in p.__dict__
-        
-        assert 'name' in e1.__dict__
-        assert 'status' not in e2.__dict__
-        assert 'status' not in e1.__dict__
-        
-        e1.name = 'new engineer name'
-        
-        def go():
-            sess.query(Person).all()
-        self.assert_sql_count(testing.db, go, 3)
-        
-        for p in [p1, e1, e2]:
-            assert 'name' in p.__dict__
-        
-        assert 'status' in e2.__dict__
-        assert 'status' in e1.__dict__
-        def go():
-            assert e1.name == 'new engineer name'
-            assert e2.name == 'engineer2'
-            assert e1.status == 'new engineer'
-        self.assert_sql_count(testing.db, go, 0)
-        self.assertEquals(Engineer.name.get_history(e1), (['new engineer name'], [], ['engineer1']))
-        
     def test_poly_deferred(self):
-        mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person', polymorphic_fetch='deferred')
+        mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
         mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer')
 
         sess = create_session()
@@ -700,7 +704,7 @@ class RefreshTest(FixtureTest):
         s = create_session()
         u = s.get(User, 7)
         s.clear()
-        self.assertRaisesMessage(exceptions.InvalidRequestError, r"is not persistent within this Session", lambda: s.refresh(u))
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, r"is not persistent within this Session", lambda: s.refresh(u))
         
     def test_refresh_expired(self):
         mapper(User, users)

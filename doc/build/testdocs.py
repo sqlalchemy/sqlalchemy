@@ -5,7 +5,7 @@ import os
 import re
 import doctest
 import sqlalchemy.util as util
-import sqlalchemy.logging as salog
+import sqlalchemy.log as salog
 import logging
 
 salog.default_enabled=True

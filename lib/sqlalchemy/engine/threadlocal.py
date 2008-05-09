@@ -17,7 +17,7 @@ class TLSession(object):
         try:
             return self.__transaction._increment_connect()
         except AttributeError:
-            return TLConnection(self, self.engine.pool.connect(), close_with_result=close_with_result)
+            return self.engine.TLConnection(self, self.engine.pool.connect(), close_with_result=close_with_result)
 
     def reset(self):
         try:
@@ -81,10 +81,13 @@ class TLSession(object):
 
 
 class TLConnection(base.Connection):
-    def __init__(self, session, connection, close_with_result):
-        base.Connection.__init__(self, session.engine, connection, close_with_result=close_with_result)
+    def __init__(self, session, connection, **kwargs):
+        base.Connection.__init__(self, session.engine, connection, **kwargs)
         self.__session = session
         self.__opencount = 1
+
+    def _branch(self):
+        return self.engine.Connection(self.engine, self.connection, _branch=True)
 
     def session(self):
         return self.__session
@@ -167,6 +170,12 @@ class TLEngine(base.Engine):
 
         super(TLEngine, self).__init__(*args, **kwargs)
         self.context = util.ThreadLocal()
+
+        proxy = kwargs.get('proxy')
+        if proxy:
+            self.TLConnection = base._proxy_connection_cls(TLConnection, proxy)
+        else:
+            self.TLConnection = TLConnection
 
     def session(self):
         "Returns the current thread's TLSession"

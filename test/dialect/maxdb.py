@@ -3,7 +3,7 @@
 import testenv; testenv.configure_for_tests()
 import StringIO, sys
 from sqlalchemy import *
-from sqlalchemy import exceptions, sql
+from sqlalchemy import exc, sql
 from sqlalchemy.util import Decimal
 from sqlalchemy.databases import maxdb
 from testlib import *
@@ -53,7 +53,7 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
         finally:
             try:
                 testing.db.execute("DROP TABLE dectest")
-            except exceptions.DatabaseError:
+            except exc.DatabaseError:
                 pass
 
     def test_decimal_fixed_serial(self):
@@ -165,7 +165,7 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
         finally:
             try:
                 testing.db.execute("DROP TABLE assorted")
-            except exceptions.DatabaseError:
+            except exc.DatabaseError:
                 pass
 
 class DBAPITest(TestBase, AssertsExecutionResults):

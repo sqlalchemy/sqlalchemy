@@ -21,7 +21,7 @@ parameter when creating the queries::
 
 import random, re, string
 
-from sqlalchemy import sql, schema, exceptions, util
+from sqlalchemy import sql, schema, exc, util
 from sqlalchemy.engine import base, default
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.sql import operators as sql_operators
@@ -99,11 +99,17 @@ class PGText(sqltypes.Text):
 
 class PGString(sqltypes.String):
     def get_col_spec(self):
-        return "VARCHAR(%(length)s)" % {'length' : self.length}
+        if self.length:
+            return "VARCHAR(%(length)d)" % {'length' : self.length}
+        else:
+            return "VARCHAR"
 
 class PGChar(sqltypes.CHAR):
     def get_col_spec(self):
-        return "CHAR(%(length)s)" % {'length' : self.length}
+        if self.length:
+            return "CHAR(%(length)d)" % {'length' : self.length}
+        else:
+            return "CHAR"
 
 class PGBinary(sqltypes.Binary):
     def get_col_spec(self):
@@ -146,7 +152,7 @@ class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
             if value is None:
                 return value
             def convert_item(item):
-                if isinstance(item, (list,tuple)):
+                if isinstance(item, (list, tuple)):
                     return [convert_item(child) for child in item]
                 else:
                     if item_proc:
@@ -373,7 +379,7 @@ class PGDialect(default.DefaultDialect):
 
     def last_inserted_ids(self):
         if self.context.last_inserted_ids is None:
-            raise exceptions.InvalidRequestError("no INSERT executed, or can't use cursor.lastrowid without Postgres OIDs enabled")
+            raise exc.InvalidRequestError("no INSERT executed, or can't use cursor.lastrowid without Postgres OIDs enabled")
         else:
             return self.context.last_inserted_ids
 
@@ -419,7 +425,7 @@ class PGDialect(default.DefaultDialect):
         v = connection.execute("select version()").scalar()
         m = re.match('PostgreSQL (\d+)\.(\d+)\.(\d+)', v)
         if not m:
-            raise exceptions.AssertionError("Could not determine version from string '%s'" % v)
+            raise AssertionError("Could not determine version from string '%s'" % v)
         return tuple([int(x) for x in m.group(1, 2, 3)])
 
     def reflecttable(self, connection, table, include_columns):
@@ -459,7 +465,7 @@ class PGDialect(default.DefaultDialect):
         rows = c.fetchall()
 
         if not rows:
-            raise exceptions.NoSuchTableError(table.name)
+            raise exc.NoSuchTableError(table.name)
 
         domains = self._load_domains(connection)
 
@@ -519,7 +525,7 @@ class PGDialect(default.DefaultDialect):
                             default = domain['default']
                         coltype = ischema_names[domain['attype']]
                 else:
-                    coltype=None
+                    coltype = None
 
             if coltype:
                 coltype = coltype(*args, **kwargs)
@@ -530,7 +536,7 @@ class PGDialect(default.DefaultDialect):
                           (attype, name))
                 coltype = sqltypes.NULLTYPE
 
-            colargs= []
+            colargs = []
             if default is not None:
                 match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
                 if match is not None:
@@ -560,7 +566,7 @@ class PGDialect(default.DefaultDialect):
             col = table.c[pk]
             table.primary_key.add(col)
             if col.default is None:
-                col.autoincrement=False
+                col.autoincrement = False
 
         # Foreign keys
         FK_SQL = """
@@ -697,7 +703,7 @@ class PGCompiler(compiler.DefaultCompiler):
                         yield co
                 else:
                     yield c
-        columns = [self.process(c) for c in flatten_columnlist(returning_cols)]
+        columns = [self.process(c, render_labels=True) for c in flatten_columnlist(returning_cols)]
         text += ' RETURNING ' + string.join(columns, ', ')
         return text
 
@@ -724,7 +730,7 @@ class PGSchemaGenerator(compiler.SchemaGenerator):
             else:
                 colspec += " SERIAL"
         else:
-            colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
+            colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
             default = self.get_column_default_string(column)
             if default is not None:
                 colspec += " DEFAULT " + default

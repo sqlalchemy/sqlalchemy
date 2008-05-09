@@ -14,8 +14,8 @@ Includes::
 """
 
 import sys
-from StringIO import StringIO
-from tokenize import *
+from tokenize import generate_tokens, INDENT, DEDENT, NAME, OP, NL, NEWLINE, \
+     NUMBER, STRING, COMMENT
 
 __all__ = ['py23_decorators', 'py23']
 

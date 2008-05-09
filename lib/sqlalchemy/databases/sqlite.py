@@ -7,7 +7,7 @@
 
 import datetime, re, time
 
-from sqlalchemy import schema, exceptions, pool, PassiveDefault
+from sqlalchemy import schema, exc, pool, PassiveDefault
 from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
 import sqlalchemy.util as util
@@ -67,7 +67,7 @@ class DateTimeMixin(object):
             microsecond = 0
         return time.strptime(value, self.__format__)[0:6] + (microsecond,)
 
-class SLDateTime(DateTimeMixin,sqltypes.DateTime):
+class SLDateTime(DateTimeMixin, sqltypes.DateTime):
     __format__ = "%Y-%m-%d %H:%M:%S"
     __microsecond__ = True
 
@@ -112,11 +112,11 @@ class SLText(sqltypes.Text):
 
 class SLString(sqltypes.String):
     def get_col_spec(self):
-        return "VARCHAR(%(length)s)" % {'length' : self.length}
+        return "VARCHAR" + (self.length and "(%d)" % self.length or "")
 
 class SLChar(sqltypes.CHAR):
     def get_col_spec(self):
-        return "CHAR(%(length)s)" % {'length' : self.length}
+        return "CHAR" + (self.length and "(%d)" % self.length or "")
 
 class SLBinary(sqltypes.Binary):
     def get_col_spec(self):
@@ -203,7 +203,7 @@ class SQLiteDialect(default.DefaultDialect):
             return tuple([int(x) for x in num.split('.')])
         if self.dbapi is not None:
             sqlite_ver = self.dbapi.version_info
-            if sqlite_ver < (2,1,'3'):
+            if sqlite_ver < (2, 1, '3'):
                 util.warn(
                     ("The installed version of pysqlite2 (%s) is out-dated "
                      "and will cause errors in some cases.  Version 2.1.3 "
@@ -227,7 +227,7 @@ class SQLiteDialect(default.DefaultDialect):
 
     def create_connect_args(self, url):
         if url.username or url.password or url.host or url.port:
-            raise exceptions.ArgumentError(
+            raise exc.ArgumentError(
                 "Invalid SQLite URL: %s\n"
                 "Valid SQLite URL forms are:\n"
                 " sqlite:///:memory: (or, sqlite://)\n"
@@ -270,7 +270,7 @@ class SQLiteDialect(default.DefaultDialect):
                      "  SELECT * FROM sqlite_temp_master) "
                      "WHERE type='table' ORDER BY name")
                 rs = connection.execute(s)
-            except exceptions.DBAPIError:
+            except exc.DBAPIError:
                 raise
                 s = ("SELECT name FROM sqlite_master "
                      "WHERE type='table' ORDER BY name")
@@ -334,13 +334,13 @@ class SQLiteDialect(default.DefaultDialect):
                 args = re.findall(r'(\d+)', args)
                 coltype = coltype(*[int(a) for a in args])
 
-            colargs= []
+            colargs = []
             if has_default:
                 colargs.append(PassiveDefault('?'))
             table.append_column(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable, *colargs))
 
         if not found_table:
-            raise exceptions.NoSuchTableError(table.name)
+            raise exc.NoSuchTableError(table.name)
 
         c = connection.execute("%sforeign_key_list(%s)" % (pragma, qtable))
         fks = {}
@@ -355,7 +355,7 @@ class SQLiteDialect(default.DefaultDialect):
             try:
                 fk = fks[constraint_name]
             except KeyError:
-                fk = ([],[])
+                fk = ([], [])
                 fks[constraint_name] = fk
 
             # look up the table based on the given table's engine, not 'self',
@@ -438,7 +438,7 @@ class SQLiteCompiler(compiler.DefaultCompiler):
 class SQLiteSchemaGenerator(compiler.SchemaGenerator):
 
     def get_column_specification(self, column, **kwargs):
-        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
+        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default

@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import sets
 from sqlalchemy import *
-from sqlalchemy import sql, exceptions
+from sqlalchemy import sql, exc
 from sqlalchemy.databases import mysql
 from testlib import *
 
@@ -537,13 +537,13 @@ class TypesTest(TestBase, AssertsExecutionResults):
         try:
             enum_table.insert().execute(e1=None, e2=None, e3=None, e4=None)
             self.assert_(False)
-        except exceptions.SQLError:
+        except exc.SQLError:
             self.assert_(True)
 
         try:
             enum_table.insert().execute(e1='c', e2='c', e3='c', e4='c')
             self.assert_(False)
-        except exceptions.InvalidRequestError:
+        except exc.InvalidRequestError:
             self.assert_(True)
 
         enum_table.insert().execute()

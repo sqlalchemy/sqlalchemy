@@ -12,7 +12,6 @@ as the base class for their own corresponding classes.
 
 """
 
-
 import re, random
 from sqlalchemy.engine import base
 from sqlalchemy.sql import compiler, expression
@@ -112,7 +111,7 @@ class DefaultDialect(base.Dialect):
         This id will be passed to do_begin_twophase(), do_rollback_twophase(),
         do_commit_twophase().  Its format is unspecified."""
 
-        return "_sa_%032x" % random.randint(0,2**128)
+        return "_sa_%032x" % random.randint(0, 2 ** 128)
 
     def do_savepoint(self, connection, name):
         connection.execute(expression.SavepointClause(name))
@@ -331,9 +330,9 @@ class DefaultExecutionContext(base.ExecutionContext):
         if self.dialect.positional:
             inputsizes = []
             for key in self.compiled.positiontup:
-               typeengine = types[key]
-               dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
-               if dbtype is not None:
+                typeengine = types[key]
+                dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
+                if dbtype is not None:
                     inputsizes.append(dbtype)
             try:
                 self.cursor.setinputsizes(*inputsizes)

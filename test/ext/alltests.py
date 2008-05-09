@@ -2,8 +2,7 @@ import testenv; testenv.configure_for_tests()
 import doctest, sys, unittest
 
 def suite():
-    unittest_modules = ['ext.activemapper',
-                        'ext.assignmapper',
+    unittest_modules = [
                         'ext.declarative',
                         'ext.orderinglist',
                         'ext.associationproxy']

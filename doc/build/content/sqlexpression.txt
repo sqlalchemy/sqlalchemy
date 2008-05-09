@@ -5,12 +5,12 @@ This tutorial will cover SQLAlchemy SQL Expressions, which are Python constructs
 
 ## Version Check
 
-A quick check to verify that we are on at least **version 0.4** of SQLAlchemy:
+A quick check to verify that we are on at least **version 0.5** of SQLAlchemy:
 
     {python}
     >>> import sqlalchemy
     >>> sqlalchemy.__version__ # doctest:+SKIP
-    0.4.0
+    0.5.0
     
 ## Connecting
 
@@ -33,14 +33,14 @@ We define our tables all within a catalog called `MetaData`, using the `Table` c
     >>> metadata = MetaData()
     >>> users = Table('users', metadata,
     ...     Column('id', Integer, primary_key=True),
-    ...     Column('name', String(40)),
-    ...     Column('fullname', String(100)),
+    ...     Column('name', String),
+    ...     Column('fullname', String),
     ... )
 
     >>> addresses = Table('addresses', metadata, 
     ...   Column('id', Integer, primary_key=True),
     ...   Column('user_id', None, ForeignKey('users.id')),
-    ...   Column('email_address', String(50), nullable=False)
+    ...   Column('email_address', String, nullable=False)
     ...  )
 
 All about how to define `Table` objects, as well as how to create them from an existing database automatically, is described in [metadata](rel:metadata).
@@ -55,8 +55,8 @@ Next, to tell the `MetaData` we'd actually like to create our selection of table
     {}
     CREATE TABLE users (
         id INTEGER NOT NULL, 
-        name VARCHAR(40), 
-        fullname VARCHAR(100), 
+        name VARCHAR, 
+        fullname VARCHAR, 
         PRIMARY KEY (id)
     )
     {}
@@ -64,12 +64,19 @@ Next, to tell the `MetaData` we'd actually like to create our selection of table
     CREATE TABLE addresses (
         id INTEGER NOT NULL, 
         user_id INTEGER, 
-        email_address VARCHAR(50) NOT NULL, 
+        email_address VARCHAR NOT NULL, 
         PRIMARY KEY (id), 
          FOREIGN KEY(user_id) REFERENCES users (id)
     )
     {}
     COMMIT
+
+Users familiar with the syntax of CREATE TABLE may notice that the VARCHAR columns were generated without a length; on SQLite, this is a valid datatype, but on most databases it's not allowed.  So if running this tutorial on a database such as Postgres or MySQL, and you wish to use SQLAlchemy to generate the tables, a "length" may be provided to the `String` type as below:
+
+    {python}
+    Column('name', String(50))
+
+The length field on `String`, as well as similar fields available on `Integer`, `Numeric`, etc. are not referenced by SQLAlchemy other than when creating tables.
 
 ## Insert Expressions
 
@@ -327,19 +334,19 @@ If we use a literal value (a literal meaning, not a SQLAlchemy clause object), w
 
     {python}
     >>> print users.c.id==7
-    users.id = :users_id_1
+    users.id = :id_1
     
 The `7` literal is embedded in `ClauseElement`; we can use the same trick we did with the `Insert` object to see it:
 
     {python}
     >>> (users.c.id==7).compile().params
-    {'users_id_1': 7}
+    {'id_1': 7}
     
 Most Python operators, as it turns out, produce a SQL expression here, like equals, not equals, etc.:
 
     {python}
     >>> print users.c.id != 7
-    users.id != :users_id_1
+    users.id != :id_1
     
     >>> # None converts to IS NULL
     >>> print users.c.name == None
@@ -347,7 +354,7 @@ Most Python operators, as it turns out, produce a SQL expression here, like equa
      
     >>> # reverse works too 
     >>> print 'fred' > users.c.name
-    users.name < :users_name_1
+    users.name < :name_1
     
 If we add two integer columns together, we get an addition expression:
 
@@ -373,7 +380,7 @@ If you have come across an operator which really isn't available, you can always
 
     {python}
     >>> print users.c.name.op('tiddlywinks')('foo')
-    users.name tiddlywinks :users_name_1
+    users.name tiddlywinks :name_1
     
 ## Conjunctions {@name=conjunctions}
 
@@ -384,9 +391,9 @@ We'd like to show off some of our operators inside of `select()` constructs.  Bu
     >>> print and_(users.c.name.like('j%'), users.c.id==addresses.c.user_id, #doctest: +NORMALIZE_WHITESPACE  
     ...     or_(addresses.c.email_address=='wendy@aol.com', addresses.c.email_address=='jack@yahoo.com'),
     ...     not_(users.c.id>5))
-    users.name LIKE :users_name_1 AND users.id = addresses.user_id AND 
-    (addresses.email_address = :addresses_email_address_1 OR addresses.email_address = :addresses_email_address_2) 
-    AND users.id <= :users_id_1
+    users.name LIKE :name_1 AND users.id = addresses.user_id AND 
+    (addresses.email_address = :email_address_1 OR addresses.email_address = :email_address_2) 
+    AND users.id <= :id_1
 
 And you can also use the re-jiggered bitwise AND, OR and NOT operators, although because of Python operator precedence you have to watch your parenthesis:
 
@@ -394,9 +401,9 @@ And you can also use the re-jiggered bitwise AND, OR and NOT operators, although
     >>> print users.c.name.like('j%') & (users.c.id==addresses.c.user_id) &  \
     ...     ((addresses.c.email_address=='wendy@aol.com') | (addresses.c.email_address=='jack@yahoo.com')) \
     ...     & ~(users.c.id>5) # doctest: +NORMALIZE_WHITESPACE
-    users.name LIKE :users_name_1 AND users.id = addresses.user_id AND 
-    (addresses.email_address = :addresses_email_address_1 OR addresses.email_address = :addresses_email_address_2) 
-    AND users.id <= :users_id_1
+    users.name LIKE :name_1 AND users.id = addresses.user_id AND 
+    (addresses.email_address = :email_address_1 OR addresses.email_address = :email_address_2) 
+    AND users.id <= :id_1
 
 So with all of this vocabulary, let's select all users who have an email address at AOL or MSN, whose name starts with a letter between "m" and "z", and we'll also generate a column containing their full name combined with their email address.  We will add two new constructs to this statement, `between()` and `label()`.  `between()` produces a BETWEEN clause, and `label()` is used in a column expression to produce labels using the `AS` keyword; it's recommended when selecting from expressions that otherwise would not have a name:
 
@@ -528,7 +535,7 @@ Of course you can join on whatever expression you want, such as if we want to jo
 
     {python}
     >>> print users.join(addresses, addresses.c.email_address.like(users.c.name + '%'))
-    users JOIN addresses ON addresses.email_address LIKE users.name || :users_name_1
+    users JOIN addresses ON addresses.email_address LIKE users.name || :name_1
 
 When we create a `select()` construct, SQLAlchemy looks around at the tables we've mentioned and then places them in the FROM clause of the statement.  When we use JOINs however, we know what FROM clause we want, so here we make usage of the `from_obj` keyword argument:
 
@@ -617,9 +624,9 @@ So we started small, added one little thing at a time, and at the end we have a 
     >>> print query
     {opensql}SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, addresses_1.id AS addresses_1_id, addresses_1.user_id AS addresses_1_user_id, addresses_1.email_address AS addresses_1_email_address 
     FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id 
-    WHERE users.name = :users_name_1 AND (EXISTS (SELECT addresses_1.id 
+    WHERE users.name = :name_1 AND (EXISTS (SELECT addresses_1.id 
     FROM addresses AS addresses_1 
-    WHERE addresses_1.user_id = users.id AND addresses_1.email_address LIKE :addresses_email_address_1)) ORDER BY users.fullname DESC
+    WHERE addresses_1.user_id = users.id AND addresses_1.email_address LIKE :email_address_1)) ORDER BY users.fullname DESC
 
 One more thing though, with automatic labeling applied as well as anonymous aliasing, how do we retrieve the columns from the rows for this thing ?  The label for the `email_addresses` column is now the generated name `addresses_1_email_address`; and in another statement might be something different !  This is where accessing by result columns by `Column` object becomes very useful:
 
@@ -783,11 +790,11 @@ Also available, though not supported on all databases, are `intersect()`, `inter
 To embed a SELECT in a column expression, use `as_scalar()`:
 
     {python}
-    {sql}>>> print conn.execute(select([
+    {sql}>>> print conn.execute(select([   # doctest: +NORMALIZE_WHITESPACE
     ...       users.c.name, 
     ...       select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id).as_scalar()
     ...    ])).fetchall()
-    SELECT users.name, (SELECT count(addresses.id) 
+    SELECT users.name, (SELECT count(addresses.id) AS count_1
     FROM addresses 
     WHERE users.id = addresses.user_id) AS anon_1 
     FROM users
@@ -797,11 +804,11 @@ To embed a SELECT in a column expression, use `as_scalar()`:
 Alternatively, applying a `label()` to a select evaluates it as a scalar as well:
 
     {python}
-    {sql}>>> print conn.execute(select([
+    {sql}>>> print conn.execute(select([    # doctest: +NORMALIZE_WHITESPACE
     ...       users.c.name, 
     ...       select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id).label('address_count')
     ...    ])).fetchall()
-    SELECT users.name, (SELECT count(addresses.id) 
+    SELECT users.name, (SELECT count(addresses.id) AS count_1
     FROM addresses 
     WHERE users.id = addresses.user_id) AS address_count 
     FROM users
@@ -839,7 +846,7 @@ The `select()` function can take keyword arguments `order_by`, `group_by` (as we
     >>> s = select([addresses.c.user_id, func.count(addresses.c.id)]).\
     ...     group_by(addresses.c.user_id).having(func.count(addresses.c.id)>1)
     {opensql}>>> print conn.execute(s).fetchall()
-    SELECT addresses.user_id, count(addresses.id) 
+    SELECT addresses.user_id, count(addresses.id) AS count_1 
     FROM addresses GROUP BY addresses.user_id 
     HAVING count(addresses.id) > ?
     [1]

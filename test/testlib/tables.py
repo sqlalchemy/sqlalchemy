@@ -1,8 +1,9 @@
 # can't be imported until the path is setup; be sure to configure
 # first if covering.
-from sqlalchemy import *
+
 from testlib import testing
-from testlib.schema import Table, Column
+from testlib.sa import MetaData, Table, Column, Integer, String, Sequence, \
+     ForeignKey, VARCHAR, INT
 
 
 # these are older test fixtures, used primarily by test/orm/mapper.py and

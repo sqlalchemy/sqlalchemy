@@ -1,8 +1,8 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from testlib import *
-from sqlalchemy import exceptions
 
 class Place(object):
     '''represents a place'''
@@ -75,14 +75,7 @@ class M2MTest(ORMTest):
         mapper(Transition, transition, properties={
             'places':relation(Place, secondary=place_input, backref='transitions')
         })
-        try:
-            compile_mappers()
-            assert False
-        except exceptions.ArgumentError, e:
-            assert str(e) in [
-                "Error creating backref 'transitions' on relation 'Transition.places (Place)': property of that name exists on mapper 'Mapper|Place|place'",
-                "Error creating backref 'places' on relation 'Place.transitions (Transition)': property of that name exists on mapper 'Mapper|Transition|transition'"
-            ]
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Error creating backref", compile_mappers)
 
 
     def testcircular(self):

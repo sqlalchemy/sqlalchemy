@@ -89,7 +89,7 @@ connections are active, the following setting may alleviate the problem::
 
 import datetime
 
-from sqlalchemy import exceptions, schema, types as sqltypes, sql, util
+from sqlalchemy import exc, schema, types as sqltypes, sql, util
 from sqlalchemy.engine import base, default
 
 
@@ -272,7 +272,7 @@ class FBDialect(default.DefaultDialect):
         default.DefaultDialect.__init__(self, **kwargs)
 
         self.type_conv = type_conv
-        self.concurrency_level= concurrency_level
+        self.concurrency_level = concurrency_level
 
     def dbapi(cls):
         import kinterbasdb
@@ -320,7 +320,7 @@ class FBDialect(default.DefaultDialect):
         version = fbconn.server_version
         m = match('\w+-V(\d+)\.(\d+)\.(\d+)\.(\d+) \w+ (\d+)\.(\d+)', version)
         if not m:
-            raise exceptions.AssertionError("Could not determine version from string '%s'" % version)
+            raise AssertionError("Could not determine version from string '%s'" % version)
         return tuple([int(x) for x in m.group(5, 6, 4)])
 
     def _normalize_name(self, name):
@@ -455,7 +455,7 @@ class FBDialect(default.DefaultDialect):
 
         # get primary key fields
         c = connection.execute(keyqry, ["PRIMARY KEY", tablename])
-        pkfields =[self._normalize_name(r['fname']) for r in c.fetchall()]
+        pkfields = [self._normalize_name(r['fname']) for r in c.fetchall()]
 
         # get all of the fields for this table
         c = connection.execute(tblqry, [tablename])
@@ -509,14 +509,15 @@ class FBDialect(default.DefaultDialect):
             table.append_column(col)
 
         if not found_table:
-            raise exceptions.NoSuchTableError(table.name)
+            raise exc.NoSuchTableError(table.name)
 
         # get the foreign keys
         c = connection.execute(fkqry, ["FOREIGN KEY", tablename])
         fks = {}
         while True:
             row = c.fetchone()
-            if not row: break
+            if not row:
+                break
 
             cname = self._normalize_name(row['cname'])
             try:
@@ -530,7 +531,7 @@ class FBDialect(default.DefaultDialect):
             fk[0].append(fname)
             fk[1].append(refspec)
 
-        for name,value in fks.iteritems():
+        for name, value in fks.iteritems():
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name))
 
     def do_execute(self, cursor, statement, parameters, **kwargs):
@@ -626,7 +627,7 @@ class FBSchemaGenerator(sql.compiler.SchemaGenerator):
 
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
-        colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
+        colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
 
         default = self.get_column_default_string(column)
         if default is not None:
@@ -711,7 +712,7 @@ class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
     def __init__(self, dialect):
-        super(FBIdentifierPreparer,self).__init__(dialect, omit_schema=True)
+        super(FBIdentifierPreparer, self).__init__(dialect, omit_schema=True)
 
 
 dialect = FBDialect

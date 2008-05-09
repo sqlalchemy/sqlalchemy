@@ -1,4 +1,4 @@
-# logging.py - adapt python logging module to SQLAlchemy
+# log.py - adapt python logging module to SQLAlchemy
 # Copyright (C) 2006, 2007, 2008 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
@@ -28,25 +28,19 @@ is equivalent to::
     logger.setLevel(logging.DEBUG)
 """
 
-import sys, warnings
-import sqlalchemy.exceptions as sa_exc
+import logging
+import sys
 
-# py2.5 absolute imports will fix....
-logging = __import__('logging')
-
-# moved to sqlalchemy.exceptions.  this alias will be removed in 0.5.
-SADeprecationWarning = sa_exc.SADeprecationWarning
 
 rootlogger = logging.getLogger('sqlalchemy')
 if rootlogger.level == logging.NOTSET:
     rootlogger.setLevel(logging.WARN)
-warnings.filterwarnings("once", category=sa_exc.SADeprecationWarning)
 
 default_enabled = False
 def default_logging(name):
     global default_enabled
     if logging.getLogger(name).getEffectiveLevel() < logging.WARN:
-        default_enabled=True
+        default_enabled = True
     if not default_enabled:
         default_enabled = True
         handler = logging.StreamHandler(sys.stdout)

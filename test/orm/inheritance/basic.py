@@ -1,7 +1,8 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions, util
+from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.orm import *
+from sqlalchemy.orm import exc as orm_exc
 from testlib import *
 from testlib import fixtures
 
@@ -302,7 +303,7 @@ class ConstructionTest(ORMTest):
                 'content_type':relation(content_types)
             }, polymorphic_identity='contents')
             assert False
-        except exceptions.ArgumentError, e:
+        except sa_exc.ArgumentError, e:
             assert str(e) == "Mapper 'Mapper|Content|content' specifies a polymorphic_identity of 'contents', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument"
 
     def testbackref(self):
@@ -397,7 +398,7 @@ class FlushTest(ORMTest):
         class Admin(User):pass
         role_mapper = mapper(Role, roles)
         user_mapper = mapper(User, users, properties = {
-                'roles' : relation(Role, secondary=user_roles, lazy=False, private=False)
+                'roles' : relation(Role, secondary=user_roles, lazy=False)
             }
         )
         admin_mapper = mapper(Admin, admins, inherits=user_mapper)
@@ -432,7 +433,7 @@ class FlushTest(ORMTest):
 
         role_mapper = mapper(Role, roles)
         user_mapper = mapper(User, users, properties = {
-                'roles' : relation(Role, secondary=user_roles, lazy=False, private=False)
+                'roles' : relation(Role, secondary=user_roles, lazy=False)
             }
         )
 
@@ -507,13 +508,13 @@ class VersioningTest(ORMTest):
         try:
             sess2.query(Base).with_lockmode('read').get(s1.id)
             assert False
-        except exceptions.ConcurrentModificationError, e:
+        except orm_exc.ConcurrentModificationError, e:
             assert True
 
         try:
             sess2.flush()
             assert False
-        except exceptions.ConcurrentModificationError, e:
+        except orm_exc.ConcurrentModificationError, e:
             assert True
 
         sess2.refresh(s2)
@@ -553,7 +554,7 @@ class VersioningTest(ORMTest):
             s1.subdata = 'some new subdata'
             sess.flush()
             assert False
-        except exceptions.ConcurrentModificationError, e:
+        except orm_exc.ConcurrentModificationError, e:
             assert True
 
 
@@ -608,7 +609,7 @@ class DistinctPKTest(ORMTest):
             mapper(Employee, employee_table, inherits=person_mapper, primary_key=[person_table.c.id, employee_table.c.id])
             self._do_test(True)
             assert False
-        except exceptions.SAWarning, e:
+        except sa_exc.SAWarning, e:
             assert str(e) == "On mapper Mapper|Employee|employees, primary key column 'employees.id' is being combined with distinct primary key column 'persons.id' in attribute 'id'.  Use explicit properties to give each column its own mapped attribute name.", str(e)
 
     def test_explicit_pk(self):

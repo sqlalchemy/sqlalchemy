@@ -4,7 +4,6 @@ import testenv; testenv.configure_for_tests()
 import random, datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.ext.sessioncontext import SessionContext
 from testlib import *
 from testlib import fixtures
 
@@ -125,15 +124,6 @@ class EagerTest(TestBase, AssertsExecutionResults):
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
 
-    @testing.uses_deprecated('//select')
-    def test_withouteagerload_deprecated(self):
-        s = create_session()
-        l=s.query(Test).select ( and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
-            from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        print result
-        assert result == [u'1 Some Category', u'3 Some Category']
-
     def test_witheagerload(self):
         """test that an eagerload locates the correct "from" clause with
         which to attach to, when presented with a query that already has a complicated from clause."""
@@ -148,17 +138,6 @@ class EagerTest(TestBase, AssertsExecutionResults):
            filter(and_(tests.c.owner_id==1,or_(options.c.someoption==None,
                                                options.c.someoption==False))))
 
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        print result
-        assert result == [u'1 Some Category', u'3 Some Category']
-
-    @testing.uses_deprecated('//select')
-    def test_witheagerload_deprecated(self):
-        """As test_witheagerload, but via select()."""
-        s = create_session()
-        q=s.query(Test).options(eagerload('category'))
-        l=q.select ( and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
-            from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
@@ -188,29 +167,10 @@ class EagerTest(TestBase, AssertsExecutionResults):
         print result
         assert result == [u'3 Some Category']
 
-    @testing.unsupported('sybase')
-    @testing.uses_deprecated('//select', '//join_to')
-    def test_withoutouterjoin_literal_deprecated(self):
-        s = create_session()
-        q=s.query(Test).options(eagerload('category'))
-        l=q.select( (tests.c.owner_id==1) & ('options.someoption is null or options.someoption=%s' % false) & q.join_to('owner_option') )
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        print result
-        assert result == [u'3 Some Category']
-
     def test_withoutouterjoin(self):
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
         l = q.filter( (tests.c.owner_id==1) & ((options.c.someoption==None) | (options.c.someoption==False)) ).join('owner_option')
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
-        print result
-        assert result == [u'3 Some Category']
-
-    @testing.uses_deprecated('//select', '//join_to', '//join_via')
-    def test_withoutouterjoin_deprecated(self):
-        s = create_session()
-        q=s.query(Test).options(eagerload('category'))
-        l=q.select( (tests.c.owner_id==1) & ((options.c.someoption==None) | (options.c.someoption==False)) & q.join_to('owner_option') )
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'3 Some Category']
@@ -389,7 +349,7 @@ class EagerTest4(ORMTest):
         sess.flush()
 
         q = sess.query(Department)
-        q = q.join('employees').filter(Employee.c.name.startswith('J')).distinct().order_by([desc(Department.c.name)])
+        q = q.join('employees').filter(Employee.name.startswith('J')).distinct().order_by([desc(Department.name)])
         assert q.count() == 2
         assert q[0] is d2
 
@@ -543,12 +503,11 @@ class EagerTest6(ORMTest):
         x.inheritedParts
 
 class EagerTest7(ORMTest):
-    @testing.uses_deprecated('SessionContext')
     def define_tables(self, metadata):
         global companies_table, addresses_table, invoice_table, phones_table, items_table, ctx
         global Company, Address, Phone, Item,Invoice
 
-        ctx = SessionContext(create_session)
+        ctx = scoped_session(create_session)
 
         companies_table = Table('companies', metadata,
             Column('company_id', Integer, Sequence('company_id_seq', optional=True), primary_key = True),
@@ -606,20 +565,19 @@ class EagerTest7(ORMTest):
             def __repr__(self):
                 return "Item: " + repr(getattr(self, 'item_id', None)) + " " + repr(getattr(self, 'invoice_id', None)) + " " + repr(self.code) + " " + repr(self.qty)
 
-    @testing.uses_deprecated('SessionContext')
     def testone(self):
         """tests eager load of a many-to-one attached to a one-to-many.  this testcase illustrated
         the bug, which is that when the single Company is loaded, no further processing of the rows
         occurred in order to load the Company's second Address object."""
 
         mapper(Address, addresses_table, properties={
-            }, extension=ctx.mapper_extension)
+            }, extension=ctx.extension)
         mapper(Company, companies_table, properties={
             'addresses' : relation(Address, lazy=False),
-            }, extension=ctx.mapper_extension)
+            }, extension=ctx.extension)
         mapper(Invoice, invoice_table, properties={
             'company': relation(Company, lazy=False, )
-            }, extension=ctx.mapper_extension)
+            }, extension=ctx.extension)
 
         c1 = Company()
         c1.company_name = 'company 1'
@@ -633,18 +591,18 @@ class EagerTest7(ORMTest):
         i1.date = datetime.datetime.now()
         i1.company = c1
 
-        ctx.current.flush()
+        ctx.flush()
 
         company_id = c1.company_id
         invoice_id = i1.invoice_id
 
-        ctx.current.clear()
+        ctx.clear()
 
-        c = ctx.current.query(Company).get(company_id)
+        c = ctx.query(Company).get(company_id)
 
-        ctx.current.clear()
+        ctx.clear()
 
-        i = ctx.current.query(Invoice).get(invoice_id)
+        i = ctx.query(Invoice).get(invoice_id)
 
         print repr(c)
         print repr(i.company)
@@ -653,24 +611,24 @@ class EagerTest7(ORMTest):
     def testtwo(self):
         """this is the original testcase that includes various complicating factors"""
 
-        mapper(Phone, phones_table, extension=ctx.mapper_extension)
+        mapper(Phone, phones_table, extension=ctx.extension)
 
         mapper(Address, addresses_table, properties={
             'phones': relation(Phone, lazy=False, backref='address')
-            }, extension=ctx.mapper_extension)
+            }, extension=ctx.extension)
 
         mapper(Company, companies_table, properties={
             'addresses' : relation(Address, lazy=False, backref='company'),
-            }, extension=ctx.mapper_extension)
+            }, extension=ctx.extension)
 
-        mapper(Item, items_table, extension=ctx.mapper_extension)
+        mapper(Item, items_table, extension=ctx.extension)
 
         mapper(Invoice, invoice_table, properties={
             'items': relation(Item, lazy=False, backref='invoice'),
             'company': relation(Company, lazy=False, backref='invoices')
-            }, extension=ctx.mapper_extension)
+            }, extension=ctx.extension)
 
-        ctx.current.clear()
+        ctx.clear()
         c1 = Company()
         c1.company_name = 'company 1'
 
@@ -705,13 +663,13 @@ class EagerTest7(ORMTest):
 
         c1.addresses.append(a2)
 
-        ctx.current.flush()
+        ctx.flush()
 
         company_id = c1.company_id
 
-        ctx.current.clear()
+        ctx.clear()
 
-        a = ctx.current.query(Company).get(company_id)
+        a = ctx.query(Company).get(company_id)
         print repr(a)
 
         # set up an invoice
@@ -734,18 +692,18 @@ class EagerTest7(ORMTest):
         item3.qty = 3
         item3.invoice = i1
 
-        ctx.current.flush()
+        ctx.flush()
 
         invoice_id = i1.invoice_id
 
-        ctx.current.clear()
+        ctx.clear()
 
-        c = ctx.current.query(Company).get(company_id)
+        c = ctx.query(Company).get(company_id)
         print repr(c)
 
-        ctx.current.clear()
+        ctx.clear()
 
-        i = ctx.current.query(Invoice).get(invoice_id)
+        i = ctx.query(Invoice).get(invoice_id)
 
         assert repr(i.company) == repr(c), repr(i.company) +  " does not match " + repr(c)
 

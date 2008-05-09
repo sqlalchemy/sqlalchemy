@@ -7,7 +7,7 @@ be used directly and is also accepted directly by ``create_engine()``.
 """
 
 import re, cgi, sys, urllib
-from sqlalchemy import exceptions
+from sqlalchemy import exc
 
 
 class URL(object):
@@ -53,7 +53,7 @@ class URL(object):
             self.port = int(port)
         else:
             self.port = None
-        self.database= database
+        self.database = database
         self.query = query or {}
 
     def __str__(self):
@@ -180,7 +180,7 @@ def _parse_rfc1738_args(name):
         name = components.pop('name')
         return URL(name, **components)
     else:
-        raise exceptions.ArgumentError(
+        raise exc.ArgumentError(
             "Could not parse rfc1738 URL from string '%s'" % name)
 
 def _parse_keyvalue_args(name):

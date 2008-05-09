@@ -2,9 +2,10 @@
 including the deprecated versions of these arguments"""
 
 import testenv; testenv.configure_for_tests()
-from sqlalchemy import *
-from sqlalchemy import engine, exceptions
-from testlib import *
+from sqlalchemy import engine, exc
+from sqlalchemy import MetaData, ThreadLocalMetaData
+from testlib.sa import Table, Column, Integer, String, func, Sequence, text
+from testlib import TestBase, testing
 
 
 class BindTest(TestBase):
@@ -41,7 +42,7 @@ class BindTest(TestBase):
             try:
                 meth()
                 assert False
-            except exceptions.UnboundExecutionError, e:
+            except exc.UnboundExecutionError, e:
                 self.assertEquals(
                     str(e),
                     "The MetaData "
@@ -59,7 +60,7 @@ class BindTest(TestBase):
             try:
                 meth()
                 assert False
-            except exceptions.UnboundExecutionError, e:
+            except exc.UnboundExecutionError, e:
                 self.assertEquals(
                     str(e),
                     "The Table 'test_table' "
@@ -71,6 +72,10 @@ class BindTest(TestBase):
 
     @testing.future
     def test_create_drop_err2(self):
+        metadata = MetaData()
+        table = Table('test_table', metadata,
+            Column('foo', Integer))
+
         for meth in [
             table.exists,
             table.create,
@@ -79,7 +84,7 @@ class BindTest(TestBase):
             try:
                 meth()
                 assert False
-            except exceptions.UnboundExecutionError, e:
+            except exc.UnboundExecutionError, e:
                 self.assertEquals(
                     str(e),
                     "The Table 'test_table' "
@@ -201,7 +206,7 @@ class BindTest(TestBase):
                     assert e.bind is None
                     e.execute()
                     assert False
-                except exceptions.UnboundExecutionError, e:
+                except exc.UnboundExecutionError, e:
                     assert str(e).endswith(
                         'is not bound and does not support direct '
                         'execution. Supply this statement to a Connection or '
@@ -248,7 +253,7 @@ class BindTest(TestBase):
             try:
                 sess.flush()
                 assert False
-            except exceptions.InvalidRequestError, e:
+            except exc.InvalidRequestError, e:
                 assert str(e).startswith("Could not locate any Engine or Connection bound to mapper")
         finally:
             if isinstance(bind, engine.Connection):

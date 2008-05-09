@@ -4,7 +4,7 @@ import testenv; testenv.configure_for_tests()
 import sets
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy import exceptions
+from sqlalchemy.orm import exc as orm_exc
 from testlib import *
 from testlib import fixtures
 
@@ -122,7 +122,7 @@ class RelationToSubclassTest(PolymorphTest):
 class RoundTripTest(PolymorphTest):
     pass
 
-def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_colprop=False, use_literal_join=False, polymorphic_fetch=None, use_outer_joins=False):
+def generate_round_trip_test(include_base, lazy_relation, redefine_colprop, with_polymorphic):
     """generates a round trip test.
 
     include_base - whether or not to include the base 'person' type in the union.
@@ -131,62 +131,52 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
     use_literal_join - primary join condition is explicitly specified
     """
     def test_roundtrip(self):
-        # create a union that represents both types of joins.
-        if not polymorphic_fetch == 'union':
-            person_join = None
-            manager_join = None
-        elif include_base:
-            if use_outer_joins:
-                person_join = people.outerjoin(engineers).outerjoin(managers).outerjoin(boss)
-                manager_join = people.join(managers).outerjoin(boss)
-            else:
+        if with_polymorphic == 'unions':
+            if include_base:
                 person_join = polymorphic_union(
                     {
                         'engineer':people.join(engineers),
                         'manager':people.join(managers),
                         'person':people.select(people.c.type=='person'),
                     }, None, 'pjoin')
-
-                manager_join = people.join(managers).outerjoin(boss)
-        else:
-            if use_outer_joins:
-                person_join = people.outerjoin(engineers).outerjoin(managers).outerjoin(boss)
-                manager_join = people.join(managers).outerjoin(boss)
             else:
                 person_join = polymorphic_union(
                     {
                         'engineer':people.join(engineers),
                         'manager':people.join(managers),
                     }, None, 'pjoin')
-                manager_join = people.join(managers).outerjoin(boss)
+                
+            manager_join = people.join(managers).outerjoin(boss)
+            person_with_polymorphic = ['*', person_join]
+            manager_with_polymorphic = ['*', manager_join]
+        elif with_polymorphic == 'joins':
+            person_join = people.outerjoin(engineers).outerjoin(managers).outerjoin(boss)
+            manager_join = people.join(managers).outerjoin(boss)
+            person_with_polymorphic = ['*', person_join]
+            manager_with_polymorphic = ['*', manager_join]
+        elif with_polymorphic == 'auto':
+            person_with_polymorphic = '*'
+            manager_with_polymorphic = '*'
+        else:
+            person_with_polymorphic = None
+            manager_with_polymorphic = None
 
         if redefine_colprop:
-            person_mapper = mapper(Person, people, select_table=person_join, polymorphic_fetch=polymorphic_fetch, polymorphic_on=people.c.type, polymorphic_identity='person', properties= {'person_name':people.c.name})
+            person_mapper = mapper(Person, people, with_polymorphic=person_with_polymorphic, polymorphic_on=people.c.type, polymorphic_identity='person', properties= {'person_name':people.c.name})
         else:
-            person_mapper = mapper(Person, people, select_table=person_join, polymorphic_fetch=polymorphic_fetch, polymorphic_on=people.c.type, polymorphic_identity='person')
+            person_mapper = mapper(Person, people, with_polymorphic=person_with_polymorphic, polymorphic_on=people.c.type, polymorphic_identity='person')
 
         mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
-        mapper(Manager, managers, inherits=person_mapper, select_table=manager_join, polymorphic_identity='manager')
+        mapper(Manager, managers, inherits=person_mapper, with_polymorphic=manager_with_polymorphic, polymorphic_identity='manager')
 
         mapper(Boss, boss, inherits=Manager, polymorphic_identity='boss')
 
-        if use_literal_join:
-            mapper(Company, companies, properties={
-                'employees': relation(Person, lazy=lazy_relation,
-                                      primaryjoin=(people.c.company_id ==
-                                                   companies.c.company_id),
-                                      cascade="all,delete-orphan",
-                                      backref="company", 
-                                      order_by=people.c.person_id
-                )
-            })
-        else:
-            mapper(Company, companies, properties={
-                'employees': relation(Person, lazy=lazy_relation,
-                                      cascade="all, delete-orphan",
-                backref="company", order_by=people.c.person_id
-                )
-            })
+        mapper(Company, companies, properties={
+            'employees': relation(Person, lazy=lazy_relation,
+                                  cascade="all, delete-orphan",
+            backref="company", order_by=people.c.person_id
+            )
+        })
 
         if redefine_colprop:
             person_attribute_name = 'person_name'
@@ -224,18 +214,16 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
 
         def go():
             cc = session.query(Company).get(c.company_id)
-            for e in cc.employees:
-                assert e._instance_key[0] == Person
             self.assertEquals(cc.employees, employees)
             
         if not lazy_relation:
-            if polymorphic_fetch=='union':
+            if with_polymorphic != 'none':
                 self.assert_sql_count(testing.db, go, 1)
             else:
                 self.assert_sql_count(testing.db, go, 5)
 
         else:
-            if polymorphic_fetch=='union':
+            if with_polymorphic != 'none':
                 self.assert_sql_count(testing.db, go, 2)
             else:
                 self.assert_sql_count(testing.db, go, 6)
@@ -265,21 +253,20 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         session.flush()
         session.clear()
         
-        if polymorphic_fetch == 'select':
-            def go():
-                session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
-            self.assert_sql_count(testing.db, go, 2)
-            session.clear()
-            dilbert = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
-            def go():
-                # assert that only primary table is queried for already-present-in-session
-                d = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
-            self.assert_sql_count(testing.db, go, 1)
+        def go():
+            session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+        self.assert_sql_count(testing.db, go, 1)
+        session.clear()
+        dilbert = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+        def go():
+            # assert that only primary table is queried for already-present-in-session
+            d = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+        self.assert_sql_count(testing.db, go, 1)
 
         # test standalone orphans
         daboss = Boss(status='BBB', manager_name='boss', golf_swing='fore', **{person_attribute_name:'daboss'})
         session.save(daboss)
-        self.assertRaises(exceptions.FlushError, session.flush)
+        self.assertRaises(orm_exc.FlushError, session.flush)
         c = session.query(Company).first()
         daboss.company = c
         manager_list = [e for e in c.employees if isinstance(e, Manager)]
@@ -295,24 +282,21 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         self.assertEquals(people.count().scalar(), 0)
         
     test_roundtrip = _function_named(
-        test_roundtrip, "test_%s%s%s%s%s" % (
+        test_roundtrip, "test_%s%s%s_%s" % (
           (lazy_relation and "lazy" or "eager"),
           (include_base and "_inclbase" or ""),
           (redefine_colprop and "_redefcol" or ""),
-          (polymorphic_fetch != 'union' and '_' + polymorphic_fetch or (use_literal_join and "_litjoin" or "")),
-          (use_outer_joins and '_outerjoins' or '')))
+          with_polymorphic))
     setattr(RoundTripTest, test_roundtrip.__name__, test_roundtrip)
 
-for include_base in [True, False]:
-    for lazy_relation in [True, False]:
-        for redefine_colprop in [True, False]:
-            for use_literal_join in [True, False]:
-                for polymorphic_fetch in ['union', 'select', 'deferred']:
-                    if polymorphic_fetch == 'union':
-                        for use_outer_joins in [True, False]:
-                            generate_round_trip_test(include_base, lazy_relation, redefine_colprop, use_literal_join, polymorphic_fetch, use_outer_joins)
-                    else:
-                        generate_round_trip_test(include_base, lazy_relation, redefine_colprop, use_literal_join, polymorphic_fetch, False)
+for lazy_relation in [True, False]:
+    for redefine_colprop in [True, False]:
+        for with_polymorphic in ['unions', 'joins', 'auto', 'none']:
+            if with_polymorphic == 'unions':
+                for include_base in [True, False]:
+                    generate_round_trip_test(include_base, lazy_relation, redefine_colprop, with_polymorphic)
+            else:
+                generate_round_trip_test(False, lazy_relation, redefine_colprop, with_polymorphic)
 
 if __name__ == "__main__":
     testenv.main()

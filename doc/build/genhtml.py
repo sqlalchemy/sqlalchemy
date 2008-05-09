@@ -47,7 +47,7 @@ if options.file:
 else:
     to_gen = files + post_files
 
-title='SQLAlchemy 0.4 Documentation'
+title='SQLAlchemy 0.5 Documentation'
 version = options.version
 
 

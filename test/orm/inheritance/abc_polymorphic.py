@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions, util
+from sqlalchemy import util
 from sqlalchemy.orm import *
 from testlib import *
 from testlib import fixtures
@@ -32,8 +32,8 @@ class ABCTest(ORMTest):
             else:
                 abc = bc = None
 
-            mapper(A, a, select_table=abc, polymorphic_on=a.c.type, polymorphic_identity='a', polymorphic_fetch=fetchtype)
-            mapper(B, b, select_table=bc, inherits=A, polymorphic_identity='b', polymorphic_fetch=fetchtype)
+            mapper(A, a, select_table=abc, polymorphic_on=a.c.type, polymorphic_identity='a')
+            mapper(B, b, select_table=bc, inherits=A, polymorphic_identity='b')
             mapper(C, c, inherits=B, polymorphic_identity='c')
 
             a1 = A(adata='a1')
@@ -82,8 +82,7 @@ class ABCTest(ORMTest):
         return test_roundtrip
 
     test_union = make_test('union')
-    test_select = make_test('select')
-    test_deferred = make_test('deferred')
+    test_none = make_test('none')
 
 
 if __name__ == '__main__':

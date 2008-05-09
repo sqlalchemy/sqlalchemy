@@ -1,7 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.ext.sessioncontext import SessionContext
 from testlib import *
 
 class Jack(object):
@@ -29,7 +28,7 @@ class O2OTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global jack, port, metadata, ctx
         metadata = MetaData(testing.db)
-        ctx = SessionContext(create_session)
+        ctx = scoped_session(create_session)
         jack = Table('jack', metadata,
             Column('id', Integer, primary_key=True),
             #Column('room_id', Integer, ForeignKey("room.id")),
@@ -54,22 +53,21 @@ class O2OTest(TestBase, AssertsExecutionResults):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.uses_deprecated('SessionContext')
     def test1(self):
-        mapper(Port, port, extension=ctx.mapper_extension)
+        mapper(Port, port, extension=ctx.extension)
         mapper(Jack, jack, order_by=[jack.c.number],properties = {
             'port': relation(Port, backref='jack', uselist=False, lazy=True),
-        }, extension=ctx.mapper_extension)
+        }, extension=ctx.extension)
 
         j=Jack(number='101')
         p=Port(name='fa0/1')
         j.port=p
-        ctx.current.flush()
+        ctx.flush()
         jid = j.id
         pid = p.id
 
-        j=ctx.current.query(Jack).get(jid)
-        p=ctx.current.query(Port).get(pid)
+        j=ctx.query(Jack).get(jid)
+        p=ctx.query(Port).get(pid)
         print p.jack
         assert p.jack is not None
         assert p.jack is  j
@@ -77,17 +75,17 @@ class O2OTest(TestBase, AssertsExecutionResults):
         p.jack=None
         assert j.port is None #works
 
-        ctx.current.clear()
+        ctx.clear()
 
-        j=ctx.current.query(Jack).get(jid)
-        p=ctx.current.query(Port).get(pid)
+        j=ctx.query(Jack).get(jid)
+        p=ctx.query(Port).get(pid)
 
         j.port=None
         self.assert_(p.jack is None)
-        ctx.current.flush()
+        ctx.flush()
 
-        ctx.current.delete(j)
-        ctx.current.flush()
+        ctx.delete(j)
+        ctx.flush()
 
 if __name__ == "__main__":
     testenv.main()

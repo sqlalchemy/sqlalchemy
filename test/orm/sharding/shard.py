@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import datetime, os
 from sqlalchemy import *
-from sqlalchemy import exceptions, sql
+from sqlalchemy import sql
 from sqlalchemy.orm import *
 from sqlalchemy.orm.shard import ShardedSession
 from sqlalchemy.sql import operators
@@ -93,7 +93,7 @@ class ShardTest(TestBase):
             else:
                 return ids
 
-        create_session = sessionmaker(class_=ShardedSession, autoflush=True, transactional=True)
+        create_session = sessionmaker(class_=ShardedSession, autoflush=True, autocommit=False)
 
         create_session.configure(shards={
             'north_america':db1,
@@ -139,7 +139,7 @@ class ShardTest(TestBase):
         for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
             sess.save(c)
         sess.commit()
-
+        tokyo.city   # reload 'city' attribute on tokyo
         sess.clear()
 
         assert db2.execute(weather_locations.select()).fetchall() == [(1, 'Asia', 'Tokyo')]

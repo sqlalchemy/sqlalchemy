@@ -1,9 +1,8 @@
 """Tests exceptions and DB-API exception wrapping."""
 import testenv; testenv.configure_for_tests()
-import sys, unittest
+import unittest
 import exceptions as stdlib_exceptions
-from sqlalchemy import exceptions as sa_exceptions
-from testlib import *
+from sqlalchemy import exc as sa_exceptions
 
 
 class Error(stdlib_exceptions.StandardError):
@@ -48,10 +47,10 @@ class WrapTest(unittest.TestCase):
         # subclasses of sqlalchemy.exceptions.DBAPIError
         try:
             raise sa_exceptions.DBAPIError.instance(
-                '', [], sa_exceptions.AssertionError())
+                '', [], sa_exceptions.ArgumentError())
         except sa_exceptions.DBAPIError, e:
             self.assert_(e.__class__ is sa_exceptions.DBAPIError)
-        except sa_exceptions.AssertionError:
+        except sa_exceptions.ArgumentError:
             self.assert_(False)
 
     def test_db_error_keyboard_interrupt(self):

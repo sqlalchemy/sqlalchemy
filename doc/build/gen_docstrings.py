@@ -6,11 +6,8 @@ from sqlalchemy import schema, types, engine, sql, pool, orm, exceptions, databa
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, strategies, threadlocal, url
 import sqlalchemy.orm.shard
-import sqlalchemy.ext.sessioncontext as sessioncontext
-import sqlalchemy.ext.selectresults as selectresults
 import sqlalchemy.ext.orderinglist as orderinglist
 import sqlalchemy.ext.associationproxy as associationproxy
-import sqlalchemy.ext.assignmapper as assignmapper
 import sqlalchemy.ext.sqlsoup as sqlsoup
 import sqlalchemy.ext.declarative as declarative
 

@@ -5,6 +5,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import inspect
+import sys
+
+import sqlalchemy.exc as exceptions
+sys.modules['sqlalchemy.exceptions'] = exceptions
+
 from sqlalchemy.types import \
     BLOB, BOOLEAN, CHAR, CLOB, DATE, DATETIME, DECIMAL, FLOAT, INT, \
     NCHAR, NUMERIC, SMALLINT, TEXT, TIME, TIMESTAMP, VARCHAR, \
@@ -32,3 +37,5 @@ __all__ = [ name for name, obj in locals().items()
             if not (name.startswith('_') or inspect.ismodule(obj)) ]
 
 __version__ = 'svn'
+
+del inspect, sys

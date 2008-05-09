@@ -1,8 +1,7 @@
 """Profiling support for unit and performance tests."""
 
 import os, sys
-from testlib.config import parser, post_configure
-from testlib.compat import *
+from testlib.compat import set, _function_named
 import testlib.config
 
 __all__ = 'profiled', 'function_call_count', 'conditional_call_count'
@@ -25,8 +24,6 @@ def profiled(target=None, **target_opts):
     profiling.  Report options can be supplied, and override the global
     configuration and command-line options.
     """
-
-    import time, hotshot, hotshot.stats
 
     # manual or automatic namespacing by module would remove conflict issues
     if target is None:

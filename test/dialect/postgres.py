@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy import exceptions
+from sqlalchemy import exc
 from sqlalchemy.databases import postgres
 from sqlalchemy.engine.strategies import MockEngineStrategy
 from testlib import *
@@ -332,12 +332,12 @@ class InsertTest(TestBase, AssertsExecutionResults):
         try:
             table.insert().execute({'data':'d2'})
             assert False
-        except exceptions.IntegrityError, e:
+        except exc.IntegrityError, e:
             assert "violates not-null constraint" in str(e)
         try:
             table.insert().execute({'data':'d2'}, {'data':'d3'})
             assert False
-        except exceptions.IntegrityError, e:
+        except exc.IntegrityError, e:
             assert "violates not-null constraint" in str(e)
 
         table.insert().execute({'id':31, 'data':'d2'}, {'id':32, 'data':'d3'})
@@ -359,12 +359,12 @@ class InsertTest(TestBase, AssertsExecutionResults):
         try:
             table.insert().execute({'data':'d2'})
             assert False
-        except exceptions.IntegrityError, e:
+        except exc.IntegrityError, e:
             assert "violates not-null constraint" in str(e)
         try:
             table.insert().execute({'data':'d2'}, {'data':'d3'})
             assert False
-        except exceptions.IntegrityError, e:
+        except exc.IntegrityError, e:
             assert "violates not-null constraint" in str(e)
 
         table.insert().execute({'id':31, 'data':'d2'}, {'id':32, 'data':'d3'})
@@ -387,7 +387,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         try:
             con.execute('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42')
             con.execute('CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0')
-        except exceptions.SQLError, e:
+        except exc.SQLError, e:
             if not "already exists" in str(e):
                 raise e
         con.execute('CREATE TABLE testtable (question integer, answer testdomain)')

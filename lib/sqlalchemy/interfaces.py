@@ -67,7 +67,7 @@ class PoolListener(object):
           The ``_ConnectionFairy`` which manages the connection for the span of
           the current checkout.
 
-        If you raise an ``exceptions.DisconnectionError``, the current
+        If you raise an ``exc.DisconnectionError``, the current
         connection will be disposed and a fresh connection retrieved.
         Processing of all checkout listeners will abort and restart
         using the new connection.
@@ -87,3 +87,24 @@ class PoolListener(object):
           The ``_ConnectionRecord`` that persistently manages the connection
 
         """
+
+class ConnectionProxy(object):
+    """Allows interception of statement execution by Connections.
+    
+    Subclass ``ConnectionProxy``, overriding either or both of 
+    ``execute()`` and ``cursor_execute()``  The default behavior is provided,
+    which is to call the given executor function with the remaining 
+    arguments.  The proxy is then connected to an engine via
+    ``create_engine(url, proxy=MyProxy())`` where ``MyProxy`` is
+    the user-defined ``ConnectionProxy`` class.
+    
+    """
+    def execute(self, conn, execute, clauseelement, *multiparams, **params):
+        """"""
+        return execute(clauseelement, *multiparams, **params)
+
+    def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
+        """"""
+        return execute(cursor, statement, parameters, context)
+
+        

@@ -10,9 +10,10 @@ although the hash policy of the members would need to be distilled into a filter
 """
 
 class MyProxyDict(object):
-    def __init__(self, parent, collection_name, keyname):
+    def __init__(self, parent, collection_name, childclass, keyname):
         self.parent = parent
         self.collection_name = collection_name
+        self.childclass = childclass
         self.keyname = keyname
         
     def collection(self):
@@ -20,8 +21,8 @@ class MyProxyDict(object):
     collection = property(collection)
     
     def keys(self):
-        # this can be improved to not query all columns
-        return [getattr(x, self.keyname) for x in self.collection.all()]
+        descriptor = getattr(self.childclass, self.keyname)
+        return [x[0] for x in self.collection.values(descriptor)]
         
     def __getitem__(self, key):
         x = self.collection.filter_by(**{self.keyname:key}).first()
@@ -51,7 +52,7 @@ class MyParent(Base):
     _collection = dynamic_loader("MyChild", cascade="all, delete-orphan")
     
     def child_map(self):
-        return MyProxyDict(self, '_collection', 'key')
+        return MyProxyDict(self, '_collection', MyChild, 'key')
     child_map = property(child_map)
     
 class MyChild(Base):
@@ -63,14 +64,13 @@ class MyChild(Base):
     
 Base.metadata.create_all()
 
-sess = create_session(autoflush=True, transactional=True)
+sess = sessionmaker()()
 
 p1 = MyParent(name='p1')
-sess.save(p1)
+sess.add(p1)
 
 p1.child_map['k1'] = k1 = MyChild(key='k1')
 p1.child_map['k2'] = k2 = MyChild(key='k2')
-
 
 assert p1.child_map.keys() == ['k1', 'k2']
 

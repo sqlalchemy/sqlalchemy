@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.orm.sync import ONETOMANY, MANYTOONE
+from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
 from testlib import *
 
 

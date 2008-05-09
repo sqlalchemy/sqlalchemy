@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.sql import table, column, ClauseElement
-from sqlalchemy.sql.expression import  _clone
+from sqlalchemy.sql.expression import  _clone, _from_objects
 from testlib import *
 from sqlalchemy.sql.visitors import *
 from sqlalchemy import util
@@ -82,14 +82,14 @@ class TraversalTest(TestBase, AssertsExecutionResults):
     def test_clone(self):
         struct = B(A("expr1"), A("expr2"), B(A("expr1b"), A("expr2b")), A("expr3"))
 
-        class Vis(ClauseVisitor):
+        class Vis(CloningVisitor):
             def visit_a(self, a):
                 pass
             def visit_b(self, b):
                 pass
 
         vis = Vis()
-        s2 = vis.traverse(struct, clone=True)
+        s2 = vis.traverse(struct)
         assert struct == s2
         assert not struct.is_other(s2)
     
@@ -103,7 +103,7 @@ class TraversalTest(TestBase, AssertsExecutionResults):
                 pass
 
         vis = Vis()
-        s2 = vis.traverse(struct, clone=False)
+        s2 = vis.traverse(struct)
         assert struct == s2
         assert struct.is_other(s2)
 
@@ -112,7 +112,7 @@ class TraversalTest(TestBase, AssertsExecutionResults):
         struct2 = B(A("expr1"), A("expr2modified"), B(A("expr1b"), A("expr2b")), A("expr3"))
         struct3 = B(A("expr1"), A("expr2"), B(A("expr1b"), A("expr2bmodified")), A("expr3"))
 
-        class Vis(ClauseVisitor):
+        class Vis(CloningVisitor):
             def visit_a(self, a):
                 if a.expr == "expr2":
                     a.expr = "expr2modified"
@@ -120,12 +120,12 @@ class TraversalTest(TestBase, AssertsExecutionResults):
                 pass
 
         vis = Vis()
-        s2 = vis.traverse(struct, clone=True)
+        s2 = vis.traverse(struct)
         assert struct != s2
         assert not struct.is_other(s2)
         assert struct2 == s2
 
-        class Vis2(ClauseVisitor):
+        class Vis2(CloningVisitor):
             def visit_a(self, a):
                 if a.expr == "expr2b":
                     a.expr = "expr2bmodified"
@@ -133,7 +133,7 @@ class TraversalTest(TestBase, AssertsExecutionResults):
                 pass
 
         vis2 = Vis2()
-        s3 = vis2.traverse(struct, clone=True)
+        s3 = vis2.traverse(struct)
         assert struct != s3
         assert struct3 == s3
 
@@ -156,7 +156,7 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
 
     def test_binary(self):
         clause = t1.c.col2 == t2.c.col2
-        assert str(clause) == ClauseVisitor().traverse(clause, clone=True)
+        assert str(clause) == CloningVisitor().traverse(clause)
 
     def test_binary_anon_label_quirk(self):
         t = table('t1', column('col1'))
@@ -175,25 +175,25 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
     def test_join(self):
         clause = t1.join(t2, t1.c.col2==t2.c.col2)
         c1 = str(clause)
-        assert str(clause) == str(ClauseVisitor().traverse(clause, clone=True))
+        assert str(clause) == str(CloningVisitor().traverse(clause))
 
-        class Vis(ClauseVisitor):
+        class Vis(CloningVisitor):
             def visit_binary(self, binary):
                 binary.right = t2.c.col3
 
-        clause2 = Vis().traverse(clause, clone=True)
+        clause2 = Vis().traverse(clause)
         assert c1 == str(clause)
         assert str(clause2) == str(t1.join(t2, t1.c.col2==t2.c.col3))
     
     def test_text(self):
         clause = text("select * from table where foo=:bar", bindparams=[bindparam('bar')])
         c1 = str(clause)
-        class Vis(ClauseVisitor):
+        class Vis(CloningVisitor):
             def visit_textclause(self, text):
                 text.text = text.text + " SOME MODIFIER=:lala"
                 text.bindparams['lala'] = bindparam('lala')
 
-        clause2 = Vis().traverse(clause, clone=True)
+        clause2 = Vis().traverse(clause)
         assert c1 == str(clause)
         assert str(clause2) == c1 + " SOME MODIFIER=:lala"
         assert clause.bindparams.keys() == ['bar']
@@ -203,24 +203,27 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         s2 = select([t1])
         s2_assert = str(s2)
         s3_assert = str(select([t1], t1.c.col2==7))
-        class Vis(ClauseVisitor):
+        class Vis(CloningVisitor):
             def visit_select(self, select):
                 select.append_whereclause(t1.c.col2==7)
-        s3 = Vis().traverse(s2, clone=True)
+        s3 = Vis().traverse(s2)
         assert str(s3) == s3_assert
         assert str(s2) == s2_assert
         print str(s2)
         print str(s3)
+        class Vis(ClauseVisitor):
+            def visit_select(self, select):
+                select.append_whereclause(t1.c.col2==7)
         Vis().traverse(s2)
         assert str(s2) == s3_assert
 
         print "------------------"
 
         s4_assert = str(select([t1], and_(t1.c.col2==7, t1.c.col3==9)))
-        class Vis(ClauseVisitor):
+        class Vis(CloningVisitor):
             def visit_select(self, select):
                 select.append_whereclause(t1.c.col3==9)
-        s4 = Vis().traverse(s3, clone=True)
+        s4 = Vis().traverse(s3)
         print str(s3)
         print str(s4)
         assert str(s4) == s4_assert
@@ -228,12 +231,12 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
 
         print "------------------"
         s5_assert = str(select([t1], and_(t1.c.col2==7, t1.c.col1==9)))
-        class Vis(ClauseVisitor):
+        class Vis(CloningVisitor):
             def visit_binary(self, binary):
                 if binary.left is t1.c.col3:
                     binary.left = t1.c.col1
                     binary.right = bindparam("col1", unique=True)
-        s5 = Vis().traverse(s4, clone=True)
+        s5 = Vis().traverse(s4)
         print str(s4)
         print str(s5)
         assert str(s5) == s5_assert
@@ -241,13 +244,13 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
     
     def test_union(self):
         u = union(t1.select(), t2.select())
-        u2 = ClauseVisitor().traverse(u, clone=True)
+        u2 = CloningVisitor().traverse(u)
         assert str(u) == str(u2)
         assert [str(c) for c in u2.c] == [str(c) for c in u.c]
 
         u = union(t1.select(), t2.select())
         cols = [str(c) for c in u.c]
-        u2 = ClauseVisitor().traverse(u, clone=True)
+        u2 = CloningVisitor().traverse(u)
         assert str(u) == str(u2)
         assert [str(c) for c in u2.c] == cols
         
@@ -265,7 +268,7 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         """test that unique bindparams change their name upon clone() to prevent conflicts"""
 
         s = select([t1], t1.c.col1==bindparam(None, unique=True)).alias()
-        s2 = ClauseVisitor().traverse(s, clone=True).alias()
+        s2 = CloningVisitor().traverse(s).alias()
         s3 = select([s], s.c.col2==s2.c.col2)
 
         self.assert_compile(s3, "SELECT anon_1.col1, anon_1.col2, anon_1.col3 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "\
@@ -274,7 +277,7 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         "WHERE anon_1.col2 = anon_2.col2")
 
         s = select([t1], t1.c.col1==4).alias()
-        s2 = ClauseVisitor().traverse(s, clone=True).alias()
+        s2 = CloningVisitor().traverse(s).alias()
         s3 = select([s], s.c.col2==s2.c.col2)
         self.assert_compile(s3, "SELECT anon_1.col1, anon_1.col2, anon_1.col3 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "\
         "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :col1_1) AS anon_1, "\
@@ -286,26 +289,51 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         subq = t2.select().alias('subq')
         s = select([t1.c.col1, subq.c.col1], from_obj=[t1, subq, t1.join(subq, t1.c.col1==subq.c.col2)])
         orig = str(s)
-        s2 = ClauseVisitor().traverse(s, clone=True)
+        s2 = CloningVisitor().traverse(s)
         assert orig == str(s) == str(s2)
 
-        s4 = ClauseVisitor().traverse(s2, clone=True)
+        s4 = CloningVisitor().traverse(s2)
         assert orig == str(s) == str(s2) == str(s4)
 
-        s3 = sql_util.ClauseAdapter(table('foo')).traverse(s, clone=True)
+        s3 = sql_util.ClauseAdapter(table('foo')).traverse(s)
         assert orig == str(s) == str(s3)
 
-        s4 = sql_util.ClauseAdapter(table('foo')).traverse(s3, clone=True)
+        s4 = sql_util.ClauseAdapter(table('foo')).traverse(s3)
         assert orig == str(s) == str(s3) == str(s4)
 
     def test_correlated_select(self):
         s = select(['*'], t1.c.col1==t2.c.col1, from_obj=[t1, t2]).correlate(t2)
-        class Vis(ClauseVisitor):
+        class Vis(CloningVisitor):
             def visit_select(self, select):
                 select.append_whereclause(t1.c.col2==7)
 
-        self.assert_compile(Vis().traverse(s, clone=True), "SELECT * FROM table1 WHERE table1.col1 = table2.col1 AND table1.col2 = :col2_1")
-
+        self.assert_compile(Vis().traverse(s), "SELECT * FROM table1 WHERE table1.col1 = table2.col1 AND table1.col2 = :col2_1")
+    
+    def test_this_thing(self):
+        s = select([t1]).where(t1.c.col1=='foo').alias()
+        s2 = select([s.c.col1])
+        
+        self.assert_compile(s2, "SELECT anon_1.col1 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :col1_1) AS anon_1")
+        t1a = t1.alias()
+        s2 = sql_util.ClauseAdapter(t1a).traverse(s2)
+        self.assert_compile(s2, "SELECT anon_1.col1 FROM (SELECT table1_1.col1 AS col1, table1_1.col2 AS col2, table1_1.col3 AS col3 FROM table1 AS table1_1 WHERE table1_1.col1 = :col1_1) AS anon_1")
+        
+    def test_select_fromtwice(self):
+        t1a = t1.alias()
+        
+        s = select([1], t1.c.col1==t1a.c.col1, from_obj=t1a).correlate(t1)
+        self.assert_compile(s, "SELECT 1 FROM table1 AS table1_1 WHERE table1.col1 = table1_1.col1")
+        
+        s = CloningVisitor().traverse(s)
+        self.assert_compile(s, "SELECT 1 FROM table1 AS table1_1 WHERE table1.col1 = table1_1.col1")
+        
+        s = select([t1]).where(t1.c.col1=='foo').alias()
+        
+        s2 = select([1], t1.c.col1==s.c.col1, from_obj=s).correlate(t1)
+        self.assert_compile(s2, "SELECT 1 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :col1_1) AS anon_1 WHERE table1.col1 = anon_1.col1")
+        s2 = ReplacingCloningVisitor().traverse(s2)
+        self.assert_compile(s2, "SELECT 1 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :col1_1) AS anon_1 WHERE table1.col1 = anon_1.col1")
+        
 class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
     def setUpAll(self):
         global t1, t2
@@ -330,69 +358,88 @@ class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
         assert t1alias in s._froms
 
         self.assert_compile(select(['*'], t2alias.c.col1==s), "SELECT * FROM table2 AS t2alias WHERE t2alias.col1 = (SELECT * FROM table1 AS t1alias)")
-        s = vis.traverse(s, clone=True)
+        s = vis.traverse(s)
+
         assert t2alias not in s._froms  # not present because it's been cloned
+
         assert t1alias in s._froms # present because the adapter placed it there
+
         # correlate list on "s" needs to take into account the full _cloned_set for each element in _froms when correlating
         self.assert_compile(select(['*'], t2alias.c.col1==s), "SELECT * FROM table2 AS t2alias WHERE t2alias.col1 = (SELECT * FROM table1 AS t1alias)")
 
         s = select(['*'], from_obj=[t1alias, t2alias]).correlate(t2alias).as_scalar()
         self.assert_compile(select(['*'], t2alias.c.col1==s), "SELECT * FROM table2 AS t2alias WHERE t2alias.col1 = (SELECT * FROM table1 AS t1alias)")
-        s = vis.traverse(s, clone=True)
+        s = vis.traverse(s)
         self.assert_compile(select(['*'], t2alias.c.col1==s), "SELECT * FROM table2 AS t2alias WHERE t2alias.col1 = (SELECT * FROM table1 AS t1alias)")
-        s = ClauseVisitor().traverse(s, clone=True)
+        s = CloningVisitor().traverse(s)
         self.assert_compile(select(['*'], t2alias.c.col1==s), "SELECT * FROM table2 AS t2alias WHERE t2alias.col1 = (SELECT * FROM table1 AS t1alias)")
         
         s = select(['*']).where(t1.c.col1==t2.c.col1).as_scalar()
         self.assert_compile(select([t1.c.col1, s]), "SELECT table1.col1, (SELECT * FROM table2 WHERE table1.col1 = table2.col1) AS anon_1 FROM table1")
         vis = sql_util.ClauseAdapter(t1alias)
-        s = vis.traverse(s, clone=True)
+        s = vis.traverse(s)
         self.assert_compile(select([t1alias.c.col1, s]), "SELECT t1alias.col1, (SELECT * FROM table2 WHERE t1alias.col1 = table2.col1) AS anon_1 FROM table1 AS t1alias")
-        s = ClauseVisitor().traverse(s, clone=True)
+        s = CloningVisitor().traverse(s)
         self.assert_compile(select([t1alias.c.col1, s]), "SELECT t1alias.col1, (SELECT * FROM table2 WHERE t1alias.col1 = table2.col1) AS anon_1 FROM table1 AS t1alias")
 
         s = select(['*']).where(t1.c.col1==t2.c.col1).correlate(t1).as_scalar()
         self.assert_compile(select([t1.c.col1, s]), "SELECT table1.col1, (SELECT * FROM table2 WHERE table1.col1 = table2.col1) AS anon_1 FROM table1")
         vis = sql_util.ClauseAdapter(t1alias)
-        s = vis.traverse(s, clone=True)
+        s = vis.traverse(s)
         self.assert_compile(select([t1alias.c.col1, s]), "SELECT t1alias.col1, (SELECT * FROM table2 WHERE t1alias.col1 = table2.col1) AS anon_1 FROM table1 AS t1alias")
-        s = ClauseVisitor().traverse(s, clone=True)
+        s = CloningVisitor().traverse(s)
         self.assert_compile(select([t1alias.c.col1, s]), "SELECT t1alias.col1, (SELECT * FROM table2 WHERE t1alias.col1 = table2.col1) AS anon_1 FROM table1 AS t1alias")
-        
+
+    @testing.fails_on_everything_except()
+    def test_joins_dont_adapt(self):
+        # adapting to a join, i.e. ClauseAdapter(t1.join(t2)), doesn't make much sense.
+        # ClauseAdapter doesn't make any changes if it's against a straight join.
+        users = table('users', column('id'))
+        addresses = table('addresses', column('id'), column('user_id'))
+
+        ualias = users.alias()
+
+        s = select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id).correlate(users) #.as_scalar().label(None)
+        s= sql_util.ClauseAdapter(ualias).traverse(s)
+
+        j1 = addresses.join(ualias, addresses.c.user_id==ualias.c.id)
+
+        self.assert_compile(sql_util.ClauseAdapter(j1).traverse(s), "SELECT count(addresses.id) AS count_1 FROM addresses WHERE users_1.id = addresses.user_id")
         
     def test_table_to_alias(self):
 
         t1alias = t1.alias('t1alias')
 
         vis = sql_util.ClauseAdapter(t1alias)
-        ff = vis.traverse(func.count(t1.c.col1).label('foo'), clone=True)
-        assert ff._get_from_objects() == [t1alias]
+        ff = vis.traverse(func.count(t1.c.col1).label('foo'))
+        assert list(_from_objects(ff)) == [t1alias]
 
-        self.assert_compile(vis.traverse(select(['*'], from_obj=[t1]), clone=True), "SELECT * FROM table1 AS t1alias")
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2), clone=True), "SELECT * FROM table1 AS t1alias, table2 WHERE t1alias.col1 = table2.col2")
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]), clone=True), "SELECT * FROM table1 AS t1alias, table2 WHERE t1alias.col1 = table2.col2")
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t1), clone=True), "SELECT * FROM table2 WHERE t1alias.col1 = table2.col2")
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t2), clone=True), "SELECT * FROM table1 AS t1alias WHERE t1alias.col1 = table2.col2")
+        self.assert_compile(vis.traverse(select(['*'], from_obj=[t1])), "SELECT * FROM table1 AS t1alias")
+        self.assert_compile(select(['*'], t1.c.col1==t2.c.col2), "SELECT * FROM table1, table2 WHERE table1.col1 = table2.col2")
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2)), "SELECT * FROM table1 AS t1alias, table2 WHERE t1alias.col1 = table2.col2")
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2])), "SELECT * FROM table1 AS t1alias, table2 WHERE t1alias.col1 = table2.col2")
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t1)), "SELECT * FROM table2 WHERE t1alias.col1 = table2.col2")
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t2)), "SELECT * FROM table1 AS t1alias WHERE t1alias.col1 = table2.col2")
 
 
         s = select(['*'], from_obj=[t1]).alias('foo')
         self.assert_compile(s.select(), "SELECT foo.* FROM (SELECT * FROM table1) AS foo")
-        self.assert_compile(vis.traverse(s.select(), clone=True), "SELECT foo.* FROM (SELECT * FROM table1 AS t1alias) AS foo")
+        self.assert_compile(vis.traverse(s.select()), "SELECT foo.* FROM (SELECT * FROM table1 AS t1alias) AS foo")
         self.assert_compile(s.select(), "SELECT foo.* FROM (SELECT * FROM table1) AS foo")
 
-        ff = vis.traverse(func.count(t1.c.col1).label('foo'), clone=True)
-        self.assert_compile(ff, "count(t1alias.col1) AS foo")
-        assert ff._get_from_objects() == [t1alias]
+        ff = vis.traverse(func.count(t1.c.col1).label('foo'))
+        self.assert_compile(select([ff]), "SELECT count(t1alias.col1) AS foo FROM table1 AS t1alias")
+        assert list(_from_objects(ff)) == [t1alias]
 
 # TODO:
     #    self.assert_compile(vis.traverse(select([func.count(t1.c.col1).label('foo')]), clone=True), "SELECT count(t1alias.col1) AS foo FROM table1 AS t1alias")
 
         t2alias = t2.alias('t2alias')
         vis.chain(sql_util.ClauseAdapter(t2alias))
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2), clone=True), "SELECT * FROM table1 AS t1alias, table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]), clone=True), "SELECT * FROM table1 AS t1alias, table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t1), clone=True), "SELECT * FROM table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
-        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t2), clone=True), "SELECT * FROM table1 AS t1alias WHERE t1alias.col1 = t2alias.col2")
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2)), "SELECT * FROM table1 AS t1alias, table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2])), "SELECT * FROM table1 AS t1alias, table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t1)), "SELECT * FROM table2 AS t2alias WHERE t1alias.col1 = t2alias.col2")
+        self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t2)), "SELECT * FROM table1 AS t1alias WHERE t1alias.col1 = t2alias.col2")
 
     def test_include_exclude(self):
         m = MetaData()
@@ -517,6 +564,65 @@ class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
             "WHERE c.bid = anon_1.b_aid"
         )
 
+class SpliceJoinsTest(TestBase, AssertsCompiledSQL):
+    def setUpAll(self):
+        global table1, table2, table3, table4
+        def _table(name):
+            return table(name, column("col1"), column("col2"),column("col3"))
+        
+        table1, table2, table3, table4 = [_table(name) for name in ("table1", "table2", "table3", "table4")]    
+
+    def test_splice(self):
+        (t1, t2, t3, t4) = (table1, table2, table1.alias(), table2.alias())
+        
+        j = t1.join(t2, t1.c.col1==t2.c.col1).join(t3, t2.c.col1==t3.c.col1).join(t4, t4.c.col1==t1.c.col1)
+        
+        s = select([t1]).where(t1.c.col2<5).alias()
+        
+        self.assert_compile(sql_util.splice_joins(s, j), 
+            "(SELECT table1.col1 AS col1, table1.col2 AS col2, "\
+            "table1.col3 AS col3 FROM table1 WHERE table1.col2 < :col2_1) AS anon_1 "\
+            "JOIN table2 ON anon_1.col1 = table2.col1 JOIN table1 AS table1_1 ON table2.col1 = table1_1.col1 "\
+            "JOIN table2 AS table2_1 ON table2_1.col1 = anon_1.col1")
+
+    def test_stop_on(self):
+        (t1, t2, t3) = (table1, table2, table3)
+        
+        j1= t1.join(t2, t1.c.col1==t2.c.col1)
+        j2 = j1.join(t3, t2.c.col1==t3.c.col1)
+        
+        s = select([t1]).select_from(j1).alias()
+        
+        self.assert_compile(sql_util.splice_joins(s, j2), 
+            "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 JOIN table2 "\
+            "ON table1.col1 = table2.col1) AS anon_1 JOIN table2 ON anon_1.col1 = table2.col1 JOIN table3 "\
+            "ON table2.col1 = table3.col1"
+        )
+
+        self.assert_compile(sql_util.splice_joins(s, j2, j1), 
+            "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 "\
+            "JOIN table2 ON table1.col1 = table2.col1) AS anon_1 JOIN table3 ON table2.col1 = table3.col1")
+    
+    def test_splice_2(self):
+        t2a = table2.alias()
+        t3a = table3.alias()
+        j1 = table1.join(t2a, table1.c.col1==t2a.c.col1).join(t3a, t2a.c.col2==t3a.c.col2)
+        
+        t2b = table4.alias()
+        j2 = table1.join(t2b, table1.c.col3==t2b.c.col3)
+        
+        self.assert_compile(sql_util.splice_joins(table1, j1), 
+            "table1 JOIN table2 AS table2_1 ON table1.col1 = table2_1.col1 "\
+            "JOIN table3 AS table3_1 ON table2_1.col2 = table3_1.col2")
+            
+        self.assert_compile(sql_util.splice_joins(table1, j2), "table1 JOIN table4 AS table4_1 ON table1.col3 = table4_1.col3")
+
+        self.assert_compile(sql_util.splice_joins(sql_util.splice_joins(table1, j1), j2), 
+            "table1 JOIN table2 AS table2_1 ON table1.col1 = table2_1.col1 "\
+            "JOIN table3 AS table3_1 ON table2_1.col2 = table3_1.col2 "\
+            "JOIN table4 AS table4_1 ON table1.col3 = table4_1.col3")
+    
+        
 class SelectTest(TestBase, AssertsCompiledSQL):
     """tests the generative capability of Select"""
 

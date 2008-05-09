@@ -1,9 +1,9 @@
 import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exceptions, types
+from sqlalchemy import exc as sa_exc, types
 from sqlalchemy.orm import *
-from sqlalchemy.orm import collections
+from sqlalchemy.orm import collections, attributes, exc as orm_exc
 from sqlalchemy.orm.collections import collection
 from testlib import *
 from testlib import fixtures
@@ -278,7 +278,13 @@ class RelationTest3(TestBase):
                 self.pagename = pagename
                 self.currentversion = PageVersion(self, 1)
             def __repr__(self):
-                return "Page jobno:%s pagename:%s %s" % (self.jobno, self.pagename, getattr(self, '_instance_key', None))
+                try:
+                    state = attributes.instance_state(self)
+                    key = state.key
+                except (KeyError, AttributeError):
+                    key = None
+                return ("Page jobno:%s pagename:%s %s" %
+                        (self.jobno, self.pagename, key))
             def add_version(self):
                 self.currentversion = PageVersion(self, self.currentversion.version+1)
                 comment = self.add_comment()
@@ -393,7 +399,7 @@ class RelationTest4(ORMTest):
         try:
             sess.flush()
             assert False
-        except exceptions.AssertionError, e:
+        except AssertionError, e:
             assert str(e).startswith("Dependency rule tried to blank-out primary key column 'B.id' on instance ")
 
     def test_no_delete_PK_BtoA(self):
@@ -413,7 +419,7 @@ class RelationTest4(ORMTest):
         try:
             sess.flush()
             assert False
-        except exceptions.AssertionError, e:
+        except AssertionError, e:
             assert str(e).startswith("Dependency rule tried to blank-out primary key column 'B.id' on instance ")
 
     @testing.fails_on_everything_except('sqlite', 'mysql')
@@ -627,7 +633,7 @@ class TypeMatchTest(ORMTest):
         try:
             sess.save(a1)
             assert False
-        except exceptions.AssertionError, err:
+        except AssertionError, err:
             assert str(err) == "Attribute 'bs' on class '%s' doesn't handle objects of type '%s'" % (A, C)
     def test_o2m_onflush(self):
         class A(object):pass
@@ -646,11 +652,8 @@ class TypeMatchTest(ORMTest):
         sess.save(a1)
         sess.save(b1)
         sess.save(c1)
-        try:
-            sess.flush()
-            assert False
-        except exceptions.FlushError, err:
-            assert str(err).startswith("Attempting to flush an item of type %s on collection 'A.bs (B)', which is handled by mapper 'Mapper|B|b' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % C)
+        self.assertRaisesMessage(orm_exc.FlushError, "Attempting to flush an item", sess.flush)
+
     def test_o2m_nopoly_onflush(self):
         class A(object):pass
         class B(object):pass
@@ -668,11 +671,7 @@ class TypeMatchTest(ORMTest):
         sess.save(a1)
         sess.save(b1)
         sess.save(c1)
-        try:
-            sess.flush()
-            assert False
-        except exceptions.FlushError, err:
-            assert str(err).startswith("Attempting to flush an item of type %s on collection 'A.bs (B)', which is handled by mapper 'Mapper|B|b' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % C)
+        self.assertRaisesMessage(orm_exc.FlushError, "Attempting to flush an item", sess.flush)
 
     def test_m2o_nopoly_onflush(self):
         class A(object):pass
@@ -687,11 +686,8 @@ class TypeMatchTest(ORMTest):
         sess = create_session()
         sess.save(b1)
         sess.save(d1)
-        try:
-            sess.flush()
-            assert False
-        except exceptions.FlushError, err:
-            assert str(err).startswith("Attempting to flush an item of type %s on collection 'D.a (A)', which is handled by mapper 'Mapper|A|a' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % B)
+        self.assertRaisesMessage(orm_exc.FlushError, "Attempting to flush an item", sess.flush)
+
     def test_m2o_oncascade(self):
         class A(object):pass
         class B(object):pass
@@ -703,11 +699,7 @@ class TypeMatchTest(ORMTest):
         d1 = D()
         d1.a = b1
         sess = create_session()
-        try:
-            sess.save(d1)
-            assert False
-        except exceptions.AssertionError, err:
-            assert str(err) == "Attribute 'a' on class '%s' doesn't handle objects of type '%s'" % (D, B)
+        self.assertRaisesMessage(AssertionError, "doesn't handle objects of type", sess.save, d1)
 
 class TypedAssociationTable(ORMTest):
     def define_tables(self, metadata):
@@ -1030,6 +1022,7 @@ class ViewOnlyTest6(ORMTest):
         
         a = sess.query(T1).first()
         self.assertEquals(a.t3s, [T3(data='t3')])
+
         
     def test_remote_side_escalation(self):
         class T1(fixtures.Base):
@@ -1051,7 +1044,7 @@ class ViewOnlyTest6(ORMTest):
             't3s':relation(T3, secondary=t2tot3)
         })
         mapper(T3, t3)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Specify remote_side argument", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Specify remote_side argument", compile_mappers)
 
 class ExplicitLocalRemoteTest(ORMTest):
     def define_tables(self, metadata):
@@ -1210,7 +1203,7 @@ class ExplicitLocalRemoteTest(ORMTest):
             )
         })
         mapper(T2, t2)
-        self.assertRaises(exceptions.ArgumentError, compile_mappers)
+        self.assertRaises(sa_exc.ArgumentError, compile_mappers)
         
         clear_mappers()
         mapper(T1, t1, properties={
@@ -1219,7 +1212,7 @@ class ExplicitLocalRemoteTest(ORMTest):
             )
         })
         mapper(T2, t2)
-        self.assertRaises(exceptions.ArgumentError, compile_mappers)
+        self.assertRaises(sa_exc.ArgumentError, compile_mappers)
         
 class InvalidRelationEscalationTest(ORMTest):
     def define_tables(self, metadata):
@@ -1237,7 +1230,7 @@ class InvalidRelationEscalationTest(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
 
     def test_no_join_self_ref(self):
         mapper(Foo, foos, properties={
@@ -1245,7 +1238,7 @@ class InvalidRelationEscalationTest(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
         
     def test_no_equated(self):
         mapper(Foo, foos, properties={
@@ -1253,7 +1246,7 @@ class InvalidRelationEscalationTest(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
 
     def test_no_equated_fks(self):
         mapper(Foo, foos, properties={
@@ -1261,7 +1254,7 @@ class InvalidRelationEscalationTest(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated, locally mapped column pairs for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not locate any equated, locally mapped column pairs for primaryjoin condition", compile_mappers)
 
     def test_no_equated_self_ref(self):
         mapper(Foo, foos, properties={
@@ -1269,7 +1262,7 @@ class InvalidRelationEscalationTest(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
 
     def test_no_equated_self_ref(self):
         mapper(Foo, foos, properties={
@@ -1277,7 +1270,7 @@ class InvalidRelationEscalationTest(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated, locally mapped column pairs for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not locate any equated, locally mapped column pairs for primaryjoin condition", compile_mappers)
 
     def test_no_equated_viewonly(self):
         mapper(Foo, foos, properties={
@@ -1285,7 +1278,7 @@ class InvalidRelationEscalationTest(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
 
     def test_no_equated_self_ref_viewonly(self):
         mapper(Foo, foos, properties={
@@ -1294,7 +1287,7 @@ class InvalidRelationEscalationTest(ORMTest):
 
         mapper(Bar, bars)
 
-        self.assertRaisesMessage(exceptions.ArgumentError, "Specify the foreign_keys argument to indicate which columns on the relation are foreign.", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Specify the foreign_keys argument to indicate which columns on the relation are foreign.", compile_mappers)
 
     def test_no_equated_self_ref_viewonly_fks(self):
         mapper(Foo, foos, properties={
@@ -1308,21 +1301,21 @@ class InvalidRelationEscalationTest(ORMTest):
             'bars':relation(Bar, primaryjoin=foos.c.id==bars.c.fid)
         })
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
     
     def test_equated_self_ref(self):
         mapper(Foo, foos, properties={
             'foos':relation(Foo, primaryjoin=foos.c.id==foos.c.fid)
         })
 
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
 
     def test_equated_self_ref_wrong_fks(self):
         mapper(Foo, foos, properties={
             'foos':relation(Foo, primaryjoin=foos.c.id==foos.c.fid, foreign_keys=[bars.c.id])
         })
 
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
 
 class InvalidRelationEscalationTestM2M(ORMTest):
     def define_tables(self, metadata):
@@ -1341,7 +1334,7 @@ class InvalidRelationEscalationTestM2M(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
 
     def test_no_secondaryjoin(self):
         mapper(Foo, foos, properties={
@@ -1349,7 +1342,7 @@ class InvalidRelationEscalationTestM2M(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
 
     def test_bad_primaryjoin(self):
         mapper(Foo, foos, properties={
@@ -1357,7 +1350,7 @@ class InvalidRelationEscalationTestM2M(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
 
     def test_bad_secondaryjoin(self):
         mapper(Foo, foos, properties={
@@ -1365,7 +1358,7 @@ class InvalidRelationEscalationTestM2M(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for secondaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not determine relation direction for secondaryjoin condition", compile_mappers)
 
     def test_no_equated_secondaryjoin(self):
         mapper(Foo, foos, properties={
@@ -1373,7 +1366,7 @@ class InvalidRelationEscalationTestM2M(ORMTest):
         })
 
         mapper(Bar, bars)
-        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated, locally mapped column pairs for secondaryjoin condition", compile_mappers)
+        self.assertRaisesMessage(sa_exc.ArgumentError, "Could not locate any equated, locally mapped column pairs for secondaryjoin condition", compile_mappers)
 
 
 if __name__ == "__main__":

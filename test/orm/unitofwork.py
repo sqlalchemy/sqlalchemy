@@ -5,8 +5,9 @@
 import testenv; testenv.configure_for_tests()
 import pickleable
 from sqlalchemy import *
-from sqlalchemy import exceptions, sql
+from sqlalchemy import exc as sa_exc, sql
 from sqlalchemy.orm import *
+from sqlalchemy.orm import attributes, exc as orm_exc
 from testlib import *
 from testlib.tables import *
 from testlib import engines, tables, fixtures
@@ -14,7 +15,7 @@ from testlib import engines, tables, fixtures
 
 # TODO: convert suite to not use Session.mapper, use fixtures.Base
 # with explicit session.save()
-Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
+Session = scoped_session(sessionmaker(autoflush=True, autocommit=False, autoexpire=False))
 orm_mapper = mapper
 mapper = Session.mapper
 
@@ -28,8 +29,10 @@ class HistoryTest(ORMTest):
 
     def test_backref(self):
         s = Session()
-        class User(object):pass
-        class Address(object):pass
+        class User(object):
+            def __init__(self, **kw): pass
+        class Address(object):
+            def __init__(self, _sa_session=None): pass
         am = mapper(Address, addresses)
         m = mapper(User, users, properties = dict(
             addresses = relation(am, backref='user', lazy=False))
@@ -59,7 +62,9 @@ class VersioningTest(ORMTest):
     @engines.close_open_connections
     def test_basic(self):
         s = Session(scope=None)
-        class Foo(object):pass
+        class Foo(object):
+            def __init__(self, value, _sa_session=None):
+                self.value = value
         mapper(Foo, version_table, version_id_col=version_table.c.version_id)
         f1 = Foo(value='f1', _sa_session=s)
         f2 = Foo(value='f2', _sa_session=s)
@@ -67,26 +72,22 @@ class VersioningTest(ORMTest):
 
         f1.value='f1rev2'
         s.commit()
+
         s2 = Session()
         f1_s = s2.query(Foo).get(f1.id)
         f1_s.value='f1rev3'
         s2.commit()
 
         f1.value='f1rev3mine'
-        success = False
-        try:
-            # a concurrent session has modified this, should throw
-            # an exception
-            s.commit()
-        except exceptions.ConcurrentModificationError, e:
-            #print e
-            success = True
 
         # Only dialects with a sane rowcount can detect the ConcurrentModificationError
         if testing.db.dialect.supports_sane_rowcount:
-            assert success
-
-        s.close()
+            self.assertRaises(orm_exc.ConcurrentModificationError, s.commit)
+            s.rollback()
+        else:
+            s.commit()
+        
+        # new in 0.5 !  dont need to close the session
         f1 = s.query(Foo).get(f1.id)
         f2 = s.query(Foo).get(f2.id)
 
@@ -95,33 +96,29 @@ class VersioningTest(ORMTest):
 
         s.delete(f1)
         s.delete(f2)
-        success = False
-        try:
-            s.commit()
-        except exceptions.ConcurrentModificationError, e:
-            #print e
-            success = True
+
         if testing.db.dialect.supports_sane_multi_rowcount:
-            assert success
+            self.assertRaises(orm_exc.ConcurrentModificationError, s.commit)
+        else:
+            s.commit()
 
     @engines.close_open_connections
     def test_versioncheck(self):
         """test that query.with_lockmode performs a 'version check' on an already loaded instance"""
         s1 = Session(scope=None)
-        class Foo(object):pass
+        class Foo(object):
+            def __init__(self, _sa_session=None): pass
         mapper(Foo, version_table, version_id_col=version_table.c.version_id)
-        f1s1 =Foo(value='f1', _sa_session=s1)
+        f1s1 = Foo(_sa_session=s1)
+        f1s1.value = 'f1 value'
         s1.commit()
         s2 = Session()
         f1s2 = s2.query(Foo).get(f1s1.id)
         f1s2.value='f1 new value'
         s2.commit()
-        try:
-            # load, version is wrong
-            s1.query(Foo).with_lockmode('read').get(f1s1.id)
-            assert False
-        except exceptions.ConcurrentModificationError, e:
-            assert True
+        # load, version is wrong
+        self.assertRaises(orm_exc.ConcurrentModificationError, s1.query(Foo).with_lockmode('read').get, f1s1.id)
+
         # reload it
         s1.query(Foo).load(f1s1.id)
         # now assert version OK
@@ -135,9 +132,11 @@ class VersioningTest(ORMTest):
     def test_noversioncheck(self):
         """test that query.with_lockmode works OK when the mapper has no version id col"""
         s1 = Session()
-        class Foo(object):pass
+        class Foo(object):
+            def __init__(self, _sa_session=None): pass
         mapper(Foo, version_table)
-        f1s1 =Foo(value='f1', _sa_session=s1)
+        f1s1 =Foo(_sa_session=s1)
+        f1s1.value = 'foo'
         f1s1.version_id=0
         s1.commit()
         s2 = Session()
@@ -271,9 +270,11 @@ class MutableTypesTest(ORMTest):
         Session.commit()
         Session.close()
         f2 = Session.query(Foo).filter_by(id=f1.id).one()
+        assert 'data' in attributes.instance_state(f2).unmodified
         assert f2.data == f1.data
         f2.data.y = 19
         assert f2 in Session.dirty
+        assert 'data' not in attributes.instance_state(f2).unmodified
         Session.commit()
         Session.close()
         f3 = Session.query(Foo).filter_by(id=f1.id).one()
@@ -439,8 +440,11 @@ class PKTest(ORMTest):
         e.multi_rev = 2
         Session.commit()
         Session.close()
-        e2 = Query(Entry).get((e.multi_id, 2))
-        self.assert_(e is not e2 and e._instance_key == e2._instance_key)
+        e2 = Session.query(Entry).get((e.multi_id, 2))
+        self.assert_(e is not e2)
+        state = attributes.instance_state(e)
+        state2 = attributes.instance_state(e2)
+        self.assert_(state.key == state2.key)
 
     # this one works with sqlite since we are manually setting up pk values
     def test_manualpk(self):
@@ -514,8 +518,7 @@ class ClauseAttributesTest(ORMTest):
             Column('counter', Integer, default=1))
 
     def test_update(self):
-        class User(object):
-            pass
+        class User(fixtures.Base): pass
         mapper(User, users_table)
         u = User(name='test')
         sess = Session()
@@ -530,8 +533,7 @@ class ClauseAttributesTest(ORMTest):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_multi_update(self):
-        class User(object):
-            pass
+        class User(fixtures.Base): pass
         mapper(User, users_table)
         u = User(name='test')
         sess = Session()
@@ -553,8 +555,7 @@ class ClauseAttributesTest(ORMTest):
 
     @testing.unsupported('mssql')
     def test_insert(self):
-        class User(object):
-            pass
+        class User(fixtures.Base): pass
         mapper(User, users_table)
         u = User(name='test', counter=select([5]))
         sess = Session()
@@ -641,7 +642,7 @@ class ExtraPassiveDeletesTest(ORMTest):
                 'children':relation(MyOtherClass, passive_deletes='all', cascade="all")
             })
             assert False
-        except exceptions.ArgumentError, e:
+        except sa_exc.ArgumentError, e:
             assert str(e) == "Can't set passive_deletes='all' in conjunction with 'delete' or 'delete-orphan' cascade"
 
     @testing.unsupported('sqlite')
@@ -669,7 +670,7 @@ class ExtraPassiveDeletesTest(ORMTest):
         assert myothertable.count().scalar() == 4
         mc = sess.query(MyClass).get(mc.id)
         sess.delete(mc)
-        self.assertRaises(exceptions.DBAPIError, sess.commit)
+        self.assertRaises(sa_exc.DBAPIError, sess.commit)
 
     @testing.unsupported('sqlite')
     def test_extra_passive_2(self):
@@ -694,7 +695,7 @@ class ExtraPassiveDeletesTest(ORMTest):
         mc = sess.query(MyClass).get(mc.id)
         sess.delete(mc)
         mc.children[0].data = 'some new data'
-        self.assertRaises(exceptions.DBAPIError, sess.commit)
+        self.assertRaises(sa_exc.DBAPIError, sess.commit)
 
 
 class DefaultTest(ORMTest):
@@ -736,7 +737,7 @@ class DefaultTest(ORMTest):
             secondary_table.append_column(Column('hoho', hohotype, ForeignKey('default_test.hoho')))
 
     def test_insert(self):
-        class Hoho(object):pass
+        class Hoho(fixtures.Base): pass
         mapper(Hoho, default_table)
 
         h1 = Hoho(hoho=althohoval)
@@ -790,7 +791,7 @@ class DefaultTest(ORMTest):
 
     def test_insert_nopostfetch(self):
         # populates the PassiveDefaults explicitly so there is no "post-update"
-        class Hoho(object):pass
+        class Hoho(fixtures.Base): pass
         mapper(Hoho, default_table)
 
         h1 = Hoho(hoho="15", counter="15")
@@ -803,7 +804,7 @@ class DefaultTest(ORMTest):
         self.assert_sql_count(testing.db, go, 0)
 
     def test_update(self):
-        class Hoho(object):pass
+        class Hoho(fixtures.Base): pass
         mapper(Hoho, default_table)
         h1 = Hoho()
         Session.commit()
@@ -971,7 +972,7 @@ class OneToManyTest(ORMTest):
 
     def test_o2m_delete_parent(self):
         m = mapper(User, users, properties = dict(
-            address = relation(mapper(Address, addresses), lazy = True, uselist = False, private = False)
+            address = relation(mapper(Address, addresses), lazy=True, uselist=False)
         ))
         u = User()
         a = Address()
@@ -981,7 +982,10 @@ class OneToManyTest(ORMTest):
         Session.commit()
         Session.delete(u)
         Session.commit()
-        self.assert_(a.address_id is not None and a.user_id is None and u._instance_key not in Session.identity_map and a._instance_key in Session.identity_map)
+        self.assert_(a.address_id is not None)
+        self.assert_(a.user_id is None)
+        self.assert_(attributes.instance_state(a).key in Session.identity_map)
+        self.assert_(attributes.instance_state(u).key not in Session.identity_map)
 
     def test_onetoone(self):
         m = mapper(User, users, properties = dict(
@@ -2029,7 +2033,7 @@ class TransactionTest(ORMTest):
         orm_mapper(T2, t2)
 
     def test_close_transaction_on_commit_fail(self):
-        Session = sessionmaker(autoflush=False, transactional=False)
+        Session = sessionmaker(autoflush=False, autocommit=True)
         sess = Session()
 
         # with a deferred constraint, this fails at COMMIT time instead

@@ -1,14 +1,15 @@
 import testenv; testenv.configure_for_tests()
+import gc
+import pickle
 from sqlalchemy import *
-from sqlalchemy import exceptions, util
+from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.orm import *
+from sqlalchemy.orm import attributes
 from sqlalchemy.orm.session import SessionExtension
 from sqlalchemy.orm.session import Session as SessionCls
 from testlib import *
 from testlib.tables import *
 from testlib import fixtures, tables
-import pickle
-import gc
 
 
 class SessionTest(TestBase, AssertsExecutionResults):
@@ -27,7 +28,8 @@ class SessionTest(TestBase, AssertsExecutionResults):
         pass
 
     def test_close(self):
-        """test that flush() doenst close a connection the session didnt open"""
+        """test that flush() doesn't close a connection the session didn't open"""
+
         c = testing.db.connect()
         class User(object):pass
         mapper(User, users)
@@ -83,9 +85,14 @@ class SessionTest(TestBase, AssertsExecutionResults):
         # then see if expunge fails
         session.expunge(u)
 
+        assert object_session(u) is attributes.instance_state(u).session_id is None
+        for a in u.addresses:
+            assert object_session(a) is attributes.instance_state(a).session_id is None
+
     @engines.close_open_connections
     def test_binds_from_expression(self):
         """test that Session can extract Table objects from ClauseElements and match them to tables."""
+
         Session = sessionmaker(binds={users:testing.db, addresses:testing.db})
         sess = Session()
         sess.execute(users.insert(), params=dict(user_id=1, user_name='ed'))
@@ -123,7 +130,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
 
-        sess = create_session(transactional=True, bind=conn1)
+        sess = create_session(autocommit=False, bind=conn1)
         u = User()
         sess.save(u)
         sess.flush()
@@ -134,20 +141,6 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert testing.db.connect().execute("select count(1) from users").scalar() == 1
         sess.close()
 
-    def test_flush_noop(self):
-        session = create_session()
-        session.uow = object()
-
-        self.assertRaises(AttributeError, session.flush)
-
-        session = create_session()
-        session.uow = object()
-
-        session.flush(objects=[])
-        session.flush(objects=set())
-        session.flush(objects=())
-        session.flush(objects=iter([]))
-
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
     @engines.close_open_connections
     def test_autoflush(self):
@@ -156,7 +149,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
 
-        sess = create_session(bind=conn1, transactional=True, autoflush=True)
+        sess = create_session(bind=conn1, autocommit=False, autoflush=True)
         u = User()
         u.user_name='ed'
         sess.save(u)
@@ -179,7 +172,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         })
         mapper(Address, addresses)
 
-        sess = create_session(autoflush=True, transactional=True)
+        sess = create_session(autoflush=True, autocommit=False)
         u = User(user_name='ed', addresses=[Address(email_address='foo')])
         sess.save(u)
         self.assertEquals(sess.query(Address).filter(Address.user==u).one(), Address(email_address='foo'))
@@ -191,7 +184,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         mapper(User, users)
 
         try:
-            sess = create_session(transactional=True, autoflush=True)
+            sess = create_session(autocommit=False, autoflush=True)
             u = User()
             u.user_name='ed'
             sess.save(u)
@@ -214,7 +207,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
 
-        sess = create_session(bind=conn1, transactional=True, autoflush=True)
+        sess = create_session(bind=conn1, autocommit=False, autoflush=True)
         u = User()
         u.user_name='ed'
         sess.save(u)
@@ -223,18 +216,17 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert testing.db.connect().execute("select count(1) from users").scalar() == 1
         sess.commit()
 
-    # TODO: not doing rollback of attributes right now.
-    def dont_test_autoflush_rollback(self):
+    def test_autoflush_rollback(self):
         tables.data()
         mapper(Address, addresses)
         mapper(User, users, properties={
             'addresses':relation(Address)
         })
 
-        sess = create_session(transactional=True, autoflush=True)
+        sess = create_session(autocommit=False, autoflush=True)
         u = sess.query(User).get(8)
         newad = Address()
-        newad.email_address == 'something new'
+        newad.email_address = 'something new'
         u.addresses.append(newad)
         u.user_name = 'some new name'
         assert u.user_name == 'some new name'
@@ -244,16 +236,26 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert u.user_name == 'ed'
         assert len(u.addresses) == 3
         assert newad not in u.addresses
-
+        
+        # pending objects dont get expired
+        assert newad.email_address == 'something new'
+    
+    def test_textual_execute(self):
+        """test that Session.execute() converts to text()"""
+        
+        tables.data()
+        sess = create_session(bind=testing.db)
+        # use :bindparam style
+        self.assertEquals(sess.execute("select * from users where user_id=:id", {'id':7}).fetchall(), [(7, u'jack')])
 
     @engines.close_open_connections
-    def test_external_joined_transaction(self):
+    def test_subtransaction_on_external(self):
         class User(object):pass
         mapper(User, users)
         conn = testing.db.connect()
         trans = conn.begin()
-        sess = create_session(bind=conn, transactional=True, autoflush=True)
-        sess.begin()
+        sess = create_session(bind=conn, autocommit=False, autoflush=True)
+        sess.begin(subtransactions=True)
         u = User()
         sess.save(u)
         sess.flush()
@@ -271,7 +273,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         try:
             conn = testing.db.connect()
             trans = conn.begin()
-            sess = create_session(bind=conn, transactional=True, autoflush=True)
+            sess = create_session(bind=conn, autocommit=False, autoflush=True)
             u1 = User()
             sess.save(u1)
             sess.flush()
@@ -288,16 +290,14 @@ class SessionTest(TestBase, AssertsExecutionResults):
             conn.close()
             raise
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @engines.close_open_connections
+    @testing.requires.savepoints
     def test_heavy_nesting(self):
         session = create_session(bind=testing.db)
 
         session.begin()
         session.connection().execute("insert into users (user_name) values ('user1')")
 
-        session.begin()
+        session.begin(subtransactions=True)
 
         session.begin_nested()
 
@@ -312,9 +312,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert session.connection().execute("select count(1) from users").scalar() == 2
 
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
+    @testing.requires.two_phase_transactions
     def test_twophase(self):
         # TODO: mock up a failure condition here
         # to ensure a rollback succeeds
@@ -324,7 +322,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         mapper(Address, addresses)
 
         engine2 = create_engine(testing.db.url)
-        sess = create_session(transactional=False, autoflush=False, twophase=True)
+        sess = create_session(autocommit=True, autoflush=False, twophase=True)
         sess.bind_mapper(User, testing.db)
         sess.bind_mapper(Address, engine2)
         sess.begin()
@@ -338,11 +336,11 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert users.count().scalar() == 1
         assert addresses.count().scalar() == 1
 
-    def test_joined_transaction(self):
+    def test_subtransaction_on_noautocommit(self):
         class User(object):pass
         mapper(User, users)
-        sess = create_session(transactional=True, autoflush=True)
-        sess.begin()
+        sess = create_session(autocommit=False, autoflush=True)
+        sess.begin(subtransactions=True)
         u = User()
         sess.save(u)
         sess.flush()
@@ -351,9 +349,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert len(sess.query(User).all()) == 0
         sess.close()
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
+    @testing.requires.savepoints
     def test_nested_transaction(self):
         class User(object):pass
         mapper(User, users)
@@ -376,13 +372,11 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert len(sess.query(User).all()) == 1
         sess.close()
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
+    @testing.requires.savepoints
     def test_nested_autotrans(self):
         class User(object):pass
         mapper(User, users)
-        sess = create_session(transactional=True)
+        sess = create_session(autocommit=False)
         u = User()
         sess.save(u)
         sess.flush()
@@ -399,14 +393,12 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert len(sess.query(User).all()) == 1
         sess.close()
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
+    @testing.requires.savepoints
     def test_nested_transaction_connection_add(self):
         class User(object): pass
         mapper(User, users)
 
-        sess = create_session(transactional=False)
+        sess = create_session(autocommit=True)
 
         sess.begin()
         sess.begin_nested()
@@ -436,18 +428,16 @@ class SessionTest(TestBase, AssertsExecutionResults):
 
         sess.close()
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
+    @testing.requires.savepoints
     def test_mixed_transaction_control(self):
         class User(object): pass
         mapper(User, users)
 
-        sess = create_session(transactional=False)
+        sess = create_session(autocommit=True)
 
         sess.begin()
         sess.begin_nested()
-        transaction = sess.begin()
+        transaction = sess.begin(subtransactions=True)
 
         sess.save(User())
 
@@ -469,14 +459,12 @@ class SessionTest(TestBase, AssertsExecutionResults):
 
         sess.close()
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
+    @testing.requires.savepoints
     def test_mixed_transaction_close(self):
         class User(object): pass
         mapper(User, users)
 
-        sess = create_session(transactional=True)
+        sess = create_session(autocommit=False)
 
         sess.begin_nested()
 
@@ -492,27 +480,20 @@ class SessionTest(TestBase, AssertsExecutionResults):
 
         self.assertEquals(len(sess.query(User).all()), 1)
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def test_error_on_using_inactive_session(self):
         class User(object): pass
         mapper(User, users)
 
-        sess = create_session(transactional=False)
+        sess = create_session(autocommit=True)
 
-        try:
-            sess.begin()
-            sess.begin()
+        sess.begin()
+        sess.begin(subtransactions=True)
 
-            sess.save(User())
-            sess.flush()
+        sess.save(User())
+        sess.flush()
 
-            sess.rollback()
-            sess.begin()
-            assert False
-        except exceptions.InvalidRequestError, e:
-            self.assertEquals(str(e), "The transaction is inactive due to a rollback in a subtransaction and should be closed")
+        sess.rollback()
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "inactive due to a rollback in a subtransaction", sess.begin, subtransactions=True)
         sess.close()
 
     @engines.close_open_connections
@@ -521,30 +502,14 @@ class SessionTest(TestBase, AssertsExecutionResults):
         mapper(User, users)
         c = testing.db.connect()
         sess = create_session(bind=c)
-        sess.create_transaction()
+        sess.begin()
         transaction = sess.transaction
         u = User()
         sess.save(u)
         sess.flush()
-        assert transaction.get_or_add(testing.db) is transaction.get_or_add(c) is c
+        assert transaction._connection_for_bind(testing.db) is transaction._connection_for_bind(c) is c
 
-        try:
-            transaction.add(testing.db.connect())
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Session already has a Connection associated for the given Connection's Engine"
-
-        try:
-            transaction.get_or_add(testing.db.connect())
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Session already has a Connection associated for the given Connection's Engine"
-
-        try:
-            transaction.add(testing.db)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Session already has a Connection associated for the given Engine"
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "Session already has a Connection associated", transaction._connection_for_bind, testing.db.connect())
 
         transaction.rollback()
         assert len(sess.query(User).all()) == 0
@@ -555,7 +520,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         mapper(User, users)
         c = testing.db.connect()
 
-        sess = create_session(bind=c, transactional=True)
+        sess = create_session(bind=c, autocommit=False)
         u = User()
         sess.save(u)
         sess.flush()
@@ -563,7 +528,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert not c.in_transaction()
         assert c.scalar("select count(1) from users") == 0
 
-        sess = create_session(bind=c, transactional=True)
+        sess = create_session(bind=c, autocommit=False)
         u = User()
         sess.save(u)
         sess.flush()
@@ -576,7 +541,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         c = testing.db.connect()
 
         trans = c.begin()
-        sess = create_session(bind=c, transactional=False)
+        sess = create_session(bind=c, autocommit=True)
         u = User()
         sess.save(u)
         sess.flush()
@@ -596,17 +561,8 @@ class SessionTest(TestBase, AssertsExecutionResults):
 
         user = User()
 
-        try:
-            s.update(user)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Instance 'User@%s' is not persisted" % hex(id(user))
-
-        try:
-            s.delete(user)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Instance 'User@%s' is not persisted" % hex(id(user))
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "is not persisted", s.update, user)
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "is not persisted", s.delete, user)
 
         s.save(user)
         s.flush()
@@ -632,25 +588,13 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert user in s
         assert user not in s.dirty
 
-        try:
-            s.save(user)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Instance 'User@%s' is already persistent" % hex(id(user))
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "is already persistent", s.save, user)
 
         s2 = create_session()
-        try:
-            s2.delete(user)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert "is already attached to session" in str(e)
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "is already attached to session", s2.delete, user)
 
         u2 = s2.query(User).get(user.user_id)
-        try:
-            s.delete(u2)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert "already persisted with a different identity" in str(e)
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "already persisted with a different identity", s.delete, u2)
 
         s.delete(user)
         s.flush()
@@ -707,21 +651,18 @@ class SessionTest(TestBase, AssertsExecutionResults):
         del user
         gc.collect()
         assert len(s.identity_map) == 0
-        assert len(s.identity_map.data) == 0
 
         user = s.query(User).one()
         user.user_name = 'fred'
         del user
         gc.collect()
         assert len(s.identity_map) == 1
-        assert len(s.identity_map.data) == 1
         assert len(s.dirty) == 1
 
         s.flush()
         gc.collect()
         assert not s.dirty
         assert not s.identity_map
-        assert not s.identity_map.data
 
         user = s.query(User).one()
         assert user.user_name == 'fred'
@@ -890,7 +831,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert log == ['before_flush', 'after_begin', 'after_flush', 'before_commit', 'after_commit', 'after_flush_postexec']
 
         log = []
-        sess = create_session(transactional=True, extension=MyExt())
+        sess = create_session(autocommit=False, extension=MyExt())
         u = User()
         sess.save(u)
         sess.flush()
@@ -906,7 +847,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert log == ['before_commit', 'after_commit']
         
         log = []
-        sess = create_session(transactional=True, extension=MyExt(), bind=testing.db)
+        sess = create_session(autocommit=False, extension=MyExt(), bind=testing.db)
         conn = sess.connection()
         assert log == ['after_begin']
 
@@ -918,11 +859,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         u1 = User()
         sess1.save(u1)
 
-        try:
-            sess2.save(u1)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert "already attached to session" in str(e)
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "already attached to session", sess2.save, u1)
 
         u2 = pickle.loads(pickle.dumps(u1))
 
@@ -941,6 +878,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         sess.expunge(u1)
 
         assert u1 not in sess
+        assert Session.object_session(u1) is None
 
         u2 = sess.query(User).get(u1.user_id)
         assert u2 is not None and u2 is not u1
@@ -950,12 +888,14 @@ class SessionTest(TestBase, AssertsExecutionResults):
 
         sess.expunge(u2)
         assert u2 not in sess
+        assert Session.object_session(u2) is None
 
         u1.user_name = "John"
         u2.user_name = "Doe"
 
         sess.update(u1)
         assert u1 in sess
+        assert Session.object_session(u1) is sess
 
         sess.flush()
 
@@ -981,197 +921,39 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert len(list(sess)) == 1
 
 
-class ScopedSessionTest(ORMTest):
-
-    def define_tables(self, metadata):
-        global table, table2
-        table = Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String(30)))
-        table2 = Table('someothertable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('someid', None, ForeignKey('sometable.id'))
-            )
-
-    def test_basic(self):
-        Session = scoped_session(sessionmaker())
-
-        class SomeObject(fixtures.Base):
-            query = Session.query_property()
-        class SomeOtherObject(fixtures.Base):
-            query = Session.query_property()
-
-        mapper(SomeObject, table, properties={
-            'options':relation(SomeOtherObject)
-        })
-        mapper(SomeOtherObject, table2)
-
-        s = SomeObject(id=1, data="hello")
-        sso = SomeOtherObject()
-        s.options.append(sso)
-        Session.save(s)
-        Session.commit()
-        Session.remove()
-
-        self.assertEquals(SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]), Session.query(SomeObject).one())
-        self.assertEquals(SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]), SomeObject.query.one())
-        self.assertEquals(SomeOtherObject(someid=1), SomeOtherObject.query.filter(SomeOtherObject.someid==sso.someid).one())
-
-class ScopedMapperTest(TestBase):
+class TLTransactionTest(TestBase):
     def setUpAll(self):
-        global metadata, table, table2
-        metadata = MetaData(testing.db)
-        table = Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String(30), nullable=False))
-        table2 = Table('someothertable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('someid', None, ForeignKey('sometable.id'))
-            )
-        metadata.create_all()
-
-    def setUp(self):
-        global SomeObject, SomeOtherObject
-        class SomeObject(object):pass
-        class SomeOtherObject(object):pass
-
-        global Session
-
-        Session = scoped_session(create_session)
-        Session.mapper(SomeObject, table, properties={
-            'options':relation(SomeOtherObject)
-        })
-        Session.mapper(SomeOtherObject, table2)
-
-        s = SomeObject()
-        s.id = 1
-        s.data = 'hello'
-        sso = SomeOtherObject()
-        s.options.append(sso)
-        Session.flush()
-        Session.clear()
+        global users, metadata, tlengine
+        tlengine = create_engine(testing.db.url, strategy='threadlocal')
+        metadata = MetaData()
+        users = Table('query_users', metadata,
+            Column('user_id', INT, Sequence('query_users_id_seq', optional=True), primary_key=True),
+            Column('user_name', VARCHAR(20)),
+            test_needs_acid=True,
+        )
+        users.create(tlengine)
+    def tearDown(self):
+        tlengine.execute(users.delete())
 
     def tearDownAll(self):
-        metadata.drop_all()
+        users.drop(tlengine)
+        tlengine.dispose()
 
-    def tearDown(self):
-        for table in metadata.table_iterator(reverse=True):
-            table.delete().execute()
-        clear_mappers()
-
-    def test_query(self):
-        sso = SomeOtherObject.query().first()
-        assert SomeObject.query.filter_by(id=1).one().options[0].id == sso.id
-
-    def test_query_compiles(self):
-        class Foo(object):
+    @testing.exclude('mysql', '<', (5, 0, 3))
+    def testsessionnesting(self):
+        class User(object):
             pass
-        Session.mapper(Foo, table2)
-        assert hasattr(Foo, 'query')
-
-        ext = MapperExtension()
-
-        class Bar(object):
-            pass
-        Session.mapper(Bar, table2, extension=[ext])
-        assert hasattr(Bar, 'query')
-
-        class Baz(object):
-            pass
-        Session.mapper(Baz, table2, extension=ext)
-        assert hasattr(Baz, 'query')
-
-    def test_validating_constructor(self):
-        s2 = SomeObject(someid=12)
-        s3 = SomeOtherObject(someid=123, bogus=345)
-
-        class ValidatedOtherObject(object):pass
-        Session.mapper(ValidatedOtherObject, table2, validate=True)
-
-        v1 = ValidatedOtherObject(someid=12)
         try:
-            v2 = ValidatedOtherObject(someid=12, bogus=345)
-            assert False
-        except exceptions.ArgumentError:
-            pass
+            mapper(User, users)
 
-    def test_dont_clobber_methods(self):
-        class MyClass(object):
-            def expunge(self):
-                return "an expunge !"
-
-        Session.mapper(MyClass, table2)
-
-        assert MyClass().expunge() == "an expunge !"
-
-    def _test_autoflush_saveoninit(self, on_init, autoflush=None):
-        Session = scoped_session(
-            sessionmaker(transactional=True, autoflush=True))
-
-        class Foo(object):
-            def __init__(self, data=None):
-                if autoflush is not None:
-                    friends = Session.query(Foo).autoflush(autoflush).all()
-                else:
-                    friends = Session.query(Foo).all()
-                self.data = data
-
-        Session.mapper(Foo, table, save_on_init=on_init)
-
-        a1 = Foo('an address')
-        Session.flush()
-
-    def test_autoflush_saveoninit(self):
-        """Test save_on_init + query.autoflush()"""
-        self._test_autoflush_saveoninit(False)
-        self._test_autoflush_saveoninit(False, True)
-        self._test_autoflush_saveoninit(False, False)
-
-        self.assertRaises(exceptions.DBAPIError,
-                          self._test_autoflush_saveoninit, True)
-        self.assertRaises(exceptions.DBAPIError,
-                          self._test_autoflush_saveoninit, True, True)
-        self._test_autoflush_saveoninit(True, False)
-
-
-class ScopedMapperTest2(ORMTest):
-    def define_tables(self, metadata):
-        global table, table2
-        table = Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', String(30)),
-            Column('type', String(30))
-
-            )
-        table2 = Table('someothertable', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('someid', None, ForeignKey('sometable.id')),
-            Column('somedata', String(30)),
-            )
-
-    def test_inheritance(self):
-        def expunge_list(l):
-            for x in l:
-                Session.expunge(x)
-            return l
-
-        class BaseClass(fixtures.Base):
-            pass
-        class SubClass(BaseClass):
-            pass
-
-        Session = scoped_session(sessionmaker())
-        Session.mapper(BaseClass, table, polymorphic_identity='base', polymorphic_on=table.c.type)
-        Session.mapper(SubClass, table2, polymorphic_identity='sub', inherits=BaseClass)
-
-        b = BaseClass(data='b1')
-        s =  SubClass(data='s1', somedata='somedata')
-        Session.commit()
-        Session.clear()
-
-        assert expunge_list([BaseClass(data='b1'), SubClass(data='s1', somedata='somedata')]) == BaseClass.query.all()
-        assert expunge_list([SubClass(data='s1', somedata='somedata')]) == SubClass.query.all()
-
+            sess = create_session(bind=tlengine)
+            tlengine.begin()
+            u = User()
+            sess.save(u)
+            sess.flush()
+            tlengine.commit()
+        finally:
+            clear_mappers()
 
 
 if __name__ == "__main__":

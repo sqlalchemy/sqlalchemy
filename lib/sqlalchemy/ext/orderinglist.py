@@ -34,7 +34,7 @@ which have a user-defined, serialized order::
   u = User()
   u.topten.append(Blurb('Number one!'))
   u.topten.append(Blurb('Number two!'))
-  
+
   # Like magic.
   assert [blurb.position for blurb in u.topten] == [0, 1]
 
@@ -60,7 +60,7 @@ __all__ = [ 'ordering_list' ]
 
 def ordering_list(attr, count_from=None, **kw):
     """Prepares an OrderingList factory for use in mapper definitions.
-    
+
     Returns an object suitable for use as an argument to a Mapper relation's
     ``collection_class`` option.  Arguments are:
 
@@ -73,7 +73,7 @@ def ordering_list(attr, count_from=None, **kw):
       example, ``ordering_list('pos', count_from=1)`` would create a 1-based
       list in SQL, storing the value in the 'pos' column.  Ignored if
       ``ordering_func`` is supplied.
-      
+
     Passes along any keyword arguments to ``OrderingList`` constructor.
     """
 
@@ -108,7 +108,7 @@ def _unsugar_count_from(**kw):
     Keyword argument filter, prepares a simple ``ordering_func`` from a
     ``count_from`` argument, otherwise passes ``ordering_func`` on unchanged.
     """
-    
+
     count_from = kw.pop('count_from', None)
     if kw.get('ordering_func', None) is None and count_from is not None:
         if count_from == 0:
@@ -126,11 +126,11 @@ class OrderingList(list):
     ``ordering_list`` function is used to configure ``OrderingList``
     collections in ``mapper`` relation definitions.
     """
-    
+
     def __init__(self, ordering_attr=None, ordering_func=None,
                  reorder_on_append=False):
         """A custom list that manages position information for its children.
-        
+
         ``OrderingList`` is a ``collection_class`` list implementation that
         syncs position in a Python list with a position attribute on the
         mapped objects.
@@ -148,7 +148,7 @@ class OrderingList(list):
 
           An ``ordering_func`` is called with two positional parameters: the
           index of the element in the list, and the list itself.
-          
+
           If omitted, Python list indexes are used for the attribute values.
           Two basic pre-built numbering functions are provided in this module:
           ``count_from_0`` and ``count_from_1``.  For more exotic examples
@@ -194,7 +194,7 @@ class OrderingList(list):
     def _reorder(self):
         """Sweep through the list and ensure that each object has accurate
         ordering information set."""
-        
+
         for index, entity in enumerate(self):
             self._order_entity(index, entity, True)
 
@@ -206,7 +206,7 @@ class OrderingList(list):
             return
 
         should_be = self.ordering_func(index, self)
-        if have <> should_be:
+        if have != should_be:
             self._set_order_value(entity, should_be)
 
     def append(self, entity):
@@ -229,7 +229,7 @@ class OrderingList(list):
         entity = super(OrderingList, self).pop(index)
         self._reorder()
         return entity
-        
+
     def __setitem__(self, index, entity):
         if isinstance(index, slice):
             for i in range(index.start or 0, index.stop or 0, index.step or 1):
@@ -237,7 +237,7 @@ class OrderingList(list):
         else:
             self._order_entity(index, entity, True)
             super(OrderingList, self).__setitem__(index, entity)
-            
+
     def __delitem__(self, index):
         super(OrderingList, self).__delitem__(index)
         self._reorder()

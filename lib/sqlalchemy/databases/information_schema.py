@@ -1,5 +1,5 @@
 import sqlalchemy.sql as sql
-import sqlalchemy.exceptions as exceptions
+import sqlalchemy.exc as exc
 from sqlalchemy import select, MetaData, Table, Column, String, Integer
 from sqlalchemy.schema import PassiveDefault, ForeignKeyConstraint
 
@@ -124,13 +124,13 @@ def reflecttable(connection, table, include_columns, ischema_names):
         coltype = ischema_names[type]
         #print "coltype " + repr(coltype) + " args " +  repr(args)
         coltype = coltype(*args)
-        colargs= []
+        colargs = []
         if default is not None:
             colargs.append(PassiveDefault(sql.text(default)))
         table.append_column(Column(name, coltype, nullable=nullable, *colargs))
     
     if not found_table:
-        raise exceptions.NoSuchTableError(table.name)
+        raise exc.NoSuchTableError(table.name)
 
     # we are relying on the natural ordering of the constraint_column_usage table to return the referenced columns
     # in an order that corresponds to the ordinal_position in the key_constraints table, otherwise composite foreign keys
@@ -157,13 +157,13 @@ def reflecttable(connection, table, include_columns, ischema_names):
             row[colmap[6]]
         )
         #print "type %s on column %s to remote %s.%s.%s" % (type, constrained_column, referred_schema, referred_table, referred_column) 
-        if type=='PRIMARY KEY':
+        if type == 'PRIMARY KEY':
             table.primary_key.add(table.c[constrained_column])
-        elif type=='FOREIGN KEY':
+        elif type == 'FOREIGN KEY':
             try:
                 fk = fks[constraint_name]
             except KeyError:
-                fk = ([],[])
+                fk = ([], [])
                 fks[constraint_name] = fk
             if current_schema == referred_schema:
                 referred_schema = table.schema

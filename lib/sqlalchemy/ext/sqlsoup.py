@@ -210,7 +210,7 @@ Advanced Use
 Accessing the Session
 ---------------------
 
-SqlSoup uses a SessionContext to provide thread-local sessions.  You
+SqlSoup uses a ScopedSession to provide thread-local sessions.  You
 can get a reference to the current one like this::
 
     >>> from sqlalchemy.ext.sqlsoup import objectstore
@@ -325,7 +325,7 @@ Boring tests here.  Nothing of real expository value.
 from sqlalchemy import *
 from sqlalchemy import schema, sql
 from sqlalchemy.orm import *
-from sqlalchemy.ext.sessioncontext import SessionContext
+from sqlalchemy.orm.scoping import ScopedSession
 from sqlalchemy.exceptions import *
 from sqlalchemy.sql import expression
 
@@ -379,15 +379,24 @@ __all__ = ['PKNotFoundError', 'SqlSoup']
 #
 # thread local SessionContext
 #
-class Objectstore(SessionContext):
+class Objectstore(ScopedSession):
     def __getattr__(self, key):
-        return getattr(self.current, key)
+        if key.startswith('__'):        # dont trip the registry for module-level sweeps of things
+                                        # like '__bases__'.  the session gets bound to the
+                                        # module which is interfered with by other unit tests.
+                                        # (removal of mapper.get_session() revealed the issue)
+            raise AttributeError()
+        return getattr(self.registry(), key)
+    def current(self):
+        return self.registry()
+    current = property(current)
     def get_session(self):
-        return self.current
+        return self.registry()
 
 objectstore = Objectstore(create_session)
 
-class PKNotFoundError(SQLAlchemyError): pass
+class PKNotFoundError(SQLAlchemyError):
+    pass
 
 def _ddl_error(cls):
     msg = 'SQLSoup can only modify mapped Tables (found: %s)' \
@@ -439,7 +448,7 @@ def _is_outer_join(selectable):
 
 def _selectable_name(selectable):
     if isinstance(selectable, sql.Alias):
-        return _selectable_name(selectable.selectable)
+        return _selectable_name(selectable.element)
     elif isinstance(selectable, sql.Select):
         return ''.join([_selectable_name(s) for s in selectable.froms])
     elif isinstance(selectable, schema.Table):
@@ -457,7 +466,7 @@ def class_for_table(selectable, **mapper_kwargs):
         klass = TableClassType(mapname, (object,), {})
     else:
         klass = SelectableClassType(mapname, (object,), {})
-
+    
     def __cmp__(self, o):
         L = self.__class__.c.keys()
         L.sort()
@@ -482,12 +491,17 @@ def class_for_table(selectable, **mapper_kwargs):
     for m in ['__cmp__', '__repr__']:
         setattr(klass, m, eval(m))
     klass._table = selectable
+    klass.c = expression.ColumnCollection()
     mappr = mapper(klass,
                    selectable,
-                   extension=objectstore.mapper_extension,
+                   extension=objectstore.extension,
                    allow_null_pks=_is_outer_join(selectable),
                    **mapper_kwargs)
-    klass._query = Query(mappr)
+                   
+    for k in mappr.iterate_properties:
+        klass.c[k.key] = k.columns[0]
+
+    klass._query = objectstore.query_property()
     return klass
 
 class SqlSoup:

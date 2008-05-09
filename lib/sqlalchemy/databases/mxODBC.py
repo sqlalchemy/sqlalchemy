@@ -53,8 +53,8 @@ class Connection:
 
 # override 'connect' call
 def connect(*args, **kwargs):
-        import mx.ODBC.Windows
-        conn = mx.ODBC.Windows.Connect(*args, **kwargs)
-        conn.datetimeformat = mx.ODBC.Windows.PYDATETIME_DATETIMEFORMAT
-        return Connection(conn)
+    import mx.ODBC.Windows
+    conn = mx.ODBC.Windows.Connect(*args, **kwargs)
+    conn.datetimeformat = mx.ODBC.Windows.PYDATETIME_DATETIMEFORMAT
+    return Connection(conn)
 Connect = connect

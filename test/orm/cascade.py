@@ -1,8 +1,9 @@
 import testenv; testenv.configure_for_tests()
 
 from sqlalchemy import *
-from sqlalchemy import exceptions
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
+from sqlalchemy.orm import attributes, exc as orm_exc
 from testlib import *
 from testlib import fixtures
 
@@ -45,7 +46,7 @@ class O2MCascadeTest(fixtures.FixtureTest):
         try:
             sess.flush()
             assert False
-        except exceptions.FlushError, e:
+        except orm_exc.FlushError, e:
             assert "is an orphan" in str(e)
 
     def test_delete(self):
@@ -571,7 +572,7 @@ class UnsavedOrphansTest(ORMTest):
         s.save(a)
         try:
             s.flush()
-        except exceptions.FlushError, e:
+        except orm_exc.FlushError, e:
             pass
         assert a.address_id is None, "Error: address should not be persistent"
 
@@ -794,7 +795,7 @@ class DoubleParentOrphanTest(ORMTest):
         try:
             session.flush()
             assert False
-        except exceptions.FlushError, e:
+        except orm_exc.FlushError, e:
             assert True
 
 class CollectionAssignmentOrphanTest(ORMTest):
@@ -831,7 +832,7 @@ class CollectionAssignmentOrphanTest(ORMTest):
         self.assertEquals(sess.query(A).get(a1.id), A(name='a1', bs=[B(name='b1'), B(name='b2'), B(name='b3')]))
 
         a1 = sess.query(A).get(a1.id)
-        assert not class_mapper(B)._is_orphan(a1.bs[0])
+        assert not class_mapper(B)._is_orphan(attributes.instance_state(a1.bs[0]))
         a1.bs[0].foo='b2modified'
         a1.bs[1].foo='b3modified'
         sess.flush()

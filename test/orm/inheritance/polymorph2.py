@@ -4,7 +4,7 @@ inheritance setups for which we maintain compatibility.
 
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions, util
+from sqlalchemy import util
 from sqlalchemy.orm import *
 from testlib import *
 from testlib import fixtures
@@ -560,7 +560,7 @@ class RelationTest7(ORMTest):
 
         class Car(PersistentObject):
             def __repr__(self):
-                return "Car number %d, name %s" % i(self.car_id, self.name)
+                return "Car number %d, name %s" % (self.car_id, self.name)
 
         class Offraod_Car(Car):
             def __repr__(self):
@@ -725,18 +725,18 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         session.save(car2)
         session.flush()
 
-        # test these twice because theres caching involved, as well previous issues that modified the polymorphic union
-        for x in range(0, 2):
-            r = session.query(Person).filter(people.c.name.like('%2')).join('status').filter_by(name="active")
-            assert str(list(r)) == "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]"
-            r = session.query(Engineer).join('status').filter(people.c.name.in_(['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) & (status.c.name=="active"))
-            assert str(list(r)) == "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]"
-            # this test embeds the original polymorphic union (employee_join) fully
-            # into the WHERE criterion, using a correlated select. ticket #577 tracks
-            # that Query's adaptation of the WHERE clause does not dig into the
-            # mapped selectable itself, which permanently breaks the mapped selectable.
-            r = session.query(Person).filter(exists([Car.c.owner], Car.c.owner==employee_join.c.person_id))
-            assert str(list(r)) == "[Engineer E4, field X, status Status dead]"
+        # this particular adapt used to cause a recursion overflow;
+        # added here for testing
+        e = exists([Car.owner], Car.owner==employee_join.c.person_id)
+        Query(Person)._adapt_clause(employee_join, False, False)
+        
+        r = session.query(Person).filter(Person.name.like('%2')).join('status').filter_by(name="active")
+        assert str(list(r)) == "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]"
+        r = session.query(Engineer).join('status').filter(Person.name.in_(['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) & (status.c.name=="active"))
+        assert str(list(r)) == "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]"
+
+        r = session.query(Person).filter(exists([1], Car.owner==Person.person_id))
+        assert str(list(r)) == "[Engineer E4, field X, status Status dead]"
 
 class MultiLevelTest(ORMTest):
     def define_tables(self, metadata):

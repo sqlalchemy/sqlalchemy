@@ -44,7 +44,7 @@ def between_op(a, b, c):
     return a.between(b, c)
 
 def in_op(a, b):
-    return a.in_(*b)
+    return a.in_(b)
 
 def notin_op(a, b):
     raise NotImplementedError()

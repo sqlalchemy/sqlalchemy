@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions
+from sqlalchemy import exc
 from testlib import *
 from testlib import config, engines
 
@@ -72,14 +72,14 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
         try:
             foo.insert().execute(id=2,x=5,y=9)
             assert False
-        except exceptions.SQLError:
+        except exc.SQLError:
             assert True
 
         bar.insert().execute(id=1,x=10)
         try:
             bar.insert().execute(id=2,x=5)
             assert False
-        except exceptions.SQLError:
+        except exc.SQLError:
             assert True
 
     def test_unique_constraint(self):
@@ -100,12 +100,12 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
         try:
             foo.insert().execute(id=3, value='value1')
             assert False
-        except exceptions.SQLError:
+        except exc.SQLError:
             assert True
         try:
             bar.insert().execute(id=3, value='a', value2='b')
             assert False
-        except exceptions.SQLError:
+        except exc.SQLError:
             assert True
 
     def test_index_create(self):

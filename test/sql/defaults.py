@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exceptions, schema, util
+from sqlalchemy import exc, schema, util
 from sqlalchemy.orm import mapper, create_session
 from testlib import *
 
@@ -122,7 +122,7 @@ class DefaultTest(TestBase):
             try:
                 c = ColumnDefault(fn)
                 assert False, str(fn)
-            except exceptions.ArgumentError, e:
+            except exc.ArgumentError, e:
                 assert str(e) == ex_msg
 
     def test_argsignature(self):
@@ -327,7 +327,7 @@ class AutoIncrementTest(TestBase):
                 nonai_table.insert().execute(data='row 1')
                 nonai_table.insert().execute(data='row 2')
                 assert False
-            except exceptions.SQLError, e:
+            except exc.SQLError, e:
                 print "Got exception", str(e)
                 assert True
 

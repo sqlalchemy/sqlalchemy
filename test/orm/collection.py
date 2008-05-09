@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import sys
 from operator import and_
 from sqlalchemy import *
-import sqlalchemy.exceptions as exceptions
+import sqlalchemy.exc as sa_exc
 from sqlalchemy.orm import create_session, mapper, relation, \
     interfaces, attributes
 import sqlalchemy.orm.collections as collections
@@ -933,13 +933,13 @@ class CollectionsTest(TestBase):
             self._test_adapter(dict, dictable_entity,
                                to_set=lambda c: set(c.values()))
             self.assert_(False)
-        except exceptions.ArgumentError, e:
+        except sa_exc.ArgumentError, e:
             self.assert_(e.args[0] == 'Type InstrumentedDict must elect an appender method to be a collection class')
 
         try:
             self._test_dict(dict)
             self.assert_(False)
-        except exceptions.ArgumentError, e:
+        except sa_exc.ArgumentError, e:
             self.assert_(e.args[0] == 'Type InstrumentedDict must elect an appender method to be a collection class')
 
     def test_dict_subclass(self):

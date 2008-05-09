@@ -1,38 +1,49 @@
-"""Defines a rudimental 'horizontal sharding' system which allows a 
-Session to distribute queries and persistence operations across multiple 
-databases.
+# shard.py
+# Copyright (C) the SQLAlchemy authors and contributors
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-For a usage example, see the example ``examples/sharding/attribute_shard.py``.
+"""Horizontal sharding support.
+
+Defines a rudimental 'horizontal sharding' system which allows a Session to
+distribute queries and persistence operations across multiple databases.
+
+For a usage example, see the file ``examples/sharding/attribute_shard.py``
+included in the source distrbution.
 
 """
+
+import sqlalchemy.exceptions as sa_exc
+from sqlalchemy import util
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.query import Query
-from sqlalchemy import exceptions, util
 
 __all__ = ['ShardedSession', 'ShardedQuery']
 
+
 class ShardedSession(Session):
     def __init__(self, shard_chooser, id_chooser, query_chooser, shards=None, **kwargs):
-        """construct a ShardedSession.
-        
-            shard_chooser
-                a callable which, passed a Mapper, a mapped instance, and possibly a
-                SQL clause, returns a shard ID. this id may be based off of the
-                attributes present within the object, or on some round-robin scheme. If
-                the scheme is based on a selection, it should set whatever state on the
-                instance to mark it in the future as participating in that shard.
-            
-            id_chooser
-                a callable, passed a query and a tuple of identity values,
-                which should return a list of shard ids where the ID might
-                reside.  The databases will be queried in the order of this
-                listing.
-                
-            query_chooser
-                for a given Query, returns the list of shard_ids where the query
-                should be issued.  Results from all shards returned will be 
-                combined together into a single listing.
-        
+        """Construct a ShardedSession.
+
+        shard_chooser
+          A callable which, passed a Mapper, a mapped instance, and possibly a
+          SQL clause, returns a shard ID.  This id may be based off of the
+          attributes present within the object, or on some round-robin
+          scheme. If the scheme is based on a selection, it should set
+          whatever state on the instance to mark it in the future as
+          participating in that shard.
+
+        id_chooser
+          A callable, passed a query and a tuple of identity values, which
+          should return a list of shard ids where the ID might reside.  The
+          databases will be queried in the order of this listing.
+
+        query_chooser
+          For a given Query, returns the list of shard_ids where the query
+          should be issued.  Results from all shards returned will be combined
+          together into a single listing.
+
         """
         super(ShardedSession, self).__init__(**kwargs)
         self.shard_chooser = shard_chooser
@@ -87,17 +98,17 @@ class ShardedQuery(Query):
         
     def _execute_and_instances(self, context):
         if self._shard_id is not None:
-            result = self.session.connection(mapper=self.mapper, shard_id=self._shard_id).execute(context.statement, **self._params)
+            result = self.session.connection(mapper=self._mapper_zero(), shard_id=self._shard_id).execute(context.statement, **self._params)
             try:
-                return iter(self.instances(result, querycontext=context))
+                return iter(self.instances(result, context))
             finally:
                 result.close()
         else:
             partial = []
             for shard_id in self.query_chooser(self):
-                result = self.session.connection(mapper=self.mapper, shard_id=shard_id).execute(context.statement, **self._params)
+                result = self.session.connection(mapper=self._mapper_zero(), shard_id=shard_id).execute(context.statement, **self._params)
                 try:
-                    partial = partial + list(self.instances(result, querycontext=context))
+                    partial = partial + list(self.instances(result, context))
                 finally:
                     result.close()
             # if some kind of in memory 'sorting' were done, this is where it would happen
@@ -124,4 +135,4 @@ class ShardedQuery(Query):
                 if o is not None:
                     return o
             else:
-                raise exceptions.InvalidRequestError("No instance found for identity %s" % repr(ident))
+                raise sa_exc.InvalidRequestError("No instance found for identity %s" % repr(ident))

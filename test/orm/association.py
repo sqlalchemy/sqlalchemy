@@ -5,7 +5,6 @@ from sqlalchemy.orm import *
 from testlib import *
 
 class AssociationTest(TestBase):
-    @testing.uses_deprecated('association option')
     def setUpAll(self):
         global items, item_keywords, keywords, metadata, Item, Keyword, KeywordAssociation
         metadata = MetaData(testing.db)
@@ -46,7 +45,7 @@ class AssociationTest(TestBase):
             'keyword':relation(Keyword, lazy=False)
         }, primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id], order_by=[item_keywords.c.data])
         mapper(Item, items, properties={
-            'keywords' : relation(KeywordAssociation, association=Keyword)
+            'keywords' : relation(KeywordAssociation, cascade="all, delete-orphan")
         })
 
     def tearDown(self):
@@ -123,7 +122,6 @@ class AssociationTest(TestBase):
         print loaded
         self.assert_(saved == loaded)
 
-    @testing.uses_deprecated('association option')
     def testdelete(self):
         sess = create_session()
         item1 = Item('item1')
@@ -185,7 +183,7 @@ in self.c ]
 
         mapper(Originals, table_originals, order_by=Originals.order,
             properties={
-                'people': relation(IsAuthor, association=People),
+                'people': relation(IsAuthor, cascade="all, delete-orphan"),
                 'authors': relation(People, secondary=table_isauthor, backref='written',
                             primaryjoin=and_(table_originals.c.ID==table_isauthor.c.OriginalsID,
                             table_isauthor.c.Kind=='A')),
@@ -193,7 +191,7 @@ in self.c ]
                 'date': table_originals.c.Date,
             })
         mapper(People, table_people, order_by=People.order, properties=    {
-                'originals':        relation(IsAuthor, association=Originals),
+                'originals':        relation(IsAuthor, cascade="all, delete-orphan"),
                 'name':             table_people.c.Name,
                 'country':          table_people.c.Country,
             })

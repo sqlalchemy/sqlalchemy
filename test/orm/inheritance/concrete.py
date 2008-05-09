@@ -74,6 +74,10 @@ class ConcreteTest(ORMTest):
         assert set([repr(x) for x in session.query(Manager).all()]) == set(["Manager Tom knows how to manage things"])
         assert set([repr(x) for x in session.query(Engineer).all()]) == set(["Engineer Kurt knows how to hack"])
 
+        manager = session.query(Manager).one()
+        session.expire(manager, ['manager_data'])
+        self.assertEquals(manager.manager_data, "knows how to manage things")
+
     def test_multi_level(self):
         class Employee(object):
             def __init__(self, name):

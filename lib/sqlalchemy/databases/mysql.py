@@ -156,7 +156,7 @@ timely information affecting MySQL in SQLAlchemy.
 import datetime, inspect, re, sys
 from array import array as _array
 
-from sqlalchemy import exceptions, logging, schema, sql, util
+from sqlalchemy import exc, log, schema, sql, util
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy.sql import functions as sql_functions
 from sqlalchemy.sql import compiler
@@ -404,7 +404,7 @@ class MSDouble(sqltypes.Float, _NumericType):
 
         if ((precision is None and length is not None) or
             (precision is not None and length is None)):
-            raise exceptions.ArgumentError(
+            raise exc.ArgumentError(
                 "You must specify both precision and length or omit "
                 "both altogether.")
 
@@ -1188,7 +1188,7 @@ class MSEnum(MSString):
         super_convert = super(MSEnum, self).bind_processor(dialect)
         def process(value):
             if self.strict and value is not None and value not in self.enums:
-                raise exceptions.InvalidRequestError('"%s" not a valid value for '
+                raise exc.InvalidRequestError('"%s" not a valid value for '
                                                      'this enum' % value)
             if super_convert:
                 return super_convert(value)
@@ -1588,7 +1588,7 @@ class MySQLDialect(default.DefaultDialect):
                 have = rs.rowcount > 0
                 rs.close()
                 return have
-            except exceptions.SQLError, e:
+            except exc.SQLError, e:
                 if e.orig.args[0] == 1146:
                     return False
                 raise
@@ -1823,14 +1823,14 @@ class MySQLDialect(default.DefaultDialect):
         try:
             try:
                 rp = connection.execute(st)
-            except exceptions.SQLError, e:
+            except exc.SQLError, e:
                 if e.orig.args[0] == 1146:
-                    raise exceptions.NoSuchTableError(full_name)
+                    raise exc.NoSuchTableError(full_name)
                 else:
                     raise
             row = _compat_fetchone(rp, charset=charset)
             if not row:
-                raise exceptions.NoSuchTableError(full_name)
+                raise exc.NoSuchTableError(full_name)
             return row[1].strip()
         finally:
             if rp:
@@ -1850,9 +1850,9 @@ class MySQLDialect(default.DefaultDialect):
         try:
             try:
                 rp = connection.execute(st)
-            except exceptions.SQLError, e:
+            except exc.SQLError, e:
                 if e.orig.args[0] == 1146:
-                    raise exceptions.NoSuchTableError(full_name)
+                    raise exc.NoSuchTableError(full_name)
                 else:
                     raise
             rows = _compat_fetchall(rp, charset=charset)
@@ -1966,7 +1966,7 @@ class MySQLCompiler(compiler.DefaultCompiler):
 
     def for_update_clause(self, select):
         if select.for_update == 'read':
-             return ' LOCK IN SHARE MODE'
+            return ' LOCK IN SHARE MODE'
         else:
             return super(MySQLCompiler, self).for_update_clause(select)
 
@@ -2022,8 +2022,7 @@ class MySQLSchemaGenerator(compiler.SchemaGenerator):
         """Builds column DDL."""
 
         colspec = [self.preparer.format_column(column),
-                   column.type.dialect_impl(self.dialect,
-                                            _for_ddl=column).get_col_spec()]
+                   column.type.dialect_impl(self.dialect).get_col_spec()]
 
         default = self.get_column_default_string(column)
         if default is not None:
@@ -2308,7 +2307,7 @@ class MySQLSchemaReflector(object):
             ref_names = spec['foreign']
             if not util.Set(ref_names).issubset(
                 util.Set([c.name for c in ref_table.c])):
-                raise exceptions.InvalidRequestError(
+                raise exc.InvalidRequestError(
                     "Foreign key columns (%s) are not present on "
                     "foreign table %s" %
                     (', '.join(ref_names), ref_table.fullname()))
@@ -2643,7 +2642,7 @@ class MySQLSchemaReflector(object):
 
         return self._re_keyexprs.findall(identifiers)
 
-MySQLSchemaReflector.logger = logging.class_logger(MySQLSchemaReflector)
+MySQLSchemaReflector.logger = log.class_logger(MySQLSchemaReflector)
 
 
 class _MySQLIdentifierPreparer(compiler.IdentifierPreparer):

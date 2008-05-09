@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from testlib import *
 
@@ -118,7 +118,7 @@ class CompileTest(TestBase, AssertsExecutionResults):
         try:
             class_mapper(Product).compile()
             assert False
-        except exceptions.ArgumentError, e:
+        except sa_exc.ArgumentError, e:
             assert str(e).index("Error creating backref ") > -1
 
     def testthree(self):
@@ -177,7 +177,7 @@ class CompileTest(TestBase, AssertsExecutionResults):
         try:
             compile_mappers()
             assert False
-        except exceptions.ArgumentError, e:
+        except sa_exc.ArgumentError, e:
             assert str(e).index("Error creating backref") > -1
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@
 
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from testlib import *
 from testlib.fixtures import *
@@ -21,7 +21,7 @@ class SelectableNoFromsTest(ORMTest):
         class Subset(object):
             pass
         selectable = select(["x", "y", "z"])
-        self.assertRaisesMessage(exceptions.InvalidRequestError, "Could not find any Table objects", mapper, Subset, selectable)
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "Could not find any Table objects", mapper, Subset, selectable)
 
     @testing.emits_warning('.*creating an Alias.*')
     def test_basic(self):

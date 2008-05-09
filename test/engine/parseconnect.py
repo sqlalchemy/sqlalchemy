@@ -1,9 +1,9 @@
 import testenv; testenv.configure_for_tests()
 import ConfigParser, StringIO
-from sqlalchemy import *
-from sqlalchemy import exceptions, pool, engine
 import sqlalchemy.engine.url as url
-from testlib import *
+from sqlalchemy import create_engine, engine_from_config
+import testlib.sa as tsa
+from testlib import TestBase
 
 
 class ParseConnectTest(TestBase):
@@ -92,10 +92,10 @@ pool_timeout=10
             }
 
         prefixed = dict(ini.items('prefixed'))
-        self.assert_(engine._coerce_config(prefixed, 'sqlalchemy.') == expected)
+        self.assert_(tsa.engine._coerce_config(prefixed, 'sqlalchemy.') == expected)
 
         plain = dict(ini.items('plain'))
-        self.assert_(engine._coerce_config(plain, '') == expected)
+        self.assert_(tsa.engine._coerce_config(plain, '') == expected)
 
     def test_engine_from_config(self):
         dbapi = MockDBAPI()
@@ -181,7 +181,7 @@ pool_timeout=10
         try:
             c = e.connect()
             assert False
-        except exceptions.DBAPIError:
+        except tsa.exc.DBAPIError:
             assert True
 
     def test_urlattr(self):
@@ -200,11 +200,11 @@ pool_timeout=10
         assert e.pool._recycle == 50
 
         # these args work for QueuePool
-        e = create_engine('postgres://', max_overflow=8, pool_timeout=60, poolclass=pool.QueuePool, module=MockDBAPI())
+        e = create_engine('postgres://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=MockDBAPI())
 
         try:
             # but not SingletonThreadPool
-            e = create_engine('sqlite://', max_overflow=8, pool_timeout=60, poolclass=pool.SingletonThreadPool)
+            e = create_engine('sqlite://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.SingletonThreadPool)
             assert False
         except TypeError:
             assert True

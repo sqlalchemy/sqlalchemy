@@ -1,5 +1,5 @@
 from testlib import testing
-import itertools
+
 schema = None
 
 __all__ = 'Table', 'Column',

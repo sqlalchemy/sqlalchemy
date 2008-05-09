@@ -9,63 +9,98 @@ Functional constructs for ORM configuration.
 
 See the SQLAlchemy object relational tutorial and mapper configuration
 documentation for an overview of how this module is used.
+
 """
 
-from sqlalchemy.orm.mapper import Mapper, object_mapper, class_mapper, _mapper_registry
-from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, EXT_STOP, EXT_PASS, ExtensionOption, PropComparator
-from sqlalchemy.orm.properties import SynonymProperty, ComparableProperty, PropertyLoader, ColumnProperty, CompositeProperty, BackRef
+from sqlalchemy.orm import exc
+from sqlalchemy.orm.mapper import \
+     Mapper, _mapper_registry, class_mapper, object_mapper
+from sqlalchemy.orm.interfaces import \
+     EXT_CONTINUE, EXT_STOP, ExtensionOption, InstrumentationManager, \
+     MapperExtension, PropComparator, SessionExtension
+from sqlalchemy.orm.properties import \
+     BackRef, ColumnProperty, ComparableProperty, CompositeProperty, \
+     PropertyLoader, SynonymProperty
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm import strategies
-from sqlalchemy.orm.query import Query, aliased
-from sqlalchemy.orm.util import polymorphic_union, create_row_adapter
+from sqlalchemy.orm.query import AliasOption, Query
+from sqlalchemy.orm.util import \
+     AliasedClass as aliased, join, outerjoin, polymorphic_union, with_parent
+from sqlalchemy.sql import util as sql_util
 from sqlalchemy.orm.session import Session as _Session
 from sqlalchemy.orm.session import object_session, sessionmaker
 from sqlalchemy.orm.scoping import ScopedSession
+from sqlalchemy import util as sa_util
 
-
-__all__ = [ 'relation', 'column_property', 'composite', 'backref', 'eagerload',
-            'eagerload_all', 'lazyload', 'noload', 'deferred', 'defer',
-            'undefer', 'undefer_group', 'extension', 'mapper', 'clear_mappers',
-            'compile_mappers', 'class_mapper', 'object_mapper', 'sessionmaker',
-            'scoped_session', 'dynamic_loader', 'MapperExtension',
-            'polymorphic_union', 'comparable_property',
-            'create_session', 'synonym', 'contains_alias', 'Query', 'aliased',
-            'contains_eager', 'EXT_CONTINUE', 'EXT_STOP', 'EXT_PASS',
-            'object_session', 'PropComparator' ]
+__all__ = (
+    'EXT_CONTINUE',
+    'EXT_STOP',
+    'InstrumentationManager',
+    'MapperExtension',
+    'PropComparator',
+    'Query',
+    'aliased',
+    'backref',
+    'class_mapper',
+    'clear_mappers',
+    'column_property',
+    'comparable_property',
+    'compile_mappers',
+    'composite',
+    'contains_alias',
+    'contains_eager',
+    'create_session',
+    'defer',
+    'deferred',
+    'dynamic_loader',
+    'eagerload',
+    'eagerload_all',
+    'extension',
+    'lazyload',
+    'mapper',
+    'noload',
+    'object_mapper',
+    'object_session',
+    'polymorphic_union',
+    'relation',
+    'scoped_session',
+    'sessionmaker',
+    'synonym',
+    'undefer',
+    'undefer_group',
+    )
 
 
 def scoped_session(session_factory, scopefunc=None):
-  """Provides thread-local management of Sessions.
+    """Provides thread-local management of Sessions.
 
-  This is a front-end function to the [sqlalchemy.orm.scoping#ScopedSession]
-  class.
+    This is a front-end function to the [sqlalchemy.orm.scoping#ScopedSession]
+    class.
 
-  Usage::
+    Usage::
 
-    Session = scoped_session(sessionmaker(autoflush=True))
+      Session = scoped_session(sessionmaker(autoflush=True))
 
-  To instantiate a Session object which is part of the scoped
-  context, instantiate normally::
+    To instantiate a Session object which is part of the scoped context,
+    instantiate normally::
 
-    session = Session()
+      session = Session()
 
-  Most session methods are available as classmethods from
-  the scoped session::
+    Most session methods are available as classmethods from the scoped
+    session::
 
-    Session.commit()
-    Session.close()
+      Session.commit()
+      Session.close()
 
-  To map classes so that new instances are saved in the current
-  Session automatically, as well as to provide session-aware
-  class attributes such as "query", use the `mapper` classmethod
-  from the scoped session::
+    To map classes so that new instances are saved in the current Session
+    automatically, as well as to provide session-aware class attributes such
+    as "query", use the `mapper` classmethod from the scoped session::
 
-    mapper = Session.mapper
-    mapper(Class, table, ...)
+      mapper = Session.mapper
+      mapper(Class, table, ...)
 
-  """
-
-  return ScopedSession(session_factory, scopefunc=scopefunc)
+    """
+    return ScopedSession(session_factory, scopefunc=scopefunc)
 
 def create_session(bind=None, **kwargs):
     """create a new [sqlalchemy.orm.session#Session].
@@ -76,26 +111,36 @@ def create_session(bind=None, **kwargs):
     It is recommended to use the [sqlalchemy.orm#sessionmaker()] function
     instead of create_session().
     """
+
+    if 'transactional' in kwargs:
+        sa_util.warn_deprecated(
+            "The 'transactional' argument to sessionmaker() is deprecated; "
+            "use autocommit=True|False instead.")
+        if 'autocommit' in kwargs:
+            raise TypeError('Specify autocommit *or* transactional, not both.')
+        kwargs['autocommit'] = not kwargs.pop('transactional')
+
     kwargs.setdefault('autoflush', False)
-    kwargs.setdefault('transactional', False)
+    kwargs.setdefault('autocommit', True)
+    kwargs.setdefault('autoexpire', False)
     return _Session(bind=bind, **kwargs)
 
 def relation(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
 
-    This corresponds to a parent-child or associative table relationship.
-    The constructed class is an instance of [sqlalchemy.orm.properties#PropertyLoader].
+    This corresponds to a parent-child or associative table relationship.  The
+    constructed class is an instance of
+    [sqlalchemy.orm.properties#PropertyLoader].
 
       argument
           a class or Mapper instance, representing the target of the relation.
 
       secondary
         for a many-to-many relationship, specifies the intermediary table. The
-        ``secondary`` keyword argument should generally only be used for a table
-        that is not otherwise expressed in any class mapping. In particular,
-        using the Association Object Pattern is
-        generally mutually exclusive against using the ``secondary`` keyword
-        argument.
+        ``secondary`` keyword argument should generally only be used for a
+        table that is not otherwise expressed in any class mapping. In
+        particular, using the Association Object Pattern is generally mutually
+        exclusive against using the ``secondary`` keyword argument.
 
       \**kwargs follow:
 
@@ -482,8 +527,8 @@ def mapper(class_, local_table=None, *args, **params):
         which will identify the class/mapper combination to be used
         with a particular row.  Requires the ``polymorphic_identity``
         value to be set for all mappers in the inheritance
-        hierarchy.  The column specified by ``polymorphic_on`` is 
-        usually a column that resides directly within the base 
+        hierarchy.  The column specified by ``polymorphic_on`` is
+        usually a column that resides directly within the base
         mapper's mapped table; alternatively, it may be a column
         that is only present within the <selectable> portion
         of the ``with_polymorphic`` argument.
@@ -532,7 +577,7 @@ def mapper(class_, local_table=None, *args, **params):
         to be used against this mapper's selectable unit.  This is
         normally simply the primary key of the `local_table`, but
         can be overridden here.
-    
+
       with_polymorphic
         A tuple in the form ``(<classes>, <selectable>)`` indicating the
         default style of "polymorphic" loading, that is, which tables
@@ -549,9 +594,9 @@ def mapper(class_, local_table=None, *args, **params):
         which load from a "concrete" inheriting table, the <selectable>
         argument is required, since it usually requires more complex
         UNION queries.
-        
+
       select_table
-        Deprecated.  Synonymous with 
+        Deprecated.  Synonymous with
         ``with_polymorphic=('*', <selectable>)``.
 
       version_id_col
@@ -677,15 +722,16 @@ def extension(ext):
 
     return ExtensionOption(ext)
 
-def eagerload(name, mapper=None):
+def eagerload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given name into an eager load.
 
     Used with ``query.options()``.
     """
 
-    return strategies.EagerLazyOption(name, lazy=False, mapper=mapper)
+    return strategies.EagerLazyOption(keys, lazy=False)
+eagerload = sa_util.array_as_starargs_fn_decorator(eagerload)
 
-def eagerload_all(name, mapper=None):
+def eagerload_all(*keys):
     """Return a ``MapperOption`` that will convert all properties along the given dot-separated path into an eager load.
 
     For example, this::
@@ -698,25 +744,27 @@ def eagerload_all(name, mapper=None):
     Used with ``query.options()``.
     """
 
-    return strategies.EagerLazyOption(name, lazy=False, chained=True, mapper=mapper)
+    return strategies.EagerLazyOption(keys, lazy=False, chained=True)
+eagerload_all = sa_util.array_as_starargs_fn_decorator(eagerload_all)
 
-def lazyload(name, mapper=None):
+def lazyload(*keys):
     """Return a ``MapperOption`` that will convert the property of the
     given name into a lazy load.
 
     Used with ``query.options()``.
     """
 
-    return strategies.EagerLazyOption(name, lazy=True, mapper=mapper)
+    return strategies.EagerLazyOption(keys, lazy=True)
+lazyload = sa_util.array_as_starargs_fn_decorator(lazyload)
 
-def noload(name):
+def noload(*keys):
     """Return a ``MapperOption`` that will convert the property of the
     given name into a non-load.
 
     Used with ``query.options()``.
     """
 
-    return strategies.EagerLazyOption(name, lazy=None)
+    return strategies.EagerLazyOption(keys, lazy=None)
 
 def contains_alias(alias):
     """Return a ``MapperOption`` that will indicate to the query that
@@ -726,22 +774,9 @@ def contains_alias(alias):
     alias.
     """
 
-    class AliasedRow(MapperExtension):
-        def __init__(self, alias):
-            self.alias = alias
-            if isinstance(self.alias, basestring):
-                self.translator = None
-            else:
-                self.translator = create_row_adapter(alias)
-        
-        def translate_row(self, mapper, context, row):
-            if not self.translator:
-                self.translator = create_row_adapter(mapper.mapped_table.alias(self.alias))
-            return self.translator(row)
+    return AliasOption(alias)
 
-    return ExtensionOption(AliasedRow(alias))
-
-def contains_eager(key, alias=None, decorator=None):
+def contains_eager(*keys, **kwargs):
     """Return a ``MapperOption`` that will indicate to the query that
     the given attribute will be eagerly loaded.
 
@@ -752,30 +787,31 @@ def contains_eager(key, alias=None, decorator=None):
     `alias` is the string name of an alias, **or** an ``sql.Alias``
     object, which represents the aliased columns in the query.  This
     argument is optional.
-
-    `decorator` is mutually exclusive of `alias` and is a
-    row-processing function which will be applied to the incoming row
-    before sending to the eager load handler.  use this for more
-    sophisticated row adjustments beyond a straight alias.
     """
+    alias = kwargs.pop('alias', None)
+    if kwargs:
+        raise exceptions.ArgumentError("Invalid kwargs for contains_eager: %r" % kwargs.keys())
+        
+    return (strategies.EagerLazyOption(keys, lazy=False), strategies.LoadEagerFromAliasOption(keys, alias=alias))
+contains_eager = sa_util.array_as_starargs_fn_decorator(contains_eager)
 
-    return (strategies.EagerLazyOption(key, lazy=False), strategies.RowDecorateOption(key, alias=alias, decorator=decorator))
-
-def defer(name):
+def defer(*keys):
     """Return a ``MapperOption`` that will convert the column property
     of the given name into a deferred load.
 
     Used with ``query.options()``"""
-    return strategies.DeferredOption(name, defer=True)
+    return strategies.DeferredOption(keys, defer=True)
+defer = sa_util.array_as_starargs_fn_decorator(defer)
 
-def undefer(name):
+def undefer(*keys):
     """Return a ``MapperOption`` that will convert the column property
     of the given name into a non-deferred (regular column) load.
 
     Used with ``query.options()``.
     """
 
-    return strategies.DeferredOption(name, defer=False)
+    return strategies.DeferredOption(keys, defer=False)
+undefer = sa_util.array_as_starargs_fn_decorator(undefer)
 
 def undefer_group(name):
     """Return a ``MapperOption`` that will convert the given

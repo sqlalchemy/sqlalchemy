@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import re
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy import exceptions
+from sqlalchemy import exc
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 from testlib import *
@@ -210,7 +210,7 @@ class QueryTest(TestBase):
                 r = users.select(limit=3, offset=2,
                                  order_by=[users.c.user_id]).execute().fetchall()
                 assert False # InvalidRequestError should have been raised
-            except exceptions.InvalidRequestError:
+            except exc.InvalidRequestError:
                 pass
         finally:
             metadata.drop_all()

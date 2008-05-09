@@ -1,7 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy import exceptions
 from testlib import *
 import testlib.tables as tables
 
@@ -35,8 +34,8 @@ class GenerativeQueryTest(TestBase):
 
     def test_selectby(self):
         res = create_session(bind=testing.db).query(Foo).filter_by(range=5)
-        assert res.order_by([Foo.c.bar])[0].bar == 5
-        assert res.order_by([desc(Foo.c.bar)])[0].bar == 95
+        assert res.order_by([Foo.bar])[0].bar == 5
+        assert res.order_by([desc(Foo.bar)])[0].bar == 95
 
     @testing.unsupported('mssql')
     @testing.fails_on('maxdb')
@@ -60,8 +59,8 @@ class GenerativeQueryTest(TestBase):
         assert query.count() == 100
         assert query.filter(foo.c.bar<30).min(foo.c.bar) == 0
         assert query.filter(foo.c.bar<30).max(foo.c.bar) == 29
-        assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).first() == 29
-        assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).one() == 29
+        assert query.filter(foo.c.bar<30).values(func.max(foo.c.bar)).next()[0] == 29
+        assert query.filter(foo.c.bar<30).values(func.max(foo.c.bar)).next()[0] == 29
 
     def test_aggregate_1(self):
         if (testing.against('mysql') and
@@ -77,22 +76,20 @@ class GenerativeQueryTest(TestBase):
         avg = query.filter(foo.c.bar < 30).avg(foo.c.bar)
         assert round(avg, 1) == 14.5
 
-    @testing.fails_on('firebird', 'mssql')
-    @testing.uses_deprecated('Call to deprecated function apply_avg')
     def test_aggregate_3(self):
         query = create_session(bind=testing.db).query(Foo)
 
-        avg_f = query.filter(foo.c.bar<30).apply_avg(foo.c.bar).first()
+        avg_f = query.filter(foo.c.bar<30).values(func.avg(foo.c.bar)).next()[0]
         assert round(avg_f, 1) == 14.5
 
-        avg_o = query.filter(foo.c.bar<30).apply_avg(foo.c.bar).one()
+        avg_o = query.filter(foo.c.bar<30).values(func.avg(foo.c.bar)).next()[0]
         assert round(avg_o, 1) == 14.5
 
     def test_filter(self):
         query = create_session(bind=testing.db).query(Foo)
         assert query.count() == 100
-        assert query.filter(Foo.c.bar < 30).count() == 30
-        res2 = query.filter(Foo.c.bar < 30).filter(Foo.c.bar > 10)
+        assert query.filter(Foo.bar < 30).count() == 30
+        res2 = query.filter(Foo.bar < 30).filter(Foo.bar > 10)
         assert res2.count() == 19
 
     def test_options(self):
@@ -105,12 +102,12 @@ class GenerativeQueryTest(TestBase):
 
     def test_order_by(self):
         query = create_session(bind=testing.db).query(Foo)
-        assert query.order_by([Foo.c.bar])[0].bar == 0
-        assert query.order_by([desc(Foo.c.bar)])[0].bar == 99
+        assert query.order_by([Foo.bar])[0].bar == 0
+        assert query.order_by([desc(Foo.bar)])[0].bar == 99
 
     def test_offset(self):
         query = create_session(bind=testing.db).query(Foo)
-        assert list(query.order_by([Foo.c.bar]).offset(10))[0].bar == 10
+        assert list(query.order_by([Foo.bar]).offset(10))[0].bar == 10
 
     def test_offset(self):
         query = create_session(bind=testing.db).query(Foo)
@@ -168,7 +165,7 @@ class RelationsTest(TestBase, AssertsExecutionResults):
         })
         session = create_session(bind=testing.db)
         query = session.query(tables.User)
-        x = query.join(['orders', 'items']).filter(tables.Item.c.item_id==2)
+        x = query.join(['orders', 'items']).filter(tables.Item.item_id==2)
         print x.compile()
         self.assert_result(list(x), tables.User, tables.user_result[2])
     def test_outerjointo(self):
@@ -180,7 +177,7 @@ class RelationsTest(TestBase, AssertsExecutionResults):
         })
         session = create_session(bind=testing.db)
         query = session.query(tables.User)
-        x = query.outerjoin(['orders', 'items']).filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
+        x = query.outerjoin(['orders', 'items']).filter(or_(tables.Order.order_id==None,tables.Item.item_id==2))
         print x.compile()
         self.assert_result(list(x), tables.User, *tables.user_result[1:3])
     def test_outerjointo_count(self):
@@ -192,7 +189,7 @@ class RelationsTest(TestBase, AssertsExecutionResults):
         })
         session = create_session(bind=testing.db)
         query = session.query(tables.User)
-        x = query.outerjoin(['orders', 'items']).filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2)).count()
+        x = query.outerjoin(['orders', 'items']).filter(or_(tables.Order.order_id==None,tables.Item.item_id==2)).count()
         assert x==2
     def test_from(self):
         mapper(tables.User, tables.users, properties={
@@ -203,7 +200,7 @@ class RelationsTest(TestBase, AssertsExecutionResults):
         session = create_session(bind=testing.db)
         query = session.query(tables.User)
         x = query.select_from(tables.users.outerjoin(tables.orders).outerjoin(tables.orderitems)).\
-            filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
+            filter(or_(tables.Order.order_id==None,tables.Item.item_id==2))
         print x.compile()
         self.assert_result(list(x), tables.User, *tables.user_result[1:3])
 
@@ -237,27 +234,6 @@ class CaseSensitiveTest(TestBase):
         assert res.count() == 3
         res = q.filter(and_(table1.c.ID==table2.c.T1ID,table2.c.T1ID==1)).distinct()
         self.assertEqual(res.count(), 1)
-
-class SelfRefTest(ORMTest):
-    def define_tables(self, metadata):
-        global t1
-        t1 = Table('t1', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('parent_id', Integer, ForeignKey('t1.id'))
-            )
-    def test_noautojoin(self):
-        class T(object):pass
-        mapper(T, t1, properties={'children':relation(T)})
-        sess = create_session(bind=testing.db)
-        def go():
-            sess.query(T).join('children')
-        self.assertRaisesMessage(exceptions.InvalidRequestError, 
-            "Self-referential query on 'T\.children \(T\)' property requires aliased=True argument.", go)
-
-        def go():
-            sess.query(T).join(['children']).select_by(id=7)
-        self.assertRaisesMessage(exceptions.InvalidRequestError, 
-            "Self-referential query on 'T\.children \(T\)' property requires aliased=True argument.", go)
 
 
 

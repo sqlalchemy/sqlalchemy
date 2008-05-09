@@ -213,6 +213,9 @@ class DeclarativeMeta(type):
                 continue
             prop = _deferred_relation(cls, value)
             our_stuff[k] = prop
+        
+        # set up attributes in the order they were created
+        our_stuff.sort(lambda x, y: cmp(our_stuff[x]._creation_order, our_stuff[y]._creation_order))
 
         table = None
         if '__table__' not in cls.__dict__:
@@ -254,6 +257,7 @@ class DeclarativeMeta(type):
             mapper_cls = util.unbound_method_to_callable(cls.__mapper_cls__)
         else:
             mapper_cls = mapper
+
         cls.__mapper__ = mapper_cls(cls, table, properties=our_stuff, **mapper_args)
         return type.__init__(cls, classname, bases, dict_)
 

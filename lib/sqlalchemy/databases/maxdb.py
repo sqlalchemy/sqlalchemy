@@ -58,7 +58,7 @@ this.
 
 import datetime, itertools, re
 
-from sqlalchemy import exceptions, schema, sql, util
+from sqlalchemy import exc, schema, sql, util
 from sqlalchemy.sql import operators as sql_operators, expression as sql_expr
 from sqlalchemy.sql import compiler, visitors
 from sqlalchemy.engine import base as engine_base, default
@@ -213,7 +213,7 @@ class MaxTimestamp(sqltypes.DateTime):
                 ms = getattr(value, 'microsecond', 0)
                 return value.strftime("%Y-%m-%d %H:%M:%S." + ("%06u" % ms))
             else:
-                raise exceptions.InvalidRequestError(
+                raise exc.InvalidRequestError(
                     "datetimeformat '%s' is not supported." % (
                     dialect.datetimeformat,))
         return process
@@ -235,7 +235,7 @@ class MaxTimestamp(sqltypes.DateTime):
                                 value[11:13], value[14:16], value[17:19],
                                 value[20:])])
             else:
-                raise exceptions.InvalidRequestError(
+                raise exc.InvalidRequestError(
                     "datetimeformat '%s' is not supported." % (
                     dialect.datetimeformat,))
         return process
@@ -256,7 +256,7 @@ class MaxDate(sqltypes.Date):
             elif dialect.datetimeformat == 'iso':
                 return value.strftime("%Y-%m-%d")
             else:
-                raise exceptions.InvalidRequestError(
+                raise exc.InvalidRequestError(
                     "datetimeformat '%s' is not supported." % (
                     dialect.datetimeformat,))
         return process
@@ -272,7 +272,7 @@ class MaxDate(sqltypes.Date):
                 return datetime.date(
                     *[int(v) for v in (value[0:4], value[5:7], value[8:10])])
             else:
-                raise exceptions.InvalidRequestError(
+                raise exc.InvalidRequestError(
                     "datetimeformat '%s' is not supported." % (
                     dialect.datetimeformat,))
         return process
@@ -293,7 +293,7 @@ class MaxTime(sqltypes.Time):
             elif dialect.datetimeformat == 'iso':
                 return value.strftime("%H-%M-%S")
             else:
-                raise exceptions.InvalidRequestError(
+                raise exc.InvalidRequestError(
                     "datetimeformat '%s' is not supported." % (
                     dialect.datetimeformat,))
         return process
@@ -310,7 +310,7 @@ class MaxTime(sqltypes.Time):
                 return datetime.time(
                     *[int(v) for v in (value[0:4], value[5:7], value[8:10])])
             else:
-                raise exceptions.InvalidRequestError(
+                raise exc.InvalidRequestError(
                     "datetimeformat '%s' is not supported." % (
                     dialect.datetimeformat,))
         return process
@@ -599,7 +599,7 @@ class MaxDBDialect(default.DefaultDialect):
 
         rows = connection.execute(st, params).fetchall()
         if not rows:
-            raise exceptions.NoSuchTableError(table.fullname)
+            raise exc.NoSuchTableError(table.fullname)
 
         include_columns = util.Set(include_columns or [])
 
@@ -833,7 +833,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
                 # LIMIT.  Right?  Other dialects seem to get away with
                 # dropping order.
                 if select._limit:
-                    raise exceptions.InvalidRequestError(
+                    raise exc.InvalidRequestError(
                         "MaxDB does not support ORDER BY in subqueries")
                 else:
                     return ""
@@ -846,7 +846,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
         sql = select._distinct and 'DISTINCT ' or ''
         if self.is_subquery(select) and select._limit:
             if select._offset:
-                raise exceptions.InvalidRequestError(
+                raise exc.InvalidRequestError(
                     'MaxDB does not support LIMIT with an offset.')
             sql += 'TOP %s ' % select._limit
         return sql
@@ -858,7 +858,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
             # sub queries need TOP
             return ''
         elif select._offset:
-            raise exceptions.InvalidRequestError(
+            raise exc.InvalidRequestError(
                 'MaxDB does not support LIMIT with an offset.')
         else:
             return ' \n LIMIT %s' % (select._limit,)
@@ -952,7 +952,7 @@ class MaxDBIdentifierPreparer(compiler.IdentifierPreparer):
 class MaxDBSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kw):
         colspec = [self.preparer.format_column(column),
-                   column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()]
+                   column.type.dialect_impl(self.dialect).get_col_spec()]
 
         if not column.nullable:
             colspec.append('NOT NULL')

@@ -12,7 +12,7 @@ classes.
 
 
 from sqlalchemy.engine import base, threadlocal, url
-from sqlalchemy import util, exceptions
+from sqlalchemy import util, exc
 from sqlalchemy import pool as poollib
 
 strategies = {}
@@ -77,7 +77,7 @@ class DefaultEngineStrategy(EngineStrategy):
                 try:
                     return dbapi.connect(*cargs, **cparams)
                 except Exception, e:
-                    raise exceptions.DBAPIError.instance(None, None, e)
+                    raise exc.DBAPIError.instance(None, None, e)
             creator = kwargs.pop('creator', connect)
 
             poolclass = (kwargs.pop('poolclass', None) or
@@ -200,7 +200,7 @@ class MockEngineStrategy(EngineStrategy):
 
         def create(self, entity, **kwargs):
             kwargs['checkfirst'] = False
-            self.dialect.schemagenerator(self.dialect ,self, **kwargs).traverse(entity)
+            self.dialect.schemagenerator(self.dialect, self, **kwargs).traverse(entity)
 
         def drop(self, entity, **kwargs):
             kwargs['checkfirst'] = False

@@ -19,7 +19,7 @@ conditions.
 """
 
 from sqlalchemy import util
-from sqlalchemy.exceptions import CircularDependencyError
+from sqlalchemy.exc import CircularDependencyError
 
 __all__ = ['sort', 'sort_with_cycles', 'sort_as_tree']
 
@@ -207,9 +207,9 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
                     for n in lead.cycles:
                         if n is not lead:
                             n._cyclical = True
-                            for (n,k) in list(edges.edges_by_parent(n)):
+                            for (n, k) in list(edges.edges_by_parent(n)):
                                 edges.add((lead, k))
-                                edges.remove((n,k))
+                                edges.remove((n, k))
                 continue
             else:
                 # long cycles not allowed
@@ -248,7 +248,7 @@ def _organize_as_tree(nodes):
         nodealldeps = node.all_deps()
         if nodealldeps:
             # iterate over independent node indexes in reverse order so we can efficiently remove them
-            for index in xrange(len(independents)-1,-1,-1):
+            for index in xrange(len(independents) - 1, -1, -1):
                 child, childsubtree, childcycles = independents[index]
                 # if there is a dependency between this node and an independent node
                 if (childsubtree.intersection(nodealldeps) or childcycles.intersection(node.dependencies)):
@@ -261,7 +261,7 @@ def _organize_as_tree(nodes):
                     # remove the child from list of independent subtrees
                     independents[index:index+1] = []
         # add node as a new independent subtree
-        independents.append((node,subtree,cycles))
+        independents.append((node, subtree, cycles))
     # choose an arbitrary node from list of all independent subtrees
     head = independents.pop()[0]
     # add all other independent subtrees as a child of the chosen root

@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy.sql import table, column
-from sqlalchemy import databases, exceptions, sql, util
+from sqlalchemy import databases, sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes

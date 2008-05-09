@@ -129,7 +129,25 @@ class FlushTest(FixtureTest):
             User(name='jack', addresses=[Address(email_address='lala@hoho.com')]),
             User(name='ed', addresses=[Address(email_address='foo@bar.com')])
         ] == sess.query(User).all()
+    
+    def test_rollback(self):
+        class Fixture(Base):
+            pass
 
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        sess = create_session(autoexpire=False, autocommit=False, autoflush=True)
+        u1 = User(name='jack')
+        u1.addresses.append(Address(email_address='lala@hoho.com'))
+        sess.save(u1)
+        sess.flush()
+        sess.commit()
+        u1.addresses.append(Address(email_address='foo@bar.com'))
+        self.assertEquals(u1.addresses.all(), [Address(email_address='lala@hoho.com'), Address(email_address='foo@bar.com')])
+        sess.rollback()
+        self.assertEquals(u1.addresses.all(), [Address(email_address='lala@hoho.com')])
+        
     @testing.fails_on('maxdb')
     def test_delete_nocascade(self):
         mapper(User, users, properties={

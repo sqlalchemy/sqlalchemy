@@ -64,103 +64,22 @@ SQLAlchemy is designed to operate with a [DB-API](http://www.python.org/doc/peps
 * SQLite:  [pysqlite](http://initd.org/tracker/pysqlite), [sqlite3](http://docs.python.org/lib/module-sqlite3.html) (included with Python 2.5 or greater)
 * MySQL:   [MySQLdb](http://sourceforge.net/projects/mysql-python)
 * Oracle:  [cx_Oracle](http://www.cxtools.net/default.aspx?nav=home)
-* MS-SQL:  [pyodbc](http://pyodbc.sourceforge.net/) (recommended), [adodbapi](http://adodbapi.sourceforge.net/)  or [pymssql](http://pymssql.sourceforge.net/)
+* MS-SQL, MSAccess:  [pyodbc](http://pyodbc.sourceforge.net/) (recommended), [adodbapi](http://adodbapi.sourceforge.net/)  or [pymssql](http://pymssql.sourceforge.net/)
 * Firebird:  [kinterbasdb](http://kinterbasdb.sourceforge.net/)
 * Informix:  [informixdb](http://informixdb.sourceforge.net/)
+* DB2/Informix IDS: [ibm-db](http://code.google.com/p/ibm-db/)
+* Sybase:   TODO
+* MAXDB:    TODO
 
 ### Checking the Installed SQLAlchemy Version
  
-This documentation covers SQLAlchemy version 0.4.  If you're working on a system that already has SQLAlchemy installed, check the version from your Python prompt like this:
+This documentation covers SQLAlchemy version 0.5.  If you're working on a system that already has SQLAlchemy installed, check the version from your Python prompt like this:
 
      {python}
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
-     0.4.0
+     0.5.0
 
-## 0.3 to 0.4 Migration {@name=migration}
+## 0.4 to 0.5 Migration {@name=migration}
 
-From version 0.3 to version 0.4 of SQLAlchemy, some conventions have changed.  Most of these conventions are available in the most recent releases of the 0.3 series starting with version 0.3.9, so that you can make a 0.3 application compatible with 0.4 in most cases.
-
-This section will detail only those things that have changed in a backwards-incompatible manner.  For a full overview of everything that's new and changed, see [WhatsNewIn04](http://www.sqlalchemy.org/trac/wiki/WhatsNewIn04).
-
-### ORM Package is now sqlalchemy.orm {@name=imports}
-
-All symbols related to the SQLAlchemy Object Relational Mapper, i.e. names like `mapper()`, `relation()`, `backref()`, `create_session()` `synonym()`, `eagerload()`, etc. are now only in the `sqlalchemy.orm` package, and **not** in `sqlalchemy`.  So if you were previously importing everything on an asterisk:
-
-    {python}
-    from sqlalchemy import *
-    
-You should now import separately from orm:
-
-    {python}
-    from sqlalchemy import *
-    from sqlalchemy.orm import *
-    
-Or more commonly, just pull in the names you'll need:
-
-    {python}
-    from sqlalchemy import create_engine, MetaData, Table, Column, types
-    from sqlalchemy.orm import mapper, relation, backref, create_session
-
-### BoundMetaData is now MetaData {@name=metadata}
-
-The `BoundMetaData` name is removed.  Now, you just use `MetaData`.  Additionally, the `engine` parameter/attribute is now called `bind`, and `connect()` is deprecated:
-
-    {python}
-    # plain metadata
-    meta = MetaData()
-    
-    # metadata bound to an engine
-    meta = MetaData(engine)
-    
-    # bind metadata to an engine later
-    meta.bind = engine
-    
-Additionally, `DynamicMetaData` is now known as `ThreadLocalMetaData`.
-
-### "Magic" Global MetaData removed {@name=global}
-
-There was an old way to specify `Table` objects using an implicit, global `MetaData` object.  To do this you'd omit the second positional argument, and specify `Table('tablename', Column(...))`.  This no longer exists in 0.4 and the second `MetaData` positional argument is required, i.e. `Table('tablename', meta, Column(...))`.
-
-### Some existing select() methods become generative {@name=generative}
-
-The methods `correlate()`, `order_by()`, and `group_by()` on the `select()` construct now return a **new** select object, and do not change the original one.  Additionally, the generative methods `where()`, `column()`, `distinct()`, and several others have been added:
-
-    {python}
-    s = table.select().order_by(table.c.id).where(table.c.x==7)
-    result = engine.execute(s)
-
-### collection_class behavior is changed {@name=collection}
-
-If you've been using the `collection_class` option on `mapper()`, the requirements for instrumented collections have changed.  For an overview, see [advdatamapping_relation_collections](rel:advdatamapping_relation_collections).
-
-### All "engine", "bind_to", "connectable" Keyword Arguments Changed to "bind" {@name=bind}
-
-This is for create/drop statements, sessions, SQL constructs, metadatas:
-
-    {python}
-    myengine = create_engine('sqlite://')
-
-    meta = MetaData(myengine)
-
-    meta2 = MetaData()
-    meta2.bind = myengine
-
-    session = create_session(bind=myengine)
-
-    statement = select([table], bind=myengine)
-    
-    meta.create_all(bind=myengine)
-    
-### All "type" Keyword Arguments Changed to "type_" {@name=type}
-
-This mostly applies to SQL constructs where you pass a type in:
-
-    {python}
-    s = select([mytable], mytable.c.x=bindparam(y, type_=DateTime))
-    
-    func.now(type_=DateTime)
-    
-### Mapper Extensions must return EXT_CONTINUE to continue execution to the next mapper
-
-If you extend the mapper, the methods in your mapper extension must return EXT_CONTINUE to continue executing additional mappers.
+Notes on what's changed from 0.4 to 0.5 is available on the SQLAlchemy wiki at [05Migration](http://www.sqlalchemy.org/trac/wiki/05Migration).

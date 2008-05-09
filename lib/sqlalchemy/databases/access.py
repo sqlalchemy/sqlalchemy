@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import sql, schema, types, exceptions, pool
+from sqlalchemy import sql, schema, types, exc, pool
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, base
 
@@ -202,7 +202,7 @@ class AccessDialect(default.DefaultDialect):
                 except pythoncom.com_error:
                     pass
             else:
-                raise exceptions.InvalidRequestError("Can't find a DB engine. Check http://support.microsoft.com/kb/239114 for details.")
+                raise exc.InvalidRequestError("Can't find a DB engine. Check http://support.microsoft.com/kb/239114 for details.")
 
         import pyodbc as module
         return module
@@ -236,7 +236,7 @@ class AccessDialect(default.DefaultDialect):
             c.execute(statement, parameters)
             self.context.rowcount = c.rowcount
         except Exception, e:
-            raise exceptions.DBAPIError.instance(statement, parameters, e)
+            raise exc.DBAPIError.instance(statement, parameters, e)
 
     def has_table(self, connection, tablename, schema=None):
         # This approach seems to be more reliable that using DAO
@@ -272,7 +272,7 @@ class AccessDialect(default.DefaultDialect):
                 if tbl.Name.lower() == table.name.lower():
                     break
             else:
-                raise exceptions.NoSuchTableError(table.name)
+                raise exc.NoSuchTableError(table.name)
 
             for col in tbl.Fields:
                 coltype = self.ischema_names[col.Type]
@@ -333,7 +333,7 @@ class AccessDialect(default.DefaultDialect):
         # This is necessary, so we get the latest updates
         dtbs = daoEngine.OpenDatabase(connection.engine.url.database)
 
-        names = [t.Name for t in dtbs.TableDefs if t.Name[:4] != "MSys" and t.Name[:4] <> "~TMP"]
+        names = [t.Name for t in dtbs.TableDefs if t.Name[:4] != "MSys" and t.Name[:4] != "~TMP"]
         dtbs.Close()
         return names
 
@@ -345,7 +345,7 @@ class AccessCompiler(compiler.DefaultCompiler):
         if select.limit:
             s += "TOP %s " % (select.limit)
         if select.offset:
-            raise exceptions.InvalidRequestError('Access does not support LIMIT with an offset')
+            raise exc.InvalidRequestError('Access does not support LIMIT with an offset')
         return s
 
     def limit_clause(self, select):
@@ -378,14 +378,14 @@ class AccessCompiler(compiler.DefaultCompiler):
     # Strip schema
     def visit_table(self, table, asfrom=False, **kwargs):
         if asfrom:
-            return self.preparer.quote(table, table.name)
+            return self.preparer.quote(table.name, table.quote)
         else:
             return ""
 
 
 class AccessSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
-        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
+        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
 
         # install a sequence if we have an implicit IDENTITY column
         if (not getattr(column.table, 'has_sequence', False)) and column.primary_key and \

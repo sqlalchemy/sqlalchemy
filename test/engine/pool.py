@@ -1,9 +1,8 @@
 import testenv; testenv.configure_for_tests()
-import threading, thread, time, gc
-import sqlalchemy.pool as pool
-import sqlalchemy.interfaces as interfaces
-import sqlalchemy.exceptions as exceptions
-from testlib import *
+import threading, time, gc
+from sqlalchemy import pool
+import testlib.sa as tsa
+from testlib import TestBase
 
 
 mcid = 1
@@ -127,7 +126,7 @@ class PoolTest(TestBase):
         try:
             c4 = p.connect()
             assert False
-        except exceptions.TimeoutError, e:
+        except tsa.exc.TimeoutError, e:
             assert int(time.time() - now) == 2
 
     def test_timeout_race(self):
@@ -145,7 +144,7 @@ class PoolTest(TestBase):
                 now = time.time()
                 try:
                     c1 = p.connect()
-                except exceptions.TimeoutError, e:
+                except tsa.exc.TimeoutError, e:
                     timeouts.append(int(time.time()) - now)
                     continue
                 time.sleep(4)
@@ -181,7 +180,7 @@ class PoolTest(TestBase):
                     peaks.append(p.overflow())
                     con.close()
                     del con
-                except exceptions.TimeoutError:
+                except tsa.exc.TimeoutError:
                     pass
         threads = []
         for i in xrange(thread_count):
@@ -444,7 +443,7 @@ class PoolTest(TestBase):
                 # con can be None if invalidated
                 assert record is not None
                 self.checked_in.append(con)
-        class ListenAll(interfaces.PoolListener, InstrumentingListener):
+        class ListenAll(tsa.interfaces.PoolListener, InstrumentingListener):
             pass
         class ListenConnect(InstrumentingListener):
             def connect(self, con, record):

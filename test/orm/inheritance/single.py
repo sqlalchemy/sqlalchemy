@@ -61,6 +61,10 @@ class SingleInheritanceTest(TestBase, AssertsExecutionResults):
         assert session.query(Engineer).all() == [e1, e2]
         assert session.query(Manager).all() == [m1]
         assert session.query(JuniorEngineer).all() == [e2]
-
+        
+        m1 = session.query(Manager).one()
+        session.expire(m1, ['manager_data'])
+        self.assertEquals(m1.manager_data, "knows how to manage things")
+        
 if __name__ == '__main__':
     testenv.main()

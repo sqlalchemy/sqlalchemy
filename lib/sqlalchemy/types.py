@@ -24,7 +24,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
 import inspect
 import datetime as dt
 
-from sqlalchemy import exceptions
+from sqlalchemy import exc
 from sqlalchemy.util import pickle, Decimal as _python_Decimal
 import sqlalchemy.util as util
 NoneType = type(None)
@@ -173,7 +173,6 @@ class TypeEngine(AbstractType):
     def get_col_spec(self):
         raise NotImplementedError()
 
-
     def bind_processor(self, dialect):
         return None
 
@@ -214,7 +213,7 @@ class TypeDecorator(AbstractType):
     
     def __init__(self, *args, **kwargs):
         if not hasattr(self.__class__, 'impl'):
-            raise exceptions.AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
+            raise AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
         self.impl = self.__class__.impl(*args, **kwargs)
 
     def dialect_impl(self, dialect, **kwargs):
@@ -231,7 +230,7 @@ class TypeDecorator(AbstractType):
             typedesc = self.load_dialect_impl(dialect)
         tt = self.copy()
         if not isinstance(tt, self.__class__):
-            raise exceptions.AssertionError("Type object %s does not properly implement the copy() method, it must return an object of type %s" % (self, self.__class__))
+            raise AssertionError("Type object %s does not properly implement the copy() method, it must return an object of type %s" % (self, self.__class__))
         tt.impl = typedesc
         self._impl_dict[dialect] = tt
         return tt
@@ -299,7 +298,7 @@ class TypeDecorator(AbstractType):
         return self.impl.copy_value(value)
 
     def compare_values(self, x, y):
-        return self.impl.compare_values(x,y)
+        return self.impl.compare_values(x, y)
 
     def is_mutable(self):
         return self.impl.is_mutable()
@@ -363,12 +362,14 @@ class Concatenable(object):
 class String(Concatenable, TypeEngine):
     """A sized string type.
 
-    Usually corresponds to VARCHAR.  Can also take Python unicode objects
+    In SQL, corresponds to VARCHAR.  Can also take Python unicode objects
     and encode to the database's encoding in bind params (and the reverse for
     result sets.)
 
-    a String with no length will adapt itself automatically to a Text
-    object at the dialect level (this behavior is deprecated in 0.4).
+    The `length` field is usually required when the `String` type is used within a 
+    CREATE TABLE statement, since VARCHAR requires a length on most databases.
+    Currently SQLite is an exception to this.
+    
     """
     def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
         self.length = length
@@ -393,7 +394,7 @@ class String(Concatenable, TypeEngine):
                                   "param value %r" % value)
                         return value
                     else:
-                        raise exceptions.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
+                        raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
                 else:
                     return value
             return process
@@ -410,26 +411,6 @@ class String(Concatenable, TypeEngine):
             return process
         else:
             return None
-
-    def dialect_impl(self, dialect, **kwargs):
-        _for_ddl = kwargs.pop('_for_ddl', False)
-        if _for_ddl and self.length is None:
-            label = util.to_ascii(_for_ddl is True and
-                                  '' or (' for column "%s"' % str(_for_ddl)))
-            util.warn_deprecated(
-                "Using String type with no length for CREATE TABLE "
-                "is deprecated; use the Text type explicitly" + label)
-        return TypeEngine.dialect_impl(self, dialect, **kwargs)
-
-    def get_search_list(self):
-        l = super(String, self).get_search_list()
-        # if we are String or Unicode with no length,
-        # return Text as the highest-priority type
-        # to be adapted by the dialect
-        if self.length is None and l[0] in (String, Unicode):
-            return (Text,) + l
-        else:
-            return l
 
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
@@ -632,7 +613,7 @@ class Interval(TypeDecorator):
             if value is None:
                 return None
             return dt.datetime.utcfromtimestamp(0) + value
-            
+
     def process_result_value(self, value, dialect):
         if dialect.__class__ in self.__supported:
             return value
@@ -641,23 +622,68 @@ class Interval(TypeDecorator):
                 return None
             return value - dt.datetime.utcfromtimestamp(0)
 
-class FLOAT(Float): pass
-TEXT = Text
-class NUMERIC(Numeric): pass
-class DECIMAL(Numeric): pass
-class INT(Integer): pass
+class FLOAT(Float):
+    """The SQL FLOAT type."""
+
+
+class NUMERIC(Numeric):
+    """The SQL NUMERIC type."""
+
+
+class DECIMAL(Numeric):
+    """The SQL DECIMAL type."""
+
+
+class INT(Integer):
+    """The SQL INT or INTEGER type."""
+
+
 INTEGER = INT
-class SMALLINT(Smallinteger): pass
-class TIMESTAMP(DateTime): pass
-class DATETIME(DateTime): pass
-class DATE(Date): pass
-class TIME(Time): pass
-class CLOB(Text): pass
-class VARCHAR(String): pass
-class CHAR(String): pass
-class NCHAR(Unicode): pass
-class BLOB(Binary): pass
-class BOOLEAN(Boolean): pass
+
+class SMALLINT(Smallinteger):
+    """The SQL SMALLINT type."""
+
+
+class TIMESTAMP(DateTime):
+    """The SQL TIMESTAMP type."""
+
+
+class DATETIME(DateTime):
+    """The SQL DATETIME type."""
+
+
+class DATE(Date):
+    """The SQL DATE type."""
+
+
+class TIME(Time):
+    """The SQL TIME type."""
+
+
+TEXT = Text
+
+class CLOB(Text):
+    """The SQL CLOB type."""
+
+
+class VARCHAR(String):
+    """The SQL VARCHAR type."""
+
+
+class CHAR(String):
+    """The SQL CHAR type."""
+
+
+class NCHAR(Unicode):
+    """The SQL NCHAR type."""
+
+
+class BLOB(Binary):
+    """The SQL BLOB type."""
+
+
+class BOOLEAN(Boolean):
+    """The SQL BOOLEAN type."""
 
 NULLTYPE = NullType()
 

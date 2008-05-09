@@ -6,7 +6,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy import exceptions
+from sqlalchemy import exc
 
 metadata = MetaData()
 table = Table('table1', metadata,
@@ -164,7 +164,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         print str(j)
         self.assert_(criterion.compare(j.onclause))
 
-    def testcolumnlabels(self):
+    def test_column_labels(self):
         a = select([table.c.col1.label('acol1'), table.c.col2.label('acol2'), table.c.col3.label('acol3')])
         print str(a)
         print [c for c in a.columns]
@@ -173,13 +173,13 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         criterion = a.c.acol1 == table2.c.col2
         print str(j)
         self.assert_(criterion.compare(j.onclause))
-
+    
     def test_labeled_select_correspoinding(self):
         l1 = select([func.max(table.c.col1)]).label('foo')
 
         s = select([l1])
         assert s.corresponding_column(l1).name == s.c.foo
-
+        
         s = select([table.c.col1, l1])
         assert s.corresponding_column(l1).name == s.c.foo
 
@@ -193,7 +193,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         print str(j.onclause)
         self.assert_(criterion.compare(j.onclause))
 
-    def testtablejoinedtoselectoftable(self):
+    def test_table_joined_to_select_of_table(self):
         metadata = MetaData()
         a = Table('a', metadata,
             Column('id', Integer, primary_key=True))
@@ -242,7 +242,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
 
         s = select([t2, t3], use_labels=True)
 
-        self.assertRaises(exceptions.NoReferencedTableError, s.join, t1)
+        self.assertRaises(exc.NoReferencedTableError, s.join, t1)
         
 class PrimaryKeyTest(TestBase, AssertsExecutionResults):
     def test_join_pk_collapse_implicit(self):

@@ -1,14 +1,16 @@
-# can't be imported until the path is setup; be sure to configure
-# first if covering.
-from sqlalchemy import *
-from sqlalchemy import util
-from testlib import *
+from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
+from testlib.sa.orm import attributes
+from testlib import ORMTest
+from testlib.compat import set
 
-__all__ = ['keywords', 'addresses', 'Base', 'Keyword', 'FixtureTest', 'Dingaling', 'item_keywords', 
-            'dingalings', 'User', 'items', 'Fixtures', 'orders', 'install_fixture_data', 'Address', 'users', 
+
+__all__ = ['keywords', 'addresses', 'Base', 'Keyword', 'FixtureTest',
+           'Dingaling', 'item_keywords', 'dingalings', 'User', 'items',
+           'Fixtures', 'orders', 'install_fixture_data', 'Address', 'users',
             'order_items', 'Item', 'Order', 'fixtures']
-            
-_recursion_stack = util.Set()
+
+
+_recursion_stack = set()
 class Base(object):
     def __init__(self, **kwargs):
         for k in kwargs:
@@ -36,10 +38,15 @@ class Base(object):
         _recursion_stack.add(self)
         try:
             # pick the entity thats not SA persisted as the source
+            try:
+                state = attributes.instance_state(self)
+                key = state.key
+            except (KeyError, AttributeError):
+                key = None
             if other is None:
                 a = self
                 b = other
-            elif hasattr(self, '_instance_key'):
+            elif key is not None:
                 a = other
                 b = self
             else:
@@ -57,8 +64,9 @@ class Base(object):
                         battr = getattr(b, attr)
                     except AttributeError:
                         #print "b class does not have attribute named '%s'" % attr
+                        #raise
                         return False
-                    
+
                     if list(value) == list(battr):
                         continue
                     else:
@@ -84,43 +92,60 @@ metadata = MetaData()
 
 users = Table('users', metadata,
     Column('id', Integer, primary_key=True),
-    Column('name', String(30), nullable=False))
+    Column('name', String(30), nullable=False),
+    test_needs_acid=True,
+    test_needs_fk=True
+    )
 
 orders = Table('orders', metadata,
     Column('id', Integer, primary_key=True),
     Column('user_id', None, ForeignKey('users.id')),
     Column('address_id', None, ForeignKey('addresses.id')),
     Column('description', String(30)),
-    Column('isopen', Integer)
+    Column('isopen', Integer),
+    test_needs_acid=True,
+    test_needs_fk=True
     )
 
 addresses = Table('addresses', metadata,
     Column('id', Integer, primary_key=True),
     Column('user_id', None, ForeignKey('users.id')),
-    Column('email_address', String(50), nullable=False))
+    Column('email_address', String(50), nullable=False),
+    test_needs_acid=True,
+    test_needs_fk=True)
 
 dingalings = Table("dingalings", metadata,
     Column('id', Integer, primary_key=True),
     Column('address_id', None, ForeignKey('addresses.id')),
-    Column('data', String(30))
+    Column('data', String(30)),
+    test_needs_acid=True,
+    test_needs_fk=True
     )
 
 items = Table('items', metadata,
     Column('id', Integer, primary_key=True),
-    Column('description', String(30), nullable=False)
+    Column('description', String(30), nullable=False),
+    test_needs_acid=True,
+    test_needs_fk=True
     )
 
 order_items = Table('order_items', metadata,
     Column('item_id', None, ForeignKey('items.id')),
-    Column('order_id', None, ForeignKey('orders.id')))
+    Column('order_id', None, ForeignKey('orders.id')),
+    test_needs_acid=True,
+    test_needs_fk=True)
 
 item_keywords = Table('item_keywords', metadata,
     Column('item_id', None, ForeignKey('items.id')),
-    Column('keyword_id', None, ForeignKey('keywords.id')))
+    Column('keyword_id', None, ForeignKey('keywords.id')),
+    test_needs_acid=True,
+    test_needs_fk=True)
 
 keywords = Table('keywords', metadata,
     Column('id', Integer, primary_key=True),
-    Column('name', String(30), nullable=False)
+    Column('name', String(30), nullable=False),
+    test_needs_acid=True,
+    test_needs_fk=True
     )
 
 def install_fixture_data():
@@ -203,14 +228,15 @@ def install_fixture_data():
 
 class FixtureTest(ORMTest):
     refresh_data = False
-
+    only_tables = False
+    
     def setUpAll(self):
         super(FixtureTest, self).setUpAll()
-        if self.keep_data:
+        if not self.only_tables and self.keep_data:
             install_fixture_data()
 
     def setUp(self):
-        if self.refresh_data:
+        if not self.only_tables and self.refresh_data:
             install_fixture_data()
 
     def define_tables(self, meta):

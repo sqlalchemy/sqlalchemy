@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.databases import firebird
-from sqlalchemy.exceptions import ProgrammingError
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import table, column
 from testlib import *
 

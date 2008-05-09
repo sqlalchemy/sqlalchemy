@@ -13,7 +13,7 @@ and result contexts.
 """
 
 import inspect, StringIO, sys
-from sqlalchemy import exceptions, schema, util, types, logging
+from sqlalchemy import exc, schema, util, types, log
 from sqlalchemy.sql import expression
 
 
@@ -451,7 +451,7 @@ class Compiled(object):
         self.statement = statement
         self.column_keys = column_keys
         self.bind = bind
-        self.can_execute = statement.supports_execution()
+        self.can_execute = statement.supports_execution
 
     def compile(self):
         """Produce the internal string representation of this element."""
@@ -482,7 +482,7 @@ class Compiled(object):
 
         e = self.bind
         if e is None:
-            raise exceptions.UnboundExecutionError("This Compiled object is not bound to any Engine or Connection.")
+            raise exc.UnboundExecutionError("This Compiled object is not bound to any Engine or Connection.")
         return e._execute_compiled(self, multiparams, params)
 
     def scalar(self, *multiparams, **params):
@@ -541,7 +541,7 @@ class Connection(Connectable):
         self.__savepoint_seq = 0
         self.__branch = _branch
         self.__invalid = False
-
+        
     def _branch(self):
         """Return a new Connection which references this Connection's
         engine and connection; but does not have close_with_result enabled,
@@ -550,7 +550,7 @@ class Connection(Connectable):
         This is used to execute "sub" statements within a single execution,
         usually an INSERT statement.
         """
-        return Connection(self.engine, self.__connection, _branch=True)
+        return self.engine.Connection(self.engine, self.__connection, _branch=True)
 
     def dialect(self):
         "Dialect used by this Connection."
@@ -578,11 +578,11 @@ class Connection(Connectable):
         except AttributeError:
             if self.__invalid:
                 if self.__transaction is not None:
-                    raise exceptions.InvalidRequestError("Can't reconnect until invalid transaction is rolled back")
+                    raise exc.InvalidRequestError("Can't reconnect until invalid transaction is rolled back")
                 self.__connection = self.engine.raw_connection()
                 self.__invalid = False
                 return self.__connection
-            raise exceptions.InvalidRequestError("This Connection is closed")
+            raise exc.InvalidRequestError("This Connection is closed")
     connection = property(connection)
 
     def should_close_with_result(self):
@@ -702,7 +702,7 @@ class Connection(Connectable):
         """
 
         if self.__transaction is not None:
-            raise exceptions.InvalidRequestError(
+            raise exc.InvalidRequestError(
                 "Cannot start a two phase transaction when a transaction "
                 "is already in progress.")
         if xid is None:
@@ -843,7 +843,7 @@ class Connection(Connectable):
             if c in Connection.executors:
                 return Connection.executors[c](self, object, multiparams, params)
         else:
-            raise exceptions.InvalidRequestError("Unexecutable object type: " + str(type(object)))
+            raise exc.InvalidRequestError("Unexecutable object type: " + str(type(object)))
 
     def _execute_default(self, default, multiparams=None, params=None):
         return self.engine.dialect.defaultrunner(self.__create_execution_context()).traverse_single(default)
@@ -862,7 +862,7 @@ class Connection(Connectable):
         in the case of 'raw' execution which accepts positional parameters,
         it may be a list of tuples or lists."""
 
-        if multiparams is None or len(multiparams) == 0:
+        if not multiparams:
             if params:
                 return [params]
             else:
@@ -897,7 +897,7 @@ class Connection(Connectable):
     def _execute_compiled(self, compiled, multiparams=None, params=None, distilled_params=None):
         """Execute a sql.Compiled object."""
         if not compiled.can_execute:
-            raise exceptions.ArgumentError("Not an executable clause: %s" % (str(compiled)))
+            raise exc.ArgumentError("Not an executable clause: %s" % (str(compiled)))
 
         if distilled_params is None:
             distilled_params = self.__distill_params(multiparams, params)
@@ -924,7 +924,7 @@ class Connection(Connectable):
 
     def _handle_dbapi_exception(self, e, statement, parameters, cursor):
         if getattr(self, '_reentrant_error', False):
-            raise exceptions.DBAPIError.instance(None, None, e)
+            raise exc.DBAPIError.instance(None, None, e)
         self._reentrant_error = True
         try:
             if not isinstance(e, self.dialect.dbapi.Error):
@@ -939,7 +939,7 @@ class Connection(Connectable):
                 self._autorollback()
                 if self.__close_with_result:
                     self.close()
-            raise exceptions.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect)
+            raise exc.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect)
         finally:
             del self._reentrant_error
 
@@ -1047,7 +1047,7 @@ class Transaction(object):
 
     def commit(self):
         if not self._parent._is_active:
-            raise exceptions.InvalidRequestError("This transaction is inactive")
+            raise exc.InvalidRequestError("This transaction is inactive")
         self._do_commit()
         self._is_active = False
 
@@ -1094,7 +1094,7 @@ class TwoPhaseTransaction(Transaction):
 
     def prepare(self):
         if not self._parent._is_active:
-            raise exceptions.InvalidRequestError("This transaction is inactive")
+            raise exc.InvalidRequestError("This transaction is inactive")
         self._connection._prepare_twophase_impl(self.xid)
         self._is_prepared = True
 
@@ -1110,13 +1110,17 @@ class Engine(Connectable):
     provide a default implementation of SchemaEngine.
     """
 
-    def __init__(self, pool, dialect, url, echo=None):
+    def __init__(self, pool, dialect, url, echo=None, proxy=None):
         self.pool = pool
         self.url = url
-        self.dialect=dialect
+        self.dialect = dialect
         self.echo = echo
         self.engine = self
-        self.logger = logging.instance_logger(self, echoflag=echo)
+        self.logger = log.instance_logger(self, echoflag=echo)
+        if proxy:
+            self.Connection = _proxy_connection_cls(Connection, proxy)
+        else:
+            self.Connection = Connection
 
     def name(self):
         "String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``."
@@ -1124,7 +1128,7 @@ class Engine(Connectable):
         return sys.modules[self.dialect.__module__].descriptor()['name']
     name = property(name)
 
-    echo = logging.echo_property()
+    echo = log.echo_property()
 
     def __repr__(self):
         return 'Engine(%s)' % str(self.url)
@@ -1228,7 +1232,7 @@ class Engine(Connectable):
     def connect(self, **kwargs):
         """Return a newly allocated Connection object."""
 
-        return Connection(self, **kwargs)
+        return self.Connection(self, **kwargs)
 
     def contextual_connect(self, close_with_result=False, **kwargs):
         """Return a Connection object which may be newly allocated, or may be part of some ongoing context.
@@ -1236,7 +1240,7 @@ class Engine(Connectable):
         This Connection is meant to be used by the various "auto-connecting" operations.
         """
 
-        return Connection(self, self.pool.connect(), close_with_result=close_with_result, **kwargs)
+        return self.Connection(self, self.pool.connect(), close_with_result=close_with_result, **kwargs)
 
     def table_names(self, schema=None, connection=None):
         """Return a list of all table names available in the database.
@@ -1286,6 +1290,22 @@ class Engine(Connectable):
         return self.pool.unique_connection()
 
 
+def _proxy_connection_cls(cls, proxy):
+    class ProxyConnection(cls):
+        def execute(self, object, *multiparams, **params):
+            return proxy.execute(self, super(ProxyConnection, self).execute, object, *multiparams, **params)
+ 
+        def execute_clauseelement(self, elem, multiparams=None, params=None):
+            return proxy.execute(self, super(ProxyConnection, self).execute, elem, *(multiparams or []), **(params or {}))
+            
+        def _cursor_execute(self, cursor, statement, parameters, context=None):
+            return proxy.cursor_execute(super(ProxyConnection, self)._cursor_execute, cursor, statement, parameters, context, False)
+ 
+        def _cursor_executemany(self, cursor, statement, parameters, context=None):
+            return proxy.cursor_execute(super(ProxyConnection, self)._cursor_executemany, cursor, statement, parameters, context, True)
+
+    return ProxyConnection
+
 class RowProxy(object):
     """Proxy a single cursor row for a parent ResultProxy.
 
@@ -1296,6 +1316,8 @@ class RowProxy(object):
     results that correspond to constructed SQL expressions).
     """
 
+    __slots__ = ['__parent', '__row']
+    
     def __init__(self, parent, row):
         """RowProxy objects are constructed by ResultProxy objects."""
 
@@ -1488,14 +1510,14 @@ class ResultProxy(object):
                         return props[key._label.lower()]
                     elif hasattr(key, 'name') and key.name.lower() in props:
                         return props[key.name.lower()]
-                raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (str(key)))
+                raise exc.NoSuchColumnError("Could not locate column in row for column '%s'" % (str(key)))
 
             return rec
         return util.PopulateDict(lookup_key)
 
     def __ambiguous_processor(self, colname):
         def process(value):
-            raise exceptions.InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % colname)
+            raise exc.InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % colname)
         return process
 
     def close(self):

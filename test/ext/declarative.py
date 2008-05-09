@@ -5,7 +5,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.ext.declarative import declarative_base, declared_synonym, \
                                        synonym_for, comparable_using
-from sqlalchemy import exceptions
+from sqlalchemy import exc
 from testlib.fixtures import Base as Fixture
 from testlib import *
 
@@ -94,7 +94,7 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
 
                 id = Column(Integer, primary_key=True)
                 foo = column_property(User.id==5)
-        self.assertRaises(exceptions.InvalidRequestError, go)
+        self.assertRaises(exc.InvalidRequestError, go)
         
     def test_add_prop(self):
         class User(Base, Fixture):
@@ -183,7 +183,7 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
                 name = Column('name', String(50))
             assert False
         self.assertRaisesMessage(
-            exceptions.ArgumentError,
+            exc.ArgumentError,
             "Mapper Mapper|User|users could not assemble any primary key",
             define)
 

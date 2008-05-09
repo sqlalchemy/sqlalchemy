@@ -3,7 +3,7 @@
 import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exceptions
+from sqlalchemy import exc
 from sqlalchemy.databases import sqlite
 from testlib import *
 
@@ -34,11 +34,11 @@ class TestTypes(TestBase, AssertsExecutionResults):
     @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
-        specs = [( String(), sqlite.SLText(), ),
+        specs = [( String(), sqlite.SLString(), ),
                  ( String(1), sqlite.SLString(1), ),
                  ( String(3), sqlite.SLString(3), ),
                  ( Text(), sqlite.SLText(), ),
-                 ( Unicode(), sqlite.SLText(), ),
+                 ( Unicode(), sqlite.SLString(), ),
                  ( Unicode(1), sqlite.SLString(1), ),
                  ( Unicode(3), sqlite.SLString(3), ),
                  ( UnicodeText(), sqlite.SLText(), ),
@@ -94,7 +94,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
                 for table in rt, rv:
                     for i, reflected in enumerate(table.c):
                         print reflected.type, type(expected[i])
-                        assert isinstance(reflected.type, type(expected[i]))
+                        assert isinstance(reflected.type, type(expected[i])), type(expected[i])
             finally:
                 db.execute('DROP VIEW types_v')
         finally:
@@ -212,7 +212,7 @@ class DialectTest(TestBase, AssertsExecutionResults):
         except:
             try:
                 cx.execute('DROP TABLE tempy')
-            except exceptions.DBAPIError:
+            except exc.DBAPIError:
                 pass
             raise
 
@@ -247,7 +247,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk2(self):
         self.assertRaises(
-            exceptions.DBAPIError,
+            exc.DBAPIError,
             self._test_empty_insert,
             Table('b', MetaData(testing.db),
                   Column('x', Integer, primary_key=True),
@@ -256,7 +256,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
     @testing.exclude('sqlite', '<', (3, 4))
     def test_empty_insert_pk3(self):
         self.assertRaises(
-            exceptions.DBAPIError,
+            exc.DBAPIError,
             self._test_empty_insert,
             Table('c', MetaData(testing.db),
                   Column('x', Integer, primary_key=True),

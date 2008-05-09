@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import sqlalchemy.topological as topological
 from sqlalchemy import util
-from testlib import *
+from testlib import TestBase
 
 
 class DependencySortTest(TestBase):

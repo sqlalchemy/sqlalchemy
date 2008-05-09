@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import sys
 from sqlalchemy import *
 from testlib import *
-from sqlalchemy import util, exceptions
+from sqlalchemy import util, exc
 from sqlalchemy.sql import table, column
 
 
@@ -91,7 +91,7 @@ class CaseTest(TestBase, AssertsCompiledSQL):
     def test_literal_interpretation(self):
         t = table('test', column('col1'))
         
-        self.assertRaises(exceptions.ArgumentError, case, [("x", "y")])
+        self.assertRaises(exc.ArgumentError, case, [("x", "y")])
         
         self.assert_compile(case([("x", "y")], value=t.c.col1), "CASE test.col1 WHEN :param_1 THEN :param_2 END")
         self.assert_compile(case([(t.c.col1==7, "y")], else_="z"), "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END")

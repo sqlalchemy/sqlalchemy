@@ -1,27 +1,44 @@
-# orm/mapper.py
+# mapper.py
 # Copyright (C) 2005, 2006, 2007, 2008 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Defines the [sqlalchemy.orm.mapper#Mapper] class, the central configurational
+"""Logic to map Python classes to and from selectables.
+
+Defines the [sqlalchemy.orm.mapper#Mapper] class, the central configurational
 unit which associates a class with a database table.
 
 This is a semi-private module; the main configurational API of the ORM is
 available in [sqlalchemy.orm#].
+
 """
 
 import weakref
 from itertools import chain
-from sqlalchemy import sql, util, exceptions, logging
-from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
-from sqlalchemy.orm import sync, attributes
-from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, PropComparator
-from sqlalchemy.orm.util import has_identity, _state_has_identity, _is_mapped_class, has_mapper, \
-    _state_mapper, class_mapper, object_mapper, _class_to_mapper,\
-    ExtensionCarrier, state_str, instance_str
-    
-__all__ = ['Mapper', 'class_mapper', 'object_mapper', '_mapper_registry']
+
+from sqlalchemy import sql, util, log
+import sqlalchemy.exceptions as sa_exc
+from sqlalchemy.sql import expression, visitors, operators
+import sqlalchemy.sql.util as sqlutil
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import exc
+from sqlalchemy.orm import sync
+from sqlalchemy.orm.identity import IdentityManagedState
+from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, \
+     PropComparator
+from sqlalchemy.orm.util import \
+     ExtensionCarrier, _INSTRUMENTOR, _class_to_mapper, _is_mapped_class, \
+     _state_has_identity, _state_mapper, class_mapper, has_identity, \
+     has_mapper, instance_str, object_mapper, state_str
+
+
+__all__ = (
+    'Mapper',
+    '_mapper_registry',
+    'class_mapper',
+    'object_mapper',
+    )
 
 _mapper_registry = weakref.WeakKeyDictionary()
 _new_mappers = False
@@ -43,6 +60,7 @@ ColumnProperty = None
 SynonymProperty = None
 ComparableProperty = None
 _expire_state = None
+_state_session = None
 
 
 class Mapper(object):
@@ -85,10 +103,11 @@ class Mapper(object):
 
         Mappers are normally constructed via the [sqlalchemy.orm#mapper()]
         function.  See for details.
-        
+
         """
 
         self.class_ = class_
+        self.class_manager = None
         self.entity_name = entity_name
         self.primary_key_argument = primary_key
         self.non_primary = non_primary
@@ -110,19 +129,18 @@ class Mapper(object):
         self.eager_defaults = eager_defaults
         self.column_prefix = column_prefix
         self.polymorphic_on = polymorphic_on
-        self._eager_loaders = util.Set()
         self._dependency_processors = []
         self._clause_adapter = None
         self._requires_row_aliasing = False
         self.__inherits_equated_pairs = None
-        
+
         if not issubclass(class_, object):
-            raise exceptions.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
+            raise sa_exc.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
 
         self.select_table = select_table
         if select_table:
             if with_polymorphic:
-                raise exceptions.ArgumentError("select_table can't be used with with_polymorphic (they define conflicting settings)")
+                raise sa_exc.ArgumentError("select_table can't be used with with_polymorphic (they define conflicting settings)")
             self.with_polymorphic = ('*', select_table)
         else:
             if with_polymorphic == '*':
@@ -133,14 +151,14 @@ class Mapper(object):
                 else:
                     self.with_polymorphic = (with_polymorphic, None)
             elif with_polymorphic is not None:
-                raise exceptions.ArgumentError("Invalid setting for with_polymorphic")
+                raise sa_exc.ArgumentError("Invalid setting for with_polymorphic")
             else:
                 self.with_polymorphic = None
-        
+
         if isinstance(self.local_table, expression._SelectBaseMixin):
             util.warn("mapper %s creating an alias for the given selectable - use Class attributes for queries." % self)
             self.local_table = self.local_table.alias()
-        
+
         if self.with_polymorphic and isinstance(self.with_polymorphic[1], expression._SelectBaseMixin):
             self.with_polymorphic[1] = self.with_polymorphic[1].alias()
 
@@ -148,12 +166,8 @@ class Mapper(object):
         # indicates this Mapper should be used to construct the object instance for that row.
         self.polymorphic_identity = polymorphic_identity
 
-        if polymorphic_fetch not in (None, 'union', 'select', 'deferred'):
-            raise exceptions.ArgumentError("Invalid option for 'polymorphic_fetch': '%s'" % polymorphic_fetch)
-        if polymorphic_fetch is None:
-            self.polymorphic_fetch = (self.with_polymorphic is None) and 'select' or 'union'
-        else:
-            self.polymorphic_fetch = polymorphic_fetch
+        if polymorphic_fetch:
+            util.warn_deprecated('polymorphic_fetch option is deprecated.  Unloaded columns load as deferred in all cases; loading can be controlled using the "with_polymorphic" option.')
 
         # a dictionary of 'polymorphic identity' names, associating those names with
         # Mappers that will be used to construct object instances upon a select operation.
@@ -170,14 +184,14 @@ class Mapper(object):
         # a set of all mappers which inherit from this one.
         self._inheriting_mappers = util.Set()
 
-        self.__props_init = False
+        self.compiled = False
 
-        self.__should_log_info = logging.is_info_enabled(self.logger)
-        self.__should_log_debug = logging.is_debug_enabled(self.logger)
+        self.__should_log_info = log.is_info_enabled(self.logger)
+        self.__should_log_debug = log.is_debug_enabled(self.logger)
 
-        self.__compile_class()
         self.__compile_inheritance()
         self.__compile_extensions()
+        self.__compile_class()
         self.__compile_properties()
         self.__compile_pks()
         global _new_mappers
@@ -192,11 +206,12 @@ class Mapper(object):
         if self.__should_log_debug:
             self.logger.debug("(" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "") + ") " + msg)
 
-    def _is_orphan(self, obj):
+    def _is_orphan(self, state):
         o = False
         for mapper in self.iterate_to_root():
-            for (key,klass) in mapper.delete_orphans:
-                if attributes.has_parent(klass, obj, key, optimistic=has_identity(obj)):
+            for (key, cls) in mapper.delete_orphans:
+                if attributes.manager_of_class(cls).has_parent(
+                    state, key, optimistic=_state_has_identity(state)):
                     return False
             o = o or bool(mapper.delete_orphans)
         return o
@@ -208,41 +223,26 @@ class Mapper(object):
         return self._get_property(key, resolve_synonyms=resolve_synonyms, raiseerr=raiseerr)
 
     def _get_property(self, key, resolve_synonyms=False, raiseerr=True):
-        """private in-compilation version of get_property()."""
-
         prop = self.__props.get(key, None)
         if resolve_synonyms:
             while isinstance(prop, SynonymProperty):
                 prop = self.__props.get(prop.name, None)
         if prop is None and raiseerr:
-            raise exceptions.InvalidRequestError("Mapper '%s' has no property '%s'" % (str(self), key))
+            raise sa_exc.InvalidRequestError("Mapper '%s' has no property '%s'" % (str(self), key))
         return prop
 
     def iterate_properties(self):
+        """return an iterator of all MapperProperty objects."""
         self.compile()
         return self.__props.itervalues()
-    iterate_properties = property(iterate_properties, doc="returns an iterator of all MapperProperty objects.")
+    iterate_properties = property(iterate_properties)
 
-    def __adjust_wp_selectable(self, spec=None, selectable=False):
-        """given a with_polymorphic() argument, resolve it against this mapper's with_polymorphic setting"""
-        
-        isdefault = False
-        if self.with_polymorphic:
-            isdefault = not spec and selectable is False
-
-            if not spec:
-                spec = self.with_polymorphic[0]
-            if selectable is False:
-                selectable = self.with_polymorphic[1]
-                
-        return spec, selectable, isdefault
-        
     def __mappers_from_spec(self, spec, selectable):
         """given a with_polymorphic() argument, return the set of mappers it represents.
-        
+
         Trims the list of mappers to just those represented within the given selectable, if present.
         This helps some more legacy-ish mappings.
-        
+
         """
         if spec == '*':
             mappers = list(self.polymorphic_iterator())
@@ -250,86 +250,98 @@ class Mapper(object):
             mappers = [_class_to_mapper(m) for m in util.to_list(spec)]
         else:
             mappers = []
-        
+
         if selectable:
-            tables = util.Set(sqlutil.find_tables(selectable))
+            tables = util.Set(sqlutil.find_tables(selectable, include_aliases=True))
             mappers = [m for m in mappers if m.local_table in tables]
-            
+
         return mappers
-    __mappers_from_spec = util.conditional_cache_decorator(__mappers_from_spec)
-    
+
     def __selectable_from_mappers(self, mappers):
         """given a list of mappers (assumed to be within this mapper's inheritance hierarchy),
         construct an outerjoin amongst those mapper's mapped tables.
-        
+
         """
         from_obj = self.mapped_table
         for m in mappers:
             if m is self:
                 continue
             if m.concrete:
-                raise exceptions.InvalidRequestError("'with_polymorphic()' requires 'selectable' argument when concrete-inheriting mappers are used.")
+                raise sa_exc.InvalidRequestError("'with_polymorphic()' requires 'selectable' argument when concrete-inheriting mappers are used.")
             elif not m.single:
                 from_obj = from_obj.outerjoin(m.local_table, m.inherit_condition)
-        
+
         return from_obj
-    __selectable_from_mappers = util.conditional_cache_decorator(__selectable_from_mappers)
-    
-    def _with_polymorphic_mappers(self, spec=None, selectable=False):
-        spec, selectable, isdefault = self.__adjust_wp_selectable(spec, selectable)
-        return self.__mappers_from_spec(spec, selectable, cache=isdefault)
-        
-    def _with_polymorphic_selectable(self, spec=None, selectable=False):
-        spec, selectable, isdefault = self.__adjust_wp_selectable(spec, selectable)
+
+    def _with_polymorphic_mappers(self):
+        if not self.with_polymorphic:
+            return [self]
+        return self.__mappers_from_spec(*self.with_polymorphic)
+    _with_polymorphic_mappers = property(util.cache_decorator(_with_polymorphic_mappers))
+
+    def _with_polymorphic_selectable(self):
+        if not self.with_polymorphic:
+            return self.mapped_table
+
+        spec, selectable = self.with_polymorphic
         if selectable:
             return selectable
         else:
-            return self.__selectable_from_mappers(self.__mappers_from_spec(spec, selectable, cache=isdefault), cache=isdefault)
-    
+            return self.__selectable_from_mappers(self.__mappers_from_spec(spec, selectable))
+    _with_polymorphic_selectable = property(util.cache_decorator(_with_polymorphic_selectable))
+
     def _with_polymorphic_args(self, spec=None, selectable=False):
-        spec, selectable, isdefault = self.__adjust_wp_selectable(spec, selectable)
-        mappers = self.__mappers_from_spec(spec, selectable, cache=isdefault)
+        if self.with_polymorphic:
+            if not spec:
+                spec = self.with_polymorphic[0]
+            if selectable is False:
+                selectable = self.with_polymorphic[1]
+
+        mappers = self.__mappers_from_spec(spec, selectable)
         if selectable:
             return mappers, selectable
         else:
-            return mappers, self.__selectable_from_mappers(mappers, cache=isdefault)
-        
-    def _iterate_polymorphic_properties(self, spec=None, selectable=False):
+            return mappers, self.__selectable_from_mappers(mappers)
+
+    def _iterate_polymorphic_properties(self, mappers=None):
+        if mappers is None:
+            mappers = self._with_polymorphic_mappers
         return iter(util.OrderedSet(
-            chain(*[list(mapper.iterate_properties) for mapper in [self] + self._with_polymorphic_mappers(spec, selectable)])
+            chain(*[list(mapper.iterate_properties) for mapper in [self] + mappers])
         ))
 
     def properties(self):
         raise NotImplementedError("Public collection of MapperProperty objects is provided by the get_property() and iterate_properties accessors.")
     properties = property(properties)
 
-    def compiled(self):
-        """return True if this mapper is compiled"""
-        return self.__props_init
-    compiled = property(compiled)
-
     def dispose(self):
-        # disaable any attribute-based compilation
-        self.__props_init = True
-        try:
-            del self.class_.c
-        except AttributeError:
-            pass
-        if not self.non_primary and self.entity_name in self._class_state.mappers:
-            del self._class_state.mappers[self.entity_name]
-        if not self._class_state.mappers:
+        # Disable any attribute-based compilation.
+        self.compiled = True
+
+        manager = self.class_manager
+        mappers = manager.mappers
+
+        if not self.non_primary and self.entity_name in mappers:
+            del mappers[self.entity_name]
+        if not mappers and manager.info.get(_INSTRUMENTOR, False):
+            for legacy in _legacy_descriptors.keys():
+                manager.uninstall_member(legacy)
+            manager.events.remove_listener('on_init', _event_on_init)
+            manager.events.remove_listener('on_init_failure',
+                                           _event_on_init_failure)
+            manager.uninstall_member('__init__')
+            del manager.info[_INSTRUMENTOR]
             attributes.unregister_class(self.class_)
 
     def compile(self):
         """Compile this mapper and all other non-compiled mappers.
-        
+
         This method checks the local compiled status as well as for
-        any new mappers that have been defined, and is safe to call 
+        any new mappers that have been defined, and is safe to call
         repeatedly.
         """
-        
         global _new_mappers
-        if self.__props_init and not _new_mappers:
+        if self.compiled and not _new_mappers:
             return self
             
         _COMPILE_MUTEX.acquire()
@@ -341,12 +353,12 @@ class Mapper(object):
         try:
 
             # double-check inside mutex
-            if self.__props_init and not _new_mappers:
+            if self.compiled and not _new_mappers:
                 return self
 
             # initialize properties on all mappers
             for mapper in list(_mapper_registry):
-                if not mapper.__props_init:
+                if not mapper.compiled:
                     mapper.__initialize_properties()
 
             _new_mappers = False
@@ -358,7 +370,7 @@ class Mapper(object):
     def __initialize_properties(self):
         """Call the ``init()`` method on all ``MapperProperties``
         attached to this mapper.
-        
+
         This is a deferred configuration step which is intended
         to execute once all mappers have been constructed.
         """
@@ -370,8 +382,7 @@ class Mapper(object):
             if getattr(prop, 'key', None) is None:
                 prop.init(key, self)
         self.__log("__initialize_properties() complete")
-        self.__props_init = True
-
+        self.compiled = True
 
     def __compile_extensions(self):
         """Go through the global_extensions list as well as the list
@@ -391,14 +402,12 @@ class Mapper(object):
             for ext in self.inherits.extension:
                 if ext not in extlist:
                     extlist.add(ext)
-                    ext.instrument_class(self, self.class_)
         else:
             for ext in global_extensions:
                 if isinstance(ext, type):
                     ext = ext()
                 if ext not in extlist:
                     extlist.add(ext)
-                    ext.instrument_class(self, self.class_)
 
         self.extension = ExtensionCarrier()
         for ext in extlist:
@@ -410,13 +419,11 @@ class Mapper(object):
         if self.inherits:
             if isinstance(self.inherits, type):
                 self.inherits = class_mapper(self.inherits, compile=False)
-            else:
-                self.inherits = self.inherits
             if not issubclass(self.class_, self.inherits.class_):
-                raise exceptions.ArgumentError("Class '%s' does not inherit from '%s'" % (self.class_.__name__, self.inherits.class_.__name__))
+                raise sa_exc.ArgumentError("Class '%s' does not inherit from '%s'" % (self.class_.__name__, self.inherits.class_.__name__))
             if self.non_primary != self.inherits.non_primary:
                 np = not self.non_primary and "primary" or "non-primary"
-                raise exceptions.ArgumentError("Inheritance of %s mapper for class '%s' is only allowed from a %s mapper" % (np, self.class_.__name__, np))
+                raise sa_exc.ArgumentError("Inheritance of %s mapper for class '%s' is only allowed from a %s mapper" % (np, self.class_.__name__, np))
             # inherit_condition is optional.
             if self.local_table is None:
                 self.local_table = self.inherits.local_table
@@ -428,29 +435,17 @@ class Mapper(object):
                         if mapper.polymorphic_on:
                             mapper._requires_row_aliasing = True
                 else:
-                    if self.inherit_condition is None:
+                    if not self.inherit_condition:
                         # figure out inherit condition from our table to the immediate table
                         # of the inherited mapper, not its full table which could pull in other
                         # stuff we dont want (allows test/inheritance.InheritTest4 to pass)
                         self.inherit_condition = sqlutil.join_condition(self.inherits.local_table, self.local_table)
                     self.mapped_table = sql.join(self.inherits.mapped_table, self.local_table, self.inherit_condition)
-                    
+
                     fks = util.to_set(self.inherit_foreign_keys)
                     self.__inherits_equated_pairs = sqlutil.criterion_as_pairs(self.mapped_table.onclause, consider_as_foreign_keys=fks)
             else:
                 self.mapped_table = self.local_table
-            if self.polymorphic_identity is not None:
-                self.inherits.polymorphic_map[self.polymorphic_identity] = self
-                if self.polymorphic_on is None:
-                    for mapper in self.iterate_to_root():
-                        # try to set up polymorphic on using correesponding_column(); else leave
-                        # as None
-                        if mapper.polymorphic_on:
-                            self.polymorphic_on = self.mapped_table.corresponding_column(mapper.polymorphic_on)
-                            break
-                    else:
-                        # TODO: this exception not covered
-                        raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
 
             if self.polymorphic_identity and not self.concrete:
                 self._identity_class = self.inherits._identity_class
@@ -470,25 +465,38 @@ class Mapper(object):
             self.inherits._inheriting_mappers.add(self)
             self.base_mapper = self.inherits.base_mapper
             self._all_tables = self.inherits._all_tables
+
+            if self.polymorphic_identity is not None:
+                self.polymorphic_map[self.polymorphic_identity] = self
+                if not self.polymorphic_on:
+                    for mapper in self.iterate_to_root():
+                        # try to set up polymorphic on using correesponding_column(); else leave
+                        # as None
+                        if mapper.polymorphic_on:
+                            self.polymorphic_on = self.mapped_table.corresponding_column(mapper.polymorphic_on)
+                            break
+                    else:
+                        # TODO: this exception not covered
+                        raise sa_exc.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
         else:
             self._all_tables = util.Set()
             self.base_mapper = self
             self.mapped_table = self.local_table
             if self.polymorphic_identity:
                 if self.polymorphic_on is None:
-                    raise exceptions.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
+                    raise sa_exc.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
                 self.polymorphic_map[self.polymorphic_identity] = self
             self._identity_class = self.class_
-        
+
         if self.mapped_table is None:
-            raise exceptions.ArgumentError("Mapper '%s' does not have a mapped_table specified.  (Are you using the return value of table.create()?  It no longer has a return value.)" % str(self))
+            raise sa_exc.ArgumentError("Mapper '%s' does not have a mapped_table specified.  (Are you using the return value of table.create()?  It no longer has a return value.)" % str(self))
 
     def __compile_pks(self):
 
         self.tables = sqlutil.find_tables(self.mapped_table)
 
         if not self.tables:
-            raise exceptions.InvalidRequestError("Could not find any Table objects in mapped table '%s'" % str(self.mapped_table))
+            raise sa_exc.InvalidRequestError("Could not find any Table objects in mapped table '%s'" % str(self.mapped_table))
 
         self._pks_by_table = {}
         self._cols_by_table = {}
@@ -512,7 +520,7 @@ class Mapper(object):
                 self._pks_by_table[k.table].add(k)
 
         if self.mapped_table not in self._pks_by_table or len(self._pks_by_table[self.mapped_table]) == 0:
-            raise exceptions.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))
+            raise sa_exc.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))
 
         if self.inherits and not self.concrete and not self.primary_key_argument:
             # if inheriting, the "primary key" for this mapper is that of the inheriting (unless concrete or explicit)
@@ -525,7 +533,7 @@ class Mapper(object):
                 primary_key = sqlutil.reduce_columns(self._pks_by_table[self.mapped_table])
 
             if len(primary_key) == 0:
-                raise exceptions.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))
+                raise sa_exc.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))
 
             self.primary_key = primary_key
             self.__log("Identified primary key columns: " + str(primary_key))
@@ -534,24 +542,17 @@ class Mapper(object):
         """create a "get clause" based on the primary key.  this is used
         by query.get() and many-to-one lazyloads to load this item
         by primary key.
-        
+
         """
         params = [(primary_key, sql.bindparam(None, type_=primary_key.type)) for primary_key in self.primary_key]
         return sql.and_(*[k==v for (k, v) in params]), dict(params)
     _get_clause = property(util.cache_decorator(_get_clause))
-    
+
     def _equivalent_columns(self):
         """Create a map of all *equivalent* columns, based on
         the determination of column pairs that are equated to
         one another either by an established foreign key relationship
         or by a joined-table inheritance join.
-
-        This is used to determine the minimal set of primary key
-        columns for the mapper, as well as when relating
-        columns to those of a polymorphic selectable (i.e. a UNION of
-        several mapped tables), as that selectable usually only contains
-        one column in its columns clause out of a group of several which
-        are equated to each other.
 
         The resulting structure is a dictionary of columns mapped
         to lists of equivalent columns, i.e.
@@ -578,7 +579,7 @@ class Mapper(object):
                     result[binary.right] = util.Set([binary.left])
         for mapper in self.base_mapper.polymorphic_iterator():
             if mapper.inherit_condition:
-                visitors.traverse(mapper.inherit_condition, visit_binary=visit_binary)
+                visitors.traverse(mapper.inherit_condition, {}, {'binary':visit_binary})
 
         # TODO: matching of cols to foreign keys might better be generalized
         # into general column translation (i.e. corresponding_column)
@@ -619,7 +620,7 @@ class Mapper(object):
             cls = object.__getattribute__(self, 'class_')
             clskey = object.__getattribute__(self, 'key')
 
-            if key.startswith('__'):
+            if key.startswith('__') and key != '__clause_element__':
                 return object.__getattribute__(self, key)
 
             class_mapper(cls)
@@ -676,13 +677,13 @@ class Mapper(object):
             column_key = (self.column_prefix or '') + column.key
 
             self._compile_property(column_key, column, init=False, setparent=True)
-        
+
         # do a special check for the "discriminiator" column, as it may only be present
         # in the 'with_polymorphic' selectable but we need it for the base mapper
-        if self.polymorphic_on and self.polymorphic_on not in self._columntoproperty: 
-           col = self.mapped_table.corresponding_column(self.polymorphic_on) or self.polymorphic_on
-           self._compile_property(col.key, ColumnProperty(col), init=False, setparent=True)
-            
+        if self.polymorphic_on and self.polymorphic_on not in self._columntoproperty:
+            col = self.mapped_table.corresponding_column(self.polymorphic_on) or self.polymorphic_on
+            self._compile_property(col.key, ColumnProperty(col), init=False, setparent=True)
+
     def _adapt_inherited_property(self, key, prop):
         if not self.concrete:
             self._compile_property(key, prop, init=False, setparent=False)
@@ -696,7 +697,7 @@ class Mapper(object):
             columns = util.to_list(prop)
             column = columns[0]
             if not expression.is_column(column):
-                raise exceptions.ArgumentError("%s=%r is not an instance of MapperProperty or Column" % (key, prop))
+                raise sa_exc.ArgumentError("%s=%r is not an instance of MapperProperty or Column" % (key, prop))
 
             prop = self.__props.get(key, None)
 
@@ -715,12 +716,12 @@ class Mapper(object):
                 for c in columns:
                     mc = self.mapped_table.corresponding_column(c)
                     if not mc:
-                        raise exceptions.ArgumentError("Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(c))
+                        raise sa_exc.ArgumentError("Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(c))
                     mapped_column.append(mc)
                 prop = ColumnProperty(*mapped_column)
             else:
                 if not self.allow_column_override:
-                    raise exceptions.ArgumentError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))
+                    raise sa_exc.ArgumentError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))
                 else:
                     return
 
@@ -731,7 +732,7 @@ class Mapper(object):
             if col is None:
                 col = prop.columns[0]
             else:
-                # if column is coming in after _cols_by_table was initialized, ensure the col is in the 
+                # if column is coming in after _cols_by_table was initialized, ensure the col is in the
                 # right set
                 if hasattr(self, '_cols_by_table') and col.table in self._cols_by_table and col not in self._cols_by_table[col.table]:
                     self._cols_by_table[col.table].add(col)
@@ -740,35 +741,28 @@ class Mapper(object):
             for col in prop.columns:
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
-            
-                
-        elif isinstance(prop, SynonymProperty) and setparent:
+
+        elif isinstance(prop, (ComparableProperty, SynonymProperty)) and setparent:
             if prop.descriptor is None:
                 prop.descriptor = getattr(self.class_, key, None)
                 if isinstance(prop.descriptor, Mapper._CompileOnAttr):
                     prop.descriptor = object.__getattribute__(prop.descriptor, 'existing_prop')
-            if prop.map_column:
-                if not key in self.mapped_table.c:
-                    raise exceptions.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.mapped_table.description, key))
+            if getattr(prop, 'map_column', False):
+                if key not in self.mapped_table.c:
+                    raise sa_exc.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.mapped_table.description, key))
                 self._compile_property(prop.name, ColumnProperty(self.mapped_table.c[key]), init=init, setparent=setparent)
-        elif isinstance(prop, ComparableProperty) and setparent:
-            # refactor me
-            if prop.descriptor is None:
-                prop.descriptor = getattr(self.class_, key, None)
-                if isinstance(prop.descriptor, Mapper._CompileOnAttr):
-                    prop.descriptor = object.__getattribute__(prop.descriptor,
-                                                              'existing_prop')
+
         self.__props[key] = prop
 
         if setparent:
             prop.set_parent(self)
 
             if not self.non_primary:
-                setattr(self.class_, key, Mapper._CompileOnAttr(self.class_, key))
-
+                self.class_manager.install_descriptor(
+                    key, Mapper._CompileOnAttr(self.class_, key))
         if init:
             prop.init(key, self)
-        
+
         for mapper in self._inheriting_mappers:
             mapper._adapt_inherited_property(key, prop)
 
@@ -783,49 +777,78 @@ class Mapper(object):
         auto-session attachment logic.
         """
 
+        manager = attributes.manager_of_class(self.class_)
+
         if self.non_primary:
-            if not hasattr(self.class_, '_class_state'):
-                raise exceptions.InvalidRequestError("Class %s has no primary mapper configured.  Configure a primary mapper first before setting up a non primary Mapper.")
-            self._class_state = self.class_._class_state
+            if not manager or None not in manager.mappers:
+                raise sa_exc.InvalidRequestError(
+                    "Class %s has no primary mapper configured.  Configure "
+                    "a primary mapper first before setting up a non primary "
+                    "Mapper.")
+            self.class_manager = manager
             _mapper_registry[self] = True
             return
 
-        if not self.non_primary and '_class_state' in self.class_.__dict__ and (self.entity_name in self.class_._class_state.mappers):
-             raise exceptions.ArgumentError("Class '%s' already has a primary mapper defined with entity name '%s'.  Use non_primary=True to create a non primary Mapper.  clear_mappers() will remove *all* current mappers from all classes." % (self.class_, self.entity_name))
+        if manager is not None:
+            if manager.class_ is not self.class_:
+                # An inherited manager.  Install one for this subclass.
+                manager = None
+            elif self.entity_name in manager.mappers:
+                raise sa_exc.ArgumentError(
+                    "Class '%s' already has a primary mapper defined "
+                    "with entity name '%s'.  Use non_primary=True to "
+                    "create a non primary Mapper.  clear_mappers() will "
+                    "remove *all* current mappers from all classes." %
+                    (self.class_, self.entity_name))
 
-        def extra_init(class_, oldinit, instance, args, kwargs):
-            self.compile()
-            if 'init_instance' in self.extension.methods:
-                self.extension.init_instance(self, class_, oldinit, instance, args, kwargs)
-
-        def on_exception(class_, oldinit, instance, args, kwargs):
-            util.warn_exception(self.extension.init_failed, self, class_, oldinit, instance, args, kwargs)
-
-        attributes.register_class(self.class_, extra_init=extra_init, on_exception=on_exception, deferred_scalar_loader=_load_scalar_attributes)
-
-        self._class_state = self.class_._class_state
         _mapper_registry[self] = True
 
-        self.class_._class_state.mappers[self.entity_name] = self
+        if manager is None:
+            manager = attributes.create_manager_for_cls(self.class_)
 
-        for ext in util.to_list(self.extension, []):
-            ext.instrument_class(self, self.class_)
+        self.class_manager = manager
 
-        if self.entity_name is None:
-            self.class_.c = self.c
+        has_been_initialized = bool(manager.info.get(_INSTRUMENTOR, False))
+        manager.mappers[self.entity_name] = self
+
+        # The remaining members can be added by any mapper, e_name None or not.
+        if has_been_initialized:
+            return
+
+        self.extension.instrument_class(self, self.class_)
+
+        manager.instantiable = True
+        manager.instance_state_factory = IdentityManagedState
+        manager.deferred_scalar_loader = _load_scalar_attributes
+
+        event_registry = manager.events
+        event_registry.add_listener('on_init', _event_on_init)
+        event_registry.add_listener('on_init_failure', _event_on_init_failure)
+
+        for key, impl in _legacy_descriptors.items():
+            manager.install_member(key, impl)
+
+        manager.info[_INSTRUMENTOR] = self
 
     def common_parent(self, other):
         """Return true if the given mapper shares a common inherited parent as this mapper."""
 
         return self.base_mapper is other.base_mapper
 
-    def isa(self, other):
-        """Return True if the given mapper inherits from this mapper."""
+    def _canload(self, state):
+        s = self.primary_mapper()
+        if s.polymorphic_on:
+            return _state_mapper(state).isa(s)
+        else:
+            return _state_mapper(state) is s
 
-        m = other
-        while m is not self and m.inherits:
+    def isa(self, other):
+        """Return True if the this mapper inherits from the given mapper."""
+
+        m = self
+        while m and m is not other:
             m = m.inherits
-        return m is self
+        return bool(m)
 
     def iterate_to_root(self):
         m = self
@@ -867,42 +890,20 @@ class Mapper(object):
         """
 
         self._init_properties[key] = prop
-        self._compile_property(key, prop, init=self.__props_init)
+        self._compile_property(key, prop, init=self.compiled)
+
+    def __repr__(self):
+        return '<Mapper at 0x%x; %s>' % (
+            id(self), self.class_.__name__)
 
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "")
 
     def primary_mapper(self):
         """Return the primary mapper corresponding to this mapper's class key (class + entity_name)."""
-        return self._class_state.mappers[self.entity_name]
+        return self.class_manager.mappers[self.entity_name]
 
-    def get_session(self):
-        """Return the contextual session provided by the mapper
-        extension chain, if any.
-
-        Raise ``InvalidRequestError`` if a session cannot be retrieved
-        from the extension chain.
-        """
-
-        if 'get_session' in self.extension.methods:
-            s = self.extension.get_session()
-            if s is not EXT_CONTINUE:
-                return s
-
-        raise exceptions.InvalidRequestError("No contextual Session is established.")
-
-    def instances(self, cursor, session, *mappers, **kwargs):
-        """Return a list of mapped instances corresponding to the rows
-        in a given ResultProxy.
-
-        DEPRECATED.
-        """
-
-        import sqlalchemy.orm.query
-        return sqlalchemy.orm.Query(self, session).instances(cursor, *mappers, **kwargs)
-    instances = util.deprecated(None, False)(instances)
-
-    def identity_key_from_row(self, row):
+    def identity_key_from_row(self, row, adapter=None):
         """Return an identity-map key for use in storing/retrieving an
         item from the identity map.
 
@@ -911,7 +912,12 @@ class Mapper(object):
           dictionary corresponding result-set ``ColumnElement``
           instances to their values within a row.
         """
-        return (self._identity_class, tuple([row[column] for column in self.primary_key]), self.entity_name)
+
+        pk_cols = self.primary_key
+        if adapter:
+            pk_cols = [adapter.columns[c] for c in pk_cols]
+
+        return (self._identity_class, tuple([row[column] for column in pk_cols]), self.entity_name)
 
     def identity_key_from_primary_key(self, primary_key):
         """Return an identity-map key for use in storing/retrieving an
@@ -926,8 +932,9 @@ class Mapper(object):
         """Return the identity key for the given instance, based on
         its primary key attributes.
 
-        This value is typically also found on the instance itself
-        under the attribute name `_instance_key`.
+        This value is typically also found on the instance state under the
+        attribute name `key`.
+
         """
         return self.identity_key_from_primary_key(self.primary_key_from_instance(instance))
 
@@ -938,17 +945,12 @@ class Mapper(object):
         """Return the list of primary key values for the given
         instance.
         """
-
-        return [self._get_state_attr_by_column(instance._state, column) for column in self.primary_key]
+        state = attributes.instance_state(instance)
+        return self._primary_key_from_state(state)
 
     def _primary_key_from_state(self, state):
         return [self._get_state_attr_by_column(state, column) for column in self.primary_key]
 
-    def _canload(self, state):
-        if self.polymorphic_on:
-            return issubclass(state.class_, self.class_)
-        else:
-            return state.class_ is self.class_
 
     def _get_col_to_prop(self, column):
         try:
@@ -956,24 +958,23 @@ class Mapper(object):
         except KeyError:
             prop = self.__props.get(column.key, None)
             if prop:
-                raise exceptions.UnmappedColumnError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
+                raise exc.UnmappedColumnError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
             else:
-                raise exceptions.UnmappedColumnError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
+                raise exc.UnmappedColumnError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
 
+    # TODO: improve names
     def _get_state_attr_by_column(self, state, column):
         return self._get_col_to_prop(column).getattr(state, column)
 
     def _set_state_attr_by_column(self, state, column, value):
         return self._get_col_to_prop(column).setattr(state, value, column)
 
-    def _get_attr_by_column(self, obj, column):
-        return self._get_col_to_prop(column).getattr(obj._state, column)
-
     def _get_committed_attr_by_column(self, obj, column):
-        return self._get_col_to_prop(column).getcommitted(obj._state, column)
+        state = attributes.instance_state(obj)
+        return self._get_committed_state_attr_by_column(state, column)
 
-    def _set_attr_by_column(self, obj, column, value):
-        self._get_col_to_prop(column).setattr(obj._state, column, value)
+    def _get_committed_state_attr_by_column(self, state, column):
+        return self._get_col_to_prop(column).getcommitted(state, column)
 
     def _save_obj(self, states, uowtransaction, postupdate=False, post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
@@ -1002,15 +1003,14 @@ class Mapper(object):
         # organize individual states with the connection to use for insert/update
         if 'connection_callable' in uowtransaction.mapper_flush_opts:
             connection_callable = uowtransaction.mapper_flush_opts['connection_callable']
-            tups = [(state, connection_callable(self, state.obj()), _state_has_identity(state)) for state in states]
+            tups = [(state, _state_mapper(state), connection_callable(self, state.obj()), _state_has_identity(state)) for state in states]
         else:
             connection = uowtransaction.transaction.connection(self)
-            tups = [(state, connection, _state_has_identity(state)) for state in states]
+            tups = [(state, _state_mapper(state), connection, _state_has_identity(state)) for state in states]
 
         if not postupdate:
             # call before_XXX extensions
-            for state, connection, has_identity in tups:
-                mapper = _state_mapper(state)
+            for state, mapper, connection, has_identity in tups:
                 if not has_identity:
                     if 'before_insert' in mapper.extension.methods:
                         mapper.extension.before_insert(mapper, connection, state.obj())
@@ -1018,16 +1018,16 @@ class Mapper(object):
                     if 'before_update' in mapper.extension.methods:
                         mapper.extension.before_update(mapper, connection, state.obj())
 
-        for state, connection, has_identity in tups:
+        for state, mapper, connection, has_identity in tups:
             # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
             # and another instance with the same identity key already exists as persistent.  convert to an
             # UPDATE if so.
-            mapper = _state_mapper(state)
             instance_key = mapper._identity_key_from_state(state)
-            if not postupdate and not has_identity and instance_key in uowtransaction.uow.identity_map:
-                existing = uowtransaction.uow.identity_map[instance_key]._state
+            if not postupdate and not has_identity and instance_key in uowtransaction.session.identity_map:
+                instance = uowtransaction.session.identity_map[instance_key]
+                existing = attributes.instance_state(instance)
                 if not uowtransaction.is_deleted(existing):
-                    raise exceptions.FlushError("New instance %s with identity key %s conflicts with persistent instance %s" % (state_str(state), str(instance_key), state_str(existing)))
+                    raise exc.FlushError("New instance %s with identity key %s conflicts with persistent instance %s" % (state_str(state), str(instance_key), state_str(existing)))
                 if self.__should_log_debug:
                     self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, state_str(state), state_str(existing)))
                 uowtransaction.set_row_switch(existing)
@@ -1044,8 +1044,7 @@ class Mapper(object):
             insert = []
             update = []
 
-            for state, connection, has_identity in tups:
-                mapper = _state_mapper(state)
+            for state, mapper, connection, has_identity in tups:
                 if table not in mapper._pks_by_table:
                     continue
                 pks = mapper._pks_by_table[table]
@@ -1054,7 +1053,7 @@ class Mapper(object):
                 if self.__should_log_debug:
                     self.__log_debug("_save_obj() table '%s' instance %s identity %s" % (table.name, state_str(state), str(instance_key)))
 
-                isinsert = not instance_key in uowtransaction.uow.identity_map and not postupdate and not has_identity
+                isinsert = not instance_key in uowtransaction.session.identity_map and not postupdate and not has_identity
                 params = {}
                 value_params = {}
                 hasdata = False
@@ -1131,7 +1130,7 @@ class Mapper(object):
                 pks = mapper._pks_by_table[table]
                 def comparator(a, b):
                     for col in pks:
-                        x = cmp(a[1][col._label],b[1][col._label])
+                        x = cmp(a[1][col._label], b[1][col._label])
                         if x != 0:
                             return x
                     return 0
@@ -1148,7 +1147,7 @@ class Mapper(object):
                     rows += c.rowcount
 
                 if c.supports_sane_rowcount() and rows != len(update):
-                    raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (rows, len(update)))
+                    raise exc.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (rows, len(update)))
 
             if insert:
                 statement = table.insert()
@@ -1179,8 +1178,7 @@ class Mapper(object):
 
         if not postupdate:
             # call after_XXX extensions
-            for state, connection, has_identity in tups:
-                mapper = _state_mapper(state)
+            for state, mapper, connection, has_identity in tups:
                 if not has_identity:
                     if 'after_insert' in mapper.extension.methods:
                         mapper.extension.after_insert(mapper, connection, state.obj())
@@ -1216,9 +1214,10 @@ class Mapper(object):
 
         if deferred_props:
             if self.eager_defaults:
-                _instance_key = self._identity_key_from_state(state)
-                state.dict['_instance_key'] = _instance_key
-                uowtransaction.session.query(self)._get(_instance_key, refresh_instance=state, only_load_props=deferred_props)
+                state.key = self._identity_key_from_state(state)
+                uowtransaction.session.query(self)._get(
+                    state.key, refresh_instance=state,
+                    only_load_props=deferred_props)
             else:
                 _expire_state(state, deferred_props)
 
@@ -1234,17 +1233,15 @@ class Mapper(object):
 
         if 'connection_callable' in uowtransaction.mapper_flush_opts:
             connection_callable = uowtransaction.mapper_flush_opts['connection_callable']
-            tups = [(state, connection_callable(self, state.obj())) for state in states]
+            tups = [(state, _state_mapper(state), connection_callable(self, state.obj())) for state in states]
         else:
             connection = uowtransaction.transaction.connection(self)
-            tups = [(state, connection) for state in states]
+            tups = [(state, _state_mapper(state), connection) for state in states]
 
-        for (state, connection) in tups:
-            mapper = _state_mapper(state)
+        for state, mapper, connection in tups:
             if 'before_delete' in mapper.extension.methods:
                 mapper.extension.before_delete(mapper, connection, state.obj())
 
-        deleted_objects = util.Set()
         table_to_mapper = {}
         for mapper in self.base_mapper.polymorphic_iterator():
             for t in mapper.tables:
@@ -1252,8 +1249,7 @@ class Mapper(object):
 
         for table in sqlutil.sort_tables(table_to_mapper.keys(), reverse=True):
             delete = {}
-            for (state, connection) in tups:
-                mapper = _state_mapper(state)
+            for state, mapper, connection in tups:
                 if table not in mapper._pks_by_table:
                     continue
 
@@ -1266,13 +1262,12 @@ class Mapper(object):
                     params[col.key] = mapper._get_state_attr_by_column(state, col)
                 if mapper.version_id_col and table.c.contains_column(mapper.version_id_col):
                     params[mapper.version_id_col.key] = mapper._get_state_attr_by_column(state, mapper.version_id_col)
-                # testlib.pragma exempt:__hash__
-                deleted_objects.add((state, connection))
+
             for connection, del_objects in delete.iteritems():
                 mapper = table_to_mapper[table]
                 def comparator(a, b):
                     for col in mapper._pks_by_table[table]:
-                        x = cmp(a[col.key],b[col.key])
+                        x = cmp(a[col.key], b[col.key])
                         if x != 0:
                             return x
                     return 0
@@ -1285,10 +1280,9 @@ class Mapper(object):
                 statement = table.delete(clause)
                 c = connection.execute(statement, del_objects)
                 if c.supports_sane_multi_rowcount() and c.rowcount != len(del_objects):
-                    raise exceptions.ConcurrentModificationError("Deleted rowcount %d does not match number of objects deleted %d" % (c.rowcount, len(del_objects)))
+                    raise exc.ConcurrentModificationError("Deleted rowcount %d does not match number of objects deleted %d" % (c.rowcount, len(del_objects)))
 
-        for state, connection in deleted_objects:
-            mapper = _state_mapper(state)
+        for state, mapper, connection in tups:
             if 'after_delete' in mapper.extension.methods:
                 mapper.extension.after_delete(mapper, connection, state.obj())
 
@@ -1325,7 +1319,7 @@ class Mapper(object):
         visitables = [(self.__props.itervalues(), 'property', state)]
 
         while visitables:
-            iterator,item_type,parent_state = visitables[-1]
+            iterator, item_type, parent_state = visitables[-1]
             try:
                 if item_type == 'property':
                     prop = iterator.next()
@@ -1337,291 +1331,315 @@ class Mapper(object):
             except StopIteration:
                 visitables.pop()
 
-    def _instance(self, context, row, result=None, polymorphic_from=None, extension=None, only_load_props=None, refresh_instance=None):
+    def _instance_processor(self, context, path, adapter, polymorphic_from=None, extension=None, only_load_props=None, refresh_instance=None):
+        pk_cols = self.primary_key
+
+        if polymorphic_from or refresh_instance:
+            polymorphic_on = None
+        else:
+            polymorphic_on = self.polymorphic_on
+            polymorphic_instances = util.PopulateDict(self.__configure_subclass_mapper(context, path, adapter))
+
+        version_id_col = self.version_id_col
+
+        if adapter:
+            pk_cols = [adapter.columns[c] for c in pk_cols]
+            if polymorphic_on:
+                polymorphic_on = adapter.columns[polymorphic_on]
+            if version_id_col:
+                version_id_col = adapter.columns[version_id_col]
+
+        identity_class, entity_name = self._identity_class, self.entity_name
+        def identity_key(row):
+            return (identity_class, tuple([row[column] for column in pk_cols]), entity_name)
+
+        new_populators = []
+        existing_populators = []
+
+        def populate_state(state, row, isnew, only_load_props, **flags):
+            if not new_populators:
+                new_populators[:], existing_populators[:] = self.__populators(context, path, row, adapter)
+
+            if isnew:
+                populators = new_populators
+            else:
+                populators = existing_populators
+
+            if only_load_props:
+                populators = [p for p in populators if p[0] in only_load_props]
+
+            for key, populator in populators:
+                populator(state, row, isnew=isnew, **flags)
+
+        session_identity_map = context.session.identity_map
+
         if not extension:
             extension = self.extension
 
-        if 'translate_row' in extension.methods:
-            ret = extension.translate_row(self, context, row)
-            if ret is not EXT_CONTINUE:
-                row = ret
+        translate_row = 'translate_row' in extension.methods
+        create_instance = 'create_instance' in extension.methods
+        populate_instance = 'populate_instance' in extension.methods
+        append_result = 'append_result' in extension.methods
+        populate_existing = context.populate_existing or self.always_refresh
 
-        if polymorphic_from:
-            # if we are called from a base mapper doing a polymorphic load, figure out what tables,
-            # if any, will need to be "post-fetched" based on the tables present in the row,
-            # or from the options set up on the query
-            if ('polymorphic_fetch', self) not in context.attributes:
-                if self in context.query._with_polymorphic:
-                    context.attributes[('polymorphic_fetch', self)] = (polymorphic_from, [])
-                else:
-                    context.attributes[('polymorphic_fetch', self)] = (polymorphic_from, [t for t in self.tables if t not in polymorphic_from.tables])
-                
-        elif not refresh_instance and self.polymorphic_on:
-            discriminator = row[self.polymorphic_on]
-            if discriminator is not None:
-                try:
-                    mapper = self.polymorphic_map[discriminator]
-                except KeyError:
-                    raise exceptions.AssertionError("No such polymorphic_identity %r is defined" % discriminator)
-                if mapper is not self:
-                    return mapper._instance(context, row, result=result, polymorphic_from=self)
+        def _instance(row, result):
+            if translate_row:
+                ret = extension.translate_row(self, context, row)
+                if ret is not EXT_CONTINUE:
+                    row = ret
 
-        # determine identity key
-        if refresh_instance:
-            try:
-                identitykey = refresh_instance.dict['_instance_key']
-            except KeyError:
-                # super-rare condition; a refresh is being called
-                # on a non-instance-key instance; this is meant to only
-                # occur wihtin a flush()
-                identitykey = self._identity_key_from_state(refresh_instance)
-        else:
-            identitykey = self.identity_key_from_row(row)
-        
-        session_identity_map = context.session.identity_map
+            if polymorphic_on:
+                discriminator = row[polymorphic_on]
+                if discriminator is not None:
+                    _instance = polymorphic_instances[discriminator]
+                    if _instance:
+                        return _instance(row, result)
 
-        if identitykey in session_identity_map:
-            instance = session_identity_map[identitykey]
-            state = instance._state
-
-            if self.__should_log_debug:
-                self.__log_debug("_instance(): using existing instance %s identity %s" % (instance_str(instance), str(identitykey)))
-
-            isnew = state.runid != context.runid
-            currentload = not isnew
-
-            if not currentload and context.version_check and self.version_id_col and self._get_attr_by_column(instance, self.version_id_col) != row[self.version_id_col]:
-                raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self._get_attr_by_column(instance, self.version_id_col), row[self.version_id_col]))
-        elif refresh_instance:
-            # out of band refresh_instance detected (i.e. its not in the session.identity_map)
-            # honor it anyway.  this can happen if a _get() occurs within save_obj(), such as
-            # when eager_defaults is True.
-            state = refresh_instance
-            instance = state.obj()
-            isnew = state.runid != context.runid
-            currentload = True
-        else:
-            if self.__should_log_debug:
-                self.__log_debug("_instance(): identity key %s not in session" % str(identitykey))
-
-            if self.allow_null_pks:
-                for x in identitykey[1]:
-                    if x is not None:
-                        break
-                else:
-                    return None
+            # determine identity key
+            if refresh_instance:
+                # TODO: refresh_instance seems to be named wrongly -- it is always an instance state.
+                refresh_state = refresh_instance
+                identitykey = refresh_state.key
+                if identitykey is None:
+                    # super-rare condition; a refresh is being called
+                    # on a non-instance-key instance; this is meant to only
+                    # occur within a flush()
+                    identitykey = self._identity_key_from_state(refresh_state)
             else:
-                if None in identitykey[1]:
-                    return None
-            isnew = True
-            currentload = True
+                identitykey = identity_key(row)
 
-            if 'create_instance' in extension.methods:
-                instance = extension.create_instance(self, context, row, self.class_)
-                if instance is EXT_CONTINUE:
-                    instance = attributes.new_instance(self.class_)
-                else:
-                    attributes.manage(instance)
-            else:
-                instance = attributes.new_instance(self.class_)
+            if identitykey in session_identity_map:
+                instance = session_identity_map[identitykey]
+                state = attributes.instance_state(instance)
 
-            if self.__should_log_debug:
-                self.__log_debug("_instance(): created new instance %s identity %s" % (instance_str(instance), str(identitykey)))
-
-            state = instance._state
-            instance._entity_name = self.entity_name
-            instance._instance_key = identitykey
-            instance._sa_session_id = context.session.hash_key
-            session_identity_map[identitykey] = instance
-
-        if currentload or context.populate_existing or self.always_refresh:
-            if isnew:
-                state.runid = context.runid
-                context.progress.add(state)
-
-            if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
-                self.populate_instance(context, instance, row, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew)
-        
-        else:
-            # populate attributes on non-loading instances which have been expired
-            # TODO: also support deferred attributes here [ticket:870]
-            if state.expired_attributes: 
-                if state in context.partials:
-                    isnew = False
-                    attrs = context.partials[state]
-                else:
-                    isnew = True
-                    attrs = state.expired_attributes.intersection(state.unmodified)
-                    context.partials[state] = attrs  #<-- allow query.instances to commit the subset of attrs
-
-                if 'populate_instance' not in extension.methods or extension.populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
-                    self.populate_instance(context, instance, row, only_load_props=attrs, instancekey=identitykey, isnew=isnew)
-            
-        if result is not None and ('append_result' not in extension.methods or extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE):
-            result.append(instance)
-
-        return instance
-
-    def populate_instance(self, selectcontext, instance, row, ispostselect=None, isnew=False, only_load_props=None, **flags):
-        """populate an instance from a result row."""
-
-        snapshot = selectcontext.path + (self,)
-        # retrieve a set of "row population" functions derived from the MapperProperties attached
-        # to this Mapper.  These are keyed in the select context based primarily off the
-        # "snapshot" of the stack, which represents a path from the lead mapper in the query to this one,
-        # including relation() names.  the key also includes "self", and allows us to distinguish between
-        # other mappers within our inheritance hierarchy
-        (new_populators, existing_populators) = selectcontext.attributes.get(('populators', self, snapshot, ispostselect), (None, None))
-        if new_populators is None:
-            # no populators; therefore this is the first time we are receiving a row for
-            # this result set.  issue create_row_processor() on all MapperProperty objects
-            # and cache in the select context.
-            new_populators = []
-            existing_populators = []
-            post_processors = []
-            for prop in self.__props.values():
-                (newpop, existingpop, post_proc) = selectcontext.exec_with_path(self, prop.key, prop.create_row_processor, selectcontext, self, row)
-                if newpop:
-                    new_populators.append((prop.key, newpop))
-                if existingpop:
-                    existing_populators.append((prop.key, existingpop))
-                if post_proc:
-                    post_processors.append(post_proc)
-
-            # install a post processor for immediate post-load of joined-table inheriting mappers
-            poly_select_loader = self._get_poly_select_loader(selectcontext, row)
-            if poly_select_loader:
-                post_processors.append(poly_select_loader)
-
-            selectcontext.attributes[('populators', self, snapshot, ispostselect)] = (new_populators, existing_populators)
-            selectcontext.attributes[('post_processors', self, ispostselect)] = post_processors
-
-        if isnew or ispostselect:
-            populators = new_populators
-        else:
-            populators = existing_populators
-
-        if only_load_props:
-            populators = [p for p in populators if p[0] in only_load_props]
-
-        for (key, populator) in populators:
-            selectcontext.exec_with_path(self, key, populator, instance, row, ispostselect=ispostselect, isnew=isnew, **flags)
-
-        if self.non_primary:
-            selectcontext.attributes[('populating_mapper', instance._state)] = self
-
-    def _post_instance(self, selectcontext, state, **kwargs):
-        post_processors = selectcontext.attributes[('post_processors', self, None)]
-        for p in post_processors:
-            p(state.obj(), **kwargs)
-
-    def _get_poly_select_loader(self, selectcontext, row):
-        """set up attribute loaders for 'select' and 'deferred' polymorphic loading.
-
-        this loading uses a second SELECT statement to load additional tables,
-        either immediately after loading the main table or via a deferred attribute trigger.
-        """
-
-        (hosted_mapper, needs_tables) = selectcontext.attributes.get(('polymorphic_fetch', self), (None, None))
-
-        if hosted_mapper is None or not needs_tables:
-            return
-
-        cond, param_names = self._deferred_inheritance_condition(hosted_mapper, needs_tables)
-        statement = sql.select(needs_tables, cond, use_labels=True)
-
-        if hosted_mapper.polymorphic_fetch == 'select':
-            def post_execute(instance, **flags):
                 if self.__should_log_debug:
-                    self.__log_debug("Post query loading instance " + instance_str(instance))
+                    self.__log_debug("_instance(): using existing instance %s identity %s" % (instance_str(instance), str(identitykey)))
 
-                identitykey = self.identity_key_from_instance(instance)
-                
-                only_load_props = flags.get('only_load_props', None)
+                isnew = state.runid != context.runid
+                currentload = not isnew
+                loaded_instance = False
 
-                params = {}
-                for c, bind in param_names:
-                    params[bind] = self._get_attr_by_column(instance, c)
-                row = selectcontext.session.connection(self).execute(statement, params).fetchone()
-                self.populate_instance(selectcontext, instance, row, isnew=False, instancekey=identitykey, ispostselect=True, only_load_props=only_load_props)
-            return post_execute
-        elif hosted_mapper.polymorphic_fetch == 'deferred':
-            from sqlalchemy.orm.strategies import DeferredColumnLoader
+                if not currentload and version_id_col and context.version_check and self._get_state_attr_by_column(state, self.version_id_col) != row[version_id_col]:
+                    raise exc.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (state_str(state), self._get_state_attr_by_column(state, self.version_id_col), row[version_id_col]))
+            elif refresh_instance:
+                # out of band refresh_instance detected (i.e. its not in the session.identity_map)
+                # honor it anyway.  this can happen if a _get() occurs within save_obj(), such as
+                # when eager_defaults is True.
+                state = refresh_instance
+                instance = state.obj()
+                isnew = state.runid != context.runid
+                currentload = True
+                loaded_instance = False
+            else:
+                if self.__should_log_debug:
+                    self.__log_debug("_instance(): identity key %s not in session" % str(identitykey))
 
-            def post_execute(instance, **flags):
-                def create_statement(instance):
-                    params = {}
-                    for (c, bind) in param_names:
-                        # use the "committed" (database) version to get query column values
-                        params[bind] = self._get_committed_attr_by_column(instance, c)
-                    return (statement, params)
+                if self.allow_null_pks:
+                    for x in identitykey[1]:
+                        if x is not None:
+                            break
+                    else:
+                        return None
+                else:
+                    if None in identitykey[1]:
+                        return None
+                isnew = True
+                currentload = True
+                loaded_instance = True
 
-                props = [prop for prop in [self._get_col_to_prop(col) for col in statement.inner_columns] if prop.key not in instance.__dict__]
-                keys = [p.key for p in props]
-                
-                only_load_props = flags.get('only_load_props', None)
-                if only_load_props:
-                    keys = util.Set(keys).difference(only_load_props)
-                    props = [p for p in props if p.key in only_load_props]
-                    
-                for prop in props:
-                    strategy = prop._get_strategy(DeferredColumnLoader)
-                    instance._state.set_callable(prop.key, strategy.setup_loader(instance, props=keys, create_statement=create_statement))
-            return post_execute
-        else:
+                if create_instance:
+                    instance = extension.create_instance(self, context, row, self.class_)
+                    if instance is EXT_CONTINUE:
+                        instance = self.class_manager.new_instance()
+                    else:
+                        manager = attributes.manager_for_cls(instance.__class__)
+                        # TODO: if manager is None, raise a friendly error about
+                        # returning instances of unmapped types
+                        manager.setup_instance(instance)
+                else:
+                    instance = self.class_manager.new_instance()
+
+                if self.__should_log_debug:
+                    self.__log_debug("_instance(): created new instance %s identity %s" % (instance_str(instance), str(identitykey)))
+
+                state = attributes.instance_state(instance)
+                state.entity_name = self.entity_name
+                state.key = identitykey
+                # manually adding instance to session.  for a complete add,
+                # session._finalize_loaded() must be called.
+                state.session_id = context.session.hash_key
+                session_identity_map.add(state)
+
+            if currentload or populate_existing:
+                if isnew:
+                    state.runid = context.runid
+                    context.progress.add(state)
+
+                if not populate_instance or extension.populate_instance(self, context, row, instance, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+                    populate_state(state, row, isnew, only_load_props)
+
+            else:
+                # populate attributes on non-loading instances which have been expired
+                # TODO: also support deferred attributes here [ticket:870]
+                # TODO: apply eager loads to un-lazy loaded collections ?
+                # we might want to create an expanded form of 'state.expired_attributes' which includes deferred/un-lazy loaded
+                if state.expired_attributes:
+                    if state in context.partials:
+                        isnew = False
+                        attrs = context.partials[state]
+                    else:
+                        isnew = True
+                        attrs = state.expired_attributes.intersection(state.unmodified)
+                        context.partials[state] = attrs  #<-- allow query.instances to commit the subset of attrs
+
+                    if not populate_instance or extension.populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+                        populate_state(state, row, isnew, attrs, instancekey=identitykey)
+
+            if result is not None and (not append_result or extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE):
+                result.append(instance)
+
+            if loaded_instance:
+                state._run_on_load(instance)
+
+            return instance
+        return _instance
+
+    def __populators(self, context, path, row, adapter):
+        new_populators, existing_populators = [], []
+        for prop in self.__props.values():
+            newpop, existingpop = prop.create_row_processor(context, path, self, row, adapter)
+            if newpop:
+                new_populators.append((prop.key, newpop))
+            if existingpop:
+                existing_populators.append((prop.key, existingpop))
+        return new_populators, existing_populators
+
+    def __configure_subclass_mapper(self, context, path, adapter):
+        def configure_subclass_mapper(discriminator):
+            try:
+                mapper = self.polymorphic_map[discriminator]
+            except KeyError:
+                raise AssertionError("No such polymorphic_identity %r is defined" % discriminator)
+            if mapper is self:
+                return None
+            return mapper._instance_processor(context, path, adapter, polymorphic_from=self)
+        return configure_subclass_mapper
+
+    def _optimized_get_statement(self, state, attribute_names):
+        props = self.__props
+        tables = util.Set([props[key].parent.local_table for key in attribute_names])
+        if self.base_mapper.local_table in tables:
             return None
-
-    def _deferred_inheritance_condition(self, base_mapper, needs_tables):
-        base_mapper = base_mapper.primary_mapper()
 
         def visit_binary(binary):
             leftcol = binary.left
             rightcol = binary.right
             if leftcol is None or rightcol is None:
                 return
-            if leftcol.table not in needs_tables:
-                binary.left = sql.bindparam(None, None, type_=binary.right.type)
-                param_names.append((leftcol, binary.left))
-            elif rightcol not in needs_tables:
-                binary.right = sql.bindparam(None, None, type_=binary.right.type)
-                param_names.append((rightcol, binary.right))
+
+            if leftcol.table not in tables:
+                binary.left = sql.bindparam(None, self._get_committed_state_attr_by_column(state, leftcol), type_=binary.right.type)
+            elif rightcol.table not in tables:
+                binary.right = sql.bindparam(None, self._get_committed_state_attr_by_column(state, rightcol), type_=binary.right.type)
 
         allconds = []
-        param_names = []
 
-        for mapper in self.iterate_to_root():
-            if mapper is base_mapper:
-                break
-            allconds.append(visitors.traverse(mapper.inherit_condition, clone=True, visit_binary=visit_binary))
+        start = False
+        for mapper in util.reversed(list(self.iterate_to_root())):
+            if mapper.local_table in tables:
+                start = True
+            if start:
+                allconds.append(visitors.cloned_traverse(mapper.inherit_condition, {}, {'binary':visit_binary}))
 
-        return sql.and_(*allconds), param_names
+        cond = sql.and_(*allconds)
+        return sql.select(tables, cond, use_labels=True)
 
-Mapper.logger = logging.class_logger(Mapper)
+Mapper.logger = log.class_logger(Mapper)
 
 
-object_session = None
+def _event_on_init(state, instance, args, kwargs):
+    """Trigger mapper compilation and run init_instance hooks."""
 
-def _load_scalar_attributes(instance, attribute_names):
-    mapper = object_mapper(instance)
-    global object_session
-    if not object_session:
-        from sqlalchemy.orm.session import object_session
-    session = object_session(instance)
+    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
+    # compile() always compiles all mappers
+    instrumenting_mapper.compile()
+    if 'init_instance' in instrumenting_mapper.extension.methods:
+        instrumenting_mapper.extension.init_instance(
+            instrumenting_mapper, instrumenting_mapper.class_,
+            state.manager.events.original_init,
+            instance, args, kwargs)
+
+def _event_on_init_failure(state, instance, args, kwargs):
+    """Run init_failed hooks."""
+
+    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
+    if 'init_failed' in instrumenting_mapper.extension.methods:
+        util.warn_exception(
+            instrumenting_mapper.extension.init_failed,
+            instrumenting_mapper, instrumenting_mapper.class_,
+            state.manager.events.original_init, instance, args, kwargs)
+
+def _legacy_descriptors():
+    """Build compatibility descriptors mapping legacy to InstanceState.
+
+    These are slated for removal in 0.5.  They were never part of the
+    official public API but were suggested as temporary workarounds in a
+    number of mailing list posts.  Permanent and public solutions for those
+    needs should be available now.  Consult the applicable mailing list
+    threads for details.
+
+    """
+    def _instance_key(self):
+        state = attributes.instance_state(self)
+        if state.key is not None:
+            return state.key
+        else:
+            raise AttributeError("_instance_key")
+    _instance_key = util.deprecated(None, False)(_instance_key)
+    _instance_key = property(_instance_key)
+
+    def _sa_session_id(self):
+        state = attributes.instance_state(self)
+        if state.session_id is not None:
+            return state.session_id
+        else:
+            raise AttributeError("_sa_session_id")
+    _sa_session_id = util.deprecated(None, False)(_sa_session_id)
+    _sa_session_id = property(_sa_session_id)
+
+    def _entity_name(self):
+        state = attributes.instance_state(self)
+        if state.entity_name is attributes.NO_ENTITY_NAME:
+            return None
+        else:
+            return state.entity_name
+    _entity_name = util.deprecated(None, False)(_entity_name)
+    _entity_name = property(_entity_name)
+
+    return dict(locals())
+_legacy_descriptors = _legacy_descriptors()
+
+def _load_scalar_attributes(state, attribute_names):
+    mapper = _state_mapper(state)
+    session = _state_session(state)
     if not session:
-        try:
-            session = mapper.get_session()
-        except exceptions.InvalidRequestError:
-            raise exceptions.UnboundExecutionError("Instance %s is not bound to a Session, and no contextual session is established; attribute refresh operation cannot proceed" % (instance.__class__))
+        raise sa_exc.UnboundExecutionError("Instance %s is not bound to a Session; attribute refresh operation cannot proceed" % (state_str(state)))
 
-    state = instance._state
-    if '_instance_key' in state.dict:
-        identity_key = state.dict['_instance_key']
-        shouldraise = True
-    else:
-        # if instance is pending, a refresh operation may not complete (even if PK attributes are assigned)
-        shouldraise = False
-        identity_key = mapper._identity_key_from_state(state)
+    has_key = _state_has_identity(state)
 
-    if session.query(mapper)._get(identity_key, refresh_instance=state, only_load_props=attribute_names) is None and shouldraise:
-        raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % instance_str(instance))
+    result = False
+    if mapper.inherits and not mapper.concrete:
+        statement = mapper._optimized_get_statement(state, attribute_names)
+        if statement:
+            result = session.query(mapper).from_statement(statement)._get(None, only_load_props=attribute_names, refresh_instance=state)
 
+    if result is False:
+        if has_key:
+            identity_key = state.key
+        else:
+            identity_key = mapper._identity_key_from_state(state)
+        result = session.query(mapper)._get(identity_key, refresh_instance=state, only_load_props=attribute_names)
+
+    # if instance is pending, a refresh operation may not complete (even if PK attributes are assigned)
+    if has_key and result is None:
+        raise exc.ObjectDeletedError("Instance '%s' has been deleted." % state_str(state))

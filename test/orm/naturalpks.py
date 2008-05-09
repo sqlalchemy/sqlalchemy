@@ -1,8 +1,7 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy import exceptions
-
+from sqlalchemy.orm import attributes, exc as orm_exc
 from testlib.fixtures import *
 from testlib import *
 
@@ -62,17 +61,13 @@ class NaturalPKTest(ORMTest):
         sess.flush()
         assert sess.get(User, 'jack') is u1
 
-        users.update(values={u1.c.username:'jack'}).execute(username='ed')
+        users.update(values={User.username:'jack'}).execute(username='ed')
 
-        try:
-            # expire/refresh works off of primary key.  the PK is gone
-            # in this case so theres no way to look it up.  criterion-
-            # based session invalidation could solve this [ticket:911]
-            sess.expire(u1)
-            u1.username
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert "Could not refresh instance" in str(e)
+        # expire/refresh works off of primary key.  the PK is gone
+        # in this case so theres no way to look it up.  criterion-
+        # based session invalidation could solve this [ticket:911]
+        sess.expire(u1)
+        self.assertRaises(orm_exc.ObjectDeletedError, getattr, u1, 'username')
 
         sess.clear()
         assert sess.get(User, 'jack') is None
@@ -154,7 +149,7 @@ class NaturalPKTest(ORMTest):
         u1.username = 'ed'
 
         print id(a1), id(a2), id(u1)
-        print u1._state.parents
+        print attributes.instance_state(u1).parents
         def go():
             sess.flush()
         if passive_updates:

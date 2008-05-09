@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exceptions, sql
+from sqlalchemy import exc, sql
 from sqlalchemy.engine import default
 from testlib import *
 
@@ -426,7 +426,7 @@ class QueryTest(TestBase):
         try:
             print r['user_id']
             assert False
-        except exceptions.InvalidRequestError, e:
+        except exc.InvalidRequestError, e:
             assert str(e) == "Ambiguous column name 'user_id' in result set! try 'use_labels' option on select statement." or \
                    str(e) == "Ambiguous column name 'USER_ID' in result set! try 'use_labels' option on select statement."
 
@@ -466,7 +466,7 @@ class QueryTest(TestBase):
     def test_cant_execute_join(self):
         try:
             users.join(addresses).execute()
-        except exceptions.ArgumentError, e:
+        except exc.ArgumentError, e:
             assert str(e).startswith('Not an executable clause: ')
 
 

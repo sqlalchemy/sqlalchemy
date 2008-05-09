@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions, sql
+from sqlalchemy import exc, sql
 from testlib import *
 from sqlalchemy import Table, Column  # don't use testlib's wrappers
 
@@ -37,7 +37,7 @@ class ColumnDefinitionTest(TestBase):
     def test_incomplete(self):
         c = self.columns()
 
-        self.assertRaises(exceptions.ArgumentError, Table, 't', MetaData(), *c)
+        self.assertRaises(exc.ArgumentError, Table, 't', MetaData(), *c)
 
     def test_incomplete_key(self):
         c = Column(Integer)
@@ -52,8 +52,8 @@ class ColumnDefinitionTest(TestBase):
 
 
     def test_bogus(self):
-        self.assertRaises(exceptions.ArgumentError, Column, 'foo', name='bar')
-        self.assertRaises(exceptions.ArgumentError, Column, 'foo', Integer,
+        self.assertRaises(exc.ArgumentError, Column, 'foo', name='bar')
+        self.assertRaises(exc.ArgumentError, Column, 'foo', Integer,
                           type_=Integer())
 
 if __name__ == "__main__":

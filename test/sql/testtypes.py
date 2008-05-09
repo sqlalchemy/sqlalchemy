@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import datetime, os, pickleable, re
 from sqlalchemy import *
-from sqlalchemy import exceptions, types, util
+from sqlalchemy import exc, types, util
 from sqlalchemy.sql import operators
 import sqlalchemy.engine.url as url
 from sqlalchemy.databases import mssql, oracle, mysql, postgres, firebird
@@ -40,17 +40,6 @@ class AdaptTest(TestBase):
             assert isinstance(dialect_type, mssql.MSNVarchar)
             assert dialect_type.get_col_spec() == 'NVARCHAR(10)'
 
-    def testoracletext(self):
-        dialect = oracle.OracleDialect()
-        class MyDecoratedType(types.TypeDecorator):
-            impl = String
-            def copy(self):
-                return MyDecoratedType()
-
-        col = Column('', MyDecoratedType)
-        dialect_type = col.type.dialect_impl(dialect)
-        assert isinstance(dialect_type.impl, oracle.OracleText), repr(dialect_type.impl)
-
 
     def testoracletimestamp(self):
         dialect = oracle.OracleDialect()
@@ -77,29 +66,29 @@ class AdaptTest(TestBase):
         firebird_dialect = firebird.FBDialect()
 
         for dialect, start, test in [
-            (oracle_dialect, String(), oracle.OracleText),
+            (oracle_dialect, String(), oracle.OracleString),
             (oracle_dialect, VARCHAR(), oracle.OracleString),
             (oracle_dialect, String(50), oracle.OracleString),
-            (oracle_dialect, Unicode(), oracle.OracleText),
+            (oracle_dialect, Unicode(), oracle.OracleString),
             (oracle_dialect, UnicodeText(), oracle.OracleText),
             (oracle_dialect, NCHAR(), oracle.OracleString),
             (oracle_dialect, oracle.OracleRaw(50), oracle.OracleRaw),
-            (mysql_dialect, String(), mysql.MSText),
+            (mysql_dialect, String(), mysql.MSString),
             (mysql_dialect, VARCHAR(), mysql.MSString),
             (mysql_dialect, String(50), mysql.MSString),
-            (mysql_dialect, Unicode(), mysql.MSText),
+            (mysql_dialect, Unicode(), mysql.MSString),
             (mysql_dialect, UnicodeText(), mysql.MSText),
             (mysql_dialect, NCHAR(), mysql.MSNChar),
-            (postgres_dialect, String(), postgres.PGText),
+            (postgres_dialect, String(), postgres.PGString),
             (postgres_dialect, VARCHAR(), postgres.PGString),
             (postgres_dialect, String(50), postgres.PGString),
-            (postgres_dialect, Unicode(), postgres.PGText),
+            (postgres_dialect, Unicode(), postgres.PGString),
             (postgres_dialect, UnicodeText(), postgres.PGText),
             (postgres_dialect, NCHAR(), postgres.PGString),
-            (firebird_dialect, String(), firebird.FBText),
+            (firebird_dialect, String(), firebird.FBString),
             (firebird_dialect, VARCHAR(), firebird.FBString),
             (firebird_dialect, String(50), firebird.FBString),
-            (firebird_dialect, Unicode(), firebird.FBText),
+            (firebird_dialect, Unicode(), firebird.FBString),
             (firebird_dialect, UnicodeText(), firebird.FBText),
             (firebird_dialect, NCHAR(), firebird.FBString),
         ]:
@@ -118,9 +107,9 @@ class UserDefinedTest(TestBase):
     def testprocessing(self):
 
         global users
-        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack', goofy7=u'jack', goofy8=12, goofy9=12)
-        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala', goofy7=u'lala', goofy8=15, goofy9=15)
-        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred', goofy7=u'fred', goofy8=9, goofy9=9)
+        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack', goofy7=u'jack', goofy8=12, goofy9=12)
+        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala', goofy7=u'lala', goofy8=15, goofy9=15)
+        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred', goofy7=u'fred', goofy8=9, goofy9=9)
 
         l = users.select().execute().fetchall()
         for assertstr, assertint, assertint2, row in zip(
@@ -130,11 +119,11 @@ class UserDefinedTest(TestBase):
             l
 
         ):
-            for col in row[1:8]:
+            for col in row[1:7]:
                 self.assertEquals(col, assertstr)
-            self.assertEquals(row[8], assertint)
-            self.assertEquals(row[9], assertint2)
-            for col in (row[4], row[5], row[7]):
+            self.assertEquals(row[7], assertint)
+            self.assertEquals(row[8], assertint2)
+            for col in (row[3], row[4], row[6]):
                 assert isinstance(col, unicode)
 
     def setUpAll(self):
@@ -250,13 +239,10 @@ class UserDefinedTest(TestBase):
             # decorated type with an argument, so its a String
             Column('goofy2', MyDecoratedType(50), nullable = False),
 
-            # decorated type without an argument, it will adapt_args to TEXT
-            Column('goofy3', MyDecoratedType, nullable = False),
-
-            Column('goofy4', MyUnicodeType, nullable = False),
-            Column('goofy5', LegacyUnicodeType, nullable = False),
+            Column('goofy4', MyUnicodeType(50), nullable = False),
+            Column('goofy5', LegacyUnicodeType(50), nullable = False),
             Column('goofy6', LegacyType, nullable = False),
-            Column('goofy7', MyNewUnicodeType, nullable = False),
+            Column('goofy7', MyNewUnicodeType(50), nullable = False),
             Column('goofy8', MyNewIntType, nullable = False),
             Column('goofy9', MyNewIntSubClass, nullable = False),
 
@@ -344,7 +330,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         try:
             unicode_table.insert().execute(unicode_varchar='not unicode')
             assert False
-        except exceptions.SAWarning, e:
+        except exc.SAWarning, e:
             assert str(e) == "Unicode type received non-unicode bind param value 'not unicode'", str(e)
 
         unicode_engine = engines.utf8_engine(options={'convert_unicode':True,
@@ -353,7 +339,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             try:
                 unicode_engine.execute(unicode_table.insert(), plain_varchar='im not unicode')
                 assert False
-            except exceptions.InvalidRequestError, e:
+            except exc.InvalidRequestError, e:
                 assert str(e) == "Unicode type received non-unicode bind param value 'im not unicode'"
 
             @testing.emits_warning('.*non-unicode bind')
@@ -664,33 +650,20 @@ class DateTest(TestBase, AssertsExecutionResults):
             t.drop(checkfirst=True)
 
 class StringTest(TestBase, AssertsExecutionResults):
-    def test_nolen_string_deprecated(self):
+    
+    
+    def test_nolength_string(self):
+        # this tests what happens with String DDL with no length.
+        # seems like we need to decide amongst "VARCHAR" (sqlite, postgres), "TEXT" (mysql)
+        # i.e. theres some inconsisency here.
+        
         metadata = MetaData(testing.db)
         foo =Table('foo', metadata,
             Column('one', String))
-
-        # no warning
-        select([func.count("*")], bind=testing.db).execute()
-
-        try:
-            # warning during CREATE
-            foo.create()
-            assert False
-        except exceptions.SADeprecationWarning, e:
-            assert "Using String type with no length" in str(e)
-            assert re.search(r'\bone\b', str(e))
-
-        bar = Table('bar', metadata, Column('one', String(40)))
-
-        try:
-            # no warning
-            bar.create()
-
-            # no warning for non-lengthed string
-            select([func.count("*")], from_obj=bar).execute()
-        finally:
-            bar.drop()
-
+        
+        foo.create()
+        foo.drop()
+        
 def _missing_decimal():
     """Python implementation supports decimals"""
     try:

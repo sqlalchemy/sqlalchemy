@@ -1105,9 +1105,9 @@ When using `primaryjoin` and `secondaryjoin`, SQLAlchemy also needs to be aware 
     {python}
     mapper(Address, addresses_table)
     mapper(User, users_table, properties={
-        'addresses' : relation(Address, 
-             primaryjoin=users_table.c.user_id==addresses_table.c.user_id,
-             foreign_keys=[addresses_table.c.user_id])
+        'addresses' : relation(Address, primaryjoin=
+                    users_table.c.user_id==addresses_table.c.user_id,
+                    foreign_keys=[addresses_table.c.user_id])
     })
 
 ##### Building Query-Enabled Properties {@name=properties}
@@ -1361,9 +1361,11 @@ or more simply just use `eagerload_all()`:
 
 There are two other loader strategies available, **dynamic loading** and **no loading**; these are described in [advdatamapping_relation_largecollections](rel:advdatamapping_relation_largecollections).
 
-##### Combining Eager Loads with Statement/Result Set Queries
+##### Routing Explicit Joins/Statements into Eagerly Loaded Collections {@name=containseager}
 
-When full statement or result-set loads are used with `Query`, SQLAlchemy does not affect the SQL query itself, and therefore has no way of tacking on its own `LEFT [OUTER] JOIN` conditions that are normally used to eager load relationships.  If the query being constructed is created in such a way that it returns rows not just from a parent table (or tables) but also returns rows from child tables, the result-set mapping can be notified as to which additional properties are contained within the result set.  This is done using the `contains_eager()` query option, which specifies the name of the relationship to be eagerly loaded.
+When full statement loads are used with `Query`, the user defined SQL is used verbatim and the `Query` does not play any role in generating it.  In this scenario, if eager loading is desired, the `Query` should be informed as to what collections should also be loaded from the result set.  Similarly, Queries which compile their statement in the usual way may also have user-defined joins built in which are synonymous with what eager loading would normally produce, and it improves performance to utilize those same JOINs for both purposes, instead of allowing the eager load mechanism to generate essentially the same JOIN redundantly.   Yet another use case for such a feature is a Query which returns instances with a filtered view of their collections loaded, in which case the default eager load mechanisms need to be bypassed.
+
+The single option `Query` provides to control this is the `contains_eager()` option, which specifies the path of a single relationship to be eagerly loaded.  Like all relation-oriented options, it takes a string or Python descriptor as an argument.  Below it's used with a `from_statement` load:
 
     {python}
     # mapping is the users->addresses mapping
@@ -1372,7 +1374,7 @@ When full statement or result-set loads are used with `Query`, SQLAlchemy does n
     })
     
     # define a query on USERS with an outer join to ADDRESSES
-    statement = users_table.outerjoin(addresses_table).select(use_labels=True)
+    statement = users_table.outerjoin(addresses_table).select().apply_labels()
     
     # construct a Query object which expects the "addresses" results 
     query = session.query(User).options(contains_eager('addresses'))
@@ -1380,36 +1382,48 @@ When full statement or result-set loads are used with `Query`, SQLAlchemy does n
     # get results normally
     r = query.from_statement(statement)
 
+It works just as well with an inline `Query.join()` or `Query.outerjoin()`:
+
+    {python}
+    session.query(User).outerjoin(User.addresses).options(contains_eager(User.addresses)).all()
+
 If the "eager" portion of the statement is "aliased", the `alias` keyword argument to `contains_eager()` may be used to indicate it.  This is a string alias name or reference to an actual `Alias` object:
 
     {python}
-    # use an alias of the addresses table
-    adalias = addresses_table.alias('adalias')
+    # use an alias of the Address entity
+    adalias = aliased(Address)
     
-    # define a query on USERS with an outer join to adalias
-    statement = users_table.outerjoin(adalias).select(use_labels=True)
-
     # construct a Query object which expects the "addresses" results 
-    query = session.query(User).options(contains_eager('addresses', alias=adalias))
+    query = session.query(User).outerjoin((adalias, User.addresses)).options(contains_eager(User.addresses, alias=adalias))
 
     # get results normally
-    {sql}r = query.from_statement(statement).all()
+    {sql}r = query.all()
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, adalias.address_id AS adalias_address_id, 
     adalias.user_id AS adalias_user_id, adalias.email_address AS adalias_email_address, (...other columns...)
-    FROM users LEFT OUTER JOIN email_addresses AS adalias ON users.user_id = adalias.user_id
+    FROM users LEFT OUTER JOIN email_addresses AS email_addresses_1 ON users.user_id = email_addresses_1.user_id
 
-In the case that the main table itself is also aliased, the `contains_alias()` option can be used:
+The path given as the argument to `contains_eager()` needs to be a full path from the starting entity.  For example if we were loading `Users->orders->Order->items->Item`, the string version would look like:
+
+    {python}
+    query(User).options(contains_eager('orders', 'items'))
+    
+The descriptor version like:
+
+    {python}
+    query(User).options(contains_eager(User.orders, Order.items))
+    
+A variant on `contains_eager()` is the `contains_alias()` option, which is used in the rare case that the parent object is loaded from an alias within a user-defined SELECT statement:
 
     {python}
     # define an aliased UNION called 'ulist'
     statement = users.select(users.c.user_id==7).union(users.select(users.c.user_id>7)).alias('ulist')
 
     # add on an eager load of "addresses"
-    statement = statement.outerjoin(addresses).select(use_labels=True)
+    statement = statement.outerjoin(addresses).select().apply_labels()
     
     # create query, indicating "ulist" is an alias for the main table, "addresses" property should
     # be eager loaded
-    query = create_session().query(User).options(contains_alias('ulist'), contains_eager('addresses'))
+    query = session.query(User).options(contains_alias('ulist'), contains_eager('addresses'))
     
     # results
     r = query.from_statement(statement)

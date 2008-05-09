@@ -173,22 +173,25 @@ class InheritTestOne(TestBase, AssertsExecutionResults):
             Column("child2_data", String(50))
             )
         meta.create_all()
+        
     def tearDownAll(self):
         meta.drop_all()
+        
     def testmanytooneonly(self):
         """test similar to SelfReferentialTest.testmanytooneonly"""
+        
         class Parent(object):
-                pass
+            pass
 
         mapper(Parent, parent)
 
         class Child1(Parent):
-                pass
+            pass
 
         mapper(Child1, child1, inherits=Parent)
 
         class Child2(Parent):
-                pass
+            pass
 
         mapper(Child2, child2, properties={
                         "child1": relation(Child1,
@@ -216,7 +219,9 @@ class InheritTestOne(TestBase, AssertsExecutionResults):
 class InheritTestTwo(ORMTest):
     """the fix in BiDirectionalManyToOneTest raised this issue, regarding
     the 'circular sort' containing UOWTasks that were still polymorphic, which could
-    create duplicate entries in the final sort"""
+    create duplicate entries in the final sort
+    
+    """
     def define_tables(self, metadata):
         global a, b, c
         a = Table('a', metadata,
@@ -235,6 +240,7 @@ class InheritTestTwo(ORMTest):
             Column('data', String(30)),
             Column('aid', Integer, ForeignKey('a.id', use_alter=True, name="foo")),
             )
+            
     def test_flush(self):
         class A(object):pass
         class B(A):pass
@@ -484,17 +490,19 @@ class OneToManyManyToOneTest(TestBase, AssertsExecutionResults):
 
     def testcycle(self):
         """this test has a peculiar aspect in that it doesnt create as many dependent
-        relationships as the other tests, and revealed a small glitch in the circular dependency sorting."""
+        relationships as the other tests, and revealed a small glitch in the circular dependency sorting.
+        
+        """
         class Person(object):
-         pass
+            pass
 
         class Ball(object):
-         pass
+            pass
 
         Ball.mapper = mapper(Ball, ball)
         Person.mapper = mapper(Person, person, properties= dict(
-         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, remote_side=ball.c.person_id),
-         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, remote_side=person.c.favorite_ball_id),
+             balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, remote_side=ball.c.person_id),
+             favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, remote_side=ball.c.id),
          )
         )
 
@@ -502,10 +510,9 @@ class OneToManyManyToOneTest(TestBase, AssertsExecutionResults):
         p = Person()
         p.balls.append(b)
         sess = create_session()
-        sess.save(b)
-        sess.save(b)
+        sess.save(p)
         sess.flush()
-
+        
     def testpostupdate_m2o(self):
         """tests a cycle between two rows, with a post_update on the many-to-one"""
         class Person(object):
@@ -860,6 +867,7 @@ class SelfReferentialPostUpdateTest2(TestBase, AssertsExecutionResults):
         a_table.create()
     def tearDownAll(self):
         a_table.drop()
+
     def testbasic(self):
         """test that post_update remembers to be involved in update operations as well,
         since it replaces the normal dependency processing completely [ticket:413]"""

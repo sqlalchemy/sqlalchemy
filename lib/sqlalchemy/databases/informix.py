@@ -8,7 +8,7 @@
 
 import datetime
 
-from sqlalchemy import sql, schema, exceptions, pool, util
+from sqlalchemy import sql, schema, exc, pool, util
 from sqlalchemy.sql import compiler
 from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
@@ -197,7 +197,7 @@ class InfoExecutionContext(default.DefaultExecutionContext):
     # 5 - rowid after insert
     def post_exec(self):
         if getattr(self.compiled, "isinsert", False) and self.last_inserted_ids() is None:
-            self._last_inserted_ids = [self.cursor.sqlerrd[1],]
+            self._last_inserted_ids = [self.cursor.sqlerrd[1]]
         elif hasattr( self.compiled , 'offset' ):
             self.cursor.offset( self.compiled.offset )
         super(InfoExecutionContext, self).post_exec()
@@ -210,7 +210,7 @@ class InfoDialect(default.DefaultDialect):
     # for informix 7.31
     max_identifier_length = 18
 
-    def __init__(self, use_ansi=True,**kwargs):
+    def __init__(self, use_ansi=True, **kwargs):
         self.use_ansi = use_ansi
         default.DefaultDialect.__init__(self, **kwargs)
 
@@ -244,19 +244,19 @@ class InfoDialect(default.DefaultDialect):
         else:
             opt = {}
 
-        return ([dsn,], opt )
+        return ([dsn], opt)
 
     def create_execution_context(self , *args, **kwargs):
         return InfoExecutionContext(self, *args, **kwargs)
 
-    def oid_column_name(self,column):
+    def oid_column_name(self, column):
         return "rowid"
 
     def table_names(self, connection, schema):
         s = "select tabname from systables"
         return [row[0] for row in connection.execute(s)]
 
-    def has_table(self, connection, table_name,schema=None):
+    def has_table(self, connection, table_name, schema=None):
         cursor = connection.execute("""select tabname from systables where tabname=?""", table_name.lower() )
         return bool( cursor.fetchone() is not None )
 
@@ -264,18 +264,18 @@ class InfoDialect(default.DefaultDialect):
         c = connection.execute ("select distinct OWNER from systables where tabname=?", table.name.lower() )
         rows = c.fetchall()
         if not rows :
-            raise exceptions.NoSuchTableError(table.name)
+            raise exc.NoSuchTableError(table.name)
         else:
             if table.owner is not None:
                 if table.owner.lower() in [r[0] for r in rows]:
                     owner = table.owner.lower()
                 else:
-                    raise exceptions.AssertionError("Specified owner %s does not own table %s"%(table.owner, table.name))
+                    raise AssertionError("Specified owner %s does not own table %s"%(table.owner, table.name))
             else:
                 if len(rows)==1:
                     owner = rows[0][0]
                 else:
-                    raise exceptions.AssertionError("There are multiple tables with name %s in the schema, you must specifie owner"%table.name)
+                    raise AssertionError("There are multiple tables with name %s in the schema, you must specifie owner"%table.name)
 
         c = connection.execute ("""select colname , coltype , collength , t3.default , t1.colno from syscolumns as t1 , systables as t2 , OUTER sysdefaults as t3
                                     where t1.tabid = t2.tabid and t2.tabname=? and t2.owner=?
@@ -284,7 +284,7 @@ class InfoDialect(default.DefaultDialect):
         rows = c.fetchall()
 
         if not rows:
-            raise exceptions.NoSuchTableError(table.name)
+            raise exc.NoSuchTableError(table.name)
 
         for name , colattr , collength , default , colno in rows:
             name = name.lower()
@@ -341,8 +341,8 @@ class InfoDialect(default.DefaultDialect):
             try:
                 fk = fks[cons_name]
             except KeyError:
-               fk = ([], [])
-               fks[cons_name] = fk
+                fk = ([], [])
+                fks[cons_name] = fk
             refspec = ".".join([remote_table, remote_column])
             schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection)
             if local_column not in fk[0]:
@@ -436,7 +436,7 @@ class InfoSchemaGenerator(compiler.SchemaGenerator):
             colspec += " SERIAL"
             self.has_serial = True
         else:
-            colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
+            colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
             default = self.get_column_default_string(column)
             if default is not None:
                 colspec += " DEFAULT " + default

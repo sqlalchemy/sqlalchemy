@@ -4,7 +4,7 @@ from sqlalchemy import sql
 from sqlalchemy.sql import compiler
 from testlib import *
 
-class QuoteTest(TestBase):
+class QuoteTest(TestBase, AssertsCompiledSQL):
     def setUpAll(self):
         # TODO: figure out which databases/which identifiers allow special characters to be used,
         # such as:  spaces, quote characters, punctuation characters, set up tests for those as
@@ -67,7 +67,23 @@ class QuoteTest(TestBase):
         res2 = select([table2.c.d123, table2.c.u123, table2.c.MixedCase], use_labels=True).execute().fetchall()
         print res2
         assert(res2==[(1,2,3),(2,2,3),(4,3,2)])
+    
+    def test_quote_flag(self):
+        metadata = MetaData()
+        t1 = Table('TableOne', metadata, 
+            Column('ColumnOne', Integer), schema="FooBar")
+        self.assert_compile(t1.select(), '''SELECT "FooBar"."TableOne"."ColumnOne" FROM "FooBar"."TableOne"''')
 
+        metadata = MetaData()
+        t1 = Table('t1', metadata, 
+            Column('col1', Integer, quote=True), quote=True, schema="foo", quote_schema=True)
+        self.assert_compile(t1.select(), '''SELECT "foo"."t1"."col1" FROM "foo"."t1"''')
+
+        metadata = MetaData()
+        t1 = Table('TableOne', metadata, 
+            Column('ColumnOne', Integer, quote=False), quote=False, schema="FooBar", quote_schema=False)
+        self.assert_compile(t1.select(), '''SELECT FooBar.TableOne.ColumnOne FROM FooBar.TableOne''')
+        
     @testing.unsupported('oracle')
     def testlabels(self):
         """test the quoting of labels.
@@ -86,16 +102,19 @@ class QuoteTest(TestBase):
         table = Table("ImATable", metadata,
             Column("col1", Integer))
         x = select([table.c.col1.label("ImATable_col1")]).alias("SomeAlias")
-        assert str(select([x.c.ImATable_col1])) == '''SELECT "SomeAlias"."ImATable_col1" \nFROM (SELECT "ImATable".col1 AS "ImATable_col1" \nFROM "ImATable") AS "SomeAlias"'''
+        self.assert_compile(select([x.c.ImATable_col1]),
+            '''SELECT "SomeAlias"."ImATable_col1" FROM (SELECT "ImATable".col1 AS "ImATable_col1" FROM "ImATable") AS "SomeAlias"''')
 
         # note that 'foo' and 'FooCol' are literals already quoted
         x = select([sql.literal_column("'foo'").label("somelabel")], from_obj=[table]).alias("AnAlias")
         x = x.select()
-        assert str(x) == '''SELECT "AnAlias".somelabel \nFROM (SELECT 'foo' AS somelabel \nFROM "ImATable") AS "AnAlias"'''
+        self.assert_compile(x, 
+            '''SELECT "AnAlias".somelabel FROM (SELECT 'foo' AS somelabel FROM "ImATable") AS "AnAlias"''')
 
         x = select([sql.literal_column("'FooCol'").label("SomeLabel")], from_obj=[table])
         x = x.select()
-        assert str(x) == '''SELECT "SomeLabel" \nFROM (SELECT 'FooCol' AS "SomeLabel" \nFROM "ImATable")'''
+        self.assert_compile(x, 
+            '''SELECT "SomeLabel" FROM (SELECT 'FooCol' AS "SomeLabel" FROM "ImATable")''')
 
 
 class PreparerTest(TestBase):

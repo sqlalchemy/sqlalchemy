@@ -1,6 +1,6 @@
 import sys, types, weakref
 from testlib import config
-from testlib.compat import *
+from testlib.compat import set, _function_named, deque
 
 
 class ConnectionKiller(object):

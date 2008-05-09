@@ -2,12 +2,13 @@
 
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exceptions
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from testlib import *
 from testlib.fixtures import *
 from query import QueryTest
 import datetime
+from sqlalchemy.orm import attributes
 
 class LazyTest(FixtureTest):
     keep_mappers = False
@@ -21,35 +22,17 @@ class LazyTest(FixtureTest):
         q = sess.query(User)
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(users.c.id == 7).all()
 
-    @testing.uses_deprecated('SessionContext')
-    def test_bindstosession(self):
-        """test that lazy loaders use the mapper's contextual session if the parent instance
-        is not in a session, and that an error is raised if no contextual session"""
-
-        from sqlalchemy.ext.sessioncontext import SessionContext
-        ctx = SessionContext(create_session)
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses, extension=ctx.mapper_extension), lazy=True)
-        ), extension=ctx.mapper_extension)
-        q = ctx.current.query(m)
-        u = q.filter(users.c.id == 7).first()
-        ctx.current.expunge(u)
-        assert User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')]) == u
-
-        clear_mappers()
+    def test_needs_parent(self):
+        """test the error raised when parent object is not bound."""
 
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses), lazy=True)
         })
-        try:
-            sess = create_session()
-            q = sess.query(User)
-            u = q.filter(users.c.id == 7).first()
-            sess.expunge(u)
-            assert User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')]) == u
-            assert False
-        except exceptions.InvalidRequestError, err:
-            assert "not bound to a Session, and no contextual session" in str(err)
+        sess = create_session()
+        q = sess.query(User)
+        u = q.filter(users.c.id == 7).first()
+        sess.expunge(u)
+        self.assertRaises(sa_exc.InvalidRequestError, getattr, u, 'addresses')
 
     def test_orderby(self):
         mapper(User, users, properties = {
@@ -127,8 +110,8 @@ class LazyTest(FixtureTest):
 
         sess = create_session()
         user = sess.query(User).get(7)
-        assert getattr(User, 'addresses').hasparent(user.addresses[0], optimistic=True)
-        assert not class_mapper(Address)._is_orphan(user.addresses[0])
+        assert getattr(User, 'addresses').hasparent(attributes.instance_state(user.addresses[0]), optimistic=True)
+        assert not class_mapper(Address)._is_orphan(attributes.instance_state(user.addresses[0]))
 
 
     def test_limit(self):
@@ -170,7 +153,7 @@ class LazyTest(FixtureTest):
         u2 = users.alias('u2')
         s = union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
         print [key for key in s.c.keys()]
-        l = q.filter(s.c.u2_id==User.c.id).distinct().all()
+        l = q.filter(s.c.u2_id==User.id).distinct().all()
         assert fixtures.user_all_result == l
 
     def test_one_to_many_scalar(self):

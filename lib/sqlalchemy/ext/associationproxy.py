@@ -406,13 +406,26 @@ class _AssociationList(object):
     def clear(self):
         del self.col[0:len(self.col)]
 
-    def __eq__(self, other): return list(self) == other
-    def __ne__(self, other): return list(self) != other
-    def __lt__(self, other): return list(self) < other
-    def __le__(self, other): return list(self) <= other
-    def __gt__(self, other): return list(self) > other
-    def __ge__(self, other): return list(self) >= other
-    def __cmp__(self, other): return cmp(list(self), other)
+    def __eq__(self, other):
+        return list(self) == other
+
+    def __ne__(self, other):
+        return list(self) != other
+
+    def __lt__(self, other):
+        return list(self) < other
+
+    def __le__(self, other):
+        return list(self) <= other
+
+    def __gt__(self, other):
+        return list(self) > other
+
+    def __ge__(self, other):
+        return list(self) >= other
+
+    def __cmp__(self, other):
+        return cmp(list(self), other)
 
     def __add__(self, iterable):
         try:
@@ -534,13 +547,26 @@ class _AssociationDict(object):
     def clear(self):
         self.col.clear()
 
-    def __eq__(self, other): return dict(self) == other
-    def __ne__(self, other): return dict(self) != other
-    def __lt__(self, other): return dict(self) < other
-    def __le__(self, other): return dict(self) <= other
-    def __gt__(self, other): return dict(self) > other
-    def __ge__(self, other): return dict(self) >= other
-    def __cmp__(self, other): return cmp(dict(self), other)
+    def __eq__(self, other):
+        return dict(self) == other
+
+    def __ne__(self, other):
+        return dict(self) != other
+
+    def __lt__(self, other):
+        return dict(self) < other
+
+    def __le__(self, other):
+        return dict(self) <= other
+
+    def __gt__(self, other):
+        return dict(self) > other
+
+    def __ge__(self, other):
+        return dict(self) >= other
+
+    def __cmp__(self, other):
+        return cmp(dict(self), other)
 
     def __repr__(self):
         return repr(dict(self.items()))
@@ -802,12 +828,23 @@ class _AssociationSet(object):
     def copy(self):
         return util.Set(self)
 
-    def __eq__(self, other): return util.Set(self) == other
-    def __ne__(self, other): return util.Set(self) != other
-    def __lt__(self, other): return util.Set(self) < other
-    def __le__(self, other): return util.Set(self) <= other
-    def __gt__(self, other): return util.Set(self) > other
-    def __ge__(self, other): return util.Set(self) >= other
+    def __eq__(self, other):
+        return util.Set(self) == other
+
+    def __ne__(self, other):
+        return util.Set(self) != other
+
+    def __lt__(self, other):
+        return util.Set(self) < other
+
+    def __le__(self, other):
+        return util.Set(self) <= other
+
+    def __gt__(self, other):
+        return util.Set(self) > other
+
+    def __ge__(self, other):
+        return util.Set(self) >= other
 
     def __repr__(self):
         return repr(util.Set(self))
