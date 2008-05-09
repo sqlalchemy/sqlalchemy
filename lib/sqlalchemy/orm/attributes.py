@@ -964,6 +964,7 @@ class InstanceState(object):
         
         """
         self.committed_state = {}
+        self.pending = {}
         
         # unexpire attributes which have loaded
         if self.expired_attributes:

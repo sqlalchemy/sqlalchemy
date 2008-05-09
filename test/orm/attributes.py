@@ -669,7 +669,20 @@ class PendingBackrefTest(TestBase):
 
         called[0] = 0
         lazy_load = (p1, p2, p3) = [Post("post 1"), Post("post 2"), Post("post 3")]
+    
+    def test_commit_removes_pending(self):
+        global lazy_load
+        lazy_load = (p1, ) = [Post("post 1"), ]
+        called[0] = 0
 
+        b = Blog("blog 1")
+        p1.blog = b
+        attributes.instance_state(b).commit_all()
+        attributes.instance_state(p1).commit_all()
+        assert b.posts == [Post("post 1")]
+        
+        
+        
 class HistoryTest(TestBase):
     def test_get_committed_value(self):
         class Foo(fixtures.Base):
