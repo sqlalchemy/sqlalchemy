@@ -229,7 +229,7 @@ The solution is to use proper cascading:
 
     {python}
     mapper(User, users_table, properties={
-        'addresses':relation(Address, cascade="all, delete")
+        'addresses':relation(Address, cascade="all, delete, delete-orphan")
     })
     del user.addresses[1]
     session.flush()
