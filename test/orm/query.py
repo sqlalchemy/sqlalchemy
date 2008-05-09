@@ -766,7 +766,8 @@ class JoinTest(QueryTest):
         OrderAlias = aliased(Order)
 
         self.assertEquals(
-            sess.query(OrderAlias).join('items').filter_by(description='item 3').all(),
+            sess.query(OrderAlias).join('items').filter_by(description='item 3').\
+                order_by(OrderAlias.id).all(),
             [
                 Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1), 
                 Order(address_id=4,description=u'order 2',isopen=0,user_id=9,id=2), 
@@ -775,7 +776,8 @@ class JoinTest(QueryTest):
         )
          
         self.assertEquals(
-            sess.query(User, OrderAlias, Item.description).join(('orders', OrderAlias), 'items').filter_by(description='item 3').all(),
+            sess.query(User, OrderAlias, Item.description).join(('orders', OrderAlias), 'items').filter_by(description='item 3').\
+                order_by(User.id, OrderAlias.id).all(),
             [
                 (User(name=u'jack',id=7), Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1), u'item 3'), 
                 (User(name=u'jack',id=7), Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3), u'item 3'), 
@@ -1268,7 +1270,7 @@ class MixedEntitiesTest(QueryTest):
         ]:
         
             self.assertEquals(
-            q.all(),
+            q.order_by(Order.id, oalias.id).all(),
             [
                 (Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3), Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1)), 
                 (Order(address_id=None,description=u'order 5',isopen=0,user_id=7,id=5), Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1)), 
