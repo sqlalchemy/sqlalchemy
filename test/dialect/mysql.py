@@ -630,11 +630,9 @@ class TypesTest(TestBase, AssertsExecutionResults):
     @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
-        specs = [( String(), mysql.MSText(), ),
-                 ( String(1), mysql.MSString(1), ),
+        specs = [( String(1), mysql.MSString(1), ),
                  ( String(3), mysql.MSString(3), ),
                  ( Text(), mysql.MSText(), ),
-                 ( Unicode(), mysql.MSText(), ),
                  ( Unicode(1), mysql.MSString(1), ),
                  ( Unicode(3), mysql.MSString(3), ),
                  ( UnicodeText(), mysql.MSText(), ),

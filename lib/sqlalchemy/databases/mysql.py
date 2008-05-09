@@ -910,7 +910,7 @@ class MSString(_StringType, sqltypes.String):
         if self.length:
             return self._extend("VARCHAR(%d)" % self.length)
         else:
-            return self._extend("TEXT")
+            return self._extend("VARCHAR")
 
 
 class MSChar(_StringType, sqltypes.CHAR):
