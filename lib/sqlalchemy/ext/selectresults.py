@@ -15,7 +15,7 @@ class SelectResultsExt(orm.MapperExtension):
         
     def select(self, query, arg=None, **kwargs):
         if isinstance(arg, sql.FromClause) and arg.supports_execution():
-            return orm.EXT_PASS
+            return orm.EXT_CONTINUE
         else:
             if arg is not None:
                 query = query.filter(arg)

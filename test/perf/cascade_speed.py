@@ -1,9 +1,9 @@
-import testbase
+import testenv; testenv.simple_setup()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
 from timeit import Timer
 import sys
+
 
 meta = MetaData()
 
@@ -62,7 +62,7 @@ class TimeTrial(object):
             for valueid in range(5):
                 val = Value()
                 val.attribute = attr
-                
+
     def run(self, number):
         s = create_session()
         self.order = order = Order()

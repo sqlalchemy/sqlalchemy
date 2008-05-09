@@ -1,17 +1,17 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
 
 
-class FoundRowsTest(AssertMixin):
+class FoundRowsTest(TestBase, AssertsExecutionResults):
     """tests rowcount functionality"""
     def setUpAll(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
 
         global employees_table
 
         employees_table = Table('employees', metadata,
-            Column('employee_id', Integer, primary_key=True),
+            Column('employee_id', Integer, Sequence('employee_id_seq', optional=True), primary_key=True),
             Column('name', String(50)),
             Column('department', String(1)),
         )
@@ -47,26 +47,25 @@ class FoundRowsTest(AssertMixin):
         # WHERE matches 3, 3 rows changed
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='Z')
-        if testbase.db.dialect.supports_sane_rowcount():
+        print "expecting 3, dialect reports %s" % r.rowcount
+        if testing.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
     def test_update_rowcount2(self):
         # WHERE matches 3, 0 rows changed
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='C')
-        if testbase.db.dialect.supports_sane_rowcount():
+        print "expecting 3, dialect reports %s" % r.rowcount
+        if testing.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
     def test_delete_rowcount(self):
         # WHERE matches 3, 3 rows deleted
         department = employees_table.c.department
         r = employees_table.delete(department=='C').execute()
-        if testbase.db.dialect.supports_sane_rowcount():
+        print "expecting 3, dialect reports %s" % r.rowcount
+        if testing.db.dialect.supports_sane_rowcount:
             assert r.rowcount == 3
 
 if __name__ == '__main__':
-    testbase.main()
-
-
-
-
+    testenv.main()

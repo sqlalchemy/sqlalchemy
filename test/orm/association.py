@@ -1,14 +1,15 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
 
-class AssociationTest(PersistTest):
+class AssociationTest(TestBase):
+    @testing.uses_deprecated('association option')
     def setUpAll(self):
         global items, item_keywords, keywords, metadata, Item, Keyword, KeywordAssociation
-        metadata = MetaData(testbase.db)
-        items = Table('items', metadata, 
+        metadata = MetaData(testing.db)
+        items = Table('items', metadata,
             Column('item_id', Integer, primary_key=True),
             Column('name', String(40)),
             )
@@ -22,7 +23,7 @@ class AssociationTest(PersistTest):
             Column('name', String(40))
             )
         metadata.create_all()
-        
+
         class Item(object):
             def __init__(self, name):
                 self.name = name
@@ -39,7 +40,7 @@ class AssociationTest(PersistTest):
                 self.data = data
             def __repr__(self):
                 return "KeywordAssociation itemid=%d keyword=%s data=%s" % (self.item_id, repr(self.keyword), self.data)
-        
+
         mapper(Keyword, keywords)
         mapper(KeywordAssociation, item_keywords, properties={
             'keyword':relation(Keyword, lazy=False)
@@ -47,14 +48,14 @@ class AssociationTest(PersistTest):
         mapper(Item, items, properties={
             'keywords' : relation(KeywordAssociation, association=Keyword)
         })
-        
+
     def tearDown(self):
         for t in metadata.table_iterator(reverse=True):
             t.delete().execute()
     def tearDownAll(self):
         clear_mappers()
         metadata.drop_all()
-        
+
     def testinsert(self):
         sess = create_session()
         item1 = Item('item1')
@@ -67,7 +68,7 @@ class AssociationTest(PersistTest):
         sess.flush()
         saved = repr([item1, item2])
         sess.clear()
-        l = sess.query(Item).select()
+        l = sess.query(Item).all()
         loaded = repr(l)
         print saved
         print loaded
@@ -80,14 +81,14 @@ class AssociationTest(PersistTest):
         item1.keywords.append(KeywordAssociation(Keyword('red'), 'red_assoc'))
         sess.save(item1)
         sess.flush()
-        
+
         red_keyword = item1.keywords[1].keyword
         del item1.keywords[1]
         item1.keywords.append(KeywordAssociation(red_keyword, 'new_red_assoc'))
         sess.flush()
         saved = repr([item1])
         sess.clear()
-        l = sess.query(Item).select()
+        l = sess.query(Item).all()
         loaded = repr(l)
         print saved
         print loaded
@@ -103,7 +104,7 @@ class AssociationTest(PersistTest):
         sess.save(item1)
         sess.save(item2)
         sess.flush()
-        
+
         red_keyword = item1.keywords[1].keyword
         del item1.keywords[0]
         del item1.keywords[0]
@@ -112,16 +113,17 @@ class AssociationTest(PersistTest):
         item2.keywords.append(KeywordAssociation(purple_keyword, 'purple_item2_assoc'))
         item1.keywords.append(KeywordAssociation(purple_keyword, 'purple_item1_assoc'))
         item1.keywords.append(KeywordAssociation(Keyword('yellow'), 'yellow_assoc'))
-        
+
         sess.flush()
         saved = repr([item1, item2])
         sess.clear()
-        l = sess.query(Item).select()
+        l = sess.query(Item).all()
         loaded = repr(l)
         print saved
         print loaded
         self.assert_(saved == loaded)
 
+    @testing.uses_deprecated('association option')
     def testdelete(self):
         sess = create_session()
         item1 = Item('item1')
@@ -139,10 +141,10 @@ class AssociationTest(PersistTest):
         sess.flush()
         self.assert_(item_keywords.count().scalar() == 0)
 
-class AssociationTest2(PersistTest):
+class AssociationTest2(TestBase):
     def setUpAll(self):
         global table_originals, table_people, table_isauthor, metadata, Originals, People, IsAuthor
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         table_originals = Table('Originals', metadata,
             Column('ID',        Integer,        primary_key=True),
             Column('Title',     String(200),    nullable=False),
@@ -154,9 +156,9 @@ class AssociationTest2(PersistTest):
             Column('Country',   CHAR(2),        default='es'),
             )
         table_isauthor = Table('IsAuthor', metadata,
-            Column('OriginalsID', Integer,      ForeignKey('Originals.ID'), 
+            Column('OriginalsID', Integer,      ForeignKey('Originals.ID'),
 default=None),
-            Column('PeopleID', Integer, ForeignKey('People.ID'), 
+            Column('PeopleID', Integer, ForeignKey('People.ID'),
 default=None),
             Column('Kind',      CHAR(1),        default='A'),
             )
@@ -167,7 +169,7 @@ default=None),
                 for k,v in kw.iteritems():
                     setattr(self, k, v)
             def display(self):
-                c = [ "%s=%s" % (col.key, repr(getattr(self, col.key))) for col 
+                c = [ "%s=%s" % (col.key, repr(getattr(self, col.key))) for col
 in self.c ]
                 return "%s(%s)" % (self.__class__.__name__, ', '.join(c))
             def __repr__(self):
@@ -185,7 +187,7 @@ in self.c ]
             properties={
                 'people': relation(IsAuthor, association=People),
                 'authors': relation(People, secondary=table_isauthor, backref='written',
-                            primaryjoin=and_(table_originals.c.ID==table_isauthor.c.OriginalsID, 
+                            primaryjoin=and_(table_originals.c.ID==table_isauthor.c.OriginalsID,
                             table_isauthor.c.Kind=='A')),
                 'title': table_originals.c.Title,
                 'date': table_originals.c.Date,
@@ -195,9 +197,9 @@ in self.c ]
                 'name':             table_people.c.Name,
                 'country':          table_people.c.Country,
             })
-        mapper(IsAuthor, table_isauthor, 
-            primary_key=[table_isauthor.c.OriginalsID, table_isauthor.c.PeopleID, 
-table_isauthor.c.Kind], 
+        mapper(IsAuthor, table_isauthor,
+            primary_key=[table_isauthor.c.OriginalsID, table_isauthor.c.PeopleID,
+table_isauthor.c.Kind],
             properties={
                'original':  relation(Originals, lazy=False),
                'person':    relation(People, lazy=False),
@@ -219,6 +221,6 @@ table_isauthor.c.Kind],
         sess.flush()
 
 
-        
+
 if __name__ == "__main__":
-    testbase.main()        
+    testenv.main()

@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import unittest
 
 import inheritance.alltests as inheritance
@@ -11,26 +11,31 @@ def suite():
         'orm.lazy_relations',
         'orm.eager_relations',
         'orm.mapper',
+        'orm.expire',
+        'orm.selectable',
         'orm.collection',
         'orm.generative',
         'orm.lazytest1',
         'orm.assorted_eager',
-        
-        'orm.sessioncontext', 
+
+        'orm.naturalpks',
+        'orm.sessioncontext',
         'orm.unitofwork',
         'orm.session',
         'orm.cascade',
         'orm.relationships',
         'orm.association',
         'orm.merge',
+        'orm.pickled',
         'orm.memusage',
-        
+
         'orm.cycles',
 
         'orm.entity',
         'orm.compile',
         'orm.manytomany',
         'orm.onetoone',
+        'orm.dynamic',
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:
@@ -44,4 +49,4 @@ def suite():
 
 
 if __name__ == '__main__':
-    testbase.main(suite())
+    testenv.main(suite())

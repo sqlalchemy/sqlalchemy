@@ -1,0 +1,816 @@
+    Using the Session {@name=unitofwork}
+============
+
+The [Mapper](rel:advdatamapping) is the entrypoint to the configurational API of the SQLAlchemy object relational mapper.  But the primary object one works with when using the ORM is the [Session](rel:docstrings_sqlalchemy.orm.session_Session).
+
+## What does the Session do ?
+
+In the most general sense, the `Session` establishes all conversations with the database and represents a "holding zone" for all the mapped instances which you've loaded or created during its lifespan.  It implements the [Unit of Work](http://martinfowler.com/eaaCatalog/unitOfWork.html) pattern, which means it keeps track of all changes which occur, and is capable of **flushing** those changes to the database as appropriate.   Another important facet of the `Session` is that it's also maintaining **unique** copies of each instance, where "unique" means "only one object with a particular primary key" - this pattern is called the [Identity Map](http://martinfowler.com/eaaCatalog/identityMap.html).
+
+Beyond that, the `Session` implements an interface which let's you move objects in or out of the session in a variety of ways, it provides the entryway to a `Query` object which is used to query the database for data, it is commonly used to provide transactional boundaries (though this is optional), and it also can serve as a configurational "home base" for one or more `Engine` objects, which allows various vertical and horizontal partitioning strategies to be achieved.
+
+## Getting a Session
+
+The `Session` object exists just as a regular Python object, which can be directly instantiated.  However, it takes a fair amount of keyword options, several of which you probably want to set explicitly.  It's fairly inconvenient to deal with the "configuration" of a session every time you want to create one.  Therefore, SQLAlchemy recommends the usage of a helper function called `sessionmaker()`, which typically you call only once for the lifespan of an application.  This function creates a customized `Session` subclass for you, with your desired configurational arguments pre-loaded.  Then, whenever you need a new `Session`, you use your custom `Session` class with no arguments to create the session.
+
+### Using a sessionmaker() Configuration {@name=sessionmaker}
+
+The usage of `sessionmaker()` is illustrated below:
+
+    {python}
+    from sqlalchemy.orm import sessionmaker
+    
+    # create a configured "Session" class
+    Session = sessionmaker(autoflush=True, transactional=True)
+
+    # create a Session
+    sess = Session()
+    
+    # work with sess
+    sess.save(x)
+    sess.commit()
+    
+    # close when finished
+    sess.close()
+
+Above, the `sessionmaker` call creates a class for us, which we assign to the name `Session`.  This class is a subclass of the actual `sqlalchemy.orm.session.Session` class, which will instantiate with the arguments of `autoflush=True` and `transactional=True`.
+
+When you write your application, place the call to `sessionmaker()` somewhere global, and then make your new `Session` class available to the rest of your application.
+
+### Binding Session to an Engine or Connection {@name=binding}
+
+In our previous example regarding `sessionmaker()`, nowhere did we specify how our session would connect to our database.  When the session is configured in this manner, it will look for a database engine to connect with via the `Table` objects that it works with - the chapter called [metadata_tables_binding](rel:metadata_tables_binding) describes how to associate `Table` objects directly with a source of database connections.
+
+However, it is often more straightforward to explicitly tell the session what database engine (or engines) you'd like it to communicate with.  This is particularly handy with multiple-database scenarios where the session can be used as the central point of configuration.  To achieve this, the constructor keyword `bind` is used for a basic single-database configuration:
+
+    {python}
+    # create engine
+    engine = create_engine('postgres://...')
+    
+    # bind custom Session class to the engine
+    Session = sessionmaker(bind=engine, autoflush=True, transactional=True)
+    
+    # work with the session
+    sess = Session()
+    
+One common issue with the above scenario is that an application will often organize its global imports before it ever connects to a database.  Since the `Session` class created by `sessionmaker()` is meant to be a global application object (note we are saying the session *class*, not a session *instance*), we may not have a `bind` argument available.  For this, the `Session` class returned by `sessionmaker()` supports post-configuration of all options, through its method `configure()`:
+
+    {python}
+    # configure Session class with desired options
+    Session = sessionmaker(autoflush=True, transactional=True)
+
+    # later, we create the engine
+    engine = create_engine('postgres://...')
+    
+    # associate it with our custom Session class
+    Session.configure(bind=engine)
+
+    # work with the session
+    sess = Session()
+
+The `Session` also has the ability to be bound to multiple engines.   Descriptions of these scenarios are described in [unitofwork_partitioning](rel:unitofwork_partitioning).
+
+
+#### Binding Session to a Connection {@name=connection}
+
+The examples involving `bind` so far are dealing with the `Engine` object, which is, like the `Session` class itself, a global configurational object.  The `Session` can also be bound to an individual database `Connection`.  The reason you might want to do this is if your application controls the boundaries of transactions using distinct `Transaction` objects (these objects are described in [dbengine_transactions](rel:dbengine_transactions)).  You'd have a transactional `Connection`, and then you'd want to work with an ORM-level `Session` which participates in that transaction.  Since `Connection` is definitely not a globally-scoped object in all but the most rudimental commandline applications, you can bind an individual `Session()` instance to a particular `Connection` not at class configuration time, but at session instance construction time:
+
+    {python}
+    # global application scope.  create Session class, engine
+    Session = sessionmaker(autoflush=True, transactional=True)
+
+    engine = create_engine('postgres://...')
+    
+    ...
+    
+    # local scope, such as within a controller function
+    
+    # connect to the database
+    connection = engine.connect()
+    
+    # bind an individual Session to the connection
+    sess = Session(bind=connection)
+
+### Using create_session() {@name=createsession}
+
+As an alternative to `sessionmaker()`, `create_session()` exists literally as a function which calls the normal `Session` constructor directly.  All arguments are passed through and the new `Session` object is returned:
+
+    {python}
+    session = create_session(bind=myengine)
+    
+The `create_session()` function doesn't add any functionality to the regular `Session`, it just sets up a default argument set of `autoflush=False, transactional=False`.  But also, by calling `create_session()` instead of instantiating `Session` directly, you leave room in your application to change the type of session which the function creates.  For example, an application which is calling `create_session()` in many places, which is typical for a pre-0.4 application, can be changed to use a `sessionmaker()` by just assigning the return of `sessionmaker()` to the `create_session` name:
+
+    {python}
+    # change from:
+    from sqlalchemy.orm import create_session
+
+    # to:
+    create_session = sessionmaker()
+
+## Using the Session 
+
+A typical session conversation starts with creating a new session, or acquiring one from an ongoing context.    You save new objects and load existing ones, make changes, mark some as deleted, and then persist your changes to the database.  If your session is transactional, you use `commit()` to persist any remaining changes and to commit the transaction.  If not, you call `flush()` which will flush any remaining data to the database.
+
+Below, we open a new `Session` using a configured `sessionmaker()`, make some changes, and commit:
+
+    {python}
+    # configured Session class
+    Session = sessionmaker(autoflush=True, transactional=True)
+    
+    sess = Session()
+    d = Data(value=10)
+    sess.save(d)
+    d2 = sess.query(Data).filter(Data.value==15).one()
+    d2.value = 19
+    sess.commit()
+
+### Quickie Intro to Object States {@name=states}
+
+It's helpful to know the states which an instance can have within a session:
+
+* *Transient* - an instance that's not in a session, and is not saved to the database; i.e. it has no database identity.  The only relationship such an object has to the ORM is that its class has a `mapper()` associated with it.
+
+* *Pending* - when you `save()` a transient instance, it becomes pending.  It still wasn't actually flushed to the database yet, but it will be when the next flush occurs.
+
+* *Persistent* - An instance which is present in the session and has a record in the database.  You get persistent instances by either flushing so that the pending instances become persistent, or by querying the database for existing instances (or moving persistent instances from other sessions into your local session).
+
+* *Detached* - an instance which has a record in the database, but is not in any session.  Theres nothing wrong with this, and you can use objects normally when they're detached, **except** they will not be able to issue any SQL in order to load collections or attributes which are not yet loaded, or were marked as "expired".
+
+Knowing these states is important, since the `Session` tries to be strict about ambiguous operations (such as trying to save the same object to two different sessions at the same time).
+
+### Frequently Asked Questions {@name=faq}
+
+* When do I make a `sessionmaker` ?
+
+    Just one time, somewhere in your application's global scope.  It should be looked upon as part of your application's configuration.  If your application has three .py files in a package, you could, for example, place the `sessionmaker` line in your `__init__.py` file; from that point on your other modules say "from mypackage import Session".   That way, everyone else just uses `Session()`, and the configuration of that session is controlled by that central point.
+
+    If your application starts up, does imports, but does not know what database it's going to be connecting to, you can bind the `Session` at the "class" level to the engine later on, using `configure()`.
+
+    In the examples in this section, we will frequently show the `sessionmaker` being created right above the line where we actually invoke `Session()`.  But that's just for example's sake !  In reality, the `sessionmaker` would be somewhere at the module level, and your individual `Session()` calls would be sprinkled all throughout your app, such as in a web application within each controller method.
+
+* When do I make a `Session` ? 
+
+    You typically invoke `Session()` when you first need to talk to your database, and want to save some objects or load some existing ones.  Then, you work with it, save your changes, and then dispose of it....or at the very least `close()` it.  It's not a "global" kind of object, and should be handled more like a "local variable", as it's generally **not** safe to use with concurrent threads.  Sessions are very inexpensive to make, and don't use any resources whatsoever until they are first used...so create some !
+
+    There is also a pattern whereby you're using a **contextual session**, this is described later in [unitofwork_contextual](rel:unitofwork_contextual).  In this pattern, a helper object is maintaining a `Session` for you, most commonly one that is local to the current thread (and sometimes also local to an application instance).  SQLAlchemy 0.4 has worked this pattern out such that it still *looks* like you're creating a new session as you need one...so in that case, it's still a guaranteed win to just say `Session()` whenever you want a session.  
+
+* Is the Session a cache ? 
+
+    Yeee...no.  It's somewhat used as a cache, in that it implements the identity map pattern, and stores objects keyed to their primary key.  However, it doesn't do any kind of query caching.  This means, if you say `session.query(Foo).filter_by(name='bar')`, even if `Foo(name='bar')` is right there, in the identity map, the session has no idea about that.  It has to issue SQL to the database, get the rows back, and then when it sees the primary key in the row, *then* it can look in the local identity map and see that the object is already there.  It's only when you say `query.get({some primary key})` that the `Session` doesn't have to issue a query.
+    
+    Additionally, the Session stores object instances using a weak reference by default.  This also defeats the purpose of using the Session as a cache, unless the `weak_identity_map` flag is set to `False`.
+
+    The `Session` is not designed to be a global object from which everyone consults as a "registry" of objects.  That is the job of a **second level cache**.  A good library for implementing second level caching is [Memcached](http://www.danga.com/memcached/).  It *is* possible to "sort of" use the `Session` in this manner, if you set it to be non-transactional and it never flushes any SQL, but it's not a terrific solution,  since if concurrent threads load the same objects at the same time, you may have multiple copies of the same objects present in collections.
+
+* How can I get the `Session` for a certain object ?
+
+    Use the `object_session()` classmethod available on `Session`:
+    
+        {python}
+        session = Session.object_session(someobject)
+
+* Is the session threadsafe ?
+
+    Nope.  It has no thread synchronization of any kind built in, and particularly when you do a flush operation, it definitely is not open to concurrent threads accessing it, because it holds onto a single database connection at that point.  If you use a session which is non-transactional for read operations only, it's still not thread-"safe", but you also wont get any catastrophic failures either, since it opens and closes connections on an as-needed basis; it's just that different threads might load the same objects independently of each other, but only one will wind up in the identity map (however, the other one might still live in a collection somewhere).
+
+    But the bigger point here is, you should not *want* to use the session with multiple concurrent threads.  That would be like having everyone at a restaurant all eat from the same plate.  The session is a local "workspace" that you use for a specific set of tasks; you don't want to, or need to, share that session with other threads who are doing some other task.  If, on the other hand, there are other threads  participating in the same task you are, such as in a desktop graphical application, then you would be sharing the session with those threads, but you also will have implemented a proper locking scheme (or your graphical framework does) so that those threads do not collide.
+  
+### Session Attributes {@name=attributes} 
+
+The session provides a set of attributes and collection-oriented methods which allow you to view the current state of the session.
+
+The **identity map** is accessed by the `identity_map` attribute, which provides a dictionary interface.  The keys are "identity keys", which are attached to all persistent objects by the attribute `_instance_key`:
+
+    {python}
+    >>> myobject._instance_key 
+    (<class 'test.tables.User'>, (7,))
+
+    >>> myobject._instance_key in session.identity_map
+    True
+
+    >>> session.identity_map.values()
+    [<__main__.User object at 0x712630>, <__main__.Address object at 0x712a70>]
+
+The identity map is a weak-referencing dictionary by default.  This means that objects which are dereferenced on the outside will be removed from the session automatically.  Note that objects which are marked as "dirty" will not fall out of scope until after changes on them have been flushed; special logic kicks in at the point of auto-removal which ensures that no pending changes remain on the object, else a temporary strong reference is created to the object.
+
+Some people prefer objects to stay in the session until explicitly removed in all cases; for this,  you can specify the flag `weak_identity_map=False` to the `create_session` or `sessionmaker` functions so that the `Session` will use a regular dictionary.
+
+While the `identity_map` accessor is currently the actual dictionary used by the `Session` to store instances, you should not add or remove items from this dictionary.  Use the session methods `save_or_update()` and `expunge()` to add or remove items.
+
+The Session also supports an iterator interface in order to see all objects in the identity map:
+
+    {python}
+    for obj in session:
+        print obj
+
+As well as `__contains__()`:
+
+    {python}
+    if obj in session:
+        print "Object is present"
+
+The session is also keeping track of all newly created (i.e. pending) objects, all objects which have had changes since they were last loaded or saved (i.e. "dirty"), and everything that's been marked as deleted.  
+
+    {python}
+    # pending objects recently added to the Session
+    session.new
+    
+    # persistent objects which currently have changes detected
+    # (this collection is now created on the fly each time the property is called)
+    session.dirty
+
+    # persistent objects that have been marked as deleted via session.delete(obj)
+    session.deleted
+
+### Querying
+
+The `query()` function takes one or more classes and/or mappers, along with an optional `entity_name` parameter, and returns a new `Query` object which will issue mapper queries within the context of this Session.  For each mapper is passed, the Query uses that mapper.  For each class, the Query will locate the primary mapper for the class using `class_mapper()`.
+
+    {python}
+    # query from a class
+    session.query(User).filter_by(name='ed').all()
+
+    # query with multiple classes, returns tuples
+    session.query(User).add_entity(Address).join('addresses').filter_by(name='ed').all()
+    
+    # query from a mapper
+    query = session.query(usermapper)
+    x = query.get(1)
+    
+    # query from a class mapped with entity name 'alt_users'
+    q = session.query(User, entity_name='alt_users')
+    y = q.options(eagerload('orders')).all()
+    
+`entity_name` is an optional keyword argument sent with a class object, in order to further qualify which primary mapper to be used; this only applies if there was a `Mapper` created with that particular class/entity name combination, else an exception is raised.  All of the methods on Session which take a class or mapper argument also take the `entity_name` argument, so that a given class can be properly matched to the desired primary mapper.
+
+All instances retrieved by the returned `Query` object will be stored as persistent instances within the originating `Session`.
+
+### Saving New Instances
+
+`save()` is called with a single transient instance as an argument, which is then added to the Session and becomes pending.  When the session is next flushed, the instance will be saved to the database.  If the given instance is not transient, meaning it is either attached to an existing Session or it has a database identity, an exception is raised.
+
+    {python}
+    user1 = User(name='user1')
+    user2 = User(name='user2')
+    session.save(user1)
+    session.save(user2)
+    
+    session.commit()     # write changes to the database
+
+There's also other ways to have objects saved to the session automatically; one is by using cascade rules, and the other is by using a contextual session.  Both of these are described later.
+
+### Updating/Merging Existing Instances
+
+The `update()` method is used when you have a detached instance, and you want to put it back into a `Session`.  Recall that "detached" means the object has a database identity.
+
+Since `update()` is a little picky that way, most people use `save_or_update()`, which checks for an `_instance_key` attribute, and based on whether it's there or not, calls either `save()` or `update()`:
+
+    {python}
+    # load user1 using session 1
+    user1 = sess1.query(User).get(5)
+    
+    # remove it from session 1
+    sess1.expunge(user1)
+    
+    # move it into session 2
+    sess2.save_or_update(user1)
+
+`update()` is also an operation that can happen automatically using cascade rules, just like `save()`.  
+
+`merge()` on the other hand is a little like `update()`, except it creates a **copy** of the given instance in the session, and returns to you that instance; the instance you send it never goes into the session.  `merge()` is much fancier than `update()`; it will actually look to see if an object with the same primary key is already present in the session, and if not will load it by primary key.  Then, it will merge the attributes of the given object into the one which it just located.
+
+This method is useful for bringing in objects which may have been restored from a serialization, such as those stored in an HTTP session, where the object may be present in the session already:
+
+    {python}
+    # deserialize an object
+    myobj = pickle.loads(mystring)
+
+    # "merge" it.  if the session already had this object in the 
+    # identity map, then you get back the one from the current session.
+    myobj = session.merge(myobj)
+
+`merge()` includes an important option called `dont_load`.  When this boolean flag is set to `True`, the merge of a detached object will not force a `get()` of that object from the database.  Normally, `merge()` issues a `get()` for every existing object so that it can load the most recent state of the object, which is then modified according to the state of the given object.  With `dont_load=True`, the `get()` is skipped and `merge()` places an exact copy of the given object in the session.  This allows objects which were retrieved from a caching system to be copied back into a session without any SQL overhead being added.
+
+### Deleting
+
+The `delete` method places an instance into the Session's list of objects to be marked as deleted:
+
+    {python}
+    # mark two objects to be deleted
+    session.delete(obj1)
+    session.delete(obj2)
+
+    # commit (or flush)
+    session.commit()
+
+The big gotcha with `delete()` is that **nothing is removed from collections**.  Such as, if a `User` has a collection of three `Addresses`, deleting an `Address` will not remove it from `user.addresses`:
+
+    {python}
+    >>> address = user.addresses[1]
+    >>> session.delete(address)
+    >>> session.flush()
+    >>> address in user.addresses
+    True
+
+The solution is to use proper cascading:
+
+    {python}
+    mapper(User, users_table, properties={
+        'addresses':relation(Address, cascade="all, delete")
+    })
+    del user.addresses[1]
+    session.flush()
+
+### Flushing
+
+This is the main gateway to what the `Session` does best, which is save everything !  It should be clear by now what a flush looks like:
+    
+    {python}
+    session.flush()
+    
+It also can be called with a list of objects; in this form, the flush operation will be limited only to the objects specified in the list:
+
+    {python}
+    # saves only user1 and address2.  all other modified
+    # objects remain present in the session.
+    session.flush([user1, address2])
+    
+This second form of flush should be used carefully as it will not necessarily locate other dependent objects within the session, whose database representation may have foreign constraint relationships with the objects being operated upon.
+
+Theres also a way to have `flush()` called automatically before each query; this is called "autoflush" and is described below.
+
+Note that when using a `Session` that has been placed into a transaction, the `commit()` method will also `flush()` the `Session` unconditionally before committing the transaction.  
+
+Note that flush **does not change** the state of any collections or entity relationships in memory; for example, if you set a foreign key attribute `b_id` on object `A` with the identifier `B.id`, the change will be flushed to the database, but `A` will not have `B` added to its collection.  If you want to manipulate foreign key attributes directly, `refresh()` or `expire()` the objects whose state needs to be refreshed subsequent to flushing.
+
+### Autoflush
+
+A session can be configured to issue `flush()` calls before each query.  This allows you to immediately have DB access to whatever has been saved to the session.  It's recommended to use autoflush with `transactional=True`, that way an unexpected flush call won't permanently save to the database:
+
+    {python}
+    Session = sessionmaker(autoflush=True, transactional=True)
+    sess = Session()
+    u1 = User(name='jack')
+    sess.save(u1)
+    
+    # reload user1
+    u2 = sess.query(User).filter_by(name='jack').one()
+    assert u2 is u1
+
+    # commit session, flushes whatever is remaining
+    sess.commit()
+
+Autoflush is particularly handy when using "dynamic" mapper relations, so that changes to the underlying collection are immediately available via its query interface.
+
+### Committing
+
+The `commit()` method on `Session` is used specifically when the `Session` is in a transactional state.  The two ways that a session may be placed in a transactional state are to create it using the `transactional=True` option, or to call the `begin()` method.  
+
+`commit()` serves **two** purposes; it issues a `flush()` unconditionally to persist any remaining pending changes, and it issues a commit to all currently managed database connections.  In the typical case this is just a single connection.  After the commit, connection resources which were allocated by the `Session` are released.  This holds true even for a `Session` which specifies `transactional=True`; when such a session is committed, the next transaction is not "begun" until the next database operation occurs.
+
+See the section below on "Managing Transactions" for further detail.
+
+### Expunge / Clear
+
+Expunge removes an object from the Session, sending persistent instances to the detached state, and pending instances to the transient state:
+
+    {python}
+    session.expunge(obj1)
+    
+Use `expunge` when you'd like to remove an object altogether from memory, such as before calling `del` on it, which will prevent any "ghost" operations occurring when the session is flushed.
+
+This `clear()` method is equivalent to `expunge()`-ing everything from the Session:
+    
+    {python}
+    session.clear()
+
+However note that the `clear()` method does not reset any transactional state or connection resources; therefore what you usually want to call instead of `clear()` is `close()`.    
+
+### Closing
+
+The `close()` method issues a `clear()`, and releases any transactional/connection resources.  When connections are returned to the connection pool, whatever transactional state exists is rolled back.
+
+When `close()` is called, the `Session` is in the same state as when it was first created, and is safe to be used again.  `close()` is especially important when using a contextual session, which remains in memory after usage.  By issuing `close()`, the session will be clean for the next request that makes use of it.
+
+### Refreshing / Expiring
+
+To assist with the Session's "sticky" behavior of instances which are present, individual objects can have all of their attributes immediately re-loaded from the database, or marked as "expired" which will cause a re-load to occur upon the next access of any of the object's mapped attributes.  This includes all relationships, so lazy-loaders will be re-initialized, eager relationships will be repopulated.  Any changes marked on the object are discarded:
+
+    {python}
+    # immediately re-load attributes on obj1, obj2
+    session.refresh(obj1)
+    session.refresh(obj2)
+    
+    # expire objects obj1, obj2, attributes will be reloaded
+    # on the next access:
+    session.expire(obj1)
+    session.expire(obj2)
+
+`refresh()` and `expire()` also support being passed a list of individual attribute names in which to be refreshed.  These names can reference any attribute, column-based or relation based:
+
+    {python}
+    # immediately re-load the attributes 'hello', 'world' on obj1, obj2
+    session.refresh(obj1, ['hello', 'world'])
+    session.refresh(obj2, ['hello', 'world'])
+    
+    # expire the attributes 'hello', 'world' objects obj1, obj2, attributes will be reloaded
+    # on the next access:
+    session.expire(obj1, ['hello', 'world'])
+    session.expire(obj2, ['hello', 'world'])
+
+## Cascades
+
+Mappers support the concept of configurable *cascade* behavior on `relation()`s.  This behavior controls how the Session should treat the instances that have a parent-child relationship with another instance that is operated upon by the Session.  Cascade is indicated as a comma-separated list of string keywords, with the possible values `all`, `delete`, `save-update`, `refresh-expire`, `merge`, `expunge`, and `delete-orphan`.
+
+Cascading is configured by setting the `cascade` keyword argument on a `relation()`:
+
+    {python}
+    mapper(Order, order_table, properties={
+        'items' : relation(Item, items_table, cascade="all, delete-orphan"),
+        'customer' : relation(User, users_table, user_orders_table, cascade="save-update"),
+    })
+
+The above mapper specifies two relations, `items` and `customer`.  The `items` relationship specifies "all, delete-orphan" as its `cascade` value, indicating that all  `save`, `update`, `merge`, `expunge`, `refresh` `delete` and `expire` operations performed on a parent `Order` instance should also be performed on the child `Item` instances attached to it (`save` and `update` are cascaded using the `save_or_update()` method, so that the database identity of the instance doesn't matter).  The `delete-orphan` cascade value additionally indicates that if an `Item` instance is no longer associated with an `Order`, it should also be deleted.  The "all, delete-orphan" cascade argument allows a so-called *lifecycle* relationship between an `Order` and an `Item` object.
+
+The `customer` relationship specifies only the "save-update" cascade value, indicating most operations will not be cascaded from a parent `Order` instance to a child `User` instance, except for if the `Order` is attached with a particular session, either via the `save()`, `update()`, or `save-update()` method.
+
+Additionally, when a child item is attached to a parent item that specifies the "save-update" cascade value on the relationship, the child is automatically passed to `save_or_update()` (and the operation is further cascaded to the child item).
+
+Note that cascading doesn't do anything that isn't possible by manually calling Session methods on individual instances within a hierarchy, it merely automates common operations on a group of associated instances.
+
+The default value for `cascade` on `relation()`s is `save-update, merge`.
+
+## Managing Transactions
+
+The Session can manage transactions automatically, including across multiple engines.  When the Session is in a transaction, as it receives requests to execute SQL statements, it adds each individual Connection/Engine encountered to its transactional state.  At commit time, all unflushed data is flushed, and each individual transaction is committed.  If the underlying databases support two-phase semantics, this may be used by the Session as well if two-phase transactions are enabled.
+
+The easiest way to use a Session with transactions is just to declare it as transactional.  The session will remain in a transaction at all times:
+
+    {python}
+    # transactional session
+    Session = sessionmaker(transactional=True)
+    sess = Session()
+    try:
+        item1 = sess.query(Item).get(1)
+        item2 = sess.query(Item).get(2)
+        item1.foo = 'bar'
+        item2.bar = 'foo'
+    
+        # commit- will immediately go into a new transaction afterwards
+        sess.commit()
+    except:
+        # rollback - will immediately go into a new transaction afterwards.
+        sess.rollback()
+
+Things to note above:
+
+  * When using a transactional session, either a `rollback()` or a `close()` call **is required** when an error is raised by `flush()` or `commit()`.  The `flush()` error condition will issue a ROLLBACK to the database automatically, but the state of the `Session` itself remains in an "undefined" state until the user decides whether to rollback or close.
+  * The `commit()` call unconditionally issues a `flush()`.  Particularly when using `transactional=True` in conjunction with `autoflush=True`, explicit `flush()` calls are usually not needed.
+
+Alternatively, a transaction can be begun explicitly using `begin()`:
+
+    {python}
+    # non transactional session
+    Session = sessionmaker(transactional=False)
+    sess = Session()
+    sess.begin()
+    try:
+        item1 = sess.query(Item).get(1)
+        item2 = sess.query(Item).get(2)
+        item1.foo = 'bar'
+        item2.bar = 'foo'
+        sess.commit()
+    except:
+        sess.rollback()
+        raise
+
+Like the `transactional` example, the same rules apply; an explicit `rollback()` or `close()` is required when an error occurs, and the `commit()` call issues a `flush()` as well.
+
+Session also supports Python 2.5's with statement so that the example above can be written as:
+
+    {python}
+    Session = sessionmaker(transactional=False)
+    sess = Session()
+    with sess.begin():
+        item1 = sess.query(Item).get(1)
+        item2 = sess.query(Item).get(2)
+        item1.foo = 'bar'
+        item2.bar = 'foo'
+
+Subtransactions can be created by calling the `begin()` method repeatedly. For each transaction you `begin()` you must always call either `commit()` or `rollback()`. Note that this includes the implicit transaction created by the transactional session. When a subtransaction is created the current transaction of the session is set to that transaction. Commiting the subtransaction will return you to the next outer transaction. Rolling it back will also return you to the next outer transaction, but in addition it will roll back database state to the innermost transaction that supports rolling back to. Usually this means the root transaction, unless you use the nested transaction functionality via the `begin_nested()` method. MySQL and Postgres (and soon Oracle) support using "nested" transactions by creating SAVEPOINTs, :
+
+    {python}
+    Session = sessionmaker(transactional=False)
+    sess = Session()
+    sess.begin()
+    sess.save(u1)
+    sess.save(u2)
+    sess.flush()
+
+    sess.begin_nested() # establish a savepoint
+    sess.save(u3)
+    sess.rollback()  # rolls back u3, keeps u1 and u2
+
+    sess.commit() # commits u1 and u2
+
+Finally, for MySQL, Postgres, and soon Oracle as well, the session can be instructed to use two-phase commit semantics. This will coordinate the commiting of transactions across databases so that the transaction is either committed or rolled back in all databases. You can also `prepare()` the session for interacting with transactions not managed by SQLAlchemy. To use two phase transactions set the flag `twophase=True` on the session:
+
+    {python}
+    engine1 = create_engine('postgres://db1')
+    engine2 = create_engine('postgres://db2')
+    
+    Session = sessionmaker(twophase=True, transactional=True)
+
+    # bind User operations to engine 1, Account operations to engine 2
+    Session.configure(binds={User:engine1, Account:engine2})
+
+    sess = Session()
+    
+    # .... work with accounts and users
+    
+    # commit.  session will issue a flush to all DBs, and a prepare step to all DBs,
+    # before committing both transactions
+    sess.commit()
+
+Be aware that when a crash occurs in one of the databases while the the transactions are prepared you have to manually commit or rollback the prepared transactions in your database as appropriate.
+
+## Embedding SQL Insert/Update Expressions into a Flush {@name=flushsql}
+
+This feature allows the value of a database column to be set to a SQL expression instead of a literal value.  It's especially useful for atomic updates, calling stored procedures, etc.  All you do is assign an expression to an attribute:
+
+    {python}
+    class SomeClass(object):
+        pass
+    mapper(SomeClass, some_table)
+    
+    someobject = session.query(SomeClass).get(5)
+    
+    # set 'value' attribute to a SQL expression adding one
+    someobject.value = some_table.c.value + 1
+    
+    # issues "UPDATE some_table SET value=value+1"
+    session.commit()
+    
+This works both for INSERT and UPDATE statements.  After the flush/commit operation, the `value` attribute on `someobject` gets "deferred", so that when you again access it the newly generated value will be loaded from the database.  This is the same mechanism at work when database-side column defaults fire off.
+
+## Using SQL Expressions with Sessions {@name=sql}
+
+SQL constructs and string statements can be executed via the `Session`.  You'd want to do this normally when your `Session` is transactional and you'd like your free-standing SQL statements to participate in the same transaction.
+
+The two ways to do this are to use the connection/execution services of the Session, or to have your Session participate in a regular SQL transaction.
+
+First, a Session thats associated with an Engine or Connection can execute statements immediately (whether or not it's transactional):
+
+    {python}
+    Session = sessionmaker(bind=engine, transactional=True)
+    sess = Session()
+    result = sess.execute("select * from table where id=:id", {'id':7})
+    result2 = sess.execute(select([mytable], mytable.c.id==7))
+
+To get at the current connection used by the session, which will be part of the current transaction if one is in progress, use `connection()`:
+
+    {python}
+    connection = sess.connection()
+    
+A second scenario is that of a Session which is not directly bound to a connectable.  This session executes statements relative to a particular `Mapper`, since the mappers are bound to tables which are in turn bound to connectables via their `MetaData` (either the session or the mapped tables need to be bound).  In this case, the Session can conceivably be associated with multiple databases through different mappers; so it wants you to send along a `mapper` argument, which can be any mapped class or mapper instance:
+
+    {python}
+    # session is *not* bound to an engine or connection
+    Session = sessionmaker(transactional=True)
+    sess = Session()
+    
+    # need to specify mapper or class when executing
+    result = sess.execute("select * from table where id=:id", {'id':7}, mapper=MyMappedClass)
+    result2 = sess.execute(select([mytable], mytable.c.id==7), mapper=MyMappedClass)
+
+    # need to specify mapper or class when you call connection()
+    connection = sess.connection(MyMappedClass)
+
+The third scenario is when you are using `Connection` and `Transaction` yourself, and want the `Session` to participate.  This is easy, as you just bind the `Session` to the connection:
+
+    {python}
+    # non-transactional session
+    Session = sessionmaker(transactional=False)
+    
+    # non-ORM connection + transaction
+    conn = engine.connect()
+    trans = conn.begin()
+    
+    # bind the Session *instance* to the connection
+    sess = Session(bind=conn)
+    
+    # ... etc
+    
+    trans.commit()
+    
+It's safe to use a `Session` which is transactional or autoflushing, as well as to call `begin()`/`commit()` on the session too; the outermost Transaction object, the one we declared explicitly, controls the scope of the transaction.
+
+When using the `threadlocal` engine context, things are that much easier; the `Session` uses the same connection/transaction as everyone else in the current thread, whether or not you explicitly bind it:
+
+    {python}
+    engine = create_engine('postgres://mydb', strategy="threadlocal")
+    engine.begin()
+    
+    sess = Session()  # session takes place in the transaction like everyone else
+    
+    # ... go nuts
+    
+    engine.commit() # commit the transaction
+
+## Contextual/Thread-local Sessions {@name=contextual}
+
+A common need in applications, particularly those built around web frameworks, is the ability to "share" a `Session` object among disparate parts of an application, without needing to pass the object explicitly to all method and function calls.  What you're really looking for is some kind of "global" session object, or at least "global" to all the parts of an application which are tasked with servicing the current request.  For this pattern, SQLAlchemy provides the ability to enhance the `Session` class generated by `sessionmaker()` to provide auto-contextualizing support.  This means that whenever you create a `Session` instance with its constructor, you get an *existing* `Session` object which is bound to some "context".  By default, this context is the current thread.  This feature is what previously was accomplished using the `sessioncontext` SQLAlchemy extension.
+
+### Creating a Thread-local Context {@name=creating}
+
+The `scoped_session()` function wraps around the `sessionmaker()` function, and produces an object which behaves the same as the `Session` subclass returned by `sessionmaker()`:
+
+    {python}
+    from sqlalchemy.orm import scoped_session, sessionmaker
+    Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
+    
+However, when you instantiate this `Session` "class", in reality the object is pulled from a threadlocal variable, or if it doesn't exist yet, it's created using the underlying class generated by `sessionmaker()`:
+
+    {python}
+    >>> # call Session() the first time.  the new Session instance is created.
+    >>> sess = Session()
+    
+    >>> # later, in the same application thread, someone else calls Session()
+    >>> sess2 = Session()
+    
+    >>> # the two Session objects are *the same* object
+    >>> sess is sess2
+    True
+
+Since the `Session()` constructor now returns the same `Session` object every time within the current thread, the object returned by `scoped_session()` also implements most of the `Session` methods and properties at the "class" level, such that you don't even need to instantiate `Session()`:
+
+    {python}
+    # create some objects
+    u1 = User()
+    u2 = User()
+    
+    # save to the contextual session, without instantiating
+    Session.save(u1)
+    Session.save(u2)
+    
+    # view the "new" attribute
+    assert u1 in Session.new
+    
+    # flush changes (if not using autoflush)
+    Session.flush()
+    
+    # commit transaction (if using a transactional session)
+    Session.commit()
+
+To "dispose" of the `Session`, there's two general approaches.  One is to close out the current session, but to leave it assigned to the current context.  This allows the same object to be re-used on another operation.  This may be called from a current, instantiated `Session`:
+
+    {python}
+    sess.close()
+    
+Or, when using `scoped_session()`, the `close()` method may also be called as a classmethod on the `Session` "class":
+
+    {python}
+    Session.close()
+
+When the `Session` is closed, it remains attached, but clears all of its contents and releases any ongoing transactional resources, including rolling back any remaining transactional state.  The `Session` can then be used again.
+
+The other method is to remove the current session from the current context altogether.  This is accomplished using the classmethod `remove()`:
+
+    {python}
+    Session.remove()
+    
+After `remove()`  is called, the next call to `Session()` will create a *new* `Session` object which then becomes the contextual session.
+
+That, in a nutshell, is all there really is to it.  Now for all the extra things one should know.
+
+### Lifespan of a Contextual Session {@name=lifespan}
+
+A (really, really) common question is when does the contextual session get created, when does it get disposed ?  We'll consider a typical lifespan as used in a web application:
+
+    {diagram}
+    Web Server          Web Framework        User-defined Controller Call
+    --------------      --------------       ------------------------------
+    web request    -> 
+                        call controller ->   # call Session().  this establishes a new,
+                                             # contextual Session.
+                                             sess = Session()
+                                             
+                                             # load some objects, save some changes
+                                             objects = sess.query(MyClass).all()
+                                             
+                                             # some other code calls Session, it's the 
+                                             # same contextual session as "sess"
+                                             sess2 = Session()
+                                             sess2.save(foo)
+                                             sess2.commit()
+                                             
+                                             # generate content to be returned
+                                             return generate_content()
+                        Session.remove() <-
+    web response   <-  
+
+Above, we illustrate a *typical* organization of duties, where the "Web Framework" layer has some integration built-in to manage the span of ORM sessions.  Upon the initial handling of an incoming web request, the framework passes control to a controller.  The controller then calls `Session()` when it wishes to work with the ORM; this method establishes the contextual Session which will remain until it's removed.  Disparate parts of the controller code may all call `Session()` and will get the same session object.  Then, when the controller has completed and the response is to be sent to the web server, the framework **closes out** the current contextual session, above using the `remove()` method which removes the session from the context altogether.
+
+As an alternative, the "finalization" step can also call `Session.close()`, which will leave the same session object in place.  Which one is better ?  For a web framework which runs from a fixed pool of threads, it doesn't matter much.  For a framework which runs a **variable** number of threads, or which **creates and disposes** of a thread for each request, `remove()` is better, since it leaves no resources associated with the thread which might not exist.
+
+* Why close out the session at all ?  Why not just leave it going so the next request doesn't have to do as many queries ?
+
+    There are some cases where you may actually want to do this.  However, this is a special case where you are dealing with data which **does not change** very often, or you don't care about the "freshness" of the data.  In reality, a single thread of a web server may, on a slow day, sit around for many minutes or even hours without being accessed.  When it's next accessed, if data from the previous request still exists in the session, that data may be very stale indeed.  So it's generally better to have an empty session at the start of a web request.
+
+### Associating Classes and Mappers with a Contextual Session {@name=associating}
+
+Another luxury we gain, when we've established a `Session()` that can be globally accessed, is the ability for mapped classes and objects to provide us with session-oriented functionality automatically.  When using the `scoped_session()` function, we access this feature using the `mapper` attribute on the object in place of the normal `sqlalchemy.orm.mapper` function:
+
+    {python}
+    # "contextual" mapper function
+    mapper = Session.mapper
+    
+    # use normally
+    mapper(User, users_table, properties={
+        relation(Address)
+    })
+    mapper(Address, addresses_table)
+
+When we use the contextual `mapper()` function, our `User` and `Address` now gain a new attribute `query`, which will create a `Query` object for us against the contextual session:
+
+    {python}
+    wendy = User.query.filter_by(name='wendy').one()
+
+#### Auto-Save Behavior with Contextual Session's Mapper {@name=autosave}
+
+By default, when using Session.mapper, **new instances are saved into the contextual session automatically upon construction;** there is no longer a need to call `save()`:
+
+    {python}
+    >>> newuser = User(name='ed')
+    >>> assert newuser in Session.new
+    True
+
+The auto-save functionality can cause problems, namely that any `flush()` which occurs before a newly constructed object is fully populated will result in that object being INSERTed without all of its attributes completed.  As a `flush()` is more frequent when using sessions with `autoflush=True`, **the auto-save behavior can be disabled**, using the `save_on_init=False` flag:
+
+    {python}
+    # "contextual" mapper function
+    mapper = Session.mapper
+
+    # use normally, specify no save on init:
+    mapper(User, users_table, properties={
+        relation(Address)
+    }, save_on_init=False)
+    mapper(Address, addresses_table, save_on_init=False)
+
+    # objects now again require explicit "save"
+    >>> newuser = User(name='ed')
+    >>> assert newuser in Session.new
+    False
+    
+    >>> Session.save(newuser)
+    >>> assert newuser in Session.new
+    True
+
+The functionality of `Session.mapper` is an updated version of what used to be accomplished by the `assignmapper()` SQLAlchemy extension.
+    
+[Generated docstrings for scoped_session()](rel:docstrings_sqlalchemy.orm_modfunc_scoped_session)
+
+## Partitioning Strategies
+
+this section is TODO
+
+### Vertical Partitioning
+
+Vertical partitioning places different kinds of objects, or different tables, across multiple databases.
+
+    {python}
+    engine1 = create_engine('postgres://db1')
+    engine2 = create_engine('postgres://db2')
+
+    Session = sessionmaker(twophase=True, transactional=True)
+
+    # bind User operations to engine 1, Account operations to engine 2
+    Session.configure(binds={User:engine1, Account:engine2})
+
+    sess = Session()
+
+### Horizontal Partitioning
+
+Horizontal partitioning partitions the rows of a single table (or a set of tables) across multiple databases.
+
+See the "sharding" example in [attribute_shard.py](http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/sharding/attribute_shard.py)
+
+## Extending Session
+
+Extending the session can be achieved through subclassing as well as through a simple extension class, which resembles the style of [advdatamapping_mapper_extending](rel:advdatamapping_mapper_extending) called [SessionExtension](rel:docstrings_sqlalchemy.orm.session_SessionExtension).  See the docstrings for more information on this class' methods.
+
+Basic usage is similar to `MapperExtension`:
+
+    {python}
+    class MySessionExtension(SessionExtension):
+        def before_commit(self, session):
+            print "before commit!"
+            
+    Session = sessionmaker(extension=MySessionExtension())
+    
+or with `create_session()`:
+
+    {python}
+    sess = create_session(extension=MySessionExtension())
+    
+The same `SessionExtension` instance can be used with any number of sessions.

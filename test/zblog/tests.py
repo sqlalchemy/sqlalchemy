@@ -1,5 +1,4 @@
-import testbase
-
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
@@ -8,14 +7,14 @@ from zblog.user import *
 from zblog.blog import *
 
 
-class ZBlogTest(AssertMixin):
+class ZBlogTest(TestBase, AssertsExecutionResults):
 
     def create_tables(self):
-        tables.metadata.drop_all(bind=testbase.db)
-        tables.metadata.create_all(bind=testbase.db)
+        tables.metadata.drop_all(bind=testing.db)
+        tables.metadata.create_all(bind=testing.db)
     def drop_tables(self):
-        tables.metadata.drop_all(bind=testbase.db)
-        
+        tables.metadata.drop_all(bind=testing.db)
+
     def setUpAll(self):
         self.create_tables()
     def tearDownAll(self):
@@ -31,7 +30,7 @@ class SavePostTest(ZBlogTest):
         super(SavePostTest, self).setUpAll()
         mappers.zblog_mappers()
         global blog_id, user_id
-        s = create_session(bind=testbase.db)
+        s = create_session(bind=testing.db)
         user = User('zbloguser', "Zblog User", "hello", group=administrator)
         blog = Blog(owner=user)
         blog.name = "this is a blog"
@@ -45,12 +44,12 @@ class SavePostTest(ZBlogTest):
     def tearDownAll(self):
         clear_mappers()
         super(SavePostTest, self).tearDownAll()
-        
+
     def testattach(self):
         """test that a transient/pending instance has proper bi-directional behavior.
-        
+
         this requires that lazy loaders do not fire off for a transient/pending instance."""
-        s = create_session(bind=testbase.db)
+        s = create_session(bind=testing.db)
 
         s.begin()
         try:
@@ -62,12 +61,12 @@ class SavePostTest(ZBlogTest):
             assert post in blog.posts
         finally:
             s.rollback()
-            
+
     def testoptimisticorphans(self):
-        """test that instances in the session with un-loaded parents will not 
+        """test that instances in the session with un-loaded parents will not
         get marked as "orphans" and then deleted """
-        s = create_session(bind=testbase.db)
-        
+        s = create_session(bind=testing.db)
+
         s.begin()
         try:
             blog = s.query(Blog).get(blog_id)
@@ -79,6 +78,7 @@ class SavePostTest(ZBlogTest):
             s.flush()
             s.clear()
 
+            user = s.query(User).get(user_id)
             blog = s.query(Blog).get(blog_id)
             post = blog.posts[0]
             comment = Comment(subject="some subject", body="some body")
@@ -86,14 +86,12 @@ class SavePostTest(ZBlogTest):
             comment.user = user
             s.flush()
             s.clear()
-            
+
             assert s.query(Post).get(post.id) is not None
-            
+
         finally:
             s.rollback()
-        
-            
-if __name__ == "__main__":
-    testbase.main()
 
-        
+
+if __name__ == "__main__":
+    testenv.main()

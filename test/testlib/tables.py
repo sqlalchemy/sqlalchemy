@@ -1,10 +1,13 @@
-import testbase
+# can't be imported until the path is setup; be sure to configure
+# first if covering.
 from sqlalchemy import *
+from testlib import testing
 from testlib.schema import Table, Column
 
 
-# these are older test fixtures, used primarily by test/orm/mapper.py and test/orm/unitofwork.py.
-# newer unit tests make usage of test/orm/fixtures.py.
+# these are older test fixtures, used primarily by test/orm/mapper.py and
+# test/orm/unitofwork.py.  newer unit tests make usage of
+# test/orm/fixtures.py.
 
 metadata = MetaData()
 
@@ -39,7 +42,7 @@ keywords = Table('keywords', metadata,
     Column('name', VARCHAR(50)),
 )
 
-userkeywords = Table('userkeywords', metadata, 
+userkeywords = Table('userkeywords', metadata,
     Column('user_id', INT, ForeignKey("users")),
     Column('keyword_id', INT, ForeignKey("keywords")),
 )
@@ -52,18 +55,18 @@ itemkeywords = Table('itemkeywords', metadata,
 
 def create():
     if not metadata.bind:
-        metadata.bind = testbase.db
+        metadata.bind = testing.db
     metadata.create_all()
 def drop():
     if not metadata.bind:
-        metadata.bind = testbase.db
+        metadata.bind = testing.db
     metadata.drop_all()
 def delete():
     for t in metadata.table_iterator(reverse=True):
         t.delete().execute()
 def user_data():
     if not metadata.bind:
-        metadata.bind = testbase.db
+        metadata.bind = testing.db
     users.insert().execute(
         dict(user_id = 7, user_name = 'jack'),
         dict(user_id = 8, user_name = 'ed'),
@@ -71,10 +74,10 @@ def user_data():
     )
 def delete_user_data():
     users.delete().execute()
-        
+
 def data():
     delete()
-    
+
     # with SQLITE, the OID column of a table defaults to the primary key, if it has one.
     # so to database-neutrally get rows back in "insert order" based on OID, we
     # have to also put the primary keys in order for the purpose of these tests
@@ -112,10 +115,10 @@ def data():
         dict(keyword_id=6, name='round'),
         dict(keyword_id=7, name='square')
     )
-    
+
     # this many-to-many table has the keywords inserted
     # in primary key order, to appease the unit tests.
-    # this is because postgres, oracle, and sqlite all support 
+    # this is because postgres, oracle, and sqlite all support
     # true insert-order row id, but of course our pal MySQL does not,
     # so the best it can do is order by, well something, so there you go.
     itemkeywords.insert().execute(
@@ -132,8 +135,11 @@ def data():
 
 class BaseObject(object):
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, ",".join("%s=%s" % (k, repr(v)) for k, v in self.__dict__.iteritems() if k[0] != '_'))
-        
+        return "%s(%s)" % (self.__class__.__name__,
+                           ",".join(["%s=%s" % (k, repr(v))
+                                     for k, v in self.__dict__.iteritems()
+                                     if k[0] != '_']))
+
 class User(BaseObject):
     def __init__(self):
         self.user_id = None
@@ -147,7 +153,7 @@ class Order(BaseObject):
 
 class Item(BaseObject):
     pass
-    
+
 class Keyword(BaseObject):
     pass
 
@@ -159,33 +165,33 @@ user_address_result = [
 {'user_id' : 9, 'addresses' : (Address, [])}
 ]
 
-user_address_orders_result = [{'user_id' : 7, 
+user_address_orders_result = [{'user_id' : 7,
     'addresses' : (Address, [{'address_id' : 1}]),
     'orders' : (Order, [{'order_id' : 1}, {'order_id' : 3},{'order_id' : 5},])
     },
-    {'user_id' : 8, 
+    {'user_id' : 8,
         'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}]),
         'orders' : (Order, [])
     },
-    {'user_id' : 9, 
+    {'user_id' : 9,
         'addresses' : (Address, []),
         'orders' : (Order, [{'order_id' : 2},{'order_id' : 4}])
 }]
 
 user_all_result = [
-{'user_id' : 7, 
+{'user_id' : 7,
     'addresses' : (Address, [{'address_id' : 1}]),
     'orders' : (Order, [
-        {'order_id' : 1, 'items': (Item, [])}, 
+        {'order_id' : 1, 'items': (Item, [])},
         {'order_id' : 3, 'items': (Item, [{'item_id':3, 'item_name':'item 3'}, {'item_id':4, 'item_name':'item 4'}, {'item_id':5, 'item_name':'item 5'}])},
         {'order_id' : 5, 'items': (Item, [])},
         ])
 },
-{'user_id' : 8, 
+{'user_id' : 8,
     'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}]),
     'orders' : (Order, [])
 },
-{'user_id' : 9, 
+{'user_id' : 9,
     'addresses' : (Address, []),
     'orders' : (Order, [
         {'order_id' : 2, 'items': (Item, [{'item_id':1, 'item_name':'item 1'}, {'item_id':2, 'item_name':'item 2'}])},
@@ -215,4 +221,3 @@ order_result = [
 {'order_id' : 4, 'items':(Item, [])},
 {'order_id' : 5, 'items':(Item, [])},
 ]
-

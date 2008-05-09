@@ -1,40 +1,74 @@
 # engine/default.py
-# Copyright (C) 2005, 2006, 2007 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Provide default implementations of per-dialect sqlalchemy.engine classes"""
+"""Default implementations of per-dialect sqlalchemy.engine classes.
 
-from sqlalchemy import schema, exceptions, sql, types
-import sys, re
+These are semi-private implementation classes which are only of importance
+to database dialect authors; dialects will usually use the classes here
+as the base class for their own corresponding classes.
+
+"""
+
+
+import re, random
 from sqlalchemy.engine import base
+from sqlalchemy.sql import compiler, expression
+
+
+AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
+                               re.I | re.UNICODE)
+SELECT_REGEXP = re.compile(r'\s*SELECT', re.I | re.UNICODE)
 
 
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
 
-    def __init__(self, convert_unicode=False, encoding='utf-8', default_paramstyle='named', paramstyle=None, dbapi=None, **kwargs):
+    schemagenerator = compiler.SchemaGenerator
+    schemadropper = compiler.SchemaDropper
+    statement_compiler = compiler.DefaultCompiler
+    preparer = compiler.IdentifierPreparer
+    defaultrunner = base.DefaultRunner
+    supports_alter = True
+    supports_unicode_statements = False
+    max_identifier_length = 9999
+    supports_sane_rowcount = True
+    supports_sane_multi_rowcount = True
+    preexecute_pk_sequences = False
+    supports_pk_autoincrement = True
+    dbapi_type_map = {}
+    default_paramstyle = 'named'
+
+    def __init__(self, convert_unicode=False, assert_unicode=False, encoding='utf-8', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode
+        self.assert_unicode = assert_unicode
         self.encoding = encoding
         self.positional = False
         self._ischema = None
         self.dbapi = dbapi
-        self._figure_paramstyle(paramstyle=paramstyle, default=default_paramstyle)
-    
-    def decode_result_columnname(self, name):
-        """decode a name found in cursor.description to a unicode object."""
-        
-        return name.decode(self.encoding)
-        
-    def dbapi_type_map(self):
-        # most DBAPIs have problems with this (such as, psycocpg2 types 
-        # are unhashable).  So far Oracle can return it.
-        
-        return {}
-            
-    def create_execution_context(self, **kwargs):
-        return DefaultExecutionContext(self, **kwargs)
+        if paramstyle is not None:
+            self.paramstyle = paramstyle
+        elif self.dbapi is not None:
+            self.paramstyle = self.dbapi.paramstyle
+        else:
+            self.paramstyle = self.default_paramstyle
+        self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
+        self.identifier_preparer = self.preparer(self)
+
+        # preexecute_sequences was renamed preexecute_pk_sequences.  If a
+        # subclass has the older property, proxy the new name to the subclass's
+        # property.
+        # TODO: remove @ 0.5.0
+        if (hasattr(self, 'preexecute_sequences') and
+            isinstance(getattr(type(self), 'preexecute_pk_sequences'), bool)):
+            setattr(type(self), 'preexecute_pk_sequences',
+                    property(lambda s: s.preexecute_sequences, doc=(
+                      "Proxy to deprecated preexecute_sequences attribute.")))
+
+    def create_execution_context(self, connection, **kwargs):
+        return DefaultExecutionContext(self, connection, **kwargs)
 
     def type_descriptor(self, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given
@@ -47,23 +81,9 @@ class DefaultDialect(base.Dialect):
             typeobj = typeobj()
         return typeobj
 
-    def supports_unicode_statements(self):
-        """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
-        return False
 
-    def max_identifier_length(self):
-        # TODO: probably raise this and fill out
-        # db modules better
-        return 9999
-
-    def supports_alter(self):
-        return True
-        
     def oid_column_name(self, column):
         return None
-
-    def supports_sane_rowcount(self):
-        return True
 
     def do_begin(self, connection):
         """Implementations might want to put logic here for turning
@@ -77,7 +97,6 @@ class DefaultDialect(base.Dialect):
         autocommit on/off, etc.
         """
 
-        #print "ENGINE ROLLBACK ON ", connection.connection
         connection.rollback()
 
     def do_commit(self, connection):
@@ -85,99 +104,116 @@ class DefaultDialect(base.Dialect):
         autocommit on/off, etc.
         """
 
-        #print "ENGINE COMMIT ON ", connection.connection
         connection.commit()
-        
+
+    def create_xid(self):
+        """Create a random two-phase transaction ID.
+
+        This id will be passed to do_begin_twophase(), do_rollback_twophase(),
+        do_commit_twophase().  Its format is unspecified."""
+
+        return "_sa_%032x" % random.randint(0,2**128)
+
     def do_savepoint(self, connection, name):
-        connection.execute(sql.SavepointClause(name))
+        connection.execute(expression.SavepointClause(name))
 
     def do_rollback_to_savepoint(self, connection, name):
-        connection.execute(sql.RollbackToSavepointClause(name))
+        connection.execute(expression.RollbackToSavepointClause(name))
 
     def do_release_savepoint(self, connection, name):
-        connection.execute(sql.ReleaseSavepointClause(name))
+        connection.execute(expression.ReleaseSavepointClause(name))
 
-    def do_executemany(self, cursor, statement, parameters, **kwargs):
+    def do_executemany(self, cursor, statement, parameters, context=None):
         cursor.executemany(statement, parameters)
 
-    def do_execute(self, cursor, statement, parameters, **kwargs):
+    def do_execute(self, cursor, statement, parameters, context=None):
         cursor.execute(statement, parameters)
-
-    def defaultrunner(self, context):
-        return base.DefaultRunner(context)
 
     def is_disconnect(self, e):
         return False
-        
-    def _set_paramstyle(self, style):
-        self._paramstyle = style
-        self._figure_paramstyle(style)
 
-    paramstyle = property(lambda s:s._paramstyle, _set_paramstyle)
-
-
-    def _figure_paramstyle(self, paramstyle=None, default='named'):
-        if paramstyle is not None:
-            self._paramstyle = paramstyle
-        elif self.dbapi is not None:
-            self._paramstyle = self.dbapi.paramstyle
-        else:
-            self._paramstyle = default
-
-        if self._paramstyle == 'named':
-            self.positional=False
-        elif self._paramstyle == 'pyformat':
-            self.positional=False
-        elif self._paramstyle == 'qmark' or self._paramstyle == 'format' or self._paramstyle == 'numeric':
-            # for positional, use pyformat internally, ANSICompiler will convert
-            # to appropriate character upon compilation
-            self.positional = True
-        else:
-            raise exceptions.DBAPIError("Unsupported paramstyle '%s'" % self._paramstyle)
-
-    def _get_ischema(self):
-        if self._ischema is None:
-            import sqlalchemy.databases.information_schema as ischema
-            self._ischema = ischema.ISchema(self)
-        return self._ischema
-    ischema = property(_get_ischema, doc="""returns an ISchema object for this engine, which allows access to information_schema tables (if supported)""")
 
 class DefaultExecutionContext(base.ExecutionContext):
     def __init__(self, dialect, connection, compiled=None, statement=None, parameters=None):
         self.dialect = dialect
-        self.connection = connection
+        self._connection = self.root_connection = connection
         self.compiled = compiled
-        
+        self.engine = connection.engine
+
         if compiled is not None:
-            self.typemap = compiled.typemap
-            self.column_labels = compiled.column_labels
-            self.statement = unicode(compiled)
-            if parameters is None:
-                self.compiled_parameters = compiled.construct_params({})
-            elif not isinstance(parameters, (list, tuple)):
-                self.compiled_parameters = compiled.construct_params(parameters)
+            # compiled clauseelement.  process bind params, process table defaults,
+            # track collections used by ResultProxy to target and process results
+
+            self.processors = dict([
+                (key, value) for key, value in
+                [(
+                    compiled.bind_names[bindparam],
+                    bindparam.bind_processor(self.dialect)
+                ) for bindparam in compiled.bind_names]
+                if value is not None
+            ])
+
+            self.result_map = compiled.result_map
+
+            if not dialect.supports_unicode_statements:
+                self.statement = unicode(compiled).encode(self.dialect.encoding)
             else:
-                self.compiled_parameters = [compiled.construct_params(m or {}) for m in parameters]
-                if len(self.compiled_parameters) == 1:
-                    self.compiled_parameters = self.compiled_parameters[0]
+                self.statement = unicode(compiled)
+
+            self.isinsert = compiled.isinsert
+            self.isupdate = compiled.isupdate
+            if isinstance(compiled.statement, expression._TextClause):
+                self.returns_rows = self.returns_rows_text(self.statement)
+                self.should_autocommit = compiled.statement._autocommit or self.should_autocommit_text(self.statement)
+            else:
+                self.returns_rows = self.returns_rows_compiled(compiled)
+                self.should_autocommit = getattr(compiled.statement, '_autocommit', False) or self.should_autocommit_compiled(compiled)
+
+            if not parameters:
+                self.compiled_parameters = [compiled.construct_params()]
+                self.executemany = False
+            else:
+                self.compiled_parameters = [compiled.construct_params(m) for m in parameters]
+                self.executemany = len(parameters) > 1
+
+            self.cursor = self.create_cursor()
+            if self.isinsert or self.isupdate:
+                self.__process_defaults()
+            self.parameters = self.__convert_compiled_params(self.compiled_parameters)
+
         elif statement is not None:
-            self.typemap = self.column_labels = None
+            # plain text statement.
+            self.result_map = None
             self.parameters = self.__encode_param_keys(parameters)
-            self.statement = statement
+            self.executemany = len(parameters) > 1
+            if isinstance(statement, unicode) and not dialect.supports_unicode_statements:
+                self.statement = statement.encode(self.dialect.encoding)
+            else:
+                self.statement = statement
+            self.isinsert = self.isupdate = False
+            self.cursor = self.create_cursor()
+            self.returns_rows = self.returns_rows_text(statement)
+            self.should_autocommit = self.should_autocommit_text(statement)
         else:
+            # no statement. used for standalone ColumnDefault execution.
             self.statement = None
-            
-        if self.statement is not None and not dialect.supports_unicode_statements():
-            self.statement = self.statement.encode(self.dialect.encoding)
-            
-        self.cursor = self.create_cursor()
-        
-    engine = property(lambda s:s.connection.engine)
-    
+            self.isinsert = self.isupdate = self.executemany = self.returns_rows = self.should_autocommit = False
+            self.cursor = self.create_cursor()
+
+    connection = property(lambda s:s._connection._branch())
+
     def __encode_param_keys(self, params):
-        """apply string encoding to the keys of dictionary-based bind parameters"""
-        if self.dialect.positional or self.dialect.supports_unicode_statements():
-            return params
+        """apply string encoding to the keys of dictionary-based bind parameters.
+
+        This is only used executing textual, non-compiled SQL expressions."""
+
+        if self.dialect.positional or self.dialect.supports_unicode_statements:
+            if params:
+                return params
+            elif self.dialect.positional:
+                return [()]
+            else:
+                return [{}]
         else:
             def proc(d):
                 # sigh, sometimes we get positional arguments with a dialect
@@ -185,50 +221,71 @@ class DefaultExecutionContext(base.ExecutionContext):
                 if not isinstance(d, dict):
                     return d
                 return dict([(k.encode(self.dialect.encoding), d[k]) for k in d])
-            if isinstance(params, list):
-                return [proc(d) for d in params]
-            else:
-                return proc(params)
+            return [proc(d) for d in params] or [{}]
 
-    def __convert_compiled_params(self, parameters):
-        executemany = parameters is not None and isinstance(parameters, list)
-        encode = not self.dialect.supports_unicode_statements()
-        # the bind params are a CompiledParams object.  but all the DBAPI's hate
-        # that object (or similar).  so convert it to a clean
-        # dictionary/list/tuple of dictionary/tuple of list
-        if parameters is not None:
-           if self.dialect.positional:
-                if executemany:
-                    parameters = [p.get_raw_list() for p in parameters]
+    def __convert_compiled_params(self, compiled_parameters):
+        """convert the dictionary of bind parameter values into a dict or list
+        to be sent to the DBAPI's execute() or executemany() method.
+        """
+
+        processors = self.processors
+        parameters = []
+        if self.dialect.positional:
+            for compiled_params in compiled_parameters:
+                param = []
+                for key in self.compiled.positiontup:
+                    if key in processors:
+                        param.append(processors[key](compiled_params[key]))
+                    else:
+                        param.append(compiled_params[key])
+                parameters.append(param)
+        else:
+            encode = not self.dialect.supports_unicode_statements
+            for compiled_params in compiled_parameters:
+                param = {}
+                if encode:
+                    encoding = self.dialect.encoding
+                    for key in compiled_params:
+                        if key in processors:
+                            param[key.encode(encoding)] = processors[key](compiled_params[key])
+                        else:
+                            param[key.encode(encoding)] = compiled_params[key]
                 else:
-                    parameters = parameters.get_raw_list()
-           else:
-                if executemany:
-                    parameters = [p.get_raw_dict(encode_keys=encode) for p in parameters]
-                else:
-                    parameters = parameters.get_raw_dict(encode_keys=encode)
+                    for key in compiled_params:
+                        if key in processors:
+                            param[key] = processors[key](compiled_params[key])
+                        else:
+                            param[key] = compiled_params[key]
+                parameters.append(param)
         return parameters
-                
-    def is_select(self):
-        """return TRUE if the statement is expected to have result rows."""
-        
-        return re.match(r'SELECT', self.statement.lstrip(), re.I) is not None
+
+    def returns_rows_compiled(self, compiled):
+        return isinstance(compiled.statement, expression.Selectable)
+
+    def returns_rows_text(self, statement):
+        return SELECT_REGEXP.match(statement)
+
+    def should_autocommit_compiled(self, compiled):
+        return isinstance(compiled.statement, expression._UpdateBase)
+
+    def should_autocommit_text(self, statement):
+        return AUTOCOMMIT_REGEXP.match(statement)
+
 
     def create_cursor(self):
-        return self.connection.connection.cursor()
+        return self._connection.connection.cursor()
 
     def pre_execution(self):
         self.pre_exec()
-    
+
     def post_execution(self):
         self.post_exec()
-    
+
     def result(self):
         return self.get_result_proxy()
-            
+
     def pre_exec(self):
-        self._process_defaults()
-        self.parameters = self.__convert_compiled_params(self.compiled_parameters)
+        pass
 
     def post_exec(self):
         pass
@@ -243,7 +300,10 @@ class DefaultExecutionContext(base.ExecutionContext):
             return self.cursor.rowcount
 
     def supports_sane_rowcount(self):
-        return self.dialect.supports_sane_rowcount()
+        return self.dialect.supports_sane_rowcount
+
+    def supports_sane_multi_rowcount(self):
+        return self.dialect.supports_sane_multi_rowcount
 
     def last_inserted_ids(self):
         return self._last_inserted_ids
@@ -255,100 +315,84 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self._last_updated_params
 
     def lastrow_has_defaults(self):
-        return self._lastrow_has_defaults
+        return hasattr(self, 'postfetch_cols') and len(self.postfetch_cols)
 
     def set_input_sizes(self):
         """Given a cursor and ClauseParameters, call the appropriate
-        style of ``setinputsizes()`` on the cursor, using DBAPI types
+        style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
         """
 
-        if isinstance(self.compiled_parameters, list):
-            plist = self.compiled_parameters
-        else:
-            plist = [self.compiled_parameters]
+        types = dict([
+                (self.compiled.bind_names[bindparam], bindparam.type)
+                 for bindparam in self.compiled.bind_names
+            ])
+
         if self.dialect.positional:
             inputsizes = []
-            for params in plist[0:1]:
-                for key in params.positional:
-                    typeengine = params.get_type(key)
-                    dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
-                    if dbtype is not None:
-                        inputsizes.append(dbtype)
-            self.cursor.setinputsizes(*inputsizes)
+            for key in self.compiled.positiontup:
+               typeengine = types[key]
+               dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
+               if dbtype is not None:
+                    inputsizes.append(dbtype)
+            try:
+                self.cursor.setinputsizes(*inputsizes)
+            except Exception, e:
+                self._connection._handle_dbapi_exception(e, None, None, None)
+                raise
         else:
             inputsizes = {}
-            for params in plist[0:1]:
-                for key in params.keys():
-                    typeengine = params.get_type(key)
-                    dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
-                    if dbtype is not None:
-                        inputsizes[key] = dbtype
-            self.cursor.setinputsizes(**inputsizes)
+            for key in self.compiled.bind_names.values():
+                typeengine = types[key]
+                dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
+                if dbtype is not None:
+                    inputsizes[key.encode(self.dialect.encoding)] = dbtype
+            try:
+                self.cursor.setinputsizes(**inputsizes)
+            except Exception, e:
+                self._connection._handle_dbapi_exception(e, None, None, None)
+                raise
 
-    def _process_defaults(self):
+    def __process_defaults(self):
         """generate default values for compiled insert/update statements,
         and generate last_inserted_ids() collection."""
 
-        # TODO: cleanup
-        if self.compiled.isinsert:
-            if isinstance(self.compiled_parameters, list):
-                plist = self.compiled_parameters
-            else:
-                plist = [self.compiled_parameters]
+        if self.executemany:
+            if len(self.compiled.prefetch):
+                drunner = self.dialect.defaultrunner(self)
+                params = self.compiled_parameters
+                for param in params:
+                    # assign each dict of params to self.compiled_parameters;
+                    # this allows user-defined default generators to access the full
+                    # set of bind params for the row
+                    self.compiled_parameters = param
+                    for c in self.compiled.prefetch:
+                        if self.isinsert:
+                            val = drunner.get_column_default(c)
+                        else:
+                            val = drunner.get_column_onupdate(c)
+                        if val is not None:
+                            param[c.key] = val
+                self.compiled_parameters = params
+
+        else:
+            compiled_parameters = self.compiled_parameters[0]
             drunner = self.dialect.defaultrunner(self)
-            self._lastrow_has_defaults = False
-            for param in plist:
-                last_inserted_ids = []
-                # check the "default" status of each column in the table
-                for c in self.compiled.statement.table.c:
-                    # check if it will be populated by a SQL clause - we'll need that
-                    # after execution.
-                    if c in self.compiled.inline_params:
-                        self._lastrow_has_defaults = True
-                        if c.primary_key:
-                            last_inserted_ids.append(None)
-                    # check if its not present at all.  see if theres a default
-                    # and fire it off, and add to bind parameters.  if
-                    # its a pk, add the value to our last_inserted_ids list,
-                    # or, if its a SQL-side default, let it fire off on the DB side, but we'll need
-                    # the SQL-generated value after execution.
-                    elif not c.key in param or param.get_original(c.key) is None:
-                        if isinstance(c.default, schema.PassiveDefault):
-                            self._lastrow_has_defaults = True
-                        newid = drunner.get_column_default(c)
-                        if newid is not None:
-                            param.set_value(c.key, newid)
-                            if c.primary_key:
-                                last_inserted_ids.append(param.get_processed(c.key))
-                        elif c.primary_key:
-                            last_inserted_ids.append(None)
-                    # its an explicitly passed pk value - add it to
-                    # our last_inserted_ids list.
-                    elif c.primary_key:
-                        last_inserted_ids.append(param.get_processed(c.key))
-                # TODO: we arent accounting for executemany() situations
-                # here (hard to do since lastrowid doesnt support it either)
-                self._last_inserted_ids = last_inserted_ids
-                self._last_inserted_params = param
-        elif self.compiled.isupdate:
-            if isinstance(self.compiled_parameters, list):
-                plist = self.compiled_parameters
+
+            for c in self.compiled.prefetch:
+                if self.isinsert:
+                    val = drunner.get_column_default(c)
+                else:
+                    val = drunner.get_column_onupdate(c)
+
+                if val is not None:
+                    compiled_parameters[c.key] = val
+
+            if self.isinsert:
+                self._last_inserted_ids = [compiled_parameters.get(c.key, None) for c in self.compiled.statement.table.primary_key]
+                self._last_inserted_params = compiled_parameters
             else:
-                plist = [self.compiled_parameters]
-            drunner = self.dialect.defaultrunner(self)
-            self._lastrow_has_defaults = False
-            for param in plist:
-                # check the "onupdate" status of each column in the table
-                for c in self.compiled.statement.table.c:
-                    # it will be populated by a SQL clause - we'll need that
-                    # after execution.
-                    if c in self.compiled.inline_params:
-                        pass
-                    # its not in the bind parameters, and theres an "onupdate" defined for the column;
-                    # execute it and add to bind params
-                    elif c.onupdate is not None and (not c.key in param or param.get_original(c.key) is None):
-                        value = drunner.get_column_onupdate(c)
-                        if value is not None:
-                            param.set_value(c.key, value)
-                self._last_updated_params = param
+                self._last_updated_params = compiled_parameters
+
+            self.postfetch_cols = self.compiled.postfetch
+            self.prefetch_cols = self.compiled.prefetch

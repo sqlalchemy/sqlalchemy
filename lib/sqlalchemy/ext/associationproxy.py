@@ -6,10 +6,13 @@ transparent proxied access to the endpoint of an association object.
 See the example ``examples/association/proxied_association.py``.
 """
 
-import weakref, itertools
-import sqlalchemy.exceptions as exceptions
-import sqlalchemy.orm as orm
-import sqlalchemy.util as util
+import itertools
+import weakref
+from sqlalchemy import exceptions
+from sqlalchemy import orm
+from sqlalchemy import util
+from sqlalchemy.orm import collections
+
 
 def association_proxy(targetcollection, attr, **kw):
     """Convenience function for use in mapped classes.  Implements a Python
@@ -60,7 +63,7 @@ class AssociationProxy(object):
     on an object."""
 
     def __init__(self, targetcollection, attr, creator=None,
-                 proxy_factory=None, proxy_bulk_set=None):
+                 getset_factory=None, proxy_factory=None, proxy_bulk_set=None):
         """Arguments are:
 
           targetcollection
@@ -83,6 +86,17 @@ class AssociationProxy(object):
             If you want to construct instances differently, supply a 'creator'
             function that takes arguments as above and returns instances.
 
+          getset_factory
+            Optional.  Proxied attribute access is automatically handled
+            by routines that get and set values based on the `attr` argument
+            for this proxy.
+
+            If you would like to customize this behavior, you may supply a
+            `getset_factory` callable that produces a tuple of `getter` and
+            `setter` functions.  The factory is called with two arguments,
+            the abstract type of the underlying collection and this proxy
+            instance.
+
           proxy_factory
             Optional.  The type of collection to emulate is determined by
             sniffing the target collection.  If your collection type can't be
@@ -94,10 +108,11 @@ class AssociationProxy(object):
             Optional, use with proxy_factory.  See the _set() method for
             details.
         """
-        
+
         self.target_collection = targetcollection # backwards compat name...
         self.value_attr = attr
         self.creator = creator
+        self.getset_factory = getset_factory
         self.proxy_factory = proxy_factory
         self.proxy_bulk_set = proxy_bulk_set
 
@@ -128,27 +143,39 @@ class AssociationProxy(object):
                     "scope")
             return getattr(obj, target)
         return lazy_collection
-        
+
     def __get__(self, obj, class_):
+        if self.owning_class is None:
+            self.owning_class = class_ and class_ or type(obj)
         if obj is None:
-            self.owning_class = class_
-            return
+            return None
         elif self.scalar is None:
             self.scalar = self._target_is_scalar()
+            if self.scalar:
+                self._initialize_scalar_accessors()
 
         if self.scalar:
-            return getattr(getattr(obj, self.target_collection), self.value_attr)
+            return self._scalar_get(getattr(obj, self.target_collection))
         else:
             try:
-                return getattr(obj, self.key)
+                # If the owning instance is reborn (orm session resurrect,
+                # etc.), refresh the proxy cache.
+                creator_id, proxy = getattr(obj, self.key)
+                if id(obj) == creator_id:
+                    return proxy
             except AttributeError:
-                proxy = self._new(self._lazy_collection(weakref.ref(obj)))
-                setattr(obj, self.key, proxy)
-                return proxy
+                pass
+            proxy = self._new(self._lazy_collection(weakref.ref(obj)))
+            setattr(obj, self.key, (id(obj), proxy))
+            return proxy
 
     def __set__(self, obj, values):
+        if self.owning_class is None:
+            self.owning_class = type(obj)
         if self.scalar is None:
             self.scalar = self._target_is_scalar()
+            if self.scalar:
+                self._initialize_scalar_accessors()
 
         if self.scalar:
             creator = self.creator and self.creator or self.target_class
@@ -156,14 +183,33 @@ class AssociationProxy(object):
             if target is None:
                 setattr(obj, self.target_collection, creator(values))
             else:
-                setattr(target, self.value_attr, values)
+                self._scalar_set(target, values)
         else:
             proxy = self.__get__(obj, None)
-            proxy.clear()
-            self._set(proxy, values)
+            if proxy is not values:
+                proxy.clear()
+                self._set(proxy, values)
 
     def __delete__(self, obj):
+        if self.owning_class is None:
+            self.owning_class = type(obj)
         delattr(obj, self.key)
+
+    def _initialize_scalar_accessors(self):
+        if self.getset_factory:
+            get, set = self.getset_factory(None, self)
+        else:
+            get, set = self._default_getset(None)
+        self._scalar_get, self._scalar_set = get, set
+
+    def _default_getset(self, collection_class):
+        attr = self.value_attr
+        getter = util.attrgetter(attr)
+        if collection_class is dict:
+            setter = lambda o, k, v: setattr(o, attr, v)
+        else:
+            setter = lambda o, v: setattr(o, attr, v)
+        return getter, setter
 
     def _new(self, lazy_collection):
         creator = self.creator and self.creator or self.target_class
@@ -172,15 +218,15 @@ class AssociationProxy(object):
         if self.proxy_factory:
             return self.proxy_factory(lazy_collection, creator, self.value_attr)
 
-        value_attr = self.value_attr
-        getter = lambda o: getattr(o, value_attr)
-        setter = lambda o, v: setattr(o, value_attr, v)
-        
+        if self.getset_factory:
+            getter, setter = self.getset_factory(self.collection_class, self)
+        else:
+            getter, setter = self._default_getset(self.collection_class)
+
         if self.collection_class is list:
             return _AssociationList(lazy_collection, creator, getter, setter)
         elif self.collection_class is dict:
-            kv_setter = lambda o, k, v: setattr(o, value_attr, v)
-            return _AssociationDict(lazy_collection, creator, getter, kv_setter)
+            return _AssociationDict(lazy_collection, creator, getter, setter)
         elif self.collection_class is util.Set:
             return _AssociationSet(lazy_collection, creator, getter, setter)
         else:
@@ -214,7 +260,7 @@ class _AssociationList(object):
         lazy_collection
           A callable returning a list-based collection of entities (usually
           an object attribute managed by a SQLAlchemy relation())
-          
+
         creator
           A function that creates new target entities.  Given one parameter:
           value.  The assertion is assumed:
@@ -258,7 +304,7 @@ class _AssociationList(object):
 
     def __getitem__(self, index):
         return self._get(self.col[index])
-    
+
     def __setitem__(self, index, value):
         if not isinstance(index, slice):
             self._set(self.col[index], value)
@@ -293,6 +339,7 @@ class _AssociationList(object):
 
     def __contains__(self, value):
         for member in self.col:
+            # testlib.pragma exempt:__eq__
             if self._get(member) == value:
                 return True
         return False
@@ -367,16 +414,53 @@ class _AssociationList(object):
     def __ge__(self, other): return list(self) >= other
     def __cmp__(self, other): return cmp(list(self), other)
 
+    def __add__(self, iterable):
+        try:
+            other = list(iterable)
+        except TypeError:
+            return NotImplemented
+        return list(self) + other
+
+    def __radd__(self, iterable):
+        try:
+            other = list(iterable)
+        except TypeError:
+            return NotImplemented
+        return other + list(self)
+
+    def __mul__(self, n):
+        if not isinstance(n, int):
+            return NotImplemented
+        return list(self) * n
+    __rmul__ = __mul__
+
+    def __iadd__(self, iterable):
+        self.extend(iterable)
+        return self
+
+    def __imul__(self, n):
+        # unlike a regular list *=, proxied __imul__ will generate unique
+        # backing objects for each copy.  *= on proxied lists is a bit of
+        # a stretch anyhow, and this interpretation of the __imul__ contract
+        # is more plausibly useful than copying the backing objects.
+        if not isinstance(n, int):
+            return NotImplemented
+        if n == 0:
+            self.clear()
+        elif n > 1:
+            self.extend(list(self) * (n - 1))
+        return self
+
     def copy(self):
         return list(self)
 
     def __repr__(self):
         return repr(list(self))
 
-    def hash(self):
+    def __hash__(self):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
 
-_NotProvided = object()
+_NotProvided = util.symbol('_NotProvided')
 class _AssociationDict(object):
     """Generic proxying list which proxies dict operations to a another dict,
     converting association objects to and from a simplified value.
@@ -387,7 +471,7 @@ class _AssociationDict(object):
         lazy_collection
           A callable returning a dict-based collection of entities (usually
           an object attribute managed by a SQLAlchemy relation())
-          
+
         creator
           A function that creates new target entities.  Given two parameters:
           key and value.  The assertion is assumed:
@@ -429,7 +513,7 @@ class _AssociationDict(object):
 
     def __getitem__(self, key):
         return self._get(self.col[key])
-    
+
     def __setitem__(self, key, value):
         if key in self.col:
             self._set(self.col[key], key, value)
@@ -440,6 +524,7 @@ class _AssociationDict(object):
         del self.col[key]
 
     def __contains__(self, key):
+        # testlib.pragma exempt:__hash__
         return key in self.col
     has_key = __contains__
 
@@ -502,7 +587,7 @@ class _AssociationDict(object):
     def popitem(self):
         item = self.col.popitem()
         return (item[0], self._get(item[1]))
-    
+
     def update(self, *a, **kw):
         if len(a) > 1:
             raise TypeError('update expected at most 1 arguments, got %i' %
@@ -521,7 +606,7 @@ class _AssociationDict(object):
     def copy(self):
         return dict(self.items())
 
-    def hash(self):
+    def __hash__(self):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
 
 class _AssociationSet(object):
@@ -534,7 +619,7 @@ class _AssociationSet(object):
         collection
           A callable returning a set-based collection of entities (usually an
           object attribute managed by a SQLAlchemy relation())
-          
+
         creator
           A function that creates new target entities.  Given one parameter:
           value.  The assertion is assumed:
@@ -576,6 +661,7 @@ class _AssociationSet(object):
 
     def __contains__(self, value):
         for member in self.col:
+            # testlib.pragma exempt:__eq__
             if self._get(member) == value:
                 return True
         return False
@@ -617,7 +703,12 @@ class _AssociationSet(object):
         for value in other:
             self.add(value)
 
-    __ior__ = update
+    def __ior__(self, other):
+        if not collections._set_binops_check_strict(self, other):
+            return NotImplemented
+        for value in other:
+            self.add(value)
+        return self
 
     def _set(self):
         return util.Set(iter(self))
@@ -636,7 +727,12 @@ class _AssociationSet(object):
         for value in other:
             self.discard(value)
 
-    __isub__ = difference_update
+    def __isub__(self, other):
+        if not collections._set_binops_check_strict(self, other):
+            return NotImplemented
+        for value in other:
+            self.discard(value)
+        return self
 
     def intersection(self, other):
         return util.Set(self).intersection(other)
@@ -653,7 +749,18 @@ class _AssociationSet(object):
         for value in add:
             self.add(value)
 
-    __iand__ = intersection_update
+    def __iand__(self, other):
+        if not collections._set_binops_check_strict(self, other):
+            return NotImplemented
+        want, have = self.intersection(other), util.Set(self)
+
+        remove, add = have - want, want - have
+
+        for value in remove:
+            self.remove(value)
+        for value in add:
+            self.add(value)
+        return self
 
     def symmetric_difference(self, other):
         return util.Set(self).symmetric_difference(other)
@@ -670,14 +777,25 @@ class _AssociationSet(object):
         for value in add:
             self.add(value)
 
-    __ixor__ = symmetric_difference_update
+    def __ixor__(self, other):
+        if not collections._set_binops_check_strict(self, other):
+            return NotImplemented
+        want, have = self.symmetric_difference(other), util.Set(self)
+
+        remove, add = have - want, want - have
+
+        for value in remove:
+            self.remove(value)
+        for value in add:
+            self.add(value)
+        return self
 
     def issubset(self, other):
         return util.Set(self).issubset(other)
-    
+
     def issuperset(self, other):
         return util.Set(self).issuperset(other)
-                
+
     def clear(self):
         self.col.clear()
 
@@ -694,5 +812,5 @@ class _AssociationSet(object):
     def __repr__(self):
         return repr(util.Set(self))
 
-    def hash(self):
+    def __hash__(self):
         raise TypeError("%s objects are unhashable" % type(self).__name__)

@@ -1,26 +1,28 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import unittest
 
 
 def suite():
     modules_to_test = (
         'sql.testtypes',
+        'sql.columns',
         'sql.constraints',
 
         'sql.generative',
-        
+
         # SQL syntax
         'sql.select',
         'sql.selectable',
-        'sql.case_statement', 
+        'sql.case_statement',
         'sql.labels',
         'sql.unicode',
-        
+
         # assorted round-trip tests
+        'sql.functions',
         'sql.query',
         'sql.quote',
         'sql.rowcount',
-        
+
         # defaults, sequences (postgres/oracle)
         'sql.defaults',
         )
@@ -33,4 +35,4 @@ def suite():
     return alltests
 
 if __name__ == '__main__':
-    testbase.main(suite())
+    testenv.main(suite())

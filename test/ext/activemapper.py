@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from datetime import datetime
 
 from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, many_to_many, objectstore
@@ -10,25 +10,25 @@ import sqlalchemy
 from testlib import *
 
 
-class testcase(PersistTest):
+class testcase(TestBase):
     def setUpAll(self):
         clear_mappers()
         objectstore.clear()
         global Person, Preferences, Address
-        
+
         class Person(ActiveMapper):
             class mapping:
                 __version_id_col__ = 'row_version'
-                full_name   = column(String)
-                first_name  = column(String)
-                middle_name = column(String)
-                last_name   = column(String)
+                full_name   = column(String(128))
+                first_name  = column(String(128))
+                middle_name = column(String(128))
+                last_name   = column(String(128))
                 birth_date  = column(DateTime)
-                ssn         = column(String)
-                gender      = column(String)
-                home_phone  = column(String)
-                cell_phone  = column(String)
-                work_phone  = column(String)
+                ssn         = column(String(128))
+                gender      = column(String(128))
+                home_phone  = column(String(128))
+                cell_phone  = column(String(128))
+                work_phone  = column(String(128))
                 row_version = column(Integer, default=0)
                 prefs_id    = column(Integer, foreign_key=ForeignKey('preferences.id'))
                 addresses   = one_to_many('Address', colname='person_id', backref='person', order_by=['state', 'city', 'postal_code'])
@@ -49,34 +49,34 @@ class testcase(PersistTest):
         class Preferences(ActiveMapper):
             class mapping:
                 __table__        = 'preferences'
-                favorite_color   = column(String)
-                personality_type = column(String)
+                favorite_color   = column(String(128))
+                personality_type = column(String(128))
 
         class Address(ActiveMapper):
             class mapping:
-                # note that in other objects, the 'id' primary key is 
+                # note that in other objects, the 'id' primary key is
                 # automatically added -- if you specify a primary key,
                 # then ActiveMapper will not add an integer primary key
                 # for you.
                 id          = column(Integer, primary_key=True)
-                type        = column(String)
-                address_1   = column(String)
-                city        = column(String)
-                state       = column(String)
-                postal_code = column(String)
+                type        = column(String(128))
+                address_1   = column(String(128))
+                city        = column(String(128))
+                state       = column(String(128))
+                postal_code = column(String(128))
                 person_id   = column(Integer, foreign_key=ForeignKey('person.id'))
 
-        activemapper.metadata.connect(testbase.db)
+        activemapper.metadata.bind = testing.db
         activemapper.create_tables()
-    
+
     def tearDownAll(self):
         clear_mappers()
         activemapper.drop_tables()
-        
+
     def tearDown(self):
         for t in activemapper.metadata.table_iterator(reverse=True):
             t.delete().execute()
-    
+
     def create_person_one(self):
         # create a person
         p1 = Person(
@@ -102,8 +102,8 @@ class testcase(PersistTest):
                 ]
              )
         return p1
-    
-    
+
+
     def create_person_two(self):
         p2 = Person(
                 full_name='Lacey LaCour',
@@ -126,19 +126,19 @@ class testcase(PersistTest):
         # a "self.preferences = Preferences()" into the __init__
         # of Person also doens't seem to fix this
         p2.preferences = Preferences()
-        
+
         return p2
-    
-    
+
+
     def test_create(self):
         p1 = self.create_person_one()
         objectstore.flush()
         objectstore.clear()
-        
-        results = Person.query.select()
-        
+
+        results = Person.query.all()
+
         self.assertEquals(len(results), 1)
-        
+
         person = results[0]
         self.assertEquals(person.id, p1.id)
         self.assertEquals(len(person.addresses), 2)
@@ -149,72 +149,72 @@ class testcase(PersistTest):
         p1 = self.create_person_one()
         objectstore.flush()
         objectstore.clear()
-        
-        person = Person.query.select()[0]
+
+        person = Person.query.first()
         person.gender = 'F'
         objectstore.flush()
         objectstore.clear()
         self.assertEquals(person.row_version, 2)
 
-        person = Person.query.select()[0]
+        person = Person.query.first()
         person.gender = 'M'
         objectstore.flush()
         objectstore.clear()
         self.assertEquals(person.row_version, 3)
 
         #TODO: check that a concurrent modification raises exception
-        p1 = Person.query.select()[0]
-        s1 = objectstore.session
+        p1 = Person.query.first()
+        s1 = objectstore()
         s2 = create_session()
-        objectstore.context.current = s2
-        p2 = Person.query.select()[0]
+        objectstore.registry.set(s2)
+        p2 = Person.query.first()
         p1.first_name = "jack"
         p2.first_name = "ed"
         objectstore.flush()
         try:
-            objectstore.context.current = s1
+            objectstore.registry.set(s1)
             objectstore.flush()
             # Only dialects with a sane rowcount can detect the ConcurrentModificationError
-            if testbase.db.dialect.supports_sane_rowcount():
+            if testing.db.dialect.supports_sane_rowcount:
                 assert False
         except exceptions.ConcurrentModificationError:
             pass
-        
-    
+
+
     def test_delete(self):
         p1 = self.create_person_one()
-        
+
         objectstore.flush()
         objectstore.clear()
-        
-        results = Person.query.select()
+
+        results = Person.query.all()
         self.assertEquals(len(results), 1)
-        
-        results[0].delete()
+
+        objectstore.delete(results[0])
         objectstore.flush()
         objectstore.clear()
-        
-        results = Person.query.select()
+
+        results = Person.query.all()
         self.assertEquals(len(results), 0)
-    
-    
+
+
     def test_multiple(self):
         p1 = self.create_person_one()
         p2 = self.create_person_two()
-        
+
         objectstore.flush()
         objectstore.clear()
-        
+
         # select and make sure we get back two results
-        people = Person.query.select()
+        people = Person.query.all()
         self.assertEquals(len(people), 2)
-                
+
         # make sure that our backwards relationships work
         self.assertEquals(people[0].addresses[0].person.id, p1.id)
         self.assertEquals(people[1].addresses[0].person.id, p2.id)
-        
+
         # try a more complex select
-        results = Person.query.select(
+        results = Person.query.filter(
             or_(
                 and_(
                     Address.c.person_id == Person.c.id,
@@ -225,10 +225,10 @@ class testcase(PersistTest):
                     Preferences.c.favorite_color == 'Green'
                 )
             )
-        )
+        ).all()
         self.assertEquals(len(results), 2)
-        
-    
+
+
     def test_oneway_backref(self):
         # FIXME: I don't know why, but it seems that my backwards relationship
         #        on preferences still ends up being a list even though I pass
@@ -237,32 +237,33 @@ class testcase(PersistTest):
         # uses a function which I dont think existed when you first wrote ActiveMapper.
         p1 = self.create_person_one()
         self.assertEquals(p1.preferences.person, p1)
-        p1.delete()
-        
+        objectstore.flush()
+        objectstore.delete(p1)
+
         objectstore.flush()
         objectstore.clear()
-    
-    
+
+
     def test_select_by(self):
         # FIXME: either I don't understand select_by, or it doesn't work.
         # FIXED (as good as we can for now): yup....everyone thinks it works that way....it only
         # generates joins for keyword arguments, not ColumnClause args.  would need a new layer of
         # "MapperClause" objects to use properties in expressions. (MB)
-        
+
         p1 = self.create_person_one()
         p2 = self.create_person_two()
-        
+
         objectstore.flush()
         objectstore.clear()
-        
-        results = Person.query.join('addresses').select(
-            Address.c.postal_code.like('30075') 
-        )
+
+        results = Person.query.join('addresses').filter(
+            Address.c.postal_code.like('30075')
+        ).all()
         self.assertEquals(len(results), 1)
 
         self.assertEquals(Person.query.count(), 2)
 
-class testmanytomany(PersistTest):
+class testmanytomany(TestBase):
      def setUpAll(self):
          clear_mappers()
          objectstore.clear()
@@ -282,7 +283,7 @@ class testmanytomany(PersistTest):
                  name = column(String(30))
                  foorel = many_to_many("foo", secondarytable, backref='bazrel')
 
-         activemapper.metadata.connect(testbase.db)
+         activemapper.metadata.bind = testing.db
          activemapper.create_tables()
 
      # Create a couple of activemapper objects
@@ -300,9 +301,9 @@ class testmanytomany(PersistTest):
          objectstore.flush()
          objectstore.clear()
 
-         foo1 = foo.query.get_by(name='foo1')
-         baz1 = baz.query.get_by(name='baz1')
-         
+         foo1 = foo.query.filter_by(name='foo1').one()
+         baz1 = baz.query.filter_by(name='baz1').one()
+
          # Just checking ...
          assert (foo1.name == 'foo1')
          assert (baz1.name == 'baz1')
@@ -316,8 +317,8 @@ class testmanytomany(PersistTest):
          # baz1 to foo1.bazrel - (AttributeError: 'foo' object has no attribute 'bazrel')
          foo1.bazrel.append(baz1)
          assert (foo1.bazrel == [baz1])
-        
-class testselfreferential(PersistTest):
+
+class testselfreferential(TestBase):
     def setUpAll(self):
         clear_mappers()
         objectstore.clear()
@@ -328,8 +329,8 @@ class testselfreferential(PersistTest):
                 name = column(String(30))
                 parent_id = column(Integer, foreign_key=ForeignKey('treenode.id'))
                 children = one_to_many('TreeNode', colname='id', backref='parent')
-                
-        activemapper.metadata.connect(testbase.db)
+
+        activemapper.metadata.bind = testing.db
         activemapper.create_tables()
     def tearDownAll(self):
         clear_mappers()
@@ -341,16 +342,16 @@ class testselfreferential(PersistTest):
         t.children.append(TreeNode(name='node3'))
         objectstore.flush()
         objectstore.clear()
-        
-        t = TreeNode.query.get_by(name='node1')
+
+        t = TreeNode.query.filter_by(name='node1').one()
         assert (t.name == 'node1')
         assert (t.children[0].name == 'node2')
         assert (t.children[1].name == 'node3')
         assert (t.children[1].parent is t)
 
         objectstore.clear()
-        t = TreeNode.query.get_by(name='node3')
-        assert (t.parent is TreeNode.query.get_by(name='node1'))
-        
+        t = TreeNode.query.filter_by(name='node3').one()
+        assert (t.parent is TreeNode.query.filter_by(name='node1').one())
+
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

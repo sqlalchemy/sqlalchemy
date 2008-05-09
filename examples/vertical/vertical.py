@@ -10,6 +10,8 @@ import datetime
 e = MetaData('sqlite://')
 e.bind.echo = True
 
+Session = scoped_session(sessionmaker(transactional=True))
+
 # this table represents Entity objects.  each Entity gets a row in this table,
 # with a primary key and a title.
 entities = Table('entities', e, 
@@ -84,10 +86,7 @@ class EntityValue(object):
     the value to the underlying datatype of its EntityField."""
     def __init__(self, key=None, value=None):
         if key is not None:
-            sess = create_session()
-            self.field = sess.query(EntityField).get_by(name=key) or EntityField(key)
-            # close the session, which will make a loaded EntityField a detached instance
-            sess.close()
+            self.field = Session.query(EntityField).filter(EntityField.name==key).first() or EntityField(key)
             if self.field.datatype is None:
                 if isinstance(value, int):
                     self.field.datatype = 'int'
@@ -123,7 +122,7 @@ mapper(Entity, entities, properties = {
 
 # create two entities.  the objects can be used about as regularly as
 # any object can.
-session = create_session()
+session = Session()
 entity = Entity()
 entity.title = 'this is the first entity'
 entity.name =  'this is the name'

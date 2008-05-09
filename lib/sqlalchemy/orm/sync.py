@@ -1,152 +1,86 @@
 # mapper/sync.py
-# Copyright (C) 2005, 2006, 2007 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Contains the ClauseSynchronizer class, which is used to map
-attributes between two objects in a manner corresponding to a SQL
-clause that compares column values.
+"""private module containing functions used for copying data between instances
+based on join conditions.
 """
 
-from sqlalchemy import sql, schema, exceptions
+from sqlalchemy import schema, exceptions, util
+from sqlalchemy.sql import visitors, operators, util as sqlutil
 from sqlalchemy import logging
 from sqlalchemy.orm import util as mapperutil
-import operator
+from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY  # legacy
 
-ONETOMANY = 0
-MANYTOONE = 1
-MANYTOMANY = 2
-
-class ClauseSynchronizer(object):
-    """Given a SQL clause, usually a series of one or more binary
-    expressions between columns, and a set of 'source' and
-    'destination' mappers, compiles a set of SyncRules corresponding
-    to that information.
-
-    The ClauseSynchronizer can then be executed given a set of
-    parent/child objects or destination dictionary, which will iterate
-    through each of its SyncRules and execute them.  Each SyncRule
-    will copy the value of a single attribute from the parent to the
-    child, corresponding to the pair of columns in a particular binary
-    expression, using the source and destination mappers to map those
-    two columns to object attributes within parent and child.
-    """
-
-    def __init__(self, parent_mapper, child_mapper, direction):
-        self.parent_mapper = parent_mapper
-        self.child_mapper = child_mapper
-        self.direction = direction
-        self.syncrules = []
-
-    def compile(self, sqlclause, foreign_keys=None, issecondary=None):
-        def compile_binary(binary):
-            """Assemble a SyncRule given a single binary condition."""
-
-            if binary.operator != operator.eq or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
-                return
-
-            source_column = None
-            dest_column = None
-
-            if foreign_keys is None:
-                if binary.left.table == binary.right.table:
-                    raise exceptions.ArgumentError("need foreign_keys argument for self-referential sync")
-
-                if binary.left in [f.column for f in binary.right.foreign_keys]:
-                    dest_column = binary.right
-                    source_column = binary.left
-                elif binary.right in [f.column for f in binary.left.foreign_keys]:
-                    dest_column = binary.left
-                    source_column = binary.right
-            else:
-                if binary.left in foreign_keys:
-                    source_column=binary.right
-                    dest_column = binary.left
-                elif binary.right in foreign_keys:
-                    source_column = binary.left
-                    dest_column = binary.right
-
-            if source_column and dest_column:
-                if self.direction == ONETOMANY:
-                    self.syncrules.append(SyncRule(self.parent_mapper, source_column, dest_column, dest_mapper=self.child_mapper))
-                elif self.direction == MANYTOONE:
-                    self.syncrules.append(SyncRule(self.child_mapper, source_column, dest_column, dest_mapper=self.parent_mapper))
-                else:
-                    if not issecondary:
-                        self.syncrules.append(SyncRule(self.parent_mapper, source_column, dest_column, dest_mapper=self.child_mapper, issecondary=issecondary))
-                    else:
-                        self.syncrules.append(SyncRule(self.child_mapper, source_column, dest_column, dest_mapper=self.parent_mapper, issecondary=issecondary))
-
-        rules_added = len(self.syncrules)
-        BinaryVisitor(compile_binary).traverse(sqlclause)
-        if len(self.syncrules) == rules_added:
-            raise exceptions.ArgumentError("No syncrules generated for join criterion " + str(sqlclause))
-
-    def dest_columns(self):
-        return [r.dest_column for r in self.syncrules if r.dest_column is not None]
-
-    def execute(self, source, dest, obj=None, child=None, clearkeys=None):
-        for rule in self.syncrules:
-            rule.execute(source, dest, obj, child, clearkeys)
-
-class SyncRule(object):
-    """An instruction indicating how to populate the objects on each
-    side of a relationship.
-
-    In other words, if table1 column A is joined against table2 column
-    B, and we are a one-to-many from table1 to table2, a syncrule
-    would say *take the A attribute from object1 and assign it to the
-    B attribute on object2*.
-
-    A rule contains the source mapper, the source column, destination
-    column, destination mapper in the case of a one/many relationship,
-    and the integer direction of this mapper relative to the
-    association in the case of a many to many relationship.
-    """
-
-    def __init__(self, source_mapper, source_column, dest_column, dest_mapper=None, issecondary=None):
-        self.source_mapper = source_mapper
-        self.source_column = source_column
-        self.issecondary = issecondary
-        self.dest_mapper = dest_mapper
-        self.dest_column = dest_column
-
-        #print "SyncRule", source_mapper, source_column, dest_column, dest_mapper
-
-    def dest_primary_key(self):
+def populate(source, source_mapper, dest, dest_mapper, synchronize_pairs):
+    for l, r in synchronize_pairs:
         try:
-            return self._dest_primary_key
-        except AttributeError:
-            self._dest_primary_key = self.dest_mapper is not None and self.dest_column in self.dest_mapper.pks_by_table[self.dest_column.table]
-            return self._dest_primary_key
+            value = source_mapper._get_state_attr_by_column(source, l)
+        except exceptions.UnmappedColumnError:
+            _raise_col_to_prop(False, source_mapper, l, dest_mapper, r)
 
-    def execute(self, source, dest, obj, child, clearkeys):
-        if source is None:
-            if self.issecondary is False:
-                source = obj
-            elif self.issecondary is True:
-                source = child
-        if clearkeys or source is None:
-            value = None
-            clearkeys = True
-        else:
-            value = self.source_mapper.get_attr_by_column(source, self.source_column)
-        if isinstance(dest, dict):
-            dest[self.dest_column.key] = value
-        else:
-            if clearkeys and self.dest_primary_key():
-                raise exceptions.AssertionError("Dependency rule tried to blank-out primary key column '%s' on instance '%s'" % (str(self.dest_column), mapperutil.instance_str(dest)))
+        try:
+            dest_mapper._set_state_attr_by_column(dest, r, value)
+        except exceptions.UnmappedColumnError:
+            self._raise_col_to_prop(True, source_mapper, l, dest_mapper, r)
 
-            if logging.is_debug_enabled(self.logger):
-                self.logger.debug("execute() instances: %s(%s)->%s(%s) ('%s')" % (mapperutil.instance_str(source), str(self.source_column), mapperutil.instance_str(dest), str(self.dest_column), value))
-            self.dest_mapper.set_attr_by_column(dest, self.dest_column, value)
+def clear(dest, dest_mapper, synchronize_pairs):
+    for l, r in synchronize_pairs:
+        if r.primary_key:
+            raise exceptions.AssertionError("Dependency rule tried to blank-out primary key column '%s' on instance '%s'" % (r, mapperutil.state_str(dest)))
+        try:
+            dest_mapper._set_state_attr_by_column(dest, r, None)
+        except exceptions.UnmappedColumnError:
+            _raise_col_to_prop(True, None, l, dest_mapper, r)
 
-SyncRule.logger = logging.class_logger(SyncRule)
+def update(source, source_mapper, dest, old_prefix, synchronize_pairs):
+    for l, r in synchronize_pairs:
+        try:
+            oldvalue = source_mapper._get_committed_attr_by_column(source.obj(), l)
+            value = source_mapper._get_state_attr_by_column(source, l)
+        except exceptions.UnmappedColumnError:
+            self._raise_col_to_prop(False, source_mapper, l, None, r)
+        dest[r.key] = value
+        dest[old_prefix + r.key] = oldvalue
 
-class BinaryVisitor(sql.ClauseVisitor):
-    def __init__(self, func):
-        self.func = func
+def populate_dict(source, source_mapper, dict_, synchronize_pairs):
+    for l, r in synchronize_pairs:
+        try:
+            value = source_mapper._get_state_attr_by_column(source, l)
+        except exceptions.UnmappedColumnError:
+            _raise_col_to_prop(False, source_mapper, l, None, r)
+            
+        dict_[r.key] = value
 
-    def visit_binary(self, binary):
-        self.func(binary)
+def source_changes(uowcommit, source, source_mapper, synchronize_pairs):
+    for l, r in synchronize_pairs:
+        try:
+            prop = source_mapper._get_col_to_prop(l)
+        except exceptions.UnmappedColumnError:
+            _raise_col_to_prop(False, source_mapper, l, None, r)
+        (added, unchanged, deleted) = uowcommit.get_attribute_history(source, prop.key, passive=True)
+        if added and deleted:
+            return True
+    else:
+        return False
+
+def dest_changes(uowcommit, dest, dest_mapper, synchronize_pairs):
+    for l, r in synchronize_pairs:
+        try:
+            prop = dest_mapper._get_col_to_prop(r)
+        except exceptions.UnmappedColumnError:
+            _raise_col_to_prop(True, None, l, dest_mapper, r)
+        (added, unchanged, deleted) = uowcommit.get_attribute_history(dest, prop.key, passive=True)
+        if added and deleted:
+            return True
+    else:
+        return False
+
+def _raise_col_to_prop(isdest, source_mapper, source_column, dest_mapper, dest_column):
+    if isdest:
+        raise exceptions.UnmappedColumnError("Can't execute sync rule for destination column '%s'; mapper '%s' does not map this column.  Try using an explicit `foreign_keys` collection which does not include this column (or use a viewonly=True relation)." % (dest_column, source_mapper))
+    else:
+        raise exceptions.UnmappedColumnError("Can't execute sync rule for source column '%s'; mapper '%s' does not map this column.  Try using an explicit `foreign_keys` collection which does not include destination column '%s' (or use a viewonly=True relation)." % (source_column, source_mapper, dest_column))
+        

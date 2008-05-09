@@ -44,7 +44,7 @@ class TOCElement(object):
         self.next = None
         self.children = []
         if parent:
-            if len(parent.children):
+            if parent.children:
                 self.previous = parent.children[-1]
                 parent.children[-1].next = self
             parent.children.append(self)

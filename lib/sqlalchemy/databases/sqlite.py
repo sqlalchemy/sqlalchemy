@@ -1,20 +1,31 @@
 # sqlite.py
-# Copyright (C) 2005, 2006, 2007 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import re
+import datetime, re, time
 
-from sqlalchemy import schema, ansisql, exceptions, pool, PassiveDefault
-import sqlalchemy.engine.default as default
+from sqlalchemy import schema, exceptions, pool, PassiveDefault
+from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
-import datetime,time, warnings
 import sqlalchemy.util as util
+from sqlalchemy.sql import compiler, functions as sql_functions
 
-    
+
+SELECT_REGEXP = re.compile(r'\s*(?:SELECT|PRAGMA)', re.I | re.UNICODE)
+
 class SLNumeric(sqltypes.Numeric):
+    def bind_processor(self, dialect):
+        type_ = self.asdecimal and str or float
+        def process(value):
+            if value is not None:
+                return type_(value)
+            else:
+                return value
+        return process
+
     def get_col_spec(self):
         if self.precision is None:
             return "NUMERIC"
@@ -30,14 +41,21 @@ class SLSmallInteger(sqltypes.Smallinteger):
         return "SMALLINT"
 
 class DateTimeMixin(object):
-    def convert_bind_param(self, value, dialect):
-        if value is not None:
-            if getattr(value, 'microsecond', None) is not None:
-                return value.strftime(self.__format__ + "." + str(value.microsecond))
+    __format__ = "%Y-%m-%d %H:%M:%S"
+
+    def bind_processor(self, dialect):
+        def process(value):
+            if isinstance(value, basestring):
+                # pass string values thru
+                return value
+            elif value is not None:
+                if self.__microsecond__ and getattr(value, 'microsecond', None) is not None:
+                    return value.strftime(self.__format__ + "." + str(value.microsecond))
+                else:
+                    return value.strftime(self.__format__)
             else:
-                return value.strftime(self.__format__)
-        else:
-            return None
+                return None
+        return process
 
     def _cvt(self, value, dialect):
         if value is None:
@@ -46,40 +64,49 @@ class DateTimeMixin(object):
             (value, microsecond) = value.split('.')
             microsecond = int(microsecond)
         except ValueError:
-            (value, microsecond) = (value, 0)
+            microsecond = 0
         return time.strptime(value, self.__format__)[0:6] + (microsecond,)
 
 class SLDateTime(DateTimeMixin,sqltypes.DateTime):
     __format__ = "%Y-%m-%d %H:%M:%S"
-    
+    __microsecond__ = True
+
     def get_col_spec(self):
         return "TIMESTAMP"
 
-    def convert_result_value(self, value, dialect):
-        tup = self._cvt(value, dialect)
-        return tup and datetime.datetime(*tup)
+    def result_processor(self, dialect):
+        def process(value):
+            tup = self._cvt(value, dialect)
+            return tup and datetime.datetime(*tup)
+        return process
 
 class SLDate(DateTimeMixin, sqltypes.Date):
     __format__ = "%Y-%m-%d"
+    __microsecond__ = False
 
     def get_col_spec(self):
         return "DATE"
 
-    def convert_result_value(self, value, dialect):
-        tup = self._cvt(value, dialect)
-        return tup and datetime.date(*tup[0:3])
+    def result_processor(self, dialect):
+        def process(value):
+            tup = self._cvt(value, dialect)
+            return tup and datetime.date(*tup[0:3])
+        return process
 
 class SLTime(DateTimeMixin, sqltypes.Time):
     __format__ = "%H:%M:%S"
+    __microsecond__ = True
 
     def get_col_spec(self):
         return "TIME"
 
-    def convert_result_value(self, value, dialect):
-        tup = self._cvt(value, dialect)
-        return tup and datetime.time(*tup[3:7])
+    def result_processor(self, dialect):
+        def process(value):
+            tup = self._cvt(value, dialect)
+            return tup and datetime.time(*tup[3:7])
+        return process
 
-class SLText(sqltypes.TEXT):
+class SLText(sqltypes.Text):
     def get_col_spec(self):
         return "TEXT"
 
@@ -99,44 +126,54 @@ class SLBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
 
-    def convert_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        return value and 1 or 0
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            return value and 1 or 0
+        return process
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value and True or False
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            return value and True or False
+        return process
 
 colspecs = {
-    sqltypes.Integer : SLInteger,
-    sqltypes.Smallinteger : SLSmallInteger,
-    sqltypes.Numeric : SLNumeric,
-    sqltypes.Float : SLNumeric,
-    sqltypes.DateTime : SLDateTime,
-    sqltypes.Date : SLDate,
-    sqltypes.Time : SLTime,
-    sqltypes.String : SLString,
-    sqltypes.Binary : SLBinary,
-    sqltypes.Boolean : SLBoolean,
-    sqltypes.TEXT : SLText,
+    sqltypes.Binary: SLBinary,
+    sqltypes.Boolean: SLBoolean,
     sqltypes.CHAR: SLChar,
+    sqltypes.Date: SLDate,
+    sqltypes.DateTime: SLDateTime,
+    sqltypes.Float: SLNumeric,
+    sqltypes.Integer: SLInteger,
+    sqltypes.NCHAR: SLChar,
+    sqltypes.Numeric: SLNumeric,
+    sqltypes.Smallinteger: SLSmallInteger,
+    sqltypes.String: SLString,
+    sqltypes.Text: SLText,
+    sqltypes.Time: SLTime,
 }
 
-pragma_names = {
-    'INTEGER' : SLInteger,
-    'INT' : SLInteger,
-    'SMALLINT' : SLSmallInteger,
-    'VARCHAR' : SLString,
-    'CHAR' : SLChar,
-    'TEXT' : SLText,
-    'NUMERIC' : SLNumeric,
-    'FLOAT' : SLNumeric,
-    'TIMESTAMP' : SLDateTime,
-    'DATETIME' : SLDateTime,
-    'DATE' : SLDate,
-    'BLOB' : SLBinary,
+ischema_names = {
+    'BLOB': SLBinary,
+    'BOOL': SLBoolean,
+    'BOOLEAN': SLBoolean,
+    'CHAR': SLChar,
+    'DATE': SLDate,
+    'DATETIME': SLDateTime,
+    'DECIMAL': SLNumeric,
+    'FLOAT': SLNumeric,
+    'INT': SLInteger,
+    'INTEGER': SLInteger,
+    'NUMERIC': SLNumeric,
+    'REAL': SLNumeric,
+    'SMALLINT': SLSmallInteger,
+    'TEXT': SLText,
+    'TIME': SLTime,
+    'TIMESTAMP': SLDateTime,
+    'VARCHAR': SLString,
 }
 
 def descriptor():
@@ -148,27 +185,32 @@ def descriptor():
 
 class SQLiteExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
-        if self.compiled.isinsert:
+        if self.compiled.isinsert and not self.executemany:
             if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
                 self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
 
-    def is_select(self):
-        return re.match(r'SELECT|PRAGMA', self.statement.lstrip(), re.I) is not None
-        
-class SQLiteDialect(ansisql.ANSIDialect):
-    
+    def returns_rows_text(self, statement):
+        return SELECT_REGEXP.match(statement)
+
+class SQLiteDialect(default.DefaultDialect):
+    supports_alter = False
+    supports_unicode_statements = True
+    default_paramstyle = 'qmark'
+
     def __init__(self, **kwargs):
-        ansisql.ANSIDialect.__init__(self, default_paramstyle='qmark', **kwargs)
+        default.DefaultDialect.__init__(self, **kwargs)
         def vers(num):
             return tuple([int(x) for x in num.split('.')])
         if self.dbapi is not None:
             sqlite_ver = self.dbapi.version_info
             if sqlite_ver < (2,1,'3'):
-                warnings.warn(RuntimeWarning("The installed version of pysqlite2 (%s) is out-dated, and will cause errors in some cases.  Version 2.1.3 or greater is recommended." % '.'.join([str(subver) for subver in sqlite_ver])))
-            if vers(self.dbapi.sqlite_version) < vers("3.3.13"):
-                warnings.warn(RuntimeWarning("The installed version of sqlite (%s) is out-dated, and will cause errors in some cases.  Version 3.3.13 or greater is recommended." % self.dbapi.sqlite_version))
+                util.warn(
+                    ("The installed version of pysqlite2 (%s) is out-dated "
+                     "and will cause errors in some cases.  Version 2.1.3 "
+                     "or greater is recommended.") %
+                    '.'.join([str(subver) for subver in sqlite_ver]))
         self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
-        
+
     def dbapi(cls):
         try:
             from pysqlite2 import dbapi2 as sqlite
@@ -176,29 +218,21 @@ class SQLiteDialect(ansisql.ANSIDialect):
             try:
                 from sqlite3 import dbapi2 as sqlite #try the 2.5+ stdlib name.
             except ImportError:
-                try:
-                    sqlite = __import__('sqlite') # skip ourselves
-                except ImportError:
-                    raise e
+                raise e
         return sqlite
     dbapi = classmethod(dbapi)
 
-    def compiler(self, statement, bindparams, **kwargs):
-        return SQLiteCompiler(self, statement, bindparams, **kwargs)
-
-    def schemagenerator(self, *args, **kwargs):
-        return SQLiteSchemaGenerator(self, *args, **kwargs)
-
-    def schemadropper(self, *args, **kwargs):
-        return SQLiteSchemaDropper(self, *args, **kwargs)
-
-    def supports_alter(self):
-        return False
-
-    def preparer(self):
-        return SQLiteIdentifierPreparer(self)
+    def server_version_info(self, connection):
+        return self.dbapi.sqlite_version_info
 
     def create_connect_args(self, url):
+        if url.username or url.password or url.host or url.port:
+            raise exceptions.ArgumentError(
+                "Invalid SQLite URL: %s\n"
+                "Valid SQLite URL forms are:\n"
+                " sqlite:///:memory: (or, sqlite://)\n"
+                " sqlite:///relative/path/to/file.db\n"
+                " sqlite:////absolute/path/to/file.db" % (url,))
         filename = url.database or ':memory:'
 
         opts = url.query.copy()
@@ -213,42 +247,75 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def create_execution_context(self, **kwargs):
-        return SQLiteExecutionContext(self, **kwargs)
-
-    def supports_unicode_statements(self):
-        return True
-
-    def last_inserted_ids(self):
-        return self.context.last_inserted_ids
+    def create_execution_context(self, connection, **kwargs):
+        return SQLiteExecutionContext(self, connection, **kwargs)
 
     def oid_column_name(self, column):
         return "oid"
 
+    def is_disconnect(self, e):
+        return isinstance(e, self.dbapi.ProgrammingError) and "Cannot operate on a closed database." in str(e)
+
+    def table_names(self, connection, schema):
+        if schema is not None:
+            qschema = self.identifier_preparer.quote_identifier(schema)
+            master = '%s.sqlite_master' % qschema
+            s = ("SELECT name FROM %s "
+                 "WHERE type='table' ORDER BY name") % (master,)
+            rs = connection.execute(s)
+        else:
+            try:
+                s = ("SELECT name FROM "
+                     " (SELECT * FROM sqlite_master UNION ALL "
+                     "  SELECT * FROM sqlite_temp_master) "
+                     "WHERE type='table' ORDER BY name")
+                rs = connection.execute(s)
+            except exceptions.DBAPIError:
+                raise
+                s = ("SELECT name FROM sqlite_master "
+                     "WHERE type='table' ORDER BY name")
+                rs = connection.execute(s)
+
+        return [row[0] for row in rs]
+
     def has_table(self, connection, table_name, schema=None):
-        cursor = connection.execute("PRAGMA table_info(%s)" %
-           self.identifier_preparer.quote_identifier(table_name), {})
+        quote = self.identifier_preparer.quote_identifier
+        if schema is not None:
+            pragma = "PRAGMA %s." % quote(schema)
+        else:
+            pragma = "PRAGMA "
+        qtable = quote(table_name)
+        cursor = connection.execute("%stable_info(%s)" % (pragma, qtable))
         row = cursor.fetchone()
 
-        # consume remaining rows, to work around: http://www.sqlite.org/cvstrac/tktview?tn=1884
-        while cursor.fetchone() is not None:pass
+        # consume remaining rows, to work around
+        # http://www.sqlite.org/cvstrac/tktview?tn=1884
+        while cursor.fetchone() is not None:
+            pass
 
         return (row is not None)
 
     def reflecttable(self, connection, table, include_columns):
-        c = connection.execute("PRAGMA table_info(%s)" % self.preparer().format_table(table), {})
+        preparer = self.identifier_preparer
+        if table.schema is None:
+            pragma = "PRAGMA "
+        else:
+            pragma = "PRAGMA %s." % preparer.quote_identifier(table.schema)
+        qtable = preparer.format_table(table, False)
+
+        c = connection.execute("%stable_info(%s)" % (pragma, qtable))
         found_table = False
         while True:
             row = c.fetchone()
             if row is None:
                 break
-            #print "row! " + repr(row)
+
             found_table = True
-            (name, type, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4] is not None, row[5])
+            (name, type_, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4] is not None, row[5])
             name = re.sub(r'^\"|\"$', '', name)
             if include_columns and name not in include_columns:
                 continue
-            match = re.match(r'(\w+)(\(.*?\))?', type)
+            match = re.match(r'(\w+)(\(.*?\))?', type_)
             if match:
                 coltype = match.group(1)
                 args = match.group(2)
@@ -256,16 +323,15 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 coltype = "VARCHAR"
                 args = ''
 
-            #print "coltype: " + repr(coltype) + " args: " + repr(args)
             try:
-                coltype = pragma_names[coltype]
+                coltype = ischema_names[coltype]
             except KeyError:
-                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
-                coltype = sqltypes.NULLTYPE
-                
+                util.warn("Did not recognize type '%s' of column '%s'" %
+                          (coltype, name))
+                coltype = sqltypes.NullType
+
             if args is not None:
                 args = re.findall(r'(\d+)', args)
-                #print "args! " +repr(args)
                 coltype = coltype(*[int(a) for a in args])
 
             colargs= []
@@ -276,7 +342,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
 
-        c = connection.execute("PRAGMA foreign_key_list(%s)" % self.preparer().format_table(table), {})
+        c = connection.execute("%sforeign_key_list(%s)" % (pragma, qtable))
         fks = {}
         while True:
             row = c.fetchone()
@@ -292,7 +358,6 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 fk = ([],[])
                 fks[constraint_name] = fk
 
-            #print "row! " + repr([key for key in row.keys()]), repr(row)
             # look up the table based on the given table's engine, not 'self',
             # since it could be a ProxyEngine
             remotetable = schema.Table(tablename, table.metadata, autoload=True, autoload_with=connection)
@@ -305,7 +370,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
         for name, value in fks.iteritems():
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1]))
         # check for UNIQUE indexes
-        c = connection.execute("PRAGMA index_list(%s)" % self.preparer().format_table(table), {})
+        c = connection.execute("%sindex_list(%s)" % (pragma, qtable))
         unique_indexes = []
         while True:
             row = c.fetchone()
@@ -315,23 +380,27 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 unique_indexes.append(row[1])
         # loop thru unique indexes for one that includes the primary key
         for idx in unique_indexes:
-            c = connection.execute("PRAGMA index_info(" + idx + ")", {})
+            c = connection.execute("%sindex_info(%s)" % (pragma, idx))
             cols = []
             while True:
                 row = c.fetchone()
                 if row is None:
                     break
                 cols.append(row[2])
-                col = table.columns[row[2]]
 
-class SQLiteCompiler(ansisql.ANSICompiler):
-    def visit_cast(self, cast):
+
+class SQLiteCompiler(compiler.DefaultCompiler):
+    functions = compiler.DefaultCompiler.functions.copy()
+    functions.update (
+        {
+            sql_functions.now: 'CURRENT_TIMESTAMP'
+        }
+    )
+
+    def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
             return super(SQLiteCompiler, self).visit_cast(cast)
         else:
-            if len(self.select_stack):
-                # not sure if we want to set the typemap here...
-                self.typemap.setdefault("CAST", cast.type)
             return self.process(cast.clause)
 
     def limit_clause(self, select):
@@ -350,10 +419,26 @@ class SQLiteCompiler(ansisql.ANSICompiler):
         # sqlite has no "FOR UPDATE" AFAICT
         return ''
 
-class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
+    def visit_insert(self, insert_stmt):
+        self.isinsert = True
+        colparams = self._get_colparams(insert_stmt)
+        preparer = self.preparer
+
+        if not colparams:
+            return "INSERT INTO %s DEFAULT VALUES" % (
+                (preparer.format_table(insert_stmt.table),))
+        else:
+            return ("INSERT INTO %s (%s) VALUES (%s)" %
+                    (preparer.format_table(insert_stmt.table),
+                     ', '.join([preparer.format_column(c[0])
+                                for c in colparams]),
+                     ', '.join([c[1] for c in colparams])))
+
+
+class SQLiteSchemaGenerator(compiler.SchemaGenerator):
 
     def get_column_specification(self, column, **kwargs):
-        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
+        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -372,12 +457,36 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     #    else:
     #        super(SQLiteSchemaGenerator, self).visit_primary_key_constraint(constraint)
 
-class SQLiteSchemaDropper(ansisql.ANSISchemaDropper):
+class SQLiteSchemaDropper(compiler.SchemaDropper):
     pass
 
-class SQLiteIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
+    reserved_words = util.Set([
+        'add', 'after', 'all', 'alter', 'analyze', 'and', 'as', 'asc',
+        'attach', 'autoincrement', 'before', 'begin', 'between', 'by',
+        'cascade', 'case', 'cast', 'check', 'collate', 'column', 'commit',
+        'conflict', 'constraint', 'create', 'cross', 'current_date',
+        'current_time', 'current_timestamp', 'database', 'default',
+        'deferrable', 'deferred', 'delete', 'desc', 'detach', 'distinct',
+        'drop', 'each', 'else', 'end', 'escape', 'except', 'exclusive',
+        'explain', 'false', 'fail', 'for', 'foreign', 'from', 'full', 'glob',
+        'group', 'having', 'if', 'ignore', 'immediate', 'in', 'index',
+        'initially', 'inner', 'insert', 'instead', 'intersect', 'into', 'is',
+        'isnull', 'join', 'key', 'left', 'like', 'limit', 'match', 'natural',
+        'not', 'notnull', 'null', 'of', 'offset', 'on', 'or', 'order', 'outer',
+        'plan', 'pragma', 'primary', 'query', 'raise', 'references',
+        'reindex', 'rename', 'replace', 'restrict', 'right', 'rollback',
+        'row', 'select', 'set', 'table', 'temp', 'temporary', 'then', 'to',
+        'transaction', 'trigger', 'true', 'union', 'unique', 'update', 'using',
+        'vacuum', 'values', 'view', 'virtual', 'when', 'where',
+        ])
+
     def __init__(self, dialect):
-        super(SQLiteIdentifierPreparer, self).__init__(dialect, omit_schema=True)
+        super(SQLiteIdentifierPreparer, self).__init__(dialect)
 
 dialect = SQLiteDialect
 dialect.poolclass = pool.SingletonThreadPool
+dialect.statement_compiler = SQLiteCompiler
+dialect.schemagenerator = SQLiteSchemaGenerator
+dialect.schemadropper = SQLiteSchemaDropper
+dialect.preparer = SQLiteIdentifierPreparer

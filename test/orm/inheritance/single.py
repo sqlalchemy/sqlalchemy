@@ -1,14 +1,14 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
 
 
-class SingleInheritanceTest(AssertMixin):
+class SingleInheritanceTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         global employees_table
-        employees_table = Table('employees', metadata, 
+        employees_table = Table('employees', metadata,
             Column('employee_id', Integer, primary_key=True),
             Column('name', String(50)),
             Column('manager_data', String(50)),
@@ -57,10 +57,10 @@ class SingleInheritanceTest(AssertMixin):
         session.save(e2)
         session.flush()
 
-        assert session.query(Employee).select() == [m1, e1, e2]
-        assert session.query(Engineer).select() == [e1, e2]
-        assert session.query(Manager).select() == [m1]
-        assert session.query(JuniorEngineer).select() == [e2]
-        
+        assert session.query(Employee).all() == [m1, e1, e2]
+        assert session.query(Engineer).all() == [e1, e2]
+        assert session.query(Manager).all() == [m1]
+        assert session.query(JuniorEngineer).all() == [e2]
+
 if __name__ == '__main__':
-    testbase.main()
+    testenv.main()

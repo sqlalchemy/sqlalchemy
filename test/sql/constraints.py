@@ -1,18 +1,20 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
+from sqlalchemy import exceptions
 from testlib import *
+from testlib import config, engines
 
-class ConstraintTest(AssertMixin):
-    
+class ConstraintTest(TestBase, AssertsExecutionResults):
+
     def setUp(self):
         global metadata
-        metadata = MetaData(testbase.db)
-        
+        metadata = MetaData(testing.db)
+
     def tearDown(self):
         metadata.drop_all()
-    
+
     def test_constraint(self):
-        employees = Table('employees', metadata, 
+        employees = Table('employees', metadata,
             Column('id', Integer),
             Column('soc', String(40)),
             Column('name', String(30)),
@@ -29,7 +31,7 @@ class ConstraintTest(AssertMixin):
         metadata.create_all()
 
     def test_circular_constraint(self):
-        a = Table("a", metadata, 
+        a = Table("a", metadata,
             Column('id', Integer, primary_key=True),
             Column('bid', Integer),
             ForeignKeyConstraint(["bid"], ["b.id"], name="afk")
@@ -42,7 +44,7 @@ class ConstraintTest(AssertMixin):
         metadata.create_all()
 
     def test_circular_constraint_2(self):
-        a = Table("a", metadata, 
+        a = Table("a", metadata,
             Column('id', Integer, primary_key=True),
             Column('bid', Integer, ForeignKey("b.id")),
             )
@@ -51,15 +53,15 @@ class ConstraintTest(AssertMixin):
             Column("aid", Integer, ForeignKey("a.id", use_alter=True, name="bfk")),
             )
         metadata.create_all()
-        
+
     @testing.unsupported('mysql')
     def test_check_constraint(self):
-        foo = Table('foo', metadata, 
+        foo = Table('foo', metadata,
             Column('id', Integer, primary_key=True),
             Column('x', Integer),
             Column('y', Integer),
             CheckConstraint('x>y'))
-        bar = Table('bar', metadata, 
+        bar = Table('bar', metadata,
             Column('id', Integer, primary_key=True),
             Column('x', Integer, CheckConstraint('x>7')),
             Column('z', Integer)
@@ -79,7 +81,7 @@ class ConstraintTest(AssertMixin):
             assert False
         except exceptions.SQLError:
             assert True
-    
+
     def test_unique_constraint(self):
         foo = Table('foo', metadata,
             Column('id', Integer, primary_key=True),
@@ -105,7 +107,7 @@ class ConstraintTest(AssertMixin):
             assert False
         except exceptions.SQLError:
             assert True
-        
+
     def test_index_create(self):
         employees = Table('employees', metadata,
                           Column('id', Integer, primary_key=True),
@@ -113,14 +115,14 @@ class ConstraintTest(AssertMixin):
                           Column('last_name', String(30)),
                           Column('email_address', String(30)))
         employees.create()
-        
+
         i = Index('employee_name_index',
                   employees.c.last_name, employees.c.first_name)
         i.create()
         assert i in employees.indexes
-        
+
         i2 = Index('employee_email_index',
-                   employees.c.email_address, unique=True)        
+                   employees.c.email_address, unique=True)
         i2.create()
         assert i2 in employees.indexes
 
@@ -133,13 +135,13 @@ class ConstraintTest(AssertMixin):
                           Column('emailAddress', String(30)))
 
         employees.create()
-        
+
         i = Index('employeeNameIndex',
                   employees.c.lastName, employees.c.firstName)
         i.create()
-        
+
         i = Index('employeeEmailIndex',
-                  employees.c.emailAddress, unique=True)        
+                  employees.c.emailAddress, unique=True)
         i.create()
 
         # Check that the table is useable. This is mostly for pg,
@@ -162,7 +164,7 @@ class ConstraintTest(AssertMixin):
 
         Index('sport_announcer', events.c.sport, events.c.announcer, unique=True)
         Index('idx_winners', events.c.winner)
-        
+
         index_names = [ ix.name for ix in events.indexes ]
         assert 'ix_events_name' in index_names
         assert 'ix_events_location' in index_names
@@ -171,34 +173,138 @@ class ConstraintTest(AssertMixin):
         assert len(index_names) == 4
 
         capt = []
-        connection = testbase.db.connect()
+        connection = testing.db.connect()
         # TODO: hacky, put a real connection proxy in
-        ex = connection._Connection__execute
+        ex = connection._Connection__execute_raw
         def proxy(context):
             capt.append(context.statement)
             capt.append(repr(context.parameters))
             ex(context)
-        connection._Connection__execute = proxy
-        schemagen = testbase.db.dialect.schemagenerator(connection)
+        connection._Connection__execute_raw = proxy
+        schemagen = testing.db.dialect.schemagenerator(testing.db.dialect, connection)
         schemagen.traverse(events)
-        
+
         assert capt[0].strip().startswith('CREATE TABLE events')
-        
+
         s = set([capt[x].strip() for x in [2,4,6,8]])
-        
+
         assert s == set([
             'CREATE UNIQUE INDEX ix_events_name ON events (name)',
             'CREATE INDEX ix_events_location ON events (location)',
             'CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)',
             'CREATE INDEX idx_winners ON events (winner)'
             ])
-            
+
         # verify that the table is functional
         events.insert().execute(id=1, name='hockey finals', location='rink',
                                 sport='hockey', announcer='some canadian',
                                 winner='sweden')
         ss = events.select().execute().fetchall()
 
-            
-if __name__ == "__main__":    
-    testbase.main()
+
+class ConstraintCompilationTest(TestBase, AssertsExecutionResults):
+    class accum(object):
+        def __init__(self):
+            self.statements = []
+        def __call__(self, sql, *a, **kw):
+            self.statements.append(sql)
+        def __contains__(self, substring):
+            for s in self.statements:
+                if substring in s:
+                    return True
+            return False
+        def __str__(self):
+            return '\n'.join([repr(x) for x in self.statements])
+        def clear(self):
+            del self.statements[:]
+
+    def setUp(self):
+        self.sql = self.accum()
+        opts = config.db_opts.copy()
+        opts['strategy'] = 'mock'
+        opts['executor'] = self.sql
+        self.engine = engines.testing_engine(options=opts)
+
+
+    def _test_deferrable(self, constraint_factory):
+        meta = MetaData(self.engine)
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer),
+                  constraint_factory(deferrable=True))
+        t.create()
+        assert 'DEFERRABLE' in self.sql, self.sql
+        assert 'NOT DEFERRABLE' not in self.sql, self.sql
+        self.sql.clear()
+        meta.clear()
+
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer),
+                  constraint_factory(deferrable=False))
+        t.create()
+        assert 'NOT DEFERRABLE' in self.sql
+        self.sql.clear()
+        meta.clear()
+
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer),
+                  constraint_factory(deferrable=True, initially='IMMEDIATE'))
+        t.create()
+        assert 'NOT DEFERRABLE' not in self.sql
+        assert 'INITIALLY IMMEDIATE' in self.sql
+        self.sql.clear()
+        meta.clear()
+
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer),
+                  constraint_factory(deferrable=True, initially='DEFERRED'))
+        t.create()
+
+        assert 'NOT DEFERRABLE' not in self.sql
+        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+
+    def test_deferrable_pk(self):
+        factory = lambda **kw: PrimaryKeyConstraint('a', **kw)
+        self._test_deferrable(factory)
+
+    def test_deferrable_table_fk(self):
+        factory = lambda **kw: ForeignKeyConstraint(['b'], ['tbl.a'], **kw)
+        self._test_deferrable(factory)
+
+    def test_deferrable_column_fk(self):
+        meta = MetaData(self.engine)
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer,
+                         ForeignKey('tbl.a', deferrable=True,
+                                    initially='DEFERRED')))
+        t.create()
+        assert 'DEFERRABLE' in self.sql, self.sql
+        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+
+    def test_deferrable_unique(self):
+        factory = lambda **kw: UniqueConstraint('b', **kw)
+        self._test_deferrable(factory)
+
+    def test_deferrable_table_check(self):
+        factory = lambda **kw: CheckConstraint('a < b', **kw)
+        self._test_deferrable(factory)
+
+    def test_deferrable_column_check(self):
+        meta = MetaData(self.engine)
+        t = Table('tbl', meta,
+                  Column('a', Integer),
+                  Column('b', Integer,
+                         CheckConstraint('a < b',
+                                         deferrable=True,
+                                         initially='DEFERRED')))
+        t.create()
+        assert 'DEFERRABLE' in self.sql, self.sql
+        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+
+
+if __name__ == "__main__":
+    testenv.main()

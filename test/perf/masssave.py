@@ -1,29 +1,29 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import types
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
 
 
-NUM = 250000
+NUM = 2500
 
-class SaveTest(AssertMixin):
+class SaveTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global items, metadata
-        metadata = MetaData(testbase.db)
-        items = Table('items', metadata, 
+        metadata = MetaData(testing.db)
+        items = Table('items', metadata,
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))
         items.create()
     def tearDownAll(self):
         clear_mappers()
         metadata.drop_all()
-        
+
     def testsave(self):
         class Item(object):pass
-            
+
         m = mapper(Item, items)
-        
+
         for x in range(0,NUM/50):
             sess = create_session()
             query = sess.query(Item)
@@ -48,5 +48,7 @@ class SaveTest(AssertMixin):
         rep.sort(sorter)
         for x in rep[0:30]:
             print x
+
+
 if __name__ == "__main__":
-    testbase.main()        
+    testenv.main()

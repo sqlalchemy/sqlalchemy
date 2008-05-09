@@ -1,7 +1,7 @@
 # times how long it takes to create 26000 objects
-import testbase
+import testenv; testenv.simple_setup()
 
-from sqlalchemy.orm.attributes import *
+from sqlalchemy.orm import attributes
 import time
 import gc
 
@@ -13,18 +13,17 @@ class User(object):
 class Address(object):
     pass
 
-attr_manager = AttributeManager()
 if manage_attributes:
-    attr_manager.register_attribute(User, 'id', uselist=False)
-    attr_manager.register_attribute(User, 'name', uselist=False)
-    attr_manager.register_attribute(User, 'addresses', uselist=True, trackparent=True)
-    attr_manager.register_attribute(Address, 'email', uselist=False)
+    attributes.register_attribute(User, 'id', False, False)
+    attributes.register_attribute(User, 'name', False, False)
+    attributes.register_attribute(User, 'addresses', True, False, trackparent=True)
+    attributes.register_attribute(Address, 'email', False, False)
 
 now = time.time()
 for i in range(0,130):
     u = User()
     if init_attributes:
-        attr_manager.init_attr(u)
+        attributes.manage(u)
     u.id = i
     u.name = "user " + str(i)
     if not manage_attributes:
@@ -32,7 +31,7 @@ for i in range(0,130):
     for j in range(0,200):
         a = Address()
         if init_attributes:
-            attr_manager.init_attr(a)
+            attributes.manage(a)
         a.email = 'foo@bar.com'
         u.addresses.append(a)
 #    gc.collect()

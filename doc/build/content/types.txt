@@ -5,49 +5,67 @@ The package `sqlalchemy.types` defines the datatype identifiers which may be use
 
 ### Built-in Types {@name=standard}
 
-SQLAlchemy comes with a set of standard generic datatypes, which are defined as classes.   
+SQLAlchemy comes with a set of standard generic datatypes, which are defined as classes.  Types are usually used when defining tables, and can be left as a class or instantiated, for example:
 
-The standard set of generic types are:
+    {python}
+    mytable = Table('mytable', metadata,
+        Column('myid', Integer, primary_key=True),
+        Column('data', String(30)),
+        Column('info', Unicode(100)),
+        Column('value', Number(7,4)) 
+        )
 
-    {python title="package sqlalchemy.types"}
-    class String(TypeEngine):
-        def __init__(self, length=None)
-        
-    class Integer(TypeEngine)
-    
-    class SmallInteger(Integer)
-    
-    class Numeric(TypeEngine): 
-        def __init__(self, precision=10, length=2)
-    
-    class Float(Numeric):
-        def __init__(self, precision=10)
-    
-    # DateTime, Date and Time types deal with datetime objects from the Python datetime module
-    class DateTime(TypeEngine)
-    
-    class Date(TypeEngine)
-    
-    class Time(TypeEngine)
-    
-    class Binary(TypeEngine): 
-        def __init__(self, length=None)
-        
-    class Boolean(TypeEngine)
-    
-    # converts unicode strings to raw bytes
-    # as bind params, raw bytes to unicode as 
-    # rowset values, using the unicode encoding 
-    # setting on the engine (defaults to 'utf-8')
-    class Unicode(TypeDecorator):
-        impl = String
-    
-    # uses the pickle protocol to serialize data
-    # in/out of Binary columns
-    class PickleType(TypeDecorator):
-        impl = Binary
+Following is a rundown of the standard types.
 
-More specific subclasses of these types are available, which various database engines may choose to implement specifically, allowing finer grained control over types:
+#### String
+
+This type is the base type for all string and character types, such as `Unicode`, `TEXT`, `CLOB`, etc.  By default it generates a VARCHAR in DDL.  It includes an argument `length`, which indicates the length in characters of the type, as well as `convert_unicode` and `assert_unicode`, which are booleans.  `length` will be used as the length argument when generating DDL.  If `length` is omitted, the `String` type resolves into the `TEXT` type.
+
+`convert_unicode=True` indicates that incoming strings, if they are Python `unicode` strings, will be encoded into a raw bytestring using the `encoding` attribute of the dialect (defaults to `utf-8`).  Similarly, raw bytestrings coming back from the database will be decoded into `unicode` objects on the way back.
+
+`assert_unicode` is set to `None` by default. When `True`, it indicates that incoming bind parameters will be checked that they are in fact  `unicode` objects, else an error is raised.  A value of `'warn'` instead raises a warning.  Setting it to `None` indicates that the dialect-level `convert_unicode` setting should take place, whereas setting it to `False` disables it unconditionally  (this flag is new as of version 0.4.2).
+
+Both `convert_unicode` and `assert_unicode` may be set at the engine level as flags to `create_engine()`.
+
+#### Unicode
+
+The `Unicode` type is shorthand for `String` with `convert_unicode=True` and `assert_unicode='warn'`.  When writing a Unicode-aware application, it is strongly recommended that this type is used, and that only Unicode strings are used in the application.  By "Unicode string" we mean a string with a u, i.e. `u'hello'`.  Otherwise, particularly when using the ORM, data will be converted to Unicode when it returns from the database, but local data which was generated locally will not be in Unicode format, which can create confusion.
+
+#### Text / UnicodeText
+
+These are the "unbounded" versions of ``String`` and ``Unicode``.  They have no "length" parameter, and generate a column type of TEXT or CLOB.
+
+#### Numeric
+
+Numeric types return `decimal.Decimal` objects by default.  The flag `asdecimal=False` may be specified which enables the type to pass data straight through.   Numeric also takes "precision" and "scale" arguments which are used when CREATE TABLE is issued.
+
+#### Float
+
+Float types return Python floats.  Float also takes a "precision" argument which is used when CREATE TABLE is issued.
+
+#### Datetime/Date/Time
+
+Date and time types return objects from the Python `datetime` module.  Most DBAPIs have built in support for the datetime module, with the noted exception of SQLite.  In the case of SQLite, date and time types are stored as strings which are then converted back to datetime objects when rows are returned.
+
+#### Interval
+
+The Interval type deals with `datetime.timedelta` objects.  In Postgres, the native INTERVAL type is used; for others, the value is stored as a date which is relative to the "epoch" (Jan. 1, 1970).
+
+#### Binary
+
+The Binary type generates BLOB or BYTEA when tables are created, and also converts incoming values using the `Binary` callable provided by each DBAPI.  
+
+#### Boolean
+
+Boolean typically uses BOOLEAN or SMALLINT on the CREATE TABLE side, and returns Python `True` or `False`.
+
+#### PickleType
+
+PickleType builds upon the Binary type to apply Python's `pickle.dumps()` to incoming objects, and `pickle.loads()` on the way out, allowing any pickleable Python object to be stored as a serialized binary field.
+
+#### SQL-Specific Types {@name=sqlspecific}
+
+These are subclasses of the generic types and include:
 
     {python}
     class FLOAT(Numeric)
@@ -63,19 +81,7 @@ More specific subclasses of these types are available, which various database en
     class BLOB(Binary)
     class BOOLEAN(Boolean)
 
-When using a specific database engine, these types are adapted even further via a set of database-specific subclasses defined by the database engine.
-There may eventually be more type objects that are defined for specific databases.  An example of this would be Postgres' Array type.
-
-Type objects are specified to table meta data using either the class itself, or an instance of the class.  Creating an instance of the class allows you to specify parameters for the type, such as string length, numerical precision, etc.:
-
-    {python}
-    mytable = Table('mytable', engine, 
-        # define type using a class
-        Column('my_id', Integer, primary_key=True), 
-        
-        # define type using an object instance
-        Column('value', Number(7,4)) 
-    )
+The idea behind the SQL-specific types is that a CREATE TABLE statement would generate the exact type specified.  
 
 ### Dialect Specific Types {@name=dialect}
 
@@ -102,21 +108,29 @@ Or some postgres types:
 
 ### Creating your Own Types {@name=custom}
 
-User-defined types can be created, to support either database-specific types, or customized pre-processing of query parameters as well as post-processing of result set data.  You can make your own classes to perform these operations.  To augment the behavior of a `TypeEngine` type, such as `String`, the `TypeDecorator` class is used:
+User-defined types can be created which can augment the bind parameter and result processing capabilities of the built in types.  This is usually achieved using the `TypeDecorator` class, which "decorates" the behavior of any existing type.  As of version 0.4.2, the new `process_bind_param()` and `process_result_value()` methods should be used:
 
     {python}
     import sqlalchemy.types as types
 
     class MyType(types.TypeDecorator):
-        """basic type that decorates String, prefixes values with "PREFIX:" on 
+        """a type that decorates Unicode, prefixes values with "PREFIX:" on 
         the way in and strips it off on the way out."""
-        impl = types.String
-        def convert_bind_param(self, value, engine):
+        
+        impl = types.Unicode
+        
+        def process_bind_param(self, value, engine):
             return "PREFIX:" + value
-        def convert_result_value(self, value, engine):
-            return value[7:]
             
-The `PickleType` class is an instance of `TypeDecorator` already and can be subclassed directly.
+        def process_result_value(self, value, engine):
+            return value[7:]
+        
+        def copy(self):
+            return MyType(self.impl.length)
+
+Note that the "old" way to process bind parameters and result values, the `convert_bind_param()` and `convert_result_value()` methods, are still available.  The downside of these is that when using a type which already processes data such as the `Unicode` type, you need to call the superclass version of these methods directly.  Using `process_bind_param()` and `process_result_value()`, user-defined code can return and receive the desired Python data directly.
+
+As of version 0.4.2, `TypeDecorator` should generally be used for any user-defined type which redefines the behavior of another type, including other `TypeDecorator` subclasses such as `PickleType`, and the new `process_...()` methods described above should be used.  
 
 To build a type object from scratch, which will not have a corresponding database-specific implementation, subclass `TypeEngine`:
 
@@ -126,14 +140,17 @@ To build a type object from scratch, which will not have a corresponding databas
     class MyType(types.TypeEngine):
         def __init__(self, precision = 8):
             self.precision = precision
+            
         def get_col_spec(self):
             return "MYTYPE(%s)" % self.precision
+            
         def convert_bind_param(self, value, engine):
             return value
+            
         def convert_result_value(self, value, engine):
             return value
 
-Once you make your type, its immediately useable:
+Once you make your type, it's immediately useable:
 
     {python}
     table = Table('foo', meta,

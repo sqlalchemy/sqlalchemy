@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from datetime import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -26,7 +26,7 @@ class InheritTest(ORMTest):
                 nullable=True),
             Column('quantity', Float, default=1.),
             )
-            
+
         documents_table = Table('documents', metadata,
             Column('document_id', Integer, primary_key=True),
             Column('document_type', String(128)),
@@ -38,7 +38,7 @@ class InheritTest(ORMTest):
             Column('data', Binary),
             Column('size', Integer, default=0),
             )
-            
+
         class Product(object):
             def __init__(self, name, mark=''):
                 self.name = name
@@ -73,8 +73,8 @@ class InheritTest(ORMTest):
                 self.data = data
             def __repr__(self):
                 return '<%s %s>' % (self.__class__.__name__, self.name)
-                
-        class RasterDocument(Document): 
+
+        class RasterDocument(Document):
             pass
 
     def testone(self):
@@ -91,12 +91,12 @@ class InheritTest(ORMTest):
         specification_mapper = mapper(SpecLine, specification_table,
             properties=dict(
                 master=relation(Assembly,
-                    foreignkey=specification_table.c.master_id,
+                    foreign_keys=[specification_table.c.master_id],
                     primaryjoin=specification_table.c.master_id==products_table.c.product_id,
                     lazy=True, backref=backref('specification', primaryjoin=specification_table.c.master_id==products_table.c.product_id),
                     uselist=False),
-                slave=relation(Product, 
-                    foreignkey=specification_table.c.slave_id,
+                slave=relation(Product,
+                    foreign_keys=[specification_table.c.slave_id],
                     primaryjoin=specification_table.c.slave_id==products_table.c.product_id,
                     lazy=True, uselist=False),
                 quantity=specification_table.c.quantity,
@@ -118,7 +118,7 @@ class InheritTest(ORMTest):
         session.flush()
         session.clear()
 
-        a1 = session.query(Product).get_by(name='a1')
+        a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
         print orig
         print new
@@ -134,8 +134,8 @@ class InheritTest(ORMTest):
 
         specification_mapper = mapper(SpecLine, specification_table,
             properties=dict(
-                slave=relation(Product, 
-                    foreignkey=specification_table.c.slave_id,
+                slave=relation(Product,
+                    foreign_keys=[specification_table.c.slave_id],
                     primaryjoin=specification_table.c.slave_id==products_table.c.product_id,
                     lazy=True, uselist=False),
                 )
@@ -150,7 +150,7 @@ class InheritTest(ORMTest):
         orig = repr([s, s2])
         session.flush()
         session.clear()
-        new = repr(session.query(SpecLine).select())
+        new = repr(session.query(SpecLine).all())
         print orig
         print new
         assert orig == new == '[<SpecLine 1.0 <Product p1>>, <SpecLine 1.0 <Detail d1>>]'
@@ -167,12 +167,12 @@ class InheritTest(ORMTest):
         specification_mapper = mapper(SpecLine, specification_table,
             properties=dict(
                 master=relation(Assembly, lazy=False, uselist=False,
-                    foreignkey=specification_table.c.master_id,
+                    foreign_keys=[specification_table.c.master_id],
                     primaryjoin=specification_table.c.master_id==products_table.c.product_id,
                     backref=backref('specification', primaryjoin=specification_table.c.master_id==products_table.c.product_id, cascade="all, delete-orphan"),
                     ),
                 slave=relation(Product, lazy=False,  uselist=False,
-                    foreignkey=specification_table.c.slave_id,
+                    foreign_keys=[specification_table.c.slave_id],
                     primaryjoin=specification_table.c.slave_id==products_table.c.product_id,
                     ),
                 quantity=specification_table.c.quantity,
@@ -202,7 +202,7 @@ class InheritTest(ORMTest):
         session.flush()
         session.clear()
 
-        a1 = session.query(Product).get_by(name='a1')
+        a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
         print orig
         print new
@@ -240,19 +240,18 @@ class InheritTest(ORMTest):
         session.flush()
         session.clear()
 
-        a1 = session.query(Product).get_by(name='a1')
+        a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
         print orig
         print new
         assert orig == new  == '<Assembly a1> specification=None documents=[<RasterDocument doc2>]'
 
         del a1.documents[0]
-        session.save(a1)
         session.flush()
         session.clear()
 
-        a1 = session.query(Product).get_by(name='a1')
-        assert len(session.query(Document).select()) == 0
+        a1 = session.query(Product).filter_by(name='a1').one()
+        assert len(session.query(Document).all()) == 0
 
     def testfive(self):
         """tests the late compilation of mappers"""
@@ -260,23 +259,17 @@ class InheritTest(ORMTest):
         specification_mapper = mapper(SpecLine, specification_table,
             properties=dict(
                 master=relation(Assembly, lazy=False, uselist=False,
-                    foreignkey=specification_table.c.master_id,
+                    foreign_keys=[specification_table.c.master_id],
                     primaryjoin=specification_table.c.master_id==products_table.c.product_id,
                     backref=backref('specification', primaryjoin=specification_table.c.master_id==products_table.c.product_id),
                     ),
                 slave=relation(Product, lazy=False,  uselist=False,
-                    foreignkey=specification_table.c.slave_id,
+                    foreign_keys=[specification_table.c.slave_id],
                     primaryjoin=specification_table.c.slave_id==products_table.c.product_id,
                     ),
                 quantity=specification_table.c.quantity,
                 )
             )
-
-        detail_mapper = mapper(Detail, inherits=Product,
-            polymorphic_identity='detail')
-
-        raster_document_mapper = mapper(RasterDocument, inherits=Document,
-            polymorphic_identity='raster_document')
 
         product_mapper = mapper(Product, products_table,
             polymorphic_on=products_table.c.product_type,
@@ -285,8 +278,8 @@ class InheritTest(ORMTest):
                     backref='product', cascade='all, delete-orphan'),
             })
 
-        assembly_mapper = mapper(Assembly, inherits=Product,
-            polymorphic_identity='assembly')
+        detail_mapper = mapper(Detail, inherits=Product,
+            polymorphic_identity='detail')
 
         document_mapper = mapper(Document, documents_table,
             polymorphic_on=documents_table.c.document_type,
@@ -296,6 +289,12 @@ class InheritTest(ORMTest):
                 data=deferred(documents_table.c.data),
                 ),
             )
+
+        raster_document_mapper = mapper(RasterDocument, inherits=Document,
+            polymorphic_identity='raster_document')
+
+        assembly_mapper = mapper(Assembly, inherits=Product,
+            polymorphic_identity='assembly')
 
         session = create_session()
 
@@ -308,11 +307,11 @@ class InheritTest(ORMTest):
         session.flush()
         session.clear()
 
-        a1 = session.query(Product).get_by(name='a1')
+        a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
         print orig
         print new
         assert orig == new  == '<Assembly a1> specification=[<SpecLine 1.0 <Detail d1>>] documents=[<Document doc1>, <RasterDocument doc2>]'
-    
-if __name__ == "__main__":    
-    testbase.main()
+
+if __name__ == "__main__":
+    testenv.main()

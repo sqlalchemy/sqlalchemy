@@ -37,12 +37,14 @@ def formatdocstring(content):
 <%def name="inline_links(toc, extension, paged)"><%
     def link(match):
         (module, desc) = match.group(1,2)
-        if desc.endswith('()'):
+        if not desc:
+            path = "docstrings_" + module
+        elif desc.endswith('()'):
             path = "docstrings_" + module + "_modfunc_" + desc[:-2]
         else:
             path = "docstrings_" + module + "_" + desc
-        return capture(nav.toclink, toc=toc, path=path, description=desc, extension=extension, paged=paged)
-    return lambda content: re.sub(r'\[(.+?)#(.+?)?\]', link, content)
+        return capture(nav.toclink, toc=toc, path=path, description=desc or None, extension=extension, paged=paged)
+    return lambda content: re.sub('\[(.+?)#(.*?)\]', link, content)
 %></%def>
 
 <%namespace name="formatting" file="formatting.html"/>

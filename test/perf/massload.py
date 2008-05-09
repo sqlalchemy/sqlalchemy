@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import time
 #import gc
 #import sqlalchemy.orm.attributes as attributes
@@ -6,19 +6,22 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
 
+"""
+
+we are testing session.expunge() here, also that the attributes and unitofwork
+packages dont keep dereferenced stuff hanging around.
+
+for best results, dont run with sqlite :memory: database, and keep an eye on
+top while it runs
+"""
+
 NUM = 2500
 
-"""
-we are testing session.expunge() here, also that the attributes and unitofwork packages dont keep dereferenced
-stuff hanging around.
-
-for best results, dont run with sqlite :memory: database, and keep an eye on top while it runs"""
-
-class LoadTest(AssertMixin):
+class LoadTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global items, meta
-        meta = MetaData(testbase.db)
-        items = Table('items', meta, 
+        meta = MetaData(testing.db)
+        items = Table('items', meta,
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))
         items.create()
@@ -30,10 +33,10 @@ class LoadTest(AssertMixin):
             for y in range(x*500-500 + 1, x*500 + 1):
                 l.append({'item_id':y, 'value':'this is item #%d' % y})
             items.insert().execute(*l)
-            
+
     def testload(self):
         class Item(object):pass
-            
+
         m = mapper(Item, items)
         sess = create_session()
         now = time.time()
@@ -41,7 +44,7 @@ class LoadTest(AssertMixin):
         for x in range (1,NUM/100):
             # this is not needed with cpython which clears non-circular refs immediately
             #gc.collect()
-            l = query.select(items.c.item_id.between(x*100 - 100 + 1, x*100))
+            l = query.filter(items.c.item_id.between(x*100 - 100 + 1, x*100)).all()
             assert len(l) == 100
             print "loaded ", len(l), " items "
             # modifying each object will insure that the objects get placed in the "dirty" list
@@ -56,6 +59,7 @@ class LoadTest(AssertMixin):
             #objectstore.expunge(*l)
         total = time.time() -now
         print "total time ", total
-        
+
+
 if __name__ == "__main__":
-    testbase.main()        
+    testenv.main()

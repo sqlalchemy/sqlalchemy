@@ -1,46 +1,54 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
+from sqlalchemy import exceptions, types
 from sqlalchemy.orm import *
 from sqlalchemy.orm import collections
 from sqlalchemy.orm.collections import collection
 from testlib import *
+from testlib import fixtures
 
-class RelationTest(PersistTest):
-    """this is essentially an extension of the "dependency.py" topological sort test.  
-    in this test, a table is dependent on two other tables that are otherwise unrelated to each other.
-    the dependency sort must insure that this childmost table is below both parent tables in the outcome
-    (a bug existed where this was not always the case).
-    while the straight topological sort tests should expose this, since the sorting can be different due
-    to subtle differences in program execution, this test case was exposing the bug whereas the simpler tests
-    were not."""
+class RelationTest(TestBase):
+    """An extended topological sort test
+
+    This is essentially an extension of the "dependency.py" topological sort
+    test.  In this test, a table is dependent on two other tables that are
+    otherwise unrelated to each other.  The dependency sort must insure that
+    this childmost table is below both parent tables in the outcome (a bug
+    existed where this was not always the case).
+
+    While the straight topological sort tests should expose this, since the
+    sorting can be different due to subtle differences in program execution,
+    this test case was exposing the bug whereas the simpler tests were not.
+    """
+
     def setUpAll(self):
         global metadata, tbl_a, tbl_b, tbl_c, tbl_d
 
         metadata = MetaData()
         tbl_a = Table("tbl_a", metadata,
             Column("id", Integer, primary_key=True),
-            Column("name", String),
+            Column("name", String(128)),
         )
         tbl_b = Table("tbl_b", metadata,
             Column("id", Integer, primary_key=True),
-            Column("name", String),
+            Column("name", String(128)),
         )
         tbl_c = Table("tbl_c", metadata,
             Column("id", Integer, primary_key=True),
             Column("tbl_a_id", Integer, ForeignKey("tbl_a.id"), nullable=False),
-            Column("name", String),
+            Column("name", String(128)),
         )
         tbl_d = Table("tbl_d", metadata,
             Column("id", Integer, primary_key=True),
             Column("tbl_c_id", Integer, ForeignKey("tbl_c.id"), nullable=False),
             Column("tbl_b_id", Integer, ForeignKey("tbl_b.id")),
-            Column("name", String),
+            Column("name", String(128)),
         )
     def setUp(self):
         global session
-        session = create_session(bind=testbase.db)
-        conn = testbase.db.connect()
+        session = create_session(bind=testing.db)
+        conn = testing.db.connect()
         conn.create(tbl_a)
         conn.create(tbl_b)
         conn.create(tbl_c)
@@ -57,11 +65,11 @@ class RelationTest(PersistTest):
 
         D.mapper = mapper(D, tbl_d)
         C.mapper = mapper(C, tbl_c, properties=dict(
-            d_rows=relation(D, private=True, backref="c_row"),
+            d_rows=relation(D, cascade="all, delete-orphan", backref="c_row"),
         ))
         B.mapper = mapper(B, tbl_b)
         A.mapper = mapper(A, tbl_a, properties=dict(
-            c_rows=relation(C, private=True, backref="a_row"),
+            c_rows=relation(C, cascade="all, delete-orphan", backref="a_row"),
         ))
         D.mapper.add_property("b_row", relation(B))
 
@@ -76,35 +84,39 @@ class RelationTest(PersistTest):
         d3 = D(); d3.name = "d3"; d3.b_row = b; d3.c_row = c
         session.save_or_update(a)
         session.save_or_update(b)
-        
+
     def tearDown(self):
-        conn = testbase.db.connect()
+        conn = testing.db.connect()
         conn.drop(tbl_d)
         conn.drop(tbl_c)
         conn.drop(tbl_b)
         conn.drop(tbl_a)
 
     def tearDownAll(self):
-        metadata.drop_all(testbase.db)
-    
+        metadata.drop_all(testing.db)
+
     def testDeleteRootTable(self):
         session.flush()
         session.delete(a) # works as expected
         session.flush()
-        
+
     def testDeleteMiddleTable(self):
         session.flush()
         session.delete(c) # fails
         session.flush()
-        
-class RelationTest2(PersistTest):
-    """this test tests a relationship on a column that is included in multiple foreign keys,
-    as well as a self-referential relationship on a composite key where one column in the foreign key
-    is 'joined to itself'."""
+
+class RelationTest2(TestBase):
+    """Tests a relationship on a column included in multiple foreign keys.
+
+    This test tests a relationship on a column that is included in multiple
+    foreign keys, as well as a self-referential relationship on a composite
+    key where one column in the foreign key is 'joined to itself'.
+    """
+
     def setUpAll(self):
         global metadata, company_tbl, employee_tbl
-        metadata = MetaData(testbase.db)
-        
+        metadata = MetaData(testing.db)
+
         company_tbl = Table('company', metadata,
              Column('company_id', Integer, primary_key=True),
              Column('name', Unicode(30)))
@@ -118,12 +130,13 @@ class RelationTest2(PersistTest):
              ForeignKeyConstraint(['company_id', 'reports_to_id'],
          ['employee.company_id', 'employee.emp_id']))
         metadata.create_all()
-         
-    def tearDownAll(self):
-        metadata.drop_all()    
 
-    def testexplicit(self):
+    def tearDownAll(self):
+        metadata.drop_all()
+
+    def test_explicit(self):
         """test with mappers that have fairly explicit join conditions"""
+
         class Company(object):
             pass
         class Employee(object):
@@ -132,7 +145,7 @@ class RelationTest2(PersistTest):
                 self.company = company
                 self.emp_id = emp_id
                 self.reports_to = reports_to
-                
+
         mapper(Company, company_tbl)
         mapper(Employee, employee_tbl, properties= {
             'company':relation(Company, primaryjoin=employee_tbl.c.company_id==company_tbl.c.company_id, backref='employees'),
@@ -140,8 +153,9 @@ class RelationTest2(PersistTest):
                 and_(
                     employee_tbl.c.emp_id==employee_tbl.c.reports_to_id,
                     employee_tbl.c.company_id==employee_tbl.c.company_id
-                ), 
-                foreignkey=[employee_tbl.c.company_id, employee_tbl.c.emp_id],
+                ),
+                remote_side=[employee_tbl.c.emp_id, employee_tbl.c.company_id],
+                foreign_keys=[employee_tbl.c.reports_to_id],
                 backref='employees')
         })
 
@@ -149,13 +163,13 @@ class RelationTest2(PersistTest):
         c1 = Company()
         c2 = Company()
 
-        e1 = Employee('emp1', c1, 1)
-        e2 = Employee('emp2', c1, 2, e1)
-        e3 = Employee('emp3', c1, 3, e1)
-        e4 = Employee('emp4', c1, 4, e3)
-        e5 = Employee('emp5', c2, 1)
-        e6 = Employee('emp6', c2, 2, e5)
-        e7 = Employee('emp7', c2, 3, e5)
+        e1 = Employee(u'emp1', c1, 1)
+        e2 = Employee(u'emp2', c1, 2, e1)
+        e3 = Employee(u'emp3', c1, 3, e1)
+        e4 = Employee(u'emp4', c1, 4, e3)
+        e5 = Employee(u'emp5', c2, 1)
+        e6 = Employee(u'emp6', c2, 2, e5)
+        e7 = Employee(u'emp7', c2, 3, e5)
 
         [sess.save(x) for x in [c1,c2]]
         sess.flush()
@@ -163,14 +177,14 @@ class RelationTest2(PersistTest):
 
         test_c1 = sess.query(Company).get(c1.company_id)
         test_e1 = sess.query(Employee).get([c1.company_id, e1.emp_id])
-        assert test_e1.name == 'emp1'
+        assert test_e1.name == 'emp1', test_e1.name
         test_e5 = sess.query(Employee).get([c2.company_id, e5.emp_id])
-        assert test_e5.name == 'emp5'
+        assert test_e5.name == 'emp5', test_e5.name
         assert [x.name for x in test_e1.employees] == ['emp2', 'emp3']
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
 
-    def testimplicit(self):
+    def test_implicit(self):
         """test with mappers that have the most minimal arguments"""
         class Company(object):
             pass
@@ -184,8 +198,9 @@ class RelationTest2(PersistTest):
         mapper(Company, company_tbl)
         mapper(Employee, employee_tbl, properties= {
             'company':relation(Company, backref='employees'),
-            'reports_to':relation(Employee, 
-                foreignkey=[employee_tbl.c.company_id, employee_tbl.c.emp_id],
+            'reports_to':relation(Employee,
+                remote_side=[employee_tbl.c.emp_id, employee_tbl.c.company_id],
+                foreign_keys=[employee_tbl.c.reports_to_id],
                 backref='employees')
         })
 
@@ -193,13 +208,13 @@ class RelationTest2(PersistTest):
         c1 = Company()
         c2 = Company()
 
-        e1 = Employee('emp1', c1, 1)
-        e2 = Employee('emp2', c1, 2, e1)
-        e3 = Employee('emp3', c1, 3, e1)
-        e4 = Employee('emp4', c1, 4, e3)
-        e5 = Employee('emp5', c2, 1)
-        e6 = Employee('emp6', c2, 2, e5)
-        e7 = Employee('emp7', c2, 3, e5)
+        e1 = Employee(u'emp1', c1, 1)
+        e2 = Employee(u'emp2', c1, 2, e1)
+        e3 = Employee(u'emp3', c1, 3, e1)
+        e4 = Employee(u'emp4', c1, 4, e3)
+        e5 = Employee(u'emp5', c2, 1)
+        e6 = Employee(u'emp6', c2, 2, e5)
+        e7 = Employee(u'emp7', c2, 3, e5)
 
         [sess.save(x) for x in [c1,c2]]
         sess.flush()
@@ -207,18 +222,18 @@ class RelationTest2(PersistTest):
 
         test_c1 = sess.query(Company).get(c1.company_id)
         test_e1 = sess.query(Employee).get([c1.company_id, e1.emp_id])
-        assert test_e1.name == 'emp1'
+        assert test_e1.name == 'emp1', test_e1.name
         test_e5 = sess.query(Employee).get([c2.company_id, e5.emp_id])
-        assert test_e5.name == 'emp5'
+        assert test_e5.name == 'emp5', test_e5.name
         assert [x.name for x in test_e1.employees] == ['emp2', 'emp3']
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
-        
-class RelationTest3(PersistTest):
+
+class RelationTest3(TestBase):
     def setUpAll(self):
         global jobs, pageversions, pages, metadata, Job, Page, PageVersion, PageComment
         import datetime
-        metadata = MetaData(testbase.db)  
+        metadata = MetaData(testing.db)
         jobs = Table("jobs", metadata,
                         Column("jobno", Unicode(15), primary_key=True),
                         Column("created", DateTime, nullable=False, default=datetime.datetime.now),
@@ -242,8 +257,8 @@ class RelationTest3(PersistTest):
         pagecomments = Table("pagecomments", metadata,
             Column("jobno", Unicode(15), primary_key=True),
             Column("pagename", Unicode(30), primary_key=True),
-            Column("comment_id", Integer, primary_key=True),
-            Column("content", Unicode),
+            Column("comment_id", Integer, primary_key=True, autoincrement=False),
+            Column("content", UnicodeText),
             ForeignKeyConstraint(["jobno", "pagename"], ["pages.jobno", "pages.pagename"])
         )
 
@@ -284,7 +299,7 @@ class RelationTest3(PersistTest):
         mapper(Page, pages, properties={
             'job': relation(Job, backref=backref('pages', cascade="all, delete-orphan", order_by=pages.c.pagename)),
             'currentversion': relation(PageVersion,
-                            foreignkey=pages.c.current_version,
+                            foreign_keys=[pages.c.current_version],
                             primaryjoin=and_(pages.c.jobno==pageversions.c.jobno,
                                              pages.c.pagename==pageversions.c.pagename,
                                              pages.c.current_version==pageversions.c.version),
@@ -309,19 +324,19 @@ class RelationTest3(PersistTest):
 
     def tearDownAll(self):
         clear_mappers()
-        metadata.drop_all()    
+        metadata.drop_all()
 
     def testbasic(self):
         """test the combination of complicated join conditions with post_update"""
-        j1 = Job('somejob')
-        j1.create_page('page1')
-        j1.create_page('page2')
-        j1.create_page('page3')
+        j1 = Job(u'somejob')
+        j1.create_page(u'page1')
+        j1.create_page(u'page2')
+        j1.create_page(u'page3')
 
-        j2 = Job('somejob2')
-        j2.create_page('page1')
-        j2.create_page('page2')
-        j2.create_page('page3')
+        j2 = Job(u'somejob2')
+        j2.create_page(u'page1')
+        j2.create_page(u'page2')
+        j2.create_page(u'page3')
 
         j2.pages[0].add_version()
         j2.pages[0].add_version()
@@ -333,17 +348,18 @@ class RelationTest3(PersistTest):
 
         s.save(j1)
         s.save(j2)
+
         s.flush()
 
         s.clear()
-        j = s.query(Job).get_by(jobno='somejob')
+        j = s.query(Job).filter_by(jobno=u'somejob').one()
         oldp = list(j.pages)
         j.pages = []
 
         s.flush()
 
         s.clear()
-        j = s.query(Job).get_by(jobno='somejob2')
+        j = s.query(Job).filter_by(jobno=u'somejob2').one()
         j.pages[1].current_version = 12
         s.delete(j)
         s.flush()
@@ -352,13 +368,13 @@ class RelationTest4(ORMTest):
     """test syncrules on foreign keys that are also primary"""
     def define_tables(self, metadata):
         global tableA, tableB
-        tableA = Table("A", metadata, 
+        tableA = Table("A", metadata,
             Column("id",Integer,primary_key=True),
             Column("foo",Integer,),
-            )
+            test_needs_fk=True)
         tableB = Table("B",metadata,
                 Column("id",Integer,ForeignKey("A.id"),primary_key=True),
-                )
+                test_needs_fk=True)
     def test_no_delete_PK_AtoB(self):
         """test that A cant be deleted without B because B would have no PK value"""
         class A(object):pass
@@ -372,7 +388,7 @@ class RelationTest4(ORMTest):
         sess = create_session()
         sess.save(a1)
         sess.flush()
-        
+
         sess.delete(a1)
         try:
             sess.flush()
@@ -400,8 +416,30 @@ class RelationTest4(ORMTest):
         except exceptions.AssertionError, e:
             assert str(e).startswith("Dependency rule tried to blank-out primary key column 'B.id' on instance ")
 
+    @testing.fails_on_everything_except('sqlite', 'mysql')
+    def test_nullPKsOK_BtoA(self):
+        # postgres cant handle a nullable PK column...?
+        tableC = Table('tablec', tableA.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('a_id', Integer, ForeignKey('A.id'), primary_key=True, autoincrement=False, nullable=True))
+        tableC.create()
+
+        class A(object):pass
+        class C(object):pass
+        mapper(C, tableC, properties={
+            'a':relation(A, cascade="save-update")
+        }, allow_null_pks=True)
+        mapper(A, tableA)
+        c1 = C()
+        c1.id = 5
+        c1.a = None
+        sess = create_session()
+        sess.save(c1)
+        # test that no error is raised.
+        sess.flush()
+
     def test_delete_cascade_BtoA(self):
-        """test that the 'blank the PK' error doesnt get raised when the child is to be deleted as part of a 
+        """test that the 'blank the PK' error doesnt get raised when the child is to be deleted as part of a
         cascade"""
         class A(object):pass
         class B(object):pass
@@ -426,9 +464,9 @@ class RelationTest4(ORMTest):
             assert b1 not in sess
             sess.clear()
             clear_mappers()
-    
+
     def test_delete_cascade_AtoB(self):
-        """test that the 'blank the PK' error doesnt get raised when the child is to be deleted as part of a 
+        """test that the 'blank the PK' error doesnt get raised when the child is to be deleted as part of a
         cascade"""
         class A(object):pass
         class B(object):pass
@@ -446,14 +484,14 @@ class RelationTest4(ORMTest):
             sess = create_session()
             sess.save(a1)
             sess.flush()
-        
+
             sess.delete(a1)
             sess.flush()
             assert a1 not in sess
             assert b1 not in sess
             sess.clear()
             clear_mappers()
-    
+
     def test_delete_manual_AtoB(self):
         class A(object):pass
         class B(object):pass
@@ -468,7 +506,7 @@ class RelationTest4(ORMTest):
         sess.save(a1)
         sess.save(b1)
         sess.flush()
-    
+
         sess.delete(a1)
         sess.delete(b1)
         sess.flush()
@@ -497,23 +535,24 @@ class RelationTest4(ORMTest):
         assert b1 not in sess
 
 class RelationTest5(ORMTest):
-    """test a map to a select that relates to a map to the table"""
+    """Test a map to a select that relates to a map to the table."""
+
     def define_tables(self, metadata):
         global items
         items = Table('items', metadata,
             Column('item_policy_num', String(10), primary_key=True, key='policyNum'),
             Column('item_policy_eff_date', Date, primary_key=True, key='policyEffDate'),
             Column('item_type', String(20), primary_key=True, key='type'),
-            Column('item_id', Integer, primary_key=True, key='id'),
+            Column('item_id', Integer, primary_key=True, key='id', autoincrement=False),
         )
 
     def test_basic(self):
         class Container(object):pass
         class LineItem(object):pass
-        
+
         container_select = select(
             [items.c.policyNum, items.c.policyEffDate, items.c.type],
-            distinct=True, 
+            distinct=True,
             ).alias('container_select')
 
         mapper(LineItem, items)
@@ -545,29 +584,29 @@ class RelationTest5(ORMTest):
             session.save(li)
         session.flush()
         session.clear()
-        newcon = session.query(Container).selectfirst()
+        newcon = session.query(Container).first()
         assert con.policyNum == newcon.policyNum
         assert len(newcon.lineItems) == 10
         for old, new in zip(con.lineItems, newcon.lineItems):
             assert old.id == new.id
-        
-        
+
+
 class TypeMatchTest(ORMTest):
     """test errors raised when trying to add items whose type is not handled by a relation"""
     def define_tables(self, metadata):
         global a, b, c, d
-        a = Table("a", metadata, 
+        a = Table("a", metadata,
             Column('aid', Integer, primary_key=True),
             Column('data', String(30)))
-        b = Table("b", metadata, 
+        b = Table("b", metadata,
             Column('bid', Integer, primary_key=True),
             Column("a_id", Integer, ForeignKey("a.aid")),
             Column('data', String(30)))
-        c = Table("c", metadata, 
+        c = Table("c", metadata,
             Column('cid', Integer, primary_key=True),
             Column("b_id", Integer, ForeignKey("b.bid")),
             Column('data', String(30)))
-        d = Table("d", metadata, 
+        d = Table("d", metadata,
             Column('did', Integer, primary_key=True),
             Column("a_id", Integer, ForeignKey("a.aid")),
             Column('data', String(30)))
@@ -578,7 +617,7 @@ class TypeMatchTest(ORMTest):
         mapper(A, a, properties={'bs':relation(B)})
         mapper(B, b)
         mapper(C, c)
-        
+
         a1 = A()
         b1 = B()
         c1 = C()
@@ -597,7 +636,7 @@ class TypeMatchTest(ORMTest):
         mapper(A, a, properties={'bs':relation(B, cascade="none")})
         mapper(B, b)
         mapper(C, c)
-        
+
         a1 = A()
         b1 = B()
         c1 = C()
@@ -619,7 +658,7 @@ class TypeMatchTest(ORMTest):
         mapper(A, a, properties={'bs':relation(B, cascade="none")})
         mapper(B, b)
         mapper(C, c, inherits=B)
-        
+
         a1 = A()
         b1 = B()
         c1 = C()
@@ -634,7 +673,7 @@ class TypeMatchTest(ORMTest):
             assert False
         except exceptions.FlushError, err:
             assert str(err).startswith("Attempting to flush an item of type %s on collection 'A.bs (B)', which is handled by mapper 'Mapper|B|b' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % C)
-    
+
     def test_m2o_nopoly_onflush(self):
         class A(object):pass
         class B(A):pass
@@ -673,18 +712,18 @@ class TypeMatchTest(ORMTest):
 class TypedAssociationTable(ORMTest):
     def define_tables(self, metadata):
         global t1, t2, t3
-        
-        class MySpecialType(TypeDecorator):
+
+        class MySpecialType(types.TypeDecorator):
             impl = String
             def convert_bind_param(self, value, dialect):
                 return "lala" + value
             def convert_result_value(self, value, dialect):
                 return value[4:]
-            
-        t1 = Table('t1', metadata, 
+
+        t1 = Table('t1', metadata,
             Column('col1', MySpecialType(30), primary_key=True),
             Column('col2', String(30)))
-        t2 = Table('t2', metadata, 
+        t2 = Table('t2', metadata,
             Column('col1', MySpecialType(30), primary_key=True),
             Column('col2', String(30)))
         t3 = Table('t3', metadata,
@@ -693,7 +732,7 @@ class TypedAssociationTable(ORMTest):
         )
     def testm2m(self):
         """test many-to-many tables with special types for candidate keys"""
-        
+
         class T1(object):pass
         class T2(object):pass
         mapper(T2, t2)
@@ -713,293 +752,14 @@ class TypedAssociationTable(ORMTest):
         sess.flush()
 
         assert t3.count().scalar() == 2
-        
+
         a.t2s.remove(c)
         sess.flush()
-        
+
         assert t3.count().scalar() == 1
+
         
-# TODO: move these tests to either attributes.py test or its own module
-class CustomCollectionsTest(ORMTest):
-    def define_tables(self, metadata):
-        global sometable, someothertable
-        sometable = Table('sometable', metadata,
-            Column('col1',Integer, primary_key=True),
-            Column('data', String(30)))
-        someothertable = Table('someothertable', metadata, 
-            Column('col1', Integer, primary_key=True),
-            Column('scol1', Integer, ForeignKey(sometable.c.col1)),
-            Column('data', String(20))
-        )
-    def testbasic(self):
-        class MyList(list):
-            pass
-        class Foo(object):
-            pass
-        class Bar(object):
-            pass
-        mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=MyList)
-        })
-        mapper(Bar, someothertable)
-        f = Foo()
-        assert isinstance(f.bars, MyList)
-    def testlazyload(self):
-        """test that a 'set' can be used as a collection and can lazyload."""
-        class Foo(object):
-            pass
-        class Bar(object):
-            pass
-        mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=set)
-        })
-        mapper(Bar, someothertable)
-        f = Foo()
-        f.bars.add(Bar())
-        f.bars.add(Bar())
-        sess = create_session()
-        sess.save(f)
-        sess.flush()
-        sess.clear()
-        f = sess.query(Foo).get(f.col1)
-        assert len(list(f.bars)) == 2
-        f.bars.clear()
-        
-    def testdict(self):
-        """test that a 'dict' can be used as a collection and can lazyload."""
-
-        class Foo(object):
-            pass
-        class Bar(object):
-            pass
-        class AppenderDict(dict):
-            @collection.appender
-            def set(self, item):
-                self[id(item)] = item
-            @collection.remover
-            def remove(self, item):
-                if id(item) in self:
-                    del self[id(item)]
-                
-        mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=AppenderDict)
-        })
-        mapper(Bar, someothertable)
-        f = Foo()
-        f.bars.set(Bar())
-        f.bars.set(Bar())
-        sess = create_session()
-        sess.save(f)
-        sess.flush()
-        sess.clear()
-        f = sess.query(Foo).get(f.col1)
-        assert len(list(f.bars)) == 2
-        f.bars.clear()
-
-    def testdictwrapper(self):
-        """test that the supplied 'dict' wrapper can be used as a collection and can lazyload."""
-
-        class Foo(object):
-            pass
-        class Bar(object):
-            def __init__(self, data): self.data = data
-                
-        mapper(Foo, sometable, properties={
-            'bars':relation(Bar,
-                collection_class=collections.column_mapped_collection(someothertable.c.data))
-        })
-        mapper(Bar, someothertable)
-
-        f = Foo()
-        col = collections.collection_adapter(f.bars)
-        col.append_with_event(Bar('a'))
-        col.append_with_event(Bar('b'))
-        sess = create_session()
-        sess.save(f)
-        sess.flush()
-        sess.clear()
-        f = sess.query(Foo).get(f.col1)
-        assert len(list(f.bars)) == 2
-
-        existing = set([id(b) for b in f.bars.values()])
-
-        col = collections.collection_adapter(f.bars)
-        col.append_with_event(Bar('b'))
-        f.bars['a'] = Bar('a')
-        sess.flush()
-        sess.clear()
-        f = sess.query(Foo).get(f.col1)
-        assert len(list(f.bars)) == 2
-
-        replaced = set([id(b) for b in f.bars.values()])
-        self.assert_(existing != replaced)
-
-    def testlist(self):
-        class Parent(object):
-            pass
-        class Child(object):
-            pass
-
-        mapper(Parent, sometable, properties={
-            'children':relation(Child, collection_class=list)
-        })
-        mapper(Child, someothertable)
-
-        control = list()
-        p = Parent()
-
-        o = Child()
-        control.append(o)
-        p.children.append(o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child(), Child(), Child(), Child()]
-        control.extend(o)
-        p.children.extend(o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        assert control[0] == p.children[0]
-        assert control[-1] == p.children[-1]
-        assert control[1:3] == p.children[1:3]
-
-        del control[1]
-        del p.children[1]
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child()]
-        control[1:3] = o
-        p.children[1:3] = o
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child(), Child(), Child(), Child()]
-        control[1:3] = o
-        p.children[1:3] = o
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child(), Child(), Child(), Child()]
-        control[-1:-2] = o
-        p.children[-1:-2] = o
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = [Child(), Child(), Child(), Child()]
-        control[4:] = o
-        p.children[4:] = o
-        assert control == p.children
-        assert control == list(p.children)
-        
-        o = Child()
-        control.insert(0, o)
-        p.children.insert(0, o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = Child()
-        control.insert(3, o)
-        p.children.insert(3, o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = Child()
-        control.insert(999, o)
-        p.children.insert(999, o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        del control[0:1]
-        del p.children[0:1]
-        assert control == p.children
-        assert control == list(p.children)
-
-        del control[1:1]
-        del p.children[1:1]
-        assert control == p.children
-        assert control == list(p.children)
-
-        del control[1:3]
-        del p.children[1:3]
-        assert control == p.children
-        assert control == list(p.children)
-
-        del control[7:]
-        del p.children[7:]
-        assert control == p.children
-        assert control == list(p.children)
-
-        assert control.pop() == p.children.pop()
-        assert control == p.children
-        assert control == list(p.children)
-
-        assert control.pop(0) == p.children.pop(0)
-        assert control == p.children
-        assert control == list(p.children)
-
-        assert control.pop(2) == p.children.pop(2)
-        assert control == p.children
-        assert control == list(p.children)
-
-        o = Child()
-        control.insert(2, o)
-        p.children.insert(2, o)
-        assert control == p.children
-        assert control == list(p.children)
-
-        control.remove(o)
-        p.children.remove(o)
-        assert control == p.children
-        assert control == list(p.children)
-
-    def testobj(self):
-        class Parent(object):
-            pass
-        class Child(object):
-            pass
-
-        class MyCollection(object):
-            def __init__(self): self.data = []
-            @collection.appender
-            def append(self, value): self.data.append(value)
-            @collection.remover
-            def remove(self, value): self.data.remove(value)
-            @collection.iterator
-            def __iter__(self): return iter(self.data)
-
-        mapper(Parent, sometable, properties={
-            'children':relation(Child, collection_class=MyCollection)
-        })
-        mapper(Child, someothertable)
-
-        control = list()
-        p1 = Parent()
-
-        o = Child()
-        control.append(o)
-        p1.children.append(o)
-        assert control == list(p1.children)
-
-        o = Child()
-        control.append(o)
-        p1.children.append(o)
-        assert control == list(p1.children)
-
-        o = Child()
-        control.append(o)
-        p1.children.append(o)
-        assert control == list(p1.children)
-
-        sess = create_session()
-        sess.save(p1)
-        sess.flush()
-        sess.clear()
-        
-        p2 = sess.query(Parent).get(p1.col1)
-        o = list(p2.children)
-        assert len(o) == 3
+    
 
 class ViewOnlyTest(ORMTest):
     """test a view_only mapping where a third table is pulled into the primary join condition,
@@ -1018,12 +778,12 @@ class ViewOnlyTest(ORMTest):
             Column('data', String(40)),
             Column('t2id', Integer, ForeignKey('t2.id'))
             )
-            
+
     def test_basic(self):
         class C1(object):pass
         class C2(object):pass
         class C3(object):pass
-        
+
         mapper(C1, t1, properties={
             't2s':relation(C2),
             't2_view':relation(C2, viewonly=True, primaryjoin=and_(t1.c.id==t2.c.t1id, t3.c.t2id==t2.c.id, t3.c.data==t1.c.data))
@@ -1032,7 +792,7 @@ class ViewOnlyTest(ORMTest):
         mapper(C3, t3, properties={
             't2':relation(C2)
         })
-        
+
         c1 = C1()
         c1.data = 'c1data'
         c2a = C2()
@@ -1047,7 +807,7 @@ class ViewOnlyTest(ORMTest):
         sess.save(c3)
         sess.flush()
         sess.clear()
-        
+
         c1 = sess.query(C1).get(c1.id)
         assert set([x.id for x in c1.t2s]) == set([c2a.id, c2b.id])
         assert set([x.id for x in c1.t2_view]) == set([c2b.id])
@@ -1101,7 +861,520 @@ class ViewOnlyTest2(ORMTest):
         c1 = sess.query(C1).get(c1.t1id)
         assert set([x.t2id for x in c1.t2s]) == set([c2a.t2id, c2b.t2id])
         assert set([x.t2id for x in c1.t2_view]) == set([c2b.t2id])
+
+class ViewOnlyTest3(ORMTest):
+    """test relating on a join that has no equated columns"""
+    def define_tables(self, metadata):
+        global foos, bars
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True))
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True), Column('fid', Integer))
+
+    def test_viewonly_join(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id>bars.c.fid, foreign_keys=[bars.c.fid], viewonly=True)
+        })
+
+        mapper(Bar, bars)
+
+        sess = create_session()
+        sess.save(Foo(id=4))
+        sess.save(Foo(id=9))
+        sess.save(Bar(id=1, fid=2))
+        sess.save(Bar(id=2, fid=3))
+        sess.save(Bar(id=3, fid=6))
+        sess.save(Bar(id=4, fid=7))
+        sess.flush()
+
+        sess = create_session()
+        self.assertEquals(sess.query(Foo).filter_by(id=4).one(), Foo(id=4, bars=[Bar(fid=2), Bar(fid=3)]))
+        self.assertEquals(sess.query(Foo).filter_by(id=9).one(), Foo(id=9, bars=[Bar(fid=2), Bar(fid=3), Bar(fid=6), Bar(fid=7)]))
+
+class ViewOnlyTest4(ORMTest):
+    """test relating on a join that contains the same 'remote' column twice"""
+    def define_tables(self, metadata):
+        global foos, bars
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True), 
+            Column('bid1', Integer,ForeignKey('bars.id')),
+            Column('bid2', Integer,ForeignKey('bars.id')))
+            
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True), Column('data', String(50)))
         
+    def test_relation_on_or(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=or_(bars.c.id==foos.c.bid1, bars.c.id==foos.c.bid2), uselist=True, viewonly=True)
+        })
+
+        mapper(Bar, bars)
+        sess = create_session()
+        b1 = Bar(id=1, data='b1')
+        b2 = Bar(id=2, data='b2')
+        b3 = Bar(id=3, data='b3')
+        f1 = Foo(bid1=1, bid2=2)
+        f2 = Foo(bid1=3, bid2=None)
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.flush()
+        sess.save(f1)
+        sess.save(f2)
+        sess.flush()
+            
+        sess.clear()
+        self.assertEquals(sess.query(Foo).filter_by(id=f1.id).one(), Foo(bars=[Bar(data='b1'), Bar(data='b2')]))
+        self.assertEquals(sess.query(Foo).filter_by(id=f2.id).one(), Foo(bars=[Bar(data='b3')]))
+
+class ViewOnlyTest5(ORMTest):
+    """test relating on a join that contains the same 'local' column twice"""
+    def define_tables(self, metadata):
+        global foos, bars
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True), 
+            Column('data', String(50))
+            )
+
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True), 
+                Column('fid1', Integer, ForeignKey('foos.id')),
+                Column('fid2', Integer, ForeignKey('foos.id')),
+                Column('data', String(50))
+            )
+
+    def test_relation_on_or(self):
+        class Foo(fixtures.Base):
+            pass
+        class Bar(fixtures.Base):
+            pass
+
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=or_(bars.c.fid1==foos.c.id, bars.c.fid2==foos.c.id), viewonly=True)
+        })
+
+        mapper(Bar, bars)
+        sess = create_session()
+        f1 = Foo(id=1, data='f1')
+        f2 = Foo(id=2, data='f2')
+        b1 = Bar(fid1=1, data='b1')
+        b2 = Bar(fid2=1, data='b2')
+        b3 = Bar(fid1=2, data='b3')
+        b4 = Bar(fid1=1, fid2=2, data='b4')
+        sess.save(f1)
+        sess.save(f2)
+        sess.flush()
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.save(b4)
+        sess.flush()
+
+        sess.clear()
+        self.assertEquals(sess.query(Foo).filter_by(id=f1.id).one(), Foo(bars=[Bar(data='b1'), Bar(data='b2'), Bar(data='b4')]))
+        self.assertEquals(sess.query(Foo).filter_by(id=f2.id).one(), Foo(bars=[Bar(data='b3'), Bar(data='b4')]))
+
+class ViewOnlyTest6(ORMTest):
+    """test a long primaryjoin condition"""
+    def define_tables(self, metadata):
+        global t1, t2, t3, t2tot3
+        t1 = Table('t1', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+            )
+        t2 = Table('t2', metadata,     
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+            Column('t1id', Integer, ForeignKey('t1.id')),
+        )
+        t3 = Table('t3', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+            )
+        t2tot3 = Table('t2tot3', metadata, 
+            Column('t2id', Integer, ForeignKey('t2.id')),
+            Column('t3id', Integer, ForeignKey('t3.id')),
+        )
+    
+    def test_basic(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        class T3(fixtures.Base):
+            pass
+    
+        mapper(T1, t1, properties={
+            't3s':relation(T3, primaryjoin=and_(
+                t1.c.id==t2.c.t1id,
+                t2.c.id==t2tot3.c.t2id,
+                t3.c.id==t2tot3.c.t3id
+            ),
+            viewonly=True, 
+            foreign_keys=t3.c.id, remote_side=t2.c.t1id)
+        })
+        mapper(T2, t2, properties={
+            't1':relation(T1),
+            't3s':relation(T3, secondary=t2tot3)
+        })
+        mapper(T3, t3)
         
+        sess = create_session()
+        sess.save(T2(data='t2', t1=T1(data='t1'), t3s=[T3(data='t3')]))
+        sess.flush()
+        sess.clear()
+        
+        a = sess.query(T1).first()
+        self.assertEquals(a.t3s, [T3(data='t3')])
+        
+    def test_remote_side_escalation(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        class T3(fixtures.Base):
+            pass
+
+        mapper(T1, t1, properties={
+            't3s':relation(T3, primaryjoin=and_(
+                t1.c.id==t2.c.t1id,
+                t2.c.id==t2tot3.c.t2id,
+                t3.c.id==t2tot3.c.t3id
+            ),viewonly=True, foreign_keys=t3.c.id) 
+        })
+        mapper(T2, t2, properties={
+            't1':relation(T1),
+            't3s':relation(T3, secondary=t2tot3)
+        })
+        mapper(T3, t3)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Specify remote_side argument", compile_mappers)
+
+class ExplicitLocalRemoteTest(ORMTest):
+    def define_tables(self, metadata):
+        global t1, t2
+        t1 = Table('t1', metadata, 
+            Column('id', String(50), primary_key=True),
+            Column('data', String(50))
+            )
+        t2 = Table('t2', metadata,     
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+            Column('t1id', String(50)),
+        )
+
+    def test_onetomany_funcfk(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        
+        # use a function within join condition.  but specifying
+        # local_remote_pairs overrides all parsing of the join condition.
+        mapper(T1, t1, properties={
+            't2s':relation(T2, primaryjoin=t1.c.id==func.lower(t2.c.t1id), 
+                _local_remote_pairs=[(t1.c.id, t2.c.t1id)],
+                foreign_keys=[t2.c.t1id]
+            )
+        })
+        mapper(T2, t2)
+        
+        sess = create_session()
+        a1 = T1(id='number1', data='a1')
+        a2 = T1(id='number2', data='a2')
+        b1 = T2(data='b1', t1id='NuMbEr1')
+        b2 = T2(data='b2', t1id='Number1')
+        b3 = T2(data='b3', t1id='Number2')
+        sess.save(a1)
+        sess.save(a2)
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.flush()
+        sess.clear()
+        
+        self.assertEquals(sess.query(T1).first(), T1(id='number1', data='a1', t2s=[T2(data='b1', t1id='NuMbEr1'), T2(data='b2', t1id='Number1')]))
+    
+    def test_manytoone_funcfk(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        mapper(T1, t1)
+        mapper(T2, t2, properties={
+            't1':relation(T1, primaryjoin=t1.c.id==func.lower(t2.c.t1id),
+                _local_remote_pairs=[(t2.c.t1id, t1.c.id)],
+                foreign_keys=[t2.c.t1id],
+                uselist=True
+            )
+        })
+        sess = create_session()
+        a1 = T1(id='number1', data='a1')
+        a2 = T1(id='number2', data='a2')
+        b1 = T2(data='b1', t1id='NuMbEr1')
+        b2 = T2(data='b2', t1id='Number1')
+        b3 = T2(data='b3', t1id='Number2')
+        sess.save(a1)
+        sess.save(a2)
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.flush()
+        sess.clear()
+        self.assertEquals(sess.query(T2).filter(T2.data.in_(['b1', 'b2'])).all(), 
+            [
+                T2(data='b1', t1=[T1(id='number1', data='a1')]),
+                T2(data='b2', t1=[T1(id='number1', data='a1')])
+            ]
+        )
+    
+    def test_onetomany_func_referent(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        
+        mapper(T1, t1, properties={
+            't2s':relation(T2, primaryjoin=func.lower(t1.c.id)==t2.c.t1id, 
+                _local_remote_pairs=[(t1.c.id, t2.c.t1id)],
+                foreign_keys=[t2.c.t1id]
+            )
+        })
+        mapper(T2, t2)
+        
+        sess = create_session()
+        a1 = T1(id='NuMbeR1', data='a1')
+        a2 = T1(id='NuMbeR2', data='a2')
+        b1 = T2(data='b1', t1id='number1')
+        b2 = T2(data='b2', t1id='number1')
+        b3 = T2(data='b2', t1id='number2')
+        sess.save(a1)
+        sess.save(a2)
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.flush()
+        sess.clear()
+        
+        self.assertEquals(sess.query(T1).first(), T1(id='NuMbeR1', data='a1', t2s=[T2(data='b1', t1id='number1'), T2(data='b2', t1id='number1')]))
+
+    def test_manytoone_func_referent(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+
+        mapper(T1, t1)
+        mapper(T2, t2, properties={
+            't1':relation(T1, primaryjoin=func.lower(t1.c.id)==t2.c.t1id,
+                _local_remote_pairs=[(t2.c.t1id, t1.c.id)],
+                foreign_keys=[t2.c.t1id], uselist=True
+            )
+        })
+
+        sess = create_session()
+        a1 = T1(id='NuMbeR1', data='a1')
+        a2 = T1(id='NuMbeR2', data='a2')
+        b1 = T2(data='b1', t1id='number1')
+        b2 = T2(data='b2', t1id='number1')
+        b3 = T2(data='b3', t1id='number2')
+        sess.save(a1)
+        sess.save(a2)
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(b3)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(T2).filter(T2.data.in_(['b1', 'b2'])).all(), 
+            [
+                T2(data='b1', t1=[T1(id='NuMbeR1', data='a1')]),
+                T2(data='b2', t1=[T1(id='NuMbeR1', data='a1')])
+            ]
+        )
+        
+    def test_escalation(self):
+        class T1(fixtures.Base):
+            pass
+        class T2(fixtures.Base):
+            pass
+        
+        mapper(T1, t1, properties={
+            't2s':relation(T2, primaryjoin=t1.c.id==func.lower(t2.c.t1id), 
+                _local_remote_pairs=[(t1.c.id, t2.c.t1id)],
+                foreign_keys=[t2.c.t1id],
+                remote_side=[t2.c.t1id]
+            )
+        })
+        mapper(T2, t2)
+        self.assertRaises(exceptions.ArgumentError, compile_mappers)
+        
+        clear_mappers()
+        mapper(T1, t1, properties={
+            't2s':relation(T2, primaryjoin=t1.c.id==func.lower(t2.c.t1id), 
+                _local_remote_pairs=[(t1.c.id, t2.c.t1id)],
+            )
+        })
+        mapper(T2, t2)
+        self.assertRaises(exceptions.ArgumentError, compile_mappers)
+        
+class InvalidRelationEscalationTest(ORMTest):
+    def define_tables(self, metadata):
+        global foos, bars, Foo, Bar
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True), Column('fid', Integer))
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True), Column('fid', Integer))
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+            
+    def test_no_join(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+
+    def test_no_join_self_ref(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+        
+    def test_no_equated(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id>bars.c.fid)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_fks(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id>bars.c.fid, foreign_keys=bars.c.fid)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated, locally mapped column pairs for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_self_ref(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id>foos.c.fid)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_self_ref(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id>foos.c.fid, foreign_keys=[foos.c.fid])
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated, locally mapped column pairs for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_viewonly(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id>bars.c.fid, viewonly=True)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_no_equated_self_ref_viewonly(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id>foos.c.fid, viewonly=True)
+        })
+
+        mapper(Bar, bars)
+
+        self.assertRaisesMessage(exceptions.ArgumentError, "Specify the foreign_keys argument to indicate which columns on the relation are foreign.", compile_mappers)
+
+    def test_no_equated_self_ref_viewonly_fks(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id>foos.c.fid, viewonly=True, foreign_keys=[foos.c.fid])
+        })
+        compile_mappers()
+        self.assertEquals(Foo.foos.property.local_remote_pairs, [(foos.c.id, foos.c.fid)])
+
+    def test_equated(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, primaryjoin=foos.c.id==bars.c.fid)
+        })
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+    
+    def test_equated_self_ref(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id==foos.c.fid)
+        })
+
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_equated_self_ref_wrong_fks(self):
+        mapper(Foo, foos, properties={
+            'foos':relation(Foo, primaryjoin=foos.c.id==foos.c.fid, foreign_keys=[bars.c.id])
+        })
+
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+class InvalidRelationEscalationTestM2M(ORMTest):
+    def define_tables(self, metadata):
+        global foos, bars, Foo, Bar, foobars
+        foos = Table('foos', metadata, Column('id', Integer, primary_key=True))
+        foobars = Table('foobars', metadata, Column('fid', Integer), Column('bid', Integer))
+        bars = Table('bars', metadata, Column('id', Integer, primary_key=True))
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+
+    def test_no_join(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+
+    def test_no_secondaryjoin(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars, primaryjoin=foos.c.id>foobars.c.fid)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine join condition between parent/child tables on relation", compile_mappers)
+
+    def test_bad_primaryjoin(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars, primaryjoin=foos.c.id>foobars.c.fid, secondaryjoin=foobars.c.bid<=bars.c.id)
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for primaryjoin condition", compile_mappers)
+
+    def test_bad_secondaryjoin(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars, primaryjoin=foos.c.id==foobars.c.fid, secondaryjoin=foobars.c.bid<=bars.c.id, foreign_keys=[foobars.c.fid])
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not determine relation direction for secondaryjoin condition", compile_mappers)
+
+    def test_no_equated_secondaryjoin(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar, secondary=foobars, primaryjoin=foos.c.id==foobars.c.fid, secondaryjoin=foobars.c.bid<=bars.c.id, foreign_keys=[foobars.c.fid, foobars.c.bid])
+        })
+
+        mapper(Bar, bars)
+        self.assertRaisesMessage(exceptions.ArgumentError, "Could not locate any equated, locally mapped column pairs for secondaryjoin condition", compile_mappers)
+
+
 if __name__ == "__main__":
-    testbase.main()        
+    testenv.main()

@@ -34,7 +34,7 @@ class ObjectDoc(AbstractDoc):
                     for x in objects 
                     if getattr(obj,x,None) is not None and 
                         (isinstance(getattr(obj,x), types.FunctionType))
-                        and not getattr(obj,x).__name__[0] == '_'
+                        and not self._is_private_name(getattr(obj,x).__name__)
                     ]
                 if sort:
                     functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
@@ -43,7 +43,7 @@ class ObjectDoc(AbstractDoc):
                     if getattr(obj,x,None) is not None and 
                         (isinstance(getattr(obj,x), types.TypeType) 
                         or isinstance(getattr(obj,x), types.ClassType))
-                        and (self.include_all_classes or not getattr(obj,x).__name__[0] == '_')
+                        and (self.include_all_classes or not self._is_private_name(getattr(obj,x).__name__))
                     ]
                 classes = list(set(classes))
                 if sort:
@@ -53,14 +53,14 @@ class ObjectDoc(AbstractDoc):
                 functions = (
                     [getattr(obj, x).im_func for x in obj.__dict__.keys() if isinstance(getattr(obj,x), types.MethodType) 
                     and 
-                    (getattr(obj, x).__name__ == '__init__' or not getattr(obj,x).__name__[0] == '_')
+                    (getattr(obj, x).__name__ == '__init__' or not self._is_private_name(getattr(obj,x).__name__))
                     ] + 
                     [(x, getattr(obj, x)) for x in obj.__dict__.keys() if _is_property(getattr(obj,x)) 
                     and 
-                    not x[0] == '_'
+                    not self._is_private_name(x)
                     ]
                  )
-                functions.sort(lambda a, b: cmp(getattr(a, '__name__', None) or a[0], getattr(b, '__name__', None) or b[0] ))
+                functions.sort(_method_sort)
             if classes is None:
                 classes = []
         
@@ -86,21 +86,32 @@ class ObjectDoc(AbstractDoc):
         self.doc = obj.__doc__
 
         self.functions = []
-        if not self.isclass and len(functions):
+        if not self.isclass:
             for func in functions:
                 self.functions.append(FunctionDoc(func))
         else:
-            if len(functions):
-                for func in functions:
-                    if isinstance(func, types.FunctionType):
-                        self.functions.append(FunctionDoc(func))
-                    elif isinstance(func, tuple):
-                        self.functions.append(PropertyDoc(func[0], func[1]))
+            for func in functions:
+                if isinstance(func, types.FunctionType):
+                    self.functions.append(MethodDoc(func, self))
+                elif isinstance(func, tuple):
+                    self.functions.append(PropertyDoc(func[0], func[1]))
                         
         self.classes = []
         for class_ in classes:
             self.classes.append(ObjectDoc(class_))
-            
+    
+    def _is_private_name(self, name):
+        if name in ('__weakref__', '__repr__','__str__', '__unicode__',
+                    '__getstate__', '__setstate__', '__reduce__',
+                    '__reduce_ex__', '__hash__'):
+            return True
+        elif re.match(r'^__.*__$', name):
+            return False
+        elif name.startswith('_'):
+            return True
+        else:
+            return False
+
     def _get_inherits(self):
         for item in self._inherits:
             if item[0] in self.allobjects:
@@ -139,6 +150,12 @@ class FunctionDoc(AbstractDoc):
     def accept_visitor(self, visitor):
         visitor.visit_function(self)
 
+class MethodDoc(FunctionDoc):
+    def __init__(self, func, owner):
+        super(MethodDoc, self).__init__(func)
+        if self.name == '__init__' and not self.doc:
+            self.doc = "Construct a new ``%s``." % owner.name
+
 class PropertyDoc(AbstractDoc):
     def __init__(self, name, prop):
         super(PropertyDoc, self).__init__(prop)
@@ -147,3 +164,18 @@ class PropertyDoc(AbstractDoc):
         self.link = name
     def accept_visitor(self, visitor):
         visitor.visit_property(self)
+
+def _method_sort(fna, fnb):
+    a = getattr(fna, '__name__', None) or fna[0]
+    b = getattr(fnb, '__name__', None) or fnb[0]
+    
+    if a == '__init__': return -1
+    if b == '__init__': return 1
+
+    a_u = a.startswith('__') and a.endswith('__')
+    b_u = b.startswith('__') and b.endswith('__')
+
+    if a_u and not b_u: return 1
+    if b_u and not a_u: return -1
+
+    return cmp(a, b)

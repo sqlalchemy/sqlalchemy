@@ -1,4 +1,6 @@
-import testbase
+import testenv; testenv.configure_for_tests()
+import sys
+from operator import and_
 from sqlalchemy import *
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.orm import create_session, mapper, relation, \
@@ -6,8 +8,13 @@ from sqlalchemy.orm import create_session, mapper, relation, \
 import sqlalchemy.orm.collections as collections
 from sqlalchemy.orm.collections import collection
 from sqlalchemy import util
-from operator import and_
 from testlib import *
+
+try:
+    py_set = __builtins__.set
+except AttributeError:
+    import sets
+    py_set = sets.Set
 
 class Canary(interfaces.AttributeExtension):
     def __init__(self):
@@ -35,7 +42,7 @@ class Entity(object):
     def __repr__(self):
         return str((id(self), self.a, self.b, self.c))
 
-manager = attributes.AttributeManager()
+attributes.register_class(Entity)
 
 _id = 1
 def entity_maker():
@@ -48,15 +55,16 @@ def dictable_entity(a=None, b=None, c=None):
     return Entity(a or str(_id), b or 'value %s' % _id, c)
 
 
-class CollectionsTest(PersistTest):
+class CollectionsTest(TestBase):
     def _test_adapter(self, typecallable, creator=entity_maker,
                       to_set=None):
         class Foo(object):
             pass
 
         canary = Canary()
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -73,12 +81,12 @@ class CollectionsTest(PersistTest):
 
         adapter.append_with_event(e1)
         assert_eq()
-        
+
         adapter.append_without_event(e2)
         assert_ne()
         canary.data.add(e2)
         assert_eq()
-        
+
         adapter.remove_without_event(e2)
         assert_ne()
         canary.data.remove(e2)
@@ -90,10 +98,11 @@ class CollectionsTest(PersistTest):
     def _test_list(self, typecallable, creator=entity_maker):
         class Foo(object):
             pass
-        
+
         canary = Canary()
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -104,7 +113,7 @@ class CollectionsTest(PersistTest):
             self.assert_(set(direct) == canary.data)
             self.assert_(set(adapter) == canary.data)
             self.assert_(direct == control)
-        
+
         # assume append() is available for list tests
         e = creator()
         direct.append(e)
@@ -120,14 +129,14 @@ class CollectionsTest(PersistTest):
             e = creator()
             direct.append(e)
             control.append(e)
-            
+
             e = creator()
             direct[0] = e
             control[0] = e
             assert_eq()
 
             if reduce(and_, [hasattr(direct, a) for a in
-                             ('__delitem', 'insert', '__len__')], True):
+                             ('__delitem__', 'insert', '__len__')], True):
                 values = [creator(), creator(), creator(), creator()]
                 direct[slice(0,1)] = values
                 control[slice(0,1)] = values
@@ -172,7 +181,7 @@ class CollectionsTest(PersistTest):
             e = creator()
             direct.append(e)
             control.append(e)
-            
+
             direct.remove(e)
             control.remove(e)
             assert_eq()
@@ -187,7 +196,22 @@ class CollectionsTest(PersistTest):
             direct[0:] = values
             control[0:] = values
             assert_eq()
-        
+
+            values = [creator()]
+            direct[:1] = values
+            control[:1] = values
+            assert_eq()
+
+            values = [creator()]
+            direct[-1::2] = values
+            control[-1::2] = values
+            assert_eq()
+
+            values = [creator()] * len(direct[1::2])
+            direct[1::2] = values
+            control[1::2] = values
+            assert_eq()
+
         if hasattr(direct, '__delslice__'):
             for i in range(1, 4):
                 e = creator()
@@ -195,7 +219,7 @@ class CollectionsTest(PersistTest):
                 control.append(e)
 
             del direct[-1:]
-            del control[-1:] 
+            del control[-1:]
             assert_eq()
 
             del direct[1:2]
@@ -213,13 +237,39 @@ class CollectionsTest(PersistTest):
             control.extend(values)
             assert_eq()
 
+        if hasattr(direct, '__iadd__'):
+            values = [creator(), creator(), creator()]
+
+            direct += values
+            control += values
+            assert_eq()
+
+            direct += []
+            control += []
+            assert_eq()
+
+            values = [creator(), creator()]
+            obj.attr += values
+            control += values
+            assert_eq()
+
+        if hasattr(direct, '__imul__'):
+            direct *= 2
+            control *= 2
+            assert_eq()
+
+            obj.attr *= 2
+            control *= 2
+            assert_eq()
+
     def _test_list_bulk(self, typecallable, creator=entity_maker):
         class Foo(object):
             pass
 
         canary = Canary()
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         direct = obj.attr
@@ -238,7 +288,7 @@ class CollectionsTest(PersistTest):
         self.assert_(set(obj.attr) == set([e2]))
         self.assert_(e1 in canary.removed)
         self.assert_(e2 in canary.added)
- 
+
         e3 = creator()
         real_list = [e3]
         obj.attr = real_list
@@ -246,14 +296,29 @@ class CollectionsTest(PersistTest):
         self.assert_(set(obj.attr) == set([e3]))
         self.assert_(e2 in canary.removed)
         self.assert_(e3 in canary.added)
-       
+
         e4 = creator()
         try:
             obj.attr = set([e4])
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(e4 not in canary.data)
             self.assert_(e3 in canary.data)
+
+        e5 = creator()
+        e6 = creator()
+        e7 = creator()
+        obj.attr = [e5, e6, e7]
+        self.assert_(e5 in canary.added)
+        self.assert_(e6 in canary.added)
+        self.assert_(e7 in canary.added)
+
+        obj.attr = [e6, e7]
+        self.assert_(e5 in canary.removed)
+        self.assert_(e6 in canary.added)
+        self.assert_(e7 in canary.added)
+        self.assert_(e6 not in canary.removed)
+        self.assert_(e7 not in canary.removed)
 
     def test_list(self):
         self._test_adapter(list)
@@ -288,7 +353,7 @@ class CollectionsTest(PersistTest):
                 return self.data == other
             def __repr__(self):
                 return 'ListLike(%s)' % repr(self.data)
-            
+
         self._test_adapter(ListLike)
         self._test_list(ListLike)
         self._test_list_bulk(ListLike)
@@ -315,7 +380,7 @@ class CollectionsTest(PersistTest):
                 return self.data == other
             def __repr__(self):
                 return 'ListIsh(%s)' % repr(self.data)
-            
+
         self._test_adapter(ListIsh)
         self._test_list(ListIsh)
         self._test_list_bulk(ListIsh)
@@ -326,8 +391,9 @@ class CollectionsTest(PersistTest):
             pass
 
         canary = Canary()
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -348,9 +414,12 @@ class CollectionsTest(PersistTest):
             for item in list(direct):
                 direct.remove(item)
             control.clear()
-        
-        # assume add() is available for list tests
+
         addall(creator())
+
+        e = creator()
+        addall(e)
+        addall(e)
 
         if hasattr(direct, 'pop'):
             direct.pop()
@@ -386,16 +455,45 @@ class CollectionsTest(PersistTest):
             direct.discard(e)
             self.assert_(e not in canary.removed)
             assert_eq()
-            
+
         if hasattr(direct, 'update'):
+            zap()
             e = creator()
             addall(e)
-            
+
             values = set([e, creator(), creator()])
 
             direct.update(values)
             control.update(values)
             assert_eq()
+
+        if hasattr(direct, '__ior__'):
+            zap()
+            e = creator()
+            addall(e)
+
+            values = set([e, creator(), creator()])
+
+            direct |= values
+            control |= values
+            assert_eq()
+
+            # cover self-assignment short-circuit
+            values = set([e, creator(), creator()])
+            obj.attr |= values
+            control |= values
+            assert_eq()
+
+            values = frozenset([e, creator()])
+            obj.attr |= values
+            control |= values
+            assert_eq()
+
+            try:
+                direct |= [e, creator()]
+                assert False
+            except TypeError:
+                assert True
 
         if hasattr(direct, 'clear'):
             addall(creator(), creator())
@@ -405,6 +503,7 @@ class CollectionsTest(PersistTest):
 
         if hasattr(direct, 'difference_update'):
             zap()
+            e = creator()
             addall(creator(), creator())
             values = set([creator()])
 
@@ -415,6 +514,36 @@ class CollectionsTest(PersistTest):
             direct.difference_update(values)
             control.difference_update(values)
             assert_eq()
+
+        if hasattr(direct, '__isub__'):
+            zap()
+            e = creator()
+            addall(creator(), creator())
+            values = set([creator()])
+
+            direct -= values
+            control -= values
+            assert_eq()
+            values.update(set([e, creator()]))
+            direct -= values
+            control -= values
+            assert_eq()
+
+            values = set([creator()])
+            obj.attr -= values
+            control -= values
+            assert_eq()
+
+            values = frozenset([creator()])
+            obj.attr -= values
+            control -= values
+            assert_eq()
+
+            try:
+                direct -= [e, creator()]
+                assert False
+            except TypeError:
+                assert True
 
         if hasattr(direct, 'intersection_update'):
             zap()
@@ -430,6 +559,32 @@ class CollectionsTest(PersistTest):
             direct.intersection_update(values)
             control.intersection_update(values)
             assert_eq()
+
+        if hasattr(direct, '__iand__'):
+            zap()
+            e = creator()
+            addall(e, creator(), creator())
+            values = set(control)
+
+            direct &= values
+            control &= values
+            assert_eq()
+
+            values.update(set([e, creator()]))
+            direct &= values
+            control &= values
+            assert_eq()
+
+            values.update(set([creator()]))
+            obj.attr &= values
+            control &= values
+            assert_eq()
+
+            try:
+                direct &= [e, creator()]
+                assert False
+            except TypeError:
+                assert True
 
         if hasattr(direct, 'symmetric_difference_update'):
             zap()
@@ -453,13 +608,47 @@ class CollectionsTest(PersistTest):
             control.symmetric_difference_update(values)
             assert_eq()
 
+        if hasattr(direct, '__ixor__'):
+            zap()
+            e = creator()
+            addall(e, creator(), creator())
+
+            values = set([e, creator()])
+            direct ^= values
+            control ^= values
+            assert_eq()
+
+            e = creator()
+            addall(e)
+            values = set([e])
+            direct ^= values
+            control ^= values
+            assert_eq()
+
+            values = set()
+            direct ^= values
+            control ^= values
+            assert_eq()
+
+            values = set([creator()])
+            obj.attr ^= values
+            control ^= values
+            assert_eq()
+
+            try:
+                direct ^= [e, creator()]
+                assert False
+            except TypeError:
+                assert True
+
     def _test_set_bulk(self, typecallable, creator=entity_maker):
         class Foo(object):
             pass
 
         canary = Canary()
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         direct = obj.attr
@@ -478,7 +667,7 @@ class CollectionsTest(PersistTest):
         self.assert_(obj.attr == set([e2]))
         self.assert_(e1 in canary.removed)
         self.assert_(e2 in canary.added)
- 
+
         e3 = creator()
         real_set = set([e3])
         obj.attr = real_set
@@ -486,12 +675,12 @@ class CollectionsTest(PersistTest):
         self.assert_(obj.attr == set([e3]))
         self.assert_(e2 in canary.removed)
         self.assert_(e3 in canary.added)
-       
+
         e4 = creator()
         try:
             obj.attr = [e4]
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(e4 not in canary.data)
             self.assert_(e3 in canary.data)
 
@@ -534,7 +723,7 @@ class CollectionsTest(PersistTest):
 
     def test_set_emulates(self):
         class SetIsh(object):
-            __emulates__ = set
+            __emulates__ = py_set
             def __init__(self):
                 self.data = set()
             def add(self, item):
@@ -562,8 +751,9 @@ class CollectionsTest(PersistTest):
             pass
 
         canary = Canary()
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -584,7 +774,7 @@ class CollectionsTest(PersistTest):
             for item in list(adapter):
                 direct.remove(item)
             control.clear()
-        
+
         # assume an 'set' method is available for tests
         addall(creator())
 
@@ -619,7 +809,7 @@ class CollectionsTest(PersistTest):
             direct.clear()
             control.clear()
             assert_eq()
-            
+
             direct.clear()
             control.clear()
             assert_eq()
@@ -642,7 +832,7 @@ class CollectionsTest(PersistTest):
             zap()
             e = creator()
             addall(e)
-            
+
             direct.popitem()
             control.popitem()
             assert_eq()
@@ -669,18 +859,20 @@ class CollectionsTest(PersistTest):
             control.update(d)
             assert_eq()
 
-            kw = dict([(ee.a, ee) for ee in [e, creator()]])
-            direct.update(**kw)
-            control.update(**kw)
-            assert_eq()
+            if sys.version_info >= (2, 4):
+                kw = dict([(ee.a, ee) for ee in [e, creator()]])
+                direct.update(**kw)
+                control.update(**kw)
+                assert_eq()
 
     def _test_dict_bulk(self, typecallable, creator=dictable_entity):
         class Foo(object):
             pass
 
         canary = Canary()
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         direct = obj.attr
@@ -700,23 +892,42 @@ class CollectionsTest(PersistTest):
         self.assert_(e1 in canary.removed)
         self.assert_(e2 in canary.added)
 
+
+        # key validity on bulk assignment is a basic feature of MappedCollection
+        # but is not present in basic, @converter-less dict collections.
         e3 = creator()
-        real_dict = dict(keyignored1=e3)
-        obj.attr = real_dict
-        self.assert_(obj.attr is not real_dict)
-        self.assert_('keyignored1' not in obj.attr)
-        self.assert_(set(collections.collection_adapter(obj.attr)) == set([e3]))
-        self.assert_(e2 in canary.removed)
-        self.assert_(e3 in canary.added)
+        if isinstance(obj.attr, collections.MappedCollection):
+            real_dict = dict(badkey=e3)
+            try:
+                obj.attr = real_dict
+                self.assert_(False)
+            except TypeError:
+                pass
+            self.assert_(obj.attr is not real_dict)
+            self.assert_('badkey' not in obj.attr)
+            self.assertEquals(set(collections.collection_adapter(obj.attr)),
+                              set([e2]))
+            self.assert_(e3 not in canary.added)
+        else:
+            real_dict = dict(keyignored1=e3)
+            obj.attr = real_dict
+            self.assert_(obj.attr is not real_dict)
+            self.assert_('keyignored1' not in obj.attr)
+            self.assertEquals(set(collections.collection_adapter(obj.attr)),
+                              set([e3]))
+            self.assert_(e2 in canary.removed)
+            self.assert_(e3 in canary.added)
+
+        obj.attr = typecallable()
+        self.assertEquals(list(collections.collection_adapter(obj.attr)), [])
 
         e4 = creator()
         try:
             obj.attr = [e4]
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(e4 not in canary.data)
-            self.assert_(e3 in canary.data)
-        
+
     def test_dict(self):
         try:
             self._test_adapter(dict, dictable_entity,
@@ -851,10 +1062,11 @@ class CollectionsTest(PersistTest):
     def _test_object(self, typecallable, creator=entity_maker):
         class Foo(object):
             pass
-        
+
         canary = Canary()
-        manager.register_attribute(Foo, 'attr', True, extension=canary,
-                                   typecallable=typecallable)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable, useobject=True)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -876,7 +1088,7 @@ class CollectionsTest(PersistTest):
         direct.zark(e)
         control.remove(e)
         assert_eq()
-        
+
         e = creator()
         direct.maybe_zark(e)
         control.discard(e)
@@ -948,13 +1160,116 @@ class CollectionsTest(PersistTest):
         self.assert_(getattr(MyCollection2, '_sa_instrumented') ==
                      id(MyCollection2))
 
+    def test_recipes(self):
+        class Custom(object):
+            def __init__(self):
+                self.data = []
+            @collection.appender
+            @collection.adds('entity')
+            def put(self, entity):
+                self.data.append(entity)
+
+            @collection.remover
+            @collection.removes(1)
+            def remove(self, entity):
+                self.data.remove(entity)
+
+            @collection.adds(1)
+            def push(self, *args):
+                self.data.append(args[0])
+
+            @collection.removes('entity')
+            def yank(self, entity, arg):
+                self.data.remove(entity)
+
+            @collection.replaces(2)
+            def replace(self, arg, entity, **kw):
+                self.data.insert(0, entity)
+                return self.data.pop()
+
+            @collection.removes_return()
+            def pop(self, key):
+                return self.data.pop()
+
+            @collection.iterator
+            def __iter__(self):
+                return iter(self.data)
+
+        class Foo(object):
+            pass
+        canary = Canary()
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=Custom, useobject=True)
+
+        obj = Foo()
+        adapter = collections.collection_adapter(obj.attr)
+        direct = obj.attr
+        control = list()
+        def assert_eq():
+            self.assert_(set(direct) == canary.data)
+            self.assert_(set(adapter) == canary.data)
+            self.assert_(list(direct) == control)
+        creator = entity_maker
+
+        e1 = creator()
+        direct.put(e1)
+        control.append(e1)
+        assert_eq()
+
+        e2 = creator()
+        direct.put(entity=e2)
+        control.append(e2)
+        assert_eq()
+
+        direct.remove(e2)
+        control.remove(e2)
+        assert_eq()
+
+        direct.remove(entity=e1)
+        control.remove(e1)
+        assert_eq()
+
+        e3 = creator()
+        direct.push(e3)
+        control.append(e3)
+        assert_eq()
+
+        direct.yank(e3, 'blah')
+        control.remove(e3)
+        assert_eq()
+
+        e4, e5, e6, e7 = creator(), creator(), creator(), creator()
+        direct.put(e4)
+        direct.put(e5)
+        control.append(e4)
+        control.append(e5)
+
+        dr1 = direct.replace('foo', e6, bar='baz')
+        control.insert(0, e6)
+        cr1 = control.pop()
+        assert_eq()
+        self.assert_(dr1 is cr1)
+
+        dr2 = direct.replace(arg=1, entity=e7)
+        control.insert(0, e7)
+        cr2 = control.pop()
+        assert_eq()
+        self.assert_(dr2 is cr2)
+
+        dr3 = direct.pop('blah')
+        cr3 = control.pop()
+        assert_eq()
+        self.assert_(dr3 is cr3)
+
     def test_lifecycle(self):
         class Foo(object):
             pass
 
         canary = Canary()
         creator = entity_maker
-        manager.register_attribute(Foo, 'attr', True, extension=canary)
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'attr', True, extension=canary, useobject=True)
 
         obj = Foo()
         col1 = obj.attr
@@ -976,24 +1291,24 @@ class CollectionsTest(PersistTest):
         col1.append(e3)
         self.assert_(e3 not in canary.data)
         self.assert_(collections.collection_adapter(col1) is None)
-        
+
         obj.attr[0] = e3
         self.assert_(e3 in canary.data)
 
 class DictHelpersTest(ORMTest):
     def define_tables(self, metadata):
         global parents, children, Parent, Child
-        
+
         parents = Table('parents', metadata,
                         Column('id', Integer, primary_key=True),
-                        Column('label', String))
+                        Column('label', String(128)))
         children = Table('children', metadata,
                          Column('id', Integer, primary_key=True),
                          Column('parent_id', Integer, ForeignKey('parents.id'),
                                 nullable=False),
-                         Column('a', String),
-                         Column('b', String),
-                         Column('c', String))
+                         Column('a', String(128)),
+                         Column('b', String(128)),
+                         Column('c', String(128)))
 
         class Parent(object):
             def __init__(self, label=None):
@@ -1010,7 +1325,7 @@ class DictHelpersTest(ORMTest):
             'children': relation(Child, collection_class=collection_class,
                                  cascade="all, delete-orphan")
             })
-        
+
         p = Parent()
         p.children['foo'] = Child('foo', 'value')
         p.children['bar'] = Child('bar', 'value')
@@ -1027,16 +1342,15 @@ class DictHelpersTest(ORMTest):
 
         collections.collection_adapter(p.children).append_with_event(
             Child('foo', 'newvalue'))
-        
-        session.save(p)
+
         session.flush()
         session.clear()
-        
+
         p = session.query(Parent).get(pid)
-        
+
         self.assert_(set(p.children.keys()) == set(['foo', 'bar']))
         self.assert_(p.children['foo'].id != cid)
-        
+
         self.assert_(len(list(collections.collection_adapter(p.children))) == 2)
         session.flush()
         session.clear()
@@ -1046,7 +1360,7 @@ class DictHelpersTest(ORMTest):
 
         collections.collection_adapter(p.children).remove_with_event(
             p.children['foo'])
-        
+
         self.assert_(len(list(collections.collection_adapter(p.children))) == 1)
         session.flush()
         session.clear()
@@ -1061,7 +1375,7 @@ class DictHelpersTest(ORMTest):
 
         p = session.query(Parent).get(pid)
         self.assert_(len(list(collections.collection_adapter(p.children))) == 0)
-        
+
 
     def _test_composite_mapped(self, collection_class):
         mapper(Child, children)
@@ -1069,7 +1383,7 @@ class DictHelpersTest(ORMTest):
             'children': relation(Child, collection_class=collection_class,
                                  cascade="all, delete-orphan")
             })
-        
+
         p = Parent()
         p.children[('foo', '1')] = Child('foo', '1', 'value 1')
         p.children[('foo', '2')] = Child('foo', '2', 'value 2')
@@ -1079,7 +1393,7 @@ class DictHelpersTest(ORMTest):
         session.flush()
         pid = p.id
         session.clear()
-        
+
         p = session.query(Parent).get(pid)
 
         self.assert_(set(p.children.keys()) == set([('foo', '1'), ('foo', '2')]))
@@ -1087,18 +1401,17 @@ class DictHelpersTest(ORMTest):
 
         collections.collection_adapter(p.children).append_with_event(
             Child('foo', '1', 'newvalue'))
-        
-        session.save(p)
+
         session.flush()
         session.clear()
-        
+
         p = session.query(Parent).get(pid)
-        
+
         self.assert_(set(p.children.keys()) == set([('foo', '1'), ('foo', '2')]))
         self.assert_(p.children[('foo', '1')].id != cid)
-        
+
         self.assert_(len(list(collections.collection_adapter(p.children))) == 2)
-        
+
     def test_mapped_collection(self):
         collection_class = collections.mapped_collection(lambda c: c.a)
         self._test_scalar_mapped(collection_class)
@@ -1136,5 +1449,311 @@ class DictHelpersTest(ORMTest):
         collection_class = lambda: Ordered2(lambda v: (v.a, v.b))
         self._test_composite_mapped(collection_class)
 
+# TODO: are these tests redundant vs. the above tests ?
+# remove if so
+class CustomCollectionsTest(ORMTest):
+    def define_tables(self, metadata):
+        global sometable, someothertable
+        sometable = Table('sometable', metadata,
+            Column('col1',Integer, primary_key=True),
+            Column('data', String(30)))
+        someothertable = Table('someothertable', metadata,
+            Column('col1', Integer, primary_key=True),
+            Column('scol1', Integer, ForeignKey(sometable.c.col1)),
+            Column('data', String(20))
+        )
+    def test_basic(self):
+        class MyList(list):
+            pass
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar, collection_class=MyList)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        assert isinstance(f.bars, MyList)
+        
+    def test_lazyload(self):
+        """test that a 'set' can be used as a collection and can lazyload."""
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar, collection_class=set)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        f.bars.add(Bar())
+        f.bars.add(Bar())
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+        f.bars.clear()
+
+    def test_dict(self):
+        """test that a 'dict' can be used as a collection and can lazyload."""
+
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        class AppenderDict(dict):
+            @collection.appender
+            def set(self, item):
+                self[id(item)] = item
+            @collection.remover
+            def remove(self, item):
+                if id(item) in self:
+                    del self[id(item)]
+
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar, collection_class=AppenderDict)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        f.bars.set(Bar())
+        f.bars.set(Bar())
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+        f.bars.clear()
+
+    def test_dict_wrapper(self):
+        """test that the supplied 'dict' wrapper can be used as a collection and can lazyload."""
+
+        class Foo(object):
+            pass
+        class Bar(object):
+            def __init__(self, data): self.data = data
+
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar,
+                collection_class=collections.column_mapped_collection(someothertable.c.data))
+        })
+        mapper(Bar, someothertable)
+
+        f = Foo()
+        col = collections.collection_adapter(f.bars)
+        col.append_with_event(Bar('a'))
+        col.append_with_event(Bar('b'))
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+
+        existing = set([id(b) for b in f.bars.values()])
+
+        col = collections.collection_adapter(f.bars)
+        col.append_with_event(Bar('b'))
+        f.bars['a'] = Bar('a')
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+
+        replaced = set([id(b) for b in f.bars.values()])
+        self.assert_(existing != replaced)
+
+    def test_list(self):
+        class Parent(object):
+            pass
+        class Child(object):
+            pass
+
+        mapper(Parent, sometable, properties={
+            'children':relation(Child, collection_class=list)
+        })
+        mapper(Child, someothertable)
+
+        control = list()
+        p = Parent()
+
+        o = Child()
+        control.append(o)
+        p.children.append(o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child(), Child(), Child(), Child()]
+        control.extend(o)
+        p.children.extend(o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        assert control[0] == p.children[0]
+        assert control[-1] == p.children[-1]
+        assert control[1:3] == p.children[1:3]
+
+        del control[1]
+        del p.children[1]
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child()]
+        control[1:3] = o
+        p.children[1:3] = o
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child(), Child(), Child(), Child()]
+        control[1:3] = o
+        p.children[1:3] = o
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child(), Child(), Child(), Child()]
+        control[-1:-2] = o
+        p.children[-1:-2] = o
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = [Child(), Child(), Child(), Child()]
+        control[4:] = o
+        p.children[4:] = o
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = Child()
+        control.insert(0, o)
+        p.children.insert(0, o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = Child()
+        control.insert(3, o)
+        p.children.insert(3, o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = Child()
+        control.insert(999, o)
+        p.children.insert(999, o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        del control[0:1]
+        del p.children[0:1]
+        assert control == p.children
+        assert control == list(p.children)
+
+        del control[1:1]
+        del p.children[1:1]
+        assert control == p.children
+        assert control == list(p.children)
+
+        del control[1:3]
+        del p.children[1:3]
+        assert control == p.children
+        assert control == list(p.children)
+
+        del control[7:]
+        del p.children[7:]
+        assert control == p.children
+        assert control == list(p.children)
+
+        assert control.pop() == p.children.pop()
+        assert control == p.children
+        assert control == list(p.children)
+
+        assert control.pop(0) == p.children.pop(0)
+        assert control == p.children
+        assert control == list(p.children)
+
+        assert control.pop(2) == p.children.pop(2)
+        assert control == p.children
+        assert control == list(p.children)
+
+        o = Child()
+        control.insert(2, o)
+        p.children.insert(2, o)
+        assert control == p.children
+        assert control == list(p.children)
+
+        control.remove(o)
+        p.children.remove(o)
+        assert control == p.children
+        assert control == list(p.children)
+
+    def test_custom(self):
+        class Parent(object):
+            pass
+        class Child(object):
+            pass
+
+        class MyCollection(object):
+            def __init__(self):
+                self.data = []
+            @collection.appender
+            def append(self, value):
+                self.data.append(value)
+            @collection.remover
+            def remove(self, value):
+                self.data.remove(value)
+            @collection.iterator
+            def __iter__(self):
+                return iter(self.data)
+
+        mapper(Parent, sometable, properties={
+            'children':relation(Child, collection_class=MyCollection)
+        })
+        mapper(Child, someothertable)
+
+        control = list()
+        p1 = Parent()
+
+        o = Child()
+        control.append(o)
+        p1.children.append(o)
+        assert control == list(p1.children)
+
+        o = Child()
+        control.append(o)
+        p1.children.append(o)
+        assert control == list(p1.children)
+
+        o = Child()
+        control.append(o)
+        p1.children.append(o)
+        assert control == list(p1.children)
+
+        sess = create_session()
+        sess.save(p1)
+        sess.flush()
+        sess.clear()
+
+        p2 = sess.query(Parent).get(p1.col1)
+        o = list(p2.children)
+        assert len(o) == 3
+
+
+class InstrumentationTest(TestBase):
+
+    def test_uncooperative_descriptor_in_sweep(self):
+        class DoNotTouch(object):
+            def __get__(self, obj, owner):
+                raise AttributeError
+
+        class Touchy(list):
+            no_touch = DoNotTouch()
+
+        assert 'no_touch' in Touchy.__dict__
+        assert not hasattr(Touchy, 'no_touch')
+        assert 'no_touch' in dir(Touchy)
+
+        instrumented = collections._instrument_class(Touchy)
+        assert True
+
 if __name__ == "__main__":
-    testbase.main()
+    testenv.main()

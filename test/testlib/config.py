@@ -1,9 +1,11 @@
-import optparse, os, sys, ConfigParser, StringIO
+import optparse, os, sys, re, ConfigParser, StringIO, time, warnings
 logging, require = None, None
+
 
 __all__ = 'parser', 'configure', 'options',
 
-db, db_uri, db_type, db_label = None, None, None, None
+db = None
+db_label, db_url, db_opts = None, None, {}
 
 options = None
 file_config = None
@@ -17,7 +19,8 @@ mysql=mysql://scott:tiger@127.0.0.1:3306/test
 oracle=oracle://scott:tiger@127.0.0.1:1521
 oracle8=oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0
 mssql=mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test
-firebird=firebird://sysdba:s@localhost/tmp/test.fdb
+firebird=firebird://sysdba:masterkey@localhost//tmp/test.fdb
+maxdb=maxdb://MONA:RED@/maxdb1
 """
 
 parser = optparse.OptionParser(usage = "usage: %prog [options] [tests...]")
@@ -37,6 +40,29 @@ def configure():
     # Lazy setup of other options (post coverage)
     for fn in post_configure:
         fn(options, file_config)
+
+    return options, file_config
+
+def configure_defaults():
+    global options, config
+    global getopts_options, file_config
+    global db
+
+    file_config = ConfigParser.ConfigParser()
+    file_config.readfp(StringIO.StringIO(base_config))
+    file_config.read(['test.cfg', os.path.expanduser('~/.satest.cfg')])
+    (options, args) = parser.parse_args([])
+
+    # make error messages raised by decorators that depend on a default
+    # database clearer.
+    class _engine_bomb(object):
+        def __getattr__(self, key):
+            raise RuntimeError('No default engine available, testlib '
+                               'was configured with defaults only.')
+
+    db = _engine_bomb()
+    import testlib.testing
+    testlib.testing.db = db
 
     return options, file_config
 
@@ -70,12 +96,19 @@ def _start_coverage(option, opt_str, value, parser):
     atexit.register(_stop)
     coverage.erase()
     coverage.start()
-    
+
 def _list_dbs(*args):
     print "Available --db options (use --dburi to override)"
     for macro in sorted(file_config.options('db')):
         print "%20s\t%s" % (macro, file_config.get('db', macro))
     sys.exit(0)
+
+def _server_side_cursors(options, opt_str, value, parser):
+    db_opts['server_side_cursors'] = True
+
+def _engine_strategy(options, opt_str, value, parser):
+    if value:
+        db_opts['strategy'] = value
 
 opt = parser.add_option
 opt("--verbose", action="store_true", dest="verbose",
@@ -93,14 +126,23 @@ opt('--dbs', action='callback', callback=_list_dbs,
     help="List available prefab dbs")
 opt("--dburi", action="store", dest="dburi",
     help="Database uri (overrides --db)")
+opt("--dropfirst", action="store_true", dest="dropfirst",
+    help="Drop all tables in the target database first (use with caution on Oracle, MS-SQL)")
 opt("--mockpool", action="store_true", dest="mockpool",
     help="Use mock pool (asserts only one connection used)")
-opt("--enginestrategy", action="store", dest="enginestrategy", default=None,
-    help="Engine strategy (plain or threadlocal, defaults toplain)")
+opt("--enginestrategy", action="callback", type="string",
+    callback=_engine_strategy,
+    help="Engine strategy (plain or threadlocal, defaults to plain)")
 opt("--reversetop", action="store_true", dest="reversetop", default=False,
     help="Reverse the collection ordering for topological sorts (helps "
           "reveal dependency issues)")
-opt("--serverside", action="store_true", dest="serverside",
+opt("--unhashable", action="store_true", dest="unhashable", default=False,
+    help="Disallow SQLAlchemy from performing a hash() on mapped test objects.")
+opt("--noncomparable", action="store_true", dest="noncomparable", default=False,
+    help="Disallow SQLAlchemy from performing == on mapped test objects.")
+opt("--truthless", action="store_true", dest="truthless", default=False,
+    help="Disallow SQLAlchemy from truth-evaluating mapped test objects.")
+opt("--serverside", action="callback", callback=_server_side_cursors,
     help="Turn on server side cursors for PG")
 opt("--mysql-engine", action="store", dest="mysql_engine", default=None,
     help="Use the specified MySQL storage engine for all tables, default is "
@@ -130,24 +172,26 @@ class _ordered_map(object):
     def __iter__(self):
         for key in self._keys:
             yield self._data[key]
-    
+
+# at one point in refactoring, modules were injecting into the config
+# process.  this could probably just become a list now.
 post_configure = _ordered_map()
 
 def _engine_uri(options, file_config):
-    global db_label, db_uri
+    global db_label, db_url
     db_label = 'sqlite'
     if options.dburi:
-        db_uri = options.dburi
-        db_label = db_uri[:db_uri.index(':')]
+        db_url = options.dburi
+        db_label = db_url[:db_url.index(':')]
     elif options.db:
         db_label = options.db
-        db_uri = None
+        db_url = None
 
-    if db_uri is None:
+    if db_url is None:
         if db_label not in file_config.options('db'):
             raise RuntimeError(
                 "Unknown engine.  Specify --dbs for known engines.")
-        db_uri = file_config.get('db', db_label)
+        db_url = file_config.get('db', db_label)
 post_configure['engine_uri'] = _engine_uri
 
 def _require(options, file_config):
@@ -176,36 +220,52 @@ def _require(options, file_config):
             pkg_resources.require(requirement)
 post_configure['require'] = _require
 
-def _create_testing_engine(options, file_config):
-    from sqlalchemy import engine
-    global db, db_type
-    engine_opts = {}
-    if options.serverside:
-        engine_opts['server_side_cursors'] = True
-    
-    if options.enginestrategy is not None:
-        engine_opts['strategy'] = options.enginestrategy    
-
+def _engine_pool(options, file_config):
     if options.mockpool:
-        db = engine.create_engine(db_uri, poolclass=pool.AssertionPool,
-                                  **engine_opts)
-    else:
-        db = engine.create_engine(db_uri, **engine_opts)
-    db_type = db.name
+        from sqlalchemy import pool
+        db_opts['poolclass'] = pool.AssertionPool
+post_configure['engine_pool'] = _engine_pool
 
-    # decorate the dialect's create_execution_context() method
-    # to produce a wrapper
-    from testlib.testing import ExecutionContextWrapper
-
-    create_context = db.dialect.create_execution_context
-    def create_exec_context(*args, **kwargs):
-        return ExecutionContextWrapper(create_context(*args, **kwargs))
-    db.dialect.create_execution_context = create_exec_context
+def _create_testing_engine(options, file_config):
+    from testlib import engines, testing
+    global db
+    db = engines.testing_engine(db_url, db_opts)
+    testing.db = db
 post_configure['create_engine'] = _create_testing_engine
+
+def _prep_testing_database(options, file_config):
+    from testlib import engines
+    from sqlalchemy import schema
+
+    try:
+        # also create alt schemas etc. here?
+        if options.dropfirst:
+            e = engines.utf8_engine()
+            existing = e.table_names()
+            if existing:
+                if not options.quiet:
+                    print "Dropping existing tables in database: " + db_url
+                    try:
+                        print "Tables: %s" % ', '.join(existing)
+                    except:
+                        pass
+                    print "Abort within 5 seconds..."
+                    time.sleep(5)
+                md = schema.MetaData(e, reflect=True)
+                md.drop_all()
+            e.dispose()
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception, e:
+        if not options.quiet:
+            warnings.warn(RuntimeWarning(
+                "Error checking for existing tables in testing "
+                "database: %s" % e))
+post_configure['prep_db'] = _prep_testing_database
 
 def _set_table_options(options, file_config):
     import testlib.schema
-    
+
     table_options = testlib.schema.table_options
     for spec in options.tableopts:
         key, value = spec.split('=')
@@ -231,7 +291,7 @@ post_configure['topological'] = _reverse_topological
 
 def _set_profile_targets(options, file_config):
     from testlib import profiling
-    
+
     profile_config = profiling.profile_config
 
     for target in options.profile_targets:

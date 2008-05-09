@@ -20,7 +20,7 @@ engine::
     >>> from sqlalchemy.ext.sqlsoup import SqlSoup
     >>> db = SqlSoup('sqlite:///:memory:')
 
-or, you can re-use an existing metadata::
+or, you can re-use an existing metadata or engine::
 
     >>> db = SqlSoup(MetaData(e))
 
@@ -35,14 +35,14 @@ Loading objects
 
 Loading objects is as easy as this::
 
-    >>> users = db.users.select()
+    >>> users = db.users.all()
     >>> users.sort()
     >>> users
     [MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
 
-Of course, letting the database do the sort is better (".c" is short for ".columns")::
+Of course, letting the database do the sort is better::
 
-    >>> db.users.select(order_by=[db.users.c.name])
+    >>> db.users.order_by(db.users.name).all()
     [MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
 
 Field access is intuitive::
@@ -55,14 +55,15 @@ WHERE clause.  Let's also switch the order_by to DESC while we're at
 it::
 
     >>> from sqlalchemy import or_, and_, desc
-    >>> where = or_(db.users.c.name=='Bhargan Basepair', db.users.c.email=='student@example.edu')
-    >>> db.users.select(where, order_by=[desc(db.users.c.name)])
+    >>> where = or_(db.users.name=='Bhargan Basepair', db.users.email=='student@example.edu')
+    >>> db.users.filter(where).order_by(desc(db.users.name)).all()
     [MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
 
-You can also use the select...by methods if you're querying on a
-single column.  This allows using keyword arguments as column names::
+You can also use .first() (to retrieve only the first object from a query) or
+.one() (like .first when you expect exactly one user -- it will raise an
+exception if more were returned)::
 
-    >>> db.users.selectone_by(name='Bhargan Basepair')
+    >>> db.users.filter(db.users.name=='Bhargan Basepair').one()
     MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
 Since name is the primary key, this is equivalent to
@@ -70,43 +71,22 @@ Since name is the primary key, this is equivalent to
     >>> db.users.get('Bhargan Basepair')
     MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
+This is also equivalent to
 
-Select variants
----------------
+    >>> db.users.filter_by(name='Bhargan Basepair').one()
+    MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
-All the SQLAlchemy Query select variants are available.  Here's a
-quick summary of these methods:
+filter_by is like filter, but takes kwargs instead of full clause expressions.
+This makes it more concise for simple queries like this, but you can't do
+complex queries like the or\_ above or non-equality based comparisons this way.
 
-- ``get(PK)``: load a single object identified by its primary key
-  (either a scalar, or a tuple)
+Full query documentation
+------------------------
 
-- ``select(Clause, **kwargs)``: perform a select restricted by the
-  `Clause` argument; returns a list of objects.  The most common clause
-  argument takes the form ``db.tablename.c.columname == value``.  The
-  most common optional argument is `order_by`.
+Get, filter, filter_by, order_by, limit, and the rest of the
+query methods are explained in detail in the `SQLAlchemy documentation`__.
 
-- ``select_by(**params)``: select methods ending with ``_by`` allow
-  using bare column names (``columname=value``). This feels more
-  natural to most Python programmers; the downside is you can't
-  specify ``order_by`` or other select options.
-
-- ``selectfirst``, ``selectfirst_by``: returns only the first object
-  found; equivalent to ``select(...)[0]`` or ``select_by(...)[0]``,
-  except None is returned if no rows are selected.
-
-- ``selectone``, ``selectone_by``: like ``selectfirst`` or
-  ``selectfirst_by``, but raises if less or more than one object is
-  selected.
-
-- ``count``, ``count_by``: returns an integer count of the rows
-  selected.
-
-See the SQLAlchemy documentation for details, `datamapping query`__
-for general info and examples, `sql construction`__ for details on
-constructing ``WHERE`` clauses.
-
-__ http://www.sqlalchemy.org/docs/datamapping.myt#datamapping_query
-__ http://www.sqlalchemy.org/docs/sqlconstruction.myt
+__ http://www.sqlalchemy.org/docs/04/ormtutorial.html#datamapping_querying
 
 
 Modifying objects
@@ -125,12 +105,12 @@ multiple updates to a single object will be turned into a single
 To finish covering the basics, let's insert a new loan, then delete
 it::
 
-    >>> book_id = db.books.selectfirst(db.books.c.title=='Regional Variation in Moss').id
+    >>> book_id = db.books.filter_by(title='Regional Variation in Moss').first().id
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
     >>> db.flush()
 
-    >>> loan = db.loans.selectone_by(book_id=2, user_name='Bhargan Basepair')
+    >>> loan = db.loans.filter_by(book_id=2, user_name='Bhargan Basepair').one()
     >>> db.delete(loan)
     >>> db.flush()
 
@@ -146,13 +126,13 @@ to the select methods.
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
     >>> db.flush()
-    >>> db.loans.delete(db.loans.c.book_id==2)
+    >>> db.loans.delete(db.loans.book_id==2)
 
 You can similarly update multiple rows at once. This will change the
 book_id to 1 in all loans whose book_id is 2::
 
-    >>> db.loans.update(db.loans.c.book_id==2, book_id=1)
-    >>> db.loans.select_by(db.loans.c.book_id==1)
+    >>> db.loans.update(db.loans.book_id==2, book_id=1)
+    >>> db.loans.filter_by(book_id=1).all()
     [MappedLoans(book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
 
@@ -169,7 +149,7 @@ uses that as the join condition automatically.
 ::
 
     >>> join1 = db.join(db.users, db.loans, isouter=True)
-    >>> join1.select_by(name='Joe Student')
+    >>> join1.filter_by(name='Joe Student').all()
     [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
 If you're unfortunate enough to be using MySQL with the default MyISAM
@@ -177,7 +157,7 @@ storage engine, you'll have to specify the join condition manually,
 since MyISAM does not store foreign keys.  Here's the same join again,
 with the join condition explicitly specified::
 
-    >>> db.join(db.users, db.loans, db.users.c.name==db.loans.c.user_name, isouter=True)
+    >>> db.join(db.users, db.loans, db.users.name==db.loans.user_name, isouter=True)
     <class 'sqlalchemy.ext.sqlsoup.MappedJoin'>
 
 You can compose arbitrarily complex joins by combining Join objects
@@ -185,11 +165,12 @@ with tables or other joins.  Here we combine our first join with the
 books table::
 
     >>> join2 = db.join(join1, db.books)
-    >>> join2.select()
+    >>> join2.all()
     [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
 
 If you join tables that have an identical column name, wrap your join
-with `with_labels`, to disambiguate columns with their table name::
+with `with_labels`, to disambiguate columns with their table name
+(.c is short for .columns)::
 
     >>> db.with_labels(join1).c.keys()
     [u'users_name', u'users_email', u'users_password', u'users_classname', u'users_admin', u'loans_book_id', u'loans_user_name', u'loans_loan_date']
@@ -199,6 +180,28 @@ You can also join directly to a labeled object::
     >>> labeled_loans = db.with_labels(db.loans)
     >>> db.join(db.users, labeled_loans, isouter=True).c.keys()
     [u'name', u'email', u'password', u'classname', u'admin', u'loans_book_id', u'loans_user_name', u'loans_loan_date']
+
+
+Relations
+=========
+
+You can define relations on SqlSoup classes:
+
+    >>> db.users.relate('loans', db.loans)
+
+These can then be used like a normal SA property:
+
+    >>> db.users.get('Joe Student').loans
+    [MappedLoans(book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
+
+    >>> db.users.filter(~db.users.loans.any()).all()
+    [MappedUsers(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1)]
+
+
+relate can take any options that the relation function accepts in normal mapper definition:
+
+    >>> del db._cache['users']
+    >>> db.users.relate('loans', db.loans, order_by=db.loans.loan_date, cascade='all, delete-orphan')
 
 
 Advanced Use
@@ -237,7 +240,7 @@ PK in the database.)
     >>> s = select([b.c.published_year, func.count('*').label('n')], from_obj=[b], group_by=[b.c.published_year])
     >>> s = s.alias('years_with_count')
     >>> years_with_count = db.map(s, primary_key=[s.c.published_year])
-    >>> years_with_count.select_by(published_year='1989')
+    >>> years_with_count.filter_by(published_year='1989').all()
     [MappedBooks(published_year='1989',n=1)]
 
 Obviously if we just wanted to get a list of counts associated with
@@ -259,7 +262,7 @@ Raw SQL
 
 SqlSoup works fine with SQLAlchemy's `text block support`__.
 
-__ http://www.sqlalchemy.org/docs/documentation.myt#sql_textual
+__ http://www.sqlalchemy.org/docs/04/sqlexpression.html#sql_text
 
 You can also access the SqlSoup's `engine` attribute to compose SQL
 directly.  The engine's ``execute`` method corresponds to the one of a
@@ -274,6 +277,16 @@ you would also see on a cursor::
 You can also pass this engine object to other SQLAlchemy constructs.
 
 
+Dynamic table names
+-------------------
+
+You can load a table whose name is specified at runtime with the entity() method:
+
+    >>> tablename = 'loans'
+    >>> db.entity(tablename) == db.loans
+    True
+
+
 Extra tests
 ===========
 
@@ -281,7 +294,7 @@ Boring tests here.  Nothing of real expository value.
 
 ::
 
-    >>> db.users.select(db.users.c.classname==None, order_by=[db.users.c.name])
+    >>> db.users.filter_by(classname=None).order_by(db.users.name).all()
     [MappedUsers(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
 
     >>> db.nopk
@@ -310,10 +323,11 @@ Boring tests here.  Nothing of real expository value.
 """
 
 from sqlalchemy import *
+from sqlalchemy import schema, sql
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy.exceptions import *
-
+from sqlalchemy.sql import expression
 
 _testsql = """
 CREATE TABLE books (
@@ -375,13 +389,13 @@ objectstore = Objectstore(create_session)
 
 class PKNotFoundError(SQLAlchemyError): pass
 
-# metaclass is necessary to expose class methods with getattr, e.g.
-# we want to pass db.users.select through to users._mapper.select
 def _ddl_error(cls):
     msg = 'SQLSoup can only modify mapped Tables (found: %s)' \
           % cls._table.__class__.__name__
     raise InvalidRequestError(msg)
 
+# metaclass is necessary to expose class methods with getattr, e.g.
+# we want to pass db.users.select through to users._mapper.select
 class SelectableClassType(type):
     def insert(cls, **kwargs):
         _ddl_error(cls)
@@ -413,6 +427,9 @@ class TableClassType(SelectableClassType):
     def update(cls, whereclause=None, values=None, **kwargs):
         cls._table.update(whereclause, values).execute(**kwargs)
 
+    def relate(cls, propname, *args, **kwargs):
+        class_mapper(cls)._compile_property(propname, relation(*args, **kwargs))
+
 def _is_outer_join(selectable):
     if not isinstance(selectable, sql.Join):
         return False
@@ -434,7 +451,7 @@ def _selectable_name(selectable):
         return x
 
 def class_for_table(selectable, **mapper_kwargs):
-    selectable = sql._selectable(selectable)
+    selectable = expression._selectable(selectable)
     mapname = 'Mapped' + _selectable_name(selectable)
     if isinstance(selectable, Table):
         klass = TableClassType(mapname, (object,), {})
@@ -518,13 +535,13 @@ class SqlSoup:
 
     def with_labels(self, item):
         # TODO give meaningful aliases
-        return self.map(sql._selectable(item).select(use_labels=True).alias('foo'))
+        return self.map(expression._selectable(item).select(use_labels=True).alias('foo'))
 
     def join(self, *args, **kwargs):
         j = join(*args, **kwargs)
         return self.map(j)
 
-    def __getattr__(self, attr):
+    def entity(self, attr):
         try:
             t = self._cache[attr]
         except KeyError:
@@ -538,9 +555,14 @@ class SqlSoup:
             self._cache[attr] = t
         return t
     
+    def __getattr__(self, attr):
+        return self.entity(attr)
+
     def __repr__(self):
         return 'SqlSoup(%r)' % self._metadata
 
 if __name__ == '__main__':
+    import logging
+    logging.basicConfig()
     import doctest
     doctest.testmod()

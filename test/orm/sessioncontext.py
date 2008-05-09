@@ -1,4 +1,4 @@
-import testbase
+import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
@@ -12,10 +12,10 @@ users = Table('users', metadata,
     Column('user_name', String(40)),
 )
 
-class SessionContextTest(AssertMixin):
+class SessionContextTest(TestBase, AssertsExecutionResults):
     def setUp(self):
         clear_mappers()
-        
+
     def do_test(self, class_, context):
         """test session assignment on object creation"""
         obj = class_()
@@ -32,10 +32,11 @@ class SessionContextTest(AssertMixin):
         del context.current
         assert context.current != new_session
         assert old_session == object_session(obj)
-        
+
         obj2 = class_()
         assert context.current == object_session(obj2)
-    
+
+    @testing.uses_deprecated('SessionContext')
     def test_mapper_extension(self):
         context = SessionContext(Session)
         class User(object): pass
@@ -44,4 +45,4 @@ class SessionContextTest(AssertMixin):
 
 
 if __name__ == "__main__":
-    testbase.main()        
+    testenv.main()

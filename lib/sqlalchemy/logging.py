@@ -1,20 +1,21 @@
 # logging.py - adapt python logging module to SQLAlchemy
-# Copyright (C) 2006, 2007 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2006, 2007, 2008 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Provides a few functions used by instances to turn on/off their
-logging, including support for the usual "echo" parameter.
+"""Logging control and utilities.
 
-Control of logging for SA can be performed from the regular python
-logging module.  The regular dotted module namespace is used, starting
-at 'sqlalchemy'.  For class-level logging, the class name is appended,
-and for instance-level logging, the hex id of the instance is
-appended.
+Provides a few functions used by instances to turn on/off their logging,
+including support for the usual "echo" parameter.
 
-The "echo" keyword parameter which is available on some SA objects
-corresponds to an instance-level logger for that instance.
+Control of logging for SA can be performed from the regular python logging
+module.  The regular dotted module namespace is used, starting at
+'sqlalchemy'.  For class-level logging, the class name is appended, and for
+instance-level logging, the hex id of the instance is appended.
+
+The "echo" keyword parameter which is available on some SA objects corresponds
+to an instance-level logger for that instance.
 
 E.g.::
 
@@ -23,16 +24,23 @@ E.g.::
 is equivalent to::
 
     import logging
-    logging.getLogger('sqlalchemy.engine.Engine.%s' % hex(id(engine))).setLevel(logging.DEBUG)
+    logger = logging.getLogger('sqlalchemy.engine.Engine.%s' % hex(id(engine)))
+    logger.setLevel(logging.DEBUG)
 """
 
-import sys
+import sys, warnings
+import sqlalchemy.exceptions as sa_exc
 
 # py2.5 absolute imports will fix....
 logging = __import__('logging')
 
+# moved to sqlalchemy.exceptions.  this alias will be removed in 0.5.
+SADeprecationWarning = sa_exc.SADeprecationWarning
 
-logging.getLogger('sqlalchemy').setLevel(logging.WARN)
+rootlogger = logging.getLogger('sqlalchemy')
+if rootlogger.level == logging.NOTSET:
+    rootlogger.setLevel(logging.WARN)
+warnings.filterwarnings("once", category=sa_exc.SADeprecationWarning)
 
 default_enabled = False
 def default_logging(name):
@@ -41,19 +49,21 @@ def default_logging(name):
         default_enabled=True
     if not default_enabled:
         default_enabled = True
-        rootlogger = logging.getLogger('sqlalchemy')
         handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s'))
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s %(name)s %(message)s'))
         rootlogger.addHandler(handler)
 
 def _get_instance_name(instance):
-    # since getLogger() does not have any way of removing logger objects from memory,
-    # instance logging displays the instance id as a modulus of 16 to prevent endless memory growth
-    # also speeds performance as logger initialization is apparently slow
-    return instance.__class__.__module__ + "." + instance.__class__.__name__ + ".0x.." + hex(id(instance))[-2:]
-
-def instance_logger(instance):
-    return logging.getLogger(_get_instance_name(instance))
+    # since getLogger() does not have any way of removing logger objects from
+    # memory, instance logging displays the instance id as a modulus of 16 to
+    # prevent endless memory growth also speeds performance as logger
+    # initialization is apparently slow
+    return "%s.%s.0x..%s" % (instance.__class__.__module__,
+                             instance.__class__.__name__,
+                             hex(id(instance))[-2:])
+    return (instance.__class__.__module__ + "." + instance.__class__.__name__ +
+            ".0x.." + hex(id(instance))[-2:])
 
 def class_logger(cls):
     return logging.getLogger(cls.__module__ + "." + cls.__name__)
@@ -64,27 +74,40 @@ def is_debug_enabled(logger):
 def is_info_enabled(logger):
     return logger.isEnabledFor(logging.INFO)
 
+def instance_logger(instance, echoflag=None):
+    if echoflag is not None:
+        l = logging.getLogger(_get_instance_name(instance))
+        if echoflag == 'debug':
+            default_logging(_get_instance_name(instance))
+            l.setLevel(logging.DEBUG)
+        elif echoflag is True:
+            default_logging(_get_instance_name(instance))
+            l.setLevel(logging.INFO)
+        elif echoflag is False:
+            l.setLevel(logging.NOTSET)
+    else:
+        l = logging.getLogger(_get_instance_name(instance))
+    instance._should_log_debug = l.isEnabledFor(logging.DEBUG)
+    instance._should_log_info = l.isEnabledFor(logging.INFO)
+    return l
+
 class echo_property(object):
-    level_map={logging.DEBUG : "debug", logging.INFO:True}
-    
-    __doc__ = """when ``True``, enable log output for this element.
-    
-    This has the effect of setting the Python logging level for the 
-    namespace of this element's class and object reference.  A value
-    of boolean ``True`` indicates that the loglevel ``logging.INFO`` will be 
-    set for the logger, whereas the string value ``debug`` will set the loglevel
-    to ``logging.DEBUG``.
+    __doc__ = """\
+    When ``True``, enable log output for this element.
+
+
+    This has the effect of setting the Python logging level for the namespace
+    of this element's class and object reference.  A value of boolean ``True``
+    indicates that the loglevel ``logging.INFO`` will be set for the logger,
+    whereas the string value ``debug`` will set the loglevel to
+    ``logging.DEBUG``.
     """
-    
+
     def __get__(self, instance, owner):
         if instance is None:
             return self
-        level = logging.getLogger(_get_instance_name(instance)).getEffectiveLevel()
-        return echo_property.level_map.get(level, False)
-        
-    def __set__(self, instance, value):
-        if value:
-            default_logging(_get_instance_name(instance))
-            logging.getLogger(_get_instance_name(instance)).setLevel(value == 'debug' and logging.DEBUG or logging.INFO)
         else:
-            logging.getLogger(_get_instance_name(instance)).setLevel(logging.NOTSET)
+            return instance._should_log_debug and 'debug' or (instance._should_log_info and True or False)
+
+    def __set__(self, instance, value):
+        instance_logger(instance, echoflag=value)

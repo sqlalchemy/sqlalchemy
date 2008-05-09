@@ -18,7 +18,7 @@
     <%
         content = capture(caller.body)
         re2 = re.compile(r"'''PYESC(.+?)PYESC'''", re.S)
-        content = re2.sub(lambda m: m.group(1), content)
+        content = re2.sub(lambda m: filters.url_unescape(m.group(1)), content)
 
         item = toc.get_by_path(path)
         subsection = item.depth > 1
@@ -36,9 +36,9 @@
 
     % if len(item.children) == 0:
         % if paged:
-            <a href="#top">back to section top</a>
+            <a href="#top" class="totoc">back to section top</a>
         % else:
-            <a href="#${item.get_page_root().path}">back to section top</a>
+            <a href="#${item.get_page_root().path}" class="totoc">back to section top</a>
         % endif
     % endif
     </div>
@@ -55,7 +55,7 @@
     <span class="codeline">${ caller.body() }</span>
 </%def>
 
-<%def name="code(title=None, syntaxtype='mako', html_escape=False, use_sliders=False)">
+<%def name="code(toc, paged, extension, title=None, syntaxtype='mako', html_escape=True, use_sliders=False)">
     <%
         def fix_indent(f):
             f =string.expandtabs(f, 4)
@@ -73,18 +73,27 @@
 
                 if whitespace is not None or re.search(r"\w", line) is not None:
                     g += (line + "\n")
-
-
-            return g.rstrip()
-
-        p = re.compile(r'<pre>(.*?)</pre>', re.S)
-        def hlight(match):
-            return "<pre>" + highlight.highlight(fix_indent(match.group(1)), html_escape = html_escape, syntaxtype = syntaxtype) + "</pre>"
-        try:
-            content = p.sub(hlight, "<pre>" + capture(caller.body) + "</pre>")
-        except:
-            raise "the content is " + str(capture(caller.body))
+                else:
+                    g += "\n"
+            
+            return g[:-1] #.rstrip()
         
+        p = re.compile(r'<pre>(.*?)</pre>', re.S)
+        
+        def hlight(match):
+            try:
+                return "<pre>" + highlight.highlight(fix_indent(match.group(1)), html_escape = html_escape, syntaxtype = syntaxtype) + "</pre>"
+            except:
+                print "TEXT IS", fix_indent(match.group(1))
+            
+        def link(match):
+            return capture(nav.toclink, toc, match.group(2), extension, paged, description=match.group(1))
+            
+        content = re.sub(r'\[(.+?)\]\(rel:(.+?)\)', link, capture(caller.body)) 
+        if syntaxtype != 'diagram':
+            content = p.sub(hlight, "<pre>" + content + "</pre>")
+        else:
+            content = "<pre>" + content + "</pre>"
     %>
 
     <div class="${ use_sliders and "sliding_code" or "code" }">
@@ -119,13 +128,13 @@ javascript:togglePopbox('${name}', '${show}', '${hide}')
     <%
         href = capture(popboxlink)
     %>
-    '''PYESC${nav.link(href=href, text=link, class_="codepoplink")}PYESC'''
+    '''PYESC${capture(nav.link, href=href, text=link, class_="codepoplink") | u}PYESC'''
 </%def>
 
 <%def name="codepopper()" filter="trim">
     <%
 		c = capture(caller.body)
-		c = re.sub(r'\n', '<br/>\n', c.strip())
+		c = re.sub(r'\n', '<br/>\n', filters.html_escape(c.strip()))
 	%>
     </pre><%call expr="popbox(class_='codepop')">${c}</%call><pre>
 </%def>
@@ -133,7 +142,7 @@ javascript:togglePopbox('${name}', '${show}', '${hide}')
 <%def name="poppedcode()" filter="trim">
     <%
 		c = capture(caller.body)
-		c = re.sub(r'\n', '<br/>\n', c.strip())
+		c = re.sub(r'\n', '<br/>\n', filters.html_escape(c.strip()))
 	%>
     </pre><div class="codepop">${c}</div><pre>
 </%def>

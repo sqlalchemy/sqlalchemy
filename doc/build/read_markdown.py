@@ -25,7 +25,7 @@ def dump_tree(elem, stream):
         dump_mako_tag(elem, stream)
     else:
         if elem.tag != 'html':
-            if len(elem.attrib):
+            if elem.attrib:
                 stream.write("<%s %s>" % (elem.tag, " ".join(["%s=%s" % (key, repr(val)) for key, val in elem.attrib.iteritems()])))
             else:
                 stream.write("<%s>" % elem.tag)
@@ -35,7 +35,8 @@ def dump_tree(elem, stream):
             dump_tree(child, stream)
             if child.tail:
                 stream.write(child.tail)
-        stream.write("</%s>" % elem.tag)
+        if elem.tag != 'html':
+            stream.write("</%s>" % elem.tag)
 
 def dump_mako_tag(elem, stream):
     tag = elem.tag[5:]
@@ -143,18 +144,19 @@ def replace_pre_with_mako(tree):
         # syntax highlighter which uses the tokenize module
         text = re.sub(r'>>> ', r'">>>" ', text)
 
-        sqlre = re.compile(r'{sql}(.*?\n)((?:BEGIN|SELECT|INSERT|DELETE|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?)\n\s*(\n|$)', re.S)
+        sqlre = re.compile(r'{sql}(.*?)\n((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?)\n\s*((?:{stop})|\n|$)', re.S)
         if sqlre.search(text) is not None:
             use_sliders = False
         else:
             use_sliders = True
         
-        text = sqlre.sub(r"""${formatting.poplink()}\1\n<%call expr="formatting.codepopper()">\2</%call>\n\n""", text)
+        text = sqlre.sub(r"""${formatting.poplink()}\1<%call expr="formatting.codepopper()">\2</%call>""", text)
 
-        sqlre2 = re.compile(r'{opensql}(.*?\n)((?:BEGIN|SELECT|INSERT|DELETE|UPDATE|CREATE|DROP).*?)\n\s*(\n|$)', re.S)
-        text = sqlre2.sub(r"<%call expr='formatting.poppedcode()' >\1\n\2</%call>\n\n", text)
+        #sqlre2 = re.compile(r'{opensql}(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|UPDATE|ROLLBACK|COMMIT|CREATE|DROP).*?)\n\s*((?:{stop})|\n|$)', re.S)
+        sqlre2 = re.compile(r'{opensql}(.*?)\n?((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?)\n\s*((?:{stop})|\n|$)', re.S)
+        text = sqlre2.sub(r"\1<%call expr='formatting.poppedcode()' >\2</%call>\n\n", text)
 
-        tag = et.Element("MAKO:formatting.code")
+        tag = et.Element("MAKO:formatting.code", extension='extension', paged='paged', toc='toc')
         if code:
             tag.attrib["syntaxtype"] = repr(code)
         if title:
@@ -170,13 +172,14 @@ def replace_pre_with_mako(tree):
     parents = get_parent_map(tree)
 
     for precode in tree.findall('.//pre/code'):
-        reg = re.compile(r'\{(python|code)(?: title="(.*?)"){0,1}\}(.*)', re.S)
+        reg = re.compile(r'\{(python|code|diagram)(?: title="(.*?)"){0,1}\}(.*)', re.S)
         m = reg.match(precode[0].text.lstrip())
         if m:
             code = m.group(1)
             title = m.group(2)
             text = m.group(3)
-            text = re.sub(r'{(python|code).*?}(\n\s*)?', '', text)
+            text = re.sub(r'{(python|code|diagram).*?}(\n\s*)?', '', text)
+            text = re.sub(r'\\\n', r'${r"\\\\" + "\\n\\n"}', text)
             splice_code_tag(parents[precode], text, code=code, title=title)
         elif precode.text.lstrip().startswith('>>> '):
             splice_code_tag(parents[precode], precode.text)
@@ -225,6 +228,8 @@ def parse_markdown_files(toc, files):
         if not os.access(infile, os.F_OK):
             continue
         html = markdown.markdown(file(infile).read())
+        #foo = file('foo', 'w')
+        #foo.write(html)
         tree = et.fromstring("<html>" + html + "</html>")
         (title, toc_element) = create_toc(inname, tree, toc)
         safety_code(tree)

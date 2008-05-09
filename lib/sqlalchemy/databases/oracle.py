@@ -1,17 +1,17 @@
 # oracle.py
-# Copyright (C) 2005, 2006, 2007 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import re, warnings, operator
+import datetime, random, re
 
-from sqlalchemy import util, sql, schema, ansisql, exceptions, logging
+from sqlalchemy import util, sql, schema, exceptions, logging
 from sqlalchemy.engine import default, base
-import sqlalchemy.types as sqltypes
-
-import datetime
+from sqlalchemy.sql import compiler, visitors
+from sqlalchemy.sql import operators as sql_operators, functions as sql_functions
+from sqlalchemy import types as sqltypes
 
 
 class OracleNumeric(sqltypes.Numeric):
@@ -32,25 +32,30 @@ class OracleSmallInteger(sqltypes.Smallinteger):
 class OracleDate(sqltypes.Date):
     def get_col_spec(self):
         return "DATE"
-    def convert_bind_param(self, value, dialect):
-        return value
-    def convert_result_value(self, value, dialect):
-        if not isinstance(value, datetime.datetime):
-            return value
-        else:
-            return value.date()
+    def bind_processor(self, dialect):
+        return None
+
+    def result_processor(self, dialect):
+        def process(value):
+            if not isinstance(value, datetime.datetime):
+                return value
+            else:
+                return value.date()
+        return process
 
 class OracleDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATE"
-        
-    def convert_result_value(self, value, dialect):
-        if value is None or isinstance(value,datetime.datetime):
-            return value
-        else:
-            # convert cx_oracle datetime object returned pre-python 2.4
-            return datetime.datetime(value.year,value.month,
-                value.day,value.hour, value.minute, value.second)
+
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None or isinstance(value,datetime.datetime):
+                return value
+            else:
+                # convert cx_oracle datetime object returned pre-python 2.4
+                return datetime.datetime(value.year,value.month,
+                    value.day,value.hour, value.minute, value.second)
+        return process
 
 # Note:
 # Oracle DATE == DATETIME
@@ -65,39 +70,43 @@ class OracleTimestamp(sqltypes.TIMESTAMP):
     def get_dbapi_type(self, dialect):
         return dialect.TIMESTAMP
 
-    def convert_result_value(self, value, dialect):
-        if value is None or isinstance(value,datetime.datetime):
-            return value
-        else:
-            # convert cx_oracle datetime object returned pre-python 2.4
-            return datetime.datetime(value.year,value.month,
-                value.day,value.hour, value.minute, value.second)
-
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None or isinstance(value,datetime.datetime):
+                return value
+            else:
+                # convert cx_oracle datetime object returned pre-python 2.4
+                return datetime.datetime(value.year,value.month,
+                    value.day,value.hour, value.minute, value.second)
+        return process
 
 class OracleString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
 
-class OracleText(sqltypes.TEXT):
+class OracleText(sqltypes.Text):
     def get_dbapi_type(self, dbapi):
         return dbapi.CLOB
 
     def get_col_spec(self):
         return "CLOB"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        elif hasattr(value, 'read'):
-            # cx_oracle doesnt seem to be consistent with CLOB returning LOB or str
-            return super(OracleText, self).convert_result_value(value.read(), dialect)
-        else:
-            return super(OracleText, self).convert_result_value(value, dialect)
+    def result_processor(self, dialect):
+        super_process = super(OracleText, self).result_processor(dialect)
+        lob = dialect.dbapi.LOB
+        def process(value):
+            if isinstance(value, lob):
+                if super_process:
+                    return super_process(value.read())
+                else:
+                    return value.read()
+            else:
+                if super_process:
+                    return super_process(value)
+                else:
+                    return value
+        return process
 
-
-class OracleRaw(sqltypes.Binary):
-    def get_col_spec(self):
-        return "RAW(%(length)s)" % {'length' : self.length}
 
 class OracleChar(sqltypes.CHAR):
     def get_col_spec(self):
@@ -110,33 +119,44 @@ class OracleBinary(sqltypes.Binary):
     def get_col_spec(self):
         return "BLOB"
 
-    def convert_bind_param(self, value, dialect):
-        return value
+    def bind_processor(self, dialect):
+        return None
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        else:
-            return value.read()
+    def result_processor(self, dialect):
+        lob = dialect.dbapi.LOB
+        def process(value):
+            if isinstance(value, lob):
+                return value.read()
+            else:
+                return value
+        return process
+
+class OracleRaw(OracleBinary):
+    def get_col_spec(self):
+        return "RAW(%(length)s)" % {'length' : self.length}
 
 class OracleBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "SMALLINT"
 
-    def convert_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value and True or False
-
-    def convert_bind_param(self, value, dialect):
-        if value is True:
-            return 1
-        elif value is False:
-            return 0
-        elif value is None:
-            return None
-        else:
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
             return value and True or False
+        return process
+
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is True:
+                return 1
+            elif value is False:
+                return 0
+            elif value is None:
+                return None
+            else:
+                return value and True or False
+        return process
 
 colspecs = {
     sqltypes.Integer : OracleInteger,
@@ -148,14 +168,14 @@ colspecs = {
     sqltypes.String : OracleString,
     sqltypes.Binary : OracleBinary,
     sqltypes.Boolean : OracleBoolean,
-    sqltypes.TEXT : OracleText,
+    sqltypes.Text : OracleText,
     sqltypes.TIMESTAMP : OracleTimestamp,
     sqltypes.CHAR: OracleChar,
 }
 
 ischema_names = {
     'VARCHAR2' : OracleString,
-    'DATE' : OracleDate,
+    'DATE' : OracleDateTime,
     'DATETIME' : OracleDateTime,
     'NUMBER' : OracleNumeric,
     'BLOB' : OracleBinary,
@@ -181,22 +201,25 @@ class OracleExecutionContext(default.DefaultExecutionContext):
         super(OracleExecutionContext, self).pre_exec()
         if self.dialect.auto_setinputsizes:
             self.set_input_sizes()
-        if self.compiled_parameters is not None and not isinstance(self.compiled_parameters, list):
-            for key in self.compiled_parameters:
-                (bindparam, name, value) = self.compiled_parameters.get_parameter(key)
+        if self.compiled_parameters is not None and len(self.compiled_parameters) == 1:
+            for key in self.compiled.binds:
+                bindparam = self.compiled.binds[key]
+                name = self.compiled.bind_names[bindparam]
+                value = self.compiled_parameters[0][name]
                 if bindparam.isoutparam:
                     dbtype = bindparam.type.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                     if not hasattr(self, 'out_parameters'):
                         self.out_parameters = {}
                     self.out_parameters[name] = self.cursor.var(dbtype)
-                    self.parameters[name] = self.out_parameters[name]
+                    self.parameters[0][name] = self.out_parameters[name]
 
     def get_result_proxy(self):
         if hasattr(self, 'out_parameters'):
-            if self.compiled_parameters is not None:
-                 for k in self.out_parameters:
-                     type = self.compiled_parameters.get_type(k)
-                     self.out_parameters[k] = type.dialect_impl(self.dialect).convert_result_value(self.out_parameters[k].getvalue(), self.dialect)
+            if self.compiled_parameters is not None and len(self.compiled_parameters) == 1:
+                 for bind, name in self.compiled.bind_names.iteritems():
+                     if name in self.out_parameters:
+                         type = bind.type
+                         self.out_parameters[name] = type.dialect_impl(self.dialect).result_processor(self.dialect)(self.out_parameters[name].getvalue())
             else:
                  for k in self.out_parameters:
                      self.out_parameters[k] = self.out_parameters[k].getvalue()
@@ -206,43 +229,54 @@ class OracleExecutionContext(default.DefaultExecutionContext):
                 type_code = column[1]
                 if type_code in self.dialect.ORACLE_BINARY_TYPES:
                     return base.BufferedColumnResultProxy(self)
-        
+
         return base.ResultProxy(self)
 
-class OracleDialect(ansisql.ANSIDialect):
-    def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, **kwargs):
-        ansisql.ANSIDialect.__init__(self, default_paramstyle='named', **kwargs)
+class OracleDialect(default.DefaultDialect):
+    supports_alter = True
+    supports_unicode_statements = False
+    max_identifier_length = 30
+    supports_sane_rowcount = True
+    supports_sane_multi_rowcount = False
+    preexecute_pk_sequences = True
+    supports_pk_autoincrement = False
+    default_paramstyle = 'named'
+
+    def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, **kwargs):
+        default.DefaultDialect.__init__(self, **kwargs)
         self.use_ansi = use_ansi
         self.threaded = threaded
+        self.allow_twophase = allow_twophase
         self.supports_timestamp = self.dbapi is None or hasattr(self.dbapi, 'TIMESTAMP' )
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
-        
-        if self.dbapi is not None:
-            self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB", "LONG_BINARY", "LONG_STRING"] if hasattr(self.dbapi, k)]
-        else:
+        if self.dbapi is None or not self.auto_convert_lobs or not 'CLOB' in self.dbapi.__dict__:
+            self.dbapi_type_map = {}
             self.ORACLE_BINARY_TYPES = []
-
-    def dbapi_type_map(self):
-        if self.dbapi is None or not self.auto_convert_lobs:
-            return {}
         else:
-            return {
-                self.dbapi.NUMBER: OracleInteger(), 
-                self.dbapi.CLOB: OracleText(), 
-                self.dbapi.BLOB: OracleBinary(), 
-                self.dbapi.STRING: OracleString(), 
-                self.dbapi.TIMESTAMP: OracleTimestamp(), 
-                self.dbapi.BINARY: OracleRaw(), 
-                datetime.datetime: OracleDate()
+            # only use this for LOB objects.  using it for strings, dates
+            # etc. leads to a little too much magic, reflection doesn't know if it should
+            # expect encoded strings or unicodes, etc.
+            self.dbapi_type_map = {
+                self.dbapi.CLOB: OracleText(),
+                self.dbapi.BLOB: OracleBinary(),
+                self.dbapi.BINARY: OracleRaw(),
             }
+            self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB"] if hasattr(self.dbapi, k)]
 
     def dbapi(cls):
         import cx_Oracle
         return cx_Oracle
     dbapi = classmethod(dbapi)
-    
+
     def create_connect_args(self, url):
+        dialect_opts = dict(url.query)
+        for opt in ('use_ansi', 'auto_setinputsizes', 'auto_convert_lobs',
+                    'threaded', 'allow_twophase'):
+            if opt in dialect_opts:
+                util.coerce_kw_type(dialect_opts, opt, bool)
+                setattr(self, opt, dialect_opts[opt])
+
         if url.database:
             # if we have a database, then we have a remote host
             port = url.port
@@ -250,131 +284,175 @@ class OracleDialect(ansisql.ANSIDialect):
                 port = int(port)
             else:
                 port = 1521
-            dsn = self.dbapi.makedsn(url.host,port,url.database)
+            dsn = self.dbapi.makedsn(url.host, port, url.database)
         else:
             # we have a local tnsname
             dsn = url.host
+
         opts = dict(
             user=url.username,
             password=url.password,
-            dsn = dsn,
-            threaded = self.threaded
+            dsn=dsn,
+            threaded=self.threaded,
+            twophase=self.allow_twophase,
             )
-        opts.update(url.query)
-        util.coerce_kw_type(opts, 'use_ansi', bool)
+        if 'mode' in url.query:
+            opts['mode'] = url.query['mode']
+            if isinstance(opts['mode'], basestring):
+                mode = opts['mode'].upper()
+                if mode == 'SYSDBA':
+                    opts['mode'] = self.dbapi.SYSDBA
+                elif mode == 'SYSOPER':
+                    opts['mode'] = self.dbapi.SYSOPER
+                else:
+                    util.coerce_kw_type(opts, 'mode', int)
+        # Can't set 'handle' or 'pool' via URL query args, use connect_args
+
         return ([], opts)
+
+    def is_disconnect(self, e):
+        if isinstance(e, self.dbapi.InterfaceError):
+            return "not connected" in str(e)
+        else:
+            return "ORA-03114" in str(e) or "ORA-03113" in str(e)
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def supports_unicode_statements(self):
-        """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
-        return False
-
-    def max_identifier_length(self):
-        return 30
-        
     def oid_column_name(self, column):
         if not isinstance(column.table, (sql.TableClause, sql.Select)):
             return None
         else:
             return "rowid"
 
+    def create_xid(self):
+        """create a two-phase transaction ID.
+
+        this id will be passed to do_begin_twophase(), do_rollback_twophase(),
+        do_commit_twophase().  its format is unspecified."""
+
+        id = random.randint(0,2**128)
+        return (0x1234, "%032x" % 9, "%032x" % id)
+
+    def do_release_savepoint(self, connection, name):
+        # Oracle does not support RELEASE SAVEPOINT
+        pass
+
+    def do_begin_twophase(self, connection, xid):
+        connection.connection.begin(*xid)
+
+    def do_prepare_twophase(self, connection, xid):
+        connection.connection.prepare()
+
+    def do_rollback_twophase(self, connection, xid, is_prepared=True, recover=False):
+        self.do_rollback(connection.connection)
+
+    def do_commit_twophase(self, connection, xid, is_prepared=True, recover=False):
+        self.do_commit(connection.connection)
+
+    def do_recover_twophase(self, connection):
+        pass
+
     def create_execution_context(self, *args, **kwargs):
         return OracleExecutionContext(self, *args, **kwargs)
 
-    def compiler(self, statement, bindparams, **kwargs):
-        return OracleCompiler(self, statement, bindparams, **kwargs)
-
-    def schemagenerator(self, *args, **kwargs):
-        return OracleSchemaGenerator(self, *args, **kwargs)
-
-    def schemadropper(self, *args, **kwargs):
-        return OracleSchemaDropper(self, *args, **kwargs)
-
-    def defaultrunner(self, connection, **kwargs):
-        return OracleDefaultRunner(connection, **kwargs)
-
     def has_table(self, connection, table_name, schema=None):
-        cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':table_name.upper()})
+        cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':self._denormalize_name(table_name)})
         return bool( cursor.fetchone() is not None )
 
     def has_sequence(self, connection, sequence_name):
-        cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name""", {'name':sequence_name.upper()})
+        cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name""", {'name':self._denormalize_name(sequence_name)})
         return bool( cursor.fetchone() is not None )
 
-    def _locate_owner_row(self, owner, name, rows, raiseerr=False):
-        """return the row in the given list of rows which references the given table name and owner name."""
-        if not rows:
-            if raiseerr:
-                raise exceptions.NoSuchTableError(name)
-            else:
-                return None
+    def _normalize_name(self, name):
+        if name is None:
+            return None
+        elif name.upper() == name and not self.identifier_preparer._requires_quotes(name.lower().decode(self.encoding)):
+            return name.lower().decode(self.encoding)
         else:
-            if owner is not None:
-                for row in rows:
-                    if owner.upper() in row[0]:
-                        return row
-                else:
-                    if raiseerr:
-                        raise exceptions.AssertionError("Specified owner %s does not own table %s" % (owner, name))
-                    else:
-                        return None
-            else:
-                if len(rows)==1:
-                    return rows[0]
-                else:
-                    if raiseerr:
-                        raise exceptions.AssertionError("There are multiple tables with name '%s' visible to the schema, you must specifiy owner" % name)
-                    else:
-                        return None
+            return name.decode(self.encoding)
 
-    def _resolve_table_owner(self, connection, name, table, dblink=''):
-        """Locate the given table in the ``ALL_TAB_COLUMNS`` view,
-        including searching for equivalent synonyms and dblinks.
+    def _denormalize_name(self, name):
+        if name is None:
+            return None
+        elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower()):
+            return name.upper().encode(self.encoding)
+        else:
+            return name.encode(self.encoding)
+
+    def get_default_schema_name(self, connection):
+        return connection.execute('SELECT USER FROM DUAL').scalar()
+    get_default_schema_name = base.connection_memoize(
+        ('dialect', 'default_schema_name'))(get_default_schema_name)
+
+    def table_names(self, connection, schema):
+        # note that table_names() isnt loading DBLINKed or synonym'ed tables
+        if schema is None:
+            s = "select table_name from all_tables where tablespace_name NOT IN ('SYSTEM', 'SYSAUX')"
+            cursor = connection.execute(s)
+        else:
+            s = "select table_name from all_tables where tablespace_name NOT IN ('SYSTEM','SYSAUX') AND OWNER = :owner"
+            cursor = connection.execute(s,{'owner':self._denormalize_name(schema)})
+        return [self._normalize_name(row[0]) for row in cursor]
+
+    def _resolve_synonym(self, connection, desired_owner=None, desired_synonym=None, desired_table=None):
+        """search for a local synonym matching the given desired owner/name.
+
+        if desired_owner is None, attempts to locate a distinct owner.
+
+	returns the actual name, owner, dblink name, and synonym name if found.
         """
 
-        c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name" % {'dblink':dblink}, {'table_name':name})
-        rows = c.fetchall()
-        try:
-            row = self._locate_owner_row(table.owner, name, rows, raiseerr=True)
-            return name, row['OWNER'], ''
-        except exceptions.SQLAlchemyError:
-            # locate synonyms
-            c = connection.execute ("""select OWNER, TABLE_OWNER, TABLE_NAME, DB_LINK
-                                       from   ALL_SYNONYMS%(dblink)s
-                                       where  SYNONYM_NAME = :synonym_name
-                                       and (DB_LINK IS NOT NULL
-                                               or ((TABLE_NAME, TABLE_OWNER) in
-                                                    (select TABLE_NAME, OWNER from ALL_TAB_COLUMNS%(dblink)s)))""" % {'dblink':dblink},
-                                    {'synonym_name':name})
-            rows = c.fetchall()
-            row = self._locate_owner_row(table.owner, name, rows)
-            if row is None:
-                row = self._locate_owner_row("PUBLIC", name, rows)
+	sql = """select OWNER, TABLE_OWNER, TABLE_NAME, DB_LINK, SYNONYM_NAME
+		   from   ALL_SYNONYMS WHERE """
 
-            if row is not None:
-                owner, name, dblink = row['TABLE_OWNER'], row['TABLE_NAME'], row['DB_LINK']
-                if dblink:
-                    dblink = '@' + dblink
-                    if not owner:
-                        # re-resolve table owner using new dblink variable
-                        t1, owner, t2 = self._resolve_table_owner(connection, name, table, dblink=dblink)
-                else:
-                    dblink = ''
-                return name, owner, dblink
-            raise
+        clauses = []
+        params = {}
+        if desired_synonym:
+            clauses.append("SYNONYM_NAME=:synonym_name")
+            params['synonym_name'] = desired_synonym
+        if desired_owner:
+            clauses.append("TABLE_OWNER=:desired_owner")
+            params['desired_owner'] = desired_owner
+        if desired_table:
+            clauses.append("TABLE_NAME=:tname")
+            params['tname'] = desired_table
+
+        sql += " AND ".join(clauses) 
+
+	result = connection.execute(sql, **params)
+        if desired_owner:
+            row = result.fetchone()
+            if row:
+                return row['TABLE_NAME'], row['TABLE_OWNER'], row['DB_LINK'], row['SYNONYM_NAME']
+            else:
+                return None, None, None, None
+        else:
+            rows = result.fetchall()
+            if len(rows) > 1:
+                raise exceptions.AssertionError("There are multiple tables visible to the schema, you must specify owner")
+            elif len(rows) == 1:
+                row = rows[0]
+                return row['TABLE_NAME'], row['TABLE_OWNER'], row['DB_LINK'], row['SYNONYM_NAME']
+            else:
+                return None, None, None, None
 
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer
-        if not preparer.should_quote(table):
-            name = table.name.upper()
-        else:
-            name = table.name
 
-        # search for table, including across synonyms and dblinks.
-        # locate the actual name of the table, the real owner, and any dblink clause needed.
-        actual_name, owner, dblink = self._resolve_table_owner(connection, name, table)
+        resolve_synonyms = table.kwargs.get('oracle_resolve_synonyms', False)
+
+	if resolve_synonyms:
+            actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(table.schema), desired_synonym=self._denormalize_name(table.name))
+        else:
+            actual_name, owner, dblink, synonym = None, None, None, None
+
+        if not actual_name:
+            actual_name = self._denormalize_name(table.name)
+        if not dblink:
+            dblink = ''
+        if not owner:
+            owner = self._denormalize_name(table.schema) or self.get_default_schema_name(connection)
 
         c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':actual_name, 'owner':owner})
 
@@ -385,11 +463,7 @@ class OracleDialect(ansisql.ANSIDialect):
             found_table = True
 
             #print "ROW:" , row
-            (colname, coltype, length, precision, scale, nullable, default) = (row[0], row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
-
-            # if name comes back as all upper, assume its case folded
-            if (colname.upper() == colname):
-                colname = colname.lower()
+            (colname, coltype, length, precision, scale, nullable, default) = (self._normalize_name(row[0]), row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
 
             if include_columns and colname not in include_columns:
                 continue
@@ -413,7 +487,8 @@ class OracleDialect(ansisql.ANSIDialect):
                 try:
                     coltype = ischema_names[coltype]
                 except KeyError:
-                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, colname)))
+                    util.warn("Did not recognize type '%s' of column '%s'" %
+                              (coltype, colname))
                     coltype = sqltypes.NULLTYPE
 
             colargs = []
@@ -422,16 +497,16 @@ class OracleDialect(ansisql.ANSIDialect):
 
             table.append_column(schema.Column(colname, coltype, nullable=nullable, *colargs))
 
-        if not len(table.columns):
+        if not table.columns:
            raise exceptions.AssertionError("Couldn't find any column information for table %s" % actual_name)
 
         c = connection.execute("""SELECT
              ac.constraint_name,
              ac.constraint_type,
-             LOWER(loc.column_name) AS local_column,
-             LOWER(rem.table_name) AS remote_table,
-             LOWER(rem.column_name) AS remote_column,
-             LOWER(rem.owner) AS remote_owner
+             loc.column_name AS local_column,
+             rem.table_name AS remote_table,
+             rem.column_name AS remote_column,
+             rem.owner AS remote_owner
            FROM all_constraints%(dblink)s ac,
              all_cons_columns%(dblink)s loc,
              all_cons_columns%(dblink)s rem
@@ -452,7 +527,7 @@ class OracleDialect(ansisql.ANSIDialect):
             if row is None:
                 break
             #print "ROW:" , row
-            (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = row
+            (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = row[0:2] + tuple([self._normalize_name(x) for x in row[2:]])
             if cons_type == 'P':
                 table.primary_key.add(table.c[local_column])
             elif cons_type == 'R':
@@ -463,10 +538,25 @@ class OracleDialect(ansisql.ANSIDialect):
                    fks[cons_name] = fk
                 if remote_table is None:
                     # ticket 363
-                    warnings.warn("Got 'None' querying 'table_name' from all_cons_columns%(dblink)s - does the user have proper rights to the table?" % {'dblink':dblink})
+                    util.warn(
+                        ("Got 'None' querying 'table_name' from "
+                         "all_cons_columns%(dblink)s - does the user have "
+                         "proper rights to the table?") % {'dblink':dblink})
                     continue
-                refspec = ".".join([remote_table, remote_column])
-                schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, owner=remote_owner)
+
+                if resolve_synonyms:
+                    ref_remote_name, ref_remote_owner, ref_dblink, ref_synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(remote_owner), desired_table=self._denormalize_name(remote_table))
+                    if ref_synonym:
+                        remote_table = self._normalize_name(ref_synonym)
+                        remote_owner = self._normalize_name(ref_remote_owner)
+
+                if not table.schema and self._denormalize_name(remote_owner) == owner:
+                    refspec =  ".".join([remote_table, remote_column])               
+                    t = schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
+                else:
+                    refspec =  ".".join([x for x in [remote_owner, remote_table, remote_column] if x])
+                    t = schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, schema=remote_owner, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
+
                 if local_column not in fk[0]:
                     fk[0].append(local_column)
                 if refspec not in fk[1]:
@@ -475,14 +565,6 @@ class OracleDialect(ansisql.ANSIDialect):
         for name, value in fks.iteritems():
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name))
 
-    def do_executemany(self, c, statement, parameters, context=None):
-        rowcount = 0
-        for param in parameters:
-            c.execute(statement, param)
-            rowcount += c.rowcount
-        if context is not None:
-            context._rowcount = rowcount
-
 
 OracleDialect.logger = logging.class_logger(OracleDialect)
 
@@ -490,24 +572,33 @@ class _OuterJoinColumn(sql.ClauseElement):
     __visit_name__ = 'outer_join_column'
     def __init__(self, column):
         self.column = column
-        
-class OracleCompiler(ansisql.ANSICompiler):
+    def _get_from_objects(self, **kwargs):
+        return []
+    
+class OracleCompiler(compiler.DefaultCompiler):
     """Oracle compiler modifies the lexical structure of Select
     statements to work under non-ANSI configured Oracle databases, if
     the use_ansi flag is False.
     """
 
-    operators = ansisql.ANSICompiler.operators.copy()
+    operators = compiler.DefaultCompiler.operators.copy()
     operators.update(
         {
-            operator.mod : lambda x, y:"mod(%s, %s)" % (x, y)
+            sql_operators.mod : lambda x, y:"mod(%s, %s)" % (x, y)
+        }
+    )
+
+    functions = compiler.DefaultCompiler.functions.copy()
+    functions.update (
+        {
+            sql_functions.now : 'CURRENT_TIMESTAMP'
         }
     )
 
     def __init__(self, *args, **kwargs):
         super(OracleCompiler, self).__init__(*args, **kwargs)
         self.__wheres = {}
-        
+
     def default_from(self):
         """Called when a ``SELECT`` statement has no froms, and no ``FROM`` clause is to be appended.
 
@@ -521,57 +612,42 @@ class OracleCompiler(ansisql.ANSICompiler):
 
     def visit_join(self, join, **kwargs):
         if self.dialect.use_ansi:
-            return ansisql.ANSICompiler.visit_join(self, join, **kwargs)
-
-        (where, parentjoin) = self.__wheres.get(join, (None, None))
-
-        class VisitOn(sql.ClauseVisitor):
-            def visit_binary(s, binary):
-                if binary.operator == operator.eq:
-                    if binary.left.table is join.right:
-                        binary.left = _OuterJoinColumn(binary.left)
-                    elif binary.right.table is join.right:
-                        binary.right = _OuterJoinColumn(binary.right)
-                        
-        if where is not None:
-            self.__wheres[join.left] = self.__wheres[parentjoin] = (sql.and_(VisitOn().traverse(join.onclause, clone=True), where), parentjoin)
+            return compiler.DefaultCompiler.visit_join(self, join, **kwargs)
         else:
-            self.__wheres[join.left] = self.__wheres[join] = (VisitOn().traverse(join.onclause, clone=True), join)
-
-        return self.process(join.left, asfrom=True) + ", " + self.process(join.right, asfrom=True)
+            return self.process(join.left, asfrom=True) + ", " + self.process(join.right, asfrom=True)
     
-    def get_whereclause(self, f):
-        if f in self.__wheres:
-            return self.__wheres[f][0]
-        else:
-            return None
-            
+    def _get_nonansi_join_whereclause(self, froms):
+        clauses = []
+        
+        def visit_join(join):
+            if join.isouter:
+                def visit_binary(binary):
+                    if binary.operator == sql_operators.eq:
+                        if binary.left.table is join.right:
+                            binary.left = _OuterJoinColumn(binary.left)
+                        elif binary.right.table is join.right:
+                            binary.right = _OuterJoinColumn(binary.right)
+                clauses.append(visitors.traverse(join.onclause, visit_binary=visit_binary, clone=True))
+            else:
+                clauses.append(join.onclause)
+        
+        for f in froms:
+            visitors.traverse(f, visit_join=visit_join)
+        return sql.and_(*clauses)
+        
     def visit_outer_join_column(self, vc):
         return self.process(vc.column) + "(+)"
-        
-    def uses_sequences_for_inserts(self):
-        return True
+
+    def visit_sequence(self, seq):
+        return self.dialect.identifier_preparer.format_sequence(seq) + ".nextval"
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
-        
+
         if asfrom:
-            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + alias.name
+            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + self.preparer.format_alias(alias, self._anonymize(alias.name))
         else:
             return self.process(alias.original, **kwargs)
-
-    def visit_insert(self, insert):
-        """``INSERT`` s are required to have the primary keys be explicitly present.
-
-         Mapper will by default not put them in the insert statement
-         to comply with autoincrement fields that require they not be
-         present.  so, put them all in for all primary key columns.
-         """
-
-        for c in insert.table.primary_key:
-            if not self.parameters.has_key(c.key):
-                self.parameters[c.key] = None
-        return ansisql.ANSICompiler.visit_insert(self, insert)
 
     def _TODO_visit_compound_select(self, select):
         """Need to determine how to get ``LIMIT``/``OFFSET`` into a ``UNION`` for Oracle."""
@@ -582,28 +658,43 @@ class OracleCompiler(ansisql.ANSICompiler):
         so tries to wrap it in a subquery with ``row_number()`` criterion.
         """
 
-        if not getattr(select, '_oracle_visit', None) and (select._limit is not None or select._offset is not None):
-            # to use ROW_NUMBER(), an ORDER BY is required.
-            orderby = self.process(select._order_by_clause)
-            if not orderby:
-                orderby = select.oid_column
-                self.traverse(orderby)
-                orderby = self.process(orderby)
+        if not getattr(select, '_oracle_visit', None):
+            if not self.dialect.use_ansi:
+                if self.stack and 'from' in self.stack[-1]:
+                    existingfroms = self.stack[-1]['from']
+                else:
+                    existingfroms = None
+
+                froms = select._get_display_froms(existingfroms)
+                whereclause = self._get_nonansi_join_whereclause(froms)
+                if whereclause:
+                    select = select.where(whereclause)
+                    select._oracle_visit = True
                 
-            oldselect = select
-            select = select.column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn")).order_by(None)
-            select._oracle_visit = True
+            if select._limit is not None or select._offset is not None:
+                # to use ROW_NUMBER(), an ORDER BY is required.
+                orderby = self.process(select._order_by_clause)
+                if not orderby:
+                    orderby = list(select.oid_column.proxies)[0]
+                    orderby = self.process(orderby)
+
+                select = select.column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn")).order_by(None)
+                select._oracle_visit = True
                 
-            limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
-            if select._offset is not None:
-                limitselect.append_whereclause("ora_rn>%d" % select._offset)
-                if select._limit is not None:
-                    limitselect.append_whereclause("ora_rn<=%d" % (select._limit + select._offset))
-            else:
-                limitselect.append_whereclause("ora_rn<=%d" % select._limit)
-            return self.process(limitselect)
-        else:
-            return ansisql.ANSICompiler.visit_select(self, select, **kwargs)
+                limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
+                limitselect._oracle_visit = True
+                limitselect._is_wrapper = True
+                
+                if select._offset is not None:
+                    limitselect.append_whereclause("ora_rn>%d" % select._offset)
+                    if select._limit is not None:
+                        limitselect.append_whereclause("ora_rn<=%d" % (select._limit + select._offset))
+                else:
+                    limitselect.append_whereclause("ora_rn<=%d" % select._limit)
+                select = limitselect
+        
+        kwargs['iswrapper'] = getattr(select, '_is_wrapper', False)
+        return compiler.DefaultCompiler.visit_select(self, select, **kwargs)
 
     def limit_clause(self, select):
         return ""
@@ -615,10 +706,10 @@ class OracleCompiler(ansisql.ANSICompiler):
             return super(OracleCompiler, self).for_update_clause(select)
 
 
-class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
+class OracleSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
-        colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
+        colspec += " " + column.type.dialect_impl(self.dialect, _for_ddl=column).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -632,18 +723,25 @@ class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
             self.append("CREATE SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
 
-class OracleSchemaDropper(ansisql.ANSISchemaDropper):
+class OracleSchemaDropper(compiler.SchemaDropper):
     def visit_sequence(self, sequence):
         if not self.checkfirst or self.dialect.has_sequence(self.connection, sequence.name):
-            self.append("DROP SEQUENCE %s" % sequence.name)
+            self.append("DROP SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
 
-class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
-    def exec_default_sql(self, default):
-        c = sql.select([default.arg], from_obj=["DUAL"]).compile(bind=self.connection)
-        return self.connection.execute(c).scalar()
-
+class OracleDefaultRunner(base.DefaultRunner):
     def visit_sequence(self, seq):
-        return self.connection.execute("SELECT " + seq.name + ".nextval FROM DUAL").scalar()
+        return self.execute_string("SELECT " + self.dialect.identifier_preparer.format_sequence(seq) + ".nextval FROM DUAL", {})
+
+class OracleIdentifierPreparer(compiler.IdentifierPreparer):
+    def format_savepoint(self, savepoint):
+        name = re.sub(r'^_+', '', savepoint.ident)
+        return super(OracleIdentifierPreparer, self).format_savepoint(savepoint, name)
+
 
 dialect = OracleDialect
+dialect.statement_compiler = OracleCompiler
+dialect.schemagenerator = OracleSchemaGenerator
+dialect.schemadropper = OracleSchemaDropper
+dialect.preparer = OracleIdentifierPreparer
+dialect.defaultrunner = OracleDefaultRunner

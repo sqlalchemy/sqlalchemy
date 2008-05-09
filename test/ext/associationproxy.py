@@ -1,5 +1,5 @@
-import testbase
-
+import testenv; testenv.configure_for_tests()
+import gc
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.collections import collection
@@ -33,25 +33,25 @@ class ObjectCollection(object):
     def __iter__(self):
         return iter(self.values)
 
-class _CollectionOperations(PersistTest):
+class _CollectionOperations(TestBase):
     def setUp(self):
         collection_class = self.collection_class
 
-        metadata = MetaData(testbase.db)
-    
+        metadata = MetaData(testing.db)
+
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
-                              Column('name', String))
+                              Column('name', String(128)))
         children_table = Table('Children', metadata,
                                Column('id', Integer, primary_key=True),
                                Column('parent_id', Integer,
                                       ForeignKey('Parent.id')),
-                               Column('foo', String),
-                               Column('name', String))
+                               Column('foo', String(128)),
+                               Column('name', String(128)))
 
         class Parent(object):
             children = association_proxy('_children', 'name')
-        
+
             def __init__(self, name):
                 self.name = name
 
@@ -79,7 +79,8 @@ class _CollectionOperations(PersistTest):
         self.metadata.drop_all()
 
     def roundtrip(self, obj):
-        self.session.save(obj)
+        if obj not in self.session:
+            self.session.save(obj)
         self.session.flush()
         id, type_ = obj.id, type(obj)
         self.session.clear()
@@ -87,7 +88,7 @@ class _CollectionOperations(PersistTest):
 
     def _test_sequence_ops(self):
         Parent, Child = self.Parent, self.Child
-        
+
         p1 = Parent('P1')
 
         self.assert_(not p1._children)
@@ -113,7 +114,7 @@ class _CollectionOperations(PersistTest):
 
         self.assert_(p1._children[0].name == 'regular')
         self.assert_(p1._children[1].name == 'proxied')
-    
+
         del p1._children[1]
 
         self.assert_(len(p1._children) == 1)
@@ -124,7 +125,7 @@ class _CollectionOperations(PersistTest):
 
         self.assert_(len(p1._children) == 0)
         self.assert_(len(p1.children) == 0)
-    
+
         p1.children = ['a','b','c']
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
@@ -151,7 +152,7 @@ class _CollectionOperations(PersistTest):
 
         p1.children.append('changed-in-place')
         self.assert_(p1.children.count('changed-in-place') == 2)
-        
+
         p1.children.remove('changed-in-place')
         self.assert_(p1.children.count('changed-in-place') == 1)
 
@@ -185,7 +186,53 @@ class _CollectionOperations(PersistTest):
         after = ['a', 'b', 'O', 'z', 'O', 'z', 'O', 'h', 'O', 'j']
         self.assert_(p1.children == after)
         self.assert_([c.name for c in p1._children] == after)
-        
+
+        self.assertRaises(TypeError, set, [p1.children])
+
+        p1.children *= 0
+        after = []
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children += ['a', 'b']
+        after = ['a', 'b']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children += ['c']
+        after = ['a', 'b', 'c']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children *= 1
+        after = ['a', 'b', 'c']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children *= 2
+        after = ['a', 'b', 'c', 'a', 'b', 'c']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        p1.children = ['a']
+        after = ['a']
+        self.assert_(p1.children == after)
+        self.assert_([c.name for c in p1._children] == after)
+
+        self.assert_((p1.children * 2) == ['a', 'a'])
+        self.assert_((2 * p1.children) == ['a', 'a'])
+        self.assert_((p1.children * 0) == [])
+        self.assert_((0 * p1.children) == [])
+
+        self.assert_((p1.children + ['b']) == ['a', 'b'])
+        self.assert_((['b'] + p1.children) == ['b', 'a'])
+
+        try:
+            p1.children + 123
+            assert False
+        except TypeError:
+            assert True
+
 class DefaultTest(_CollectionOperations):
     def __init__(self, *args, **kw):
         super(DefaultTest, self).__init__(*args, **kw)
@@ -193,6 +240,7 @@ class DefaultTest(_CollectionOperations):
 
     def test_sequence_ops(self):
         self._test_sequence_ops()
+
 
 class ListTest(_CollectionOperations):
     def __init__(self, *args, **kw):
@@ -247,7 +295,7 @@ class CustomDictTest(DictTest):
 
         self.assert_(p1._children['a'].name == 'regular')
         self.assert_(p1._children['b'].name == 'proxied')
-    
+
         del p1._children['b']
 
         self.assert_(len(p1._children) == 1)
@@ -270,7 +318,7 @@ class CustomDictTest(DictTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
-        p1.children['e'] = 'changed-in-place' 
+        p1.children['e'] = 'changed-in-place'
         self.assert_(p1.children['e'] == 'changed-in-place')
         inplace_id = p1._children['e'].id
         p1 = self.roundtrip(p1)
@@ -279,18 +327,21 @@ class CustomDictTest(DictTest):
 
         p1._children = {}
         self.assert_(len(p1.children) == 0)
-    
+
         try:
             p1._children = []
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(True)
 
         try:
             p1._children = None
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(True)
+
+        self.assertRaises(TypeError, set, [p1.children])
+
 
 class SetTest(_CollectionOperations):
     def __init__(self, *args, **kw):
@@ -342,7 +393,7 @@ class SetTest(_CollectionOperations):
 
         self.assert_(len(p1._children) == 0)
         self.assert_(len(p1.children) == 0)
-    
+
         p1.children = ['a','b','c']
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
@@ -377,11 +428,11 @@ class SetTest(_CollectionOperations):
         p1 = self.roundtrip(p1)
         self.assert_(len(p1.children) == 2)
         self.assert_(popped not in p1.children)
-    
+
         p1.children = ['a','b','c']
         p1 = self.roundtrip(p1)
         self.assert_(p1.children == set(['a','b','c']))
-    
+
         p1.children.discard('b')
         p1 = self.roundtrip(p1)
         self.assert_(p1.children == set(['a', 'c']))
@@ -396,14 +447,16 @@ class SetTest(_CollectionOperations):
         try:
             p1._children = []
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(True)
 
         try:
             p1._children = None
             self.assert_(False)
-        except exceptions.ArgumentError:
+        except TypeError:
             self.assert_(True)
+
+        self.assertRaises(TypeError, set, [p1.children])
 
 
     def test_set_comparisons(self):
@@ -432,7 +485,7 @@ class SetTest(_CollectionOperations):
                              control.issubset(other))
             self.assertEqual(p1.children.issuperset(other),
                              control.issuperset(other))
-            
+
             self.assert_((p1.children == other)  ==  (control == other))
             self.assert_((p1.children != other)  ==  (control != other))
             self.assert_((p1.children < other)   ==  (control < other))
@@ -475,6 +528,39 @@ class SetTest(_CollectionOperations):
                         print 'got', repr(p.children)
                         raise
 
+        # in-place mutations
+        for op in ('|=', '-=', '&=', '^='):
+            for base in (['a', 'b', 'c'], []):
+                for other in (set(['a','b','c']), set(['a','b','c','d']),
+                              set(['a']), set(['a','b']),
+                              set(['c','d']), set(['e', 'f', 'g']),
+                              frozenset(['e', 'f', 'g']),
+                              set()):
+                    p = Parent('p')
+                    p.children = base[:]
+                    control = set(base[:])
+
+                    exec "p.children %s other" % op
+                    exec "control %s other" % op
+
+                    try:
+                        self.assert_(p.children == control)
+                    except:
+                        print 'Test %s %s %s:' % (set(base), op, other)
+                        print 'want', repr(control)
+                        print 'got', repr(p.children)
+                        raise
+
+                    p = self.roundtrip(p)
+
+                    try:
+                        self.assert_(p.children == control)
+                    except:
+                        print 'Test %s %s %s:' % (base, op, other)
+                        print 'want', repr(control)
+                        print 'got', repr(p.children)
+                        raise
+
 
 class CustomSetTest(SetTest):
     def __init__(self, *args, **kw):
@@ -506,20 +592,20 @@ class CustomObjectTest(_CollectionOperations):
         except TypeError:
             pass
 
-class ScalarTest(PersistTest):
+class ScalarTest(TestBase):
     def test_scalar_proxy(self):
-        metadata = MetaData(testbase.db)
-    
+        metadata = MetaData(testing.db)
+
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
-                              Column('name', String))
+                              Column('name', String(128)))
         children_table = Table('Children', metadata,
                                Column('id', Integer, primary_key=True),
                                Column('parent_id', Integer,
                                       ForeignKey('Parent.id')),
-                               Column('foo', String),
-                               Column('bar', String),
-                               Column('baz', String))
+                               Column('foo', String(128)),
+                               Column('bar', String(128)),
+                               Column('baz', String(128)))
 
         class Parent(object):
             foo = association_proxy('child', 'foo')
@@ -527,7 +613,7 @@ class ScalarTest(PersistTest):
                                     creator=lambda v: Child(bar=v))
             baz = association_proxy('child', 'baz',
                                     creator=lambda v: Child(baz=v))
-        
+
             def __init__(self, name):
                 self.name = name
 
@@ -545,12 +631,13 @@ class ScalarTest(PersistTest):
         session = create_session()
 
         def roundtrip(obj):
-            session.save(obj)
+            if obj not in session:
+                session.save(obj)
             session.flush()
             id, type_ = obj.id, type(obj)
             session.clear()
             return session.query(type_).get(id)
-            
+
         p = Parent('p')
 
         # No child
@@ -570,7 +657,7 @@ class ScalarTest(PersistTest):
         self.assert_(p.foo == 'a')
         self.assert_(p.bar == 'x')
         self.assert_(p.baz == 'c')
-        
+
         p = roundtrip(p)
 
         self.assert_(p.foo == 'a')
@@ -620,25 +707,25 @@ class ScalarTest(PersistTest):
         # Ensure an immediate __set__ works.
         p2 = Parent('p2')
         p2.bar = 'quux'
-        
 
-class LazyLoadTest(PersistTest):
+
+class LazyLoadTest(TestBase):
     def setUp(self):
-        metadata = MetaData(testbase.db)
-    
+        metadata = MetaData(testing.db)
+
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
-                              Column('name', String))
+                              Column('name', String(128)))
         children_table = Table('Children', metadata,
                                Column('id', Integer, primary_key=True),
                                Column('parent_id', Integer,
                                       ForeignKey('Parent.id')),
-                               Column('foo', String),
-                               Column('name', String))
+                               Column('foo', String(128)),
+                               Column('name', String(128)))
 
         class Parent(object):
             children = association_proxy('_children', 'name')
-        
+
             def __init__(self, name):
                 self.name = name
 
@@ -727,7 +814,66 @@ class LazyLoadTest(PersistTest):
 
         self.assert_('_children' in p.__dict__)
         self.assert_(p._children is not None)
-    
+
+
+class ReconstitutionTest(TestBase):
+    def setUp(self):
+        metadata = MetaData(testing.db)
+        parents = Table('parents', metadata,
+                        Column('id', Integer, primary_key=True),
+                        Column('name', String(30)))
+        children = Table('children', metadata,
+                         Column('id', Integer, primary_key=True),
+                         Column('parent_id', Integer, ForeignKey('parents.id')),
+                         Column('name', String(30)))
+        metadata.create_all()
+        parents.insert().execute(name='p1')
+
+        class Parent(object):
+            kids = association_proxy('children', 'name')
+            def __init__(self, name):
+                self.name = name
+
+        class Child(object):
+            def __init__(self, name):
+                self.name = name
+
+        mapper(Parent, parents, properties=dict(children=relation(Child)))
+        mapper(Child, children)
+
+        self.metadata = metadata
+        self.Parent = Parent
+
+    def tearDown(self):
+        self.metadata.drop_all()
+
+    def test_weak_identity_map(self):
+        session = create_session(weak_identity_map=True)
+
+        def add_child(parent_name, child_name):
+            parent = (session.query(self.Parent).
+                      filter_by(name=parent_name)).one()
+            parent.kids.append(child_name)
+
+
+        add_child('p1', 'c1')
+        gc.collect()
+        add_child('p1', 'c2')
+
+        session.flush()
+        p = session.query(self.Parent).filter_by(name='p1').one()
+        assert set(p.kids) == set(['c1', 'c2']), p.kids
+
+    def test_copy(self):
+        import copy
+        p = self.Parent('p1')
+        p.kids.extend(['c1', 'c2'])
+        p_copy = copy.copy(p)
+        del p
+        gc.collect()
+
+        assert set(p_copy.kids) == set(['c1', 'c2']), p.kids
+
 
 if __name__ == "__main__":
-    testbase.main()        
+    testenv.main()

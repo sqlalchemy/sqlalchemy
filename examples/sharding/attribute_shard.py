@@ -21,8 +21,9 @@ To set up a sharding system, you need:
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.shard import ShardedSession
-from sqlalchemy.sql import ColumnOperators
-import datetime, operator
+from sqlalchemy.sql import operators
+from sqlalchemy import sql
+import datetime
 
 # step 2. databases
 echo = True
@@ -34,13 +35,15 @@ db4 = create_engine('sqlite:///shard4.db', echo=echo)
 
 # step 3. create session function.  this binds the shard ids
 # to databases within a ShardedSession and returns it.
-def create_session():
-    s = ShardedSession(shard_chooser, id_chooser, query_chooser)
-    s.bind_shard('north_america', db1)
-    s.bind_shard('asia', db2)
-    s.bind_shard('europe', db3)
-    s.bind_shard('south_america', db4)
-    return s
+create_session = sessionmaker(class_=ShardedSession)
+
+create_session.configure(shards={
+    'north_america':db1,
+    'asia':db2,
+    'europe':db3,
+    'south_america':db4
+})
+
 
 # step 4.  table setup.
 meta = MetaData()
@@ -105,7 +108,7 @@ shard_lookup = {
 # note that we need to define conditions for 
 # the WeatherLocation class, as well as our secondary Report class which will
 # point back to its WeatherLocation via its 'location' attribute.
-def shard_chooser(mapper, instance):
+def shard_chooser(mapper, instance, clause=None):
     if isinstance(instance, WeatherLocation):
         return shard_lookup[instance.continent]
     else:
@@ -116,7 +119,7 @@ def shard_chooser(mapper, instance):
 # pk so we just return all shard ids. often, youd want to do some 
 # kind of round-robin strategy here so that requests are evenly 
 # distributed among DBs
-def id_chooser(ident):
+def id_chooser(query, ident):
     return ['north_america', 'asia', 'europe', 'south_america']
 
 # query_chooser.  this also returns a list of shard ids, which can
@@ -131,9 +134,9 @@ def query_chooser(query):
     class FindContinent(sql.ClauseVisitor):
         def visit_binary(self, binary):
             if binary.left is weather_locations.c.continent:
-                if binary.operator == operator.eq:
+                if binary.operator == operators.eq:
                     ids.append(shard_lookup[binary.right.value])
-                elif binary.operator == ColumnOperators.in_op:
+                elif binary.operator == operators.in_op:
                     for bind in binary.right.clauses:
                         ids.append(shard_lookup[bind.value])
                     
@@ -142,6 +145,9 @@ def query_chooser(query):
         return ['north_america', 'asia', 'europe', 'south_america']
     else:
         return ids
+
+# further configure create_session to use these functions
+create_session.configure(shard_chooser=shard_chooser, id_chooser=id_chooser, query_chooser=query_chooser)
 
 # step 6.  mapped classes.    
 class WeatherLocation(object):

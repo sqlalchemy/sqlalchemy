@@ -121,7 +121,7 @@ And `Table` provides an interface to the table's properties as well as that of i
 
 A `MetaData` object can be associated with an `Engine` or an individual `Connection`; this process is called **binding**.  The term used to describe "an engine or a connection" is often referred to as a **connectable**.  Binding allows the `MetaData` and the elements which it contains to perform operations against the database directly, using the connection resources to which it's bound.   Common operations which are made more convenient through binding include being able to generate SQL constructs which know how to execute themselves, creating `Table` objects which query the database for their column and constraint information, and issuing CREATE or DROP statements.
 
-To bind `MetaData` to an `Engine`, use the `connect()` method:
+To bind `MetaData` to an `Engine`, use the `bind` attribute:
 
     {python}
     engine = create_engine('sqlite://', **kwargs)
@@ -156,7 +156,7 @@ Note that the feature of binding engines is **completely optional**.  All of the
 
 #### Reflecting Tables
 
-A `Table` object can be created without specifying any of its contained attributes, using the argument `autoload=True` in conjunction with the table's name and possibly its schema (if not the databases "default" schema).  This will issue the appropriate queries to the database in order to locate all properties of the table required for SQLAlchemy to use it effectively, including its column names and datatypes, foreign and primary key constraints, and in some cases its default-value generating attributes.   To use `autoload=True`, the table's `MetaData` object need be bound to an `Engine` or `Connection`, or alternatively the `autoload_with=<some connectable>` argument can be passed.  Below we illustrate autoloading a table and then iterating through the names of its columns:
+A `Table` object can be created without specifying any of its contained attributes, using the argument `autoload=True` in conjunction with the table's name and possibly its schema (if not the databases "default" schema).  (You can also specify a list or set of column names to autoload as the kwarg include_columns, if you only want to load a subset of the columns in the actual database.)  This will issue the appropriate queries to the database in order to locate all properties of the table required for SQLAlchemy to use it effectively, including its column names and datatypes, foreign and primary key constraints, and in some cases its default-value generating attributes.   To use `autoload=True`, the table's `MetaData` object need be bound to an `Engine` or `Connection`, or alternatively the `autoload_with=<some connectable>` argument can be passed.  Below we illustrate autoloading a table and then iterating through the names of its columns:
 
     {python}
     >>> messages = Table('messages', meta, autoload=True)
@@ -170,12 +170,12 @@ Note that if a reflected table has a foreign key referencing another table, the 
     >>> 'shopping_carts' in meta.tables:
     True
         
-To get direct access to 'shopping_carts', simply instantiate it via the `Table` constructor.  `Table` uses a special contructor that will return the already created `Table` instance if its already present:
+To get direct access to 'shopping_carts', simply instantiate it via the `Table` constructor.  `Table` uses a special contructor that will return the already created `Table` instance if it's already present:
 
     {python}
     shopping_carts = Table('shopping_carts', meta)
 
-Of course, its a good idea to use `autoload=True` with the above table regardless.  This is so that if it hadn't been loaded already, the operation will load the table.  The autoload operation only occurs for the table if it hasn't already been loaded; once loaded, new calls to `Table` will not re-issue any reflection queries.
+Of course, it's a good idea to use `autoload=True` with the above table regardless.  This is so that if it hadn't been loaded already, the operation will load the table.  The autoload operation only occurs for the table if it hasn't already been loaded; once loaded, new calls to `Table` will not re-issue any reflection queries.
 
 ##### Overriding Reflected Columns {@name=overriding}
 
@@ -295,16 +295,16 @@ Entire groups of Tables can be created and dropped directly from the `MetaData` 
             pref_value VARCHAR(100)
     )
 
-### Column Defaults and OnUpdates {@name=defaults}    
+### Column Insert/Update Defaults {@name=defaults}    
 
-SQLAlchemy includes flexible constructs in which to create default values for columns upon the insertion of rows, as well as upon update.  These defaults can take several forms: a constant, a Python callable to be pre-executed before the SQL is executed, a SQL expression or function to be pre-executed before the SQL is executed, a pre-executed Sequence (for databases that support sequences), or a "passive" default, which is a default function triggered by the database itself upon insert, the value of which can then be post-fetched by the engine, provided the row provides a primary key in which to call upon.
+SQLAlchemy includes several constructs which provide default values provided during INSERT and UPDATE statements.  The defaults may be provided as Python constants, Python functions, or SQL expressions, and the SQL expressions themselves may be "pre-executed", executed inline within the insert/update statement itself, or can be created as a SQL level "default" placed on the table definition itself.  A "default" value by definition is only invoked if no explicit value is passed into the INSERT or UPDATE statement.
 
-#### Pre-Executed Insert Defaults {@name=oninsert}
+#### Pre-Executed Python Functions {@name=preexecute_functions}
 
-A basic default is most easily specified by the "default" keyword argument to Column.  This defines a value, function, or SQL expression that will be pre-executed to produce the new value, before the row is inserted:
+The "default" keyword argument on Column can reference a Python value or callable which is invoked at the time of an insert:
 
     {python}
-    # a function to create primary key ids
+    # a function which counts upwards
     i = 0
     def mydefault():
         global i
@@ -318,8 +318,22 @@ A basic default is most easily specified by the "default" keyword argument to Co
         # a scalar default
         Column('key', String(10), default="default")
     )
-            
-The "default" keyword can also take SQL expressions, including select statements or direct function calls:
+
+Similarly, the "onupdate" keyword does the same thing for update statements:
+
+    {python}
+    import datetime
+    
+    t = Table("mytable", meta, 
+        Column('id', Integer, primary_key=True),
+    
+        # define 'last_updated' to be populated with datetime.now()
+        Column('last_updated', DateTime, onupdate=datetime.now),
+    )
+
+#### Pre-executed and Inline SQL Expressions {@name=sqlexpression}
+
+The "default" and "onupdate" keywords may also be passed SQL expressions, including select statements or direct function calls:
 
     {python}
     t = Table("mytable", meta, 
@@ -330,38 +344,30 @@ The "default" keyword can also take SQL expressions, including select statements
     
         # define 'key' to pull its default from the 'keyvalues' table
         Column('key', String(20), default=keyvalues.select(keyvalues.c.type='type1', limit=1))
+
+        # define 'last_modified' to use the current_timestamp SQL function on update
+        Column('last_modified', DateTime, onupdate=func.current_timestamp())
         )
-            
-The "default" keyword argument is shorthand for using a ColumnDefault object in a column definition.  This syntax is optional, but is required for other types of defaults, futher described below:
 
-    {python}
-    Column('mycolumn', String(30), ColumnDefault(func.get_data()))
+The above SQL functions are usually executed "inline" with the INSERT or UPDATE statement being executed.  In some cases, the function is "pre-executed" and its result pre-fetched explicitly.  This happens under the following circumstances:
 
-#### Pre-Executed OnUpdate Defaults {@name=onupdate}
+* the column is a primary key column
 
-Similar to an on-insert default is an on-update default, which is most easily specified by the "onupdate" keyword to Column, which also can be a constant, plain Python function or SQL expression:
+* the database dialect does not support a usable `cursor.lastrowid` accessor (or equivalent); this currently includes Postgres, Oracle, and Firebird.
 
-    {python}
-    t = Table("mytable", meta, 
-        Column('id', Integer, primary_key=True),
-        
-        # define 'last_updated' to be populated with current_timestamp (the ANSI-SQL version of now())
-        Column('last_updated', DateTime, onupdate=func.current_timestamp()),
-    )
-    
+* the statement is a single execution, i.e. only supplies one set of parameters and doesn't use "executemany" behavior
 
-To use an explicit ColumnDefault object to specify an on-update, use the "for_update" keyword argument:
+* the `inline=True` flag is not set on the `Insert()` or `Update()` construct.
 
-    {python}
-    Column('mycolumn', String(30), ColumnDefault(func.get_data(), for_update=True))
-        
-#### Inline Default Execution: PassiveDefault {@name=passive}    
+For a statement execution which is not an executemany, the returned `ResultProxy` will contain a collection accessible via `result.postfetch_cols()` which contains a list of all `Column` objects which had an inline-executed default.  Similarly, all parameters which were bound to the statement, including all Python and SQL expressions which were pre-executed, are present in the `last_inserted_params()` or `last_updated_params()` collections on `ResultProxy`.  The `last_inserted_ids()` collection contains a list of primary key values for the row inserted.  
 
-A PassiveDefault indicates an column default that is executed upon INSERT by the database.  This construct is used to specify a SQL function that will be specified as "DEFAULT" when creating tables.
+#### DDL-Level Defaults {@name=passive}    
+
+A variant on a SQL expression default is the `PassiveDefault`, which gets placed in the CREATE TABLE statement during a `create()` operation:
 
     {python}
     t = Table('test', meta, 
-        Column('mycolumn', DateTime, PassiveDefault("sysdate"))
+        Column('mycolumn', DateTime, PassiveDefault(text("sysdate")))
     )
         
 A create call for the above table will produce:
@@ -371,31 +377,7 @@ A create call for the above table will produce:
         mycolumn datetime default sysdate
     )
         
-PassiveDefault also sends a message to the `Engine` that data is available after an insert.  The object-relational mapper system uses this information to post-fetch rows after the insert, so that instances can be refreshed with the new data.  Below is a simplified version:
-
-    {python}
-    # table with passive defaults
-    mytable = Table('mytable', engine, 
-        Column('my_id', Integer, primary_key=True),
-
-        # an on-insert database-side default
-        Column('data1', Integer, PassiveDefault("d1_func()")),
-    )
-    # insert a row
-    r = mytable.insert().execute(name='fred')
-
-    # check the result: were there defaults fired off on that row ?
-    if r.lastrow_has_defaults():
-        # postfetch the row based on primary key.
-        # this only works for a table with primary key columns defined
-        primary_key = r.last_inserted_ids()
-        row = table.select(table.c.id == primary_key[0])
-        
-When Tables are reflected from the database using `autoload=True`, any DEFAULT values set on the columns will be reflected in the Table object as PassiveDefault instances.
-
-##### The Catch: Postgres Primary Key Defaults always Pre-Execute {@name=postgres}
-
-Current Postgres support does not rely upon OID's to determine the identity of a row.  This is because the usage of OIDs has been deprecated with Postgres and they are disabled by default for table creates as of PG version 8.  Pyscopg2's "cursor.lastrowid" function only returns OIDs.  Therefore, when inserting a new row which has passive defaults set on the primary key columns, the default function is <b>still pre-executed</b> since SQLAlchemy would otherwise have no way of retrieving the row just inserted.
+The behavior of `PassiveDefault` is similar to that of a regular SQL default; if it's placed on a primary key column for a database which doesn't have a way to "postfetch" the ID, and the statement is not "inlined", the SQL expression is pre-executed; otherwise, SQLAlchemy lets the default fire off on the database side normally.
 
 #### Defining Sequences {@name=sequences}    
 
@@ -408,11 +390,17 @@ A table with a sequence looks like:
         Column("createdate", DateTime())
     )
 
-The Sequence is used with Postgres or Oracle to indicate the name of a database sequence that will be used to create default values for a column.  When a table with a Sequence on a column is created in the database by SQLAlchemy, the database sequence object is also created.   Similarly, the database sequence is dropped when the table is dropped.  Sequences are typically used with primary key columns.  When using Postgres, if an integer primary key column defines no explicit Sequence or other default method, SQLAlchemy will create the column with the SERIAL keyword, and will pre-execute a sequence named "tablename_columnname_seq" in order to retrieve new primary key values, if they were not otherwise explicitly stated.   Oracle, which has no "auto-increment" keyword, requires that a Sequence be specified for a table if automatic primary key generation is desired.
+The `Sequence` object works a lot like the `default` keyword on `Column`, except that it only takes effect on a database which supports sequences.  When used with a database that does not support sequences, the `Sequence` object has no effect; therefore it's safe to place on a table which is used against multiple database backends.  The same rules for pre- and inline execution apply.
 
-A Sequence object can be defined on a Table that is then also used with a non-sequence-supporting database.  In that case, the Sequence object is simply ignored.  Note that a Sequence object is **entirely optional for all databases except Oracle**, as other databases offer options for auto-creating primary key values, such as AUTOINCREMENT, SERIAL, etc.  SQLAlchemy will use these default methods for creating primary key values if no Sequence is present on the table metadata.
+When the `Sequence` is associated with a table, CREATE and DROP statements issued for that table will also issue CREATE/DROP for the sequence object as well, thus "bundling" the sequence object with its parent table.
 
-A sequence can also be specified with `optional=True` which indicates the Sequence should only be used on a database that requires an explicit sequence, and not those that supply some other method of providing integer values.  At the moment, it essentially means "use this sequence only with Oracle and not Postgres".
+The flag `optional=True` on `Sequence` will produce a sequence that is only used on databases which have no "autoincrementing" capability.  For example, Postgres supports primary key generation using the SERIAL keyword, whereas Oracle has no such capability.  Therefore, a `Sequence` placed on a primary key column with `optional=True` will only be used with an Oracle backend but not Postgres.
+
+A sequence can also be executed standalone, using an `Engine` or `Connection`, returning its next value in a database-independent fashion:
+
+    {python}
+    seq = Sequence('some_sequence')
+    nextid = connection.execute(seq)
 
 ### Defining Constraints and Indexes {@name=constraints}
 
@@ -438,20 +426,20 @@ Unique constraints can be created anonymously on a single column using the `uniq
 
 Check constraints can be named or unnamed and can be created at the Column or Table level, using the `CheckConstraint` construct.  The text of the check constraint is passed directly through to the database, so there is limited "database independent" behavior.  Column level check constraints generally should only refer to the column to which they are placed, while table level constraints can refer to any columns in the table.
 
-Note that some databases do not actively support check constraints such as MySQL and sqlite.
+Note that some databases do not actively support check constraints such as MySQL and SQLite.
 
     {python}
     meta = MetaData()
     mytable = Table('mytable', meta,
     
         # per-column CHECK constraint
-        Column('col1', Integer, CheckConstraint('col1&gt;5')),
+        Column('col1', Integer, CheckConstraint('col1>5')),
         
         Column('col2', Integer),
         Column('col3', Integer),
         
         # table level CHECK constraint.  'name' is optional.
-        CheckConstraint('col2 &gt; col3 + 5', name='check1')
+        CheckConstraint('col2 > col3 + 5', name='check1')
         )
     
 #### Indexes

@@ -2,6 +2,7 @@
 the usage of the associationproxy extension."""
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy.ext.selectresults import SelectResults
 from sqlalchemy.ext.associationproxy import AssociationProxy
 from datetime import datetime
@@ -66,7 +67,7 @@ session.flush()
 
 # function to return items
 def item(name):
-    return session.query(Item).get_by(description=name)
+    return session.query(Item).filter_by(description=name).one()
     
 # create an order
 order = Order('john smith')
@@ -88,7 +89,7 @@ session.flush()
 session.clear()
 
 # query the order, print items
-order = session.query(Order).get_by(customer_name='john smith')
+order = session.query(Order).filter_by(customer_name='john smith').one()
 
 # print items based on the OrderItem collection directly
 print [(item.item.description, item.price) for item in order.itemassociations]
@@ -97,11 +98,11 @@ print [(item.item.description, item.price) for item in order.itemassociations]
 print [(item.description, item.price) for item in order.items]
 
 # print customers who bought 'MySQL Crowbar' on sale
-result = session.query(Order).join('item').filter(and_(items.c.description=='MySQL Crowbar', items.c.price>orderitems.c.price))
+result = session.query(Order).join(['itemassociations', 'item']).filter(and_(Item.description=='MySQL Crowbar', Item.price>OrderItem.price))
 print [order.customer_name for order in result]
 
 # print customers who got the special T-shirt discount
-result = session.query(Order).join('item').filter(and_(items.c.description=='SA T-Shirt', items.c.price>orderitems.c.price))
+result = session.query(Order).join(['itemassociations', 'item']).filter(and_(Item.description=='SA T-Shirt', Item.price>OrderItem.price))
 print [order.customer_name for order in result]
 
 

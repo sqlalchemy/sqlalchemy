@@ -10,6 +10,11 @@
 	margin:10px 0px 10px 0px;
 }
 
+pre {
+    margin:0px;
+    padding:0px;
+}
+
 .prevnext {
 	padding: 5px 0px 0px 0px;
 }
@@ -72,7 +77,7 @@ h3 {
 }
 
 .sectionL2 {
-    margin:0px 0px 0px 20px;
+    margin:0px 0px 0px 0px;
     line-height: 1.5em;
 }
 
@@ -141,7 +146,7 @@ h3 {
 	font-size:12px;
 	background-color: #f0f0f0;	
 	border: solid 1px #ccc;
-	padding:2px 2px 2px 10px;
+	padding:10px;
 	margin: 5px 5px 5px 5px;
 	overflow:auto;
 }
@@ -151,7 +156,7 @@ h3 {
 	font-size:12px;
 	background-color: #f0f0f0;	
 	border: solid 1px #ccc;
-	padding:2px 2px 2px 10px;
+	padding:10px; /*2px 2px 2px 10px;*/
 	margin: 5px 5px 5px 5px;
 	line-height:1.2em;
 }
@@ -193,3 +198,11 @@ h3 {
     background-color: #900;
 }
 
+@media print {
+  #nav { display: none; }
+  #pagecontrol { display: none; }
+  .topnav .prevnext { display: none; }
+  .bottomnav { display: none; }
+  .totoc { display: none; }
+  .topnav ul li a { text-decoration: none; color: #000; }
+}

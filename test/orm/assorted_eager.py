@@ -1,45 +1,53 @@
 """eager loading unittests derived from mailing list-reported problems and trac tickets."""
 
-import testbase
+import testenv; testenv.configure_for_tests()
 import random, datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
 from testlib import *
+from testlib import fixtures
 
-class EagerTest(AssertMixin):
+class EagerTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global dbmeta, owners, categories, tests, options, Owner, Category, Test, Option, false
-        dbmeta = MetaData(testbase.db)
-        
+        dbmeta = MetaData(testing.db)
+
         # determine a literal value for "false" based on the dialect
-        false = Boolean().dialect_impl(testbase.db.dialect).convert_bind_param(False, testbase.db.dialect)
-        
+        # FIXME: this PassiveDefault setup is bogus.
+        bp = Boolean().dialect_impl(testing.db.dialect).bind_processor(testing.db.dialect)
+        if bp:
+            false = str(bp(False))
+        elif testing.against('maxdb'):
+            false = text('FALSE')
+        else:
+            false = str(False)
+
         owners = Table ( 'owners', dbmeta ,
-        	Column ( 'id', Integer, primary_key=True, nullable=False ),
-        	Column('data', String(30)) )
+            Column ( 'id', Integer, primary_key=True, nullable=False ),
+            Column('data', String(30)) )
         categories=Table( 'categories', dbmeta,
-        	Column ( 'id', Integer,primary_key=True, nullable=False ),
-        	Column ( 'name', VARCHAR(20), index=True ) )
+            Column ( 'id', Integer,primary_key=True, nullable=False ),
+            Column ( 'name', VARCHAR(20), index=True ) )
         tests = Table ( 'tests', dbmeta ,
-        	Column ( 'id', Integer, primary_key=True, nullable=False ),
-        	Column ( 'owner_id',Integer, ForeignKey('owners.id'), nullable=False,index=True ),
-        	Column ( 'category_id', Integer, ForeignKey('categories.id'),nullable=False,index=True ))
+            Column ( 'id', Integer, primary_key=True, nullable=False ),
+            Column ( 'owner_id',Integer, ForeignKey('owners.id'), nullable=False,index=True ),
+            Column ( 'category_id', Integer, ForeignKey('categories.id'),nullable=False,index=True ))
         options = Table ( 'options', dbmeta ,
-        	Column ( 'test_id', Integer, ForeignKey ( 'tests.id' ), primary_key=True, nullable=False ),
-        	Column ( 'owner_id', Integer, ForeignKey ( 'owners.id' ), primary_key=True, nullable=False ),
-        	Column ( 'someoption', Boolean, PassiveDefault(str(false)), nullable=False ) )
+            Column ( 'test_id', Integer, ForeignKey ( 'tests.id' ), primary_key=True, nullable=False ),
+            Column ( 'owner_id', Integer, ForeignKey ( 'owners.id' ), primary_key=True, nullable=False ),
+            Column ( 'someoption', Boolean, PassiveDefault(false), nullable=False ) )
 
         dbmeta.create_all()
 
         class Owner(object):
-        	pass
+            pass
         class Category(object):
-        	pass
+            pass
         class Test(object):
-        	pass
+            pass
         class Option(object):
-        	pass
+            pass
         mapper(Owner,owners)
         mapper(Category,categories)
         mapper(Option,options,properties={'owner':relation(Owner),'test':relation(Test)})
@@ -47,8 +55,8 @@ class EagerTest(AssertMixin):
             'owner':relation(Owner,backref='tests'),
             'category':relation(Category),
             'owner_option': relation(Option,primaryjoin=and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id),
-                foreignkey=[options.c.test_id, options.c.owner_id],
-            uselist=False ) 
+                foreign_keys=[options.c.test_id, options.c.owner_id],
+            uselist=False )
         })
 
         s=create_session()
@@ -63,17 +71,17 @@ class EagerTest(AssertMixin):
         s.save(c)
 
         for i in range(3):
-        	t=Test()
-        	t.owner=o
-        	t.category=c
-        	s.save(t)
-        	if i==1:
-        		op=Option()
-        		op.someoption=True
-        		t.owner_option=op
-        	if i==2:
-        		op=Option()
-        		t.owner_option=op
+            t=Test()
+            t.owner=o
+            t.category=c
+            s.save(t)
+            if i==1:
+                op=Option()
+                op.someoption=True
+                t.owner_option=op
+            if i==2:
+                op=Option()
+                t.owner_option=op
 
         s.flush()
         s.close()
@@ -84,7 +92,7 @@ class EagerTest(AssertMixin):
 
     def test_noorm(self):
         """test the control case"""
-        # I want to display a list of tests owned by owner 1 
+        # I want to display a list of tests owned by owner 1
         # if someoption is false or he hasn't specified it yet (null)
         # but not if he set it to true (example someoption is for hiding)
 
@@ -96,27 +104,61 @@ class EagerTest(AssertMixin):
         # not orm style correct query
         print "Obtaining correct results without orm"
         result = select( [tests.c.id,categories.c.name],
-        	and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
-        	order_by=[tests.c.id],
-        	from_obj=[tests.join(categories).outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))] ).execute().fetchall()
+            and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
+            order_by=[tests.c.id],
+            from_obj=[tests.join(categories).outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))] ).execute().fetchall()
         print result
         assert result == [(1, u'Some Category'), (3, u'Some Category')]
-    
+
     def test_withouteagerload(self):
         s = create_session()
+        l = (s.query(Test).
+             select_from(tests.outerjoin(options,
+                                         and_(tests.c.id == options.c.test_id,
+                                              tests.c.owner_id ==
+                                              options.c.owner_id))).
+             filter(and_(tests.c.owner_id==1,
+                         or_(options.c.someoption==None,
+                             options.c.someoption==False))))
+
+        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
+        print result
+        assert result == [u'1 Some Category', u'3 Some Category']
+
+    @testing.uses_deprecated('//select')
+    def test_withouteagerload_deprecated(self):
+        s = create_session()
         l=s.query(Test).select ( and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
-        	from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
+            from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
 
     def test_witheagerload(self):
-        """test that an eagerload locates the correct "from" clause with 
+        """test that an eagerload locates the correct "from" clause with
         which to attach to, when presented with a query that already has a complicated from clause."""
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
+
+        l=(q.select_from(tests.outerjoin(options,
+                                         and_(tests.c.id ==
+                                              options.c.test_id,
+                                              tests.c.owner_id ==
+                                              options.c.owner_id))).
+           filter(and_(tests.c.owner_id==1,or_(options.c.someoption==None,
+                                               options.c.someoption==False))))
+
+        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
+        print result
+        assert result == [u'1 Some Category', u'3 Some Category']
+
+    @testing.uses_deprecated('//select')
+    def test_witheagerload_deprecated(self):
+        """As test_witheagerload, but via select()."""
+        s = create_session()
+        q=s.query(Test).options(eagerload('category'))
         l=q.select ( and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
-        	from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
+            from_obj=[tests.outerjoin(options,and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id))])
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
@@ -125,34 +167,58 @@ class EagerTest(AssertMixin):
         """test the same as witheagerload except using generative"""
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
-        l=q.filter ( 
+        l=q.filter (
             and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False))
             ).outerjoin('owner_option')
-            
+
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
 
+    @testing.unsupported('sybase')
     def test_withoutouterjoin_literal(self):
+        s = create_session()
+        q = s.query(Test).options(eagerload('category'))
+        l = (q.filter(
+            (tests.c.owner_id==1) &
+            ('options.someoption is null or options.someoption=%s' % false)).
+             join('owner_option'))
+
+        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
+        print result
+        assert result == [u'3 Some Category']
+
+    @testing.unsupported('sybase')
+    @testing.uses_deprecated('//select', '//join_to')
+    def test_withoutouterjoin_literal_deprecated(self):
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
         l=q.select( (tests.c.owner_id==1) & ('options.someoption is null or options.someoption=%s' % false) & q.join_to('owner_option') )
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]	
+        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'3 Some Category']
 
     def test_withoutouterjoin(self):
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
-        l=q.select( (tests.c.owner_id==1) & ((options.c.someoption==None) | (options.c.someoption==False)) & q.join_to('owner_option') )
-        result = ["%d %s" % ( t.id,t.category.name ) for t in l]	
+        l = q.filter( (tests.c.owner_id==1) & ((options.c.someoption==None) | (options.c.someoption==False)) ).join('owner_option')
+        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'3 Some Category']
 
-class EagerTest2(AssertMixin):
+    @testing.uses_deprecated('//select', '//join_to', '//join_via')
+    def test_withoutouterjoin_deprecated(self):
+        s = create_session()
+        q=s.query(Test).options(eagerload('category'))
+        l=q.select( (tests.c.owner_id==1) & ((options.c.someoption==None) | (options.c.someoption==False)) & q.join_to('owner_option') )
+        result = ["%d %s" % ( t.id,t.category.name ) for t in l]
+        print result
+        assert result == [u'3 Some Category']
+
+class EagerTest2(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global metadata, middle, left, right
-        metadata = MetaData(testbase.db)
+        metadata = MetaData(testing.db)
         middle = Table('middle', metadata,
             Column('id', Integer, primary_key = True),
             Column('data', String(50)),
@@ -173,10 +239,11 @@ class EagerTest2(AssertMixin):
     def tearDown(self):
         for t in metadata.table_iterator(reverse=True):
             t.delete().execute()
-            
+
+    @testing.fails_on('maxdb')
     def testeagerterminate(self):
         """test that eager query generation does not include the same mapper's table twice.
-        
+
         or, that bi-directional eager loads dont include each other in eager query generation."""
         class Middle(object):
             def __init__(self, data): self.data = data
@@ -193,14 +260,14 @@ class EagerTest2(AssertMixin):
             'right': relation(Right, lazy=False, backref=backref('middle', lazy=False)),
             }
         )
-        session = create_session(bind=testbase.db)
+        session = create_session(bind=testing.db)
         p = Middle('test1')
         p.left.append(Left('tag1'))
         p.right.append(Right('tag2'))
         session.save(p)
         session.flush()
         session.clear()
-        obj = session.query(Left).get_by(tag='tag1')
+        obj = session.query(Left).filter_by(tag='tag1').one()
         print obj.middle.right[0]
 
 class EagerTest3(ORMTest):
@@ -219,7 +286,8 @@ class EagerTest3(ORMTest):
         Column ( 'id', Integer, primary_key=True, nullable=False ),
         Column ( 'data_id', Integer, ForeignKey('datas.id')),
         Column ( 'somedata', Integer, nullable=False ))
-        
+
+    @testing.fails_on('maxdb')
     def test_nesting_with_functions(self):
         class Data(object): pass
         class Foo(object):pass
@@ -236,7 +304,7 @@ class EagerTest3(ORMTest):
             d.a=x
             s.save(d)
             data.append(d)
-            
+
         for x in range(10):
             rid=random.randint(0,len(data) - 1)
             somedata=random.randint(1,50000)
@@ -251,22 +319,23 @@ class EagerTest3(ORMTest):
             [stats.c.data_id,func.max(stats.c.somedata).label('max')],
             stats.c.data_id<=25,
             group_by=[stats.c.data_id]).alias('arb')
-        
+
         arb_result = arb_data.execute().fetchall()
         # order the result list descending based on 'max'
         arb_result.sort(lambda a, b:cmp(b['max'],a['max']))
         # extract just the "data_id" from it
         arb_result = [row['data_id'] for row in arb_result]
-        
-        # now query for Data objects using that above select, adding the 
+
+        # now query for Data objects using that above select, adding the
         # "order by max desc" separately
-        q=s.query(Data).options(eagerload('foo')).select(
-            from_obj=[datas.join(arb_data,arb_data.c.data_id==datas.c.id)],
-            order_by=[desc(arb_data.c.max)],limit=10)
-        
+        q=(s.query(Data).options(eagerload('foo')).
+           select_from(datas.join(arb_data,arb_data.c.data_id==datas.c.id)).
+           order_by(desc(arb_data.c.max)).
+           limit(10))
+
         # extract "data_id" from the list of result objects
         verify_result = [d.id for d in q]
-        
+
         # assert equality including ordering (may break if the DB "ORDER BY" and python's sort() used differing
         # algorithms and there are repeated 'somedata' values in the list)
         assert verify_result == arb_result
@@ -278,12 +347,13 @@ class EagerTest4(ORMTest):
                             Column('department_id', Integer, primary_key=True),
                             Column('name', String(50)))
 
-        employees = Table('employees', metadata, 
+        employees = Table('employees', metadata,
                           Column('person_id', Integer, primary_key=True),
                           Column('name', String(50)),
                           Column('department_id', Integer,
                                  ForeignKey('departments.department_id')))
 
+    @testing.fails_on('maxdb')
     def test_basic(self):
         class Department(object):
             def __init__(self, **kwargs):
@@ -324,13 +394,13 @@ class EagerTest4(ORMTest):
         assert q[0] is d2
 
 class EagerTest5(ORMTest):
-    """test the construction of AliasedClauses for the same eager load property but different 
+    """test the construction of AliasedClauses for the same eager load property but different
     parent mappers, due to inheritance"""
     def define_tables(self, metadata):
         global base, derived, derivedII, comments
         base = Table(
             'base', metadata,
-            Column('uid', String(30), primary_key=True), 
+            Column('uid', String(30), primary_key=True),
             Column('x', String(30))
             )
 
@@ -390,17 +460,17 @@ class EagerTest5(ORMTest):
         derivedMapper = mapper(Derived, derived, inherits=baseMapper)
         derivedIIMapper = mapper(DerivedII, derivedII, inherits=baseMapper)
         sess = create_session()
-        d = Derived(1, 'x', 'y')
-        d.comments = [Comment(1, 'comment')]
-        d2 = DerivedII(2, 'xx', 'z')
-        d2.comments = [Comment(2, 'comment')]
+        d = Derived('uid1', 'x', 'y')
+        d.comments = [Comment('uid1', 'comment')]
+        d2 = DerivedII('uid2', 'xx', 'z')
+        d2.comments = [Comment('uid2', 'comment')]
         sess.save(d)
         sess.save(d2)
         sess.flush()
         sess.clear()
         # this eager load sets up an AliasedClauses for the "comment" relationship,
         # then stores it in clauses_by_lead_mapper[mapper for Derived]
-        d = sess.query(Derived).get(1)
+        d = sess.query(Derived).get('uid1')
         sess.clear()
         assert len([c for c in d.comments]) == 1
 
@@ -408,7 +478,7 @@ class EagerTest5(ORMTest):
         # and should store it in clauses_by_lead_mapper[mapper for DerivedII].
         # the bug was that the previous AliasedClause create prevented this population
         # from occurring.
-        d2 = sess.query(DerivedII).get(2)
+        d2 = sess.query(DerivedII).get('uid2')
         sess.clear()
         # object is not in the session; therefore the lazy load cant trigger here,
         # eager load had to succeed
@@ -417,24 +487,24 @@ class EagerTest5(ORMTest):
 class EagerTest6(ORMTest):
     def define_tables(self, metadata):
         global designType, design, part, inheritedPart
-        designType = Table('design_types', metadata, 
-        	Column('design_type_id', Integer, primary_key=True),
-        	)
+        designType = Table('design_types', metadata,
+            Column('design_type_id', Integer, primary_key=True),
+            )
 
-        design =Table('design', metadata, 
-        	Column('design_id', Integer, primary_key=True),
-        	Column('design_type_id', Integer, ForeignKey('design_types.design_type_id')))
+        design =Table('design', metadata,
+            Column('design_id', Integer, primary_key=True),
+            Column('design_type_id', Integer, ForeignKey('design_types.design_type_id')))
 
-        part = Table('parts', metadata, 
-        	Column('part_id', Integer, primary_key=True),
-        	Column('design_id', Integer, ForeignKey('design.design_id')),
-        	Column('design_type_id', Integer, ForeignKey('design_types.design_type_id')))
+        part = Table('parts', metadata,
+            Column('part_id', Integer, primary_key=True),
+            Column('design_id', Integer, ForeignKey('design.design_id')),
+            Column('design_type_id', Integer, ForeignKey('design_types.design_type_id')))
 
         inheritedPart = Table('inherited_part', metadata,
-        	Column('ip_id', Integer, primary_key=True),
-        	Column('part_id', Integer, ForeignKey('parts.part_id')),
-        	Column('design_id', Integer, ForeignKey('design.design_id')),
-        	)
+            Column('ip_id', Integer, primary_key=True),
+            Column('part_id', Integer, ForeignKey('parts.part_id')),
+            Column('design_id', Integer, ForeignKey('design.design_id')),
+            )
 
     def testone(self):
         class Part(object):pass
@@ -445,20 +515,23 @@ class EagerTest6(ORMTest):
         mapper(Part, part)
 
         mapper(InheritedPart, inheritedPart, properties=dict(
-        	part=relation(Part, lazy=False)
+            part=relation(Part, lazy=False)
         ))
 
         mapper(Design, design, properties=dict(
-        	parts=relation(Part, private=True, backref="design"),
-        	inheritedParts=relation(InheritedPart, private=True, backref="design"),
+            inheritedParts=relation(InheritedPart,
+                                    cascade="all, delete-orphan",
+                                    backref="design"),
         ))
 
         mapper(DesignType, designType, properties=dict(
-        #	designs=relation(Design, private=True, backref="type"),
+        #   designs=relation(Design, private=True, backref="type"),
         ))
 
         class_mapper(Design).add_property("type", relation(DesignType, lazy=False, backref="designs"))
-        class_mapper(Part).add_property("design", relation(Design, lazy=False, backref="parts"))
+
+        class_mapper(Part).add_property("design", relation(Design, lazy=False, backref=backref("parts", cascade="all, delete-orphan")))
+
         #Part.mapper.add_property("designType", relation(DesignType))
 
         d = Design()
@@ -470,6 +543,7 @@ class EagerTest6(ORMTest):
         x.inheritedParts
 
 class EagerTest7(ORMTest):
+    @testing.uses_deprecated('SessionContext')
     def define_tables(self, metadata):
         global companies_table, addresses_table, invoice_table, phones_table, items_table, ctx
         global Company, Address, Phone, Item,Invoice
@@ -498,7 +572,7 @@ class EagerTest7(ORMTest):
         invoice_table = Table('invoices', metadata,
                               Column('invoice_id', Integer, Sequence('invoice_id_seq', optional=True), primary_key = True),
                               Column('company_id', Integer, ForeignKey("companies.company_id")),
-                              Column('date', DateTime),   
+                              Column('date', DateTime),
                               )
 
         items_table = Table('items', metadata,
@@ -532,8 +606,9 @@ class EagerTest7(ORMTest):
             def __repr__(self):
                 return "Item: " + repr(getattr(self, 'item_id', None)) + " " + repr(getattr(self, 'invoice_id', None)) + " " + repr(self.code) + " " + repr(self.qty)
 
+    @testing.uses_deprecated('SessionContext')
     def testone(self):
-        """tests eager load of a many-to-one attached to a one-to-many.  this testcase illustrated 
+        """tests eager load of a many-to-one attached to a one-to-many.  this testcase illustrated
         the bug, which is that when the single Company is loaded, no further processing of the rows
         occurred in order to load the Company's second Address object."""
 
@@ -642,7 +717,7 @@ class EagerTest7(ORMTest):
         # set up an invoice
         i1 = Invoice()
         i1.date = datetime.datetime.now()
-        i1.company = c1
+        i1.company = a
 
         item1 = Item()
         item1.code = 'aaaa'
@@ -714,11 +789,12 @@ class EagerTest8(ORMTest):
                                 )
 
     def setUp(self):
-        testbase.db.execute("INSERT INTO prj (title) values('project 1');")
-        testbase.db.execute("INSERT INTO task_status (id) values(1);")
-        testbase.db.execute("INSERT INTO task_type(id) values(1);")
-        testbase.db.execute("INSERT INTO task (title, task_type_id, status_id, prj_id) values('task 1',1,1,1);")
+        testing.db.execute(project_t.insert(), {'id':1})
+        testing.db.execute(task_status_t.insert(), {'id':1})
+        testing.db.execute(task_type_t.insert(), {'id':1})
+        testing.db.execute(task_t.insert(), {'title':u'task 1', 'task_type_id':1, 'status_id':1, 'prj_id':1})
 
+    @testing.fails_on('maxdb')
     def test_nested_joins(self):
         # this is testing some subtle column resolution stuff,
         # concerning corresponding_column() being extremely accurate
@@ -731,7 +807,7 @@ class EagerTest8(ORMTest):
 
         tsk_cnt_join = outerjoin(project_t, task_t, task_t.c.prj_id==project_t.c.id)
 
-        ss = select([project_t.c.id.label('prj_id'), func.count(task_t.c.id).label('tasks_number')], 
+        ss = select([project_t.c.id.label('prj_id'), func.count(task_t.c.id).label('tasks_number')],
                     from_obj=[tsk_cnt_join], group_by=[project_t.c.id]).alias('prj_tsk_cnt_s')
         j = join(project_t, ss, project_t.c.id == ss.c.prj_id)
 
@@ -743,12 +819,12 @@ class EagerTest8(ORMTest):
 
         mapper(Message_Type, message_type_t)
 
-        mapper(Message, message_t, 
+        mapper(Message, message_t,
                          properties=dict(type=relation(Message_Type, lazy=False, uselist=False),
                                          ))
 
         tsk_cnt_join = outerjoin(project_t, task_t, task_t.c.prj_id==project_t.c.id)
-        ss = select([project_t.c.id.label('prj_id'), func.count(task_t.c.id).label('tasks_number')], 
+        ss = select([project_t.c.id.label('prj_id'), func.count(task_t.c.id).label('tasks_number')],
                     from_obj=[tsk_cnt_join], group_by=[project_t.c.id]).alias('prj_tsk_cnt_s')
         j = join(project_t, ss, project_t.c.id == ss.c.prj_id)
 
@@ -766,9 +842,87 @@ class EagerTest8(ORMTest):
 
         session = create_session()
 
-        for t in session.query(cls.mapper).limit(10).offset(0).list():
-            print t.id, t.title, t.props_cnt        
-        
-    
-if __name__ == "__main__":    
-    testbase.main()
+        for t in session.query(cls.mapper).limit(10).offset(0).all():
+            print t.id, t.title, t.props_cnt
+
+class EagerTest9(ORMTest):
+    """test the usage of query options to eagerly load specific paths.
+
+    this relies upon the 'path' construct used by PropertyOption to relate
+    LoaderStrategies to specific paths, as well as the path state maintained
+    throughout the query setup/mapper instances process.
+    """
+
+    def define_tables(self, metadata):
+        global accounts_table, transactions_table, entries_table
+        accounts_table = Table('accounts', metadata,
+            Column('account_id', Integer, primary_key=True),
+            Column('name', String(40)),
+        )
+        transactions_table = Table('transactions', metadata,
+            Column('transaction_id', Integer, primary_key=True),
+            Column('name', String(40)),
+        )
+        entries_table = Table('entries', metadata,
+            Column('entry_id', Integer, primary_key=True),
+            Column('name', String(40)),
+            Column('account_id', Integer, ForeignKey(accounts_table.c.account_id)),
+            Column('transaction_id', Integer, ForeignKey(transactions_table.c.transaction_id)),
+        )
+
+    @testing.fails_on('maxdb')
+    def test_eagerload_on_path(self):
+        class Account(fixtures.Base):
+            pass
+
+        class Transaction(fixtures.Base):
+            pass
+
+        class Entry(fixtures.Base):
+            pass
+
+        mapper(Account, accounts_table)
+        mapper(Transaction, transactions_table)
+        mapper(Entry, entries_table, properties = dict(
+            account = relation(Account, uselist=False, backref=backref('entries', lazy=True)),
+            transaction = relation(Transaction, uselist=False, backref=backref('entries', lazy=False)),
+        ))
+
+        session = create_session()
+
+        tx1 = Transaction(name='tx1')
+        tx2 = Transaction(name='tx2')
+
+        acc1 = Account(name='acc1')
+        ent11 = Entry(name='ent11', account=acc1, transaction=tx1)
+        ent12 = Entry(name='ent12', account=acc1, transaction=tx2)
+
+        acc2 = Account(name='acc2')
+        ent21 = Entry(name='ent21', account=acc2, transaction=tx1)
+        ent22 = Entry(name='ent22', account=acc2, transaction=tx2)
+
+        session.save(acc1)
+        session.flush()
+        session.clear()
+
+        def go():
+            # load just the first Account.  eager loading will actually load all objects saved thus far,
+            # but will not eagerly load the "accounts" off the immediate "entries"; only the
+            # "accounts" off the entries->transaction->entries
+            acc = session.query(Account).options(eagerload_all('entries.transaction.entries.account')).first()
+
+            # no sql occurs
+            assert acc.name == 'acc1'
+            assert acc.entries[0].transaction.entries[0].account.name == 'acc1'
+            assert acc.entries[0].transaction.entries[1].account.name == 'acc2'
+
+            # lazyload triggers but no sql occurs because many-to-one uses cached query.get()
+            for e in acc.entries:
+                assert e.account is acc
+
+        self.assert_sql_count(testing.db, go, 1)
+
+
+
+if __name__ == "__main__":
+    testenv.main()

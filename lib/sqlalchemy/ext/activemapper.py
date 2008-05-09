@@ -1,11 +1,9 @@
 from sqlalchemy             import ThreadLocalMetaData, util, Integer
 from sqlalchemy             import Table, Column, ForeignKey
-from sqlalchemy.orm         import class_mapper, relation, create_session
+from sqlalchemy.orm         import class_mapper, relation, scoped_session
+from sqlalchemy.orm         import sessionmaker
                                    
-from sqlalchemy.ext.sessioncontext import SessionContext
-from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy.orm import backref as create_backref
-import sqlalchemy
 
 import inspect
 import sys
@@ -14,20 +12,8 @@ import sys
 # the "proxy" to the database engine... this can be swapped out at runtime
 #
 metadata = ThreadLocalMetaData()
-
-try:
-    objectstore = sqlalchemy.objectstore
-except AttributeError:
-    # thread local SessionContext
-    class Objectstore(object):
-        def __init__(self, *args, **kwargs):
-            self.context = SessionContext(*args, **kwargs)
-        def __getattr__(self, name):
-            return getattr(self.context.current, name)
-        session = property(lambda s:s.context.current)
-    
-    objectstore = Objectstore(create_session)
-
+Objectstore = scoped_session
+objectstore = scoped_session(sessionmaker(autoflush=True, transactional=False))
 
 #
 # declarative column declaration - this is so that we can infer the colname
@@ -50,7 +36,7 @@ class column(object):
 #
 class relationship(object):
     def __init__(self, classname, colname=None, backref=None, private=False,
-                 lazy=True, uselist=True, secondary=None, order_by=False):
+                 lazy=True, uselist=True, secondary=None, order_by=False, viewonly=False):
         self.classname = classname
         self.colname   = colname
         self.backref   = backref
@@ -59,6 +45,7 @@ class relationship(object):
         self.uselist   = uselist
         self.secondary = secondary
         self.order_by  = order_by
+        self.viewonly  = viewonly
     
     def process(self, klass, propname, relations):
         relclass = ActiveMapperMeta.classes[self.classname]
@@ -79,7 +66,8 @@ class relationship(object):
                                        private=self.private, 
                                        lazy=self.lazy, 
                                        uselist=self.uselist,
-                                       order_by=self.order_by)
+                                       order_by=self.order_by, 
+                                       viewonly=self.viewonly)
     
     def create_backref(self, klass):
         if self.backref is None:
@@ -88,7 +76,8 @@ class relationship(object):
         relclass = ActiveMapperMeta.classes[self.classname]
         
         if klass.__name__ == self.classname:
-            br_fkey = getattr(relclass.c, self.colname)
+            class_mapper(relclass).compile()
+            br_fkey = relclass.c[self.colname]
         else:
             br_fkey = None
         
@@ -96,17 +85,14 @@ class relationship(object):
 
 
 class one_to_many(relationship):
-    def __init__(self, classname, colname=None, backref=None, private=False,
-                 lazy=True, order_by=False):
-        relationship.__init__(self, classname, colname, backref, private, 
-                              lazy, uselist=True, order_by=order_by)
-
+    def __init__(self, *args, **kwargs):
+        kwargs['uselist'] = True
+        relationship.__init__(self, *args, **kwargs)
 
 class one_to_one(relationship):
-    def __init__(self, classname, colname=None, backref=None, private=False,
-                 lazy=True, order_by=False):
-        relationship.__init__(self, classname, colname, backref, private, 
-                              lazy, uselist=False, order_by=order_by)
+    def __init__(self, *args, **kwargs):
+        kwargs['uselist'] = False
+        relationship.__init__(self, *args, **kwargs)
     
     def create_backref(self, klass):
         if self.backref is None:
@@ -156,9 +142,10 @@ def process_relationships(klass, was_deferred=False):
     # not able to find any of the related tables
     if not defer:
         for col in klass.columns:
-            if col.foreign_key is not None:
+            if col.foreign_keys:
                 found = False
-                table_name = col.foreign_key._colspec.rsplit('.', 1)[0]
+                cn = col.foreign_keys[0]._colspec
+                table_name = cn[:cn.rindex('.')]
                 for other_klass in ActiveMapperMeta.classes.values():
                     if other_klass.table.fullname.lower() == table_name.lower():
                         found = True
@@ -277,10 +264,10 @@ class ActiveMapperMeta(type):
             # check for inheritence
             if hasattr(bases[0], "mapping"):
                 cls._base_mapper= bases[0].mapper
-                assign_mapper(objectstore.context, cls, cls.table, 
+                cls.mapper = objectstore.mapper(cls, cls.table, 
                               inherits=cls._base_mapper, version_id_col=version_id_col_object)
             else:
-                assign_mapper(objectstore.context, cls, cls.table, version_id_col=version_id_col_object)
+                cls.mapper = objectstore.mapper(cls, cls.table, version_id_col=version_id_col_object)
             cls.relations = relations
             ActiveMapperMeta.classes[clsname] = cls
             

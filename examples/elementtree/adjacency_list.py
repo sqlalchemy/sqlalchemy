@@ -26,7 +26,7 @@ from elementtree import ElementTree
 from elementtree.ElementTree import Element, SubElement
 
 meta = MetaData()
-meta.engine = 'sqlite://'
+meta.bind = 'sqlite://'
 
 ################################# PART II - Table Metadata ###########################################
     
@@ -129,11 +129,11 @@ class ElementTreeMarshal(object):
     def __set__(self, document, element):
         def traverse(node):
             n = _Node()
-            n.tag = node.tag
-            n.text = node.text
-            n.tail = node.tail
+            n.tag = unicode(node.tag)
+            n.text = unicode(node.text)
+            n.tail = unicode(node.tail)
             n.children = [traverse(n2) for n2 in node]
-            n.attributes = [_Attribute(k, v) for k, v in node.attrib.iteritems()]
+            n.attributes = [_Attribute(unicode(k), unicode(v)) for k, v in node.attrib.iteritems()]
             return n
 
         document._root = traverse(element.getroot())
@@ -174,12 +174,10 @@ print document
 ############################################ PART VI - Searching for Paths #######################################
 
 # manually search for a document which contains "/somefile/header/field1:hi"
-print "\nManual search for /somefile/header/field1=='hi':", line
-n1 = elements.alias('n1')
-n2 = elements.alias('n2')
-n3 = elements.alias('n3')
-j = documents.join(n1).join(n2, n1.c.element_id==n2.c.parent_id).join(n3, n2.c.element_id==n3.c.parent_id)
-d = session.query(Document).select_from(j).filter(n1.c.tag=='somefile').filter(n2.c.tag=='header').filter(and_(n3.c.tag=='field1', n3.c.text=='hi')).one()
+d = session.query(Document).join('_root', aliased=True).filter(_Node.tag==u'somefile').\
+    join('children', aliased=True, from_joinpoint=True).filter(_Node.tag==u'header').\
+    join('children', aliased=True, from_joinpoint=True).filter(and_(_Node.tag==u'field1', _Node.text==u'hi')).\
+    one()
 print d
 
 # generalize the above approach into an extremely impoverished xpath function:
@@ -187,28 +185,23 @@ def find_document(path, compareto):
     j = documents
     prev_elements = None
     query = session.query(Document)
+    attribute = '_root'
     for i, match in enumerate(re.finditer(r'/([\w_]+)(?:\[@([\w_]+)(?:=(.*))?\])?', path)):
         (token, attrname, attrvalue) = match.group(1, 2, 3)
-        a = elements.alias("n%d" % i)
-        query = query.filter(a.c.tag==token)
+        query = query.join(attribute, aliased=True, from_joinpoint=True).filter(_Node.tag==token)
+        attribute = 'children'
         if attrname:
-            attr_alias = attributes.alias('a%d' % i)
             if attrvalue:
-                query = query.filter(and_(a.c.element_id==attr_alias.c.element_id, attr_alias.c.name==attrname, attr_alias.c.value==attrvalue))
+                query = query.join('attributes', aliased=True, from_joinpoint=True).filter(and_(_Attribute.name==attrname, _Attribute.value==attrvalue))
             else:
-                query = query.filter(and_(a.c.element_id==attr_alias.c.element_id, attr_alias.c.name==attrname))
-        if prev_elements is not None:
-            j = j.join(a, prev_elements.c.element_id==a.c.parent_id)
-        else:
-            j = j.join(a)
-        prev_elements = a
-    return query.options(lazyload('_root')).select_from(j).filter(prev_elements.c.text==compareto).all()
+                query = query.join('attributes', aliased=True, from_joinpoint=True).filter(_Attribute.name==attrname)
+    return query.options(lazyload('_root')).filter(_Node.text==compareto).all()
 
 for path, compareto in (
-        ('/somefile/header/field1', 'hi'),
-        ('/somefile/field1', 'hi'),
-        ('/somefile/header/field2', 'there'),
-        ('/somefile/header/field2[@attr=foo]', 'there')
+        (u'/somefile/header/field1', u'hi'),
+        (u'/somefile/field1', u'hi'),
+        (u'/somefile/header/field2', u'there'),
+        (u'/somefile/header/field2[@attr=foo]', u'there')
     ):
     print "\nDocuments containing '%s=%s':" % (path, compareto), line
     print [d.filename for d in find_document(path, compareto)]
