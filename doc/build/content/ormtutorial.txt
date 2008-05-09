@@ -674,11 +674,11 @@ Using the `Query`, we build a statement like this from the inside out.  The `sta
     
     {python}
     >>> from sqlalchemy.sql import func
-    >>> stmt = session.query(Address.user_id, func.count('*').label('address_count')).group_by(Address.user_id).statement.alias()
+    >>> stmt = session.query(Address.user_id, func.count('*').label('address_count')).group_by(Address.user_id).subquery()
     
-The `func` keyword generates SQL functions, and the `alias()` method on `Select` (the return value of `query.statement`) creates a SQL alias, in this case an anonymous one which will have a generated name.
+The `func` keyword generates SQL functions, and the `subquery()` method on `Query` produces a SQL expression construct representing a SELECT statement embedded within an alias (it's actually shorthand for `query.statement.alias()`).
 
-Once we have our statement, it behaves like a `Table` construct, which we created for `users` at the top of this tutorial.  The columns on the statement are accessible through an attribute called `c`:
+Once we have our statement, it behaves like a `Table` construct, such as the one we created for `users` at the start of this tutorial.  The columns on the statement are accessible through an attribute called `c`:
 
     {python}
     {sql}>>> for u, count in session.query(User, stmt.c.address_count).outerjoin((stmt, User.id==stmt.c.user_id)): # doctest: +NORMALIZE_WHITESPACE

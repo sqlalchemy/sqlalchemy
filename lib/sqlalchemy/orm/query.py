@@ -307,6 +307,11 @@ class Query(object):
         return self._compile_context(labels=self._with_labels).statement
     statement = property(statement)
 
+    def subquery(self):
+        """return the full SELECT statement represented by this Query, embedded within an Alias."""
+        
+        return self.statement.alias()
+        
     def with_labels(self):
         """Apply column labels to the return value of Query.statement.
         
