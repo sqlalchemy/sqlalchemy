@@ -183,7 +183,7 @@ For example, below we create a new `Query` object which loads instances of `User
     ['ed', 'Ed Jones', 'edspassword']
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.name = ? ORDER BY users.oid 
+    WHERE users.name = ?
      LIMIT 1 OFFSET 0
     ['ed']
     {stop}>>> our_user
@@ -258,11 +258,11 @@ After the `Session` inserts new rows in the database, all newly generated identi
 A `Query` is created using the `query()` function on `Session`.  This function takes a variable number of arguments, which can be any combination of classes and class-instrumented descriptors.  Below, we indicate a `Query` which loads `User` instances.  When evaluated in an iterative context, the list of `User` objects present is returned:
 
     {python}
-    {sql}>>> for instance in session.query(User): # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> for instance in session.query(User).order_by(User.id): # doctest: +NORMALIZE_WHITESPACE
     ...     print instance.name, instance.fullname 
     SELECT users.id AS users_id, users.name AS users_name, 
     users.fullname AS users_fullname, users.password AS users_password 
-    FROM users ORDER BY users.oid
+    FROM users ORDER BY users.id
     []
     {stop}ed Ed Jones
     wendy Wendy Williams
@@ -321,7 +321,7 @@ The `Query` object is fully *generative*, meaning that most method calls return 
     ...    print user
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.name = ? AND users.fullname = ? ORDER BY users.oid
+    WHERE users.name = ? AND users.fullname = ?
     ['ed', 'Ed Jones']
     {stop}<User('ed','Ed Jones', 'f8s7ccs')>
 
@@ -375,11 +375,11 @@ Here's a rundown of some of the most common operators used in `filter()`:
 The `all()`, `one()`, and `first()` methods of `Query` immediately issue SQL and return a non-iterator value.  `all()` returns a list:
 
     {python}
-    >>> query = session.query(User).filter(User.name.like('%ed'))
+    >>> query = session.query(User).filter(User.name.like('%ed')).order_by(User.id)
     {sql}>>> query.all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.name LIKE ? ORDER BY users.oid
+    WHERE users.name LIKE ? ORDER BY users.id
     ['%ed']
     {stop}[<User('ed','Ed Jones', 'f8s7ccs')>, <User('fred','Fred Flinstone', 'blah')>]
 
@@ -389,7 +389,7 @@ The `all()`, `one()`, and `first()` methods of `Query` immediately issue SQL and
     {sql}>>> query.first()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.name LIKE ? ORDER BY users.oid 
+    WHERE users.name LIKE ? ORDER BY users.id 
      LIMIT 1 OFFSET 0
     ['%ed']
     {stop}<User('ed','Ed Jones', 'f8s7ccs')>
@@ -403,21 +403,21 @@ The `all()`, `one()`, and `first()` methods of `Query` immediately issue SQL and
     ...     print e
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.name LIKE ? ORDER BY users.oid 
+    WHERE users.name LIKE ? ORDER BY users.id 
      LIMIT 2 OFFSET 0
     ['%ed']
     {stop}Multiple rows returned for one()
 
 ### Using Literal SQL {@naqme=literal}
 
-Literal strings can be used flexibly with `Query`.  Most methods accept strings in addition to SQLAlchemy clause constructs.  For example, `filter()`:
+Literal strings can be used flexibly with `Query`.  Most methods accept strings in addition to SQLAlchemy clause constructs.  For example, `filter()` and `order_by()`:
 
     {python}
-    {sql}>>> for user in session.query(User).filter("id<224").all():
+    {sql}>>> for user in session.query(User).filter("id<224").order_by("id").all():
     ...     print user.name
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE id<224 ORDER BY users.oid
+    WHERE id<224 ORDER BY id
     []
     {stop}ed
     wendy
@@ -428,10 +428,10 @@ Bind parameters can be specified with string-based SQL, using a colon.  To speci
 
     {python}
     {sql}>>> session.query(User).filter("id<:value and name=:name").\
-    ...     params(value=224, name='fred').one() # doctest: +NORMALIZE_WHITESPACE
+    ...     params(value=224, name='fred').order_by(User.id).one() # doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE id<? and name=? ORDER BY users.oid 
+    WHERE id<? and name=? ORDER BY users.id 
     LIMIT 2 OFFSET 0
     [224, 'fred']
     {stop}<User('fred','Fred Flinstone', 'blah')>
@@ -450,14 +450,14 @@ Now let's consider a second table to be dealt with.  Users in our system also ca
 
     {python}
     >>> from sqlalchemy import ForeignKey
-    >>> from sqlalchemy.orm import relation
+    >>> from sqlalchemy.orm import relation, backref
     >>> class Address(Base):
     ...     __tablename__ = 'addresses'
     ...     id = Column(Integer, primary_key=True)
     ...     email_address = Column(String, nullable=False)
     ...     user_id = Column(Integer, ForeignKey('users.id'))
     ...
-    ...     user = relation(User, backref='addresses')
+    ...     user = relation(User, backref=backref('addresses', order_by=id))
     ...
     ...     def __init__(self, email_address):
     ...         self.email_address = email_address
@@ -537,7 +537,7 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
     BEGIN
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.name = ? ORDER BY users.oid 
+    WHERE users.name = ? 
      LIMIT 2 OFFSET 0
     ['jack']
     
@@ -550,7 +550,7 @@ Let's look at the `addresses` collection.  Watch the SQL:
     {sql}>>> jack.addresses
     SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
     FROM addresses 
-    WHERE ? = addresses.user_id ORDER BY addresses.oid
+    WHERE ? = addresses.user_id ORDER BY addresses.id
     [5]
     {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
     
@@ -567,11 +567,10 @@ If you want to reduce the number of queries (dramatically, in many cases), we ca
     addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address, 
     addresses_1.user_id AS addresses_1_user_id 
         FROM (SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, 
-        users.password AS users_password, users.oid AS users_oid 
-        FROM users 
-        WHERE users.name = ? ORDER BY users.oid 
+        users.password AS users_password
+        FROM users WHERE users.name = ? 
          LIMIT 2 OFFSET 0) AS anon_1 LEFT OUTER JOIN addresses AS addresses_1 
-         ON anon_1.users_id = addresses_1.user_id ORDER BY anon_1.oid, addresses_1.oid
+         ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id
         ['jack']
     
     >>> jack
@@ -594,7 +593,7 @@ While the eager load created a JOIN specifically to populate a collection, we ca
     users.password AS users_password, addresses.id AS addresses_id, 
     addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
     FROM users, addresses 
-    WHERE users.id = addresses.user_id AND addresses.email_address = ? ORDER BY users.oid
+    WHERE users.id = addresses.user_id AND addresses.email_address = ?
     ['jack@google.com']
     {stop}<User('jack','Jack Bean', 'gjffdd')> <Address('jack@google.com')>
 
@@ -606,7 +605,7 @@ Or we can make a real JOIN construct; one way to do so is to use the ORM `join()
     ...         filter(Address.email_address=='jack@google.com').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users JOIN addresses ON users.id = addresses.user_id 
-    WHERE addresses.email_address = ? ORDER BY users.oid
+    WHERE addresses.email_address = ?
     ['jack@google.com']
     {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
@@ -624,7 +623,7 @@ The functionality of `join()` is also available generatively from `Query` itself
     ...     filter(Address.email_address=='jack@google.com').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users JOIN addresses ON users.id = addresses.user_id 
-    WHERE addresses.email_address = ? ORDER BY users.oid
+    WHERE addresses.email_address = ?
     ['jack@google.com']
     {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
@@ -681,14 +680,15 @@ The `func` keyword generates SQL functions, and the `subquery()` method on `Quer
 Once we have our statement, it behaves like a `Table` construct, such as the one we created for `users` at the start of this tutorial.  The columns on the statement are accessible through an attribute called `c`:
 
     {python}
-    {sql}>>> for u, count in session.query(User, stmt.c.address_count).outerjoin((stmt, User.id==stmt.c.user_id)): # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> for u, count in session.query(User, stmt.c.address_count).\
+    ...     outerjoin((stmt, User.id==stmt.c.user_id)).order_by(User.id): # doctest: +NORMALIZE_WHITESPACE
     ...     print u, count
     SELECT users.id AS users_id, users.name AS users_name, 
     users.fullname AS users_fullname, users.password AS users_password, 
     anon_1.address_count AS anon_1_address_count 
     FROM users LEFT OUTER JOIN (SELECT addresses.user_id AS user_id, count(?) AS address_count 
     FROM addresses GROUP BY addresses.user_id) AS anon_1 ON users.id = anon_1.user_id 
-    ORDER BY users.oid
+    ORDER BY users.id
     ['*']
     {stop}<User('ed','Ed Jones', 'f8s7ccs')> None
     <User('wendy','Wendy Williams', 'foobar')> None
@@ -750,7 +750,7 @@ The `Query` features several operators which make usage of EXISTS automatically.
     FROM addresses 
     WHERE NOT (EXISTS (SELECT 1 
     FROM users 
-    WHERE users.id = addresses.user_id AND users.name = ?)) ORDER BY addresses.oid
+    WHERE users.id = addresses.user_id AND users.name = ?))
     ['jack']
     {stop}[]
     
@@ -868,7 +868,7 @@ Now when we load Jack (below using `get()`, which loads by primary key), removin
     {sql}>>> del jack.addresses[1]  
     SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
     FROM addresses 
-    WHERE ? = addresses.user_id ORDER BY addresses.oid
+    WHERE ? = addresses.user_id
     [5]
     {stop}
 
@@ -1010,7 +1010,7 @@ Usage is not too different from what we've been doing.  Let's give Wendy some bl
     {sql}>>> wendy = session.query(User).filter_by(name='wendy').one()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.name = ? ORDER BY users.oid 
+    WHERE users.name = ? 
      LIMIT 2 OFFSET 0
     ['wendy']
     
@@ -1027,19 +1027,19 @@ We can now look up all blog posts with the keyword 'firstpost'.   We'll use the 
 
     {python}
     {sql}>>> session.query(BlogPost).filter(BlogPost.keywords.any(keyword='firstpost')).all()
+    INSERT INTO posts (user_id, headline, body) VALUES (?, ?, ?)
+    [2, "Wendy's Blog Post", 'This is a test']
     INSERT INTO keywords (keyword) VALUES (?)
     ['wendy']
     INSERT INTO keywords (keyword) VALUES (?)
     ['firstpost']
-    INSERT INTO posts (user_id, headline, body) VALUES (?, ?, ?)
-    [2, "Wendy's Blog Post", 'This is a test']
     INSERT INTO post_keywords (post_id, keyword_id) VALUES (?, ?)
     [[1, 1], [1, 2]]
     SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
     FROM posts 
     WHERE EXISTS (SELECT 1 
     FROM post_keywords, keywords 
-    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?) ORDER BY posts.oid
+    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)
     ['firstpost']
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
     
@@ -1052,7 +1052,7 @@ If we want to look up just Wendy's posts, we can tell the query to narrow down t
     FROM posts 
     WHERE ? = posts.user_id AND (EXISTS (SELECT 1 
     FROM post_keywords, keywords 
-    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)) ORDER BY posts.oid
+    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?))
     [2, 'firstpost']
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
@@ -1064,7 +1064,7 @@ Or we can use Wendy's own `posts` relation, which is a "dynamic" relation, to qu
     FROM posts 
     WHERE ? = posts.user_id AND (EXISTS (SELECT 1 
     FROM post_keywords, keywords 
-    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)) ORDER BY posts.oid
+    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?))
     [2, 'firstpost']
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
