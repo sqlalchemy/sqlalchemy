@@ -18,11 +18,11 @@ def profile_memory(func):
     # run the test 50 times.  if length of gc.get_objects()
     # keeps growing, assert false
     def profile(*args):
-        samples = []
+        samples = [0 for x in range(0, 50)]
         for x in range(0, 50):
             func(*args)
             gc.collect()
-            samples.append(len(gc.get_objects()))
+            samples[x] = len(gc.get_objects())
         print "sample gc sizes:", samples
 
         assert len(_sessions) == 0
