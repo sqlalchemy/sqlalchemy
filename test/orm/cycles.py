@@ -800,9 +800,8 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
                 primaryjoin=node.c.id==node.c.parent_id,
                 lazy=True,
                 cascade="all",
-                backref=backref("parent",
-                                primaryjoin=node.c.parent_id == node.c.id,
-                                remote_side=node.c.id)),
+                backref=backref("parent", remote_side=node.c.id)
+            ),
             'prev_sibling': relation(
                 Node,
                 primaryjoin=node.c.prev_sibling_id==node.c.id,

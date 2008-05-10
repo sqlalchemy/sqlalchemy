@@ -834,7 +834,7 @@ class BackRef(object):
         self.kwargs = kwargs
         self.prop = _prop
         self.extension = attributes.GenericBackrefExtension(self.key)
-        
+            
     def compile(self, prop):
         if self.prop:
             return
@@ -843,9 +843,15 @@ class BackRef(object):
 
         mapper = prop.mapper.primary_mapper()
         if mapper._get_property(self.key, raiseerr=False) is None:
-            pj = self.kwargs.pop('primaryjoin', None)
-            sj = self.kwargs.pop('secondaryjoin', None)
-
+            if prop.secondary:
+                pj = self.kwargs.pop('primaryjoin', prop.secondaryjoin)
+                sj = self.kwargs.pop('secondaryjoin', prop.primaryjoin)
+            else:
+                pj = self.kwargs.pop('primaryjoin', prop.primaryjoin)
+                sj = self.kwargs.pop('secondaryjoin', None)
+                if sj:
+                    raise exceptions.InvalidRequestError("Can't assign 'secondaryjoin' on a backref against a non-secondary relation.")
+                
             parent = prop.parent.primary_mapper()
             self.kwargs.setdefault('viewonly', prop.viewonly)
             self.kwargs.setdefault('post_update', prop.post_update)

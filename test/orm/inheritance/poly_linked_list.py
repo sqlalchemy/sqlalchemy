@@ -70,7 +70,7 @@ class PolymorphicCircularTest(ORMTest):
                                    polymorphic_identity='table1',
                                    properties={
                                     'next': relation(Table1,
-                                        backref=backref('prev', primaryjoin=join.c.id==join.c.related_id, foreignkey=join.c.id, uselist=False),
+                                        backref=backref('prev', foreignkey=join.c.id, uselist=False),
                                         uselist=False, primaryjoin=join.c.id==join.c.related_id),
                                     'data':relation(mapper(Data, data))
                                     },
@@ -92,7 +92,7 @@ class PolymorphicCircularTest(ORMTest):
                                polymorphic_identity='table1',
                                properties={
                                'next': relation(Table1,
-                                   backref=backref('prev', primaryjoin=table1.c.id==table1.c.related_id, remote_side=table1.c.id, uselist=False),
+                                   backref=backref('prev', remote_side=table1.c.id, uselist=False),
                                    uselist=False, primaryjoin=table1.c.id==table1.c.related_id),
                                'data':relation(mapper(Data, data), lazy=False, order_by=data.c.id)
                                 },

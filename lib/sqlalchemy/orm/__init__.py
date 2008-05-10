@@ -144,14 +144,6 @@ def relation(argument, secondary=None, **kwargs):
 
       \**kwargs follow:
 
-        association
-          Deprecated; as of version 0.3.0 the association keyword is synonymous
-          with applying the "all, delete-orphan" cascade to a "one-to-many"
-          relationship. SA can now automatically reconcile a "delete" and
-          "insert" operation of two objects with the same "identity" in a flush()
-          operation into a single "update" statement, which is the pattern that
-          "association" used to indicate.
-
         backref
           indicates the name of a property to be placed on the related mapper's
           class that will handle this relationship in the other direction,
@@ -177,10 +169,6 @@ def relation(argument, secondary=None, **kwargs):
           the "foreign key" columns, based on information in the ``Table``
           metadata. Use this argument when no ForeignKey's are present in the
           join condition, or to override the table-defined foreign keys.
-
-        foreignkey
-          deprecated. use the ``foreign_keys`` argument for foreign key
-          specification, or ``remote_side`` for "directional" logic.
 
         join_depth=None
           when non-``None``, an integer value indicating how many levels
@@ -281,11 +269,6 @@ def relation(argument, secondary=None, **kwargs):
           value is computed based on the foreign key relationships of the parent
           and child tables (or association table).
 
-        private=False
-          deprecated. setting ``private=True`` is the equivalent of setting
-          ``cascade="all, delete-orphan"``, and indicates the lifecycle of child
-          objects should be contained within that of the parent.
-
         remote_side
           used for self-referential relationships, indicates the column or list
           of columns that form the "remote side" of the relationship.
@@ -313,7 +296,6 @@ def relation(argument, secondary=None, **kwargs):
           properly. If this is the case, use an alternative method.
 
     """
-
     return PropertyLoader(argument, secondary=secondary, **kwargs)
 
 def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None,
@@ -329,8 +311,8 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=Non
     operations are available.
 
     A subset of arguments available to relation() are available here.
-    """
 
+    """
     from sqlalchemy.orm.dynamic import DynaLoader
 
     return PropertyLoader(argument, secondary=secondary, primaryjoin=primaryjoin,
@@ -338,8 +320,6 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=Non
             post_update=post_update, cascade=cascade, remote_side=remote_side, enable_typechecks=enable_typechecks,
             passive_deletes=passive_deletes, order_by=order_by,
             strategy_class=DynaLoader)
-
-#def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):
 
 def column_property(*args, **kwargs):
     """Provide a column-level property for use with a Mapper.
@@ -413,8 +393,8 @@ def composite(class_, *cols, **kwargs):
       An optional instance of [sqlalchemy.orm#PropComparator] which
       provides SQL expression generation functions for this composite
       type.
-    """
 
+    """
     return CompositeProperty(class_, *cols, **kwargs)
 
 
@@ -424,8 +404,8 @@ def backref(name, **kwargs):
 
     Used with the `backref` keyword argument to ``relation()`` in
     place of a string argument.
-    """
 
+    """
     return BackRef(name, **kwargs)
 
 def deferred(*columns, **kwargs):
@@ -434,8 +414,8 @@ def deferred(*columns, **kwargs):
     table column when first accessed.
 
     Used with the `properties` dictionary sent to ``mapper()``.
-    """
 
+    """
     return ColumnProperty(deferred=True, *columns, **kwargs)
 
 def mapper(class_, local_table=None, *args, **params):
@@ -606,8 +586,8 @@ def mapper(class_, local_table=None, *args, **params):
         that no other thread or process has updated the instance
         during the lifetime of the entity, else a
         ``ConcurrentModificationError`` exception is thrown.
-    """
 
+    """
     return Mapper(class_, local_table, *args, **params)
 
 def synonym(name, map_column=False, descriptor=None, proxy=False):

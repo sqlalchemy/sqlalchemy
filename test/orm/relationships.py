@@ -311,11 +311,8 @@ class RelationTest3(_base.MappedTest):
                  primaryjoin=sa.and_(pages.c.jobno==pageversions.c.jobno,
                                      pages.c.pagename==pageversions.c.pagename),
                  order_by=pageversions.c.version,
-                 backref=backref('page',
-                                 lazy=False,
-                                 primaryjoin=sa.and_(
-                                   pages.c.jobno==pageversions.c.jobno,
-                                   pages.c.pagename==pageversions.c.pagename)))})
+                 backref=backref('page',lazy=False)
+                )})
         mapper(PageComment, pagecomments, properties={
             'page': relation(
                   Page,
@@ -323,9 +320,6 @@ class RelationTest3(_base.MappedTest):
                                       pages.c.pagename==pagecomments.c.pagename),
                   backref=backref("comments",
                                   cascade="all, delete-orphan",
-                                  primaryjoin=sa.and_(
-                                    pages.c.jobno==pagecomments.c.jobno,
-                                    pages.c.pagename==pagecomments.c.pagename),
                                   order_by=pagecomments.c.comment_id))})
 
     @testing.resolve_artifact_names
