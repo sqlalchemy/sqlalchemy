@@ -28,6 +28,10 @@ CHANGES
       functions and other expressions.  (partial progress
       towards [ticket:610])
     
+    - repaired single table inheritance such that you 
+      can single-table inherit from a joined-table inherting
+      mapper without issue [ticket:1036].
+      
     - Fixed "concatenate tuple" bug which could occur with
       Query.order_by() if clause adaption had taken place.
       [ticket:1027]
