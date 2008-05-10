@@ -253,6 +253,60 @@ If we look at Ed's `id` attribute, which earlier was `None`, it now has a value:
 
 After the `Session` inserts new rows in the database, all newly generated identifiers and database-generated defaults become available on the instance, either immediately or via load-on-first-access.  In this case, the entire row was re-loaded on access because a new transaction was begun after we issued `commit()`.  SQLAlchemy by default refreshes data from a previous transaction the first time it's accessed within a new transaction, so that the most recent state is available.  The level of reloading is configurable as is described in the chapter on Sessions.
 
+## Rolling Back
+
+Since the `Session` works within a transaction, we can roll back changes made too.   Let's make two changes that we'll revert; `ed_user`'s user name gets set to `Edwardo`:
+
+    {python}
+    >>> ed_user.name = 'Edwardo'
+
+and we'll add another erroneous user, `fake_user`:
+
+    {python}
+    >>> fake_user = User('fakeuser', 'Invalid', '12345')
+    >>> session.add(fake_user)
+    
+Querying the session, we can see that they're flushed into the current transaction:
+
+    {python}
+    {sql}>>> session.query(User).filter(User.name.in_(['Edwardo', 'fakeuser'])).all()
+    UPDATE users SET name=? WHERE users.id = ?
+    ['Edwardo', 1]
+    INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
+    ['fakeuser', 'Invalid', '12345']
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name IN (?, ?)
+    ['Edwardo', 'fakeuser']
+    {stop}[<User('Edwardo','Ed Jones', 'f8s7ccs')>, <User('fakeuser','Invalid', '12345')>]
+    
+Rolling back, we can see that `ed_user`'s name is back to `ed`, and `fake_user` has been kicked out of the session:
+
+    {python}
+    {sql}>>> session.rollback()
+    ROLLBACK
+
+
+    {sql}>>> ed_user.name
+    BEGIN
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.id = ?
+    [1]
+    {stop}u'ed'
+    >>> fake_user in session
+    False
+    
+issuing a SELECT illustrates the changes made to the database:
+
+    {python}
+    {sql}>>> session.query(User).filter(User.name.in_(['ed', 'fakeuser'])).all()
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name IN (?, ?)
+    ['ed', 'fakeuser']
+    {stop}[<User('ed','Ed Jones', 'f8s7ccs')>]
+
 ## Querying
 
 A `Query` is created using the `query()` function on `Session`.  This function takes a variable number of arguments, which can be any combination of classes and class-instrumented descriptors.  Below, we indicate a `Query` which loads `User` instances.  When evaluated in an iterative context, the list of `User` objects present is returned:
