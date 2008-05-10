@@ -14,7 +14,9 @@ from orm import _base
 
 
 class EagerTest(_base.MappedTest):
-
+    run_deletes = None
+    run_inserts = "once"
+    
     def define_tables(self, metadata):
         # determine a literal value for "false" based on the dialect
         # FIXME: this PassiveDefault setup is bogus.

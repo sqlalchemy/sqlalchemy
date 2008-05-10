@@ -242,7 +242,7 @@ class FixtureTest(_base.MappedTest):
     run_setup_mappers = 'each'
     run_inserts = 'each'
     run_deletes = 'each'
-
+    
     metadata = fixture_metadata
     fixture_classes = dict(User=User,
                            Order=Order,

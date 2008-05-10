@@ -228,6 +228,7 @@ class InheritTestTwo(_base.MappedTest):
     could create duplicate entries in the final sort
 
     """
+
     def define_tables(self, metadata):
         Table('a', metadata,
             Column('id', Integer, primary_key=True),
@@ -273,7 +274,8 @@ class InheritTestTwo(_base.MappedTest):
 
 
 class BiDirectionalManyToOneTest(_base.MappedTest):
-
+    run_define_tables = 'each'
+    
     def define_tables(self, metadata):
         Table('t1', metadata,
             Column('id', Integer, primary_key=True),
@@ -360,6 +362,8 @@ class BiDirectionalManyToOneTest(_base.MappedTest):
 class BiDirectionalOneToManyTest(_base.MappedTest):
     """tests two mappers with a one-to-many relation to each other."""
 
+    run_define_tables = 'each'
+
     def define_tables(self, metadata):
         Table('t1', metadata,
               Column('c1', Integer, primary_key=True,
@@ -406,6 +410,8 @@ class BiDirectionalOneToManyTest(_base.MappedTest):
 
 class BiDirectionalOneToManyTest2(_base.MappedTest):
     """Two mappers with a one-to-many relation to each other, with a second one-to-many on one of the mappers"""
+
+    run_define_tables = 'each'
 
     def define_tables(self, metadata):
         Table('t1', metadata,
@@ -479,7 +485,8 @@ class OneToManyManyToOneTest(_base.MappedTest):
     dependencies are sorted.
 
     """
-
+    run_define_tables = 'each'
+    
     def define_tables(self, metadata):
         Table('ball', metadata,
               Column('id', Integer, primary_key=True,

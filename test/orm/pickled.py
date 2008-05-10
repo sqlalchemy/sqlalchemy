@@ -9,7 +9,8 @@ from orm import _base, _fixtures
 User, EmailUser = None, None
 
 class PickleTest(_fixtures.FixtureTest):
-
+    run_inserts = None
+    
     @testing.resolve_artifact_names
     def test_transient(self):
         mapper(User, users, properties={

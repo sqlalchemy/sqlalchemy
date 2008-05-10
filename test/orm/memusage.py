@@ -31,12 +31,9 @@ def profile_memory(func):
         # if a drop is detected, it's assumed that GC is able
         # to reduce memory.  better methodology would
         # make this more accurate.
-        for i, x in enumerate(samples):
-            if i < len(samples) - 1 and x < samples[i+1]:
-                continue
-        else:
-            return
-        assert False, repr(samples)
+        for i in range(len(samples) - 20, len(samples)):
+            if samples[i] > samples[i-1]:
+                assert False, repr(samples) +  " %d > %d"  % (samples[i], samples[i-1])
     return profile
 
 def assert_no_mappers():
@@ -50,7 +47,18 @@ class EnsureZeroed(_base.ORMTest):
         _mapper_registry.clear()
 
 class MemUsageTest(EnsureZeroed):
-
+    
+    @testing.fails_if(lambda:True)
+    def test_fixture(self):
+        class Foo(object):
+            pass
+            
+        x = []
+        @profile_memory
+        def go():
+            x[-1:] = [Foo(), Foo(), Foo(), Foo(), Foo(), Foo()]
+        go()
+            
     def test_session(self):
         metadata = MetaData(testing.db)
 

@@ -562,7 +562,7 @@ def resolve_artifact_names(fn):
     # rebound functions aren't regular Python..
     #
     # Also: it's lame that CPython accepts a dict-subclass for globals, but
-    # only calls dict methods.  Taht would allow 'global' to pass through to
+    # only calls dict methods.  That would allow 'global' to pass through to
     # the func_globals.
     def resolved(*args, **kwargs):
         self = args[0]

@@ -174,8 +174,10 @@ class MappedTest(ORMTest):
         if self.run_define_tables == 'each':
             self.tables.clear()
             self.metadata.drop_all()
+            self.metadata.clear()
             self.define_tables(self.metadata)
             self.metadata.create_all()
+            self.tables.update(self.metadata.tables)
 
         if self.run_setup_classes == 'each':
             self.classes.clear()
@@ -197,12 +199,13 @@ class MappedTest(ORMTest):
 
         if self.run_setup_mappers == 'each':
             sa.orm.clear_mappers()
-
-        if self.run_deletes:
+        
+        # no need to run deletes if tables are recreated on setup
+        if self.run_define_tables != 'each' and self.run_deletes:
             for table in self.metadata.table_iterator(reverse=True):
                 try:
                     table.delete().execute().close()
-                except sa.orm.DBAPIError, ex:
+                except sa.exc.DBAPIError, ex:
                     print >> sys.stderr, "Error emptying table %s: %r" % (
                         table, ex)
 

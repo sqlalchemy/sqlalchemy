@@ -1061,7 +1061,7 @@ class OneToManyTest(_fixtures.FixtureTest):
              {'users_id': u2.id, 'name': 'user2modified'}),
 
             ("UPDATE addresses SET user_id=:user_id "
-             "WHERE addresses.id = :email_addresses_id",
+             "WHERE addresses.id = :addresses_id",
              {'user_id': None, 'addresses_id': a1.id}),
 
             ("UPDATE addresses SET user_id=:user_id "
@@ -1473,7 +1473,8 @@ class SaveTest(_fixtures.FixtureTest):
 
 
 class ManyToOneTest(_fixtures.FixtureTest):
-
+    run_inserts = None
+    
     @testing.resolve_artifact_names
     def test_m2o_one_to_one(self):
         # TODO: put assertion in here !!!
@@ -1684,7 +1685,6 @@ class ManyToManyTest(_fixtures.FixtureTest):
                                      {'name':'round'},
                                      {'name':'small'}])}]
 
-        _fixtures.run_inserts_for(keywords)
         session = create_session()
 
         objects = []
@@ -1855,7 +1855,6 @@ class ManyToManyTest(_fixtures.FixtureTest):
         mapper(Item, items, properties=dict(
             keywords=relation(IKAssociation, lazy=False)))
 
-        _fixtures.run_inserts_for(keywords)
         session = create_session()
 
         def fixture():
