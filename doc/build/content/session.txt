@@ -283,11 +283,11 @@ Expunge removes an object from the Session, sending persistent instances to the 
     {python}
     session.expunge(obj1)
     
-To remove all items, call `session.expunge_all()`.
+To remove all items, call `session.expunge_all()` (this method was formerly known as `clear()`).
 
 ### Closing
 
-The `close()` method issues a `expunge_alll()`, and releases any transactional/connection resources.  When connections are returned to the connection pool, transactional state is rolled back as well.
+The `close()` method issues a `expunge_all()`, and releases any transactional/connection resources.  When connections are returned to the connection pool, transactional state is rolled back as well.
 
 ### Refreshing / Expiring
 
@@ -417,6 +417,8 @@ The `begin()` method also returns a transactional token which is compatible with
         item1.foo = 'bar'
         item2.bar = 'foo'
 
+### Using SAVEPOINT {@name=savepoint}
+
 SAVEPOINT transactions, if supported by the underlying engine, may be delineated using the `begin_nested()` method:
 
     {python}
@@ -434,6 +436,8 @@ SAVEPOINT transactions, if supported by the underlying engine, may be delineated
 `begin_nested()` may be called any number of times, which will issue a new SAVEPOINT with a unique identifier for each call.  For each `begin_nested()` call, a corresponding `rollback()` or `commit()` must be issued.  
 
 When `begin_nested()` is called, a `flush()` is unconditionally issued (regardless of the `autoflush` setting).  This is so that when a `rollback()` occurs, the full state of the session is expired, thus causing all subsequent attribute/instance access to reference the full state of the `Session` right before `begin_nested()` was called.
+
+### Enabling Two-Phase Commit {@name=twophase}
 
 Finally, for MySQL, Postgres, and soon Oracle as well, the session can be instructed to use two-phase commit semantics. This will coordinate the commiting of transactions across databases so that the transaction is either committed or rolled back in all databases. You can also `prepare()` the session for interacting with transactions not managed by SQLAlchemy. To use two phase transactions set the flag `twophase=True` on the session:
 
