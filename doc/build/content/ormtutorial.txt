@@ -530,7 +530,7 @@ Let's add and commit `Jack Bean` to the database.  `jack` as well as the two `Ad
     ['j25@yahoo.com', 5]
     COMMIT
     
-Querying for Jack, we get just Jack back.  No SQL is yet issued for for Jack's addresses:
+Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addresses:
 
     {python}
     {sql}>>> jack = session.query(User).filter_by(name='jack').one()
