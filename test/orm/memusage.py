@@ -27,19 +27,20 @@ def profile_memory(func):
 
         assert len(_sessions) == 0
         
-        # look in the last 20 entries.  we look for one of two patterns: 
-        # either "flatline", i.e. 103240, 103240, 103240, 103240, ....
-        # or "adjusting down", i.e. 103240, 103248, 103256, 103104, 103112, ....
-        
-        for i in range(len(samples) - 20, len(samples)):
-            # adjusting down
-            if samples[i] < samples[i-1]:
+        for x in samples[-4:]:
+            if x != samples[-5]:
+                flatline = False
                 break
         else:
-            # no adjusting down.  check for "flatline"
-            for i in range(len(samples) - 20, len(samples)):
-                if samples[i] > samples[i-1]:
-                    assert False, repr(samples) +  " %d > %d"  % (samples[i], samples[i-1])
+            flatline = True
+
+        if not flatline and samples[-1] > samples[0]:  # object count is bigger than when it started
+            for x in samples[1:-2]:
+                if x > samples[-1]:     # see if a spike bigger than the endpoint exists
+                    break
+            else:
+                assert False, repr(samples) + " " + repr(flatline)
+
     return profile
 
 def assert_no_mappers():
