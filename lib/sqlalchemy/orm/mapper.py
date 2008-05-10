@@ -434,8 +434,9 @@ class Mapper(object):
             # inherit_condition is optional.
             if self.local_table is None:
                 self.local_table = self.inherits.local_table
+                self.mapped_table = self.inherits.mapped_table
                 self.single = True
-            if not self.local_table is self.inherits.local_table:
+            elif not self.local_table is self.inherits.local_table:
                 if self.concrete:
                     self.mapped_table = self.local_table
                     for mapper in self.iterate_to_root():
@@ -1556,7 +1557,7 @@ class Mapper(object):
         for mapper in util.reversed(list(self.iterate_to_root())):
             if mapper.local_table in tables:
                 start = True
-            if start:
+            if start and not mapper.single:
                 allconds.append(visitors.cloned_traverse(mapper.inherit_condition, {}, {'binary':visit_binary}))
 
         cond = sql.and_(*allconds)
