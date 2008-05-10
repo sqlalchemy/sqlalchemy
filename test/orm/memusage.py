@@ -26,14 +26,20 @@ def profile_memory(func):
         print "sample gc sizes:", samples
 
         assert len(_sessions) == 0
-
-        # TODO: this test only finds pure "growing" tests.
-        # if a drop is detected, it's assumed that GC is able
-        # to reduce memory.  better methodology would
-        # make this more accurate.
+        
+        # look in the last 20 entries.  we look for one of two patterns: 
+        # either "flatline", i.e. 103240, 103240, 103240, 103240, ....
+        # or "adjusting down", i.e. 103240, 103248, 103256, 103104, 103112, ....
+        
         for i in range(len(samples) - 20, len(samples)):
-            if samples[i] > samples[i-1]:
-                assert False, repr(samples) +  " %d > %d"  % (samples[i], samples[i-1])
+            # adjusting down
+            if samples[i] < samples[i-1]:
+                break
+        else:
+            # no adjusting down.  check for "flatline"
+            for i in range(len(samples) - 20, len(samples)):
+                if samples[i] > samples[i-1]:
+                    assert False, repr(samples) +  " %d > %d"  % (samples[i], samples[i-1])
     return profile
 
 def assert_no_mappers():
@@ -48,6 +54,7 @@ class EnsureZeroed(_base.ORMTest):
 
 class MemUsageTest(EnsureZeroed):
     
+    # ensure a pure growing test trips the assertion
     @testing.fails_if(lambda:True)
     def test_fixture(self):
         class Foo(object):
