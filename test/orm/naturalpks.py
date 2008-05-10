@@ -45,7 +45,7 @@ class NaturalPKTest(_base.MappedTest):
         sess = create_session()
         u1 = User(username='jack', fullname='jack')
 
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         assert sess.get(User, 'jack') is u1
 
@@ -69,7 +69,7 @@ class NaturalPKTest(_base.MappedTest):
         sess = create_session()
         u1 = User(username='jack', fullname='jack')
 
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         assert sess.get(User, 'jack') is u1
 
@@ -104,7 +104,7 @@ class NaturalPKTest(_base.MappedTest):
         u1 = User(username='jack', fullname='jack')
         u1.addresses.append(Address(email='jack1'))
         u1.addresses.append(Address(email='jack2'))
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
 
         assert sess.get(Address, 'jack1') is u1.addresses[0]
@@ -157,8 +157,8 @@ class NaturalPKTest(_base.MappedTest):
         u1 = User(username='jack', fullname='jack')
         a1.user = u1
         a2.user = u1
-        sess.save(a1)
-        sess.save(a2)
+        sess.add(a1)
+        sess.add(a2)
         sess.flush()
 
         u1.username = 'ed'
@@ -201,8 +201,8 @@ class NaturalPKTest(_base.MappedTest):
         u1 = User(username='jack', fullname='jack')
         a1.user = u1
         a2.user = u1
-        sess.save(a1)
-        sess.save(a2)
+        sess.add(a1)
+        sess.add(a2)
         sess.flush()
 
         u1.username = 'ed'
@@ -256,8 +256,8 @@ class NaturalPKTest(_base.MappedTest):
         u1.items.append(i1)
         u1.items.append(i2)
         i2.users.append(u2)
-        sess.save(u1)
-        sess.save(u2)
+        sess.add(u1)
+        sess.add(u2)
         sess.flush()
 
         r = sess.query(Item).all()
@@ -308,7 +308,7 @@ class SelfRefTest(_base.MappedTest):
         n1.children.append(Node(name='n11'))
         n1.children.append(Node(name='n12'))
         n1.children.append(Node(name='n13'))
-        sess.save(n1)
+        sess.add(n1)
         sess.flush()
 
         n1.name = 'new n1'
@@ -356,7 +356,7 @@ class NonPKCascadeTest(_base.MappedTest):
         u1 = User(username='jack', fullname='jack')
         u1.addresses.append(Address(email='jack1'))
         u1.addresses.append(Address(email='jack2'))
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         a1 = u1.addresses[0]
 

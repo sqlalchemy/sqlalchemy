@@ -26,7 +26,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         u = User(name='jack', orders=[
                  Order(description='someorder'),
                  Order(description='someotherorder')])
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         sess.clear()
 
@@ -48,7 +48,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
             [Order(description="order 3"), Order(description="order 4")])
 
         o5 = Order(description="order 5")
-        sess.save(o5)
+        sess.add(o5)
         try:
             sess.flush()
             assert False
@@ -61,7 +61,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         u = User(name='jack',
                  orders=[Order(description='someorder'),
                          Order(description='someotherorder')])
-        sess.save(u)
+        sess.add(u)
         sess.flush()
 
         sess.delete(u)
@@ -76,7 +76,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         u = User(name='jack',
                  addresses=[Address(email_address="address1"),
                             Address(email_address="address2")])
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         sess.clear()
         assert addresses.count().scalar() == 2
@@ -99,7 +99,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         u = User(name='jack',
                  orders=[Order(description='someorder'),
                          Order(description='someotherorder')])
-        sess.save(u)
+        sess.add(u)
         sess.flush()
 
         o = u.orders[0]
@@ -110,7 +110,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         assert o in sess
 
         u2 = User(name='newuser', orders=[o])
-        sess.save(u2)
+        sess.add(u2)
         sess.flush()
         sess.clear()
         assert users.count().scalar() == 1
@@ -125,7 +125,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         u = User(name='jack',
                  orders=[Order(description='someorder'),
                          Order(description='someotherorder')])
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         assert users.count().scalar() == 1
         assert orders.count().scalar() == 2
@@ -142,7 +142,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         u = User(name='jack',
                  orders=[Order(description='someorder'),
                          Order(description='someotherorder')])
-        sess.save(u)
+        sess.add(u)
         sess.flush()
 
         assert users.count().scalar() == 1
@@ -171,7 +171,7 @@ class O2MCascadeNoOrphanTest(_fixtures.FixtureTest):
         u = User(name='jack',
                  orders=[Order(description='someorder'),
                          Order(description='someotherorder')])
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         assert users.count().scalar() == 1
         assert orders.count().scalar() == 2
@@ -264,7 +264,7 @@ class M2OCascadeTest(_base.MappedTest):
     def test_pending_expunge(self):
         sess = create_session()
         someuser = User(name='someuser')
-        sess.save(someuser)
+        sess.add(someuser)
         sess.flush()
         someuser.pref = p1 = Pref(data='somepref')
         assert p1 in sess
@@ -320,7 +320,7 @@ class M2OCascadeDeleteTest(_base.MappedTest):
     def test_cascade_delete(self):
         sess = create_session()
         x = T1(data='t1a', t2=T2(data='t2a', t3=T3(data='t3a')))
-        sess.save(x)
+        sess.add(x)
         sess.flush()
 
         sess.delete(x)
@@ -335,9 +335,7 @@ class M2OCascadeDeleteTest(_base.MappedTest):
         x1 = T1(data='t1', )
         x2 = T2(data='t2')
         x3 = T3(data='t3')
-        sess.save(x1)
-        sess.save(x2)
-        sess.save(x3)
+        sess.add_all((x1, x2, x3))
         sess.flush()
 
         sess.delete(x1)
@@ -353,8 +351,7 @@ class M2OCascadeDeleteTest(_base.MappedTest):
         sess = create_session()
         x1 = T1(data='t1', t2=T2(data='t2'))
         x3 = T3(data='t3')
-        sess.save(x1)
-        sess.save(x3)
+        sess.add_all((x1, x3))
         sess.flush()
 
         sess.delete(x1)
@@ -368,7 +365,7 @@ class M2OCascadeDeleteTest(_base.MappedTest):
     def test_preserves_orphans_onelevel(self):
         sess = create_session()
         x2 = T1(data='t1b', t2=T2(data='t2b', t3=T3(data='t3b')))
-        sess.save(x2)
+        sess.add(x2)
         sess.flush()
         x2.t2 = None
 
@@ -383,7 +380,7 @@ class M2OCascadeDeleteTest(_base.MappedTest):
     def test_preserves_orphans_onelevel_postremove(self):
         sess = create_session()
         x2 = T1(data='t1b', t2=T2(data='t2b', t3=T3(data='t3b')))
-        sess.save(x2)
+        sess.add(x2)
         sess.flush()
 
         sess.delete(x2)
@@ -397,7 +394,7 @@ class M2OCascadeDeleteTest(_base.MappedTest):
     def test_preserves_orphans_twolevel(self):
         sess = create_session()
         x = T1(data='t1a', t2=T2(data='t2a', t3=T3(data='t3a')))
-        sess.save(x)
+        sess.add(x)
         sess.flush()
 
         x.t2.t3 = None
@@ -443,7 +440,7 @@ class M2OCascadeDeleteOrphanTest(_base.MappedTest):
     def test_cascade_delete(self):
         sess = create_session()
         x = T1(data='t1a', t2=T2(data='t2a', t3=T3(data='t3a')))
-        sess.save(x)
+        sess.add(x)
         sess.flush()
 
         sess.delete(x)
@@ -456,7 +453,7 @@ class M2OCascadeDeleteOrphanTest(_base.MappedTest):
     def test_deletes_orphans_onelevel(self):
         sess = create_session()
         x2 = T1(data='t1b', t2=T2(data='t2b', t3=T3(data='t3b')))
-        sess.save(x2)
+        sess.add(x2)
         sess.flush()
         x2.t2 = None
 
@@ -470,7 +467,7 @@ class M2OCascadeDeleteOrphanTest(_base.MappedTest):
     def test_deletes_orphans_twolevel(self):
         sess = create_session()
         x = T1(data='t1a', t2=T2(data='t2a', t3=T3(data='t3a')))
-        sess.save(x)
+        sess.add(x)
         sess.flush()
 
         x.t2.t3 = None
@@ -484,7 +481,7 @@ class M2OCascadeDeleteOrphanTest(_base.MappedTest):
     def test_finds_orphans_twolevel(self):
         sess = create_session()
         x = T1(data='t1a', t2=T2(data='t2a', t3=T3(data='t3a')))
-        sess.save(x)
+        sess.add(x)
         sess.flush()
 
         x.t2.t3 = None
@@ -529,7 +526,7 @@ class M2MCascadeTest(_base.MappedTest):
         sess = create_session()
         b1 = B(data='b1')
         a1 = A(data='a1', bs=[b1])
-        sess.save(a1)
+        sess.add(a1)
         sess.flush()
 
         a1.bs.remove(b1)
@@ -551,7 +548,7 @@ class M2MCascadeTest(_base.MappedTest):
         sess = create_session()
         b1 = B(data='b1', cs=[C(data='c1')])
         a1 = A(data='a1', bs=[b1])
-        sess.save(a1)
+        sess.add(a1)
         sess.flush()
 
         a1.bs.remove(b1)
@@ -570,7 +567,7 @@ class M2MCascadeTest(_base.MappedTest):
 
         sess = create_session()
         a1 = A(data='a1', bs=[B(data='b1')])
-        sess.save(a1)
+        sess.add(a1)
         sess.flush()
 
         sess.delete(a1)
@@ -613,7 +610,7 @@ class UnsavedOrphansTest(_base.MappedTest):
         ))
         s = create_session()
         a = Address()
-        s.save(a)
+        s.add(a)
         try:
             s.flush()
         except orm_exc.FlushError, e:
@@ -631,7 +628,7 @@ class UnsavedOrphansTest(_base.MappedTest):
         s = create_session()
 
         u = User()
-        s.save(u)
+        s.add(u)
         s.flush()
         a = Address()
 
@@ -654,7 +651,7 @@ class UnsavedOrphansTest(_base.MappedTest):
         ))
         s = create_session()
         u = User(name='u1', addresses=[Address(email_address='ad1')])
-        s.save(u)
+        s.add(u)
         a1 = u.addresses[0]
         u.addresses.remove(a1)
         assert a1 in s
@@ -705,7 +702,7 @@ class UnsavedOrphansTest2(_base.MappedTest):
 
         s = create_session()
         order = Order(name="order1")
-        s.save(order)
+        s.add(order)
 
         attr = Attribute(name="attr1")
         item = Item(name="item1", attributes=[attr])
@@ -769,7 +766,7 @@ class UnsavedOrphansTest3(_base.MappedTest):
 
         a = Account(balance=0)
         sr = SalesRep(name="John")
-        [s.save(x) for x in [a,sr]]
+        s.add_all((a, sr))
         s.flush()
 
         c = Customer(name="Jane")
@@ -825,7 +822,7 @@ class DoubleParentOrphanTest(_base.MappedTest):
         session = create_session()
         h1 = Home(description='home1', address=Address(street='address1'))
         b1 = Business(description='business1', address=Address(street='address2'))
-        [session.save(x) for x in [h1,b1]]
+        session.add_all((h1,b1))
         session.flush()
         session.clear()
 
@@ -850,7 +847,7 @@ class DoubleParentOrphanTest(_base.MappedTest):
 
         session = create_session()
         a1 = Address()
-        session.save(a1)
+        session.add(a1)
         try:
             session.flush()
             assert False
@@ -882,7 +879,7 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
         a1 = A(name='a1', bs=[B(name='b1'), B(name='b2'), B(name='b3')])
 
         sess = create_session()
-        sess.save(a1)
+        sess.add(a1)
         sess.flush()
 
         sess.clear()

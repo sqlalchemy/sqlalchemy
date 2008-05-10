@@ -1993,9 +1993,7 @@ class BooleanColTest(_base.MappedTest):
         t1 = T(value=True, name="t1")
         t2 = T(value=False, name="t2")
         t3 = T(value=True, name="t3")
-        sess.save(t1)
-        sess.save(t2)
-        sess.save(t3)
+        sess.add_all((t1, t2, t3))
 
         sess.flush()
 
@@ -2065,7 +2063,7 @@ class RowSwitchTest(_base.MappedTest):
         o1.t2s.append(T2(data='some t2', id=1))
         o1.t2s.append(T2(data='some other t2', id=2))
 
-        sess.save(o1)
+        sess.add(o1)
         sess.flush()
 
         assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
@@ -2076,7 +2074,7 @@ class RowSwitchTest(_base.MappedTest):
             T2(data='fourth t2', id=4),
             ])
         sess.delete(o1)
-        sess.save(o2)
+        sess.add(o2)
         sess.flush()
 
         assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some other t1')]
@@ -2095,7 +2093,7 @@ class RowSwitchTest(_base.MappedTest):
         o1.t3s.append(T3(data='some t3', id=1))
         o1.t3s.append(T3(data='some other t3', id=2))
 
-        sess.save(o1)
+        sess.add(o1)
         sess.flush()
 
         assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
@@ -2107,7 +2105,7 @@ class RowSwitchTest(_base.MappedTest):
             T3(data='fourth t3', id=4),
             ])
         sess.delete(o1)
-        sess.save(o2)
+        sess.add(o2)
         sess.flush()
 
         assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some other t1')]
@@ -2126,7 +2124,7 @@ class RowSwitchTest(_base.MappedTest):
         o1 = T2(data='some t2', id=1)
         o1.t1 = T1(data='some t1', id=1)
 
-        sess.save(o1)
+        sess.add(o1)
         sess.flush()
 
         assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
@@ -2135,7 +2133,7 @@ class RowSwitchTest(_base.MappedTest):
         o2 = T2(data='some other t2', id=1, t1=T1(data='some other t1', id=2))
         sess.delete(o1)
         sess.delete(o1.t1)
-        sess.save(o2)
+        sess.add(o2)
         sess.flush()
 
         assert list(sess.execute(t1.select(), mapper=T1)) == [(2, 'some other t1')]

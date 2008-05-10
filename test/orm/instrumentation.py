@@ -1,12 +1,8 @@
 import testenv; testenv.configure_for_tests()
-from sqlalchemy import MetaData, Table, Column, Integer, ForeignKey
-from sqlalchemy import util
-from sqlalchemy.orm import attributes
-from sqlalchemy.orm import create_session
-from sqlalchemy.orm import interfaces
-from sqlalchemy.orm import mapper
-from sqlalchemy.orm import relation
 
+from testlib import sa
+from testlib.sa import MetaData, Table, Column, Integer, ForeignKey
+from testlib.sa.orm import mapper, relation, create_session, attributes
 from testlib.testing import eq_, ne_
 from testlib.compat import _function_named
 from orm import _base
@@ -557,7 +553,7 @@ class ExtendedEventsTest(_base.ORMTest):
 
 
 class NativeInstrumentationTest(_base.ORMTest):
-    @with_lookup_strategy(util.symbol('native'))
+    @with_lookup_strategy(sa.util.symbol('native'))
     def test_register_reserved_attribute(self):
         class T(object): pass
 
@@ -575,7 +571,7 @@ class NativeInstrumentationTest(_base.ORMTest):
         fails('install_descriptor', sa)
         fails('install_descriptor', ma)
 
-    @with_lookup_strategy(util.symbol('native'))
+    @with_lookup_strategy(sa.util.symbol('native'))
     def test_mapped_stateattr(self):
         t = Table('t', MetaData(),
                   Column('id', Integer, primary_key=True),
@@ -585,7 +581,7 @@ class NativeInstrumentationTest(_base.ORMTest):
 
         self.assertRaises(KeyError, mapper, T, t)
 
-    @with_lookup_strategy(util.symbol('native'))
+    @with_lookup_strategy(sa.util.symbol('native'))
     def test_mapped_managerattr(self):
         t = Table('t', MetaData(),
                   Column('id', Integer, primary_key=True),
@@ -649,7 +645,7 @@ class MiscTest(_base.ORMTest):
             b.a = a
 
             session = create_session()
-            session.save(b)
+            session.add(b)
             assert a in session, "base is %s" % base
 
     def test_compileonattr_rel_backref_b(self):
@@ -677,7 +673,7 @@ class MiscTest(_base.ORMTest):
             b.a = a
 
             session = create_session()
-            session.save(a)
+            session.add(a)
             assert b in session, 'base: %s' % base
 
     def test_compileonattr_rel_entity_name(self):
@@ -706,7 +702,7 @@ class FinderTest(_base.ORMTest):
 
     def test_nativeext_interfaceexact(self):
         class A(object):
-            __sa_instrumentation_manager__ = interfaces.InstrumentationManager
+            __sa_instrumentation_manager__ = sa.orm.interfaces.InstrumentationManager
 
         attributes.register_class(A)
         ne_(type(attributes.manager_of_class(A)), attributes.ClassManager)

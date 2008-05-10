@@ -22,7 +22,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         mapper(User, users)
         s = create_session(bind=c)
-        s.save(User(name='first'))
+        s.add(User(name='first'))
         s.flush()
         c.execute("select * from users")
 
@@ -34,7 +34,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         mapper(User, users)
         s = create_session(bind=c)
-        s.save(User(name='first'))
+        s.add(User(name='first'))
         s.flush()
         c.execute("select * from users")
         s.close()
@@ -48,14 +48,14 @@ class SessionTest(_fixtures.FixtureTest):
             s = create_session(bind=c)
             s.begin()
             tran = s.transaction
-            s.save(User(name='first'))
+            s.add(User(name='first'))
             s.flush()
             c.execute("select * from users")
             u = User(name='two')
-            s.save(u)
+            s.add(u)
             s.flush()
             u = User(name='third')
-            s.save(u)
+            s.add(u)
             s.flush()
             assert s.transaction is tran
             tran.close()
@@ -162,7 +162,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         sess = create_session(autocommit=False, bind=conn1)
         u = User(name='x')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert conn2.execute("select count(1) from users").scalar() == 0
@@ -184,7 +184,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess = create_session(bind=conn1, autocommit=False, autoflush=True)
         u = User()
         u.name='ed'
-        sess.save(u)
+        sess.add(u)
         u2 = sess.query(User).filter_by(name='ed').one()
         assert u2 is u
         eq_(conn1.execute("select count(1) from users").scalar(), 1)
@@ -202,7 +202,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         sess = create_session(autoflush=True, autocommit=False)
         u = User(name='ed', addresses=[Address(email_address='foo')])
-        sess.save(u)
+        sess.add(u)
         eq_(sess.query(Address).filter(Address.user==u).one(),
             Address(email_address='foo'))
 
@@ -217,7 +217,7 @@ class SessionTest(_fixtures.FixtureTest):
             sess = create_session(autocommit=False, autoflush=True)
             u = User()
             u.name='ed'
-            sess.save(u)
+            sess.add(u)
             u2 = sess.query(User).filter_by(name='ed').one()
             assert u2 is u
             assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
@@ -240,7 +240,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess = create_session(bind=conn1, autocommit=False, autoflush=True)
         u = User()
         u.name='ed'
-        sess.save(u)
+        sess.add(u)
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testing.db.connect().execute("select count(1) from users").scalar() == 1
@@ -292,7 +292,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess = create_session(bind=conn, autocommit=False, autoflush=True)
         sess.begin(subtransactions=True)
         u = User(name='ed')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         sess.commit() # commit does nothing
         trans.rollback() # rolls back
@@ -309,12 +309,12 @@ class SessionTest(_fixtures.FixtureTest):
             trans = conn.begin()
             sess = create_session(bind=conn, autocommit=False, autoflush=True)
             u1 = User(name='u1')
-            sess.save(u1)
+            sess.add(u1)
             sess.flush()
 
             sess.begin_nested()
             u2 = User(name='u2')
-            sess.save(u2)
+            sess.add(u2)
             sess.flush()
             sess.rollback()
 
@@ -375,7 +375,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess = create_session(autocommit=False, autoflush=True)
         sess.begin(subtransactions=True)
         u = User(name='u1')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         sess.commit() # commit does nothing
         sess.rollback() # rolls back
@@ -390,13 +390,13 @@ class SessionTest(_fixtures.FixtureTest):
         sess.begin()
 
         u = User(name='u1')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
 
         sess.begin_nested()  # nested transaction
 
         u2 = User(name='u2')
-        sess.save(u2)
+        sess.add(u2)
         sess.flush()
 
         sess.rollback()
@@ -411,13 +411,13 @@ class SessionTest(_fixtures.FixtureTest):
         mapper(User, users)
         sess = create_session(autocommit=False)
         u = User(name='u1')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
 
         sess.begin_nested()  # nested transaction
 
         u2 = User(name='u2')
-        sess.save(u2)
+        sess.add(u2)
         sess.flush()
 
         sess.rollback()
@@ -437,13 +437,13 @@ class SessionTest(_fixtures.FixtureTest):
         sess.begin_nested()
 
         u1 = User(name='u1')
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
 
         sess.rollback()
 
         u2 = User(name='u2')
-        sess.save(u2)
+        sess.add(u2)
 
         sess.commit()
 
@@ -453,7 +453,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess.begin_nested()
 
         u3 = User(name='u3')
-        sess.save(u3)
+        sess.add(u3)
         sess.commit() # commit the nested transaction
         sess.rollback()
 
@@ -472,7 +472,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess.begin_nested()
         transaction = sess.begin(subtransactions=True)
 
-        sess.save(User(name='u1'))
+        sess.add(User(name='u1'))
 
         transaction.commit()
         sess.commit()
@@ -485,7 +485,7 @@ class SessionTest(_fixtures.FixtureTest):
         t1 = sess.begin()
         t2 = sess.begin_nested()
 
-        sess.save(User(name='u2'))
+        sess.add(User(name='u2'))
 
         t2.commit()
         assert sess.transaction is t1
@@ -501,12 +501,12 @@ class SessionTest(_fixtures.FixtureTest):
 
         sess.begin_nested()
 
-        sess.save(User(name='u1'))
+        sess.add(User(name='u1'))
         sess.flush()
 
         sess.close()
 
-        sess.save(User(name='u2'))
+        sess.add(User(name='u2'))
         sess.commit()
 
         sess.close()
@@ -522,7 +522,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess.begin()
         sess.begin(subtransactions=True)
 
-        sess.save(User(name='u1'))
+        sess.add(User(name='u1'))
         sess.flush()
 
         sess.rollback()
@@ -538,7 +538,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess.begin()
         transaction = sess.transaction
         u = User(name='u1')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         assert transaction._connection_for_bind(testing.db) is transaction._connection_for_bind(c) is c
 
@@ -555,7 +555,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         sess = create_session(bind=c, autocommit=False)
         u = User(name='u1')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         sess.close()
         assert not c.in_transaction()
@@ -563,7 +563,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         sess = create_session(bind=c, autocommit=False)
         u = User(name='u2')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         sess.commit()
         assert not c.in_transaction()
@@ -576,7 +576,7 @@ class SessionTest(_fixtures.FixtureTest):
         trans = c.begin()
         sess = create_session(bind=c, autocommit=True)
         u = User(name='u3')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         assert c.in_transaction()
         trans.commit()
@@ -596,7 +596,7 @@ class SessionTest(_fixtures.FixtureTest):
         self.assertRaisesMessage(sa.exc.InvalidRequestError, "is not persisted", s.update, user)
         self.assertRaisesMessage(sa.exc.InvalidRequestError, "is not persisted", s.delete, user)
 
-        s.save(user)
+        s.add(user)
         s.flush()
         user = s.query(User).one()
         s.expunge(user)
@@ -642,7 +642,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         # save user
         u = User(name='fred')
-        s.save(u)
+        s.add(u)
         s.flush()
         s.clear()
 
@@ -673,7 +673,7 @@ class SessionTest(_fixtures.FixtureTest):
         s = create_session()
         mapper(User, users)
 
-        s.save(User(name='ed'))
+        s.add(User(name='ed'))
         s.flush()
         assert not s.dirty
 
@@ -704,7 +704,7 @@ class SessionTest(_fixtures.FixtureTest):
         mapper(User, users)
 
         # save user
-        s.save(User(name='u1'))
+        s.add(User(name='u1'))
         s.flush()
         user = s.query(User).one()
         user = None
@@ -719,7 +719,7 @@ class SessionTest(_fixtures.FixtureTest):
         mapper(User, users)
 
         for o in [User(name='u%s' % x) for x in xrange(10)]:
-            s.save(o)
+            s.add(o)
         # o is still live after this loop...
 
         self.assert_(len(s.identity_map) == 0)
@@ -746,7 +746,7 @@ class SessionTest(_fixtures.FixtureTest):
         self.assert_(s.prune() == 1)
         self.assert_(len(s.identity_map) == 0)
 
-        s.save(User(name='x'))
+        s.add(User(name='x'))
         self.assert_(s.prune() == 0)
         self.assert_(len(s.identity_map) == 0)
         s.flush()
@@ -771,7 +771,7 @@ class SessionTest(_fixtures.FixtureTest):
         s = create_session()
 
         u = User(name='u1')
-        s.save(u)
+        s.add(u)
         a = Address(email_address='u1@e')
         u.addresses.append(a)
         assert u in s
@@ -794,7 +794,7 @@ class SessionTest(_fixtures.FixtureTest):
         u = User(name='u1')
         a = Address(email_address='u1@e')
         a.user = u
-        s.save(a)
+        s.add(a)
         assert u not in s
         assert a in s
         s.flush()
@@ -821,7 +821,7 @@ class SessionTest(_fixtures.FixtureTest):
         mapper(User, users)
         s = create_session()
         u = User(name='u1')
-        s.save(u)
+        s.add(u)
         s.flush()
         key = s.identity_key(instance=u)
         eq_(key, (User, (u.id,), None))
@@ -858,14 +858,14 @@ class SessionTest(_fixtures.FixtureTest):
                 log.append('after_begin')
         sess = create_session(extension = MyExt())
         u = User(name='u1')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         assert log == ['before_flush', 'after_begin', 'after_flush', 'before_commit', 'after_commit', 'after_flush_postexec']
 
         log = []
         sess = create_session(autocommit=False, extension=MyExt())
         u = User(name='u1')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         assert log == ['before_flush', 'after_begin', 'after_flush', 'after_flush_postexec']
 
@@ -890,13 +890,13 @@ class SessionTest(_fixtures.FixtureTest):
         sess2 = create_session()
 
         u1 = User(name='u1')
-        sess1.save(u1)
+        sess1.add(u1)
 
-        self.assertRaisesMessage(sa.exc.InvalidRequestError, "already attached to session", sess2.save, u1)
+        self.assertRaisesMessage(sa.exc.InvalidRequestError, "already attached to session", sess2.add, u1)
 
         u2 = pickle.loads(pickle.dumps(u1))
 
-        sess2.save(u2)
+        sess2.add(u2)
 
     @testing.resolve_artifact_names
     def test_duplicate_update(self):
@@ -905,7 +905,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess = Session()
 
         u1 = User(name='u1')
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         assert u1.id is not None
 
@@ -943,10 +943,10 @@ class SessionTest(_fixtures.FixtureTest):
         sess = create_session()
         class Foo(object):
             def __init__(self):
-                sess.save(self)
+                sess.add(self)
         class Bar(Foo):
             def __init__(self):
-                sess.save(self)
+                sess.add(self)
                 Foo.__init__(self)
         mapper(Foo, users)
         mapper(Bar, users)
@@ -989,7 +989,7 @@ class TLTransactionTest(engine_base.AltEngineTest, _base.MappedTest):
         sess = create_session(bind=self.engine)
         self.engine.begin()
         u = User(name='ed')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         self.engine.commit()
 

@@ -22,7 +22,7 @@ class PickleTest(_fixtures.FixtureTest):
         u1.addresses.append(Address(email_address='ed@bar.com'))
 
         u2 = pickle.loads(pickle.dumps(u1))
-        sess.save(u2)
+        sess.add(u2)
         sess.flush()
 
         sess.clear()
@@ -41,7 +41,7 @@ class PickleTest(_fixtures.FixtureTest):
         sess = create_session()
         u1 = User(name='ed')
         u1.addresses.append(Address(email_address='ed@bar.com'))
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
         u1 = sess.query(User).get(u1.id)
@@ -70,7 +70,7 @@ class PickleTest(_fixtures.FixtureTest):
         sess = create_session()
         u1 = User(name='ed')
         u1.addresses.append(Address(email_address='ed@bar.com'))
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -129,7 +129,7 @@ class PolymorphicDeferredTest(_base.MappedTest):
 
         eu = EmailUser(name="user1", email_address='foo@bar.com')
         sess = create_session()
-        sess.save(eu)
+        sess.add(eu)
         sess.flush()
         sess.clear()
 

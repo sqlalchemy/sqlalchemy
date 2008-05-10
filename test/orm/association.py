@@ -6,6 +6,7 @@ from testlib.sa.orm import mapper, relation, create_session
 from orm import _base
 from testlib.testing import eq_
 
+
 class AssociationTest(_base.MappedTest):
     run_setup_classes = 'once'
     run_setup_mappers = 'once'
@@ -68,8 +69,7 @@ class AssociationTest(_base.MappedTest):
         item1.keywords.append(KeywordAssociation(Keyword('blue'), 'blue_assoc'))
         item1.keywords.append(KeywordAssociation(Keyword('red'), 'red_assoc'))
         item2.keywords.append(KeywordAssociation(Keyword('green'), 'green_assoc'))
-        sess.save(item1)
-        sess.save(item2)
+        sess.add_all((item1, item2))
         sess.flush()
         saved = repr([item1, item2])
         sess.clear()
@@ -83,7 +83,7 @@ class AssociationTest(_base.MappedTest):
         item1 = Item('item1')
         item1.keywords.append(KeywordAssociation(Keyword('blue'), 'blue_assoc'))
         item1.keywords.append(KeywordAssociation(Keyword('red'), 'red_assoc'))
-        sess.save(item1)
+        sess.add(item1)
         sess.flush()
 
         red_keyword = item1.keywords[1].keyword
@@ -104,8 +104,7 @@ class AssociationTest(_base.MappedTest):
         item1.keywords.append(KeywordAssociation(Keyword('blue'), 'blue_assoc'))
         item1.keywords.append(KeywordAssociation(Keyword('red'), 'red_assoc'))
         item2.keywords.append(KeywordAssociation(Keyword('green'), 'green_assoc'))
-        sess.save(item1)
-        sess.save(item2)
+        sess.add_all((item1, item2))
         sess.flush()
 
         red_keyword = item1.keywords[1].keyword
@@ -132,8 +131,7 @@ class AssociationTest(_base.MappedTest):
         item1.keywords.append(KeywordAssociation(Keyword('blue'), 'blue_assoc'))
         item1.keywords.append(KeywordAssociation(Keyword('red'), 'red_assoc'))
         item2.keywords.append(KeywordAssociation(Keyword('green'), 'green_assoc'))
-        sess.save(item1)
-        sess.save(item2)
+        sess.add_all((item1, item2))
         sess.flush()
         eq_(self.tables.item_keywords.count().scalar(), 3)
 

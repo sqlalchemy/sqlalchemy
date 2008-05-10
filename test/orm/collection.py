@@ -1366,7 +1366,7 @@ class DictHelpersTest(_base.MappedTest):
         p.children['foo'] = Child('foo', 'value')
         p.children['bar'] = Child('bar', 'value')
         session = create_session()
-        session.save(p)
+        session.add(p)
         session.flush()
         pid = p.id
         session.clear()
@@ -1426,7 +1426,7 @@ class DictHelpersTest(_base.MappedTest):
         p.children[('foo', '2')] = Child('foo', '2', 'value 2')
 
         session = create_session()
-        session.save(p)
+        session.add(p)
         session.flush()
         pid = p.id
         session.clear()
@@ -1534,7 +1534,7 @@ class CustomCollectionsTest(_base.MappedTest):
         f.bars.add(Bar())
         f.bars.add(Bar())
         sess = create_session()
-        sess.save(f)
+        sess.add(f)
         sess.flush()
         sess.clear()
         f = sess.query(Foo).get(f.col1)
@@ -1566,7 +1566,7 @@ class CustomCollectionsTest(_base.MappedTest):
         f.bars.set(Bar())
         f.bars.set(Bar())
         sess = create_session()
-        sess.save(f)
+        sess.add(f)
         sess.flush()
         sess.clear()
         f = sess.query(Foo).get(f.col1)
@@ -1594,7 +1594,7 @@ class CustomCollectionsTest(_base.MappedTest):
         col.append_with_event(Bar('a'))
         col.append_with_event(Bar('b'))
         sess = create_session()
-        sess.save(f)
+        sess.add(f)
         sess.flush()
         sess.clear()
         f = sess.query(Foo).get(f.col1)
@@ -1778,7 +1778,7 @@ class CustomCollectionsTest(_base.MappedTest):
         assert control == list(p1.children)
 
         sess = create_session()
-        sess.save(p1)
+        sess.add(p1)
         sess.flush()
         sess.clear()
 

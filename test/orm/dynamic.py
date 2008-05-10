@@ -97,7 +97,7 @@ class DynamicTest(_fixtures.FixtureTest):
         o1 = Order(id=15, description="order 10")
         i1 = Item(id=10, description="item 8")
         o1.items.append(i1)
-        sess.save(o1)
+        sess.add(o1)
         sess.flush()
 
         assert o1 in i1.orders.all()
@@ -127,8 +127,7 @@ class FlushTest(_fixtures.FixtureTest):
         u2 = User(name='ed')
         u2.addresses.append(Address(email_address='foo@bar.com'))
         u1.addresses.append(Address(email_address='lala@hoho.com'))
-        sess.save(u1)
-        sess.save(u2)
+        sess.add_all((u1, u2))
         sess.flush()
 
         sess.clear()
@@ -150,7 +149,7 @@ class FlushTest(_fixtures.FixtureTest):
         sess = create_session(autoexpire=False, autocommit=False, autoflush=True)
         u1 = User(name='jack')
         u1.addresses.append(Address(email_address='lala@hoho.com'))
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.commit()
         u1.addresses.append(Address(email_address='foo@bar.com'))
@@ -172,7 +171,7 @@ class FlushTest(_fixtures.FixtureTest):
         u.addresses.append(Address(email_address='d'))
         u.addresses.append(Address(email_address='e'))
         u.addresses.append(Address(email_address='f'))
-        sess.save(u)
+        sess.add(u)
 
         assert Address(email_address='c') == u.addresses[2]
         sess.delete(u.addresses[2])
@@ -206,7 +205,7 @@ class FlushTest(_fixtures.FixtureTest):
         u.addresses.append(Address(email_address='d'))
         u.addresses.append(Address(email_address='e'))
         u.addresses.append(Address(email_address='f'))
-        sess.save(u)
+        sess.add(u)
 
         assert Address(email_address='c') == u.addresses[2]
         sess.delete(u.addresses[2])
@@ -240,7 +239,7 @@ class FlushTest(_fixtures.FixtureTest):
         u.addresses.append(Address(email_address='d'))
         u.addresses.append(Address(email_address='e'))
         u.addresses.append(Address(email_address='f'))
-        sess.save(u)
+        sess.add(u)
 
         assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='c'),
             Address(email_address='d'), Address(email_address='e'), Address(email_address='f')] == sess.query(Address).all()
@@ -279,9 +278,9 @@ def create_backref_test(autoflush, saveuser):
         a.user = u
 
         if saveuser:
-            sess.save(u)
+            sess.add(u)
         else:
-            sess.save(a)
+            sess.add(a)
 
         if not autoflush:
             sess.flush()
@@ -344,7 +343,7 @@ class DontDereferenceTest(_base.MappedTest):
         address = Address()
         address.email_address = 'joe@joesdomain.example'
         address.user = user
-        session.save(user)
+        session.add(user)
         session.flush()
         session.clear()
 

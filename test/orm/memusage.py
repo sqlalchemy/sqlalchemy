@@ -82,7 +82,7 @@ class MemUsageTest(EnsureZeroed):
             a1.bs.append(B(col2="b2"))
             a3.bs.append(B(col2="b3"))
             for x in [a1,a2,a3]:
-                sess.save(x)
+                sess.add(x)
             sess.flush()
             sess.clear()
 
@@ -133,7 +133,7 @@ class MemUsageTest(EnsureZeroed):
             a1.bs.append(B(col2="b2"))
             a3.bs.append(B(col2="b3"))
             for x in [a1,a2,a3]:
-                sess.save(x)
+                sess.add(x)
             sess.flush()
             sess.clear()
 
@@ -193,7 +193,7 @@ class MemUsageTest(EnsureZeroed):
             b1 = B(col3='b1')
             b2 = B(col3='b2')
             for x in [a1,a2,b1, b2]:
-                sess.save(x)
+                sess.add(x)
             sess.flush()
             sess.clear()
 
@@ -257,7 +257,7 @@ class MemUsageTest(EnsureZeroed):
             a1.bs.append(b1)
             a2.bs.append(b2)
             for x in [a1,a2]:
-                sess.save(x)
+                sess.add(x)
             sess.flush()
             sess.clear()
 

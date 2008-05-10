@@ -1,4 +1,4 @@
-"""test attribute/instance expiration, deferral of attributes, etc."""
+"""Attribute/instance expiration, deferral of attributes, etc."""
 
 import testenv; testenv.configure_for_tests()
 import gc
@@ -6,6 +6,7 @@ from testlib import sa, testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import mapper, relation, create_session, attributes
 from orm import _base, _fixtures
+
 
 class ExpireTest(_fixtures.FixtureTest):
 
@@ -132,7 +133,7 @@ class ExpireTest(_fixtures.FixtureTest):
         mapper(User, users)
         sess = create_session()
         u = User(id=15)
-        sess.save(u)
+        sess.add(u)
         self.assertRaises(sa.exc.InvalidRequestError, sess.expire, u, ['name'])
 
     @testing.resolve_artifact_names
@@ -149,7 +150,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess.expunge(u)
         attributes.instance_state(u).key = None
         assert 'name' not in u.__dict__
-        sess.save(u)
+        sess.add(u)
         assert u.name == 'jack'
 
     @testing.resolve_artifact_names
@@ -792,7 +793,7 @@ class RefreshTest(_fixtures.FixtureTest):
         a = Address(id=10, email_address='lala')
         u.addresses.append(a)
 
-        s.save(u)
+        s.add(u)
         s.flush()
         s.clear()
         u = s.query(User).filter(User.name=='Justin').one()

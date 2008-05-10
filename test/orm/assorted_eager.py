@@ -1,5 +1,8 @@
-"""eager loading unittests derived from mailing list-reported problems and trac tickets."""
+"""Exercises for eager loading.
 
+Derived from mailing list-reported problems and trac tickets.
+
+"""
 import testenv; testenv.configure_for_tests()
 import random, datetime
 from sqlalchemy import *
@@ -62,18 +65,18 @@ class EagerTest(_base.ORMTest):
 
         # an owner
         o=Owner()
-        s.save(o)
+        s.add(o)
 
         # owner a has 3 tests, one of which he has specified options for
         c=Category()
         c.name='Some Category'
-        s.save(c)
+        s.add(c)
 
         for i in range(3):
             t=Test()
             t.owner=o
             t.category=c
-            s.save(t)
+            s.add(t)
             if i==1:
                 op=Option()
                 op.someoption=True
@@ -224,7 +227,7 @@ class EagerTest2(_base.ORMTest):
         p = Middle('test1')
         p.left.append(Left('tag1'))
         p.right.append(Right('tag2'))
-        session.save(p)
+        session.add(p)
         session.flush()
         session.clear()
         obj = session.query(Left).filter_by(tag='tag1').one()
@@ -262,7 +265,7 @@ class EagerTest3(_base.MappedTest):
         for x in range(5):
             d=Data()
             d.a=x
-            s.save(d)
+            s.add(d)
             data.append(d)
 
         for x in range(10):
@@ -271,7 +274,7 @@ class EagerTest3(_base.MappedTest):
             stat=Stat()
             stat.data = data[rid]
             stat.somedata=somedata
-            s.save(stat)
+            s.add(stat)
 
         s.flush()
 
@@ -344,8 +347,7 @@ class EagerTest4(_base.MappedTest):
             d2.employees.append(Employee(name=e))
 
         sess = create_session()
-        sess.save(d1)
-        sess.save(d2)
+        sess.add_all((d1, d2))
         sess.flush()
 
         q = sess.query(Department)
@@ -424,8 +426,7 @@ class EagerTest5(_base.MappedTest):
         d.comments = [Comment('uid1', 'comment')]
         d2 = DerivedII('uid2', 'xx', 'z')
         d2.comments = [Comment('uid2', 'comment')]
-        sess.save(d)
-        sess.save(d2)
+        sess.add_all((d, d2))
         sess.flush()
         sess.clear()
         # this eager load sets up an AliasedClauses for the "comment" relationship,
@@ -496,7 +497,7 @@ class EagerTest6(_base.MappedTest):
 
         d = Design()
         sess = create_session()
-        sess.save(d)
+        sess.add(d)
         sess.flush()
         sess.clear()
         x = sess.query(Design).get(1)
@@ -859,7 +860,7 @@ class EagerTest9(_base.MappedTest):
         ent21 = Entry(name='ent21', account=acc2, transaction=tx1)
         ent22 = Entry(name='ent22', account=acc2, transaction=tx2)
 
-        session.save(acc1)
+        session.add(acc1)
         session.flush()
         session.clear()
 

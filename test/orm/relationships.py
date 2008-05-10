@@ -74,8 +74,8 @@ class RelationTest(_base.MappedTest):
         d1 = D(name='d1', b_row=b, c_row=c)
         d2 = D(name='d2', b_row=b, c_row=c)
         d3 = D(name='d3', b_row=b, c_row=c)
-        session.save(a)
-        session.save(b)
+        session.add(a)
+        session.add(b)
         session.flush()
 
     @testing.resolve_artifact_names
@@ -205,7 +205,7 @@ class RelationTest2(_base.MappedTest):
         e6 = Employee(u'emp6', c2, 2, e5)
         e7 = Employee(u'emp7', c2, 3, e5)
 
-        [sess.save(x) for x in [c1,c2]]
+        sess.add_all((c1, c2))
         sess.flush()
         sess.clear()
 
@@ -393,7 +393,7 @@ class RelationTest4(_base.MappedTest):
         a1 = A()
         a1.bs.append(B())
         sess = create_session()
-        sess.save(a1)
+        sess.add(a1)
         sess.flush()
 
         sess.delete(a1)
@@ -415,7 +415,7 @@ class RelationTest4(_base.MappedTest):
         a1 = A()
         b1.a = a1
         sess = create_session()
-        sess.save(b1)
+        sess.add(b1)
         sess.flush()
         b1.a = None
         try:
@@ -447,7 +447,7 @@ class RelationTest4(_base.MappedTest):
         c1.id = 5
         c1.a = None
         sess = create_session()
-        sess.save(c1)
+        sess.add(c1)
         # test that no error is raised.
         sess.flush()
 
@@ -467,7 +467,7 @@ class RelationTest4(_base.MappedTest):
             a1 = A()
             b1.a = a1
             sess = create_session()
-            sess.save(b1)
+            sess.add(b1)
             sess.flush()
             sess.delete(b1)
             sess.flush()
@@ -491,7 +491,7 @@ class RelationTest4(_base.MappedTest):
             b1 = B()
             a1.bs.append(b1)
             sess = create_session()
-            sess.save(a1)
+            sess.add(a1)
             sess.flush()
 
             sess.delete(a1)
@@ -511,8 +511,8 @@ class RelationTest4(_base.MappedTest):
         b1 = B()
         a1.bs.append(b1)
         sess = create_session()
-        sess.save(a1)
-        sess.save(b1)
+        sess.add(a1)
+        sess.add(b1)
         sess.flush()
 
         sess.delete(a1)
@@ -532,8 +532,8 @@ class RelationTest4(_base.MappedTest):
         a1 = A()
         b1.a = a1
         sess = create_session()
-        sess.save(b1)
-        sess.save(a1)
+        sess.add(b1)
+        sess.add(a1)
         sess.flush()
         sess.delete(b1)
         sess.delete(a1)
@@ -591,12 +591,12 @@ class RelationTest5(_base.MappedTest):
         con.policyNum = "99"
         con.policyEffDate = datetime.date.today()
         con.type = "TESTER"
-        session.save(con)
+        session.add(con)
         for i in range(0, 10):
             li = LineItem()
             li.id = i
             con.lineItems.append(li)
-            session.save(li)
+            session.add(li)
         session.flush()
         session.clear()
         newcon = session.query(Container).first()
@@ -642,7 +642,7 @@ class TypeMatchTest(_base.MappedTest):
         a1.bs.append(c1)
         sess = create_session()
         try:
-            sess.save(a1)
+            sess.add(a1)
             assert False
         except AssertionError, err:
             eq_(str(err),
@@ -664,9 +664,9 @@ class TypeMatchTest(_base.MappedTest):
         a1.bs.append(b1)
         a1.bs.append(c1)
         sess = create_session()
-        sess.save(a1)
-        sess.save(b1)
-        sess.save(c1)
+        sess.add(a1)
+        sess.add(b1)
+        sess.add(c1)
         self.assertRaisesMessage(sa.orm.exc.FlushError,
                                  "Attempting to flush an item", sess.flush)
 
@@ -685,9 +685,9 @@ class TypeMatchTest(_base.MappedTest):
         a1.bs.append(b1)
         a1.bs.append(c1)
         sess = create_session()
-        sess.save(a1)
-        sess.save(b1)
-        sess.save(c1)
+        sess.add(a1)
+        sess.add(b1)
+        sess.add(c1)
         self.assertRaisesMessage(sa.orm.exc.FlushError,
                                  "Attempting to flush an item", sess.flush)
 
@@ -703,8 +703,8 @@ class TypeMatchTest(_base.MappedTest):
         d1 = D()
         d1.a = b1
         sess = create_session()
-        sess.save(b1)
-        sess.save(d1)
+        sess.add(b1)
+        sess.add(d1)
         self.assertRaisesMessage(sa.orm.exc.FlushError,
                                  "Attempting to flush an item", sess.flush)
 
@@ -721,7 +721,7 @@ class TypeMatchTest(_base.MappedTest):
         d1.a = b1
         sess = create_session()
         self.assertRaisesMessage(AssertionError,
-                                 "doesn't handle objects of type", sess.save, d1)
+                                 "doesn't handle objects of type", sess.add, d1)
 
 class TypedAssociationTable(_base.MappedTest):
 
@@ -823,8 +823,8 @@ class ViewOnlyOverlappingNames(_base.MappedTest):
         c3.data='c1data'
         c3.t2 = c2b
         sess = create_session()
-        sess.save(c1)
-        sess.save(c3)
+        sess.add(c1)
+        sess.add(c3)
         sess.flush()
         sess.clear()
 
@@ -917,12 +917,12 @@ class ViewOnlyNonEquijoin(_base.MappedTest):
         mapper(Bar, bars)
 
         sess = create_session()
-        sess.save(Foo(id=4))
-        sess.save(Foo(id=9))
-        sess.save(Bar(id=1, fid=2))
-        sess.save(Bar(id=2, fid=3))
-        sess.save(Bar(id=3, fid=6))
-        sess.save(Bar(id=4, fid=7))
+        sess.add_all((Foo(id=4),
+                      Foo(id=9),
+                      Bar(id=1, fid=2),
+                      Bar(id=2, fid=3),
+                      Bar(id=3, fid=6),
+                      Bar(id=4, fid=7)))
         sess.flush()
 
         sess = create_session()

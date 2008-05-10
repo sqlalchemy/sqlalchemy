@@ -322,7 +322,7 @@ class M2OGetTest(_fixtures.FixtureTest):
 
         sess = create_session()
         ad1 = Address(email_address='somenewaddress', id=12)
-        sess.save(ad1)
+        sess.add(ad1)
         sess.flush()
         sess.clear()
 

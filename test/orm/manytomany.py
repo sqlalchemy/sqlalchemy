@@ -94,7 +94,7 @@ class M2MTest(_base.MappedTest):
         p5 = Place('place5')
         p6 = Place('place6')
         p7 = Place('place7')
-        [sess.save(x) for x in [p1,p2,p3,p4,p5,p6,p7]]
+        sess.add_all((p1, p2, p3, p4, p5, p6, p7))
         p1.places.append(p2)
         p1.places.append(p3)
         p5.places.append(p6)
@@ -143,7 +143,7 @@ class M2MTest(_base.MappedTest):
         tran.outputs.append(Place('place2'))
         tran.outputs.append(Place('place3'))
         sess = create_session()
-        sess.save(tran)
+        sess.add(tran)
         sess.flush()
 
         sess.clear()
@@ -179,7 +179,7 @@ class M2MTest(_base.MappedTest):
         p3.inputs.append(t2)
         p1.outputs.append(t1)
         sess = create_session()
-        [sess.save(x) for x in [t1,t2,t3,p1,p2,p3]]
+        sess.add_all((t1, t2, t3,p1, p2, p3))
         sess.flush()
 
         self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
@@ -223,7 +223,7 @@ class M2MTest2(_base.MappedTest):
         c3.students.append(s1)
         self.assert_(len(s1.courses) == 3)
         self.assert_(len(c1.students) == 1)
-        sess.save(s1)
+        sess.add(s1)
         sess.flush()
         sess.clear()
         s = sess.query(Student).filter_by(name='Student1').one()
@@ -255,7 +255,7 @@ class M2MTest2(_base.MappedTest):
         s1.courses.append(c1)
         s1.courses.append(c2)
         c3.students.append(s1)
-        sess.save(s1)
+        sess.add(s1)
         sess.flush()
         sess.delete(s1)
         sess.flush()
