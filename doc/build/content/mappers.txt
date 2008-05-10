@@ -237,43 +237,33 @@ The "equals" comparison operation by default produces an AND of all correspondin
 
 #### Controlling Ordering {@name=orderby}
 
-By default, mappers will attempt to ORDER BY the "oid" column of a table, or the first primary key column, when selecting rows.  This can be modified in several ways.
+As of version 0.5, the ORM does not generate ordering for any query unless explicitly configured.
 
-The "order_by" parameter can be sent to a mapper, overriding the per-engine ordering if any.  A value of None means that the mapper should not use any ordering.  A non-None value, which can be a column, an `asc` or `desc` clause, or an array of either one, indicates the ORDER BY clause that should be added to all select queries:
+The "default" ordering for a collection, which applies to list-based collections, can be configured using the `order_by` keyword argument on `relation()`:
 
     {python}
-    # disable all ordering
-    mapper(User, users_table, order_by=None)
+    mapper(Address, addresses_table)
 
+    # order address objects by address id
+    mapper(User, users_table, properties = {
+        'addresses' : relation(Address, order_by=addresses_table.c.address_id)
+    })
+
+Note that when using eager loaders with relations, the tables used by the eager load's join are anonymously aliased.  You can only order by these columns if you specify it at the `relation()` level.  To control ordering at the query level based on a related table, you `join()` to that relation, then order by it:
+
+    {python}
+    session.query(User).join('addresses').order_by(Address.street)
+
+Ordering for rows loaded through `Query` is usually specified using the `order_by()` generative method.  There is also an option to set a default ordering for Queries which are against a single mapped entity and where there was no explicit `order_by()` stated, which is the `order_by` keyword argument to `mapper()`:
+
+    {python}
     # order by a column
     mapper(User, users_table, order_by=users_table.c.user_id)
     
     # order by multiple items
     mapper(User, users_table, order_by=[users_table.c.user_id, users_table.c.user_name.desc()])
 
-"order_by" can also be specified with queries, overriding all other per-engine/per-mapper orderings:
-
-    {python}
-    # order by a column
-    l = query.filter(User.user_name=='fred').order_by(User.user_id).all()
-    
-    # order by multiple criterion
-    l = query.filter(User.user_name=='fred').order_by([User.user_id, User.user_name.desc()])
-
-The "order_by" property can also be specified on a `relation()` which will control the ordering of the collection:
-
-    {python}
-    mapper(Address, addresses_table)
-    
-    # order address objects by address id
-    mapper(User, users_table, properties = {
-        'addresses' : relation(Address, order_by=addresses_table.c.address_id)
-    })
-    
-Note that when using eager loaders with relations, the tables used by the eager load's join are anonymously aliased.  You can only order by these columns if you specify it at the `relation()` level.  To control ordering at the query level based on a related table, you `join()` to that relation, then order by it:
-
-    {python}
-    session.query(User).join('addresses').order_by(Address.street)
+Above, a `Query` issued for the `User` class will use the value of the mapper's `order_by` setting if the `Query` itself has no ordering specified.
 
 #### Mapping Class Inheritance Hierarchies {@name=inheritance}
 
