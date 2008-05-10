@@ -121,7 +121,7 @@ def make_test(select_type):
                 polymorphic_on=people.c.type, polymorphic_identity='person', order_by=people.c.person_id, 
                 properties={
                     'paperwork':relation(Paperwork, order_by=paperwork.c.paperwork_id)
-                }, order_by=people.c.person_id)
+                })
             mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer', properties={
                     'machines':relation(Machine, order_by=machines.c.machine_id)
                 })
