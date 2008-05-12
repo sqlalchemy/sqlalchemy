@@ -560,8 +560,11 @@ class Mapper(object):
     def _equivalent_columns(self):
         """Create a map of all *equivalent* columns, based on
         the determination of column pairs that are equated to
-        one another either by an established foreign key relationship
-        or by a joined-table inheritance join.
+        one another based on inherit condition.  This is designed
+        to work with the queries that util.polymorphic_union 
+        comes up with, which often don't include the columns from
+        the base table directly (including the subclass table columns 
+        only).
 
         The resulting structure is a dictionary of columns mapped
         to lists of equivalent columns, i.e.
@@ -589,30 +592,6 @@ class Mapper(object):
         for mapper in self.base_mapper.polymorphic_iterator():
             if mapper.inherit_condition:
                 visitors.traverse(mapper.inherit_condition, {}, {'binary':visit_binary})
-
-        # TODO: matching of cols to foreign keys might better be generalized
-        # into general column translation (i.e. corresponding_column)
-
-        # recursively descend into the foreign key collection of the given column
-        # and assemble each FK-related col as an "equivalent" for the given column
-        def equivs(col, recursive, equiv):
-            if col in recursive:
-                return
-            recursive.add(col)
-            for fk in col.foreign_keys:
-                if fk.column not in result:
-                    result[fk.column] = util.Set()
-                result[fk.column].add(equiv)
-                equivs(fk.column, recursive, col)
-
-        for column in (self.primary_key_argument or self._pks_by_table[self.mapped_table]):
-            for col in column.proxy_set:
-                if not col.foreign_keys:
-                    if col not in result:
-                        result[col] = util.Set()
-                    result[col].add(col)
-                else:
-                    equivs(col, util.Set(), col)
 
         return result
     _equivalent_columns = property(util.cache_decorator(_equivalent_columns))

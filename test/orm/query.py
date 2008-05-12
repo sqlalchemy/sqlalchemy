@@ -7,6 +7,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.orm import *
 
 from testlib import *
+from orm import _base
 from testlib import engines
 from testlib.fixtures import *
 
@@ -1985,6 +1986,55 @@ class ExternalColumnsTest(QueryTest):
             self.assertEquals(o1.address.user.count, 1)
         self.assert_sql_count(testing.db, go, 1)
 
+class TestOverlyEagerEquivalentCols(_base.MappedTest):
+    def define_tables(self, metadata):
+        global base, sub1, sub2
+        base = Table('base', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+        )
+
+        sub1 = Table('sub1', metadata, 
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+            Column('data', String(50))
+        )
+
+        sub2 = Table('sub2', metadata, 
+            Column('id', Integer, ForeignKey('base.id'), ForeignKey('sub1.id'), primary_key=True),
+            Column('data', String(50))
+        )
+    
+    def test_equivs(self):
+        class Base(_base.ComparableEntity):
+            pass
+        class Sub1(_base.ComparableEntity):
+            pass
+        class Sub2(_base.ComparableEntity):
+            pass
+        
+        mapper(Base, base, properties={
+            'sub1':relation(Sub1),
+            'sub2':relation(Sub2)
+        })
+        
+        mapper(Sub1, sub1)
+        mapper(Sub2, sub2)
+        sess = create_session()
+        b1 = Base(data='b1', sub1=[Sub1(data='s11')], sub2=[])
+        b2 = Base(data='b1', sub1=[Sub1(data='s12')], sub2=[Sub2(data='s2')])
+        sess.add(b1)
+        sess.add(b2)
+        sess.flush()
+        
+        q = sess.query(Base).outerjoin('sub2', aliased=True)
+        assert sub1.c.id not in q._filter_aliases.equivalents
+
+        self.assertEquals(
+            sess.query(Base).join('sub1').outerjoin('sub2', aliased=True).\
+                filter(Sub1.id==1).one(),
+                b1
+        )
+        
 
 if __name__ == '__main__':
     testenv.main()
