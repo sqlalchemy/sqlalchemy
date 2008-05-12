@@ -649,8 +649,9 @@ class FBSchemaGenerator(sql.compiler.SchemaGenerator):
     def visit_sequence(self, sequence):
         """Generate a ``CREATE GENERATOR`` statement for the sequence."""
 
-        self.append("CREATE GENERATOR %s" % self.preparer.format_sequence(sequence))
-        self.execute()
+        if not self.checkfirst or not self.dialect.has_sequence(self.connection, sequence.name):
+            self.append("CREATE GENERATOR %s" % self.preparer.format_sequence(sequence))
+            self.execute()
 
 
 class FBSchemaDropper(sql.compiler.SchemaDropper):
@@ -659,8 +660,9 @@ class FBSchemaDropper(sql.compiler.SchemaDropper):
     def visit_sequence(self, sequence):
         """Generate a ``DROP GENERATOR`` statement for the sequence."""
 
-        self.append("DROP GENERATOR %s" % self.preparer.format_sequence(sequence))
-        self.execute()
+        if not self.checkfirst or self.dialect.has_sequence(self.connection, sequence.name):
+            self.append("DROP GENERATOR %s" % self.preparer.format_sequence(sequence))
+            self.execute()
 
 
 class FBDefaultRunner(base.DefaultRunner):
