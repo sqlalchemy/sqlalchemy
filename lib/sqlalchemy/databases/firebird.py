@@ -197,7 +197,7 @@ class FBChar(sqltypes.CHAR):
     """Handle ``CHAR(length)`` datatype."""
 
     def get_col_spec(self):
-        if length:
+        if self.length:
             return "CHAR(%(length)s)" % {'length' : self.length}
         else:
             return "BLOB SUB_TYPE 1"
