@@ -187,14 +187,20 @@ class FBString(sqltypes.String):
     """Handle ``VARCHAR(length)`` datatype."""
 
     def get_col_spec(self):
-        return "VARCHAR(%(length)s)" % {'length' : self.length}
+        if self.length:
+            return "VARCHAR(%(length)s)" % {'length' : self.length}
+        else:
+            return "BLOB SUB_TYPE 1"
 
 
 class FBChar(sqltypes.CHAR):
     """Handle ``CHAR(length)`` datatype."""
 
     def get_col_spec(self):
-        return "CHAR(%(length)s)" % {'length' : self.length}
+        if length:
+            return "CHAR(%(length)s)" % {'length' : self.length}
+        else:
+            return "BLOB SUB_TYPE 1"
 
 
 class FBBinary(sqltypes.Binary):
