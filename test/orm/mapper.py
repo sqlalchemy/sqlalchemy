@@ -436,7 +436,7 @@ class MapperTest(MapperSuperTest):
     def test_mappingtojoinnopk(self):
         metadata = MetaData()
         account_ids_table = Table('account_ids', metadata,
-                Column('account_id', Integer, primary_key=True),
+                Column('account_id', Integer,  Sequence('seq_account_id'), primary_key=True),
                 Column('username', String(20)))
         account_stuff_table = Table('account_stuff', metadata,
                 Column('account_id', Integer, ForeignKey('account_ids.account_id')),
@@ -503,7 +503,7 @@ class MapperTest(MapperSuperTest):
         #l = create_session().query(User).select(order_by=None)
 
 
-    @testing.unsupported('firebird', 'FIXME: verify not fails_on')
+    @testing.unsupported('firebird', 'Raises a "expression evaluation not supported" error at prepare time')
     def test_function(self):
         """Test mapping to a SELECT statement that has functions in it."""
 
@@ -521,11 +521,9 @@ class MapperTest(MapperSuperTest):
         assert l[0].concat == l[0].user_id * 2 == 14
         assert l[1].concat == l[1].user_id * 2 == 16
 
-    @testing.unsupported('firebird', 'FIXME: verify not fails_on')
     def test_count(self):
-        """test the count function on Query.
+        """Test the count function on Query."""
 
-        (why doesnt this work on firebird?)"""
         mapper(User, users)
         q = create_session().query(User)
         self.assert_(q.count()==3)
@@ -1141,7 +1139,7 @@ class CompositeTypesTest(ORMTest):
             Column('name', String(30)))
 
         edges = Table('edges', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('seq_edges_id'), primary_key=True),
             Column('graph_id', Integer, nullable=False),
             Column('graph_version_id', Integer, nullable=False),
             Column('x1', Integer),
@@ -1524,14 +1522,14 @@ class RequirementsTest(ORMTest):
         global t1, t2, t3, t4, t5, t6
 
         t1 = Table('ht1', metadata,
-                   Column('id', Integer, primary_key=True),
+                   Column('id', Integer, Sequence('seq_ht1_id'), primary_key=True),
                    Column('value', String(10)))
         t2 = Table('ht2', metadata,
-                   Column('id', Integer, primary_key=True),
+                   Column('id', Integer, Sequence('seq_ht2_id'), primary_key=True),
                    Column('ht1_id', Integer, ForeignKey('ht1.id')),
                    Column('value', String(10)))
         t3 = Table('ht3', metadata,
-                   Column('id', Integer, primary_key=True),
+                   Column('id', Integer, Sequence('seq_ht3_id'), primary_key=True),
                    Column('value', String(10)))
         t4 = Table('ht4', metadata,
                    Column('ht1_id', Integer, ForeignKey('ht1.id'),
@@ -1777,8 +1775,9 @@ class ScalarRequirementsTest(ORMTest):
     def define_tables(self, metadata):
         import pickle
         global t1
-        t1 = Table('t1', metadata, Column('id', Integer, primary_key=True),
-            Column('data', PickleType(pickler=pickle))  # dont use cPickle due to import weirdness
+        t1 = Table('t1', metadata,
+                   Column('id', Integer, Sequence('seq_t1_id'), primary_key=True),
+                   Column('data', PickleType(pickler=pickle))  # dont use cPickle due to import weirdness
         )
 
     def test_correct_comparison(self):
