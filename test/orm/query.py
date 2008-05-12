@@ -1869,7 +1869,7 @@ class ExternalColumnsTest(QueryTest):
         })
         clear_mappers()
 
-    def test_external_columns_good(self):
+    def test_external_columns(self):
         """test querying mappings that reference external columns or selectables."""
         
         mapper(User, users, properties={
@@ -1956,6 +1956,34 @@ class ExternalColumnsTest(QueryTest):
         self.assertEquals(list(sess.query(Address, ua).select_from(join(Address,ua, 'user')).values(Address.id, ua.id, ua.concat, ua.count)), 
             [(1, 7, 14, 1), (2, 8, 16, 3), (3, 8, 16, 3), (4, 8, 16, 3), (5, 9, 18, 1)]
         )
+
+    def test_external_columns_eagerload(self):
+        # in this test, we have a subquery on User that accesses "addresses", underneath
+        # an eagerload for "addresses".  So the "addresses" alias adapter needs to *not* hit 
+        # the "addresses" table within the "user" subquery, but "user" still needs to be adapted.
+        # therefore the long standing practice of eager adapters being "chained" has been removed
+        # since its unnecessary and breaks this exact condition.
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref='user', order_by=addresses.c.id),
+            'concat': column_property((users.c.id * 2)),
+            'count': column_property(select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id).correlate(users))
+        })
+        mapper(Address, addresses)
+        mapper(Order, orders, properties={
+            'address':relation(Address),  # m2o
+        })
+
+        sess = create_session()
+        def go():
+            o1 = sess.query(Order).options(eagerload_all('address.user')).get(1)
+            self.assertEquals(o1.address.user.count, 1)
+        self.assert_sql_count(testing.db, go, 1)
+
+        sess = create_session()
+        def go():
+            o1 = sess.query(Order).options(eagerload_all('address.user')).first()
+            self.assertEquals(o1.address.user.count, 1)
+        self.assert_sql_count(testing.db, go, 1)
 
 
 if __name__ == '__main__':

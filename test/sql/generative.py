@@ -532,6 +532,12 @@ class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
             "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo  LIMIT 5 OFFSET 10) AS anon_1 "\
             "LEFT OUTER JOIN table1 AS bar ON anon_1.col1 = bar.col1")
     
+    def test_functions(self):
+        self.assert_compile(sql_util.ClauseAdapter(t1.alias()).traverse(func.count(t1.c.col1)), "count(table1_1.col1)")
+
+        s = select([func.count(t1.c.col1)])
+        self.assert_compile(sql_util.ClauseAdapter(t1.alias()).traverse(s), "SELECT count(table1_1.col1) AS count_1 FROM table1 AS table1_1")
+        
     def test_recursive(self):
         metadata = MetaData()
         a = Table('a', metadata,

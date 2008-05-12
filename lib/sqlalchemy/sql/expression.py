@@ -3066,7 +3066,7 @@ class Select(_SelectBaseMixin, FromClause):
         """return child elements as per the ClauseElement specification."""
 
         return (column_collections and list(self.columns) or []) + \
-            list(self._froms) + \
+            self._raw_columns + list(self._froms) + \
             [x for x in (self._whereclause, self._having, self._order_by_clause, self._group_by_clause) if x is not None]
 
     def column(self, column):

@@ -576,8 +576,7 @@ class EagerLoader(AbstractRelationLoader):
             clauses = self.clauses[path_key]
         except KeyError:
             self.clauses[path_key] = clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
-                    equivalents=self.mapper._equivalent_columns, 
-                    chain_to=adapter)
+                    equivalents=self.mapper._equivalent_columns)
 
         if adapter:
             if getattr(adapter, 'aliased_class', None):
@@ -616,11 +615,6 @@ class EagerLoader(AbstractRelationLoader):
                 self.logger.debug("Could not locate aliased clauses for key: " + str(path))
             return False
 
-        if adapter and decorator:
-            decorator = adapter.wrap(decorator)
-        elif adapter:
-            decorator = adapter
-            
         try:
             identity_key = self.mapper.identity_key_from_row(row, decorator)
             return decorator
@@ -632,6 +626,7 @@ class EagerLoader(AbstractRelationLoader):
 
     def create_row_processor(self, context, path, mapper, row, adapter):
         path = path + (self.key,)
+            
         eager_adapter = self.__create_eager_adapter(context, row, adapter, path)
         
         if eager_adapter is not False:
@@ -711,9 +706,6 @@ class LoadEagerFromAliasOption(PropertyOption):
 
                 prop = mapper.get_property(propname, resolve_synonyms=True)
                 self.alias = prop.target.alias(self.alias)
-            if not isinstance(self.alias, expression.Alias):
-                import pdb
-                pdb.set_trace()
             query._attributes[("eager_row_processor", paths[-1])] = sql_util.ColumnAdapter(self.alias)
         else:
             query._attributes[("eager_row_processor", paths[-1])] = None
