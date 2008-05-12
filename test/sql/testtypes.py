@@ -382,6 +382,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             testing.db.engine.dialect.convert_unicode = prev_assert
 
     @testing.unsupported('oracle', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('firebird') # "Data type unknown" on the parameter
     def testlength(self):
         """checks the database correctly understands the length of a unicode string"""
         teststr = u'aaa\x1234'
@@ -505,7 +506,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
         assert expr.right.type.__class__ == test_table.c.avalue.type.__class__
         assert testing.db.execute(test_table.select().where(expr), {"somevalue":25}).fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
 
-
+    @testing.fails_on('firebird') # "Data type unknown" on the parameter
     def test_operator_adapt(self):
         """test type-based overloading of operators"""
 
