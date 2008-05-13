@@ -249,6 +249,24 @@ def to_ascii(x):
     else:
         raise TypeError
 
+if sys.version_info >= (2, 5):
+    def decode_slice(slc):
+        """decode a slice object as sent to __getitem__.
+    
+        takes into account the 2.5 __index__() method, basically.
+    
+        """
+        ret = []
+        for x in slc.start, slc.stop, slc.step:
+            if hasattr(x, '__index__'):
+                x = x.__index__()
+            ret.append(x)
+        return tuple(ret)
+else:
+    def decode_slice(slc):
+        return (slc.start, slc.stop, slc.step)
+    
+    
 def flatten_iterator(x):
     """Given an iterator of which further sub-elements may also be
     iterators, flatten the sub-elements into a single iterator.

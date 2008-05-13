@@ -258,7 +258,7 @@ class Query(object):
         return equivs
 
     def __no_criterion_condition(self, meth):
-        if self._criterion or self._statement or self._from_obj or self._limit or self._offset or self._group_by or self._order_by:
+        if self._criterion or self._statement or self._from_obj or self._limit is not None or self._offset is not None or self._group_by or self._order_by:
             raise sa_exc.InvalidRequestError("Query.%s() being called on a Query with existing criterion. " % meth)
 
         self._statement = self._criterion = self._from_obj = None
@@ -276,7 +276,7 @@ class Query(object):
                  "statement - can't apply criterion.") % meth)
 
     def __no_limit_offset(self, meth):
-        if self._limit or self._offset:
+        if self._limit is not None or self._offset is not None:
             # TODO: do we want from_self() to be implicit here ?  i vote explicit for the time being
             raise sa_exc.InvalidRequestError("Query.%s() being called on a Query which already has LIMIT or OFFSET applied. "
             "To filter/join to the row-limited results of the query, call from_self() first."
@@ -951,43 +951,50 @@ class Query(object):
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            start = item.start
-            stop = item.stop
+            start, stop, step = util.decode_slice(item)
             # if we slice from the end we need to execute the query
-            if (isinstance(start, int) and start < 0) or \
-               (isinstance(stop, int) and stop < 0):
+            if start < 0 or stop < 0:
                 return list(self)[item]
             else:
-                res = self._clone()
-                if start is not None and stop is not None:
-                    res._offset = (self._offset or 0) + start
-                    res._limit = stop - start
-                elif start is None and stop is not None:
-                    res._limit = stop
-                elif start is not None and stop is None:
-                    res._offset = (self._offset or 0) + start
-                if item.step is not None:
+                res = self.slice_(start, stop)
+                if step is not None:
                     return list(res)[None:None:item.step]
                 else:
-                    return res
+                    return list(res)
         else:
             return list(self[item:item+1])[0]
-
+    
+    def slice_(self, start, stop):
+        """apply LIMIT/OFFSET to the ``Query`` based on a range and return the newly resulting ``Query``."""
+        
+        if start is not None and stop is not None:
+            self._offset = (self._offset or 0) + start
+            self._limit = stop - start
+        elif start is None and stop is not None:
+            self._limit = stop
+        elif start is not None and stop is None:
+            self._offset = (self._offset or 0) + start
+    slice_ = _generative(__no_statement_condition)(slice_)
+        
     def limit(self, limit):
         """Apply a ``LIMIT`` to the query and return the newly resulting
 
         ``Query``.
 
         """
-        return self[:limit]
-
+        
+        self._limit = limit
+    limit = _generative(__no_statement_condition)(limit)
+    
     def offset(self, offset):
         """Apply an ``OFFSET`` to the query and return the newly resulting
         ``Query``.
 
         """
-        return self[offset:]
-
+        
+        self._offset = offset
+    offset = _generative(__no_statement_condition)(offset)
+    
     def distinct(self):
         """Apply a ``DISTINCT`` to the query and return the newly resulting
         ``Query``.
@@ -1028,11 +1035,14 @@ class Query(object):
         This results in an execution of the underlying query.
 
         """
-        ret = list(self[0:1])
-        if len(ret) > 0:
-            return ret[0]
+        if self._statement:
+            return list(self)[0]
         else:
-            return None
+            ret = list(self[0:1])
+            if len(ret) > 0:
+                return ret[0]
+            else:
+                return None
 
     def one(self):
         """Return the first result, raising an exception unless exactly one row exists.
@@ -1040,6 +1050,9 @@ class Query(object):
         This results in an execution of the underlying query.
 
         """
+        if self._statement:
+            raise exceptions.InvalidRequestError("one() not available when from_statement() is used; use `first()` instead.")
+            
         ret = list(self[0:2])
 
         if len(ret) == 1:

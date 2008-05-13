@@ -351,7 +351,7 @@ class DefaultCompiler(engine.Compiled):
             text += " GROUP BY " + group_by
 
         text += self.order_by_clause(cs)
-        text += (cs._limit or cs._offset) and self.limit_clause(cs) or ""
+        text += (cs._limit is not None or cs._offset is not None) and self.limit_clause(cs) or ""
 
         self.stack.pop(-1)
 
@@ -537,7 +537,7 @@ class DefaultCompiler(engine.Compiled):
                 text += " \nHAVING " + t
 
         text += self.order_by_clause(select)
-        text += (select._limit or select._offset) and self.limit_clause(select) or ""
+        text += (select._limit is not None or select._offset is not None) and self.limit_clause(select) or ""
         text += self.for_update_clause(select)
 
         self.stack.pop(-1)

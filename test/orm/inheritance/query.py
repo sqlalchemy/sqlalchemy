@@ -188,7 +188,7 @@ def make_test(select_type):
             sess = create_session()
             
             def go():
-                self.assertEquals(sess.query(Person).options(eagerload(Engineer.machines))[1:3].all(), all_employees[1:3])
+                self.assertEquals(sess.query(Person).options(eagerload(Engineer.machines))[1:3], all_employees[1:3])
             self.assert_sql_count(testing.db, go, {'':6, 'Polymorphic':3}.get(select_type, 4))
 
             sess = create_session()
@@ -197,7 +197,7 @@ def make_test(select_type):
             assert sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).limit(2).offset(1).with_labels().subquery().count().scalar() == 2
 
             def go():
-                self.assertEquals(sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines))[1:3].all(), all_employees[1:3])
+                self.assertEquals(sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines))[1:3], all_employees[1:3])
             self.assert_sql_count(testing.db, go, 3)
             
             

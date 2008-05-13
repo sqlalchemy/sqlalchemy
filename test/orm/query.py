@@ -360,7 +360,11 @@ class FilterTest(QueryTest):
         assert [User(id=8), User(id=9)] == list(create_session().query(User)[1:3])
 
         assert User(id=8) == create_session().query(User)[1]
-
+    
+        assert [] == create_session().query(User)[3:3]
+        assert [] == create_session().query(User)[0:0]
+        
+        
     def test_onefilter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.name.endswith('ed')).all()
 
@@ -485,7 +489,7 @@ class FromSelfTest(QueryTest):
 
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().all()
 
-        assert [User(id=8), User(id=9)] == create_session().query(User)[1:3]._from_self().all()
+        assert [User(id=8), User(id=9)] == create_session().query(User).slice_(1,3)._from_self().all()
         assert [User(id=8)] == list(create_session().query(User).filter(User.id.in_([8,9]))._from_self()[0:1])
     
     def test_join(self):
@@ -1119,7 +1123,7 @@ class MixedEntitiesTest(QueryTest):
         q2 = q.join('addresses').filter(User.name.like('%e%')).order_by(User.id, Address.id).values(User.name, Address.email_address)
         self.assertEquals(list(q2), [(u'ed', u'ed@wood.com'), (u'ed', u'ed@bettyboop.com'), (u'ed', u'ed@lala.com'), (u'fred', u'fred@fred.com')])
         
-        q2 = q.join('addresses').filter(User.name.like('%e%')).order_by(desc(Address.email_address))[1:3].values(User.name, Address.email_address)
+        q2 = q.join('addresses').filter(User.name.like('%e%')).order_by(desc(Address.email_address)).slice_(1, 3).values(User.name, Address.email_address)
         self.assertEquals(list(q2), [(u'ed', u'ed@wood.com'), (u'ed', u'ed@lala.com')])
         
         adalias = aliased(Address)
@@ -1238,6 +1242,7 @@ class MixedEntitiesTest(QueryTest):
             sess.query(User, adalias.email_address, adalias.id).outerjoin((User.addresses, adalias)).from_self(User, adalias.email_address).options(eagerload(User.addresses)).order_by(User.id, adalias.id).limit(10),
         ]:
             self.assertEquals(
+
                 q.all(),
                 [(User(addresses=[Address(user_id=7,email_address=u'jack@bean.com',id=1)],name=u'jack',id=7), u'jack@bean.com'), 
                 (User(addresses=[
