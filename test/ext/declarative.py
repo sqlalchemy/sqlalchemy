@@ -95,6 +95,14 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
                 foo = sa.orm.column_property(User.id == 5)
         self.assertRaises(sa.exc.InvalidRequestError, go)
 
+    def test_custom_base(self):
+        class MyBase(object):
+            def foobar(self):
+                return "foobar"
+        Base = decl.declarative_base(cls=MyBase)
+        assert hasattr(Base, 'metadata')
+        assert Base().foobar() == "foobar"
+        
     def test_add_prop(self):
         class User(Base, ComparableEntity):
             __tablename__ = 'users'
@@ -135,7 +143,40 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         eq_(a1, Address(email='two'))
         eq_(a1.user, User(name='u1'))
 
+    def test_as_declarative(self):
+        class User(ComparableEntity):
+            __tablename__ = 'users'
 
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            addresses = relation("Address", backref="user")
+
+        class Address(ComparableEntity):
+            __tablename__ = 'addresses'
+
+            id = Column('id', Integer, primary_key=True)
+            email = Column('email', String(50))
+            user_id = Column('user_id', Integer, ForeignKey('users.id'))
+        
+        reg = {}
+        decl.instrument_declarative(User, reg, Base.metadata)
+        decl.instrument_declarative(Address, reg, Base.metadata)
+        Base.metadata.create_all()
+        
+        u1 = User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])
+        sess = create_session()
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+
+        eq_(sess.query(User).all(), [User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])])
+        
     def test_custom_mapper(self):
         class MyExt(sa.orm.MapperExtension):
             def create_instance(self):

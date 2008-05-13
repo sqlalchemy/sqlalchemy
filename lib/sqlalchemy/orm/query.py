@@ -956,7 +956,7 @@ class Query(object):
             if start < 0 or stop < 0:
                 return list(self)[item]
             else:
-                res = self.slice_(start, stop)
+                res = self.slice(start, stop)
                 if step is not None:
                     return list(res)[None:None:item.step]
                 else:
@@ -964,7 +964,7 @@ class Query(object):
         else:
             return list(self[item:item+1])[0]
     
-    def slice_(self, start, stop):
+    def slice(self, start, stop):
         """apply LIMIT/OFFSET to the ``Query`` based on a range and return the newly resulting ``Query``."""
         
         if start is not None and stop is not None:
@@ -974,7 +974,7 @@ class Query(object):
             self._limit = stop
         elif start is not None and stop is None:
             self._offset = (self._offset or 0) + start
-    slice_ = _generative(__no_statement_condition)(slice_)
+    slice = _generative(__no_statement_condition)(slice)
         
     def limit(self, limit):
         """Apply a ``LIMIT`` to the query and return the newly resulting

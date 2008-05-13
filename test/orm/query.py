@@ -489,7 +489,7 @@ class FromSelfTest(QueryTest):
 
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().all()
 
-        assert [User(id=8), User(id=9)] == create_session().query(User).slice_(1,3)._from_self().all()
+        assert [User(id=8), User(id=9)] == create_session().query(User).slice(1,3)._from_self().all()
         assert [User(id=8)] == list(create_session().query(User).filter(User.id.in_([8,9]))._from_self()[0:1])
     
     def test_join(self):
@@ -1123,7 +1123,7 @@ class MixedEntitiesTest(QueryTest):
         q2 = q.join('addresses').filter(User.name.like('%e%')).order_by(User.id, Address.id).values(User.name, Address.email_address)
         self.assertEquals(list(q2), [(u'ed', u'ed@wood.com'), (u'ed', u'ed@bettyboop.com'), (u'ed', u'ed@lala.com'), (u'fred', u'fred@fred.com')])
         
-        q2 = q.join('addresses').filter(User.name.like('%e%')).order_by(desc(Address.email_address)).slice_(1, 3).values(User.name, Address.email_address)
+        q2 = q.join('addresses').filter(User.name.like('%e%')).order_by(desc(Address.email_address)).slice(1, 3).values(User.name, Address.email_address)
         self.assertEquals(list(q2), [(u'ed', u'ed@wood.com'), (u'ed', u'ed@lala.com')])
         
         adalias = aliased(Address)
