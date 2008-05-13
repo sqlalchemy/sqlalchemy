@@ -45,6 +45,17 @@ addresses = fixture_table(
     (4, 8, "ed@lala.com"),
     (5, 9, "fred@fred.com"))
 
+email_bounces = fixture_table(
+    Table('email_bounces', fixture_metadata,
+          Column('id', Integer, ForeignKey('addresses.id')),
+          Column('bounces', Integer)),
+    ('id', 'bounces'),
+    (1, 1),
+    (2, 0),
+    (3, 5),
+    (4, 0),
+    (5, 0))
+
 orders = fixture_table(
     Table('orders', fixture_metadata,
           Column('id', Integer, primary_key=True),
@@ -284,6 +295,14 @@ class FixtureTest(_base.MappedTest):
 
 class CannedResults(object):
     """Built on demand, instances use mappers in effect at time of call."""
+
+    @property
+    def user_result(self):
+        return [
+            User(id=7),
+            User(id=8),
+            User(id=9),
+            User(id=10)]
 
     @property
     def user_address_result(self):

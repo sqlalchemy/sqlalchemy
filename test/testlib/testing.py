@@ -629,9 +629,9 @@ class TestBase(unittest.TestCase):
     def assertRaisesMessage(self, except_cls, msg, callable_, *args, **kwargs):
         try:
             callable_(*args, **kwargs)
-            assert False, "Callable did not raise expected exception"
+            assert False, "Callable did not raise an exception"
         except except_cls, e:
-            assert re.search(msg, str(e)), "Exception message did not match: '%s'" % str(e)
+            assert re.search(msg, str(e)), "%r !~ %s" % (msg, e)
 
     if not hasattr(unittest.TestCase, 'assertTrue'):
         assertTrue = unittest.TestCase.failUnless

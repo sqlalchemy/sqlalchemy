@@ -234,6 +234,10 @@ class MappedTest(ORMTest):
     def sql_count_(self, count, fn):
         self.assert_sql_count(self.metadata.bind, fn, count)
 
+    def sql_eq_(self, callable_, statements, with_sequences=None):
+        self.assert_sql(self.metadata.bind,
+                        callable_, statements, with_sequences)
+
     @classmethod
     def _register_new_class_artifacts(cls, baseline):
         for class_ in subclasses(BasicEntity) - baseline:

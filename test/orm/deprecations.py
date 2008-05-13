@@ -148,12 +148,12 @@ class QueryAlternativesTest(_base.MappedTest):
         """
         session = create_session()
 
-        avgs = list(session.query(Address).values(func.avg(Address.bounces)))
+        avgs = list(session.query(Address).values(func.sum(Address.bounces)))
         avg = avgs[0][0]
-        assert avg > 0 and avg < 10
+        assert avg == 11
 
-        avg = session.query(func.avg(Address.bounces)).one()[0]
-        assert avg > 0 and avg < 10
+        avg = session.query(func.sum(Address.bounces)).one()[0]
+        assert avg == 11
 
     @testing.resolve_artifact_names
     def test_count_by(self):
