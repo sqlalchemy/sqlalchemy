@@ -140,6 +140,7 @@ class QueryTest(TestBase):
             l.append(row)
         self.assert_(len(l) == 3)
 
+    @testing.fails_on('firebird') # Data type unknown
     @testing.requires.subqueries
     def test_anonymous_rows(self):
         users.insert().execute(
@@ -245,7 +246,7 @@ class QueryTest(TestBase):
         assert len(r) == 1
 
     def test_bindparam_detection(self):
-	dialect = default.DefaultDialect(paramstyle='qmark')
+        dialect = default.DefaultDialect(paramstyle='qmark')
         prep = lambda q: str(sql.text(q).compile(dialect=dialect))
 
         def a_eq(got, wanted):
@@ -523,7 +524,7 @@ class QueryTest(TestBase):
         finally:
             shadowed.drop(checkfirst=True)
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('firebird', 'maxdb')
     def test_in_filtering(self):
         """test the behavior of the in_() function."""
 

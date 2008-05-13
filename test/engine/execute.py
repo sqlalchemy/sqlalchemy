@@ -79,6 +79,7 @@ class ExecuteTest(TestBase):
                 assert True
 
 class ProxyConnectionTest(TestBase):
+    @testing.fails_on('firebird') # Data type unknown
     def test_proxy(self):
         
         stmts = []
