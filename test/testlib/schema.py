@@ -46,16 +46,17 @@ def Table(*args, **kw):
                 # a schema, so the first element is always the
                 # table name, possibly followed by the field name
                 name = unpack(ref)[0]
-            print name, table_name
             if name == table_name:
                 if fk.ondelete is None:
                     fk.ondelete = 'CASCADE'
                 if fk.onupdate is None:
                     fk.onupdate = 'CASCADE'
 
-    if testing.against('oracle'):
-        pk_seqs = [col for col in args if isinstance(col, schema.Column)
-           and col.primary_key and getattr(col, '_needs_autoincrement', False)]
+    if testing.against('firebird', 'oracle'):
+        pk_seqs = [col for col in args
+                   if (isinstance(col, schema.Column)
+                       and col.primary_key
+                       and getattr(col, '_needs_autoincrement', False))]
         for c in pk_seqs:
             c.args.append(schema.Sequence(args[0] + '_' + c.name + '_seq', optional=True))
     return schema.Table(*args, **kw)
@@ -72,7 +73,7 @@ def Column(*args, **kw):
                       if k.startswith('test_')])
 
     c = schema.Column(*args, **kw)
-    if testing.against('oracle'):
+    if testing.against('firebird', 'oracle'):
         if 'test_needs_autoincrement' in test_opts:
             c._needs_autoincrement = True
     return c
