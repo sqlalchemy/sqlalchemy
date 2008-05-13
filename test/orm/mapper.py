@@ -1855,7 +1855,7 @@ class MagicNamesTest(_base.MappedTest):
         sess.save(c)
         sess.flush()
         sess.clear()
-
+    
         for C, M in ((Cartographer, Map),
                      (sa.orm.aliased(Cartographer), sa.orm.aliased(Map))):
             c1 = (sess.query(C).

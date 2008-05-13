@@ -1489,6 +1489,7 @@ class _ColumnEntity(_QueryEntity):
             self.entity_zero = None
         
     def setup_entity(self, entity, mapper, adapter, from_obj, is_aliased_class, with_polymorphic):
+        self.selectable = from_obj
         self.froms.add(from_obj)
 
     def __resolve_expr_against_query_aliases(self, query, expr, context):

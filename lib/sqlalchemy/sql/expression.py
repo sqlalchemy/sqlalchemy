@@ -1200,10 +1200,10 @@ class Operators(object):
         return op
 
     def operate(self, op, *other, **kwargs):
-        raise NotImplementedError()
+        raise NotImplementedError(str(op))
 
     def reverse_operate(self, op, other, **kwargs):
-        raise NotImplementedError()
+        raise NotImplementedError(str(op))
 
 class ColumnOperators(Operators):
     """Defines comparison and math operations."""

@@ -306,6 +306,12 @@ class PropertyLoader(StrategizedProperty):
         
         def __clause_element__(self):
             return self.prop.parent._with_polymorphic_selectable
+
+        def operate(self, op, *other, **kwargs):
+            return op(self, *other, **kwargs)
+
+        def reverse_operate(self, op, other, **kwargs):
+            return op(self, *other, **kwargs)
             
         def of_type(self, cls):
             return PropertyLoader.Comparator(self.prop, cls)
