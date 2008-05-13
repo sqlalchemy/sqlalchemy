@@ -53,10 +53,12 @@ class OrderingListTest(TestBase):
 
         metadata = MetaData(testing.db)
         slides_table = Table('test_Slides', metadata,
-                             Column('id', Integer, primary_key=True),
+                             Column('id', Integer, primary_key=True,
+                                    test_needs_autoincrement=True),
                              Column('name', String(128)))
         bullets_table = Table('test_Bullets', metadata,
-                              Column('id', Integer, primary_key=True),
+                              Column('id', Integer, primary_key=True,
+                                     test_needs_autoincrement=True),
                               Column('slide_id', Integer,
                                      ForeignKey('test_Slides.id')),
                               Column('position', Integer),
