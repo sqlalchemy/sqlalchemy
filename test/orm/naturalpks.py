@@ -85,7 +85,7 @@ class NaturalPKTest(_base.MappedTest):
         assert sess.get(User, 'jack') is None
         assert sess.get(User, 'ed').fullname == 'jack'
 
-    @testing.unsupported('mysql', 'FIXME: verify not fails_on')
+    @testing.fails_on('mysql')
     @testing.fails_on('sqlite')
     def test_onetomany_passive(self):
         self._test_onetomany(True)
@@ -136,8 +136,8 @@ class NaturalPKTest(_base.MappedTest):
         u1 = sess.get(User, 'fred')
         self.assertEquals(User(username='fred', fullname='jack'), u1)
 
-    @testing.unsupported('sqlite', "on update cascade not supported")
-    @testing.unsupported('mysql', "on update cascade not supported")
+    @testing.fails_on('sqlite')
+    @testing.fails_on('mysql')
     def test_manytoone_passive(self):
         self._test_manytoone(True)
 
@@ -181,8 +181,8 @@ class NaturalPKTest(_base.MappedTest):
         sess.clear()
         self.assertEquals([Address(username='ed'), Address(username='ed')], sess.query(Address).all())
 
-    @testing.unsupported('sqlite', "on update cascade not supported")
-    @testing.unsupported('mysql', "on update cascade not supported")
+    @testing.fails_on('sqlite')
+    @testing.fails_on('mysql')
     def test_bidirectional_passive(self):
         self._test_bidirectional(True)
 
@@ -235,8 +235,8 @@ class NaturalPKTest(_base.MappedTest):
         self.assertEquals([Address(username='fred'), Address(username='fred')], sess.query(Address).all())
 
 
-    @testing.unsupported('sqlite', "on update cascade not supported")
-    @testing.unsupported('mysql', "on update cascade not supported")
+    @testing.fails_on('sqlite')
+    @testing.fails_on('mysql')
     def test_manytomany_passive(self):
         self._test_manytomany(True)
 
@@ -342,8 +342,8 @@ class NonPKCascadeTest(_base.MappedTest):
         class Address(_base.ComparableEntity):
             pass
 
-    @testing.unsupported('sqlite', "on update cascade not supported")
-    @testing.unsupported('mysql', "on update cascade not supported")
+    @testing.fails_on('sqlite')
+    @testing.fails_on('mysql')
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 
