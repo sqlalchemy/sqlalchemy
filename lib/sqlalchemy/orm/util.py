@@ -114,7 +114,6 @@ def identity_key(*args, **kwargs):
       entity_name
           optional entity name (must be given as a keyword arg)
     """
-    from sqlalchemy.orm import class_mapper, object_mapper
     if args:
         if len(args) == 1:
             class_ = args[0]
