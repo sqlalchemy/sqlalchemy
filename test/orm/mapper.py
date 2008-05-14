@@ -469,7 +469,7 @@ class MapperTest(_fixtures.FixtureTest):
         assert email_bounces not in m._pks_by_table
 
         sess = create_session()
-        a = Address(email_address='e1')
+        a = Address(id=10, email_address='e1')
         sess.add(a)
         sess.flush()
 
@@ -951,7 +951,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         mapper(Order, orders, properties=dict(
             items=relation(Item, order_items,
-                           order_by=order_items.default_order_by())))
+                           order_by=items.default_order_by())))
 
         mapper(User, users, order_by=users.default_order_by(), properties=dict(
             orders=relation(Order, order_by=orders.default_order_by())))
@@ -1463,7 +1463,8 @@ class NoLoadTest(_fixtures.FixtureTest):
 
 
 class MapperExtensionTest(_fixtures.FixtureTest):
-
+    run_inserts = None
+    
     def extension(self):
         methods = []
 
