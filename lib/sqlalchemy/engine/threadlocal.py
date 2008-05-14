@@ -113,7 +113,10 @@ class TLConnection(base.Connection):
 
     def begin_twophase(self, xid=None):
         return self.session.begin_twophase(xid=xid)
-
+    
+    def begin_nested(self):
+        raise NotImplementedError("SAVEPOINT transactions with the 'threadlocal' strategy")
+        
     def close(self):
         if self.__opencount == 1:
             base.Connection.close(self)
@@ -192,6 +195,9 @@ class TLEngine(base.Engine):
 
     def begin_twophase(self, **kwargs):
         return self.session.begin_twophase(**kwargs)
+
+    def begin_nested(self):
+        raise NotImplementedError("SAVEPOINT transactions with the 'threadlocal' strategy")
         
     def begin(self, **kwargs):
         return self.session.begin(**kwargs)
