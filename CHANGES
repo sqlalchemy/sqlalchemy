@@ -173,7 +173,7 @@ user_defined_state
       returned.  This flag is only safe to use with a database
       which does not support transactions (i.e. MySQL/MyISAM).
 
--ext
+- ext
     - set-based association proxies |=, -=, ^= and &= are
       stricter about their operands and only operate on sets,
       frozensets or other association proxies. Previously, they
@@ -194,7 +194,6 @@ user_defined_state
 
       This should obviate the need of adding a myriad of ODBC
       options in the future.
-
 
 - firebird
     - Handle the "SUBSTRING(:string FROM :start FOR :length)"
