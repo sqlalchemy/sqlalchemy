@@ -78,6 +78,18 @@ connections are active, the following setting may alleviate the problem::
   # Force SA to use a single connection per thread
   dialect.poolclass = pool.SingletonThreadPool
 
+RETURNING support
+-----------------
+
+Firebird 2.0 supports returning a result set from inserts, and 2.1 extends
+that to deletes and updates.
+
+To use this pass the column/expression list to the ``firebird_returning``
+parameter when creating the queries::
+
+  raises = tbl.update(empl.c.sales > 100, values=dict(salary=empl.c.salary * 1.1),
+                      firebird_returning=[empl.c.id, empl.c.salary]).execute().fetchall()
+
 
 .. [#] Well, that is not the whole story, as the client may still ask
        a different (lower) dialect...
@@ -87,7 +99,7 @@ connections are active, the following setting may alleviate the problem::
 """
 
 
-import datetime
+import datetime, re
 
 from sqlalchemy import exc, schema, types as sqltypes, sql, util
 from sqlalchemy.engine import base, default
@@ -261,8 +273,44 @@ def descriptor():
     ]}
 
 
+SELECT_RE = re.compile(
+    r'\s*(?:SELECT|(UPDATE|INSERT|DELETE))',
+    re.I | re.UNICODE)
+
+RETURNING_RE = re.compile(
+    'RETURNING',
+    re.I | re.UNICODE)
+
+# This finds if the RETURNING is not inside a quoted/commented values. Handles string literals,
+# quoted identifiers, dollar quotes, SQL comments and C style multiline comments. This does not
+# handle correctly nested C style quotes, lets hope no one does the following:
+# UPDATE tbl SET x=y /* foo /* bar */ RETURNING */
+RETURNING_QUOTED_RE = re.compile(
+    """\s*(?:UPDATE|INSERT|DELETE)\s
+        (?: # handle quoted and commented tokens separately
+            [^'"$/-] # non quote/comment character
+            | -(?!-) # a dash that does not begin a comment
+            | /(?!\*) # a slash that does not begin a comment
+            | "(?:[^"]|"")*" # quoted literal
+            | '(?:[^']|'')*' # quoted string
+            | --[^\\n]*(?=\\n) # SQL comment, leave out line ending as that counts as whitespace
+                               # for the returning token
+            | /\*([^*]|\*(?!/))*\*/ # C style comment, doesn't handle nesting
+        )*
+        \sRETURNING\s""", re.I | re.UNICODE | re.VERBOSE)
+
+RETURNING_KW_NAME = 'firebird_returning'
+
 class FBExecutionContext(default.DefaultExecutionContext):
-    pass
+    def returns_rows_text(self, statement):
+        m = SELECT_RE.match(statement)
+        return m and (not m.group(1) or (RETURNING_RE.search(statement)
+                                         and RETURNING_QUOTED_RE.match(statement)))
+
+    def returns_rows_compiled(self, compiled):
+        return (isinstance(compiled.statement, sql.expression.Selectable) or
+                ((compiled.isupdate or compiled.isinsert or compiler.isdelete) and
+                 RETURNING_KW_NAME in compiled.statement.kwargs))
 
 
 class FBDialect(default.DefaultDialect):
@@ -628,6 +676,41 @@ class FBCompiler(sql.compiler.DefaultCompiler):
         if func.name == 'length':
             return self.LENGTH_FUNCTION_NAME + '%(expr)s'
         return super(FBCompiler, self).function_string(func)
+
+    def _append_returning(self, text, stmt):
+        returning_cols = stmt.kwargs[RETURNING_KW_NAME]
+        def flatten_columnlist(collist):
+            for c in collist:
+                if isinstance(c, sql.expression.Selectable):
+                    for co in c.columns:
+                        yield co
+                else:
+                    yield c
+        columns = [self.process(c, render_labels=True)
+                   for c in flatten_columnlist(returning_cols)]
+        text += ' RETURNING ' + ', '.join(columns)
+        return text
+
+    def visit_update(self, update_stmt):
+        text = super(FBCompiler, self).visit_update(update_stmt)
+        if RETURNING_KW_NAME in update_stmt.kwargs:
+            return self._append_returning(text, update_stmt)
+        else:
+            return text
+
+    def visit_insert(self, insert_stmt):
+        text = super(FBCompiler, self).visit_insert(insert_stmt)
+        if RETURNING_KW_NAME in insert_stmt.kwargs:
+            return self._append_returning(text, insert_stmt)
+        else:
+            return text
+
+    def visit_delete(self, delete_stmt):
+        text = super(FBCompiler, self).visit_delete(delete_stmt)
+        if RETURNING_KW_NAME in delete_stmt.kwargs:
+            return self._append_returning(text, delete_stmt)
+        else:
+            return text
 
 
 class FBSchemaGenerator(sql.compiler.SchemaGenerator):
