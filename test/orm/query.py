@@ -10,6 +10,9 @@ from testlib import *
 from orm import _base
 from testlib import engines
 from testlib.fixtures import *
+from testlib import sa, testing
+from testlib.testing import eq_
+from orm import _fixtures
 
 from sqlalchemy.orm.util import join, outerjoin, with_parent
 
@@ -365,7 +368,7 @@ class FilterTest(QueryTest):
         assert [] == create_session().query(User)[0:0]
         
         
-    def test_onefilter(self):
+    def test_one_filter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.name.endswith('ed')).all()
 
     def test_contains(self):
@@ -1434,6 +1437,58 @@ class MixedEntitiesTest(QueryTest):
 
         assert q.all() == expected
         sess.clear()
+
+
+class ImmediateTest(_fixtures.FixtureTest):
+    run_inserts = 'once'
+    run_deletes = None
+
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        mapper(Address, addresses)
+
+        mapper(User, users, properties=dict(
+            addresses=relation(Address)))
+
+    @testing.resolve_artifact_names
+    def test_one(self):
+        sess = create_session()
+
+        self.assertRaises(sa.orm.exc.NoResultFound,
+                          sess.query(User).filter(User.id == 99).one)
+
+        eq_(sess.query(User).filter(User.id == 7).one().id, 7)
+
+        self.assertRaises(sa.orm.exc.MultipleResultsFound,
+                          sess.query(User).one)
+
+        self.assertRaises(
+            sa.orm.exc.NoResultFound,
+            sess.query(User.id, User.name).filter(User.id == 99).one)
+
+        eq_(sess.query(User.id, User.name).filter(User.id == 7).one(),
+            (7, 'jack'))
+
+        self.assertRaises(sa.orm.exc.MultipleResultsFound,
+                          sess.query(User.id, User.name).one)
+
+        self.assertRaises(sa.orm.exc.NoResultFound,
+                          (sess.query(User, Address).
+                           join(User.addresses).
+                           filter(Address.id == 99)).one)
+
+        eq_((sess.query(User, Address).
+             join(User.addresses).
+             filter(Address.id == 4)).one(),
+            (User(id=8), Address(id=4)))
+
+        self.assertRaises(sa.orm.exc.MultipleResultsFound,
+                          sess.query(User, Address).join(User.addresses).one)
+
+
+    @testing.future
+    def test_getslice(self):
+        assert False
 
 
 class SelectFromTest(QueryTest):

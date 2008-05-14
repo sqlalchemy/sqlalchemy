@@ -1045,22 +1045,29 @@ class Query(object):
                 return None
 
     def one(self):
-        """Return the first result, raising an exception unless exactly one row exists.
+        """Return exactly one result or raise an exception.
+
+        Raises ``sqlalchemy.orm.NoResultError`` if the query selects no rows.
+        Raisees ``sqlalchemy.orm.MultipleResultsError`` if multiple rows are
+        selected.
 
         This results in an execution of the underlying query.
 
         """
         if self._statement:
-            raise exceptions.InvalidRequestError("one() not available when from_statement() is used; use `first()` instead.")
-            
+            raise exceptions.InvalidRequestError(
+                "one() not available when from_statement() is used; "
+                "use `first()` instead.")
+
         ret = list(self[0:2])
 
         if len(ret) == 1:
             return ret[0]
         elif len(ret) == 0:
-            raise sa_exc.InvalidRequestError('No rows returned for one()')
+            raise orm_exc.NoResultFound("No row was found for one()")
         else:
-            raise sa_exc.InvalidRequestError('Multiple rows returned for one()')
+            raise orm_exc.MultipleResultsFound(
+                "Multiple rows were found for one()")
 
     def __iter__(self):
         context = self._compile_context()

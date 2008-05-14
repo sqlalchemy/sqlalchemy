@@ -24,6 +24,11 @@ class ObjectDeletedError(sa_exc.InvalidRequestError):
 class UnmappedColumnError(sa_exc.InvalidRequestError):
     """Mapping operation was requested on an unknown column."""
 
+class NoResultFound(sa_exc.InvalidRequestError):
+    """A database result was required but none was found."""
+
+class MultipleResultsFound(sa_exc.InvalidRequestError):
+    """A single database result was required but more than one were found."""
 
 # Legacy compat until 0.6.
 sa_exc.ConcurrentModificationError = ConcurrentModificationError

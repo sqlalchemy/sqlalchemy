@@ -460,7 +460,19 @@ The `all()`, `one()`, and `first()` methods of `Query` immediately issue SQL and
     WHERE users.name LIKE ? ORDER BY users.id 
      LIMIT 2 OFFSET 0
     ['%ed']
-    {stop}Multiple rows returned for one()
+    {stop}Multiple rows were found for one()
+
+    {python}
+    {sql}>>> try:
+    ...     user = query.filter(User.id == 99).one() 
+    ... except Exception, e: 
+    ...     print e
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.name LIKE ? AND users.id = ? ORDER BY users.id 
+     LIMIT 2 OFFSET 0
+    ['%ed', 99]
+    {stop}No row was found for one()
 
 ### Using Literal SQL {@naqme=literal}
 
