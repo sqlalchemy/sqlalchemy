@@ -178,7 +178,7 @@ class EagerTest(_base.MappedTest):
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         eq_(result, [u'1 Some Category', u'3 Some Category'])
 
-    @testing.unsupported('sybase', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.resolve_artifact_names
     def test_without_outerjoin_literal(self):
         s = create_session()

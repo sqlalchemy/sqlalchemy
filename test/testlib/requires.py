@@ -6,44 +6,85 @@ target database.
 """
 
 from testlib.testing import \
+     _block_unconditionally as no_support, \
      _chain_decorators_on, \
-     exclude, \
-     unsupported
+     exclude
 
 
-def sequences(fn):
-    """Target database must support SEQUENCEs."""
+def deferrable_constraints(fn):
+    """Target database must support derferable constraints."""
     return _chain_decorators_on(
         fn,
-        unsupported('access', 'no SEQUENCE support'),
-        unsupported('mssql', 'no SEQUENCE support'),
-        unsupported('mysql', 'no SEQUENCE support'),
-        unsupported('sqlite', 'no SEQUENCE support'),
-        unsupported('sybase', 'no SEQUENCE support'),
+        no_support('mysql', 'not supported by database'),
+        no_support('mssql', 'not supported by database'),
+        )
+
+def foreign_keys(fn):
+    """Target database must support foreign keys."""
+    return _chain_decorators_on(
+        fn,
+        no_support('sqlite', 'not supported by database'),
+        )
+
+def independent_connections(fn):
+    """Target must support simultaneous, independent database connections."""
+
+    # This is also true of some configurations of UnixODBC and probably win32
+    # ODBC as well.
+    return _chain_decorators_on(
+        fn,
+        no_support('sqlite', 'no driver support')
+        )
+
+def row_triggers(fn):
+    """Target must support standard statement-running EACH ROW triggers."""
+    return _chain_decorators_on(
+        fn,
+        # no access to same table
+        exclude('mysql', '<', (5, 0, 10), 'not supported by database'),
+        no_support('postgres', 'not supported by database: no statements'),
         )
 
 def savepoints(fn):
     """Target database must support savepoints."""
     return _chain_decorators_on(
         fn,
-        unsupported('access', 'FIXME: guessing, needs confirmation'),
-        unsupported('mssql', 'FIXME: guessing, needs confirmation'),
-        unsupported('sqlite', 'not supported by database'),
-        unsupported('sybase', 'FIXME: guessing, needs confirmation'),
+        no_support('access', 'FIXME: guessing, needs confirmation'),
+        no_support('mssql', 'FIXME: guessing, needs confirmation'),
+        no_support('sqlite', 'not supported by database'),
+        no_support('sybase', 'FIXME: guessing, needs confirmation'),
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
+        )
+
+def sequences(fn):
+    """Target database must support SEQUENCEs."""
+    return _chain_decorators_on(
+        fn,
+        no_support('access', 'no SEQUENCE support'),
+        no_support('mssql', 'no SEQUENCE support'),
+        no_support('mysql', 'no SEQUENCE support'),
+        no_support('sqlite', 'no SEQUENCE support'),
+        no_support('sybase', 'no SEQUENCE support'),
+        )
+
+def subqueries(fn):
+    """Target database must support subqueries."""
+    return _chain_decorators_on(
+        fn,
+        exclude('mysql', '<', (4, 1, 1), 'no subquery support'),
         )
 
 def two_phase_transactions(fn):
     """Target database must support two-phase transactions."""
     return _chain_decorators_on(
         fn,
-        unsupported('access', 'FIXME: guessing, needs confirmation'),
-        unsupported('firebird', 'no SA implementation'),
-        unsupported('maxdb', 'not supported by database'),
-        unsupported('mssql', 'FIXME: guessing, needs confirmation'),
-        unsupported('oracle', 'no SA implementation'),
-        unsupported('sqlite', 'not supported by database'),
-        unsupported('sybase', 'FIXME: guessing, needs confirmation'),
+        no_support('access', 'FIXME: guessing, needs confirmation'),
+        no_support('firebird', 'no SA implementation'),
+        no_support('maxdb', 'not supported by database'),
+        no_support('mssql', 'FIXME: guessing, needs confirmation'),
+        no_support('oracle', 'no SA implementation'),
+        no_support('sqlite', 'not supported by database'),
+        no_support('sybase', 'FIXME: guessing, needs confirmation'),
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
         )
 
@@ -60,39 +101,8 @@ def unicode_ddl(fn):
     # TODO: expand to exclude MySQLdb versions w/ broken unicode
     return _chain_decorators_on(
         fn,
-        unsupported('maxdb', 'database support flakey'),
-        unsupported('oracle', 'FIXME: no support in database?'),
-        unsupported('sybase', 'FIXME: guessing, needs confirmation'),
+        no_support('maxdb', 'database support flakey'),
+        no_support('oracle', 'FIXME: no support in database?'),
+        no_support('sybase', 'FIXME: guessing, needs confirmation'),
         exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
-        )
-
-def subqueries(fn):
-    """Target database must support subqueries."""
-    return _chain_decorators_on(
-        fn,
-        exclude('mysql', '<', (4, 1, 1), 'no subquery support'),
-        )
-
-def foreign_keys(fn):
-    """Target database must support foreign keys."""
-    return _chain_decorators_on(
-        fn,
-        unsupported('sqlite', 'not supported by database'),
-        )
-
-def deferrable_constraints(fn):
-    """Target database must support derferable constraints."""
-    return _chain_decorators_on(
-        fn,
-        unsupported('mysql', 'not supported by database'),
-        unsupported('mssql', 'not supported by database'),
-        )
-
-def row_triggers(fn):
-    """Target must support standard statement-running EACH ROW triggers."""
-    return _chain_decorators_on(
-        fn,
-        # no access to same table
-        exclude('mysql', '<', (5, 0, 10), 'not supported by database'),
-        unsupported('postgres', 'not supported by database: no statements'),
         )

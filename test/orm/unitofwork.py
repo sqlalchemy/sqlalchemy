@@ -16,6 +16,7 @@ from orm import _base, _fixtures
 from engine import _base as engine_base
 import pickleable
 
+
 class UnitOfWorkTest(object):
     pass
 
@@ -658,7 +659,7 @@ class ClauseAttributesTest(_base.MappedTest):
         eq_(u.name, 'test2')
         eq_(u.counter,  2)
 
-    @testing.unsupported('mssql', 'FIXME: unknown, verify not fails_on()')
+    @testing.crashes('mssql', 'FIXME: unknown, verify not fails_on()')
     @testing.resolve_artifact_names
     def test_insert(self):
         u = User(name='test', counter=sa.select([5]))

@@ -8,7 +8,6 @@ from sqlalchemy.databases import mssql, oracle, mysql, postgres, firebird
 from testlib import *
 
 
-
 class AdaptTest(TestBase):
     def testadapt(self):
         e1 = url.URL('postgres').get_dialect()()
@@ -381,7 +380,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             testing.db.engine.dialect.convert_unicode = prev_unicode
             testing.db.engine.dialect.convert_unicode = prev_assert
 
-    @testing.unsupported('oracle', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('firebird') # "Data type unknown" on the parameter
     def testlength(self):
         """checks the database correctly understands the length of a unicode string"""

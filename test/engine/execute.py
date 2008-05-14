@@ -49,7 +49,7 @@ class ExecuteTest(TestBase):
 
     # pyformat is supported for mysql, but skipping because a few driver
     # versions have a bug that bombs out on this test. (1.2.2b3, 1.2.2c1, 1.2.2)
-    @testing.unsupported('mysql', 'supported but not covered for MySQLdb')
+    @testing.skip_if(lambda: testing.against('mysql'), 'db-api flaky')
     @testing.fails_on_everything_except('postgres')
     def test_raw_python(self):
         for conn in (testing.db, testing.db.connect()):

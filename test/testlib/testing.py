@@ -147,13 +147,13 @@ def fails_on_everything_except(*dbs):
         return _function_named(maybe, fn_name)
     return decorate
 
-def unsupported(db, reason):
+def crashes(db, reason):
     """Mark a test as unsupported by a database implementation.
 
-    'unsupported' tests will be skipped unconditionally.  Useful for feature
-    tests that cause deadlocks or other fatal problems.
-    """
+    'crashes' tests will be skipped unconditionally.  Use for feature tests
+    that cause deadlocks or other fatal problems.
 
+    """
     carp = _should_carp_about_exclusion(reason)
     def decorate(fn):
         fn_name = fn.__name__
@@ -169,6 +169,31 @@ def unsupported(db, reason):
                 return fn(*args, **kw)
         return _function_named(maybe, fn_name)
     return decorate
+
+def _block_unconditionally(db, reason):
+    """Mark a test as unsupported by a database implementation.
+
+    Will never run the test against any version of the given database, ever,
+    no matter what.  Use when your assumptions are infallible; past, present
+    and future.
+
+    """
+    carp = _should_carp_about_exclusion(reason)
+    def decorate(fn):
+        fn_name = fn.__name__
+        def maybe(*args, **kw):
+            if config.db.name == db:
+                msg = "'%s' unsupported on DB implementation '%s': %s" % (
+                    fn_name, config.db.name, reason)
+                print msg
+                if carp:
+                    print >> sys.stderr, msg
+                return True
+            else:
+                return fn(*args, **kw)
+        return _function_named(maybe, fn_name)
+    return decorate
+
 
 def exclude(db, op, spec, reason):
     """Mark a test as unsupported by specific database server versions.
@@ -241,6 +266,22 @@ def _server_version(bind=None):
     if bind is None:
         bind = config.db
     return bind.dialect.server_version_info(bind.contextual_connect())
+
+def skip_if(predicate, reason=None):
+    """Skip a test if predicate is true."""
+    reason = reason or predicate.__name__
+    def decorate(fn):
+        fn_name = fn.__name__
+        def maybe(*args, **kw):
+            if predicate():
+                msg = "'%s' skipped on DB %s version '%s': %s" % (
+                    fn_name, config.db.name, _server_version(), reason)
+                print msg
+                return True
+            else:
+                return fn(*args, **kw)
+        return _function_named(maybe, fn_name)
+    return decorate
 
 def emits_warning(*messages):
     """Mark a test as emitting a warning.

@@ -418,7 +418,7 @@ class ReflectionTest(TestBase, ComparesTables):
             meta.drop_all()
 
 
-    @testing.unsupported('oracle', 'FIXME: unknown, confirm not fails_on')
+    @testing.crashes('oracle', 'FIXME: unknown, confirm not fails_on')
     def testreserved(self):
         # check a table that uses an SQL reserved name doesn't cause an error
         meta = MetaData(testing.db)
@@ -676,7 +676,7 @@ class SchemaTest(TestBase):
             assert buf.index("CREATE TABLE someschema.table1") > -1
             assert buf.index("CREATE TABLE someschema.table2") > -1
 
-    @testing.unsupported('firebird', 'FIXME: unknown- no schema support in db?')
+    @testing.crashes('firebird', 'FIXME: unknown- no schema support in db?')
     @testing.fails_on('sqlite')
     # fixme: revisit these below.
     @testing.fails_on('access', 'oracle', 'mssql', 'sybase')

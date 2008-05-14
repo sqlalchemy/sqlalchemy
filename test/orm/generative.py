@@ -35,7 +35,7 @@ class GenerativeQueryTest(_base.MappedTest):
         assert res.order_by([Foo.bar])[0].bar == 5
         assert res.order_by([sa.desc(Foo.bar)])[0].bar == 95
 
-    @testing.unsupported('mssql', 'FIXME: verify not fails_on()')
+    @testing.crashes('mssql', 'FIXME: verify not fails_on()')
     @testing.fails_on('maxdb')
     @testing.resolve_artifact_names
     def test_slice(self):

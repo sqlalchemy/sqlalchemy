@@ -732,11 +732,11 @@ class ForUpdateTest(TestBase):
                 break
         con.close()
 
-    @testing.unsupported('sqlite', 'needs n threads -> 1 :memory: db')
-    @testing.unsupported('mssql', 'FIXME: unknown')
-    @testing.unsupported('firebird', 'FIXME: unknown')
-    @testing.unsupported('sybase', 'FIXME: unknown')
-    @testing.unsupported('access', 'FIXME: unknown')
+    @testing.crashes('mssql', 'FIXME: unknown')
+    @testing.crashes('firebird', 'FIXME: unknown')
+    @testing.crashes('sybase', 'FIXME: unknown')
+    @testing.crashes('access', 'FIXME: unknown')
+    @testing.requires.independent_connections
     def test_queued_update(self):
         """Test SELECT FOR UPDATE with concurrent modifications.
 
@@ -798,11 +798,11 @@ class ForUpdateTest(TestBase):
 
         return errors
 
-    @testing.unsupported('sqlite', 'needs n threads -> 1 memory db')
-    @testing.unsupported('mssql', 'FIXME: unknown')
-    @testing.unsupported('firebird', 'FIXME: unknown')
-    @testing.unsupported('sybase', 'FIXME: unknown')
-    @testing.unsupported('access', 'FIXME: unknown')
+    @testing.crashes('mssql', 'FIXME: unknown')
+    @testing.crashes('firebird', 'FIXME: unknown')
+    @testing.crashes('sybase', 'FIXME: unknown')
+    @testing.crashes('access', 'FIXME: unknown')
+    @testing.requires.independent_connections
     def test_queued_select(self):
         """Simple SELECT FOR UPDATE conflict test"""
 
@@ -811,12 +811,12 @@ class ForUpdateTest(TestBase):
             sys.stderr.write("Failure: %s\n" % e)
         self.assert_(len(errors) == 0)
 
-    @testing.unsupported('sqlite', 'needs n threads -> 1 memory db')
-    @testing.unsupported('mssql', 'FIXME: unknown')
-    @testing.unsupported('mysql', 'no support for NOWAIT')
-    @testing.unsupported('firebird', 'FIXME: unknown')
-    @testing.unsupported('sybase', 'FIXME: unknown')
-    @testing.unsupported('access', 'FIXME: unknown')
+    @testing.crashes('mssql', 'FIXME: unknown')
+    @testing.fails_on('mysql') # no support for NOWAIT
+    @testing.crashes('firebird', 'FIXME: unknown')
+    @testing.crashes('sybase', 'FIXME: unknown')
+    @testing.crashes('access', 'FIXME: unknown')
+    @testing.requires.independent_connections
     def test_nowait_select(self):
         """Simple SELECT FOR UPDATE NOWAIT conflict test"""
 

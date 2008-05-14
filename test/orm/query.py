@@ -16,6 +16,7 @@ from orm import _fixtures
 
 from sqlalchemy.orm.util import join, outerjoin, with_parent
 
+
 class QueryTest(FixtureTest):
     keep_mappers = True
     keep_data = True
@@ -414,7 +415,7 @@ class FilterTest(QueryTest):
 
         assert [User(id=10)] == sess.query(User).outerjoin("addresses", aliased=True).filter(~User.addresses.any()).all()
         
-    @testing.unsupported('maxdb', 'can dump core')
+    @testing.crashes('maxdb', 'can dump core')
     def test_has(self):
         sess = create_session()
         assert [Address(id=5)] == sess.query(Address).filter(Address.user.has(name='fred')).all()

@@ -151,8 +151,8 @@ class SessionTest(_fixtures.FixtureTest):
         assert len(session.query(User).filter_by(name='Johnny').all()) == 0
         session.close()
 
-    @testing.unsupported('mssql', 'test causes mssql to hang')
-    @testing.unsupported('sqlite', 'needs true independent connections')
+    @testing.crashes('mssql', 'test causes mssql to hang')
+    @testing.requires.independent_connections
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_transaction(self):
@@ -171,8 +171,8 @@ class SessionTest(_fixtures.FixtureTest):
         assert testing.db.connect().execute("select count(1) from users").scalar() == 1
         sess.close()
 
-    @testing.unsupported('mssql', 'test causes mssql to hang')
-    @testing.unsupported('sqlite', 'needs true independent connections')
+    @testing.crashes('mssql', 'test causes mssql to hang')
+    @testing.requires.independent_connections
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_autoflush(self):
@@ -206,8 +206,8 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(sess.query(Address).filter(Address.user==u).one(),
             Address(email_address='foo'))
 
-    @testing.unsupported('mssql', 'test causes mssql to hang')
-    @testing.unsupported('sqlite', 'needs true independent connections')
+    @testing.crashes('mssql', 'test causes mssql to hang')
+    @testing.requires.independent_connections
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_autoflush_unbound(self):

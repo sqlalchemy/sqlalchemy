@@ -385,7 +385,7 @@ class PKDefaultTest(TestBase):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.unsupported('mssql', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('mssql', 'FIXME: unknown, verify not fails_on')
     def test_basic(self):
         t2.insert().execute(nextid=1)
         r = t1.insert().execute(data='hi')
