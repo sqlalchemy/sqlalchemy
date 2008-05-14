@@ -87,3 +87,12 @@ def deferrable_constraints(fn):
         unsupported('mysql', 'not supported by database'),
         unsupported('mssql', 'not supported by database'),
         )
+
+def row_triggers(fn):
+    """Target must support standard statement-running EACH ROW triggers."""
+    return _chain_decorators_on(
+        fn,
+        # no access to same table
+        exclude('mysql', '<', (5, 0, 10), 'not supported by database'),
+        unsupported('postgres', 'not supported by database: no statements'),
+        )

@@ -3,6 +3,8 @@ import datetime
 from sqlalchemy import *
 from sqlalchemy import exc, schema, util
 from sqlalchemy.orm import mapper, create_session
+from testlib import sa, testing
+from testlib.testing import eq_
 from testlib import *
 
 
@@ -35,8 +37,9 @@ class DefaultTest(TestBase):
         use_function_defaults = testing.against('postgres', 'oracle')
         is_oracle = testing.against('oracle')
 
-        # select "count(1)" returns different results on different DBs
-        # also correct for "current_date" compatible as column default, value differences
+        # select "count(1)" returns different results on different DBs also
+        # correct for "current_date" compatible as column default, value
+        # differences
         currenttime = func.current_date(type_=Date, bind=db)
 
         if is_oracle:
@@ -69,32 +72,48 @@ class DefaultTest(TestBase):
 
         t = Table('default_test1', metadata,
             # python function
-            Column('col1', Integer, primary_key=True, default=mydefault),
+            Column('col1', Integer, primary_key=True,
+                   default=mydefault),
 
             # python literal
-            Column('col2', String(20), default="imthedefault", onupdate="im the update"),
+            Column('col2', String(20),
+                   default="imthedefault",
+                   onupdate="im the update"),
 
             # preexecute expression
-            Column('col3', Integer, default=func.length('abcdef'), onupdate=func.length('abcdefghijk')),
+            Column('col3', Integer,
+                   default=func.length('abcdef'),
+                   onupdate=func.length('abcdefghijk')),
 
             # SQL-side default from sql expression
-            Column('col4', deftype, PassiveDefault(def1)),
+            Column('col4', deftype,
+                   server_default=def1),
 
             # SQL-side default from literal expression
-            Column('col5', deftype, PassiveDefault(def2)),
+            Column('col5', deftype,
+                   server_default=def2),
 
             # preexecute + update timestamp
-            Column('col6', Date, default=currenttime, onupdate=currenttime),
+            Column('col6', Date,
+                   default=currenttime,
+                   onupdate=currenttime),
 
             Column('boolcol1', Boolean, default=True),
             Column('boolcol2', Boolean, default=False),
 
             # python function which uses ExecutionContext
-            Column('col7', Integer, default=mydefault_using_connection, onupdate=myupdate_with_ctx),
+            Column('col7', Integer,
+                   default=mydefault_using_connection,
+                   onupdate=myupdate_with_ctx),
 
             # python builtin
-            Column('col8', Date, default=datetime.date.today, onupdate=datetime.date.today)
-        )
+            Column('col8', Date,
+                   default=datetime.date.today,
+                   onupdate=datetime.date.today),
+            # combo
+            Column('col9', String(20),
+                   default='py',
+                   server_default='ddl'))
         t.create()
 
     def tearDownAll(self):
@@ -159,29 +178,98 @@ class DefaultTest(TestBase):
         self.assert_(z == f)
         self.assert_(f2==11)
 
-    def testinsert(self):
+    def test_py_vs_server_default_detection(self):
+
+        def has_(name, *wanted):
+            slots = ['default', 'onupdate', 'server_default', 'server_onupdate']
+            col = tbl.c[name]
+            for slot in wanted:
+                slots.remove(slot)
+                assert getattr(col, slot) is not None, getattr(col, slot)
+            for slot in slots:
+                assert getattr(col, slot) is None, getattr(col, slot)
+
+        tbl = t
+        has_('col1', 'default')
+        has_('col2', 'default', 'onupdate')
+        has_('col3', 'default', 'onupdate')
+        has_('col4', 'server_default')
+        has_('col5', 'server_default')
+        has_('col6', 'default', 'onupdate')
+        has_('boolcol1', 'default')
+        has_('boolcol2', 'default')
+        has_('col7', 'default', 'onupdate')
+        has_('col8', 'default', 'onupdate')
+        has_('col9', 'default', 'server_default')
+
+        t2 = Table('t2', MetaData(),
+                   Column('col1', Integer, Sequence('foo')),
+                   Column('col2', Integer,
+                          default=Sequence('foo'),
+                          server_default='y'),
+                   Column('col3', Integer,
+                          Sequence('foo'),
+                          server_default='x'),
+                   Column('col4', Integer,
+                          ColumnDefault('x'),
+                          DefaultClause('y')),
+                   Column('col4', Integer,
+                          ColumnDefault('x'),
+                          DefaultClause('y'),
+                          DefaultClause('y', for_update=True)),
+                   Column('col5', Integer,
+                          ColumnDefault('x'),
+                          DefaultClause('y'),
+                          onupdate='z'),
+                   Column('col6', Integer,
+                          ColumnDefault('x'),
+                          server_default='y',
+                          onupdate='z'),
+                   Column('col7', Integer,
+                          default='x',
+                          server_default='y',
+                          onupdate='z'),
+                   Column('col8', Integer,
+                          server_onupdate='u',
+                          default='x',
+                          server_default='y',
+                          onupdate='z'))
+        tbl = t2
+        has_('col1', 'default')
+        has_('col2', 'default', 'server_default')
+        has_('col3', 'default', 'server_default')
+        has_('col4', 'default', 'server_default', 'server_onupdate')
+        has_('col5', 'default', 'server_default', 'onupdate')
+        has_('col6', 'default', 'server_default', 'onupdate')
+        has_('col7', 'default', 'server_default', 'onupdate')
+        has_('col8', 'default', 'server_default', 'onupdate', 'server_onupdate')
+
+    def test_insert(self):
         r = t.insert().execute()
         assert r.lastrow_has_defaults()
-        assert util.Set(r.context.postfetch_cols) == util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6])
+        eq_(util.Set(r.context.postfetch_cols), util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]))
 
         r = t.insert(inline=True).execute()
         assert r.lastrow_has_defaults()
-        assert util.Set(r.context.postfetch_cols) == util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6])
+        eq_(util.Set(r.context.postfetch_cols), util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]))
 
-        t.insert().execute()
         t.insert().execute()
 
         ctexec = select([currenttime.label('now')], bind=testing.db).scalar()
         l = t.select().execute()
         today = datetime.date.today()
-        self.assertEquals(l.fetchall(), [
-            (51, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today),
-            (52, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today),
-            (53, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today),
-            (54, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today),
-            ])
+        eq_(l.fetchall(), [
+            (x, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today, 'py')
+            for x in range(51, 54)])
 
-    def testinsertmany(self):
+        t.insert().execute(col9=None)
+        assert r.lastrow_has_defaults()
+        eq_(util.Set(r.context.postfetch_cols), util.Set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]))
+
+        eq_(t.select(t.c.col1==54).execute().fetchall(),
+            [(54, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today, None)])
+
+    def test_insertmany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
         if (testing.against('mysql') and
             testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
@@ -192,14 +280,17 @@ class DefaultTest(TestBase):
         ctexec = currenttime.scalar()
         l = t.select().execute()
         today = datetime.date.today()
-        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (52, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today), (53, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today)])
+        eq_(l.fetchall(),
+            [(51, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today, 'py'),
+             (52, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today, 'py'),
+             (53, 'imthedefault', f, ts, ts, ctexec, True, False, 12, today, 'py')])
 
-    def testinsertvalues(self):
+    def test_insert_values(self):
         t.insert(values={'col3':50}).execute()
         l = t.select().execute()
         self.assert_(l.fetchone()['col3'] == 50)
 
-    def testupdatemany(self):
+    def test_updatemany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
         if (testing.against('mysql') and
             testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
@@ -220,7 +311,10 @@ class DefaultTest(TestBase):
         l = t.select().execute()
         ctexec = currenttime.scalar()
         today = datetime.date.today()
-        self.assert_(l.fetchall() == [(51, 'im the update', f2, ts, ts, ctexec, False, False, 13, today), (52, 'im the update', f2, ts, ts, ctexec, True, False, 13, today), (53, 'im the update', f2, ts, ts, ctexec, True, False, 13, today)])
+        eq_(l.fetchall(),
+            [(51, 'im the update', f2, ts, ts, ctexec, False, False, 13, today, 'py'),
+             (52, 'im the update', f2, ts, ts, ctexec, True, False, 13, today, 'py'),
+             (53, 'im the update', f2, ts, ts, ctexec, True, False, 13, today, 'py')])
 
     def testupdate(self):
         r = t.insert().execute()
@@ -229,7 +323,7 @@ class DefaultTest(TestBase):
         ctexec = currenttime.scalar()
         l = t.select(t.c.col1==pk).execute()
         l = l.fetchone()
-        self.assert_(l == (pk, 'im the update', f2, None, None, ctexec, True, False, 13, datetime.date.today()))
+        self.assert_(l == (pk, 'im the update', f2, None, None, ctexec, True, False, 13, datetime.date.today(), 'py'))
         self.assert_(f2==11)
 
     def testupdatevalues(self):
@@ -242,12 +336,15 @@ class DefaultTest(TestBase):
 
     @testing.fails_on_everything_except('postgres')
     def testpassiveoverride(self):
-        """primarily for postgres, tests that when we get a primary key column back
-        from reflecting a table which has a default value on it, we pre-execute
-        that PassiveDefault upon insert, even though PassiveDefault says
-        "let the database execute this", because in postgres we must have all the primary
-        key values in memory before insert; otherwise we cant locate the just inserted row."""
+        """
+        Primarily for postgres, tests that when we get a primary key column
+        back from reflecting a table which has a default value on it, we
+        pre-execute that DefaultClause upon insert, even though DefaultClause
+        says "let the database execute this", because in postgres we must have
+        all the primary key values in memory before insert; otherwise we can't
+        locate the just inserted row.
 
+        """
         try:
             meta = MetaData(testing.db)
             testing.db.execute("""

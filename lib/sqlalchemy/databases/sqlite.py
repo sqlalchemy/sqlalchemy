@@ -7,7 +7,7 @@
 
 import datetime, re, time
 
-from sqlalchemy import schema, exc, pool, PassiveDefault
+from sqlalchemy import schema, exc, pool, DefaultClause
 from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
 import sqlalchemy.util as util
@@ -336,7 +336,7 @@ class SQLiteDialect(default.DefaultDialect):
 
             colargs = []
             if has_default:
-                colargs.append(PassiveDefault('?'))
+                colargs.append(DefaultClause('?'))
             table.append_column(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable, *colargs))
 
         if not found_table:

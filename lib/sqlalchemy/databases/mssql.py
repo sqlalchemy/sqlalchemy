@@ -37,7 +37,6 @@ Known issues / TODO:
   does **not** work around
 
 """
-
 import datetime, operator, re, sys
 
 from sqlalchemy import sql, schema, exc, util
@@ -604,7 +603,7 @@ class MSSQLDialect(default.DefaultDialect):
                 coltype = coltype(*args)
             colargs = []
             if default is not None:
-                colargs.append(schema.PassiveDefault(sql.text(default)))
+                colargs.append(schema.DefaultClause(sql.text(default)))
 
             table.append_column(schema.Column(name, coltype, nullable=nullable, autoincrement=False, *colargs))
 

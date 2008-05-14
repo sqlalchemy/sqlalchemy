@@ -394,18 +394,18 @@ class TypesTest(TestBase, AssertsExecutionResults):
                 ([mysql.MSTimeStamp],
                  'TIMESTAMP'),
                 ([mysql.MSTimeStamp,
-                  PassiveDefault(sql.text('CURRENT_TIMESTAMP'))],
+                  DefaultClause(sql.text('CURRENT_TIMESTAMP'))],
                  "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
                 ([mysql.MSTimeStamp,
-                  PassiveDefault(sql.text("'1999-09-09 09:09:09'"))],
+                  DefaultClause(sql.text("'1999-09-09 09:09:09'"))],
                  "TIMESTAMP DEFAULT '1999-09-09 09:09:09'"),
                 ([mysql.MSTimeStamp,
-                  PassiveDefault(sql.text("'1999-09-09 09:09:09' "
+                  DefaultClause(sql.text("'1999-09-09 09:09:09' "
                                           "ON UPDATE CURRENT_TIMESTAMP"))],
                  "TIMESTAMP DEFAULT '1999-09-09 09:09:09' "
                  "ON UPDATE CURRENT_TIMESTAMP"),
                 ([mysql.MSTimeStamp,
-                  PassiveDefault(sql.text("CURRENT_TIMESTAMP "
+                  DefaultClause(sql.text("CURRENT_TIMESTAMP "
                                           "ON UPDATE CURRENT_TIMESTAMP"))],
                  "TIMESTAMP DEFAULT CURRENT_TIMESTAMP "
                  "ON UPDATE CURRENT_TIMESTAMP"),
@@ -611,18 +611,18 @@ class TypesTest(TestBase, AssertsExecutionResults):
         """Test reflection of column defaults."""
 
         def_table = Table('mysql_def', MetaData(testing.db),
-            Column('c1', String(10), PassiveDefault('')),
-            Column('c2', String(10), PassiveDefault('0')),
-            Column('c3', String(10), PassiveDefault('abc')))
+            Column('c1', String(10), DefaultClause('')),
+            Column('c2', String(10), DefaultClause('0')),
+            Column('c3', String(10), DefaultClause('abc')))
 
         try:
             def_table.create()
             reflected = Table('mysql_def', MetaData(testing.db),
                               autoload=True)
             for t in def_table, reflected:
-                assert t.c.c1.default.arg == ''
-                assert t.c.c2.default.arg == '0'
-                assert t.c.c3.default.arg == 'abc'
+                assert t.c.c1.server_default.arg == ''
+                assert t.c.c2.server_default.arg == '0'
+                assert t.c.c3.server_default.arg == 'abc'
         finally:
             def_table.drop()
 
@@ -697,39 +697,39 @@ class TypesTest(TestBase, AssertsExecutionResults):
         try:
             Table('ai_1', meta,
                   Column('int_y', Integer, primary_key=True),
-                  Column('int_n', Integer, PassiveDefault('0'),
+                  Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True))
             Table('ai_2', meta,
                   Column('int_y', Integer, primary_key=True),
-                  Column('int_n', Integer, PassiveDefault('0'),
+                  Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True))
             Table('ai_3', meta,
-                  Column('int_n', Integer, PassiveDefault('0'),
+                  Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False),
                   Column('int_y', Integer, primary_key=True))
             Table('ai_4', meta,
-                  Column('int_n', Integer, PassiveDefault('0'),
+                  Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False),
-                  Column('int_n2', Integer, PassiveDefault('0'),
+                  Column('int_n2', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False))
             Table('ai_5', meta,
                   Column('int_y', Integer, primary_key=True),
-                  Column('int_n', Integer, PassiveDefault('0'),
+                  Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False))
             Table('ai_6', meta,
-                  Column('o1', String(1), PassiveDefault('x'),
+                  Column('o1', String(1), DefaultClause('x'),
                          primary_key=True),
                   Column('int_y', Integer, primary_key=True))
             Table('ai_7', meta,
-                  Column('o1', String(1), PassiveDefault('x'),
+                  Column('o1', String(1), DefaultClause('x'),
                          primary_key=True),
-                  Column('o2', String(1), PassiveDefault('x'),
+                  Column('o2', String(1), DefaultClause('x'),
                          primary_key=True),
                   Column('int_y', Integer, primary_key=True))
             Table('ai_8', meta,
-                  Column('o1', String(1), PassiveDefault('x'),
+                  Column('o1', String(1), DefaultClause('x'),
                          primary_key=True),
-                  Column('o2', String(1), PassiveDefault('x'),
+                  Column('o2', String(1), DefaultClause('x'),
                          primary_key=True))
             meta.create_all()
 

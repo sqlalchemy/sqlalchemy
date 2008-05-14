@@ -550,7 +550,7 @@ class FBDialect(default.DefaultDialect):
                 # the value comes down as "DEFAULT 'value'"
                 assert row['fdefault'].startswith('DEFAULT ')
                 defvalue = row['fdefault'][8:]
-                args.append(schema.PassiveDefault(sql.text(defvalue)))
+                args.append(schema.DefaultClause(sql.text(defvalue)))
 
             col = schema.Column(*args, **kw)
             if kw['primary_key']:

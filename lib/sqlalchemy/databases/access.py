@@ -22,7 +22,7 @@ class AcNumeric(types.Numeric):
             else:
                 return str(value)
         return process
-        
+
     def get_col_spec(self):
         return "NUMERIC"
 
@@ -37,7 +37,7 @@ class AcFloat(types.Float):
                 return str(value)
             return None
         return process
-        
+
 class AcInteger(types.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -83,7 +83,7 @@ class AcUnicode(types.Unicode):
         return None
 
 class AcChar(types.CHAR):
-    def get_col_spec(self):        
+    def get_col_spec(self):
         return "TEXT" + (self.length and ("(%d)" % self.length) or "")
 
 class AcBinary(types.Binary):
@@ -100,7 +100,7 @@ class AcBoolean(types.Boolean):
                 return None
             return value and True or False
         return process
-        
+
     def bind_processor(self, dialect):
         def process(value):
             if value is True:
@@ -112,7 +112,7 @@ class AcBoolean(types.Boolean):
             else:
                 return value and True or False
         return process
-        
+
 class AcTimeStamp(types.TIMESTAMP):
     def get_col_spec(self):
         return "TIMESTAMP"
@@ -246,7 +246,7 @@ class AccessDialect(default.DefaultDialect):
         except Exception, e:
             return False
 
-    def reflecttable(self, connection, table, include_columns):        
+    def reflecttable(self, connection, table, include_columns):
         # This is defined in the function, as it relies on win32com constants,
         # that aren't imported until dbapi method is called
         if not hasattr(self, 'ischema_names'):
@@ -262,11 +262,11 @@ class AccessDialect(default.DefaultDialect):
                 const.dbBoolean:    AcBoolean,
                 const.dbText:       AcUnicode, # All Access strings are unicode
             }
-            
+
         # A fresh DAO connection is opened for each reflection
         # This is necessary, so we get the latest updates
         dtbs = daoEngine.OpenDatabase(connection.engine.url.database)
-        
+
         try:
             for tbl in dtbs.TableDefs:
                 if tbl.Name.lower() == table.name.lower():
@@ -290,7 +290,7 @@ class AccessDialect(default.DefaultDialect):
                 elif default:
                     if col.Type == const.dbBoolean:
                         default = default == 'Yes' and '1' or '0'
-                    colargs['default'] = schema.PassiveDefault(sql.text(default))
+                    colargs['server_default'] = schema.DefaultClause(sql.text(default))
 
                 table.append_column(schema.Column(col.Name, coltype, **colargs))
 
@@ -316,7 +316,7 @@ class AccessDialect(default.DefaultDialect):
                             col.unique = idx.Unique
                     else:
                         pass # TBD: multi-column indexes
-                
+
 
             for fk in dtbs.Relations:
                 if fk.ForeignTable != table.name:

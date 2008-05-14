@@ -19,7 +19,7 @@ class EagerTest(_base.MappedTest):
     
     def define_tables(self, metadata):
         # determine a literal value for "false" based on the dialect
-        # FIXME: this PassiveDefault setup is bogus.
+        # FIXME: this DefaultClause setup is bogus.
 
         dialect = testing.db.dialect
         bp = sa.Boolean().dialect_impl(dialect).bind_processor(dialect)
@@ -52,7 +52,7 @@ class EagerTest(_base.MappedTest):
                      primary_key=True, nullable=False),
               Column('owner_id', Integer, ForeignKey('owners.id'),
                      primary_key=True, nullable=False),
-              Column('someoption', sa.Boolean, sa.PassiveDefault(false),
+              Column('someoption', sa.Boolean, server_default=false,
                      nullable=False))
 
     def setup_classes(self):

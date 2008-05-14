@@ -546,7 +546,7 @@ class PGDialect(default.DefaultDialect):
                         # unconditionally quote the schema name.  this could
                         # later be enhanced to obey quoting rules / "quote schema"
                         default = match.group(1) + ('"%s"' % sch) + '.' + match.group(2) + match.group(3)
-                colargs.append(schema.PassiveDefault(sql.text(default)))
+                colargs.append(schema.DefaultClause(sql.text(default)))
             table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
 
 
@@ -777,8 +777,9 @@ class PGDefaultRunner(base.DefaultRunner):
     def get_column_default(self, column, isinsert=True):
         if column.primary_key:
             # pre-execute passive defaults on primary keys
-            if isinstance(column.default, schema.PassiveDefault):
-                return self.execute_string("select %s" % column.default.arg)
+            if (isinstance(column.server_default, schema.DefaultClause) and
+                column.server_default.arg is not None):
+                return self.execute_string("select %s" % column.server_default.arg)
             elif (isinstance(column.type, sqltypes.Integer) and column.autoincrement) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
                 sch = column.table.schema
                 # TODO: this has to build into the Sequence object so we can get the quoting

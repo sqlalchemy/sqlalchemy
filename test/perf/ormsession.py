@@ -36,7 +36,7 @@ def define_tables():
                      Column('id', Integer, primary_key=True),
                      Column('item_id', Integer, ForeignKey('items.id'),
                             nullable=False),
-                     Column('name', String(100), PassiveDefault('no name')),
+                     Column('name', String(100), server_default='no name'),
                      test_needs_acid=True)
     customers = Table('customers', metadata,
                       Column('id', Integer, primary_key=True),

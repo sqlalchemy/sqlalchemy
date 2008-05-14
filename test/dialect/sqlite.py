@@ -260,7 +260,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
             self._test_empty_insert,
             Table('c', MetaData(testing.db),
                   Column('x', Integer, primary_key=True),
-                  Column('y', Integer, PassiveDefault('123'),
+                  Column('y', Integer, DefaultClause('123'),
                          primary_key=True)))
 
     @testing.exclude('sqlite', '<', (3, 4), 'no database support')
@@ -268,7 +268,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
         self._test_empty_insert(
             Table('d', MetaData(testing.db),
                   Column('x', Integer, primary_key=True),
-                  Column('y', Integer, PassiveDefault('123'))))
+                  Column('y', Integer, DefaultClause('123'))))
 
     @testing.exclude('sqlite', '<', (3, 4), 'no database support')
     def test_empty_insert_nopk1(self):

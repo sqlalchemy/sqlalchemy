@@ -54,8 +54,8 @@ required components such as an Max-aware 'old oracle style' join compiler
 (thetas with (+) outer indicators) are already done and available for
 integration- email the devel list if you're interested in working on
 this.
-"""
 
+"""
 import datetime, itertools, re
 
 from sqlalchemy import exc, schema, sql, util
@@ -648,14 +648,14 @@ class MaxDBDialect(default.DefaultDialect):
                         col_kw['autoincrement'] = True
                     else:
                         # strip current numbering
-                        col_kw['default'] = schema.PassiveDefault(
+                        col_kw['server_default'] = schema.DefaultClause(
                             sql.text('SERIAL'))
                         col_kw['autoincrement'] = True
                 else:
-                    col_kw['default'] = schema.PassiveDefault(
+                    col_kw['server_default'] = schema.DefaultClause(
                         sql.text(func_def))
             elif constant_def is not None:
-                col_kw['default'] = schema.PassiveDefault(sql.text(
+                col_kw['server_default'] = schema.DefaultClause(sql.text(
                     "'%s'" % constant_def.replace("'", "''")))
 
             table.append_column(schema.Column(name, type_instance, **col_kw))
@@ -972,7 +972,7 @@ class MaxDBSchemaGenerator(compiler.SchemaGenerator):
         # Assign DEFAULT SERIAL heuristically
         elif column.primary_key and column.autoincrement:
             # For SERIAL on a non-primary key member, use
-            # PassiveDefault(text('SERIAL'))
+            # DefaultClause(text('SERIAL'))
             try:
                 first = [c for c in column.table.primary_key.columns
                          if (c.autoincrement and
@@ -987,7 +987,7 @@ class MaxDBSchemaGenerator(compiler.SchemaGenerator):
         return ' '.join(colspec)
 
     def get_column_default_string(self, column):
-        if isinstance(column.default, schema.PassiveDefault):
+        if isinstance(column.server_default, schema.DefaultClause):
             if isinstance(column.default.arg, basestring):
                 if isinstance(column.type, sqltypes.Integer):
                     return str(column.default.arg)
@@ -1087,7 +1087,7 @@ def _autoserial_column(table):
                 if col.default.optional:
                     return index, col
             elif (col.default is None or
-                  (not isinstance(col.default, schema.PassiveDefault))):
+                  (not isinstance(col.server_default, schema.DefaultClause))):
                 return index, col
 
     return None, None

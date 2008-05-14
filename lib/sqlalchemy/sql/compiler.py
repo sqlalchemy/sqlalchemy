@@ -680,7 +680,7 @@ class DefaultCompiler(engine.Compiled):
                         else:
                             values.append((c, create_bind_param(c, None)))
                             self.prefetch.append(c)
-                    elif isinstance(c.default, schema.PassiveDefault):
+                    elif c.server_default is not None:
                         if not c.primary_key:
                             self.postfetch.append(c)
                     elif isinstance(c.default, schema.Sequence):
@@ -697,7 +697,10 @@ class DefaultCompiler(engine.Compiled):
                         else:
                             values.append((c, create_bind_param(c, None)))
                             self.prefetch.append(c)
-                    elif isinstance(c.onupdate, schema.PassiveDefault):
+                    elif c.server_onupdate is not None:
+                        self.postfetch.append(c)
+                    # deprecated? or remove?
+                    elif isinstance(c.onupdate, schema.FetchedValue):
                         self.postfetch.append(c)
         return values
 
@@ -802,11 +805,11 @@ class SchemaGenerator(DDLBase):
         return ''
 
     def get_column_default_string(self, column):
-        if isinstance(column.default, schema.PassiveDefault):
-            if isinstance(column.default.arg, basestring):
-                return "'%s'" % column.default.arg
+        if isinstance(column.server_default, schema.DefaultClause):
+            if isinstance(column.server_default.arg, basestring):
+                return "'%s'" % column.server_default.arg
             else:
-                return unicode(self._compile(column.default.arg, None))
+                return unicode(self._compile(column.server_default.arg, None))
         else:
             return None
 

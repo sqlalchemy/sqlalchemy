@@ -27,7 +27,7 @@ class ReflectionTest(TestBase, ComparesTables):
             Column('test6', sa.DateTime, nullable=False),
             Column('test7', sa.Text),
             Column('test8', sa.Binary),
-            Column('test_passivedefault2', sa.Integer, sa.PassiveDefault("5")),
+            Column('test_passivedefault2', sa.Integer, server_default='5'),
             Column('test9', sa.Binary(100)),
             Column('test_numeric', sa.Numeric()),
             test_needs_fk=True,

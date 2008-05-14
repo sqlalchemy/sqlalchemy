@@ -84,7 +84,7 @@ class QueryTest(TestBase):
                 Table("t2", metadata,
                     Column('id', Integer, Sequence('t2_id_seq', optional=True), primary_key=True),
                     Column('foo', String(30), primary_key=True),
-                    Column('bar', String(30), PassiveDefault('hi'))
+                    Column('bar', String(30), server_default='hi')
                 ),
                 {'foo':'hi'},
                 {'id':1, 'foo':'hi', 'bar':'hi'}
@@ -104,7 +104,7 @@ class QueryTest(TestBase):
                 Table("t4", metadata,
                     Column('id', Integer, Sequence('t4_id_seq', optional=True), primary_key=True),
                     Column('foo', String(30), primary_key=True),
-                    Column('bar', String(30), PassiveDefault('hi'))
+                    Column('bar', String(30), server_default='hi')
                 ),
                 {'foo':'hi', 'id':1},
                 {'id':1, 'foo':'hi', 'bar':'hi'}
@@ -113,7 +113,7 @@ class QueryTest(TestBase):
                 {'unsupported':[]},
                 Table("t5", metadata,
                     Column('id', String(10), primary_key=True),
-                    Column('bar', String(30), PassiveDefault('hi'))
+                    Column('bar', String(30), server_default='hi')
                 ),
                 {'id':'id1'},
                 {'id':'id1', 'bar':'hi'},

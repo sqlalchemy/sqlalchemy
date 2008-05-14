@@ -361,25 +361,39 @@ The above SQL functions are usually executed "inline" with the INSERT or UPDATE 
 
 For a statement execution which is not an executemany, the returned `ResultProxy` will contain a collection accessible via `result.postfetch_cols()` which contains a list of all `Column` objects which had an inline-executed default.  Similarly, all parameters which were bound to the statement, including all Python and SQL expressions which were pre-executed, are present in the `last_inserted_params()` or `last_updated_params()` collections on `ResultProxy`.  The `last_inserted_ids()` collection contains a list of primary key values for the row inserted.  
 
-#### DDL-Level Defaults {@name=passive}    
+#### DDL-Level Defaults {@name=passive}
 
-A variant on a SQL expression default is the `PassiveDefault`, which gets placed in the CREATE TABLE statement during a `create()` operation:
+A variant on a SQL expression default is the `server_default`, which gets placed in the CREATE TABLE statement during a `create()` operation:
 
     {python}
-    t = Table('test', meta, 
-        Column('mycolumn', DateTime, PassiveDefault(text("sysdate")))
+    t = Table('test', meta,
+        Column('abc', String(20), server_default='abc'),
+        Column('created_at', DateTime, server_default=text("sysdate"))
     )
-        
+
 A create call for the above table will produce:
 
     {code}
     CREATE TABLE test (
-        mycolumn datetime default sysdate
+        abc varchar(20) default 'abc',
+        created_at datetime default sysdate
     )
-        
-The behavior of `PassiveDefault` is similar to that of a regular SQL default; if it's placed on a primary key column for a database which doesn't have a way to "postfetch" the ID, and the statement is not "inlined", the SQL expression is pre-executed; otherwise, SQLAlchemy lets the default fire off on the database side normally.
 
-#### Defining Sequences {@name=sequences}    
+The behavior of `server_default` is similar to that of a regular SQL default; if it's placed on a primary key column for a database which doesn't have a way to "postfetch" the ID, and the statement is not "inlined", the SQL expression is pre-executed; otherwise, SQLAlchemy lets the default fire off on the database side normally.
+
+#### Triggered Columns {@name=triggered}
+
+Columns with values set by a database trigger or other external process may be called out with a marker:
+
+    {python}
+    t = Table('test', meta,
+        Column('abc', String(20), server_default=FetchedValue())
+        Column('def', String(20), server_onupdate=FetchedValue())
+    )
+
+These markers do not emit a ``default`` clause when the table is created, however they do set the same internal flags as a static `server_default` clause, providing hints to higher-level tools that a "post-fetch" of these rows should be performed after an insert or update.
+
+#### Defining Sequences {@name=sequences}
 
 A table with a sequence looks like:
 

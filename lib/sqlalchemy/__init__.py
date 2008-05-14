@@ -29,7 +29,7 @@ from sqlalchemy.schema import \
     MetaData, ThreadLocalMetaData, Table, Column, ForeignKey, \
     Sequence, Index, ForeignKeyConstraint, PrimaryKeyConstraint, \
     CheckConstraint, UniqueConstraint, Constraint, \
-    PassiveDefault, ColumnDefault, DDL
+    DefaultClause, FetchedValue, PassiveDefault, ColumnDefault, DDL
 
 from sqlalchemy.engine import create_engine, engine_from_config
 

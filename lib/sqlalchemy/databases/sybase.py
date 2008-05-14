@@ -599,7 +599,7 @@ class SybaseSQLDialect(default.DefaultDialect):
                 coltype = coltype(*args)
             colargs = []
             if default is not None:
-                colargs.append(schema.PassiveDefault(sql.text(default)))
+                colargs.append(schema.DefaultClause(sql.text(default)))
 
             # any sequences ?
             col = schema.Column(name, coltype, nullable=nullable, primary_key=primary_key, *colargs)

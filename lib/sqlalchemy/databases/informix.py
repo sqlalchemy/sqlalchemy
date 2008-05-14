@@ -317,7 +317,7 @@ class InfoDialect(default.DefaultDialect):
 
             colargs = []
             if default is not None:
-                colargs.append(schema.PassiveDefault(sql.text(default)))
+                colargs.append(schema.DefaultClause(sql.text(default)))
 
             table.append_column(schema.Column(name, coltype, nullable = (nullable == 0), *colargs))
 

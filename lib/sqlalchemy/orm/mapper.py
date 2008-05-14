@@ -1058,11 +1058,15 @@ class Mapper(object):
                             if self.__should_log_debug:
                                 self.__log_debug("Using polymorphic identity '%s' for insert column '%s'" % (mapper.polymorphic_identity, col.key))
                             value = mapper.polymorphic_identity
-                            if col.default is None or value is not None:
+                            if ((col.default is None and
+                                 col.server_default is None) or
+                                value is not None):
                                 params[col.key] = value
                         else:
                             value = mapper._get_state_attr_by_column(state, col)
-                            if col.default is None or value is not None:
+                            if ((col.default is None and
+                                 col.server_default is None) or
+                                value is not None):
                                 if isinstance(value, sql.ClauseElement):
                                     value_params[col] = value
                                 else:

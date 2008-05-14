@@ -835,7 +835,7 @@ class DefaultTest(_base.MappedTest):
         dt = Table('default_t', metadata,
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('hoho', hohotype, sa.PassiveDefault(str(hohoval))),
+            Column('hoho', hohotype, server_default=str(hohoval)),
             Column('counter', Integer, default=sa.func.length("1234567")),
             Column('foober', String(30), default="im foober",
                    onupdate="im the update"))
@@ -919,7 +919,7 @@ class DefaultTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_insert_nopostfetch(self):
-        # populates the PassiveDefaults explicitly so there is no
+        # populates from the FetchValues explicitly so there is no
         # "post-update"
         mapper(Hoho, default_t)
 

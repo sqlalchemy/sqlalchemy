@@ -1,7 +1,7 @@
 import sqlalchemy.sql as sql
 import sqlalchemy.exc as exc
 from sqlalchemy import select, MetaData, Table, Column, String, Integer
-from sqlalchemy.schema import PassiveDefault, ForeignKeyConstraint
+from sqlalchemy.schema import DefaultClause, ForeignKeyConstraint
 
 ischema = MetaData()
 
@@ -30,7 +30,7 @@ columns = Table("columns", ischema,
     Column("numeric_scale", Integer),
     Column("column_default", Integer),
     schema="information_schema")
-    
+
 constraints = Table("table_constraints", ischema,
     Column("table_schema", String),
     Column("table_name", String),
@@ -85,17 +85,17 @@ def table_names(connection, schema):
 
 def reflecttable(connection, table, include_columns, ischema_names):
     key_constraints = pg_key_constraints
-        
+
     if table.schema is not None:
         current_schema = table.schema
     else:
         current_schema = connection.default_schema_name()
-    
-    s = select([columns], 
+
+    s = select([columns],
         sql.and_(columns.c.table_name==table.name,
         columns.c.table_schema==current_schema),
         order_by=[columns.c.ordinal_position])
-        
+
     c = connection.execute(s)
     found_table = False
     while True:
@@ -106,9 +106,9 @@ def reflecttable(connection, table, include_columns, ischema_names):
  #       continue
         found_table = True
         (name, type, nullable, charlen, numericprec, numericscale, default) = (
-            row[columns.c.column_name], 
-            row[columns.c.data_type], 
-            row[columns.c.is_nullable] == 'YES', 
+            row[columns.c.column_name],
+            row[columns.c.data_type],
+            row[columns.c.is_nullable] == 'YES',
             row[columns.c.character_maximum_length],
             row[columns.c.numeric_precision],
             row[columns.c.numeric_scale],
@@ -116,7 +116,7 @@ def reflecttable(connection, table, include_columns, ischema_names):
             )
         if include_columns and name not in include_columns:
             continue
-        
+
         args = []
         for a in (charlen, numericprec, numericscale):
             if a is not None:
@@ -126,9 +126,9 @@ def reflecttable(connection, table, include_columns, ischema_names):
         coltype = coltype(*args)
         colargs = []
         if default is not None:
-            colargs.append(PassiveDefault(sql.text(default)))
+            colargs.append(DefaultClause(sql.text(default)))
         table.append_column(Column(name, coltype, nullable=nullable, *colargs))
-    
+
     if not found_table:
         raise exc.NoSuchTableError(table.name)
 
@@ -156,7 +156,7 @@ def reflecttable(connection, table, include_columns, ischema_names):
             row[colmap[5]],
             row[colmap[6]]
         )
-        #print "type %s on column %s to remote %s.%s.%s" % (type, constrained_column, referred_schema, referred_table, referred_column) 
+        #print "type %s on column %s to remote %s.%s.%s" % (type, constrained_column, referred_schema, referred_table, referred_column)
         if type == 'PRIMARY KEY':
             table.primary_key.add(table.c[constrained_column])
         elif type == 'FOREIGN KEY':
@@ -177,7 +177,6 @@ def reflecttable(connection, table, include_columns, ischema_names):
                 fk[0].append(constrained_column)
             if refspec not in fk[1]:
                 fk[1].append(refspec)
-    
+
     for name, value in fks.iteritems():
-        table.append_constraint(ForeignKeyConstraint(value[0], value[1], name=name))    
-            
+        table.append_constraint(ForeignKeyConstraint(value[0], value[1], name=name))

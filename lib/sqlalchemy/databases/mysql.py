@@ -671,19 +671,18 @@ class MSTimeStamp(sqltypes.TIMESTAMP):
     """MySQL TIMESTAMP type.
 
     To signal the orm to automatically re-select modified rows to retrieve
-    the updated timestamp, add a PassiveDefault to your column specification::
+    the updated timestamp, add a DefaultClause to your column specification::
 
         from sqlalchemy.databases import mysql
         Column('updated', mysql.MSTimeStamp,
-               PassiveDefault(sql.text('CURRENT_TIMESTAMP')))
+               server_default=sql.text('CURRENT_TIMESTAMP'))
 
     The full range of MySQL 4.1+ TIMESTAMP defaults can be specified in
-    the PassiveDefault::
+    the the default:
 
-        PassiveDefault(sql.text('CURRENT TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'))
+        server_default=sql.text('CURRENT TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
 
     """
-
     def get_col_spec(self):
         return "TIMESTAMP"
 
@@ -2228,7 +2227,7 @@ class MySQLSchemaReflector(object):
                     default = sql.text(default)
             else:
                 default = default[1:-1]
-            col_args.append(schema.PassiveDefault(default))
+            col_args.append(schema.DefaultClause(default))
 
         table.append_column(schema.Column(name, type_instance,
                                           *col_args, **col_kw))

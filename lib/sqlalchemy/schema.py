@@ -24,8 +24,9 @@ Two of the elements here also build upon their "syntactic" counterparts, which
 are defined in [sqlalchemy.sql.expression#], specifically
 [sqlalchemy.schema#Table] and [sqlalchemy.schema#Column].  Since these objects
 are part of the SQL expression language, they are usable as components in SQL
-expressions.  """
+expressions.
 
+"""
 import re, inspect
 from sqlalchemy import types, exc, util, databases
 from sqlalchemy.sql import expression, visitors
@@ -36,17 +37,18 @@ __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
            'ForeignKeyConstraint', 'PrimaryKeyConstraint', 'CheckConstraint',
            'UniqueConstraint', 'DefaultGenerator', 'Constraint', 'MetaData',
            'ThreadLocalMetaData', 'SchemaVisitor', 'PassiveDefault',
-           'ColumnDefault', 'DDL']
+           'DefaulClause', 'FetchedValue', 'ColumnDefault', 'DDL']
+
 
 class SchemaItem(object):
     """Base class for items that define a database schema."""
 
     __metaclass__ = expression._FigureVisitName
     quote = None
-    
+
     def _init_items(self, *args):
         """Initialize the list of child items for this SchemaItem."""
-        
+
         for item in args:
             if item is not None:
                 item._set_parent(self)
@@ -185,16 +187,16 @@ class Table(SchemaItem, expression.TableClause):
 
         quote
           Force quoting of the identifier on or off, based on `True` or
-          `False`.  Defaults to `None`.  This flag is rarely needed, 
+          `False`.  Defaults to `None`.  This flag is rarely needed,
           as quoting is normally applied
           automatically for known reserved words, as well as for
           "case sensitive" identifiers.  An identifier is "case sensitive"
-          if it contains non-lowercase letters, otherwise it's 
+          if it contains non-lowercase letters, otherwise it's
           considered to be "case insensitive".
 
           quote_schema
             same as 'quote' but applies to the schema identifier.
-            
+
         """
         super(Table, self).__init__(name)
         self.metadata = metadata
@@ -454,6 +456,27 @@ class Column(SchemaItem, expression._ColumnClause):
             list or is given a value of None.  The default expression will be
             converted into a ``ColumnDefault`` object upon initialization.
 
+          server_default
+            Defaults to None: A FetchedValue instance, str, Unicode or
+            sqlalchemy.text() string representing the DDL DEFAULT value for
+            the column.
+
+            String types will be emitted as-is, surrounded by single quotes::
+
+              Column('x', Text, server_default="val")
+
+              x TEXT DEFAULT 'val'
+
+            A sqlalchemy.text() expression will be rendered as-is, without
+            quotes::
+
+              Column('y', DateTime, server_default=text('NOW()'))0
+
+              y DATETIME DEFAULT NOW()
+
+            Strings and text() will be converted into a ``DefaultClause``
+            object upon initialization.
+
           _is_oid
             Defaults to False: used internally to indicate that this column is
             used as the quasi-hidden "oid" column
@@ -485,18 +508,18 @@ class Column(SchemaItem, expression._ColumnClause):
             ``INSERT`` statement execution such that they will assume primary
             key values are created in this manner.  If a ``Column`` has an
             explicit ``ColumnDefault`` object (such as via the `default`
-            keyword, or a ``Sequence`` or ``PassiveDefault``), then the value
+            keyword, or a ``Sequence`` or ``DefaultClause``), then the value
             of `autoincrement` is ignored and is assumed to be False.
             `autoincrement` value is only significant for a column with a type
             or subtype of Integer.
 
           quote
             Force quoting of the identifier on or off, based on `True` or
-            `False`.  Defaults to `None`.  This flag is rarely needed, 
+            `False`.  Defaults to `None`.  This flag is rarely needed,
             as quoting is normally applied
             automatically for known reserved words, as well as for
             "case sensitive" identifiers.  An identifier is "case sensitive"
-            if it contains non-lowercase letters, otherwise it's 
+            if it contains non-lowercase letters, otherwise it's
             considered to be "case insensitive".
         """
 
@@ -525,6 +548,8 @@ class Column(SchemaItem, expression._ColumnClause):
         self.nullable = kwargs.pop('nullable', not self.primary_key)
         self._is_oid = kwargs.pop('_is_oid', False)
         self.default = kwargs.pop('default', None)
+        self.server_default = kwargs.pop('server_default', None)
+        self.server_onupdate = kwargs.pop('server_onupdate', None)
         self.index = kwargs.pop('index', None)
         self.unique = kwargs.pop('unique', None)
         self.quote = kwargs.pop('quote', None)
@@ -576,6 +601,8 @@ class Column(SchemaItem, expression._ColumnClause):
             kwarg.append('onupdate')
         if self.default:
             kwarg.append('default')
+        if self.server_default:
+            kwarg.append('server_default')
         return "Column(%s)" % ', '.join(
             [repr(self.name)] + [repr(self.type)] +
             [repr(x) for x in self.foreign_keys if x is not None] +
@@ -630,9 +657,23 @@ class Column(SchemaItem, expression._ColumnClause):
 
         toinit = list(self.args)
         if self.default is not None:
-            toinit.append(ColumnDefault(self.default))
+            if isinstance(self.default, ColumnDefault):
+                toinit.append(self.default)
+            else:
+                toinit.append(ColumnDefault(self.default))
+        if self.server_default is not None:
+            if isinstance(self.server_default, FetchedValue):
+                toinit.append(self.server_default)
+            else:
+                toinit.append(DefaultClause(self.server_default))
         if self.onupdate is not None:
             toinit.append(ColumnDefault(self.onupdate, for_update=True))
+        if self.server_onupdate is not None:
+            if isinstance(self.server_onupdate, FetchedValue):
+                toinit.append(self.server_default)
+            else:
+                toinit.append(DefaultClause(self.server_onupdate,
+                                            for_update=True))
         self._init_items(*toinit)
         self.args = None
 
@@ -643,7 +684,7 @@ class Column(SchemaItem, expression._ColumnClause):
 
         """
         return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, quote=self.quote, index=self.index, autoincrement=self.autoincrement, *[c.copy() for c in self.constraints])
-    
+
     def _make_proxy(self, selectable, name=None):
         """Create a *proxy* for this column.
 
@@ -869,15 +910,6 @@ class DefaultGenerator(SchemaItem):
     def __repr__(self):
         return "DefaultGenerator()"
 
-class PassiveDefault(DefaultGenerator):
-    """A default that takes effect on the database side."""
-
-    def __init__(self, arg, **kwargs):
-        super(PassiveDefault, self).__init__(**kwargs)
-        self.arg = arg
-
-    def __repr__(self):
-        return "PassiveDefault(%s)" % repr(self.arg)
 
 class ColumnDefault(DefaultGenerator):
     """A plain default value on a column.
@@ -887,6 +919,9 @@ class ColumnDefault(DefaultGenerator):
 
     def __init__(self, arg, **kwargs):
         super(ColumnDefault, self).__init__(**kwargs)
+        if isinstance(arg, FetchedValue):
+            raise exc.ArgumentError(
+                "ColumnDefault may not be a server-side default type.")
         if callable(arg):
             arg = self._maybe_wrap_callable(arg)
         self.arg = arg
@@ -970,6 +1005,41 @@ class Sequence(DefaultGenerator):
             bind = _bind_or_error(self)
         bind.drop(self, checkfirst=checkfirst)
 
+
+class FetchedValue(object):
+    """A default that takes effect on the database side."""
+
+    def __init__(self, for_update=False):
+        self.for_update = for_update
+
+    def _set_parent(self, column):
+        self.column = column
+        if self.for_update:
+            self.column.server_onupdate = self
+        else:
+            self.column.server_default = self
+
+    def __repr__(self):
+        return 'FetchedValue(for_update=%r)' % self.for_update
+
+
+class DefaultClause(FetchedValue):
+    """A DDL-specified DEFAULT column value."""
+
+    def __init__(self, arg, for_update=False):
+        util.assert_arg_type(arg, (basestring,
+                                   expression.ClauseElement,
+                                   expression._TextClause), 'arg')
+        super(DefaultClause, self).__init__(for_update)
+        self.arg = arg
+
+    def __repr__(self):
+        return "DefaultClause(%r, for_update=%r)" % (self.arg, self.for_update)
+
+# alias; deprecated starting 0.5.0
+PassiveDefault = DefaultClause
+
+
 class Constraint(SchemaItem):
     """A table-level SQL constraint, such as a KEY.
 
@@ -999,10 +1069,10 @@ class Constraint(SchemaItem):
 
     def __contains__(self, x):
         return x in self.columns
-    
+
     def contains_column(self, col):
         return self.columns.contains_column(col)
-        
+
     def keys(self):
         return self.columns.keys()
 
