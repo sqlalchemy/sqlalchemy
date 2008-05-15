@@ -2699,8 +2699,8 @@ class TableClause(_Immutable, FromClause):
     def update(self, whereclause=None, values=None, inline=False, **kwargs):
         return update(self, whereclause=whereclause, values=values, inline=inline, **kwargs)
 
-    def delete(self, whereclause=None):
-        return delete(self, whereclause)
+    def delete(self, whereclause=None, **kwargs):
+        return delete(self, whereclause, **kwargs)
 
     def _get_from_objects(self, **modifiers):
         return [self]
