@@ -493,7 +493,7 @@ class QueryTest(TestBase):
         self.assertEqual(r.values(), ['foo', 1])
 
     @testing.crashes('oracle', 'FIXME: unknown, varify not fails_on()')
-    @testing.crashes('firebird', 'FIXME: unknown, verify not fails_on()')
+    @testing.crashes('firebird', 'An identifier must begin with a letter')
     @testing.crashes('maxdb', 'FIXME: unknown, verify not fails_on()')
     def test_column_accessor_shadow(self):
         meta = MetaData(testing.db)
@@ -687,7 +687,7 @@ class CompoundTest(TestBase):
         found2 = self._fetchall_sorted(e.alias('foo').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.crashes('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('firebird', 'Does not support intersect')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql')
     def test_intersect(self):
@@ -704,7 +704,7 @@ class CompoundTest(TestBase):
         found2 = self._fetchall_sorted(i.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.crashes('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('firebird', 'Does not support except')
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql')
@@ -721,7 +721,7 @@ class CompoundTest(TestBase):
         found = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found, wanted)
 
-    @testing.crashes('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('firebird', 'Does not support except')
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql')
@@ -741,7 +741,7 @@ class CompoundTest(TestBase):
         found2 = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
 
-    @testing.crashes('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('firebird', 'Does not support except')
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql')
@@ -759,7 +759,7 @@ class CompoundTest(TestBase):
         self.assertEquals(e.alias('foo').select().execute().fetchall(),
                           [('ccc',)])
 
-    @testing.crashes('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('firebird', 'Does not support intersect')
     @testing.fails_on('mysql')
     def test_composite(self):
         u = intersect(
@@ -775,7 +775,7 @@ class CompoundTest(TestBase):
 
         self.assertEquals(found, wanted)
 
-    @testing.crashes('firebird', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('firebird', 'Does not support intersect')
     @testing.fails_on('mysql')
     def test_composite_alias(self):
         ua = intersect(
