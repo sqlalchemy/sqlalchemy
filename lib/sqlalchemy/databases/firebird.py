@@ -309,7 +309,7 @@ class FBExecutionContext(default.DefaultExecutionContext):
 
     def returns_rows_compiled(self, compiled):
         return (isinstance(compiled.statement, sql.expression.Selectable) or
-                ((compiled.isupdate or compiled.isinsert or compiler.isdelete) and
+                ((compiled.isupdate or compiled.isinsert or compiled.isdelete) and
                  RETURNING_KW_NAME in compiled.statement.kwargs))
 
 
