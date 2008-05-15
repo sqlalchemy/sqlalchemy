@@ -3420,14 +3420,16 @@ class Update(_ValuesBase):
 
 
 class Delete(_UpdateBase):
-    def __init__(self, table, whereclause, bind=None):
+    def __init__(self, table, whereclause, bind=None, **kwargs):
         self._bind = bind
         self.table = table
         if whereclause:
             self._whereclause = _literal_as_text(whereclause)
         else:
             self._whereclause = None
-
+            
+        self.kwargs = kwargs
+        
     def get_children(self, **kwargs):
         if self._whereclause is not None:
             return self._whereclause,
