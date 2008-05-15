@@ -94,7 +94,7 @@ def future(fn):
 def fails_on(*dbs):
     """Mark a test as expected to fail on one or more database implementations.
 
-    Unlike ``unsupported``, tests marked as ``fails_on`` will be run
+    Unlike ``crashes``, tests marked as ``fails_on`` will be run
     for the named databases.  The test is expected to fail and the unit test
     logic is inverted: if the test fails, a success is reported.  If the test
     succeeds, a failure is reported.
@@ -150,7 +150,7 @@ def fails_on_everything_except(*dbs):
 def crashes(db, reason):
     """Mark a test as unsupported by a database implementation.
 
-    'crashes' tests will be skipped unconditionally.  Use for feature tests
+    ``crashes`` tests will be skipped unconditionally.  Use for feature tests
     that cause deadlocks or other fatal problems.
 
     """
