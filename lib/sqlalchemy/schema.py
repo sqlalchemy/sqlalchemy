@@ -219,6 +219,11 @@ class Table(SchemaItem, expression.TableClause):
 
         self._set_parent(metadata)
 
+        self.quote = kwargs.pop('quote', None)
+        self.quote_schema = kwargs.pop('quote_schema', None)
+        if kwargs.get('info'):
+            self._info = kwargs.pop('info')
+
         self.__extra_kwargs(**kwargs)
 
         # load column definitions from the database if 'autoload' is defined
@@ -249,6 +254,13 @@ class Table(SchemaItem, expression.TableClause):
                 if c.name not in include_columns:
                     self.c.remove(c)
 
+        for key in ('quote', 'quote_schema'):
+            if key in kwargs:
+                setattr(self, key, kwargs.pop(key))
+
+        if 'info' in kwargs:
+            self._info = kwargs.pop('info')
+
         self.__extra_kwargs(**kwargs)
         self.__post_init(*args, **kwargs)
 
@@ -263,16 +275,10 @@ class Table(SchemaItem, expression.TableClause):
             ['autoload', 'autoload_with', 'schema', 'owner']))
 
     def __extra_kwargs(self, **kwargs):
-        self.quote = kwargs.pop('quote', None)
-        self.quote_schema = kwargs.pop('quote_schema', None)
-        if kwargs.get('info'):
-            self._info = kwargs.pop('info')
-
         # validate remaining kwargs that they all specify DB prefixes
         if len([k for k in kwargs if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
             raise TypeError("Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
         self.kwargs.update(kwargs)
-
 
     def __post_init(self, *args, **kwargs):
         self._init_items(*args)

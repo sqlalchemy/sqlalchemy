@@ -85,6 +85,21 @@ class QuoteTest(TestBase, AssertsCompiledSQL):
             Column('ColumnOne', Integer, quote=False), quote=False, schema="FooBar", quote_schema=False)
         self.assert_compile(t1.select(), '''SELECT FooBar.TableOne.ColumnOne FROM FooBar.TableOne''')
 
+    def test_table_quote_flag(self):
+        metadata = MetaData()
+        t1 = Table('TableOne', metadata,
+                   Column('id', Integer),
+                   quote=False)
+        t2 = Table('TableTwo', metadata,
+                   Column('id', Integer),
+                   Column('t1_id', Integer, ForeignKey('TableOne.id')),
+                   quote=False)
+
+        self.assert_compile(
+            t2.join(t1).select(),
+            "SELECT TableTwo.id, TableTwo.t1_id, TableOne.id "
+            "FROM TableTwo JOIN TableOne ON TableOne.id = TableTwo.t1_id")
+
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.requires.subqueries
     def testlabels(self):
