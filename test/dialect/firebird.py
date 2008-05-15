@@ -187,7 +187,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         try:
             table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
 
-            result = table.delete(table.c.persons > 4, dict(full=True), firebird_returning=[table.c.id]).execute()
+            result = table.delete(table.c.persons > 4, firebird_returning=[table.c.id]).execute()
             self.assertEqual(result.fetchall(), [(1,)])
 
             result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
