@@ -676,7 +676,7 @@ class SchemaTest(TestBase):
             assert buf.index("CREATE TABLE someschema.table1") > -1
             assert buf.index("CREATE TABLE someschema.table2") > -1
 
-    @testing.crashes('firebird', 'FIXME: unknown- no schema support in db?')
+    @testing.crashes('firebird', 'No schema support')
     @testing.fails_on('sqlite')
     # fixme: revisit these below.
     @testing.fails_on('access', 'oracle', 'mssql', 'sybase')
