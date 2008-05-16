@@ -342,9 +342,11 @@ class PropertyLoader(StrategizedProperty):
             if getattr(self, '_of_type', None):
                 target_mapper = self._of_type
                 to_selectable = target_mapper._with_polymorphic_selectable
+                if self.prop._is_self_referential():
+                    to_selectable = to_selectable.alias()
             else:
                 to_selectable = None
-            
+
             pj, sj, source, dest, secondary, target_adapter = self.prop._create_joins(dest_polymorphic=True, dest_selectable=to_selectable)
 
             for k in kwargs:
@@ -767,7 +769,7 @@ class PropertyLoader(StrategizedProperty):
                 aliased = True
             else:
                 dest_selectable = self.mapper.mapped_table
-                
+            
             if self._is_self_referential() and source_selectable is None:
                 dest_selectable = dest_selectable.alias()
                 aliased = True

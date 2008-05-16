@@ -647,6 +647,15 @@ class SelfReferentialTest(ORMTest):
         sess.clear()
         
         self.assertEquals(sess.query(Engineer).filter(Engineer.reports_to.has(Person.name=='dogbert')).first(), Engineer(name='dilbert'))
+
+    def test_oftype_aliases_in_exists(self):
+        e1 = Engineer(name='dilbert', primary_language='java')
+        e2 = Engineer(name='wally', primary_language='c++', reports_to=e1)
+        sess = create_session()
+        sess.add_all([e1, e2])
+        sess.flush()
+        
+        self.assertEquals(sess.query(Engineer).filter(Engineer.reports_to.of_type(Engineer).has(Engineer.name=='dilbert')).first(), e2)
         
     def test_join(self):
         p1 = Person(name='dogbert')
