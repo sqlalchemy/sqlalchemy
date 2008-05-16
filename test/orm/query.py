@@ -1265,7 +1265,15 @@ class MixedEntitiesTest(QueryTest):
 
                 (User(addresses=[],name=u'chuck',id=10), None)]
         )
-            
+
+    def test_column_from_limited_eagerload(self):
+        sess = create_session()
+        
+        def go():
+            results = sess.query(User).limit(1).options(eagerload('addresses')).add_column(User.name).all()
+            self.assertEquals(results, [(User(name='jack'), 'jack')])
+        self.assert_sql_count(testing.db, go, 1)
+        
     def test_self_referential(self):
         
         sess = create_session()
