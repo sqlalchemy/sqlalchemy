@@ -250,17 +250,9 @@ class SessionTransaction(object):
             self._deleted = self._parent._deleted
             return
         
-        if self.nested:
+        if self.autoflush:
             self.session.flush()
             
-        if self.autoflush and not self.session.autocommit:
-            # TODO: the "dirty_states" assertion is expensive,
-            # so consider these assertions as temporary
-            # during development
-            assert not self.session._new
-            assert not self.session._deleted
-            assert not self.session._dirty_states
-        
         self._new = weakref.WeakKeyDictionary()
         self._deleted = weakref.WeakKeyDictionary()
     

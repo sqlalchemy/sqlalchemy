@@ -354,6 +354,21 @@ class AutocommitTest(TransactionTest):
         sess = create_session(autocommit=True)
         self.assertRaises(sa_exc.InvalidRequestError, sess.begin_nested)
 
+    def test_begin_preflush(self):
+        sess = create_session(autocommit=True)
+
+        u1 = User(name='ed')
+        sess.add(u1)
+        
+        sess.begin()
+        u2 = User(name='some other user')
+        sess.add(u2)
+        sess.rollback()
+        assert u2 not in sess
+        assert u1 in sess
+        assert sess.query(User).filter_by(name='ed').one() is u1
+        
+        
 
 
 if __name__ == '__main__':
