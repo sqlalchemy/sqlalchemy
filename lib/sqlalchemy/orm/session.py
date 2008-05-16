@@ -253,7 +253,7 @@ class SessionTransaction(object):
         if self.nested:
             self.session.flush()
             
-        if self.autoflush:
+        if self.autoflush and not self.session.autocommit:
             # TODO: the "dirty_states" assertion is expensive,
             # so consider these assertions as temporary
             # during development

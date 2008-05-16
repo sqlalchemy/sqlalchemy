@@ -270,7 +270,18 @@ class SessionTest(_fixtures.FixtureTest):
         assert newad not in u.addresses
         # pending objects dont get expired
         assert newad.email_address == 'a new address'
+    
+    @testing.resolve_artifact_names
+    def test_autocommit_doesnt_raise_on_pending(self):
+        mapper(User, users)
+        session = create_session(autocommit=True)
 
+        session.add(User(name='ed'))
+
+        session.begin()
+        session.flush()
+        session.commit()
+        
     @testing.resolve_artifact_names
     def test_textual_execute(self):
         """test that Session.execute() converts to text()"""
