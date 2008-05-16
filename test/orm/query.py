@@ -2089,10 +2089,19 @@ class TestOverlyEagerEquivalentCols(_base.MappedTest):
         mapper(Sub1, sub1)
         mapper(Sub2, sub2)
         sess = create_session()
-        b1 = Base(data='b1', sub1=[Sub1(data='s11')], sub2=[])
-        b2 = Base(data='b1', sub1=[Sub1(data='s12')], sub2=[Sub2(data='s2')])
+        
+        s11 = Sub1(data='s11')
+        s12 = Sub1(data='s12')
+        s2 = Sub2(data='s2')
+        b1 = Base(data='b1', sub1=[s11], sub2=[])
+        b2 = Base(data='b1', sub1=[s12], sub2=[])
         sess.add(b1)
         sess.add(b2)
+        sess.flush()
+        
+        # theres an overlapping ForeignKey here, so not much option except
+        # to artifically control the flush order
+        b2.sub2 = [s2]
         sess.flush()
         
         q = sess.query(Base).outerjoin('sub2', aliased=True)

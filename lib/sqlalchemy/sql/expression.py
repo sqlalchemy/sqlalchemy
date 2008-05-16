@@ -1807,7 +1807,8 @@ class _BindParamClause(ClauseElement, _CompareMixin):
     """
 
     __visit_name__ = 'bindparam'
-
+    quote = None
+    
     def __init__(self, key, value, type_=None, unique=False, isoutparam=False, shortname=None):
         """Construct a _BindParamClause.
 
@@ -2521,6 +2522,7 @@ class _Label(ColumnElement):
         self.name = name or "{ANON %d %s}" % (id(self), getattr(element, 'name', 'anon'))
         self.element = element.self_group(against=operators.as_)
         self.type = sqltypes.to_instance(type_ or getattr(element, 'type', None))
+        self.quote = element.quote
 
     def key(self):
         return self.name
