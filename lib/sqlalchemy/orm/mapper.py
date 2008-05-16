@@ -253,6 +253,9 @@ class Mapper(object):
             mappers = list(self.polymorphic_iterator())
         elif spec:
             mappers = [_class_to_mapper(m) for m in util.to_list(spec)]
+            for m in mappers:
+                if not m.isa(self):
+                    raise sa_exc.InvalidRequestError("%r does not inherit from %r"  % (m, self))
         else:
             mappers = []
 

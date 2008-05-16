@@ -303,6 +303,11 @@ def make_test(select_type):
             
             sess = create_session()
             
+            
+            self.assertRaises(sa_exc.InvalidRequestError, sess.query(Person).with_polymorphic, Paperwork)
+            self.assertRaises(sa_exc.InvalidRequestError, sess.query(Engineer).with_polymorphic, Boss)
+            self.assertRaises(sa_exc.InvalidRequestError, sess.query(Engineer).with_polymorphic, Person)
+            
             # compare to entities without related collections to prevent additional lazy SQL from firing on 
             # loaded entities
             emps_without_relations = [

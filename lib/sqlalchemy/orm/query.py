@@ -1381,7 +1381,7 @@ class _MapperEntity(_QueryEntity):
         if cls_or_mappers is None:
             query._reset_polymorphic_adapter(self.mapper)
             return
-
+        
         mappers, from_obj = self.mapper._with_polymorphic_args(cls_or_mappers, selectable)
         self._with_polymorphic = mappers
 
