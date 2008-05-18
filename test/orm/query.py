@@ -845,7 +845,7 @@ class JoinTest(QueryTest):
     def test_overlap_with_aliases(self):
         oalias = orders.alias('oalias')
 
-        result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_(["order 1", "order 2", "order 3"])).join(['orders', 'items']).all()
+        result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_(["order 1", "order 2", "order 3"])).join(['orders', 'items']).order_by(User.id).all()
         assert [User(id=7, name='jack'), User(id=9, name='fred')] == result
 
         result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_(["order 1", "order 2", "order 3"])).join(['orders', 'items']).filter_by(id=4).all()

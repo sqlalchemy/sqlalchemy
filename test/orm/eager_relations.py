@@ -250,7 +250,7 @@ class EagerTest(_fixtures.FixtureTest):
         def go():
             eq_(self.static.item_keyword_result[0:2],
                 (q.options(eagerload('keywords')).
-                 join('keywords').filter(keywords.c.name == 'red')).all())
+                 join('keywords').filter(keywords.c.name == 'red')).order_by(Item.id).all())
 
         self.assert_sql_count(testing.db, go, 1)
 
