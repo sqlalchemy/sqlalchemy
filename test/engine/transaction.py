@@ -453,6 +453,10 @@ class TLTransactionTest(TestBase):
         users.drop(tlengine)
         tlengine.dispose()
 
+    def test_nested_unsupported(self):
+        self.assertRaises(NotImplementedError, tlengine.contextual_connect().begin_nested)
+        self.assertRaises(NotImplementedError, tlengine.begin_nested)
+        
     def test_connection_close(self):
         """test that when connections are closed for real, transactions are rolled back and disposed."""
 

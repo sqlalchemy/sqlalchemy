@@ -304,7 +304,7 @@ class Query(object):
 
     def statement(self):
         """return the full SELECT statement represented by this Query."""
-        return self._compile_context(labels=self._with_labels).statement
+        return self._compile_context(labels=self._with_labels).statement._annotate({'_halt_adapt': True})
     statement = property(statement)
 
     def subquery(self):
@@ -537,7 +537,7 @@ class Query(object):
         those being selected.
         """
 
-        fromclause = self.compile().correlate(None)
+        fromclause = self.with_labels().statement.correlate(None)
         self._statement = self._criterion = None
         self._order_by = self._group_by = self._distinct = False
         self._limit = self._offset = None
@@ -1240,11 +1240,6 @@ class Query(object):
             self.session._autoflush()
         return self.session.scalar(s, params=self._params, mapper=self._mapper_zero())
 
-    def compile(self):
-        """compiles and returns a SQL statement based on the criterion and conditions within this Query."""
-
-        return self._compile_context().statement
-
     def _compile_context(self, labels=True):
         context = QueryContext(self)
 
@@ -1324,9 +1319,9 @@ class Query(object):
 
             if context.eager_order_by:
                 statement.append_order_by(*context.eager_order_by)
-
-        context.statement = statement._annotate({'_halt_adapt': True})
-
+                
+        context.statement = statement
+        
         return context
 
     def __log_debug(self, msg):

@@ -326,7 +326,7 @@ class CompileTest(QueryTest):
         
     def test_deferred(self):
         session = create_session()
-        s = session.query(User).filter(and_(addresses.c.email_address == bindparam('emailad'), Address.user_id==User.id)).compile()
+        s = session.query(User).filter(and_(addresses.c.email_address == bindparam('emailad'), Address.user_id==User.id)).statement
 
         l = session.query(User).instances(s.execute(emailad = 'jack@bean.com'))
         assert [User(id=7)] == l
