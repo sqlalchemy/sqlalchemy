@@ -56,8 +56,6 @@ def _get_instance_name(instance):
     return "%s.%s.0x..%s" % (instance.__class__.__module__,
                              instance.__class__.__name__,
                              hex(id(instance))[-2:])
-    return (instance.__class__.__module__ + "." + instance.__class__.__name__ +
-            ".0x.." + hex(id(instance))[-2:])
 
 def class_logger(cls):
     return logging.getLogger(cls.__module__ + "." + cls.__name__)

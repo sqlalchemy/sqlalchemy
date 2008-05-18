@@ -235,7 +235,7 @@ Transaction Facts:
 
 #### Understanding Autocommit
 
-The above transaction example illustrates how to use `Transaction` so that several executions can take part in the same transaction.  What happens when we issue an INSERT, UPDATE or DELETE call without using `Transaction`?  The answer is **autocommit**.  While many DBAPIs  implement a flag called `autocommit`, the current SQLAlchemy behavior is such that it implements its own autocommit.  This is achieved by searching the statement for strings like INSERT, UPDATE, DELETE, etc. and then issuing a COMMIT automatically if no transaction is in progress.
+The above transaction example illustrates how to use `Transaction` so that several executions can take part in the same transaction.  What happens when we issue an INSERT, UPDATE or DELETE call without using `Transaction`?  The answer is **autocommit**.  While many DBAPIs  implement a flag called `autocommit`, the current SQLAlchemy behavior is such that it implements its own autocommit.  This is achieved by detecting statements which represent data-changing operations, i.e. INSERT, UPDATE, DELETE, etc., and then issuing a COMMIT automatically if no transaction is in progress.  The detection is based on compiled statement attributes, or in the case of a text-only statement via regular expressions.
 
     {python}
     conn = engine.connect()
