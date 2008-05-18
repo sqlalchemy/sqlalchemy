@@ -7,6 +7,7 @@ def suite():
         'profiling.compiler',
         'profiling.pool',
         'profiling.zoomark',
+        'profiling.zoomark_orm',
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:
