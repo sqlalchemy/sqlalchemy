@@ -30,7 +30,7 @@ is equivalent to::
 
 import logging
 import sys
-
+import weakref
 
 rootlogger = logging.getLogger('sqlalchemy')
 if rootlogger.level == logging.NOTSET:
@@ -70,15 +70,23 @@ def is_info_enabled(logger):
 
 def instance_logger(instance, echoflag=None):
     if echoflag is not None:
-        l = logging.getLogger(_get_instance_name(instance))
+        name = _get_instance_name(instance)
+        l = logging.getLogger(name)
         if echoflag == 'debug':
-            default_logging(_get_instance_name(instance))
+            default_logging(name)
             l.setLevel(logging.DEBUG)
         elif echoflag is True:
-            default_logging(_get_instance_name(instance))
+            default_logging(name)
             l.setLevel(logging.INFO)
         elif echoflag is False:
             l.setLevel(logging.NOTSET)
+
+        def cleanup(ref):
+            # the id() of an instance may be reused again after the
+            # previous instance has been gc'ed.  set a cleanup handler
+            # to remove logging config
+            logging.getLogger(name).setLevel(logging.NOTSET)
+        instance._logging_cleanup = weakref.ref(instance, cleanup)
     else:
         l = logging.getLogger(_get_instance_name(instance))
     instance._should_log_debug = l.isEnabledFor(logging.DEBUG)
