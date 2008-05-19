@@ -1,5 +1,4 @@
 # coding: utf-8
-
 """Tests unitofwork operations."""
 
 import testenv; testenv.configure_for_tests()
@@ -8,7 +7,7 @@ import operator
 from sqlalchemy.orm import mapper as orm_mapper
 
 from testlib import engines, sa, testing
-from testlib.sa import Table, Column, Integer, String, ForeignKey, Index
+from testlib.sa import Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import mapper, relation, create_session
 from testlib.testing import eq_, ne_
 from testlib.compat import set
@@ -818,8 +817,6 @@ class DefaultTest(_base.MappedTest):
 
     """
 
-    __unsupported_on__ = ('firebird',) # can't pass arg to func.length
-    
     def define_tables(self, metadata):
         use_string_defaults = testing.against('postgres', 'oracle', 'sqlite')
 
@@ -839,7 +836,7 @@ class DefaultTest(_base.MappedTest):
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
             Column('hoho', hohotype, server_default=str(hohoval), unique=True),
-            Column('counter', Integer, default=sa.func.length("1234567")),
+            Column('counter', Integer, default=sa.func.char_length("1234567")),
             Column('foober', String(30), default="im foober",
                    onupdate="im the update"))
 
@@ -864,6 +861,7 @@ class DefaultTest(_base.MappedTest):
         class Secondary(_base.ComparableEntity):
             pass
 
+    @testing.fails_on('firebird') # "Data type unknown" on the parameter
     @testing.resolve_artifact_names
     def test_insert(self):
         mapper(Hoho, default_t)
@@ -908,6 +906,7 @@ class DefaultTest(_base.MappedTest):
         self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
         eq_(h5.foober, 'im the new foober')
 
+    @testing.fails_on('firebird') # "Data type unknown" on the parameter
     @testing.resolve_artifact_names
     def test_eager_defaults(self):
         mapper(Hoho, default_t, eager_defaults=True)
@@ -937,6 +936,7 @@ class DefaultTest(_base.MappedTest):
             eq_(h1.foober, "im foober")
         self.sql_count_(0, go)
 
+    @testing.fails_on('firebird') # "Data type unknown" on the parameter
     @testing.resolve_artifact_names
     def test_update(self):
         mapper(Hoho, default_t)
@@ -951,6 +951,7 @@ class DefaultTest(_base.MappedTest):
         session.flush()
         eq_(h1.foober, 'im the update')
 
+    @testing.fails_on('firebird') # "Data type unknown" on the parameter
     @testing.resolve_artifact_names
     def test_used_in_relation(self):
         """A server-side default can be used as the target of a foreign key"""
@@ -2144,8 +2145,6 @@ class RowSwitchTest(_base.MappedTest):
 class TransactionTest(_base.MappedTest):
     __requires__ = ('deferrable_constraints',)
 
-    __unsupported_on__ = ('firebird',) # has no deferred
-    
     __whitelist__ = ('sqlite',)
     # sqlite doesn't have deferrable constraints, but it allows them to
     # be specified.  it'll raise immediately post-INSERT, instead of at

@@ -15,6 +15,7 @@ def deferrable_constraints(fn):
     """Target database must support derferable constraints."""
     return _chain_decorators_on(
         fn,
+        no_support('firebird', 'not supported by database'),
         no_support('mysql', 'not supported by database'),
         no_support('mssql', 'not supported by database'),
         )

@@ -393,7 +393,8 @@ class SQLiteCompiler(compiler.DefaultCompiler):
     functions = compiler.DefaultCompiler.functions.copy()
     functions.update (
         {
-            sql_functions.now: 'CURRENT_TIMESTAMP'
+            sql_functions.now: 'CURRENT_TIMESTAMP',
+            sql_functions.char_length: 'length%(expr)s'
         }
     )
 
