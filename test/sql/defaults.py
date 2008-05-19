@@ -396,7 +396,7 @@ class PKDefaultTest(TestBase):
         assert r.last_inserted_ids() == [2]
 
 
-class AutoIncrementTest(TestBase):
+class PKIncrementTest(TestBase):
     def setUp(self):
         global aitable, aimeta
 
@@ -410,30 +410,6 @@ class AutoIncrementTest(TestBase):
 
     def tearDown(self):
         aimeta.drop_all()
-
-    # should fail everywhere... was: @supported('postgres', 'mysql', 'maxdb')
-    @testing.fails_on('sqlite')
-    def testnonautoincrement(self):
-        # sqlite INT primary keys can be non-unique! (only for ints)
-        meta = MetaData(testing.db)
-        nonai_table = Table("nonaitest", meta,
-            Column('id', Integer, autoincrement=False, primary_key=True),
-            Column('data', String(20)))
-        nonai_table.create(checkfirst=True)
-        try:
-            try:
-                # postgres + mysql strict will fail on first row,
-                # mysql in legacy mode fails on second row
-                nonai_table.insert().execute(data='row 1')
-                nonai_table.insert().execute(data='row 2')
-                assert False
-            except exc.SQLError, e:
-                print "Got exception", str(e)
-                assert True
-
-            nonai_table.insert().execute(id=1, data='row 1')
-        finally:
-            nonai_table.drop()
 
     # TODO: add coverage for increment on a secondary column in a key
     def _test_autoincrement(self, bind):
@@ -486,13 +462,28 @@ class AutoIncrementTest(TestBase):
         finally:
             con.close()
 
-    def test_autoincrement_fk(self):
-        if not testing.db.dialect.supports_pk_autoincrement:
-            return True
 
+class AutoIncrementTest(TestBase):
+    __requires__ = ('identity',)
+
+    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
+    def test_autoincrement_single_col(self):
         metadata = MetaData(testing.db)
 
-        # No optional sequence here.
+        single = Table('single', metadata,
+            Column('id', Integer, primary_key=True))
+        metadata.create_all()
+        try:
+            r = single.insert().execute()
+            id_ = r.last_inserted_ids()[0]
+            assert id_ is not None
+            eq_(select([func.count(text('*'))], from_obj=single).scalar(), 1)
+        finally:
+            metadata.drop_all()
+
+    def test_autoincrement_fk(self):
+        metadata = MetaData(testing.db)
+
         nodes = Table('nodes', metadata,
             Column('id', Integer, primary_key=True),
             Column('parent_id', Integer, ForeignKey('nodes.id')),
@@ -505,10 +496,32 @@ class AutoIncrementTest(TestBase):
         finally:
             metadata.drop_all()
 
+    @testing.fails_on('sqlite')
+    def test_non_autoincrement(self):
+        # sqlite INT primary keys can be non-unique! (only for ints)
+        meta = MetaData(testing.db)
+        nonai_table = Table("nonaitest", meta,
+            Column('id', Integer, autoincrement=False, primary_key=True),
+            Column('data', String(20)))
+        nonai_table.create(checkfirst=True)
+        try:
+            try:
+                # postgres + mysql strict will fail on first row,
+                # mysql in legacy mode fails on second row
+                nonai_table.insert().execute(data='row 1')
+                nonai_table.insert().execute(data='row 2')
+                assert False
+            except exc.SQLError, e:
+                print "Got exception", str(e)
+                assert True
+
+            nonai_table.insert().execute(id=1, data='row 1')
+        finally:
+            nonai_table.drop()
+
 
 class SequenceTest(TestBase):
     __requires__ = ('sequences',)
-    # TODO: 'firebird' was in __unsupported__.  are they, truly?
 
     def setUpAll(self):
         global cartitems, sometable, metadata

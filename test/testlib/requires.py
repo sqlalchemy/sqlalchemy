@@ -27,6 +27,22 @@ def foreign_keys(fn):
         no_support('sqlite', 'not supported by database'),
         )
 
+def identity(fn):
+    """Target database must support GENERATED AS IDENTITY or a facsimile.
+
+    Includes GENERATED AS IDENTITY, AUTOINCREMENT, AUTO_INCREMENT, or other
+    column DDL feature that fills in a DB-generated identifier at INSERT-time
+    without requiring pre-execution of a SEQUENCE or other artifact.
+
+    """
+    return _chain_decorators_on(
+        fn,
+        no_support('firebird', 'not supported by database'),
+        no_support('oracle', 'not supported by database'),
+        no_support('postgres', 'not supported by database'),
+        no_support('sybase', 'not supported by database'),
+        )
+
 def independent_connections(fn):
     """Target must support simultaneous, independent database connections."""
 
