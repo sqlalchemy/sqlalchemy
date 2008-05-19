@@ -38,7 +38,7 @@ class ZooMarkTest(TestBase):
         recorder = lambda: dbapi_session.recorder(creator())
         engine = engines.testing_engine(options={'creator':recorder})
         metadata = MetaData(engine)
-        session = sessionmaker(bind=engine)()  # the recorder seems to have a dependency on being bound to the engine here
+        session = sessionmaker()()
 
     def test_baseline_1_create_tables(self):
         zoo = Table('Zoo', metadata,

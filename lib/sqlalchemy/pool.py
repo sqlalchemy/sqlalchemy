@@ -118,7 +118,6 @@ class Pool(object):
     """
     def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False,
                  reset_on_return=True, listeners=None):
-
         self.logger = log.instance_logger(self, echoflag=echo)
         # the WeakValueDictionary works more nicely than a regular dict of
         # weakrefs.  the latter can pile up dead reference objects which don't

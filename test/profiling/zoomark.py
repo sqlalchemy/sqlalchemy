@@ -35,7 +35,7 @@ class ZooMarkTest(TestBase):
 
         creator = testing.db.pool._creator
         recorder = lambda: dbapi_session.recorder(creator())
-        engine = engines.testing_engine(options={'creator':recorder, 'pool_threadlocal':True}) # TODO: shouldnt need threadlocal pool
+        engine = engines.testing_engine(options={'creator':recorder})
         metadata = MetaData(engine)
 
     def test_baseline_1_create_tables(self):
@@ -317,7 +317,7 @@ class ZooMarkTest(TestBase):
         global metadata
 
         player = lambda: dbapi_session.player()
-        engine = create_engine('postgres:///', creator=player, pool_threadlocal=True) # TODO: shouldnt need threadlocal pool
+        engine = create_engine('postgres:///', creator=player)
         metadata = MetaData(engine)
 
     @profiling.function_call_count(3230, {'2.4': 1796})
@@ -336,15 +336,15 @@ class ZooMarkTest(TestBase):
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
-    @profiling.function_call_count(18119, {'2.4': 10549})
+    @profiling.function_call_count(17098, {'2.4': 10549})
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
-    @profiling.function_call_count(1617, {'2.4': 1032})
+    @profiling.function_call_count(1523, {'2.4': 1032})
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 
-    @profiling.function_call_count(1882, {'2.4': 1048})
+    @profiling.function_call_count(2054, {'2.4': 1048})
     def test_profile_6_editing(self):
         self.test_baseline_6_editing()
 

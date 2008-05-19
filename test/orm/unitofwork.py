@@ -835,7 +835,7 @@ class DefaultTest(_base.MappedTest):
         dt = Table('default_t', metadata,
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('hoho', hohotype, server_default=str(hohoval), unique=True),
+            Column('hoho', hohotype, server_default=str(hohoval)),
             Column('counter', Integer, default=sa.func.char_length("1234567")),
             Column('foober', String(30), default="im foober",
                    onupdate="im the update"))
