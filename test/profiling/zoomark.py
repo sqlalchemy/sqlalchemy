@@ -35,7 +35,7 @@ class ZooMarkTest(TestBase):
 
         creator = testing.db.pool._creator
         recorder = lambda: dbapi_session.recorder(creator())
-        engine = engines.testing_engine(options={'creator':recorder})
+        engine = engines.testing_engine(options={'creator':recorder, 'pool_threadlocal':True}) # TODO: shouldnt need threadlocal pool
         metadata = MetaData(engine)
 
     def test_baseline_1_create_tables(self):
@@ -317,7 +317,7 @@ class ZooMarkTest(TestBase):
         global metadata
 
         player = lambda: dbapi_session.player()
-        engine = create_engine('postgres:///', creator=player)
+        engine = create_engine('postgres:///', creator=player, pool_threadlocal=True) # TODO: shouldnt need threadlocal pool
         metadata = MetaData(engine)
 
     @profiling.function_call_count(3230, {'2.4': 1796})

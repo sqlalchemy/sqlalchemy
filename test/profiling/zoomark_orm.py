@@ -38,7 +38,7 @@ class ZooMarkTest(TestBase):
         recorder = lambda: dbapi_session.recorder(creator())
         engine = engines.testing_engine(options={'creator':recorder})
         metadata = MetaData(engine)
-        session = sessionmaker()()
+        session = sessionmaker(bind=engine)()  # the recorder seems to have a dependency on being bound to the engine here
 
     def test_baseline_1_create_tables(self):
         zoo = Table('Zoo', metadata,
@@ -66,7 +66,7 @@ class ZooMarkTest(TestBase):
                        Column('AlternateFoodID', Integer),
                        )
         metadata.create_all()
-        
+
         global Zoo, Animal
         class Zoo(object):
             def __init__(self, **kwargs):
@@ -270,6 +270,7 @@ class ZooMarkTest(TestBase):
             assert SDZ.Founded == datetime.date(1835, 9, 13), SDZ.Founded
 
     def test_baseline_7_drop(self):
+        session.rollback()
         metadata.drop_all()
 
     # Now, run all of these tests again with the DB-API driver factored out:
@@ -305,7 +306,7 @@ class ZooMarkTest(TestBase):
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
-    @profiling.function_call_count(1327)
+    @profiling.function_call_count(1507)
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 

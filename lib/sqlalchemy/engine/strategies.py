@@ -134,7 +134,7 @@ class PlainEngineStrategy(DefaultEngineStrategy):
         DefaultEngineStrategy.__init__(self, 'plain')
 
     def pool_threadlocal(self):
-        return True
+        return False
 
     def get_engine_cls(self):
         return base.Engine

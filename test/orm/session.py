@@ -357,7 +357,20 @@ class SessionTest(_fixtures.FixtureTest):
         session.commit()
         assert session.connection().execute("select count(1) from users").scalar() == 2
 
-
+    @testing.fails_on('sqlite')
+    @testing.resolve_artifact_names
+    def test_transactions_isolated(self):
+        mapper(User, users)
+        users.delete().execute()
+        
+        s1 = create_session(bind=testing.db, autocommit=False)
+        s2 = create_session(bind=testing.db, autocommit=False)
+        u1 = User(name='u1')
+        s1.add(u1)
+        s1.flush()
+        
+        assert s2.query(User).all() == []
+        
     @testing.requires.two_phase_transactions
     @testing.resolve_artifact_names
     def test_twophase(self):
