@@ -7,6 +7,7 @@ from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
 from testlib import *
+from sqlalchemy.sql.functions import GenericFunction
 
 from sqlalchemy.databases import *
 # every dialect in databases.__all__ is expected to pass these tests.
@@ -31,7 +32,15 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 self.assert_compile(func.nosuchfunction(), "nosuchfunction", dialect=dialect)
             else:
                 self.assert_compile(func.nosuchfunction(), "nosuchfunction()", dialect=dialect)
-            self.assert_compile(func.char_length('foo'), "char_length(%s)" % bindtemplate % {'name':'param_1', 'position':1}, dialect=dialect)
+            
+            # test generic function compile    
+            class fake_func(GenericFunction):
+                __return_type__ = sqltypes.Integer
+
+                def __init__(self, arg, **kwargs):
+                    GenericFunction.__init__(self, args=[arg], **kwargs)
+                
+            self.assert_compile(fake_func('foo'), "fake_func(%s)" % bindtemplate % {'name':'param_1', 'position':1}, dialect=dialect)
     
     def test_underscores(self):
         self.assert_compile(func.if_(), "if()")

@@ -695,7 +695,7 @@ class AssertsCompiledSQL(object):
 
         cc = re.sub(r'\n', '', str(c))
 
-        self.assertEquals(cc, result)
+        self.assertEquals(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
         if checkparams is not None:
             self.assertEquals(c.construct_params(params), checkparams)
