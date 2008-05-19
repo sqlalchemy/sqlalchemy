@@ -8,7 +8,7 @@ import operator
 from sqlalchemy.orm import mapper as orm_mapper
 
 from testlib import engines, sa, testing
-from testlib.sa import Table, Column, Integer, String, ForeignKey
+from testlib.sa import Table, Column, Integer, String, ForeignKey, Index
 from testlib.sa.orm import mapper, relation, create_session
 from testlib.testing import eq_, ne_
 from testlib.compat import set
@@ -211,13 +211,13 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
 
     def define_tables(self, metadata):
         t1 = Table('unitable1', metadata,
-              Column(u'méil', Integer, primary_key=True, key='a'),
+              Column(u'méil', Integer, primary_key=True, key='a', test_needs_autoincrement=True),
               Column(u'\u6e2c\u8a66', Integer, key='b'),
               Column('type',  String(20)),
               test_needs_fk=True,
               test_needs_autoincrement=True)
         t2 = Table(u'Unitéble2', metadata,
-              Column(u'méil', Integer, primary_key=True, key="cc"),
+              Column(u'méil', Integer, primary_key=True, key="cc", test_needs_autoincrement=True),
               Column(u'\u6e2c\u8a66', Integer,
                      ForeignKey(u'unitable1.a'), key="d"),
               Column(u'\u6e2c\u8a66_2', Integer, key="e"),
@@ -676,12 +676,12 @@ class PassiveDeletesTest(_base.MappedTest):
 
     def define_tables(self, metadata):
         Table('mytable', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(30)),
               test_needs_fk=True)
 
         Table('myothertable', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('parent_id', Integer),
               Column('data', String(30)),
               sa.ForeignKeyConstraint(['parent_id'],
@@ -729,12 +729,12 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
 
     def define_tables(self, metadata):
         Table('mytable', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(30)),
               test_needs_fk=True)
 
         Table('myothertable', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('parent_id', Integer),
               Column('data', String(30)),
               # no CASCADE, the same as ON DELETE RESTRICT
@@ -818,6 +818,8 @@ class DefaultTest(_base.MappedTest):
 
     """
 
+    __unsupported_on__ = ('firebird',) # can't pass arg to func.length
+    
     def define_tables(self, metadata):
         use_string_defaults = testing.against('postgres', 'oracle', 'sqlite')
 
@@ -836,7 +838,7 @@ class DefaultTest(_base.MappedTest):
         dt = Table('default_t', metadata,
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('hoho', hohotype, server_default=str(hohoval)),
+            Column('hoho', hohotype, server_default=str(hohoval), unique=True),
             Column('counter', Integer, default=sa.func.length("1234567")),
             Column('foober', String(30), default="im foober",
                    onupdate="im the update"))
@@ -1475,7 +1477,7 @@ class SaveTest(_fixtures.FixtureTest):
 
 class ManyToOneTest(_fixtures.FixtureTest):
     run_inserts = None
-    
+
     @testing.resolve_artifact_names
     def test_m2o_one_to_one(self):
         # TODO: put assertion in here !!!
@@ -1978,7 +1980,7 @@ class SaveTest3(_base.MappedTest):
 class BooleanColTest(_base.MappedTest):
     def define_tables(self, metadata):
         Table('t1_t', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(30)),
             Column('value', sa.Boolean))
 
@@ -2020,128 +2022,130 @@ class BooleanColTest(_base.MappedTest):
 class RowSwitchTest(_base.MappedTest):
     def define_tables(self, metadata):
         # parent
-        Table('t1', metadata,
+        Table('t5', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30), nullable=False))
 
         # onetomany
-        Table('t2', metadata,
+        Table('t6', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30), nullable=False),
-            Column('t1id', Integer, ForeignKey('t1.id'),nullable=False))
+            Column('t5id', Integer, ForeignKey('t5.id'),nullable=False))
 
         # associated
-        Table('t3', metadata,
+        Table('t7', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30), nullable=False))
 
         #manytomany
-        Table('t1t3', metadata,
-            Column('t1id', Integer, ForeignKey('t1.id'),nullable=False),
-            Column('t3id', Integer, ForeignKey('t3.id'),nullable=False))
+        Table('t5t7', metadata,
+            Column('t5id', Integer, ForeignKey('t5.id'),nullable=False),
+            Column('t7id', Integer, ForeignKey('t7.id'),nullable=False))
 
     def setup_classes(self):
-        class T1(_base.ComparableEntity):
+        class T5(_base.ComparableEntity):
             pass
 
-        class T2(_base.ComparableEntity):
+        class T6(_base.ComparableEntity):
             pass
 
-        class T3(_base.ComparableEntity):
+        class T7(_base.ComparableEntity):
             pass
 
     @testing.resolve_artifact_names
     def test_onetomany(self):
-        mapper(T1, t1, properties={
-            't2s':relation(T2, cascade="all, delete-orphan")
+        mapper(T5, t5, properties={
+            't6s':relation(T6, cascade="all, delete-orphan")
         })
-        mapper(T2, t2)
+        mapper(T6, t6)
 
         sess = create_session()
 
-        o1 = T1(data='some t1', id=1)
-        o1.t2s.append(T2(data='some t2', id=1))
-        o1.t2s.append(T2(data='some other t2', id=2))
+        o5 = T5(data='some t5', id=1)
+        o5.t6s.append(T6(data='some t6', id=1))
+        o5.t6s.append(T6(data='some other t6', id=2))
 
-        sess.add(o1)
+        sess.add(o5)
         sess.flush()
 
-        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
-        assert list(sess.execute(t2.select(), mapper=T1)) == [(1, 'some t2', 1), (2, 'some other t2', 1)]
+        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some t5')]
+        assert list(sess.execute(t6.select(), mapper=T5)) == [(1, 'some t6', 1), (2, 'some other t6', 1)]
 
-        o2 = T1(data='some other t1', id=o1.id, t2s=[
-            T2(data='third t2', id=3),
-            T2(data='fourth t2', id=4),
+        o6 = T5(data='some other t5', id=o5.id, t6s=[
+            T6(data='third t6', id=3),
+            T6(data='fourth t6', id=4),
             ])
-        sess.delete(o1)
-        sess.add(o2)
+        sess.delete(o5)
+        sess.add(o6)
         sess.flush()
 
-        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some other t1')]
-        assert list(sess.execute(t2.select(), mapper=T1)) == [(3, 'third t2', 1), (4, 'fourth t2', 1)]
+        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some other t5')]
+        assert list(sess.execute(t6.select(), mapper=T5)) == [(3, 'third t6', 1), (4, 'fourth t6', 1)]
 
     @testing.resolve_artifact_names
     def test_manytomany(self):
-        mapper(T1, t1, properties={
-            't3s':relation(T3, secondary=t1t3, cascade="all, delete-orphan")
+        mapper(T5, t5, properties={
+            't7s':relation(T7, secondary=t5t7, cascade="all, delete-orphan")
         })
-        mapper(T3, t3)
+        mapper(T7, t7)
 
         sess = create_session()
 
-        o1 = T1(data='some t1', id=1)
-        o1.t3s.append(T3(data='some t3', id=1))
-        o1.t3s.append(T3(data='some other t3', id=2))
+        o5 = T5(data='some t5', id=1)
+        o5.t7s.append(T7(data='some t7', id=1))
+        o5.t7s.append(T7(data='some other t7', id=2))
 
-        sess.add(o1)
+        sess.add(o5)
         sess.flush()
 
-        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
-        assert testing.rowset(sess.execute(t1t3.select(), mapper=T1)) == set([(1,1), (1, 2)])
-        assert list(sess.execute(t3.select(), mapper=T1)) == [(1, 'some t3'), (2, 'some other t3')]
+        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some t5')]
+        assert testing.rowset(sess.execute(t5t7.select(), mapper=T5)) == set([(1,1), (1, 2)])
+        assert list(sess.execute(t7.select(), mapper=T5)) == [(1, 'some t7'), (2, 'some other t7')]
 
-        o2 = T1(data='some other t1', id=1, t3s=[
-            T3(data='third t3', id=3),
-            T3(data='fourth t3', id=4),
+        o6 = T5(data='some other t5', id=1, t7s=[
+            T7(data='third t7', id=3),
+            T7(data='fourth t7', id=4),
             ])
-        sess.delete(o1)
-        sess.add(o2)
+        sess.delete(o5)
+        sess.add(o6)
         sess.flush()
 
-        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some other t1')]
-        assert list(sess.execute(t3.select(), mapper=T1)) == [(3, 'third t3'), (4, 'fourth t3')]
+        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some other t5')]
+        assert list(sess.execute(t7.select(), mapper=T5)) == [(3, 'third t7'), (4, 'fourth t7')]
 
     @testing.resolve_artifact_names
     def test_manytoone(self):
 
-        mapper(T2, t2, properties={
-            't1':relation(T1)
+        mapper(T6, t6, properties={
+            't5':relation(T5)
         })
-        mapper(T1, t1)
+        mapper(T5, t5)
 
         sess = create_session()
 
-        o1 = T2(data='some t2', id=1)
-        o1.t1 = T1(data='some t1', id=1)
+        o5 = T6(data='some t6', id=1)
+        o5.t5 = T5(data='some t5', id=1)
 
-        sess.add(o1)
+        sess.add(o5)
         sess.flush()
 
-        assert list(sess.execute(t1.select(), mapper=T1)) == [(1, 'some t1')]
-        assert list(sess.execute(t2.select(), mapper=T1)) == [(1, 'some t2', 1)]
+        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some t5')]
+        assert list(sess.execute(t6.select(), mapper=T5)) == [(1, 'some t6', 1)]
 
-        o2 = T2(data='some other t2', id=1, t1=T1(data='some other t1', id=2))
-        sess.delete(o1)
-        sess.delete(o1.t1)
-        sess.add(o2)
+        o6 = T6(data='some other t6', id=1, t5=T5(data='some other t5', id=2))
+        sess.delete(o5)
+        sess.delete(o5.t5)
+        sess.add(o6)
         sess.flush()
 
-        assert list(sess.execute(t1.select(), mapper=T1)) == [(2, 'some other t1')]
-        assert list(sess.execute(t2.select(), mapper=T1)) == [(1, 'some other t2', 2)]
+        assert list(sess.execute(t5.select(), mapper=T5)) == [(2, 'some other t5')]
+        assert list(sess.execute(t6.select(), mapper=T5)) == [(1, 'some other t6', 2)]
 
 class TransactionTest(_base.MappedTest):
     __requires__ = ('deferrable_constraints',)
 
+    __unsupported_on__ = ('firebird',) # has no deferred
+    
     __whitelist__ = ('sqlite',)
     # sqlite doesn't have deferrable constraints, but it allows them to
     # be specified.  it'll raise immediately post-INSERT, instead of at

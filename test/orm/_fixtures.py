@@ -21,7 +21,7 @@ def fixture_table(table, columns, *rows):
 
 users = fixture_table(
     Table('users', fixture_metadata,
-          Column('id', Integer, primary_key=True),
+          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
           Column('name', String(30), nullable=False),
           test_needs_acid=True,
           test_needs_fk=True),
@@ -33,7 +33,7 @@ users = fixture_table(
 
 addresses = fixture_table(
     Table('addresses', fixture_metadata,
-          Column('id', Integer, primary_key=True),
+          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
           Column('user_id', None, ForeignKey('users.id')),
           Column('email_address', String(50), nullable=False),
           test_needs_acid=True,
@@ -85,7 +85,7 @@ dingalings = fixture_table(
 
 items = fixture_table(
     Table('items', fixture_metadata,
-          Column('id', Integer, primary_key=True),
+          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
           Column('description', String(30), nullable=False),
           test_needs_acid=True,
           test_needs_fk=True),
@@ -122,7 +122,7 @@ order_items = fixture_table(
 
 keywords = fixture_table(
     Table('keywords', fixture_metadata,
-          Column('id', Integer, primary_key=True),
+          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
           Column('name', String(30), nullable=False),
           test_needs_acid=True,
           test_needs_fk=True),
