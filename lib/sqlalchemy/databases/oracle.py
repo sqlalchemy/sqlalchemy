@@ -175,6 +175,7 @@ colspecs = {
 
 ischema_names = {
     'VARCHAR2' : OracleString,
+    'CHAR' : OracleString,
     'DATE' : OracleDateTime,
     'DATETIME' : OracleDateTime,
     'NUMBER' : OracleNumeric,
@@ -358,11 +359,11 @@ class OracleDialect(default.DefaultDialect):
 
     def has_table(self, connection, table_name, schema=None):
         cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':self._denormalize_name(table_name)})
-        return bool( cursor.fetchone() is not None )
+        return cursor.fetchone() is not None
 
     def has_sequence(self, connection, sequence_name):
         cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name""", {'name':self._denormalize_name(sequence_name)})
-        return bool( cursor.fetchone() is not None )
+        return cursor.fetchone() is not None
 
     def _normalize_name(self, name):
         if name is None:
@@ -460,9 +461,7 @@ class OracleDialect(default.DefaultDialect):
             row = c.fetchone()
             if row is None:
                 break
-            found_table = True
 
-            #print "ROW:" , row
             (colname, coltype, length, precision, scale, nullable, default) = (self._normalize_name(row[0]), row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
 
             if include_columns and colname not in include_columns:
