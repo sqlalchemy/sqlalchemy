@@ -302,14 +302,17 @@ def emits_warning(*messages):
             if sa_exc is None:
                 import sqlalchemy.exc as sa_exc
 
+            # todo: should probably be strict about this, too
+            filters = [dict(action='ignore',
+                            category=sa_exc.SAPendingDeprecationWarning)]
             if not messages:
-                filters = [dict(action='ignore',
-                                category=sa_exc.SAWarning)]
+                filters.append([dict(action='ignore',
+                                     category=sa_exc.SAWarning)])
             else:
-                filters = [dict(action='ignore',
-                                message=message,
-                                category=sa_exc.SAWarning)
-                           for message in messages ]
+                filters.extend([dict(action='ignore',
+                                     message=message,
+                                     category=sa_exc.SAWarning)
+                                for message in messages])
             for f in filters:
                 warnings.filterwarnings(**f)
             try:
@@ -337,17 +340,21 @@ def uses_deprecated(*messages):
             if sa_exc is None:
                 import sqlalchemy.exc as sa_exc
 
+            # todo: should probably be strict about this, too
+            filters = [dict(action='ignore',
+                            category=sa_exc.SAPendingDeprecationWarning)]
             if not messages:
-                filters = [dict(action='ignore',
-                                category=sa_exc.SADeprecationWarning)]
+                filters.append(dict(action='ignore',
+                                    category=sa_exc.SADeprecationWarning))
             else:
-                filters = [dict(action='ignore',
-                                message=message,
-                                category=sa_exc.SADeprecationWarning)
-                           for message in
-                           [ (m.startswith('//') and
-                              ('Call to deprecated function ' + m[2:]) or m)
-                             for m in messages] ]
+                filters.extend(
+                    [dict(action='ignore',
+                          message=message,
+                          category=sa_exc.SADeprecationWarning)
+                     for message in
+                     [ (m.startswith('//') and
+                        ('Call to deprecated function ' + m[2:]) or m)
+                       for m in messages] ])
 
             for f in filters:
                 warnings.filterwarnings(**f)
@@ -365,7 +372,8 @@ def resetwarnings():
     if sa_exc is None:
         import sqlalchemy.exc as sa_exc
 
-    warnings.resetwarnings()
+    warnings.filterwarnings('ignore',
+                            category=sa_exc.SAPendingDeprecationWarning) 
     warnings.filterwarnings('error', category=sa_exc.SADeprecationWarning)
     warnings.filterwarnings('error', category=sa_exc.SAWarning)
 

@@ -452,7 +452,14 @@ def object_mapper(object, entity_name=None, raiseerror=True):
             be located.  If False, return None.
 
     """
-    state = attributes.instance_state(object)
+    try:
+        state = attributes.instance_state(object)
+    except (KeyError, AttributeError):
+        if not raiseerror:
+            return None
+        raise sa_exc.InvalidRequestError(
+            "FIXME Instance %r with entity name '%s' has no mapper associated with it" %
+            (object, entity_name))
     if state.entity_name is not attributes.NO_ENTITY_NAME:
         # Override the given entity name if the object is not transient.
         entity_name = state.entity_name
