@@ -199,7 +199,7 @@ class MappedTest(ORMTest):
 
         if self.run_setup_mappers == 'each':
             sa.orm.clear_mappers()
-        
+
         # no need to run deletes if tables are recreated on setup
         if self.run_define_tables != 'each' and self.run_deletes:
             for table in self.metadata.table_iterator(reverse=True):

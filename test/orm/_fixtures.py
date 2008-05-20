@@ -160,79 +160,30 @@ def _load_fixtures():
 def run_inserts_for(table, bind=None):
     table.info[('fixture', 'loader')](bind)
 
-
 class Base(_base.ComparableEntity):
     pass
 
-_recursion_stack = set()
-class ZBase(_base.BasicEntity):
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __eq__(self, other):
-        """'passively' compare this object to another.
-
-        only look at attributes that are present on the source object.
-
-        """
-        if self in _recursion_stack:
-            return True
-        _recursion_stack.add(self)
-        try:
-            # pick the entity thats not SA persisted as the source
-            try:
-                state = attributes.instance_state(self)
-                key = state.key
-            except (KeyError, AttributeError):
-                key = None
-            if other is None:
-                a = self
-                b = other
-            elif key is not None:
-                a = other
-                b = self
-            else:
-                a = self
-                b = other
-
-            for attr in a.__dict__.keys():
-                if attr[0] == '_':
-                    continue
-                value = getattr(a, attr)
-                #print "looking at attr:", attr, "start value:", value
-                if hasattr(value, '__iter__') and not isinstance(value, basestring):
-                    try:
-                        # catch AttributeError so that lazy loaders trigger
-                        battr = getattr(b, attr)
-                    except AttributeError:
-                        #print "b class does not have attribute named '%s'" % attr
-                        #raise
-                        return False
-
-                    if list(value) == list(battr):
-                        continue
-                    else:
-                        return False
-                else:
-                    if value is not None:
-                        if value != getattr(b, attr, None):
-                            #print "2. Attribute named '%s' does not match that of b" % attr
-                            return False
-            else:
-                return True
-        finally:
-            _recursion_stack.remove(self)
 
 class User(Base):
     pass
+
+
 class Order(Base):
     pass
+
+
 class Item(Base):
     pass
+
+
 class Keyword(Base):
     pass
+
+
 class Address(Base):
     pass
+
+
 class Dingaling(Base):
     pass
 
@@ -253,7 +204,7 @@ class FixtureTest(_base.MappedTest):
     run_setup_mappers = 'each'
     run_inserts = 'each'
     run_deletes = 'each'
-    
+
     metadata = fixture_metadata
     fixture_classes = dict(User=User,
                            Order=Order,
