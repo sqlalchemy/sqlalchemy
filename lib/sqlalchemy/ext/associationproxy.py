@@ -475,6 +475,7 @@ class _AssociationList(object):
         if (callable(func) and func.func_name == func_name and
             not func.__doc__ and hasattr(list, func_name)):
             func.__doc__ = getattr(list, func_name).__doc__
+    del func_name, func
 
 
 _NotProvided = util.symbol('_NotProvided')
@@ -650,6 +651,7 @@ class _AssociationDict(object):
         if (callable(func) and func.func_name == func_name and
             not func.__doc__ and hasattr(dict, func_name)):
             func.__doc__ = getattr(dict, func_name).__doc__
+    del func_name, func
 
 
 class _AssociationSet(object):
@@ -876,3 +878,4 @@ class _AssociationSet(object):
         if (callable(func) and func.func_name == func_name and
             not func.__doc__ and hasattr(util.Set, func_name)):
             func.__doc__ = getattr(util.Set, func_name).__doc__
+    del func_name, func
