@@ -883,7 +883,7 @@ class Session(object):
 
         context = []
         if mapper is not None:
-            context.append('mapper %s' % c_mapper)
+            context.append('mapper %s' % _class_to_mapper(mapper))
         if clause is not None:
             context.append('SQL expression')
         if instance is not None:
