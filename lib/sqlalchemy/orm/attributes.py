@@ -36,8 +36,8 @@ The value of this attribute must be a callable and will be passed a class
 object.  The callable must return one of:
 
   - An instance of an interfaces.InstrumentationManager or subclass
-  - An object implementing all or some of InstrumentationManager (todo)
-  - A dictionary of callables, implementing all or some of the above (todo)
+  - An object implementing all or some of InstrumentationManager (TODO)
+  - A dictionary of callables, implementing all or some of the above (TODO)
   - An instance of a ClassManager or subclass
 
 interfaces.InstrumentationManager is public API and will remain stable

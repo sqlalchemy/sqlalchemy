@@ -239,7 +239,6 @@ class IdentityManagedState(attributes.InstanceState):
             obj = self.manager.new_instance(state=self)
             self.obj = weakref.ref(obj, self._cleanup)
             self._strong_obj = obj
-            # todo: revisit this wrt user-defined-state
             obj.__dict__.update(self.dict)
             self.dict = obj.__dict__
             self._run_on_load(obj)
