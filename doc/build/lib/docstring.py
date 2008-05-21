@@ -2,7 +2,7 @@
 defines a pickleable, recursive "generated python documentation" datastructure.
 """
 
-import re, types, string, inspect
+import operator, re, types, string, inspect
 
 allobjects = {}
 
@@ -12,7 +12,7 @@ class AbstractDoc(object):
         self.id = id(obj)
         self.allobjects = allobjects
         self.toc_path = None
-        
+
 class ObjectDoc(AbstractDoc):
     def __init__(self, obj, functions=None, classes=None, include_all_classes=False):
         super(ObjectDoc, self).__init__(obj)
@@ -21,7 +21,7 @@ class ObjectDoc(AbstractDoc):
         self.include_all_classes = include_all_classes
         functions = functions
         classes= classes
-        
+
         if not self.isclass:
             if not include_all_classes and hasattr(obj, '__all__'):
                 objects = obj.__all__
@@ -30,18 +30,18 @@ class ObjectDoc(AbstractDoc):
                 objects = obj.__dict__.keys()
                 sort = True
             if functions is None:
-                functions = [getattr(obj, x, None) 
-                    for x in objects 
-                    if getattr(obj,x,None) is not None and 
+                functions = [
+                    (x, getattr(obj, x, None))
+                    for x in objects
+                    if getattr(obj,x,None) is not None and
                         (isinstance(getattr(obj,x), types.FunctionType))
-                        and not self._is_private_name(getattr(obj,x).__name__)
-                    ]
+                        and not self._is_private_name(getattr(obj,x).__name__)]
                 if sort:
-                    functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
+                    functions.sort(key=operator.itemgetter(0))
             if classes is None:
-                classes = [getattr(obj, x, None) for x in objects 
-                    if getattr(obj,x,None) is not None and 
-                        (isinstance(getattr(obj,x), types.TypeType) 
+                classes = [getattr(obj, x, None) for x in objects
+                    if getattr(obj,x,None) is not None and
+                        (isinstance(getattr(obj,x), types.TypeType)
                         or isinstance(getattr(obj,x), types.ClassType))
                         and (self.include_all_classes or not self._is_private_name(getattr(obj,x).__name__))
                     ]
@@ -50,20 +50,23 @@ class ObjectDoc(AbstractDoc):
                     classes.sort(lambda a, b: cmp(a.__name__.replace('_', ''), b.__name__.replace('_', '')))
         else:
             if functions is None:
-                functions = (
-                    [getattr(obj, x).im_func for x in obj.__dict__.keys() if isinstance(getattr(obj,x), types.MethodType) 
-                    and 
-                    (getattr(obj, x).__name__ == '__init__' or not self._is_private_name(getattr(obj,x).__name__))
-                    ] + 
-                    [(x, getattr(obj, x)) for x in obj.__dict__.keys() if _is_property(getattr(obj,x)) 
-                    and 
-                    not self._is_private_name(x)
-                    ]
-                 )
+                methods = [
+                    (x, getattr(obj, x).im_func)
+                    for x in obj.__dict__.keys()
+                    if (isinstance(getattr(obj,x), types.MethodType) and
+                        (getattr(obj, x).__name__ == '__init__' or
+                         not self._is_private_name(x)))]
+                props = [
+                    (x, getattr(obj, x))
+                    for x in obj.__dict__.keys()
+                    if (_is_property(getattr(obj,x)) and
+                        not self._is_private_name(x))]
+
+                functions = methods + props
                 functions.sort(_method_sort)
             if classes is None:
                 classes = []
-        
+
         if self.isclass:
             self.description = "class " + self.name
             self.classname = self.name
@@ -86,20 +89,20 @@ class ObjectDoc(AbstractDoc):
         self.doc = obj.__doc__
 
         self.functions = []
-        if not self.isclass:
-            for func in functions:
-                self.functions.append(FunctionDoc(func))
-        else:
-            for func in functions:
-                if isinstance(func, types.FunctionType):
-                    self.functions.append(MethodDoc(func, self))
-                elif isinstance(func, tuple):
-                    self.functions.append(PropertyDoc(func[0], func[1]))
-                        
+
+        for name, func in functions:
+            if isinstance(func, types.FunctionType):
+                if self.isclass:
+                    self.functions.append(MethodDoc(name, func, self))
+                else:
+                    self.functions.append(FunctionDoc(name, func))
+            else:
+                self.functions.append(PropertyDoc(name, func))
+
         self.classes = []
         for class_ in classes:
             self.classes.append(ObjectDoc(class_))
-    
+
     def _is_private_name(self, name):
         if name in ('__weakref__', '__repr__','__str__', '__unicode__',
                     '__getstate__', '__setstate__', '__reduce__',
@@ -124,9 +127,9 @@ class ObjectDoc(AbstractDoc):
 
 def _is_property(elem):
     return isinstance(elem, property) or (hasattr(elem, '__get__') and hasattr(elem, '__set__'))
-    
+
 class FunctionDoc(AbstractDoc):
-    def __init__(self, func):
+    def __init__(self, name, func):
         super(FunctionDoc, self).__init__(func)
         argspec = inspect.getargspec(func)
         argnames = argspec[0]
@@ -144,16 +147,16 @@ class FunctionDoc(AbstractDoc):
         if varkw is not None:
            argstrings.append("**%s" % varkw)
         self.argstrings = self.arglist = argstrings
-        self.name = func.__name__
+        self.name = name
         self.link = func.__name__
         self.doc = func.__doc__
     def accept_visitor(self, visitor):
         visitor.visit_function(self)
 
 class MethodDoc(FunctionDoc):
-    def __init__(self, func, owner):
-        super(MethodDoc, self).__init__(func)
-        if self.name == '__init__' and not self.doc:
+    def __init__(self, name, func, owner):
+        super(MethodDoc, self).__init__(name, func)
+        if name == '__init__' and not self.doc:
             self.doc = "Construct a new ``%s``." % owner.name
 
 class PropertyDoc(AbstractDoc):
@@ -165,10 +168,10 @@ class PropertyDoc(AbstractDoc):
     def accept_visitor(self, visitor):
         visitor.visit_property(self)
 
-def _method_sort(fna, fnb):
-    a = getattr(fna, '__name__', None) or fna[0]
-    b = getattr(fnb, '__name__', None) or fnb[0]
-    
+def _method_sort(speca, specb):
+    a = getattr(speca[1], '__name__', speca[0])
+    b = getattr(specb[1], '__name__', speca[0])
+
     if a == '__init__': return -1
     if b == '__init__': return 1
 
