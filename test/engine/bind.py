@@ -1,14 +1,14 @@
-"""tests the "bind" attribute/argument across schema, SQL, and ORM sessions,
+"""tests the "bind" attribute/argument across schema and SQL,
 including the deprecated versions of these arguments"""
 
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import engine, exc
 from sqlalchemy import MetaData, ThreadLocalMetaData
-from testlib.sa import Table, Column, Integer, String, func, Sequence, text
-from testlib import TestBase, testing
+from testlib.sa import Table, Column, Integer, text
+from testlib import sa, testing
 
 
-class BindTest(TestBase):
+class BindTest(testing.TestBase):
     def test_create_drop_explicit(self):
         metadata = MetaData()
         table = Table('test_table', metadata,
@@ -185,7 +185,7 @@ class BindTest(TestBase):
         try:
             for elem in [
                 table.select,
-                lambda **kwargs:func.current_timestamp(**kwargs).select(),
+                lambda **kwargs: sa.func.current_timestamp(**kwargs).select(),
 #                func.current_timestamp().select,
                 lambda **kwargs:text("select * from test_table", **kwargs)
             ]:
@@ -213,48 +213,6 @@ class BindTest(TestBase):
                         'Engine for execution. Or, assign a bind to the '
                         'statement or the Metadata of its underlying tables to '
                         'enable implicit execution via this method.')
-        finally:
-            if isinstance(bind, engine.Connection):
-                bind.close()
-            metadata.drop_all(bind=testing.db)
-
-    def test_session(self):
-        from sqlalchemy.orm import create_session, mapper
-        metadata = MetaData()
-        table = Table('test_table', metadata,
-            Column('foo', Integer, Sequence('foo_seq', optional=True), primary_key=True),
-            Column('data', String(30)))
-        class Foo(object):
-            pass
-        mapper(Foo, table)
-        metadata.create_all(bind=testing.db)
-        try:
-            for bind in (testing.db,
-                testing.db.connect()
-                ):
-                try:
-                    for args in ({'bind':bind},):
-                        sess = create_session(**args)
-                        assert sess.bind is bind
-                        f = Foo()
-                        sess.save(f)
-                        sess.flush()
-                        assert sess.get(Foo, f.foo) is f
-                finally:
-                    if isinstance(bind, engine.Connection):
-                        bind.close()
-
-                if isinstance(bind, engine.Connection):
-                    bind.close()
-
-            sess = create_session()
-            f = Foo()
-            sess.save(f)
-            try:
-                sess.flush()
-                assert False
-            except exc.InvalidRequestError, e:
-                assert str(e).startswith("Could not locate any Engine or Connection bound to mapper")
         finally:
             if isinstance(bind, engine.Connection):
                 bind.close()
