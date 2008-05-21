@@ -89,12 +89,12 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
 
     autoflush
       When ``True``, all query operations will issue a ``flush()`` call to
-     this ``Session`` before proceeding. This is a convenience feature so that
-     ``flush()`` need not be called repeatedly in order for database queries
-     to retrieve results. It's typical that ``autoflush`` is used in
-     conjunction with ``autocommit=False``.  In this scenario, explicit calls
-     to ``flush()`` are rarely needed; you usually only need to call
-     ``commit()`` (which flushes) to finalize changes.
+      this ``Session`` before proceeding. This is a convenience feature so
+      that ``flush()`` need not be called repeatedly in order for database
+      queries to retrieve results. It's typical that ``autoflush`` is used in
+      conjunction with ``autocommit=False``.  In this scenario, explicit calls
+      to ``flush()`` are rarely needed; you usually only need to call
+      ``commit()`` (which flushes) to finalize changes.
 
     bind
       An optional ``Engine`` or ``Connection`` to which this ``Session``
