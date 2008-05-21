@@ -56,16 +56,6 @@ class DefaultDialect(base.Dialect):
         self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
         self.identifier_preparer = self.preparer(self)
 
-        # preexecute_sequences was renamed preexecute_pk_sequences.  If a
-        # subclass has the older property, proxy the new name to the subclass's
-        # property.
-        # TODO: remove @ 0.5.0
-        if (hasattr(self, 'preexecute_sequences') and
-            isinstance(getattr(type(self), 'preexecute_pk_sequences'), bool)):
-            setattr(type(self), 'preexecute_pk_sequences',
-                    property(lambda s: s.preexecute_sequences, doc=(
-                      "Proxy to deprecated preexecute_sequences attribute.")))
-
     def create_execution_context(self, connection, **kwargs):
         return DefaultExecutionContext(self, connection, **kwargs)
 
