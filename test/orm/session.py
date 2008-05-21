@@ -991,7 +991,7 @@ class SessionInterface(testing.TestBase):
     def _public_session_methods(self):
         Session = sa.orm.session.Session
 
-        blacklist = set(('begin', 'query'))
+        blacklist = set(('begin', 'query', 'connection', 'execute', 'get_bind', 'scalar'))
 
         ok = set()
         for meth in Session.public_methods:
@@ -1024,11 +1024,7 @@ class SessionInterface(testing.TestBase):
 
         raises_('add_all', (user_arg,))
 
-        raises_('connection', instance=user_arg)
-
         raises_('delete', user_arg)
-
-        raises_('execute', 'SELECT 1', instance=user_arg)
 
         raises_('expire', user_arg)
 
@@ -1045,8 +1041,6 @@ class SessionInterface(testing.TestBase):
             x_raises_(s, 'flush', (user_arg,))
         _()
 
-        raises_('get_bind', instance=user_arg)
-
         raises_('is_modified', user_arg)
 
         raises_('merge', user_arg)
@@ -1056,8 +1050,6 @@ class SessionInterface(testing.TestBase):
         raises_('save', user_arg)
 
         raises_('save_or_update', user_arg)
-
-        raises_('scalar', 'SELECT 1', instance=user_arg)
 
         raises_('update', user_arg)
 

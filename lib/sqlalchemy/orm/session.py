@@ -664,7 +664,7 @@ class Session(object):
 
         self.transaction.prepare()
 
-    def connection(self, mapper=None, clause=None, instance=None):
+    def connection(self, mapper=None, clause=None, _state=None):
         """Return the active Connection.
 
         Retrieves the ``Connection`` managing the current transaction.  Any
@@ -689,7 +689,7 @@ class Session(object):
           Optional, an instance of a mapped class
 
         """
-        return self.__connection(self.get_bind(mapper, clause, instance))
+        return self.__connection(self.get_bind(mapper, clause, _state))
 
     def __connection(self, engine, **kwargs):
         if self.transaction is not None:
@@ -697,7 +697,7 @@ class Session(object):
         else:
             return engine.contextual_connect(**kwargs)
 
-    def execute(self, clause, params=None, mapper=None, instance=None):
+    def execute(self, clause, params=None, mapper=None, _state=None):
         """Execute a clause within the current transaction.
 
         Returns a ``ResultProxy`` of execution results.  `autocommit` Sessions
@@ -718,21 +718,21 @@ class Session(object):
         mapper
           Optional, a ``mapper`` or mapped class
 
-        instance
+        _state
           Optional, an instance of a mapped class
 
         """
         clause = expression._literal_as_text(clause)
 
-        engine = self.get_bind(mapper, clause=clause, instance=instance)
+        engine = self.get_bind(mapper, clause=clause, _state=_state)
 
         return self.__connection(engine, close_with_result=True).execute(
             clause, params or {})
 
-    def scalar(self, clause, params=None, mapper=None, instance=None):
+    def scalar(self, clause, params=None, mapper=None, _state=None):
         """Like execute() but return a scalar result."""
 
-        engine = self.get_bind(mapper, clause=clause, instance=instance)
+        engine = self.get_bind(mapper, clause=clause, _state=_state)
 
         return self.__connection(engine, close_with_result=True).scalar(
             clause, params or {})
@@ -821,8 +821,8 @@ class Session(object):
         """
         self.__binds[table] = bind
 
-    def get_bind(self, mapper=None, clause=None, instance=None, state=None):
-        """Resolve and return a configured database bind or raise.
+    def get_bind(self, mapper, clause=None, _state=None):
+        """Return an engine corresponding to the given arguments.
 
         All arguments are optional.
 
@@ -832,14 +832,11 @@ class Session(object):
         clause
           Optional, A ClauseElement (i.e. select(), text(), etc.)
 
-        instance
-          Optional, an instance of a mapped class
-
-        state
+        _state
           Optional, SA internal representation of a mapped instance
-
+            
         """
-        if mapper is clause is instance is state is None:
+        if mapper is clause is _state is None:
             if self.bind:
                 return self.bind
             else:
@@ -848,15 +845,9 @@ class Session(object):
                     "Connection, and no context was provided to locate "
                     "a binding.")
 
-        # fixme: fix internal callers, we're bork3n here
-        if isinstance(instance, attributes.InstanceState):
-            state, instance = instance, None
-
         mappers = []
-        if state is not None:
-            mappers.append(_state_mapper(state))
-        if instance is not None:
-            mappers.append(_object_mapper(instance))
+        if _state is not None:
+            mappers.append(_state_mapper(_state))
         if mapper is not None:
             mappers.append(_class_to_mapper(mapper))
 
@@ -886,10 +877,8 @@ class Session(object):
             context.append('mapper %s' % _class_to_mapper(mapper))
         if clause is not None:
             context.append('SQL expression')
-        if instance is not None:
-            context.append('instance %s' % mapperutil.instance_str(instance))
-        if state is not None:
-            context.append('state %r' % state)
+        if _state is not None:
+            context.append('state %r' % _state)
 
         raise sa_exc.UnboundExecutionError(
             "Could not locate a bind configured on %s or this Session" % (
@@ -958,7 +947,7 @@ class Session(object):
             raise exc.UnmappedInstanceError(instance)
         self._validate_persistent(state)
         if self.query(_object_mapper(instance))._get(
-                state.key, refresh_instance=state,
+                state.key, refresh_state=state,
                 only_load_props=attribute_names) is None:
             raise sa_exc.InvalidRequestError(
                 "Could not refresh instance '%s'" %

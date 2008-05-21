@@ -216,7 +216,7 @@ class LoadDeferredColumns(object):
 
         query = session.query(localparent)
         ident = state.key[1]
-        query._get(None, ident=ident, only_load_props=group, refresh_instance=state)
+        query._get(None, ident=ident, only_load_props=group, refresh_state=state)
         return attributes.ATTR_WAS_SET
 
 class DeferredOption(StrategizedOption):

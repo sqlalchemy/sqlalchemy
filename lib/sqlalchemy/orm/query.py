@@ -83,7 +83,7 @@ class Query(object):
         self._attributes = {}
         self._current_path = ()
         self._only_load_props = None
-        self._refresh_instance = None
+        self._refresh_state = None
         self._from_obj = None
         self._entities = []
         self._polymorphic_adapters = {}
@@ -286,13 +286,13 @@ class Query(object):
         """generate a Query with no criterion, warn if criterion was present"""
     __no_criterion = _generative(__no_criterion_condition)(__no_criterion)
 
-    def __get_options(self, populate_existing=None, version_check=None, only_load_props=None, refresh_instance=None):
+    def __get_options(self, populate_existing=None, version_check=None, only_load_props=None, refresh_state=None):
         if populate_existing:
             self._populate_existing = populate_existing
         if version_check:
             self._version_check = version_check
-        if refresh_instance:
-            self._refresh_instance = refresh_instance
+        if refresh_state:
+            self._refresh_state = refresh_state
         if only_load_props:
             self._only_load_props = util.Set(only_load_props)
         return self
@@ -1077,7 +1077,7 @@ class Query(object):
         return self._execute_and_instances(context)
 
     def _execute_and_instances(self, querycontext):
-        result = self.session.execute(querycontext.statement, params=self._params, mapper=self._mapper_zero_or_none(), instance=self._refresh_instance)
+        result = self.session.execute(querycontext.statement, params=self._params, mapper=self._mapper_zero_or_none(), _state=self._refresh_state)
         return self.iterate_instances(result, querycontext)
 
     def instances(self, cursor, __context=None):
@@ -1135,9 +1135,9 @@ class Query(object):
             if filter:
                 rows = filter(rows)
 
-            if context.refresh_instance and self._only_load_props and context.refresh_instance in context.progress:
-                context.refresh_instance.commit(self._only_load_props)
-                context.progress.remove(context.refresh_instance)
+            if context.refresh_state and self._only_load_props and context.refresh_state in context.progress:
+                context.refresh_state.commit(self._only_load_props)
+                context.progress.remove(context.refresh_state)
 
             session._finalize_loaded(context.progress)
 
@@ -1150,9 +1150,9 @@ class Query(object):
             if not self._yield_per:
                 break
 
-    def _get(self, key=None, ident=None, refresh_instance=None, lockmode=None, only_load_props=None):
+    def _get(self, key=None, ident=None, refresh_state=None, lockmode=None, only_load_props=None):
         lockmode = lockmode or self._lockmode
-        if not self._populate_existing and not refresh_instance and not self._mapper_zero().always_refresh and lockmode is None:
+        if not self._populate_existing and not refresh_state and not self._mapper_zero().always_refresh and lockmode is None:
             try:
                 instance = self.session.identity_map[key]
                 state = attributes.instance_state(instance)
@@ -1173,7 +1173,7 @@ class Query(object):
         else:
             ident = util.to_list(ident)
 
-        if refresh_instance is None:
+        if refresh_state is None:
             q = self.__no_criterion()
         else:
             q = self._clone()
@@ -1195,7 +1195,7 @@ class Query(object):
 
         if lockmode is not None:
             q._lockmode = lockmode
-        q.__get_options(populate_existing=bool(refresh_instance), version_check=(lockmode is not None), only_load_props=only_load_props, refresh_instance=refresh_instance)
+        q.__get_options(populate_existing=bool(refresh_state), version_check=(lockmode is not None), only_load_props=only_load_props, refresh_state=refresh_state)
         q._order_by = None
         try:
             # call using all() to avoid LIMIT compilation complexity
@@ -1429,7 +1429,7 @@ class _MapperEntity(_QueryEntity):
 
         if self.primary_entity:
             _instance = self.mapper._instance_processor(context, (self.path_entity,), adapter, 
-                extension=self.extension, only_load_props=query._only_load_props, refresh_instance=context.refresh_instance
+                extension=self.extension, only_load_props=query._only_load_props, refresh_state=context.refresh_state
             )
         else:
             _instance = self.mapper._instance_processor(context, (self.path_entity,), adapter)
@@ -1551,7 +1551,7 @@ class QueryContext(object):
         self.session = query.session
         self.populate_existing = query._populate_existing
         self.version_check = query._version_check
-        self.refresh_instance = query._refresh_instance
+        self.refresh_state = query._refresh_state
         self.primary_columns = []
         self.secondary_columns = []
         self.eager_order_by = []

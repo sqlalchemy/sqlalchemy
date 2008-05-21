@@ -1211,7 +1211,7 @@ class Mapper(object):
             if self.eager_defaults:
                 state.key = self._identity_key_from_state(state)
                 uowtransaction.session.query(self)._get(
-                    state.key, refresh_instance=state,
+                    state.key, refresh_state=state,
                     only_load_props=deferred_props)
             else:
                 _expire_state(state, deferred_props)
@@ -1326,10 +1326,10 @@ class Mapper(object):
             except StopIteration:
                 visitables.pop()
 
-    def _instance_processor(self, context, path, adapter, polymorphic_from=None, extension=None, only_load_props=None, refresh_instance=None):
+    def _instance_processor(self, context, path, adapter, polymorphic_from=None, extension=None, only_load_props=None, refresh_state=None):
         pk_cols = self.primary_key
 
-        if polymorphic_from or refresh_instance:
+        if polymorphic_from or refresh_state:
             polymorphic_on = None
         else:
             polymorphic_on = self.polymorphic_on
@@ -1391,9 +1391,7 @@ class Mapper(object):
                         return _instance(row, result)
 
             # determine identity key
-            if refresh_instance:
-                # TODO: refresh_instance seems to be named wrongly -- it is always an instance state.
-                refresh_state = refresh_instance
+            if refresh_state:
                 identitykey = refresh_state.key
                 if identitykey is None:
                     # super-rare condition; a refresh is being called
@@ -1416,11 +1414,11 @@ class Mapper(object):
 
                 if not currentload and version_id_col and context.version_check and self._get_state_attr_by_column(state, self.version_id_col) != row[version_id_col]:
                     raise exc.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (state_str(state), self._get_state_attr_by_column(state, self.version_id_col), row[version_id_col]))
-            elif refresh_instance:
-                # out of band refresh_instance detected (i.e. its not in the session.identity_map)
+            elif refresh_state:
+                # out of band refresh_state detected (i.e. its not in the session.identity_map)
                 # honor it anyway.  this can happen if a _get() occurs within save_obj(), such as
                 # when eager_defaults is True.
-                state = refresh_instance
+                state = refresh_state
                 instance = state.obj()
                 isnew = state.runid != context.runid
                 currentload = True
@@ -1626,14 +1624,14 @@ def _load_scalar_attributes(state, attribute_names):
     if mapper.inherits and not mapper.concrete:
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement:
-            result = session.query(mapper).from_statement(statement)._get(None, only_load_props=attribute_names, refresh_instance=state)
+            result = session.query(mapper).from_statement(statement)._get(None, only_load_props=attribute_names, refresh_state=state)
 
     if result is False:
         if has_key:
             identity_key = state.key
         else:
             identity_key = mapper._identity_key_from_state(state)
-        result = session.query(mapper)._get(identity_key, refresh_instance=state, only_load_props=attribute_names)
+        result = session.query(mapper)._get(identity_key, refresh_state=state, only_load_props=attribute_names)
 
     # if instance is pending, a refresh operation may not complete (even if PK attributes are assigned)
     if has_key and result is None:
