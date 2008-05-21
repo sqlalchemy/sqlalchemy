@@ -126,9 +126,10 @@ class AssociationProxy(object):
         return (orm.class_mapper(self.owning_class).
                 get_property(self.target_collection))
 
-    def _target_class(self):
+    def target_class(self):
+        """The class the proxy is attached to."""
         return self._get_property().mapper.class_
-    target_class = property(_target_class)
+    target_class = property(target_class)
 
     def _target_is_scalar(self):
         return not self._get_property().uselist
