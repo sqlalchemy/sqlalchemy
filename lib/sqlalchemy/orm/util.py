@@ -454,7 +454,7 @@ def object_mapper(object, entity_name=None, raiseerror=True):
     """
     try:
         state = attributes.instance_state(object)
-    except (KeyError, AttributeError):
+    except exc.NO_STATE:
         if not raiseerror:
             return None
         raise exc.UnmappedInstanceError(object, entity_name)
@@ -477,7 +477,7 @@ def class_mapper(class_, entity_name=None, compile=True, raiseerror=True):
     try:
         class_manager = attributes.manager_of_class(class_)
         mapper = class_manager.mappers[entity_name]
-    except (KeyError, AttributeError):
+    except exc.NO_STATE:
         if not raiseerror:
             return
         raise exc.UnmappedClassError(class_, entity_name)
@@ -549,11 +549,12 @@ def identity_equal(a, b):
     try:
         state_a = attributes.instance_state(a)
         state_b = attributes.instance_state(b)
-    except (KeyError, AttributeError):
+    except exc.NO_STATE:
         return False
     if state_a.key is None or state_b.key is None:
         return False
     return state_a.key == state_b.key
+
 
 # TODO: Avoid circular import.
 attributes.identity_equal = identity_equal

@@ -9,12 +9,13 @@ import weakref
 
 from sqlalchemy import util
 from sqlalchemy.util import attrgetter, itemgetter, EMPTY_SET
-from sqlalchemy.orm import interfaces, collections
+from sqlalchemy.orm import interfaces, collections, exc
 import sqlalchemy.exceptions as sa_exc
 
 # lazy imports
 _entity_info = None
 identity_equal = None
+
 
 PASSIVE_NORESULT = util.symbol('PASSIVE_NORESULT')
 ATTR_WAS_SET = util.symbol('ATTR_WAS_SET')
@@ -63,7 +64,7 @@ searches for INSTRUMENTATION_MANAGER.  If all finders return None, standard
 ClassManager instrumentation is used.
 
 """
-    
+
 class QueryableAttribute(interfaces.PropComparator):
 
     def __init__(self, impl, comparator=None, parententity=None):
@@ -84,17 +85,17 @@ class QueryableAttribute(interfaces.PropComparator):
 
     def get_history(self, instance, **kwargs):
         return self.impl.get_history(instance_state(instance), **kwargs)
-    
+
     def __selectable__(self):
         # TODO: conditionally attach this method based on clause_element ?
         return self
-    
+
     def __clause_element__(self):
         return self.comparator.__clause_element__()
-    
+
     def label(self, name):
         return self.__clause_element__().label(name)
-        
+
     def operate(self, op, *other, **kwargs):
         return op(self.comparator, *other, **kwargs)
 
@@ -130,10 +131,10 @@ def proxied_attribute_factory(descriptor):
 
     class ProxyImpl(object):
         accepts_scalar_loader = False
-        
+
         def __init__(self, key):
             self.key = key
-        
+
     class Proxy(InstrumentedAttribute):
         """A combination of InsturmentedAttribute and a regular descriptor."""
 
@@ -169,11 +170,11 @@ def proxied_attribute_factory(descriptor):
         def __getattr__(self, attribute):
             """Delegate __getattr__ to the original descriptor."""
             return getattr(descriptor, attribute)
-            
+
         def _property(self):
             return self._parententity.get_property(self.key, resolve_synonyms=True)
         property = property(_property)
-        
+
     Proxy.__name__ = type(descriptor).__name__ + 'Proxy'
 
     util.monkeypatch_proxied_specials(Proxy, type(descriptor),
@@ -338,10 +339,10 @@ class AttributeImpl(object):
         """set an attribute value on the given instance and 'commit' it."""
 
         state.commit([self.key])
-        
+
         state.callables.pop(self.key, None)
         state.dict[self.key] = value
-        
+
         return value
 
 class ScalarAttributeImpl(AttributeImpl):
@@ -471,7 +472,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
         if initiator is self:
             return
-        
+
         # may want to add options to allow the get() here to be passive
         old = self.get(state)
         state.dict[self.key] = value
@@ -508,7 +509,7 @@ class CollectionAttributeImpl(AttributeImpl):
     container object (defaulting to a list) and brokers access to the
     CollectionAdapter, a "view" onto that object that presents consistent
     bag semantics to the orm layer independent of the user data implementation.
-    
+
     """
     accepts_scalar_loader = False
     uses_objects = True
@@ -570,7 +571,7 @@ class CollectionAttributeImpl(AttributeImpl):
         del state.dict[self.key]
 
     def initialize(self, state):
-        """Initialize this attribute on the given object instance with an empty collection."""
+        """Initialize this attribute with an empty collection."""
 
         _, user_data = self._initialize_collection(state)
         state.dict[self.key] = user_data
@@ -601,7 +602,7 @@ class CollectionAttributeImpl(AttributeImpl):
             self.fire_remove_event(state, value, initiator)
         else:
             collection.remove_with_event(value, initiator)
-    
+
     def set(self, state, value, initiator):
         """Set a value on the given object.
 
@@ -682,12 +683,11 @@ class CollectionAttributeImpl(AttributeImpl):
         return user_data
 
     def get_collection(self, state, user_data=None, passive=False):
-        """retrieve the CollectionAdapter associated with the given state.
+        """Retrieve the CollectionAdapter associated with the given state.
 
         Creates a new CollectionAdapter if one does not exist.
 
         """
-
         if user_data is None:
             user_data = self.get(state, passive=passive)
             if user_data is PASSIVE_NORESULT:
@@ -698,12 +698,11 @@ class CollectionAttributeImpl(AttributeImpl):
 class GenericBackrefExtension(interfaces.AttributeExtension):
     """An extension which synchronizes a two-way relationship.
 
-    A typical two-way relationship is a parent object containing a
-    list of child objects, where each child object references the
-    parent.  The other are two objects which contain scalar references
-    to each other.
-    """
+    A typical two-way relationship is a parent object containing a list of
+    child objects, where each child object references the parent.  The other
+    are two objects which contain scalar references to each other.
 
+    """
     def __init__(self, key):
         self.key = key
 
@@ -742,7 +741,7 @@ class InstanceState(object):
     runid = None
     entity_name = NO_ENTITY_NAME
     expired_attributes = EMPTY_SET
-    
+
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
         self.manager = manager
@@ -754,10 +753,10 @@ class InstanceState(object):
         self.parents = {}
         self.pending = {}
         self.expired = False
-    
+
     def dispose(self):
         del self.session_id
-        
+
     def check_modified(self):
         if self.modified:
             return True
@@ -860,7 +859,7 @@ class InstanceState(object):
         """__call__ allows the InstanceState to act as a deferred
         callable for loading expired attributes, which is also
         serializable.
-        
+
         """
         unmodified = self.unmodified
         class_manager = self.manager
@@ -879,10 +878,10 @@ class InstanceState(object):
         """a set of keys which have no uncommitted changes"""
 
         return util.Set([
-            key for key in self.manager.keys() if 
+            key for key in self.manager.keys() if
             key not in self.committed_state
             or (key in self.manager.mutable_attributes and not self.manager[key].impl.check_mutable_modified(self))
-        ])  
+        ])
     unmodified = property(unmodified)
 
     def expire_attributes(self, attribute_names):
@@ -904,10 +903,10 @@ class InstanceState(object):
 
         self.dict.pop(key, None)
         self.callables.pop(key, None)
-    
+
     def modified_event(self, attr, should_copy, previous, passive=False):
         needs_committed = attr.key not in self.committed_state
-    
+
         if needs_committed:
             if previous is NEVER_SET:
                 if passive:
@@ -915,25 +914,25 @@ class InstanceState(object):
                         previous = self.dict[attr.key]
                 else:
                     previous = attr.get(self)
-                
+
             if should_copy and previous not in (None, NO_VALUE, NEVER_SET):
                 previous = attr.copy(previous)
-            
+
             if needs_committed:
                 self.committed_state[attr.key] = previous
-                
+
         self.modified = True
-    
+
     def commit(self, keys):
-        """commit all attributes named in the given list of key names.
+        """Commit attributes.
 
-        This is used by a partial-attribute load operation to mark committed those attributes
-        which were refreshed from the database.
+        This is used by a partial-attribute load operation to mark committed
+        those attributes which were refreshed from the database.
 
-        Attributes marked as "expired" can potentially remain "expired" after this step
-        if a value was not populated in state.dict.
+        Attributes marked as "expired" can potentially remain "expired" after
+        this step if a value was not populated in state.dict.
+
         """
-
         class_manager = self.manager
         for key in keys:
             if key in self.dict and key in class_manager.mutable_attributes:
@@ -953,7 +952,7 @@ class InstanceState(object):
 
         This is used after a flush() or a full load/refresh
         to remove all pending state from the instance.
-        
+
          - all attributes are marked as "committed"
          - the "strong dirty reference" is removed
          - the "modified" flag is set to False
@@ -961,17 +960,17 @@ class InstanceState(object):
 
         Attributes marked as "expired" can potentially remain "expired" after this step
         if a value was not populated in state.dict.
-        
+
         """
         self.committed_state = {}
         self.pending = {}
-        
+
         # unexpire attributes which have loaded
         if self.expired_attributes:
             for key in self.expired_attributes.intersection(self.dict):
                 self.callables.pop(key, None)
             self.expired_attributes.difference_update(self.dict)
-        
+
         for key in self.manager.mutable_attributes:
             if key in self.dict:
                 self.manager[key].impl.commit_to_state(self, self.committed_state)
@@ -1248,7 +1247,7 @@ class _ClassInstrumentationAdapter(ClassManager):
             return delegate(key, state, factory)
         else:
             return ClassManager.initialize_collection(self, key, state, factory)
-            
+
     def setup_instance(self, instance, state=None):
         self._adapted.initialize_instance_dict(self.class_, instance)
         state = ClassManager.setup_instance(self, instance, with_state=state)
@@ -1272,7 +1271,7 @@ class _ClassInstrumentationAdapter(ClassManager):
             try:
                 state = self.state_of(instance)
                 return True
-            except (KeyError, AttributeError):
+            except exc.NO_STATE:
                 return False
 
     def state_getter(self):
@@ -1328,11 +1327,12 @@ class History(tuple):
 
 
 class PendingCollection(object):
-    """stores items appended and removed from a collection that has not been loaded yet.
+    """A writable placeholder for an unloaded collection.
 
-    When the collection is loaded, the changes present in PendingCollection are applied
-    to produce the final result.
-    
+    Stores items appended to and removed from a collection that has not yet
+    been loaded. When the collection is loaded, the changes stored in
+    PendingCollection are applied to it to produce the final result.
+
     """
     def __init__(self):
         self.deleted_items = util.IdentitySet()
@@ -1352,7 +1352,6 @@ class PendingCollection(object):
 def get_history(state, key, **kwargs):
     return state.get_history(key, **kwargs)
 
-
 def has_parent(cls, obj, key, optimistic=False):
     """TODO"""
     manager = manager_of_class(cls)
@@ -1361,9 +1360,10 @@ def has_parent(cls, obj, key, optimistic=False):
 
 def register_class(class_):
     """TODO"""
-    
-    # TODO: what's this function for ?  why would I call this and not create_manager_for_cls ?
-    
+
+    # TODO: what's this function for ?  why would I call this and not
+    # create_manager_for_cls ?
+
     manager = manager_of_class(class_)
     if manager is None:
         manager = create_manager_for_cls(class_)
@@ -1403,13 +1403,13 @@ def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_pr
         descriptor = proxy_type(key, proxy_property, comparator, parententity)
     else:
         descriptor = InstrumentedAttribute(
-            _create_prop(class_, key, uselist, callable_, 
+            _create_prop(class_, key, uselist, callable_,
                     class_manager=manager,
                     useobject=useobject,
-                    typecallable=typecallable, 
-                    mutable_scalars=mutable_scalars, 
-                    impl_class=impl_class, 
-                    **kwargs), 
+                    typecallable=typecallable,
+                    mutable_scalars=mutable_scalars,
+                    impl_class=impl_class,
+                    **kwargs),
                 comparator=comparator, parententity=parententity)
 
     manager.instrument_attribute(key, descriptor)
@@ -1502,7 +1502,7 @@ class InstrumentationRegistry(object):
         else:
             try:
                 return finder(instance)
-            except (KeyError, AttributeError):
+            except exc.NO_STATE:
                 return default
             except:
                 raise
@@ -1521,7 +1521,7 @@ create_manager_for_cls = None
 manager_of_class = None
 instance_state = None
 _lookup_strategy = None
-    
+
 def _install_lookup_strategy(implementation):
     """Switch between native and extended instrumentation modes.
 
@@ -1579,7 +1579,6 @@ def collect_management_factories_for(cls):
     factories.discard(None)
     return factories
 
-
 def _create_prop(class_, key, uselist, callable_, class_manager, typecallable, useobject, mutable_scalars, impl_class, **kwargs):
     if impl_class:
         return impl_class(class_, key, typecallable, class_manager=class_manager, **kwargs)
@@ -1624,4 +1623,3 @@ def __init__(%(args)s):
     __init__ = env['__init__']
     __init__.__doc__ = original__init__.__doc__
     return __init__
-

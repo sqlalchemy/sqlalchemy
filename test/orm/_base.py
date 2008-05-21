@@ -56,11 +56,11 @@ class ComparableEntity(BasicEntity):
             # pick the entity thats not SA persisted as the source
             try:
                 self_key = sa.orm.attributes.instance_state(self).key
-            except (KeyError, AttributeError):
+            except sa.orm.exc.NO_STATE:
                 self_key = None
             try:
                 other_key = sa.orm.attributes.instance_state(other).key
-            except (KeyError, AttributeError):
+            except sa.orm.exc.NO_STATE:
                 other_key = None
 
             if other_key is None and self_key is not None:
