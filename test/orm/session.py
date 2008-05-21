@@ -1,5 +1,6 @@
 import testenv; testenv.configure_for_tests()
 import gc
+import inspect
 import pickle
 from sqlalchemy.orm import create_session, sessionmaker
 from testlib import engines, sa, testing
@@ -978,6 +979,144 @@ class SessionTest(_fixtures.FixtureTest):
         b = Bar()
         assert b in sess
         assert len(list(sess)) == 1
+
+
+class SessionInterface(testing.TestBase):
+    """Bogus args to Session methods produce actionable exceptions."""
+
+    # TODO: expand with message body assertions.
+
+    _class_methods = set(('get', 'load'))
+
+    def _public_session_methods(self):
+        Session = sa.orm.session.Session
+
+        blacklist = set(('begin', 'query'))
+
+        ok = set()
+        for meth in Session.public_methods:
+            if meth in blacklist:
+                continue
+            spec = inspect.getargspec(getattr(Session, meth))
+            if len(spec[0]) > 1 or spec[1]:
+                ok.add(meth)
+        return ok
+
+    def _map_it(self, cls):
+        return mapper(cls, Table('t', sa.MetaData(),
+                                 Column('id', Integer, primary_key=True)))
+
+    def _test_instance_guards(self, user_arg):
+        watchdog = set()
+
+        def x_raises_(obj, method, *args, **kw):
+            watchdog.add(method)
+            callable_ = getattr(obj, method)
+            self.assertRaises(sa.orm.exc.UnmappedInstanceError,
+                              callable_, *args, **kw)
+
+        def raises_(method, *args, **kw):
+            x_raises_(create_session(), method, *args, **kw)
+
+        raises_('__contains__', user_arg)
+
+        raises_('add', user_arg)
+
+        raises_('add_all', (user_arg,))
+
+        raises_('connection', instance=user_arg)
+
+        raises_('delete', user_arg)
+
+        raises_('execute', 'SELECT 1', instance=user_arg)
+
+        raises_('expire', user_arg)
+
+        raises_('expunge', user_arg)
+
+        # flush will no-op without something in the unit of work
+        def _():
+            class OK(object):
+                pass
+            self._map_it(OK)
+
+            s = create_session()
+            s.add(OK())
+            x_raises_(s, 'flush', (user_arg,))
+        _()
+
+        raises_('get_bind', instance=user_arg)
+
+        raises_('is_modified', user_arg)
+
+        raises_('merge', user_arg)
+
+        raises_('refresh', user_arg)
+
+        raises_('save', user_arg)
+
+        raises_('save_or_update', user_arg)
+
+        raises_('scalar', 'SELECT 1', instance=user_arg)
+
+        raises_('update', user_arg)
+
+        instance_methods = self._public_session_methods() - self._class_methods
+
+        eq_(watchdog, instance_methods,
+            watchdog.symmetric_difference(instance_methods))
+
+    def _test_class_guards(self, user_arg):
+        watchdog = set()
+
+        def raises_(method, *args, **kw):
+            watchdog.add(method)
+            callable_ = getattr(create_session(), method)
+            self.assertRaises(sa.orm.exc.UnmappedClassError,
+                              callable_, *args, **kw)
+
+        raises_('get', user_arg, 1)
+
+        raises_('load', user_arg, 1)
+
+        eq_(watchdog, self._class_methods,
+            watchdog.symmetric_difference(self._class_methods))
+
+    def test_unmapped_instance(self):
+        class Unmapped(object):
+            pass
+
+        self._test_instance_guards(Unmapped())
+        self._test_class_guards(Unmapped)
+
+    def test_unmapped_primitives(self):
+        for prim in ('doh', 123, ('t', 'u', 'p', 'l', 'e')):
+            self._test_instance_guards(prim)
+            self._test_class_guards(prim)
+
+    def test_unmapped_class_for_instance(self):
+        class Unmapped(object):
+            pass
+
+        self._test_instance_guards(Unmapped)
+        self._test_class_guards(Unmapped)
+
+    def test_mapped_class_for_instance(self):
+        class Mapped(object):
+            pass
+        self._map_it(Mapped)
+
+        self._test_instance_guards(Mapped)
+        # no class guards- it would pass.
+
+    def test_missing_state(self):
+        class Mapped(object):
+            pass
+        early = Mapped()
+        self._map_it(Mapped)
+
+        self._test_instance_guards(early)
+        self._test_class_guards(early)
 
 
 class TLTransactionTest(engine_base.AltEngineTest, _base.MappedTest):

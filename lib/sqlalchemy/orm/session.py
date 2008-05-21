@@ -917,6 +917,8 @@ class Session(object):
         qualifies the underlying Mapper used to perform the query.
 
         """
+        return self.query(_class_to_mapper(class_, entity_name)).get(ident)
+
         return self.query(class_, entity_name=entity_name).get(ident)
 
     def load(self, class_, ident, entity_name=None):
@@ -931,7 +933,7 @@ class Session(object):
         qualifies the underlying ``Mapper`` used to perform the query.
 
         """
-        return self.query(class_, entity_name=entity_name).load(ident)
+        return self.query(_class_to_mapper(class_, entity_name)).load(ident)
 
     def refresh(self, instance, attribute_names=None):
         """Refresh the attributes on the given instance.
@@ -950,7 +952,10 @@ class Session(object):
         attribute names indicating a subset of attributes to be refreshed.
 
         """
-        state = attributes.instance_state(instance)
+        try:
+            state = attributes.instance_state(instance)
+        except exc.NO_STATE:
+            raise exc.UnmappedInstanceError(instance)
         self._validate_persistent(state)
         if self.query(_object_mapper(instance))._get(
                 state.key, refresh_instance=state,
@@ -977,7 +982,10 @@ class Session(object):
         expired.
 
         """
-        state = attributes.instance_state(instance)
+        try:
+            state = attributes.instance_state(instance)
+        except exc.NO_STATE:
+            raise exc.UnmappedInstanceError(instance)
         self._validate_persistent(state)
         if attribute_names:
             _expire_state(state, attribute_names=attribute_names)
@@ -1009,7 +1017,10 @@ class Session(object):
         will be applied according to the *expunge* cascade rule.
 
         """
-        state = attributes.instance_state(instance)
+        try:
+            state = attributes.instance_state(instance)
+        except exc.NO_STATE:
+            raise exc.UnmappedInstanceError(instance)
         if state.session_id is not self.hash_key:
             raise sa_exc.InvalidRequestError(
                 "Instance %s is not present in this Session" %
@@ -1081,7 +1092,7 @@ class Session(object):
     def _save_without_cascade(self, instance, entity_name=None):
         """Used by scoping.py to save on init without cascade."""
 
-        state = _state_for_unsaved_instance(instance, entity_name)
+        state = _state_for_unsaved_instance(instance, entity_name, create=True)
         self._save_impl(state)
 
     def update(self, instance, entity_name=None):
@@ -1095,7 +1106,10 @@ class Session(object):
         instances if the relation is mapped with ``cascade="save-update"``.
 
         """
-        state = attributes.instance_state(instance)
+        try:
+            state = attributes.instance_state(instance)
+        except exc.NO_STATE:
+            raise exc.UnmappedInstanceError(instance, entity_name)
         self._update_impl(state)
         self._cascade_save_or_update(state, entity_name)
     update = util.pending_deprecation('0.5.x', "Use session.add()")(update)
@@ -1136,7 +1150,10 @@ class Session(object):
         The database delete operation occurs upon ``flush()``.
 
         """
-        state = attributes.instance_state(instance)
+        try:
+            state = attributes.instance_state(instance)
+        except exc.NO_STATE:
+            raise exc.UnmappedInstanceError(instance)
         self._delete_impl(state)
         for state, m in _cascade_state_iterator('delete', state):
             self._delete_impl(state, ignore_transient=True)
@@ -1304,7 +1321,11 @@ class Session(object):
         result of True.
 
         """
-        return self._contains_state(attributes.instance_state(instance))
+        try:
+            state = attributes.instance_state(instance)
+        except exc.NO_STATE:
+            raise exc.UnmappedInstanceError(instance)
+        return self._contains_state(state)
 
     def __iter__(self):
         """Iterate over all pending or persistent instances within this Session."""
@@ -1359,7 +1380,13 @@ class Session(object):
         # create the set of all objects we want to operate upon
         if objects:
             # specific list passed in
-            objset = util.Set([attributes.instance_state(o) for o in objects])
+            objset = util.Set()
+            for o in objects:
+                try:
+                    state = attributes.instance_state(o)
+                except exc.NO_STATE:
+                    raise exc.UnmappedInstanceError(o)
+                objset.add(state)
         else:
             # or just everything
             objset = util.Set(self.identity_map.all_states()).union(new)
@@ -1430,7 +1457,11 @@ class Session(object):
         should not be loaded in the course of performing this test.
 
         """
-        for attr in attributes.manager_of_class(instance.__class__).attributes:
+        try:
+            state = attributes.instance_state(instance)
+        except exc.NO_STATE:
+            raise exc.UnmappedInstanceError(instance)
+        for attr in state.manager.attributes:
             if not include_collections and hasattr(attr.impl, 'get_collection'):
                 continue
             (added, unchanged, deleted) = attr.get_history(instance)
@@ -1513,23 +1544,28 @@ def _cascade_unknown_state_iterator(cascade, state, **kwargs):
     for (o, m) in mapper.cascade_iterator(cascade, state, **kwargs):
         yield _state_for_unknown_persistence_instance(o, m.entity_name), m
 
-def _state_for_unsaved_instance(instance, entity_name):
+def _state_for_unsaved_instance(instance, entity_name, create=False):
     manager = attributes.manager_of_class(instance.__class__)
     if manager is None:
-        raise "FIXME unmapped instance"
+        raise exc.UnmappedInstanceError(instance, entity_name)
     if manager.has_state(instance):
         state = manager.state_of(instance)
         if state.key is not None:
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is already persistent" %
                 mapperutil.state_str(state))
-    else:
+    elif create:
         state = manager.setup_instance(instance)
+    else:
+        raise exc.UnmappedInstanceError(instance, entity_name)
     state.entity_name = entity_name
     return state
 
 def _state_for_unknown_persistence_instance(instance, entity_name):
-    state = attributes.instance_state(instance)
+    try:
+        state = attributes.instance_state(instance)
+    except exc.NO_STATE:
+        raise exc.UnmappedInstanceError(instance, entity_name)
     state.entity_name = entity_name
     return state
 

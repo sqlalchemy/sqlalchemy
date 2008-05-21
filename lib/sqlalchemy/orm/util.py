@@ -10,7 +10,7 @@ import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import sql, util
 from sqlalchemy.sql import expression, util as sql_util, operators
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, PropComparator, MapperProperty
-from sqlalchemy.orm import attributes
+from sqlalchemy.orm import attributes, exc
 
 all_cascades = util.FrozenSet(["delete", "delete-orphan", "all", "merge",
                          "expunge", "save-update", "refresh-expire", "none"])
@@ -457,9 +457,7 @@ def object_mapper(object, entity_name=None, raiseerror=True):
     except (KeyError, AttributeError):
         if not raiseerror:
             return None
-        raise sa_exc.InvalidRequestError(
-            "FIXME Instance %r with entity name '%s' has no mapper associated with it" %
-            (object, entity_name))
+        raise exc.UnmappedInstanceError(object, entity_name)
     if state.entity_name is not attributes.NO_ENTITY_NAME:
         # Override the given entity name if the object is not transient.
         entity_name = state.entity_name
@@ -482,6 +480,7 @@ def class_mapper(class_, entity_name=None, compile=True, raiseerror=True):
     except (KeyError, AttributeError):
         if not raiseerror:
             return
+        raise exc.UnmappedClassError(class_, entity_name)
         raise sa_exc.InvalidRequestError(
             "Class '%s' entity name '%s' has no mapper associated with it" %
             (class_.__name__, entity_name))
@@ -494,11 +493,13 @@ def _class_to_mapper(class_or_mapper, entity_name=None, compile=True):
         return class_or_mapper._AliasedClass__mapper
     elif isinstance(class_or_mapper, type):
         return class_mapper(class_or_mapper, entity_name=entity_name, compile=compile)
-    else:
+    elif hasattr(class_or_mapper, 'compile'):
         if compile:
             return class_or_mapper.compile()
         else:
             return class_or_mapper
+    else:
+        raise exc.UnmappedClassError(class_or_mapper, entity_name)
 
 def has_identity(object):
     state = attributes.instance_state(object)
