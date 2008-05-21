@@ -685,9 +685,6 @@ class Session(object):
         clause
           Optional, any ``ClauseElement``
 
-        instance
-          Optional, an instance of a mapped class
-
         """
         return self.__connection(self.get_bind(mapper, clause, _state))
 
@@ -834,7 +831,7 @@ class Session(object):
 
         _state
           Optional, SA internal representation of a mapped instance
-            
+
         """
         if mapper is clause is _state is None:
             if self.bind:
@@ -845,19 +842,21 @@ class Session(object):
                     "Connection, and no context was provided to locate "
                     "a binding.")
 
-        mappers = []
-        if _state is not None:
-            mappers.append(_state_mapper(_state))
-        if mapper is not None:
-            mappers.append(_class_to_mapper(mapper))
+        s_mapper = _state is not None and _state_mapper(_state) or None
+        c_mapper = mapper is not None and _class_to_mapper(mapper) or None
 
         # manually bound?
         if self.__binds:
-            for m in mappers:
-                if m.base_mapper in self.__binds:
-                    return self.__binds[m.base_mapper]
-                elif m.mapped_table in self.__binds:
-                    return self.__binds[m.mapped_table]
+            if s_mapper:
+                if s_mapper.base_mapper in self.__binds:
+                    return self.__binds[s_mapper.base_mapper]
+                elif s_mapper.mapped_table in self.__binds:
+                    return self.__binds[s_mapper.mapped_table]
+            if c_mapper:
+                if c_mapper.base_mapper in self.__binds:
+                    return self.__binds[c_mapper.base_mapper]
+                elif c_mapper.mapped_table in self.__binds:
+                    return self.__binds[c_mapper.mapped_table]
             if clause:
                 for t in sql_util.find_tables(clause):
                     if t in self.__binds:
@@ -868,13 +867,14 @@ class Session(object):
         if isinstance(clause, sql.expression.ClauseElement) and clause.bind:
             return clause.bind
 
-        for m in mappers:
-            if m.mapped_table.bind:
-                return m.mapped_table.bind
+        if s_mapper and s_mapper.mapped_table.bind:
+            return s_mapper.mapped_table.bind
+        if c_mapper and c_mapper.mapped_table.bind:
+            return c_mapper.mapped_table.bind
 
         context = []
         if mapper is not None:
-            context.append('mapper %s' % _class_to_mapper(mapper))
+            context.append('mapper %s' % c_mapper)
         if clause is not None:
             context.append('SQL expression')
         if _state is not None:

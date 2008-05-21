@@ -986,12 +986,13 @@ class SessionInterface(testing.TestBase):
 
     # TODO: expand with message body assertions.
 
-    _class_methods = set(('get', 'load'))
+    _class_methods = set((
+        'connection', 'execute', 'get', 'get_bind', 'load', 'scalar'))
 
     def _public_session_methods(self):
         Session = sa.orm.session.Session
 
-        blacklist = set(('begin', 'query', 'connection', 'execute', 'get_bind', 'scalar'))
+        blacklist = set(('begin', 'query'))
 
         ok = set()
         for meth in Session.public_methods:
@@ -1067,9 +1068,17 @@ class SessionInterface(testing.TestBase):
             self.assertRaises(sa.orm.exc.UnmappedClassError,
                               callable_, *args, **kw)
 
+        raises_('connection', mapper=user_arg)
+
+        raises_('execute', 'SELECT 1', mapper=user_arg)
+
         raises_('get', user_arg, 1)
 
+        raises_('get_bind', mapper=user_arg)
+
         raises_('load', user_arg, 1)
+
+        raises_('scalar', 'SELECT 1', mapper=user_arg)
 
         eq_(watchdog, self._class_methods,
             watchdog.symmetric_difference(self._class_methods))
