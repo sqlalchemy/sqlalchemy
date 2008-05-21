@@ -715,9 +715,10 @@ def __converting_factory(original_factory):
 
 def _instrument_class(cls):
     """Modify methods in a class and install instrumentation."""
-    # FIXME: more formally document this as a decoratorless/Python 2.3
+
+    # TODO: more formally document this as a decoratorless/Python 2.3
     # option for specifying instrumentation.  (likely doc'd here in code only,
-    # not in online docs.)
+    # not in online docs.)  Useful for C types too.
     #
     # __instrumentation__ = {
     #   'rolename': 'methodname', # ...
@@ -904,8 +905,7 @@ def _list_decorators():
 
     def append(fn):
         def append(self, item, _sa_initiator=None):
-            # FIXME: example of fully inlining __set and adapter.fire
-            # for critical path
+            # fully inlining __set and adapter.fire for this critical path
             if _sa_initiator is not False and item is not None:
                 executor = getattr(self, '_sa_adapter', None)
                 if executor:
