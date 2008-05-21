@@ -1,16 +1,21 @@
 import testenv; testenv.configure_for_tests()
 import doctest, sys, unittest
 
-def suite():
-    unittest_modules = [
-                        'ext.declarative',
-                        'ext.orderinglist',
-                        'ext.associationproxy']
 
-    if sys.version_info >= (2, 4):
-        doctest_modules = ['sqlalchemy.ext.sqlsoup']
+def suite():
+    unittest_modules = (
+        'ext.declarative',
+        'ext.orderinglist',
+        'ext.associationproxy',
+        )
+
+    if sys.version_info < (2, 4):
+        doctest_modules = ()
     else:
-        doctest_modules = []
+        doctest_modules = (
+            ('sqlalchemy.ext.orderinglist', {'optionflags': doctest.ELLIPSIS}),
+            ('sqlalchemy.ext.sqlsoup', {})
+            )
 
     alltests = unittest.TestSuite()
     for name in unittest_modules:
@@ -18,8 +23,8 @@ def suite():
         for token in name.split('.')[1:]:
             mod = getattr(mod, token)
         alltests.addTest(unittest.findTestCases(mod, suiteClass=None))
-    for name in doctest_modules:
-        alltests.addTest(doctest.DocTestSuite(name))
+    for name, opts in doctest_modules:
+        alltests.addTest(doctest.DocTestSuite(name, **opts))
     return alltests
 
 

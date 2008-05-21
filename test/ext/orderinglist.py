@@ -189,6 +189,12 @@ class OrderingListTest(TestBase):
         self.assert_(s1.bullets[2].position == 3)
         self.assert_(s1.bullets[3].position == 4)
 
+        s1.bullets._raw_append(Bullet('raw'))
+        self.assert_(s1.bullets[4].position is None)
+
+        s1.bullets._reorder()
+        self.assert_(s1.bullets[4].position == 5)
+
         session = create_session()
         session.save(s1)
         session.flush()
@@ -200,9 +206,9 @@ class OrderingListTest(TestBase):
         srt = session.query(Slide).get(id)
 
         self.assert_(srt.bullets)
-        self.assert_(len(srt.bullets) == 4)
+        self.assert_(len(srt.bullets) == 5)
 
-        titles = ['s1/b1','s1/b2','s1/b100','s1/b4']
+        titles = ['s1/b1','s1/b2','s1/b100','s1/b4', 'raw']
         found = [b.text for b in srt.bullets]
 
         self.assert_(titles == found)
