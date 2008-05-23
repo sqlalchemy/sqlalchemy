@@ -905,12 +905,7 @@ def _list_decorators():
 
     def append(fn):
         def append(self, item, _sa_initiator=None):
-            # fully inlining __set and adapter.fire for this critical path
-            if _sa_initiator is not False and item is not None:
-                executor = getattr(self, '_sa_adapter', None)
-                if executor:
-                    executor.attr.fire_append_event(executor.owner_state,
-                                                    item, _sa_initiator)
+            __set(self, item, _sa_initiator)
             fn(self, item)
         _tidy(append)
         return append
@@ -1346,7 +1341,6 @@ __interfaces = {
     # < 0.4 compatible naming, deprecated- use decorators instead.
     None: { }
     }
-
 
 class MappedCollection(dict):
     """A basic dictionary-based collection class.
