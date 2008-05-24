@@ -679,7 +679,7 @@ class SchemaTest(TestBase):
     @testing.crashes('firebird', 'No schema support')
     @testing.fails_on('sqlite')
     # fixme: revisit these below.
-    @testing.fails_on('access', 'oracle', 'mssql', 'sybase')
+    @testing.fails_on('access', 'mssql', 'sybase')
     def test_explicit_default_schema(self):
         engine = testing.db
 

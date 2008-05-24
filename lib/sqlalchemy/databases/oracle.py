@@ -382,7 +382,7 @@ class OracleDialect(default.DefaultDialect):
             return name.encode(self.encoding)
 
     def get_default_schema_name(self, connection):
-        return connection.execute('SELECT USER FROM DUAL').scalar()
+        return self._normalize_name(connection.execute('SELECT USER FROM DUAL').scalar())
     get_default_schema_name = base.connection_memoize(
         ('dialect', 'default_schema_name'))(get_default_schema_name)
 
@@ -453,7 +453,7 @@ class OracleDialect(default.DefaultDialect):
         if not dblink:
             dblink = ''
         if not owner:
-            owner = self._denormalize_name(table.schema) or self.get_default_schema_name(connection)
+            owner = self._denormalize_name(table.schema or self.get_default_schema_name(connection))
 
         c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':actual_name, 'owner':owner})
 
