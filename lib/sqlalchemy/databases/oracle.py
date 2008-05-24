@@ -357,7 +357,9 @@ class OracleDialect(default.DefaultDialect):
         return OracleExecutionContext(self, *args, **kwargs)
 
     def has_table(self, connection, table_name, schema=None):
-        cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':self._denormalize_name(table_name)})
+        if not schema:
+            schema = self.get_default_schema_name(connection)
+        cursor = connection.execute("""select table_name from all_tables where table_name=:name and owner=:schema_name""", {'name':self._denormalize_name(table_name), 'schema_name':self._denormalize_name(schema)})
         return bool( cursor.fetchone() is not None )
 
     def has_sequence(self, connection, sequence_name):
