@@ -2,6 +2,13 @@
 CHANGES
 =======
 
+0.4.7
+=====
+- oracle
+    - Oracle get_default_schema_name() "normalizes" the name
+      before returning, meaning it returns a lower-case name
+      when the identifier is detected as case insensitive.
+
 0.4.6
 =====
 - orm

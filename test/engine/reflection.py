@@ -668,7 +668,7 @@ class SchemaTest(TestBase):
 
     @testing.unsupported('sqlite', 'firebird')
     # fixme: revisit these below.
-    @testing.fails_on('oracle', 'mssql', 'sybase', 'access')
+    @testing.fails_on('mssql', 'sybase', 'access')
     def test_explicit_default_schema(self):
         engine = testing.db
 
