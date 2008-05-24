@@ -444,7 +444,7 @@ class EagerTest(_fixtures.FixtureTest):
             l = q.limit(2).all()
             assert self.static.user_all_result[:2] == l
         else:
-            l = q.limit(2).offset(1).order_by(User.id).all()
+            l = q.order_by(User.id).limit(2).offset(1).all()
             print self.static.user_all_result[1:3]
             print l
             assert self.static.user_all_result[1:3] == l

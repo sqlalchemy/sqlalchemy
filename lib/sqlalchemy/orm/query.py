@@ -279,7 +279,7 @@ class Query(object):
         if self._limit is not None or self._offset is not None:
             # TODO: do we want from_self() to be implicit here ?  i vote explicit for the time being
             raise sa_exc.InvalidRequestError("Query.%s() being called on a Query which already has LIMIT or OFFSET applied. "
-            "To filter/join to the row-limited results of the query, call from_self() first."
+            "To modify the row-limited results of a Query, call from_self() first.  Otherwise, call %s() before limit() or offset() are applied." % (meth, meth)
             )
 
     def __no_criterion(self):
@@ -680,7 +680,7 @@ class Query(object):
         else:
             self._order_by = self._order_by + criterion
     order_by = util.array_as_starargs_decorator(order_by)
-    order_by = _generative(__no_statement_condition)(order_by)
+    order_by = _generative(__no_statement_condition, __no_limit_offset)(order_by)
 
     def group_by(self, *criterion):
         """apply one or more GROUP BY criterion to the query and return the newly resulting ``Query``"""
@@ -692,7 +692,7 @@ class Query(object):
         else:
             self._group_by = self._group_by + criterion
     group_by = util.array_as_starargs_decorator(group_by)
-    group_by = _generative(__no_statement_condition)(group_by)
+    group_by = _generative(__no_statement_condition, __no_limit_offset)(group_by)
 
     def having(self, criterion):
         """apply a HAVING criterion to the query and return the newly resulting ``Query``."""
@@ -709,7 +709,7 @@ class Query(object):
             self._having = self._having & criterion
         else:
             self._having = criterion
-    having = _generative(__no_statement_condition)(having)
+    having = _generative(__no_statement_condition, __no_limit_offset)(having)
 
     def join(self, *props, **kwargs):
         """Create a join against this ``Query`` object's criterion

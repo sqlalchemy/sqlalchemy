@@ -178,12 +178,22 @@ class InvalidGenerationsTest(QueryTest):
     def test_no_limit_offset(self):
         s = create_session()
         
-        q = s.query(User).limit(2)
-        self.assertRaises(sa_exc.InvalidRequestError, q.join, "addresses")
+        for q in (
+            s.query(User).limit(2),
+            s.query(User).offset(2),
+            s.query(User).limit(2).offset(2)
+        ):
+            self.assertRaises(sa_exc.InvalidRequestError, q.join, "addresses")
 
-        self.assertRaises(sa_exc.InvalidRequestError, q.filter, User.name=='ed')
+            self.assertRaises(sa_exc.InvalidRequestError, q.filter, User.name=='ed')
 
-        self.assertRaises(sa_exc.InvalidRequestError, q.filter_by, name='ed')
+            self.assertRaises(sa_exc.InvalidRequestError, q.filter_by, name='ed')
+
+            self.assertRaises(sa_exc.InvalidRequestError, q.order_by, 'foo')
+
+            self.assertRaises(sa_exc.InvalidRequestError, q.group_by, 'foo')
+
+            self.assertRaises(sa_exc.InvalidRequestError, q.having, 'foo')
     
     def test_no_from(self):
         s = create_session()
@@ -1280,8 +1290,8 @@ class MixedEntitiesTest(QueryTest):
         oalias = aliased(Order)
         
         for q in [
-            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id),
-            sess.query(Order, oalias)._from_self().filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id),
+            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).order_by(Order.id, oalias.id),
+            sess.query(Order, oalias)._from_self().filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).order_by(Order.id, oalias.id),
             # here we go....two layers of aliasing
             sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id)._from_self().order_by(Order.id, oalias.id).limit(10).options(eagerload(Order.items)),
 
@@ -1291,7 +1301,7 @@ class MixedEntitiesTest(QueryTest):
         ]:
         
             self.assertEquals(
-            q.order_by(Order.id, oalias.id).all(),
+            q.all(),
             [
                 (Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3), Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1)), 
                 (Order(address_id=None,description=u'order 5',isopen=0,user_id=7,id=5), Order(address_id=1,description=u'order 1',isopen=0,user_id=7,id=1)), 

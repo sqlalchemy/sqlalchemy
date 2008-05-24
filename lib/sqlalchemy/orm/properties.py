@@ -602,7 +602,7 @@ class PropertyLoader(StrategizedProperty):
                 else:
                     if arg_foreign_keys:
                         raise sa_exc.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
-                            "Specify _local_remote_pairs=[(local, remote), (local, remote), ...] to explicitly establish the local/remote column pairs." % (self.primaryjoin, self))
+                            "Are the columns in foreign_keys present within the given join condition ?" % (self.primaryjoin, self))
                     else:
                         raise sa_exc.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
                             "Specify the foreign_keys argument to indicate which columns on the relation are foreign." % (self.primaryjoin, self))
