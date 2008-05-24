@@ -1337,7 +1337,7 @@ class InvalidRelationEscalationTest(_base.MappedTest):
 
         self.assertRaisesMessage(
             sa.exc.ArgumentError,
-            "Specify the foreign_keys argument to indicate which columns "
+            "Specify the 'foreign_keys' argument to indicate which columns "
             "on the relation are foreign.", sa.orm.compile_mappers)
 
     @testing.resolve_artifact_names

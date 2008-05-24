@@ -53,7 +53,7 @@ class RelationTest1(ORMTest):
         mapper(Manager, managers, inherits=Person,
                inherit_condition=people.c.person_id==managers.c.person_id)
         
-        self.assertEquals(class_mapper(Person).get_property('manager').foreign_keys, set([people.c.manager_id]))
+        self.assertEquals(class_mapper(Person).get_property('manager').synchronize_pairs, [(managers.c.person_id,people.c.manager_id)])
         
         session = create_session()
         p = Person(name='some person')

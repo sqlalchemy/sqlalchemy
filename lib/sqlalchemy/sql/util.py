@@ -243,7 +243,7 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None, consider_as_re
         raise exc.ArgumentError("Can only specify one of 'consider_as_foreign_keys' or 'consider_as_referenced_keys'")
         
     def visit_binary(binary):
-        if not any_operator and binary.operator != operators.eq:
+        if not any_operator and binary.operator is not operators.eq:
             return
         if not isinstance(binary.left, sql.ColumnElement) or not isinstance(binary.right, sql.ColumnElement):
             return

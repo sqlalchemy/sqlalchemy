@@ -38,7 +38,6 @@ class DependencyProcessor(object):
         self.direction = prop.direction
         self.is_backref = prop._is_backref
         self.post_update = prop.post_update
-        self.foreign_keys = prop.foreign_keys
         self.passive_deletes = prop.passive_deletes
         self.passive_updates = prop.passive_updates
         self.enable_typechecks = prop.enable_typechecks

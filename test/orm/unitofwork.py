@@ -586,8 +586,8 @@ class ForeignPKTest(_base.MappedTest):
             'sites' : relation(PersonSite)})
 
         sa.orm.compile_mappers()
-        eq_(list(m2.get_property('sites').foreign_keys),
-            [peoplesites.c.person])
+        eq_(list(m2.get_property('sites').synchronize_pairs),
+            [(people.c.person, peoplesites.c.person)])
 
         p = Person(person='im the key', firstname='asdf')
         ps = PersonSite(site='asdf')
