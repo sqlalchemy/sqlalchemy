@@ -77,6 +77,12 @@ user_defined_state
       before returning, meaning it returns a lower-case name
       when the identifier is detected as case insensitive.
 
+    - creating/dropping tables takes schema name into account
+      when searching for the existing table, so that tables
+      in other owner namespaces with the same name do not
+      conflict [ticket:709]
+
+
 0.4.6
 =====
 - orm
