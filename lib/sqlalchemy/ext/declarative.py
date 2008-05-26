@@ -95,11 +95,22 @@ where we define a primary join condition on the ``Address`` class using them::
         user_id = Column(Integer, ForeignKey('users.id'))
         user = relation(User, primaryjoin=user_id == User.id)
 
-When an explicit join condition or other configuration which depends on
-multiple classes cannot be defined immediately due to some classes not yet
-being available, these can be defined after all classes have been created.
-Attributes which are added to the class after its creation are associated with
-the Table/mapping in the same way as if they had been defined inline::
+In addition to the main argument for ``relation``, other arguments
+which depend upon the columns present on an as-yet undefined class
+may also be specified as strings.  These strings are evaluated as
+Python expressions.  The full namespace available within this 
+evaluation includes all classes mapped for this declarative base,
+as well as the contents of the ``sqlalchemy`` package, including 
+expression functions like ``desc`` and ``func``::
+
+    class User(Base):
+        # ....
+        addresses = relation("Address", order_by="desc(Address.email)", 
+            primaryjoin="Address.user_id==User.id")
+
+As an alternative to string-based attributes, attributes may also be 
+defined after all classes have been created.  Just add them to the target
+class after the fact::
 
     User.addresses = relation(Address, primaryjoin=Address.user_id == User.id)
 
@@ -181,7 +192,7 @@ Mapped instances then make usage of ``Session`` in the usual way.
 
 """
 from sqlalchemy.schema import Table, Column, MetaData
-from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property
+from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property, class_mapper
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty
 from sqlalchemy import util, exceptions
@@ -290,20 +301,48 @@ class DeclarativeMeta(type):
         else:
             type.__setattr__(cls, key, value)
 
+class _GetColumns(object):
+    def __init__(self, cls):
+        self.cls = cls
+    def __getattr__(self, key):
+        mapper = class_mapper(self.cls, compile=False)
+        if not mapper:
+            return getattr(self.cls, key)
+        else:
+            return mapper.get_property(key).columns[0]
+
 def _deferred_relation(cls, prop):
-    if (isinstance(prop, PropertyLoader) and
-        isinstance(prop.argument, basestring)):
-        arg = prop.argument
+    def resolve_arg(arg):
+        import sqlalchemy
+        
+        def access_cls(key):
+            try:
+                return _GetColumns(cls._decl_class_registry[key])
+            except KeyError:
+                return sqlalchemy.__dict__[key]
+
+        d = util.PopulateDict(access_cls)
         def return_cls():
             try:
-                return cls._decl_class_registry[arg]
-            except KeyError:
+                x = eval(arg, globals(), d)
+                
+                if isinstance(x, _GetColumns):
+                    return x.cls
+                else:
+                    return x
+            except NameError, n:
                 raise exceptions.InvalidRequestError(
-                    "When compiling mapper %s, could not locate a declarative "
-                    "class named %r.  Consider adding this property to the %r "
+                    "When compiling mapper %s, expression %r failed to locate a name (%r). "
+                    "If this is a class name, consider adding this relation() to the %r "
                     "class after both dependent classes have been defined." % (
-                    prop.parent, arg, prop.parent.class_))
-        prop.argument = return_cls
+                    prop.parent, arg, n.message, cls))
+        return return_cls
+
+    if isinstance(prop, PropertyLoader):
+        for attr in ('argument', 'order_by', 'primaryjoin', 'secondaryjoin', 'secondary', '_foreign_keys', 'remote_side'):
+            v = getattr(prop, attr)
+            if isinstance(v, basestring):
+                setattr(prop, attr, resolve_arg(v))
 
     return prop
 

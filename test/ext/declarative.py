@@ -81,7 +81,35 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         u = User()
         assert User.addresses
         assert mapperlib._new_mappers is False
-
+    
+    def test_string_dependency_resolution(self):
+        from sqlalchemy.sql import desc
+        
+        class User(Base, ComparableEntity):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            addresses = relation("Address", order_by="desc(Address.email)", 
+                primaryjoin="User.id==Address.user_id", foreign_keys="[Address.user_id]")
+        
+        class Address(Base, ComparableEntity):
+            __tablename__ = 'addresses'
+            id = Column(Integer, primary_key=True)
+            email = Column(String(50))
+            user_id = Column(Integer)  # note no foreign key
+        
+        Base.metadata.create_all()
+        
+        sess = create_session()
+        u1 = User(name='ed', addresses=[Address(email='abc'), Address(email='def'), Address(email='xyz')])
+        sess.add(u1)
+        sess.flush()
+        sess.clear()
+        self.assertEquals(sess.query(User).filter(User.name == 'ed').one(),
+            User(name='ed', addresses=[Address(email='xyz'), Address(email='def'), Address(email='abc')])
+        )
+        
+            
     def test_nice_dependency_error(self):
         class User(Base):
             __tablename__ = 'users'

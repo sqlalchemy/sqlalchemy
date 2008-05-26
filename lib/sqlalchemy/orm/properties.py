@@ -246,11 +246,11 @@ class PropertyLoader(StrategizedProperty):
         self.direction = None
         self.viewonly = viewonly
         self.lazy = lazy
-        self._foreign_keys = util.to_set(foreign_keys)
+        self._foreign_keys = foreign_keys 
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
         self.passive_updates = passive_updates
-        self.remote_side = util.to_set(remote_side)
+        self.remote_side = remote_side
         self.enable_typechecks = enable_typechecks
         self.comparator = PropertyLoader.Comparator(self)
         self.join_depth = join_depth
@@ -518,6 +518,14 @@ class PropertyLoader(StrategizedProperty):
             raise sa_exc.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
         assert isinstance(self.mapper, mapper.Mapper), self.mapper
 
+        # accept callables for other attributes which may require deferred initialization
+        for attr in ('order_by', 'primaryjoin', 'secondaryjoin', 'secondary', '_foreign_keys', 'remote_side'):
+            if callable(getattr(self, attr)):
+                setattr(self, attr, getattr(self, attr)())
+        
+        self._foreign_keys = util.to_set(self._foreign_keys)
+        self.remote_side = util.to_set(self.remote_side)
+        
         if not self.parent.concrete:
             for inheriting in self.parent.iterate_to_root():
                 if inheriting is not self.parent and inheriting._get_property(self.key, raiseerr=False):

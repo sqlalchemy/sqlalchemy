@@ -538,9 +538,18 @@ The `relation()` function is extremely flexible, and could just have easily been
     {python}
     class User(Base):
         ....
-        addresses = relation("Address", backref="user")
-        
-Where above we used the string name `"Addresses"` in the event that the `Address` class was not yet defined.   We are also free to not define a backref, and to define the `relation()` only on one class and not the other.   It is also possible to define two separate `relation()`s for either direction, which is generally safe for many-to-one and one-to-many relations, but not for many-to-many relations.
+        addresses = relation(Address, order_by=Address.id, backref="user")
+
+We are also free to not define a backref, and to define the `relation()` only on one class and not the other.   It is also possible to define two separate `relation()`s for either direction, which is generally safe for many-to-one and one-to-many relations, but not for many-to-many relations.
+
+When using the `declarative` extension, `relation()` gives us the option to use strings for most arguments that concern the target class, in the case that the target class has not yet been defined.  This **only** works in conjunction with `declarative`:
+
+    {python}
+    class User(Base):
+        ....
+        addresses = relation("Address", order_by="Address.id", backref="user")
+
+When `declarative` is not in use, you typically define your `mapper()` well after the target classes and `Table` objects have been defined, so string expressions are not needed.
 
 We'll need to create the `addresses` table in the database, so we will issue another CREATE from our metadata, which will skip over tables which have already been created:
 

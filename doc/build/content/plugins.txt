@@ -92,12 +92,23 @@ using them:
         user_id = Column('user_id', Integer, ForeignKey('users.id'))
         user = relation(User, primaryjoin=user_id==User.id)
 
-When an explicit join condition or other configuration which depends 
-on multiple classes cannot be defined immediately due to some classes
-not yet being available, these can be defined after all classes have
-been created.  Attributes which are added to the class after
-its creation are associated with the Table/mapping in the same
-way as if they had been defined inline:
+In addition to the main argument for `relation`, other arguments
+which depend upon the columns present on an as-yet undefined class
+may also be specified as strings.  These strings are evaluated as
+Python expressions.  The full namespace available within this 
+evaluation includes all classes mapped for this declarative base,
+as well as the contents of the `sqlalchemy` package, including 
+expression functions like `desc` and `func`:
+
+    {python}
+    class User(Base):
+        # ....
+        addresses = relation("Address", order_by="desc(Address.email)", 
+            primaryjoin="Address.user_id==User.id")
+
+As an alternative to string-based attributes, attributes may also be 
+defined after all classes have been created.  Just add them to the target
+class after the fact:
 
     {python}
     User.addresses = relation(Address, primaryjoin=Address.user_id==User.id)
