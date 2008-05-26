@@ -1854,7 +1854,9 @@ class ManyToManyTest(_fixtures.FixtureTest):
                  keyword=relation(mapper(Keyword, keywords, non_primary=True),
                                   lazy=False,
                                   uselist=False,
-                                  order_by=keywords.c.name)))
+                                  order_by=keywords.c.name      # note here is a valid place where order_by can be used
+                                  )))                           # on a scalar relation(); to determine eager ordering of
+                                                                # the parent object within its collection.
 
         mapper(Item, items, properties=dict(
             keywords=relation(IKAssociation, lazy=False)))
