@@ -335,7 +335,7 @@ def _deferred_relation(cls, prop):
                     "When compiling mapper %s, expression %r failed to locate a name (%r). "
                     "If this is a class name, consider adding this relation() to the %r "
                     "class after both dependent classes have been defined." % (
-                    prop.parent, arg, n.message, cls))
+                    prop.parent, arg, n.args[0], cls))
         return return_cls
 
     if isinstance(prop, PropertyLoader):
