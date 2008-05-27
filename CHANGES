@@ -1,18 +1,21 @@
 =======
 CHANGES
 =======
-
 0.4.7
 =====
+- mysql
+    - Added 'CALL' to the list of SQL keywords which return
+      result rows.
+
 - oracle
     - Oracle get_default_schema_name() "normalizes" the name
       before returning, meaning it returns a lower-case name
       when the identifier is detected as case insensitive.
 
-    - creating/dropping tables takes schema name into account
+    - Creating/dropping tables takes schema name into account
       when searching for the existing table, so that tables
       in other owner namespaces with the same name do not
-      conflict [ticket:709]
+      conflict. [ticket:709]
 
 
 0.4.6
