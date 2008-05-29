@@ -78,6 +78,8 @@ class EvaluatorCompiler(object):
                 if left_val is None or right_val is None:
                     return None
                 return operator(eval_left(obj), eval_right(obj))
+        else:
+            raise UnevaluatableError("Cannot evaluate %s with operator %s" % (type(clause).__name__, clause.operator))
         return evaluate
 
     def visit_unary(self, clause):
