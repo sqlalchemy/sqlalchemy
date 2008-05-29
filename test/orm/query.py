@@ -2127,7 +2127,7 @@ class UpdateTest(_base.MappedTest):
     def define_tables(self, metadata):
         Table('users', metadata,
               Column('id', Integer, primary_key=True),
-              Column('name', String),
+              Column('name', String(32)),
               Column('age', Integer))
     
     def setup_classes(self):
