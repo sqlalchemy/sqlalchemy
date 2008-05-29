@@ -1264,6 +1264,8 @@ class Query(object):
             select_stmt = context.statement.with_only_columns(primary_table.primary_key)
             matched_rows = session.execute(select_stmt).fetchall()
         
+        if self._autoflush:
+            session._autoflush()
         session.execute(delete_stmt)
         
         if synchronize_session == 'evaluate':
@@ -1273,13 +1275,13 @@ class Query(object):
             objs_to_expunge = [obj for (cls, pk, entity_name),obj in session.identity_map.iteritems()
                 if issubclass(cls, target_cls) and eval_condition(obj)]
             for obj in objs_to_expunge:
-                session.expunge(obj)
+                session._remove_newly_deleted(attributes.instance_state(obj))
         elif synchronize_session == 'fetch':
             target_mapper = self._mapper_zero()
             for primary_key in matched_rows:
                 identity_key = target_mapper.identity_key_from_primary_key(list(primary_key))
                 if identity_key in session.identity_map:
-                    session.expunge(session.identity_map[identity_key])
+                    session._remove_newly_deleted(attributes.instance_state(session.identity_map[identity_key]))
 
     def update(self, values, synchronize_session='evaluate'):
         """EXPERIMENTAL"""
@@ -1311,16 +1313,29 @@ class Query(object):
             select_stmt = context.statement.with_only_columns(primary_table.primary_key)
             matched_rows = session.execute(select_stmt).fetchall()
         
+        if self._autoflush:
+            session._autoflush()
         session.execute(update_stmt)
         
         if synchronize_session == 'evaluate':
             target_cls = self._mapper_zero().class_
             
             for (cls, pk, entity_name),obj in session.identity_map.iteritems():
+                evaluated_keys = value_evaluators.keys()
+                
                 if issubclass(cls, target_cls) and eval_condition(obj):
-                    for key,eval_value in value_evaluators.items():
-                        obj.__dict__[key] = eval_value(obj)
-        
+                    state = attributes.instance_state(obj)
+                    
+                    # only evaluate unmodified attributes
+                    to_evaluate = state.unmodified.intersection(evaluated_keys)
+                    for key in to_evaluate:
+                        state.dict[key] = value_evaluators[key](obj)
+                            
+                    state.commit(list(to_evaluate))
+                    
+                    # expire attributes with pending changes (there was no autoflush, so they are overwritten)
+                    state.expire_attributes(util.Set(evaluated_keys).difference(to_evaluate))
+                    
         elif synchronize_session == 'expire':
             target_mapper = self._mapper_zero()
             

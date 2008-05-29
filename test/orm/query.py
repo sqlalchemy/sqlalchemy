@@ -2123,7 +2123,7 @@ class TestOverlyEagerEquivalentCols(_base.MappedTest):
                 b1
         )
         
-class UpdateTest(_base.MappedTest):
+class UpdateDeleteTest(_base.MappedTest):
     def define_tables(self, metadata):
         Table('users', metadata,
               Column('id', Integer, primary_key=True),
@@ -2157,6 +2157,24 @@ class UpdateTest(_base.MappedTest):
         assert john not in sess and jill not in sess
         
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
+        
+    @testing.resolve_artifact_names
+    def test_delete_rollback(self):
+        sess = sessionmaker()()
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete()
+        assert john not in sess and jill not in sess
+        sess.rollback()
+        assert john in sess and jill in sess
+
+    @testing.resolve_artifact_names
+    def test_delete_rollback_with_fetch(self):
+        sess = sessionmaker()()
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete(synchronize_session='fetch')
+        assert john not in sess and jill not in sess
+        sess.rollback()
+        assert john in sess and jill in sess
         
     @testing.resolve_artifact_names
     def test_delete_without_session_sync(self):
@@ -2200,6 +2218,56 @@ class UpdateTest(_base.MappedTest):
         
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
+
+    @testing.resolve_artifact_names
+    def test_update_changes_resets_dirty(self):
+        sess = create_session(bind=testing.db, autocommit=False, autoflush=False)
+
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        
+        john.age = 50
+        jack.age = 37
+        
+        # autoflush is false.  therefore our '50' and '37' are getting blown away by this operation.
+        
+        sess.query(User).filter(User.age > 29).update({'age': User.age - 10})
+
+        for x in (john, jack, jill, jane):
+            assert not sess.is_modified(x)
+
+        eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
+        
+        john.age = 25
+        assert john in sess.dirty
+        assert jack in sess.dirty
+        assert jill not in sess.dirty
+        assert not sess.is_modified(john)
+        assert not sess.is_modified(jack)
+
+    @testing.resolve_artifact_names
+    def test_update_changes_with_autoflush(self):
+        sess = create_session(bind=testing.db, autocommit=False, autoflush=True)
+
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+
+        john.age = 50
+        jack.age = 37
+
+        sess.query(User).filter(User.age > 29).update({'age': User.age - 10})
+
+        for x in (john, jack, jill, jane):
+            assert not sess.is_modified(x)
+
+        eq_([john.age, jack.age, jill.age, jane.age], [40, 27, 29, 27])
+
+        john.age = 25
+        assert john in sess.dirty
+        assert jack not in sess.dirty
+        assert jill not in sess.dirty
+        assert sess.is_modified(john)
+        assert not sess.is_modified(jack)
+        
+        
 
     @testing.resolve_artifact_names
     def test_update_with_expire_strategy(self):
