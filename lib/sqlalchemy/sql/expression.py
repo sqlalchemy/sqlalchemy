@@ -3084,6 +3084,16 @@ class Select(_SelectBaseMixin, FromClause):
         s._froms = s._froms.union(_from_objects(column))
         return s
 
+    def with_only_columns(self, columns):
+        """return a new select() construct with its columns clause replaced with the given columns."""
+        s = self._generate()
+        s._raw_columns = [
+                isinstance(c, _ScalarSelect) and c.self_group(against=operators.comma_op) or c
+                for c in
+                [_literal_as_column(c) for c in columns]
+            ]
+        return s
+
     def where(self, whereclause):
         """return a new select() construct with the given expression added to its WHERE clause, joined
         to the existing clause via AND, if any."""
