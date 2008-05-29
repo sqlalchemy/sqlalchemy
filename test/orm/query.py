@@ -2123,6 +2123,93 @@ class TestOverlyEagerEquivalentCols(_base.MappedTest):
                 b1
         )
         
+class UpdateTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('name', String),
+              Column('age', Integer))
+    
+    def setup_classes(self):
+        class User(_base.ComparableEntity):
+            pass
+    
+    @testing.resolve_artifact_names
+    def insert_data(self):
+        users.insert().execute([
+            dict(id=1, name='john', age=25),
+            dict(id=2, name='jack', age=47),
+            dict(id=3, name='jill', age=29),
+            dict(id=4, name='jane', age=37),
+        ])
+    
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        mapper(User, users)
+    
+    @testing.resolve_artifact_names
+    def test_delete(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+        
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete()
+        
+        assert john not in sess and jill not in sess
+        
+        eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
+        
+    @testing.resolve_artifact_names
+    def test_delete_without_session_sync(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+        
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete(synchronize_session=False)
+        
+        assert john in sess and jill in sess
+        
+        eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
+    
+    @testing.resolve_artifact_names
+    def test_delete_with_fetch_strategy(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+        
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete(synchronize_session='fetch')
+        
+        assert john not in sess and jill not in sess
+        
+        eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
+    
+    @testing.resolve_artifact_names
+    def test_delete_fallback(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+        
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).filter(User.name == select([func.max(User.name)])).delete()
+        
+        assert john not in sess
+        
+        eq_(sess.query(User).order_by(User.id).all(), [jack,jill,jane])
+    
+    @testing.resolve_artifact_names
+    def test_update(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+        
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).filter(User.age > 29).update({'age': User.age - 10})
+        
+        eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
+        eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
+
+    @testing.resolve_artifact_names
+    def test_update_with_expire_strategy(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+        
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='expire')
+        
+        eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
+        eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
 if __name__ == '__main__':
     testenv.main()
