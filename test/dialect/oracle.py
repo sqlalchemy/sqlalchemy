@@ -3,6 +3,8 @@ from sqlalchemy import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import oracle
 from testlib import *
+from testlib.engines import testing_engine
+import os
 
 
 class OutParamTest(TestBase, AssertsExecutionResults):
@@ -303,6 +305,39 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             assert t.select().execute().fetchall() == [(1, 'foobar')]
         finally:
             testing.db.execute("DROP TABLE Z_TEST")
+
+class BufferedColumnTest(TestBase, AssertsCompiledSQL):
+    __only_on__ = 'oracle'
+
+    def setUpAll(self):
+        global binary_table, stream, meta
+        meta = MetaData(testing.db)
+        binary_table = Table('binary_table', meta, 
+           Column('id', Integer, primary_key=True),
+           Column('data', Binary)
+        )
+        meta.create_all()
+        stream = os.path.join(os.path.dirname(testenv.__file__), 'binary_data_one.dat')
+        stream = file(stream).read(12000)
+
+        for i in range(1, 11):
+            binary_table.insert().execute(id=i, data=stream)
+
+    def tearDownAll(self):
+        meta.drop_all()
+
+    def test_fetch(self):
+        self.assertEquals(
+            binary_table.select().execute().fetchall() ,
+            [(i, stream) for i in range(1, 11)], 
+        )
+
+    def test_fetch_single_arraysize(self):
+        eng = testing_engine(options={'arraysize':1})
+        self.assertEquals(
+            eng.execute(binary_table.select()).fetchall(),
+            [(i, stream) for i in range(1, 11)], 
+        )
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):

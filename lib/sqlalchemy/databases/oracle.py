@@ -214,6 +214,12 @@ class OracleExecutionContext(default.DefaultExecutionContext):
                     self.out_parameters[name] = self.cursor.var(dbtype)
                     self.parameters[0][name] = self.out_parameters[name]
 
+    def create_cursor(self):
+        c = self._connection.connection.cursor()
+        if self.dialect.arraysize:
+            c.cursor.arraysize = self.dialect.arraysize
+        return c
+
     def get_result_proxy(self):
         if hasattr(self, 'out_parameters'):
             if self.compiled_parameters is not None and len(self.compiled_parameters) == 1:
@@ -243,10 +249,11 @@ class OracleDialect(default.DefaultDialect):
     supports_pk_autoincrement = False
     default_paramstyle = 'named'
 
-    def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, **kwargs):
+    def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, arraysize=50, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         self.use_ansi = use_ansi
         self.threaded = threaded
+        self.arraysize = arraysize
         self.allow_twophase = allow_twophase
         self.supports_timestamp = self.dbapi is None or hasattr(self.dbapi, 'TIMESTAMP' )
         self.auto_setinputsizes = auto_setinputsizes
