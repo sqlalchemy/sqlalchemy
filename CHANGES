@@ -17,6 +17,17 @@ CHANGES
       in other owner namespaces with the same name do not
       conflict. [ticket:709]
 
+    - Cursors now have "arraysize" set to 50 by default on 
+      them, the value of which is configurable using the 
+      "arraysize" argument to create_engine() with the
+      Oracle dialect.  This to account for cx_oracle's default 
+      setting of "1", which has the effect of many round trips 
+      being sent to Oracle.  This actually works well in 
+      conjunction with BLOB/CLOB-bound cursors, of which 
+      there are any number available but only for the life of 
+      that row request (so BufferedColumnRow is still needed, 
+      but less so). [ticket:1062]
+
 
 0.4.6
 =====
