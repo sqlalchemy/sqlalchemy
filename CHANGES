@@ -72,6 +72,16 @@ user_defined_state
 
 0.4.7
 =====
+- orm
+    - The contains() operator when used with many-to-many
+      will alias() the secondary (association) table so
+      that multiple contains() calls will not conflict
+      with each other [ticket:1058]
+      
+- mysql
+    - Added 'CALL' to the list of SQL keywords which return
+      result rows.
+
 - oracle
     - Oracle get_default_schema_name() "normalizes" the name
       before returning, meaning it returns a lower-case name

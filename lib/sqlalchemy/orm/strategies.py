@@ -294,7 +294,7 @@ class LazyLoader(AbstractRelationLoader):
         self.is_class_level = True
         self._register_attribute(self.parent.class_, callable_=self.class_level_loader)
 
-    def lazy_clause(self, state, reverse_direction=False):
+    def lazy_clause(self, state, reverse_direction=False, alias_secondary=False):
         if state is None:
             return self._lazy_none_clause(reverse_direction)
             
@@ -310,6 +310,10 @@ class LazyLoader(AbstractRelationLoader):
                 # also its a deferred value; so that when used by Query, the committed value is used
                 # after an autoflush occurs
                 bindparam.value = lambda: mapper._get_committed_state_attr_by_column(state, bind_to_col[bindparam.key])
+
+        if self.parent_property.secondary and alias_secondary:
+            criterion = sql_util.ClauseAdapter(self.parent_property.secondary.alias()).traverse(criterion)
+
         return visitors.cloned_traverse(criterion, {}, {'bindparam':visit_bindparam})
     
     def _lazy_none_clause(self, reverse_direction=False):

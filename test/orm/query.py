@@ -450,6 +450,10 @@ class FilterTest(QueryTest):
 
         assert [Order(id=4), Order(id=5)] == sess.query(Order).filter(~Order.items.contains(item)).all()
 
+        item2 = sess.query(Item).get(5)
+        assert [Order(id=3)] == sess.query(Order).filter(Order.items.contains(item)).filter(Order.items.contains(item2)).all()
+        
+
     def test_comparison(self):
         """test scalar comparison to an object instance"""
 
@@ -471,7 +475,7 @@ class FilterTest(QueryTest):
         # m2m
         self.assertEquals(sess.query(Item).filter(Item.keywords==None).all(), [Item(id=4), Item(id=5)])
         self.assertEquals(sess.query(Item).filter(Item.keywords!=None).all(), [Item(id=1),Item(id=2), Item(id=3)])
-        
+    
     def test_filter_by(self):
         sess = create_session()
         user = sess.query(User).get(8)

@@ -426,7 +426,7 @@ class PropertyLoader(StrategizedProperty):
     def _optimized_compare(self, value, value_is_parent=False):
         if value is not None:
             value = attributes.instance_state(value)
-        return self._get_strategy(strategies.LazyLoader).lazy_clause(value, reverse_direction=not value_is_parent)
+        return self._get_strategy(strategies.LazyLoader).lazy_clause(value, reverse_direction=not value_is_parent, alias_secondary=True)
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
