@@ -390,7 +390,7 @@ class PropertyLoader(StrategizedProperty):
             return op(self.comparator, value)
 
     def _optimized_compare(self, value, value_is_parent=False):
-        return self._get_strategy(strategies.LazyLoader).lazy_clause(value, reverse_direction=not value_is_parent)
+        return self._get_strategy(strategies.LazyLoader).lazy_clause(value, reverse_direction=not value_is_parent, alias_secondary=True)
 
     def private(self):
         return self.cascade.delete_orphan
