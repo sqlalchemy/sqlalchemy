@@ -3,8 +3,9 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
 from testlib.fixtures import Base
+from orm._base import MappedTest, ComparableEntity
 
-class SingleInheritanceTest(ORMTest):
+class SingleInheritanceTest(MappedTest):
     def define_tables(self, metadata):
         global employees_table
         employees_table = Table('employees', metadata,
@@ -14,9 +15,9 @@ class SingleInheritanceTest(ORMTest):
             Column('engineer_info', String(50)),
             Column('type', String(20))
         )
-
-    def test_single_inheritance(self):
-        class Employee(Base):
+    
+    def setup_classes(self):
+        class Employee(ComparableEntity):
             pass
         class Manager(Employee):
             pass
@@ -25,19 +26,22 @@ class SingleInheritanceTest(ORMTest):
         class JuniorEngineer(Engineer):
             pass
 
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
         mapper(Employee, employees_table, polymorphic_on=employees_table.c.type)
         mapper(Manager, inherits=Employee, polymorphic_identity='manager')
         mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
         mapper(JuniorEngineer, inherits=Engineer, polymorphic_identity='juniorengineer')
+        
+    @testing.resolve_artifact_names
+    def test_single_inheritance(self):
 
         session = create_session()
 
         m1 = Manager(name='Tom', manager_data='knows how to manage things')
         e1 = Engineer(name='Kurt', engineer_info='knows how to hack')
         e2 = JuniorEngineer(name='Ed', engineer_info='oh that ed')
-        session.save(m1)
-        session.save(e1)
-        session.save(e2)
+        session.add_all([m1, e1, e2])
         session.flush()
 
         assert session.query(Employee).all() == [m1, e1, e2]
@@ -48,6 +52,86 @@ class SingleInheritanceTest(ORMTest):
         m1 = session.query(Manager).one()
         session.expire(m1, ['manager_data'])
         self.assertEquals(m1.manager_data, "knows how to manage things")
+
+    @testing.resolve_artifact_names
+    def test_multi_qualification(self):
+        session = create_session()
+        
+        m1 = Manager(name='Tom', manager_data='knows how to manage things')
+        e1 = Engineer(name='Kurt', engineer_info='knows how to hack')
+        e2 = JuniorEngineer(name='Ed', engineer_info='oh that ed')
+        
+        session.add_all([m1, e1, e2])
+        session.flush()
+
+        ealias = aliased(Engineer)
+        self.assertEquals(
+            session.query(Manager, ealias).all(), 
+            [(m1, e1), (m1, e2)]
+        )
+    
+        self.assertEquals(
+            session.query(Manager.name).all(),
+            [("Tom",)]
+        )
+
+        self.assertEquals(
+            session.query(Manager.name, ealias.name).all(),
+            [("Tom", "Kurt"), ("Tom", "Ed")]
+        )
+
+        self.assertEquals(
+            session.query(func.upper(Manager.name), func.upper(ealias.name)).all(),
+            [("TOM", "KURT"), ("TOM", "ED")]
+        )
+
+        self.assertEquals(
+            session.query(Manager).add_entity(ealias).all(),
+            [(m1, e1), (m1, e2)]
+        )
+        
+        self.assertEquals(
+            session.query(Manager.name).add_column(ealias.name).all(),
+            [("Tom", "Kurt"), ("Tom", "Ed")]
+        )
+        
+        # TODO: I think raise error on this for now
+        # self.assertEquals(
+        #    session.query(Employee.name, Manager.manager_data, Engineer.engineer_info).all(), 
+        #    []
+        # )
+        
+    @testing.resolve_artifact_names
+    def test_select_from(self):
+        sess = create_session()
+        m1 = Manager(name='Tom', manager_data='data1')
+        m2 = Manager(name='Tom2', manager_data='data2')
+        e1 = Engineer(name='Kurt', engineer_info='knows how to hack')
+        e2 = JuniorEngineer(name='Ed', engineer_info='oh that ed')
+        sess.add_all([m1, m2, e1, e2])
+        sess.flush()
+        
+        self.assertEquals(
+            sess.query(Manager).select_from(employees_table.select().limit(10)).all(), 
+            [m1, m2]
+        )
+        
+    @testing.resolve_artifact_names
+    def test_count(self):
+        sess = create_session()
+        m1 = Manager(name='Tom', manager_data='data1')
+        m2 = Manager(name='Tom2', manager_data='data2')
+        e1 = Engineer(name='Kurt', engineer_info='data3')
+        e2 = JuniorEngineer(name='marvin', engineer_info='data4')
+        sess.add_all([m1, m2, e1, e2])
+        sess.flush()
+
+        self.assertEquals(sess.query(Manager).count(), 2)
+        self.assertEquals(sess.query(Engineer).count(), 2)
+        self.assertEquals(sess.query(Employee).count(), 4)
+        
+        self.assertEquals(sess.query(Manager).filter(Manager.name.like('%m%')).count(), 2)
+        self.assertEquals(sess.query(Employee).filter(Employee.name.like('%m%')).count(), 3)
         
 class SingleOnJoinedTest(ORMTest):
     def define_tables(self, metadata):

@@ -17,11 +17,31 @@ from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 
 
-class ColumnLoader(LoaderStrategy):
-    """Default column loader."""
+class DefaultColumnLoader(LoaderStrategy):
+    def _register_attribute(self, compare_function, copy_function, mutable_scalars, comparator_factory, callable_=None, proxy_property=None):
+        self.logger.info("%s register managed attribute" % self)
+
+        for mapper in self.parent.polymorphic_iterator():
+            if mapper is self.parent or not mapper.concrete:
+                sessionlib.register_attribute(
+                    mapper.class_, 
+                    self.key, 
+                    uselist=False, 
+                    useobject=False, 
+                    copy_function=copy_function, 
+                    compare_function=compare_function, 
+                    mutable_scalars=mutable_scalars, 
+                    comparator=comparator_factory(self.parent_property, mapper), 
+                    parententity=mapper,
+                    callable_=callable_,
+                    proxy_property=proxy_property
+                    )
+
+DefaultColumnLoader.logger = log.class_logger(DefaultColumnLoader)
+    
+class ColumnLoader(DefaultColumnLoader):
     
     def init(self):
-        super(ColumnLoader, self).init()
         self.columns = self.parent_property.columns
         self._should_log_debug = log.is_debug_enabled(self.logger)
         self.is_composite = hasattr(self.parent_property, 'composite_class')
@@ -34,9 +54,14 @@ class ColumnLoader(LoaderStrategy):
         
     def init_class_attribute(self):
         self.is_class_level = True
-        self.logger.info("%s register managed attribute" % self)
         coltype = self.columns[0].type
-        sessionlib.register_attribute(self.parent.class_, self.key, uselist=False, useobject=False, copy_function=coltype.copy_value, compare_function=coltype.compare_values, mutable_scalars=self.columns[0].type.is_mutable(), comparator=self.parent_property.comparator, parententity=self.parent)
+        
+        self._register_attribute(
+            coltype.compare_values,
+            coltype.copy_value,
+            self.columns[0].type.is_mutable(),
+            self.parent_property.comparator_factory
+       )
         
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         key, col = self.key, self.columns[0]
@@ -78,7 +103,13 @@ class CompositeColumnLoader(ColumnLoader):
                     return False
             else:
                 return True
-        sessionlib.register_attribute(self.parent.class_, self.key, uselist=False, useobject=False, copy_function=copy, compare_function=compare, mutable_scalars=True, comparator=self.parent_property.comparator, parententity=self.parent)
+
+        self._register_attribute(
+             compare,
+             copy,
+             True,
+             self.parent_property.comparator_factory
+        )
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         key, columns, composite_class = self.key, self.columns, self.parent_property.composite_class
@@ -106,7 +137,7 @@ class CompositeColumnLoader(ColumnLoader):
 
 CompositeColumnLoader.logger = log.class_logger(CompositeColumnLoader)
     
-class DeferredColumnLoader(LoaderStrategy):
+class DeferredColumnLoader(DefaultColumnLoader):
     """Deferred column loader, a per-column or per-column-group lazy loader."""
     
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
@@ -130,7 +161,6 @@ class DeferredColumnLoader(LoaderStrategy):
         return (new_execute, None)
 
     def init(self):
-        super(DeferredColumnLoader, self).init()
         if hasattr(self.parent_property, 'composite_class'):
             raise NotImplementedError("Deferred loading for composite types not implemented yet")
         self.columns = self.parent_property.columns
@@ -139,8 +169,13 @@ class DeferredColumnLoader(LoaderStrategy):
 
     def init_class_attribute(self):
         self.is_class_level = True
-        self.logger.info("%s register managed attribute" % self)
-        sessionlib.register_attribute(self.parent.class_, self.key, uselist=False, useobject=False, callable_=self.class_level_loader, copy_function=self.columns[0].type.copy_value, compare_function=self.columns[0].type.compare_values, mutable_scalars=self.columns[0].type.is_mutable(), comparator=self.parent_property.comparator, parententity=self.parent)
+        self._register_attribute(
+             self.columns[0].type.compare_values,
+             self.columns[0].type.copy_value,
+             self.columns[0].type.is_mutable(),
+             self.parent_property.comparator_factory,
+             callable_=self.class_level_loader,
+        )
 
     def setup_query(self, context, entity, path, adapter, only_load_props=None, **kwargs):
         if \
@@ -238,7 +273,6 @@ class UndeferGroupOption(MapperOption):
 
 class AbstractRelationLoader(LoaderStrategy):
     def init(self):
-        super(AbstractRelationLoader, self).init()
         for attr in ['mapper', 'target', 'table', 'uselist']:
             setattr(self, attr, getattr(self.parent_property, attr))
         self._should_log_debug = log.is_debug_enabled(self.logger)
@@ -249,7 +283,7 @@ class AbstractRelationLoader(LoaderStrategy):
         else:
             state.initialize(self.key)
         
-    def _register_attribute(self, class_, callable_=None, **kwargs):
+    def _register_attribute(self, class_, callable_=None, impl_class=None, **kwargs):
         self.logger.info("%s register managed %s attribute" % (self, (self.uselist and "collection" or "scalar")))
         
         if self.parent_property.backref:
@@ -257,7 +291,21 @@ class AbstractRelationLoader(LoaderStrategy):
         else:
             attribute_ext = None
         
-        sessionlib.register_attribute(class_, self.key, uselist=self.uselist, useobject=True, extension=attribute_ext, cascade=self.parent_property.cascade,  trackparent=True, typecallable=self.parent_property.collection_class, callable_=callable_, comparator=self.parent_property.comparator, parententity=self.parent, **kwargs)
+        sessionlib.register_attribute(
+            class_, 
+            self.key, 
+            uselist=self.uselist, 
+            useobject=True, 
+            extension=attribute_ext, 
+            cascade=self.parent_property.cascade,  
+            trackparent=True, 
+            typecallable=self.parent_property.collection_class, 
+            callable_=callable_, 
+            comparator=self.parent_property.comparator, 
+            parententity=self.parent,
+            impl_class=impl_class,
+            **kwargs
+            )
 
 class NoLoader(AbstractRelationLoader):
     def init_class_attribute(self):

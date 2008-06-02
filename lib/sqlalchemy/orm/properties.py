@@ -38,7 +38,7 @@ class ColumnProperty(StrategizedProperty):
         self.columns = [expression._labeled(c) for c in columns]
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
-        self.comparator = ColumnProperty.ColumnComparator(self)
+        self.comparator_factory = ColumnProperty.ColumnComparator
         util.set_creation_order(self)
         if self.deferred:
             self.strategy_class = strategies.DeferredColumnLoader
@@ -80,7 +80,7 @@ class ColumnProperty(StrategizedProperty):
 
     class ColumnComparator(PropComparator):
         def __clause_element__(self):
-            return self.prop.columns[0]._annotate({"parententity": self.prop.parent})
+            return self.prop.columns[0]._annotate({"parententity": self.mapper})
         __clause_element__ = util.cache_decorator(__clause_element__)
         
         def operate(self, op, *other, **kwargs):
@@ -101,7 +101,7 @@ class CompositeProperty(ColumnProperty):
     def __init__(self, class_, *columns, **kwargs):
         super(CompositeProperty, self).__init__(*columns, **kwargs)
         self.composite_class = class_
-        self.comparator = kwargs.pop('comparator', CompositeProperty.Comparator)(self)
+        self.comparator_factory = kwargs.pop('comparator', CompositeProperty.Comparator)
         self.strategy_class = strategies.CompositeColumnLoader
 
     def do_init(self):
@@ -170,8 +170,7 @@ class SynonymProperty(MapperProperty):
 
     def do_init(self):
         class_ = self.parent.class_
-        def comparator():
-            return self.parent._get_property(self.key, resolve_synonyms=True).comparator
+                
         self.logger.info("register managed attribute %s on class %s" % (self.key, class_.__name__))
         if self.descriptor is None:
             class SynonymProp(object):
@@ -184,7 +183,14 @@ class SynonymProperty(MapperProperty):
                         return s
                     return getattr(obj, self.name)
             self.descriptor = SynonymProp()
-        sessionlib.register_attribute(class_, self.key, uselist=False, proxy_property=self.descriptor, useobject=False, comparator=comparator, parententity=self.parent)
+
+        def comparator_callable(prop, mapper):
+            def comparator():
+                prop = self.parent._get_property(self.key, resolve_synonyms=True)
+                return prop.comparator_factory(prop, mapper)
+            return comparator
+
+        strategies.DefaultColumnLoader(self)._register_attribute(None, None, False, comparator_callable, proxy_property=self.descriptor)
 
     def merge(self, session, source, dest, _recursive):
         pass
@@ -195,18 +201,13 @@ class ComparableProperty(MapperProperty):
 
     def __init__(self, comparator_factory, descriptor=None):
         self.descriptor = descriptor
-        self.comparator = comparator_factory(self)
+        self.comparator_factory = comparator_factory
         util.set_creation_order(self)
 
     def do_init(self):
         """Set up a proxy to the unmanaged descriptor."""
 
-        class_ = self.parent.class_
-        # refactor me
-        sessionlib.register_attribute(class_, self.key, uselist=False,
-                                      proxy_property=self.descriptor,
-                                      useobject=False,
-                                      comparator=self.comparator)
+        strategies.DefaultColumnLoader(self)._register_attribute(None, None, False, self.comparator_factory, proxy_property=self.descriptor)
 
     def setup(self, context, entity, path, adapter, **kwargs):
         pass
@@ -252,10 +253,11 @@ class PropertyLoader(StrategizedProperty):
         self.passive_updates = passive_updates
         self.remote_side = remote_side
         self.enable_typechecks = enable_typechecks
-        self.comparator = PropertyLoader.Comparator(self)
+        self.comparator = PropertyLoader.Comparator(self, None)
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.__join_cache = {}
+        self.comparator_factory = PropertyLoader.Comparator
         util.set_creation_order(self)
         
         if strategy_class:
@@ -295,8 +297,9 @@ class PropertyLoader(StrategizedProperty):
         self._is_backref = _is_backref
     
     class Comparator(PropComparator):
-        def __init__(self, prop, of_type=None):
+        def __init__(self, prop, mapper, of_type=None):
             self.prop = self.property = prop
+            self.mapper = mapper
             if of_type:
                 self._of_type = _class_to_mapper(of_type)
         
@@ -314,7 +317,7 @@ class PropertyLoader(StrategizedProperty):
             return op(self, *other, **kwargs)
             
         def of_type(self, cls):
-            return PropertyLoader.Comparator(self.prop, cls)
+            return PropertyLoader.Comparator(self.prop, self.mapper, cls)
             
         def __eq__(self, other):
             if other is None:

@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from testlib import testing, sa
-from testlib.sa import Table, Column, Integer, String, ForeignKey, MetaData
+from testlib.sa import Table, Column, Integer, String, ForeignKey, MetaData, func
 from sqlalchemy.orm import mapper, relation, create_session
 from testlib.testing import eq_
 from testlib.compat import set
@@ -57,8 +57,9 @@ class GenerativeQueryTest(_base.MappedTest):
         sess = create_session()
         query = sess.query(Foo)
         assert query.count() == 100
-        assert query.filter(foo.c.bar<30).min(foo.c.bar) == 0
-        assert query.filter(foo.c.bar<30).max(foo.c.bar) == 29
+        assert sess.query(func.min(foo.c.bar)).filter(foo.c.bar<30).one() == (0,)
+        
+        assert sess.query(func.max(foo.c.bar)).filter(foo.c.bar<30).one() == (29,)
         assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
         assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
 
@@ -68,14 +69,14 @@ class GenerativeQueryTest(_base.MappedTest):
             testing.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma')):
             return
 
-        query = create_session().query(Foo)
-        assert query.filter(foo.c.bar<30).sum(foo.c.bar) == 435
+        query = create_session().query(func.sum(foo.c.bar))
+        assert query.filter(foo.c.bar<30).one() == (435,)
 
     @testing.fails_on('firebird', 'mssql')
     @testing.resolve_artifact_names
     def test_aggregate_2(self):
-        query = create_session().query(Foo)
-        avg = query.filter(foo.c.bar < 30).avg(foo.c.bar)
+        query = create_session().query(func.avg(foo.c.bar))
+        avg = query.filter(foo.c.bar < 30).one()[0]
         eq_(round(avg, 1), 14.5)
 
     @testing.resolve_artifact_names

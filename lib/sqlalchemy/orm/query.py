@@ -97,7 +97,14 @@ class Query(object):
         self.__setup_aliasizers(self._entities)
 
     def __setup_aliasizers(self, entities):
-        d = {}
+        if hasattr(self, '_mapper_adapter_map'):
+            # usually safe to share a single map, but copying to prevent
+            # subtle leaks if end-user is reusing base query with arbitrary
+            # number of aliased() objects
+            self._mapper_adapter_map = d = self._mapper_adapter_map.copy()
+        else:
+            self._mapper_adapter_map = d = {}
+        
         for ent in entities:
             for entity in ent.entities:
                 if entity not in d:
@@ -114,7 +121,7 @@ class Query(object):
 
                     d[entity] = (mapper, adapter, selectable, is_aliased_class, with_polymorphic)
                 ent.setup_entity(entity, *d[entity])
-
+        
     def __mapper_loads_polymorphically_with(self, mapper, adapter):
         for m2 in mapper._with_polymorphic_mappers:
             for m in m2.iterate_to_root():
@@ -649,26 +656,6 @@ class Query(object):
 
         return self.filter(sql.and_(*clauses))
 
-
-    def min(self, col):
-        """Execute the SQL ``min()`` function against the given column."""
-
-        return self._col_aggregate(col, sql.func.min)
-
-    def max(self, col):
-        """Execute the SQL ``max()`` function against the given column."""
-
-        return self._col_aggregate(col, sql.func.max)
-
-    def sum(self, col):
-        """Execute the SQL ``sum()`` function against the given column."""
-
-        return self._col_aggregate(col, sql.func.sum)
-
-    def avg(self, col):
-        """Execute the SQL ``avg()`` function against the given column."""
-
-        return self._col_aggregate(col, sql.func.avg)
 
     def order_by(self, *criterion):
         """apply one or more ORDER BY criterion to the query and return the newly resulting ``Query``"""
@@ -1213,18 +1200,17 @@ class Query(object):
     _should_nest_selectable = property(_should_nest_selectable)
 
     def count(self):
-        """Apply this query's criterion to a SELECT COUNT statement.
-
-        this is the purely generative version which will become
-        the public method in version 0.5.
-
-        """
-        return self._col_aggregate(sql.literal_column('1'), sql.func.count, nested_cols=list(self._mapper_zero().primary_key))
+        """Apply this query's criterion to a SELECT COUNT statement."""
+        
+        return self._col_aggregate(sql.literal_column('1'), sql.func.count, nested_cols=list(self._only_mapper_zero().primary_key))
 
     def _col_aggregate(self, col, func, nested_cols=None):
-        whereclause = self._criterion
-
         context = QueryContext(self)
+
+        self._adjust_for_single_inheritance(context)
+        
+        whereclause  = context.whereclause
+        
         from_obj = self.__mapper_zero_from_obj()
 
         if self._should_nest_selectable:
@@ -1371,7 +1357,9 @@ class Query(object):
             froms = [context.from_clause]  # "load from a single FROM" mode, i.e. when select_from() or join() is used
         else:
             froms = context.froms   # "load from discrete FROMs" mode, i.e. when each _MappedEntity has its own FROM
-
+        
+        self._adjust_for_single_inheritance(context)
+        
         if eager_joins and self._should_nest_selectable:
             # for eager joins present and LIMIT/OFFSET/DISTINCT, wrap the query inside a select,
             # then append eager joins onto that
@@ -1382,7 +1370,15 @@ class Query(object):
                 context.order_by = None
                 order_by_col_expr = []
 
-            inner = sql.select(context.primary_columns + order_by_col_expr, context.whereclause, from_obj=froms, use_labels=labels, correlate=False, order_by=context.order_by, **self._select_args)
+            inner = sql.select(
+                        context.primary_columns + order_by_col_expr, 
+                        context.whereclause, 
+                        from_obj=froms, 
+                        use_labels=labels, 
+                        correlate=False, 
+                        order_by=context.order_by, 
+                        **self._select_args
+                    )
 
             if self._correlate:
                 inner = inner.correlate(*self._correlate)
@@ -1418,7 +1414,17 @@ class Query(object):
 
             froms += context.eager_joins.values()
 
-            statement = sql.select(context.primary_columns + context.secondary_columns, context.whereclause, from_obj=froms, use_labels=labels, for_update=for_update, correlate=False, order_by=context.order_by, **self._select_args)
+            statement = sql.select(
+                            context.primary_columns + context.secondary_columns, 
+                            context.whereclause, 
+                            from_obj=froms, 
+                            use_labels=labels, 
+                            for_update=for_update, 
+                            correlate=False, 
+                            order_by=context.order_by, 
+                            **self._select_args
+                        )
+                        
             if self._correlate:
                 statement = statement.correlate(*self._correlate)
 
@@ -1428,6 +1434,22 @@ class Query(object):
         context.statement = statement
         
         return context
+
+    def _adjust_for_single_inheritance(self, context):
+        """Apply single-table-inheritance filtering.
+        
+        For all distinct single-table-inheritance mappers represented in the columns
+        clause of this query, add criterion to the WHERE clause of the given QueryContext
+        such that only the appropriate subtypes are selected from the total results.
+        
+        """
+        for entity, (mapper, adapter, s, i, w) in self._mapper_adapter_map.iteritems():
+            if mapper.single and mapper.inherits and mapper.polymorphic_on and mapper.polymorphic_identity is not None:
+                crit = mapper.polymorphic_on.in_([m.polymorphic_identity for m in mapper.polymorphic_iterator()])
+                if adapter:
+                    crit = adapter.traverse(crit)
+                crit = self._adapt_clause(crit, False, False)
+                context.whereclause = sql.and_(context.whereclause, crit)
 
     def __log_debug(self, msg):
         self.logger.debug(msg)
@@ -1463,7 +1485,7 @@ class _MapperEntity(_QueryEntity):
         self.entities = [entity]
         self.entity_zero = entity
         self.entity_name = entity_name
-
+        
     def setup_entity(self, entity, mapper, adapter, from_obj, is_aliased_class, with_polymorphic):
         self.mapper = mapper
         self.extension = self.mapper.extension
@@ -1554,14 +1576,9 @@ class _MapperEntity(_QueryEntity):
         return main, entname
 
     def setup_context(self, query, context):
-        # if single-table inheritance mapper, add "typecol IN (polymorphic)" criterion so
-        # that we only load the appropriate types
-        if self.mapper.single and self.mapper.inherits is not None and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
-            context.whereclause = sql.and_(context.whereclause, self.mapper.polymorphic_on.in_([m.polymorphic_identity for m in self.mapper.polymorphic_iterator()]))
+        adapter = self._get_entity_clauses(query, context)
 
         context.froms.append(self.selectable)
-
-        adapter = self._get_entity_clauses(query, context)
 
         if context.order_by is False and self.mapper.order_by:
             context.order_by = self.mapper.order_by

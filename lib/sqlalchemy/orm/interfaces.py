@@ -439,9 +439,10 @@ class PropComparator(expression.ColumnOperators):
         return a.has(b, **kwargs)
     has_op = staticmethod(has_op)
 
-    def __init__(self, prop):
+    def __init__(self, prop, mapper):
         self.prop = self.property = prop
-    
+        self.mapper = mapper
+        
     def of_type_op(a, class_):
         return a.of_type(class_)
     of_type_op = staticmethod(of_type_op)
@@ -753,10 +754,11 @@ class LoaderStrategy(object):
     def __init__(self, parent):
         self.parent_property = parent
         self.is_class_level = False
-
-    def init(self):
         self.parent = self.parent_property.parent
         self.key = self.parent_property.key
+
+    def init(self):
+        raise NotImplementedError("LoaderStrategy")
 
     def init_class_attribute(self):
         pass

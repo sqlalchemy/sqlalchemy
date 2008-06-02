@@ -510,7 +510,7 @@ def make_test(select_type):
             
             self.assertEquals(sess.query(Person).filter(Person.person_id==subq).one(), e1)
             
-            
+        
         def test_mixed_entities(self):
             sess = create_session()
 
@@ -525,6 +525,41 @@ def make_test(select_type):
                 [(Engineer(status=u'elbonian engineer',engineer_name=u'vlad',name=u'vlad',primary_language=u'cobol'),
                     u'Elbonia, Inc.')]
             )
+            
+            
+            self.assertEquals(
+                sess.query(Manager.name).all(), 
+                [('pointy haired boss', ), ('dogbert',)]
+            )
+
+            self.assertEquals(
+                sess.query(Manager.name + " foo").all(), 
+                [('pointy haired boss foo', ), ('dogbert foo',)]
+            )
+
+
+            self.assertEquals(
+                sess.query(Engineer.name, Engineer.primary_language).all(),
+                [(u'dilbert', u'java'), (u'wally', u'c++'), (u'vlad', u'cobol')]
+            )
+
+            self.assertEquals(
+                sess.query(Boss.name, Boss.golf_swing).all(),
+                [(u'pointy haired boss', u'fore')]
+            )
+            
+            # TODO: I think raise error on these for now.  different inheritance/loading schemes have different
+            # results here, all incorrect
+            #
+            # self.assertEquals(
+            #    sess.query(Person.name, Engineer.primary_language).all(),
+            #    []
+            # )
+            
+            # self.assertEquals(
+            #    sess.query(Person.name, Engineer.primary_language, Manager.manager_name).all(),
+            #    []
+            # )
 
             self.assertEquals(
                 sess.query(Person.name, Company.name).join(Company.employees).filter(Company.name=='Elbonia, Inc.').all(),
