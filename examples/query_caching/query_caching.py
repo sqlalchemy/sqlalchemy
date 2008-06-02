@@ -13,13 +13,6 @@ class CachingQuery(Query):
     def with_cache_key(self, cachekey):
         self.cachekey = cachekey
 
-    # override the _clone() method.   a future release
-    # will just fix _clone() in Query to not hardcode the class so this won't be needed.
-    def _clone(self):
-        q = CachingQuery.__new__(CachingQuery)
-        q.__dict__ = self.__dict__.copy()
-        return q
-
     # single point of object loading is __iter__().  objects in the cache are not associated
     # with a session and are never returned directly; only merged copies.
     def __iter__(self):

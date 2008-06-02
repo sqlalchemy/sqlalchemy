@@ -305,7 +305,8 @@ class Query(object):
         return self
 
     def _clone(self):
-        q = Query.__new__(Query)
+        cls = self.__class__
+        q = cls.__new__(cls)
         q.__dict__ = self.__dict__.copy()
         return q
 

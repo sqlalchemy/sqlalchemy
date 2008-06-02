@@ -80,11 +80,6 @@ class ShardedQuery(Query):
         self.query_chooser = self.session.query_chooser
         self._shard_id = None
         
-    def _clone(self):
-        q = ShardedQuery.__new__(ShardedQuery)
-        q.__dict__ = self.__dict__.copy()
-        return q
-    
     def set_shard(self, shard_id):
         """return a new query, limited to a single shard ID.
         
