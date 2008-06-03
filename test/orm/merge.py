@@ -533,6 +533,32 @@ class MergeTest(TestBase, AssertsExecutionResults):
         except exceptions.InvalidRequestError, e:
             assert "dont_load=True option does not support" in str(e)
 
+    def test_synonym_comparable(self):
+        class User(object):
+
+           class Comparator(PropComparator):
+               pass
+
+           def _getValue(self):
+               return self._value
+
+           def _setValue(self, value):
+               setattr(self, '_value', value)
+
+           value = property(_getValue, _setValue)
+
+        mapper(User, users, properties={
+            'uid':synonym('id'),
+            'foobar':comparable_property(User.Comparator,User.value),
+        })
+        
+        sess = create_session()
+        u = User()
+        u.name = 'ed'
+        sess.save(u)
+        sess.flush()
+        sess.expunge(u)
+        sess.merge(u)
 
 if __name__ == "__main__":
     testenv.main()

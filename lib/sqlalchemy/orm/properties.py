@@ -176,7 +176,7 @@ class SynonymProperty(MapperProperty):
             self.descriptor = SynonymProp()
         sessionlib.register_attribute(class_, self.key, uselist=False, proxy_property=self.descriptor, useobject=False, comparator=comparator)
 
-    def merge(self, session, source, dest, _recursive):
+    def merge(self, session, source, dest, dont_load, _recursive):
         pass
 SynonymProperty.logger = logging.class_logger(SynonymProperty)
 
@@ -203,6 +203,9 @@ class ComparableProperty(MapperProperty):
 
     def create_row_processor(self, selectcontext, mapper, row):
         return (None, None, None)
+
+    def merge(self, session, source, dest, dont_load, _recursive):
+        pass
 
 
 class PropertyLoader(StrategizedProperty):
