@@ -192,7 +192,7 @@ class SynonymProperty(MapperProperty):
 
         strategies.DefaultColumnLoader(self)._register_attribute(None, None, False, comparator_callable, proxy_property=self.descriptor)
 
-    def merge(self, session, source, dest, _recursive):
+    def merge(self, session, source, dest, dont_load, _recursive):
         pass
 SynonymProperty.logger = log.class_logger(SynonymProperty)
 
@@ -214,6 +214,9 @@ class ComparableProperty(MapperProperty):
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         return (None, None)
+
+    def merge(self, session, source, dest, dont_load, _recursive):
+        pass
 
 
 class PropertyLoader(StrategizedProperty):

@@ -77,6 +77,9 @@ user_defined_state
       will alias() the secondary (association) table so
       that multiple contains() calls will not conflict
       with each other [ticket:1058]
+
+    - fixed bug preventing merge() from functioning in 
+      conjunction with a comparable_property()
       
 - mysql
     - Added 'CALL' to the list of SQL keywords which return
