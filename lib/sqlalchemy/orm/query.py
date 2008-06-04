@@ -1084,9 +1084,12 @@ class Query(object):
         return self._col_aggregate(sql.literal_column('1'), sql.func.count, nested_cols=list(self.mapper.primary_key))
 
     def _col_aggregate(self, col, func, nested_cols=None):
-        whereclause = self._criterion
         
         context = QueryContext(self)
+        context.whereclause = self._criterion
+        self._adjust_for_single_inheritance(context)
+        whereclause = context.whereclause 
+        
         from_obj = self._from_obj
 
         if self._should_nest_selectable:
@@ -1130,6 +1133,8 @@ class Query(object):
         context.from_clause = from_obj
         context.whereclause = self._criterion
         context.order_by = self._order_by
+
+        self._adjust_for_single_inheritance(context)
         
         for entity in self._entities:
             entity.setup_context(self, context)
@@ -1206,6 +1211,22 @@ class Query(object):
         context.statement = statement
 
         return context
+
+    def _adjust_for_single_inheritance(self, context):
+        """Apply single-table-inheritance filtering.
+        
+        For the base mapper of this query, add criterion to the WHERE clause of the given QueryContext
+        such that only the appropriate subtypes are selected from the total results.
+
+        A more sophisticated version of this, which works with multiple mappers and column expressions,
+        is present in 0.5.
+
+        """
+        # if single-table inheritance mapper, add "typecol IN (polymorphic)" criterion so
+        # that we only load the appropriate types
+        if self.mapper.single and self.mapper.inherits is not None and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
+            context.whereclause = sql.and_(context.whereclause, self.mapper.polymorphic_on.in_([m.polymorphic_identity for m in self.mapper.polymorphic_iterator()]))
+
 
     def __log_debug(self, msg):
         self.logger.debug(msg)
@@ -1554,10 +1575,6 @@ class _PrimaryMapperEntity(_MapperEntity):
         return main
 
     def setup_context(self, query, context):
-        # if single-table inheritance mapper, add "typecol IN (polymorphic)" criterion so
-        # that we only load the appropriate types
-        if self.mapper.single and self.mapper.inherits is not None and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
-            context.whereclause = sql.and_(context.whereclause, self.mapper.polymorphic_on.in_([m.polymorphic_identity for m in self.mapper.polymorphic_iterator()]))
         
         if context.order_by is False:
             if self.mapper.order_by:

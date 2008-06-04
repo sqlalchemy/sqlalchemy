@@ -44,6 +44,8 @@ class SingleInheritanceTest(ORMTest):
         assert session.query(Engineer).all() == [e1, e2]
         assert session.query(Manager).all() == [m1]
         assert session.query(JuniorEngineer).all() == [e2]
+        
+        assert session.query(Engineer).count() == 2
 
 class SingleOnJoinedTest(ORMTest):
     def define_tables(self, metadata):

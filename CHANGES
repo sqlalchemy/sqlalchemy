@@ -11,6 +11,10 @@ CHANGES
 
     - fixed bug preventing merge() from functioning in 
       conjunction with a comparable_property()
+
+    - Query.count() will take single-table inheritance
+      subtypes into account the same way row-based
+      results do. [ticket:1008]
       
 - mysql
     - Added 'CALL' to the list of SQL keywords which return
