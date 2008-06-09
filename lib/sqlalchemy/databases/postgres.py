@@ -675,7 +675,7 @@ class PGCompiler(compiler.DefaultCompiler):
             text += " OFFSET " + str(select._offset)
         return text
 
-    def dont_get_select_precolumns(self, select):
+    def get_select_precolumns(self, select):
         if select._distinct:
             if isinstance(select._distinct, bool):
                 return "DISTINCT "
