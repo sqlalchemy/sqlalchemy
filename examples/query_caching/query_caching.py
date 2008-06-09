@@ -30,21 +30,13 @@ class CachingQuery(Query):
         else:
             return Query.__iter__(self)
 
-# currently the easiest way to get a custom Query class in the mix is just 
-# to subclass Session.  A decorated sessionmaker() would probably work too.
-class CacheableSession(Session):
-    def __init__(self, **kwargs):
-        super(CacheableSession, self).__init__(**kwargs)
-        self._query_cls = CachingQuery
-        
-        
 # example usage
 if __name__ == '__main__':
     from sqlalchemy import Column, create_engine, Integer, String
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.ext.declarative import declarative_base
     
-    Session = sessionmaker(class_=CacheableSession)
+    Session = sessionmaker(query_cls=CachingQuery)
     
     Base = declarative_base(engine=create_engine('sqlite://', echo=True))
     

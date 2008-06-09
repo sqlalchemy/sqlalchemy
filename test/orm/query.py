@@ -77,7 +77,6 @@ class GetTest(QueryTest):
         q = s.query(User).join('addresses').filter(Address.user_id==8)
         self.assertRaises(sa_exc.InvalidRequestError, q.get, 7)
         self.assertRaises(sa_exc.InvalidRequestError, s.query(User).filter(User.id==7).get, 19)
-        self.assertRaises(sa_exc.InvalidRequestError, s.query(User).filter(User.id==7).load, 19)
 
     def test_unique_param_names(self):
         class SomeUser(object):
@@ -97,17 +96,13 @@ class GetTest(QueryTest):
     def test_load(self):
         s = create_session()
 
-        try:
-            assert s.query(User).load(19) is None
-            assert False
-        except sa_exc.InvalidRequestError:
-            assert True
+        assert s.query(User).populate_existing().get(19) is None
 
-        u = s.query(User).load(7)
-        u2 = s.query(User).load(7)
+        u = s.query(User).populate_existing().get(7)
+        u2 = s.query(User).populate_existing().get(7)
         assert u is u2
         s.clear()
-        u2 = s.query(User).load(7)
+        u2 = s.query(User).populate_existing().get(7)
         assert u is not u2
 
         u2.name = 'some name'
@@ -116,7 +111,7 @@ class GetTest(QueryTest):
         assert u2 in s.dirty
         assert a in u2.addresses
 
-        s.query(User).load(7)
+        s.query(User).populate_existing().get(7)
         assert u2 not in s.dirty
         assert u2.name =='jack'
         assert a not in u2.addresses
@@ -2202,6 +2197,7 @@ class UpdateDeleteTest(_base.MappedTest):
         
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
     
+    @testing.fails_on('mysql')
     @testing.resolve_artifact_names
     def test_delete_fallback(self):
         sess = create_session(bind=testing.db, autocommit=False)

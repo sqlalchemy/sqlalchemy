@@ -8,7 +8,7 @@ be migrated directly to the wiki, docs, etc.
 import testenv; testenv.configure_for_tests()
 from testlib import testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey, func
-from testlib.sa.orm import mapper, relation, create_session
+from testlib.sa.orm import mapper, relation, create_session, sessionmaker
 from orm import _base
 
 
@@ -89,6 +89,42 @@ class QueryAlternativesTest(_base.MappedTest):
 
     ######################################################################
 
+    @testing.resolve_artifact_names
+    def test_override_get(self):
+        """MapperExtension.get()
+        
+        x = session.query.get(5)
+        
+        """
+        from sqlalchemy.orm.query import Query
+        cache = {}
+        class MyQuery(Query):
+            def get(self, ident, **kwargs):
+                if ident in cache:
+                    return cache[ident]
+                else:
+                    x = super(MyQuery, self).get(ident)
+                    cache[ident] = x
+                    return x
+                    
+        session = sessionmaker(query_cls=MyQuery)()
+        
+        ad1 = session.query(Address).get(1)
+        assert ad1 in cache.values()
+    
+    @testing.resolve_artifact_names
+    def test_load(self):
+        """x = session.query(Address).load(1)
+            
+            x = session.load(Address, 1)
+        
+        """
+
+        session = create_session()
+        ad1 = session.query(Address).populate_existing().get(1)
+        assert bool(ad1)
+        
+        
     @testing.resolve_artifact_names
     def test_apply_max(self):
         """Query.apply_max(col)

@@ -991,7 +991,7 @@ class Events(object):
             fn(*args, **kwargs)
 
     def add_listener(self, event, listener):
-        # not thread safe... problem?
+        # not thread safe... problem?  mb: nope
         bucket = getattr(self, event)
         if bucket == ():
             setattr(self, event, [listener])
@@ -1006,8 +1006,8 @@ class Events(object):
 class ClassManager(dict):
     """tracks state information at the class level."""
 
-    MANAGER_ATTR = '_fooclass_manager'
-    STATE_ATTR = '_foostate'
+    MANAGER_ATTR = '_sa_class_manager'
+    STATE_ATTR = '_sa_instance_state'
 
     event_registry_factory = Events
     instance_state_factory = InstanceState
@@ -1027,6 +1027,10 @@ class ClassManager(dict):
         self.registered = False
         self._instantiable = False
         self.events = self.event_registry_factory()
+
+        for meth in class_.__dict__.values():
+            if hasattr(meth, '_sa_reconstitute'):
+                self.events.add_listener('on_load', meth)
 
     def instantiable(self, boolean):
         # experiment, probably won't stay in this form
@@ -1438,6 +1442,19 @@ def del_attribute(instance, key):
 def is_instrumented(instance, key):
     return manager_of_class(instance.__class__).is_instrumented(key, search=True)
 
+def on_reconstitute(fn):
+    """Decorate a method as the 'reconstitute' hook.
+    
+    This method will be called based on the 'on_load' event hook.
+    
+    Note that when using ORM mappers, this method is equivalent
+    to MapperExtension.on_reconstitute().
+
+    """
+    fn._sa_reconstitute = True
+    return fn
+    
+    
 class InstrumentationRegistry(object):
     """Private instrumentation registration singleton."""
 

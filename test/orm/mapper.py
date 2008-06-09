@@ -30,36 +30,6 @@ class MapperTest(_fixtures.FixtureTest):
         self.assertRaises(NotImplementedError,
                           getattr, sa.orm.class_mapper(User), 'properties')
 
-    @testing.uses_deprecated(
-        'Call to deprecated function _instance_key',
-        'Call to deprecated function _sa_session_id',
-        'Call to deprecated function _entity_name')
-    @testing.resolve_artifact_names
-    def test_legacy_accessors(self):
-        u1 = User(name='u1')
-        assert not hasattr(u1, '_instance_key')
-        assert not hasattr(u1, '_sa_session_id')
-        assert not hasattr(u1, '_entity_name')
-
-        mapper(User, users)
-        u1 = User(name='u2')
-        assert not hasattr(u1, '_instance_key')
-        assert not hasattr(u1, '_sa_session_id')
-        assert u1._entity_name is None
-
-        sess = create_session()
-        sess.save(u1)
-        assert not hasattr(u1, '_instance_key')
-        eq_(u1._sa_session_id, sess.hash_key)
-        assert u1._entity_name is None
-
-        sess.flush()
-        eq_(u1._instance_key,
-            sa.orm.class_mapper(u1).identity_key_from_instance(u1))
-        eq_(u1._sa_session_id, sess.hash_key)
-        assert u1._entity_name is None
-        sess.delete(u1)
-        sess.flush()
 
     @testing.resolve_artifact_names
     def test_bad_cascade(self):
@@ -74,7 +44,7 @@ class MapperTest(_fixtures.FixtureTest):
         })
 
         s = create_session()
-        u = s.get(User, 7)
+        u = s.query(User).get(7)
         eq_(u._name, 'jack')
         eq_(u._id,7)
         u2 = s.query(User).filter_by(user_name='jack').one()
@@ -1481,20 +1451,16 @@ class MapperExtensionTest(_fixtures.FixtureTest):
                 methods.append('init_failed')
                 return sa.orm.EXT_CONTINUE
 
-            def load(self, query, *args, **kwargs):
-                methods.append('load')
-                return sa.orm.EXT_CONTINUE
-
-            def get(self, query, *args, **kwargs):
-                methods.append('get')
-                return sa.orm.EXT_CONTINUE
-
             def translate_row(self, mapper, context, row):
                 methods.append('translate_row')
                 return sa.orm.EXT_CONTINUE
 
             def create_instance(self, mapper, selectcontext, row, class_):
                 methods.append('create_instance')
+                return sa.orm.EXT_CONTINUE
+
+            def on_reconstitute(self, mapper, instance):
+                methods.append('on_reconstitute')
                 return sa.orm.EXT_CONTINUE
 
             def append_result(self, mapper, selectcontext, row, instance, result, **flags):
@@ -1541,7 +1507,7 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         u = User(name='u1')
         sess.save(u)
         sess.flush()
-        u = sess.query(User).load(u.id)
+        u = sess.query(User).populate_existing().get(u.id)
         sess.clear()
         u = sess.query(User).get(u.id)
         u.name = 'u1 changed'
@@ -1550,9 +1516,9 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess.flush()
         eq_(methods,
             ['instrument_class', 'init_instance', 'before_insert',
-             'after_insert', 'load', 'translate_row', 'populate_instance',
-             'append_result', 'get', 'translate_row', 'create_instance',
-             'populate_instance', 'append_result', 'before_update',
+             'after_insert', 'translate_row', 'populate_instance',
+             'append_result', 'translate_row', 'create_instance',
+             'populate_instance', 'on_reconstitute', 'append_result', 'before_update',
              'after_update', 'before_delete', 'after_delete'])
 
     @testing.resolve_artifact_names
@@ -1569,7 +1535,7 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         am = AdminUser(name='au1', email_address='au1@e1')
         sess.save(am)
         sess.flush()
-        am = sess.query(AdminUser).load(am.id)
+        am = sess.query(AdminUser).populate_existing().get(am.id)
         sess.clear()
         am = sess.query(AdminUser).get(am.id)
         am.name = 'au1 changed'
@@ -1578,9 +1544,9 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess.flush()
         eq_(methods,
             ['instrument_class', 'instrument_class', 'init_instance',
-             'before_insert', 'after_insert', 'load', 'translate_row',
-             'populate_instance', 'append_result', 'get', 'translate_row',
-             'create_instance', 'populate_instance', 'append_result',
+             'before_insert', 'after_insert', 'translate_row',
+             'populate_instance', 'append_result', 'translate_row',
+             'create_instance', 'populate_instance', 'on_reconstitute', 'append_result',
              'before_update', 'after_update', 'before_delete', 'after_delete'])
 
     @testing.resolve_artifact_names
@@ -1626,7 +1592,7 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         am = AdminUser(name="au1", email_address="au1@e1")
         sess.save(am)
         sess.flush()
-        am = sess.query(AdminUser).load(am.id)
+        am = sess.query(AdminUser).populate_existing().get(am.id)
         sess.clear()
         am = sess.query(AdminUser).get(am.id)
         am.name = 'au1 changed'
@@ -1635,9 +1601,9 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess.flush()
         eq_(methods,
             ['instrument_class', 'instrument_class', 'init_instance',
-             'before_insert', 'after_insert', 'load', 'translate_row',
-             'populate_instance', 'append_result', 'get', 'translate_row',
-             'create_instance', 'populate_instance', 'append_result',
+             'before_insert', 'after_insert', 'translate_row',
+             'populate_instance', 'append_result', 'translate_row',
+             'create_instance', 'populate_instance', 'on_reconstitute', 'append_result',
              'before_update', 'after_update', 'before_delete', 'after_delete'])
 
     @testing.resolve_artifact_names
@@ -1921,7 +1887,7 @@ class ScalarRequirementsTest(_base.MappedTest):
         session.flush()
         session.clear()
 
-        f1 = session.get(Foo, f1.id)
+        f1 = session.query(Foo).get(f1.id)
         eq_(f1.data.data, '12345')
 
         f2 = Foo(data=pickleable.BrokenComparable('abc'))
@@ -1930,7 +1896,7 @@ class ScalarRequirementsTest(_base.MappedTest):
         session.flush()
         session.clear()
 
-        f2 = session.get(Foo, f2.id)
+        f2 = session.query(Foo).get(f2.id)
         eq_(f2.data.data, 'abc')
 
 

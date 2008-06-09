@@ -35,7 +35,7 @@ class BindTest(_base.MappedTest):
                 f = Foo()
                 sess.save(f)
                 sess.flush()
-                assert sess.get(Foo, f.id) is f
+                assert sess.query(Foo).get(f.id) is f
             finally:
                 if hasattr(bind, 'close'):
                     bind.close()

@@ -747,9 +747,7 @@ class HistoryTest(_base.ORMTest):
         # no lazyload occurs so this allows overwrite operation to proceed
         f = Foo()
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], []))
-        print f._foostate.committed_state
         f.someattr = None
-        print f._foostate.committed_state, f._foostate.dict
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([None], [], []))
 
         f = Foo()

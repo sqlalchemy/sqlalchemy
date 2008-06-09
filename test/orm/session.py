@@ -987,7 +987,7 @@ class SessionInterface(testing.TestBase):
     # TODO: expand with message body assertions.
 
     _class_methods = set((
-        'connection', 'execute', 'get', 'get_bind', 'load', 'scalar'))
+        'connection', 'execute', 'get_bind', 'scalar'))
 
     def _public_session_methods(self):
         Session = sa.orm.session.Session
@@ -1072,11 +1072,7 @@ class SessionInterface(testing.TestBase):
 
         raises_('execute', 'SELECT 1', mapper=user_arg)
 
-        raises_('get', user_arg, 1)
-
         raises_('get_bind', mapper=user_arg)
-
-        raises_('load', user_arg, 1)
 
         raises_('scalar', 'SELECT 1', mapper=user_arg)
 

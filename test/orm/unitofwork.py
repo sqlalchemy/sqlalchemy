@@ -127,7 +127,7 @@ class VersioningTest(_base.MappedTest):
         self.assertRaises(sa.orm.exc.ConcurrentModificationError, s1.query(Foo).with_lockmode('read').get, f1s1.id)
 
         # reload it
-        s1.query(Foo).load(f1s1.id)
+        s1.query(Foo).populate_existing().get(f1s1.id)
         # now assert version OK
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
 
@@ -403,7 +403,7 @@ class MutableTypesTest(_base.MappedTest):
         session.commit()
         session.clear()
 
-        f1 = session.get(Foo, f1.id)
+        f1 = session.query(Foo).get(f1.id)
         f1.val = u'hi'
         self.sql_count_(0, session.commit)
 
@@ -1100,7 +1100,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         session.flush()
         session.clear()
 
-        u2 = session.get(User, u2.id)
+        u2 = session.query(User).get(u2.id)
         eq_(len(u2.addresses), 1)
 
     @testing.resolve_artifact_names
@@ -1123,7 +1123,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         session.flush()
         session.clear()
 
-        u2 = session.get(User, u2.id)
+        u2 = session.query(User).get(u2.id)
         eq_(len(u2.addresses), 1)
 
     @testing.resolve_artifact_names
@@ -1222,14 +1222,14 @@ class SaveTest(_fixtures.FixtureTest):
         session.flush()
 
         # assert the first one retreives the same from the identity map
-        nu = session.get(m, u.id)
+        nu = session.query(m).get(u.id)
         assert u is nu
 
         # clear out the identity map, so next get forces a SELECT
         session.clear()
 
         # check it again, identity should be different but ids the same
-        nu = session.get(m, u.id)
+        nu = session.query(m).get(u.id)
         assert u is not nu and u.id == nu.id and nu.name == 'savetester'
 
         # change first users name and save
@@ -1403,7 +1403,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         id = m.primary_key_from_instance(u)
 
-        u = session.get(User, id)
+        u = session.query(User).get(id)
         assert u.name == 'multitester'
 
         user_rows = users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
@@ -1421,7 +1421,7 @@ class SaveTest(_fixtures.FixtureTest):
         eq_(address_rows[0].values(), [u.id, u.foo_id, 'lala@hey.com'])
 
         session.clear()
-        u = session.get(User, id)
+        u = session.query(User).get(id)
         assert u.name == 'imnew'
 
     @testing.resolve_artifact_names

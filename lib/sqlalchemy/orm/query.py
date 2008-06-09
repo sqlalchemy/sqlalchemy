@@ -397,7 +397,7 @@ class Query(object):
         self._yield_per = count
     yield_per = _generative()(yield_per)
 
-    def get(self, ident, **kwargs):
+    def get(self, ident):
         """Return an instance of the object based on the given identifier, or None if not found.
 
         The `ident` argument is a scalar or tuple of primary key column values
@@ -405,39 +405,12 @@ class Query(object):
 
         """
 
-        ret = self._extension_zero().get(self, ident, **kwargs)
-        if ret is not mapper.EXT_CONTINUE:
-            return ret
-
         # convert composite types to individual args
         if hasattr(ident, '__composite_values__'):
             ident = ident.__composite_values__()
 
         key = self._only_mapper_zero().identity_key_from_primary_key(ident)
-        return self._get(key, ident, **kwargs)
-
-    def load(self, ident, raiseerr=True, **kwargs):
-        """Return an instance of the object based on the given identifier.
-
-        If not found, raises an exception.  The method will **remove all
-        pending changes** to the object already existing in the Session.  The
-        `ident` argument is a scalar or tuple of primary key column values in
-        the order of the table def's primary key columns.
-
-        """
-        ret = self._extension_zero().load(self, ident, **kwargs)
-        if ret is not mapper.EXT_CONTINUE:
-            return ret
-
-        # convert composite types to individual args
-        if hasattr(ident, '__composite_values__'):
-            ident = ident.__composite_values__()
-
-        key = self._only_mapper_zero().identity_key_from_primary_key(ident)
-        instance = self.populate_existing()._get(key, ident, **kwargs)
-        if instance is None and raiseerr:
-            raise sa_exc.InvalidRequestError("No instance found for identity %s" % repr(ident))
-        return instance
+        return self._get(key, ident)
 
     def query_from_parent(cls, instance, property, **kwargs):
         """Return a new Query with criterion corresponding to a parent instance.
@@ -1148,8 +1121,7 @@ class Query(object):
                     try:
                         state()
                     except orm_exc.ObjectDeletedError:
-                        # TODO: should we expunge ?  if so, should we expunge here ? or in mapper._load_scalar_attributes ?
-                        self.session.expunge(instance)
+                        self.session._remove_newly_deleted(state)
                         return None
                 return instance
             except KeyError:

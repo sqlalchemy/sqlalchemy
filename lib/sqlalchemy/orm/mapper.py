@@ -332,8 +332,6 @@ class Mapper(object):
         if not self.non_primary and self.entity_name in mappers:
             del mappers[self.entity_name]
         if not mappers and manager.info.get(_INSTRUMENTOR, False):
-            for legacy in _legacy_descriptors.keys():
-                manager.uninstall_member(legacy)
             manager.events.remove_listener('on_init', _event_on_init)
             manager.events.remove_listener('on_init_failure',
                                            _event_on_init_failure)
@@ -815,9 +813,11 @@ class Mapper(object):
         event_registry = manager.events
         event_registry.add_listener('on_init', _event_on_init)
         event_registry.add_listener('on_init_failure', _event_on_init_failure)
+        if 'on_reconstitute' in self.extension.methods:
+            def reconstitute(instance):
+                self.extension.on_reconstitute(self, instance)
+            event_registry.add_listener('on_load', reconstitute)
 
-        for key, impl in _legacy_descriptors.items():
-            manager.install_member(key, impl)
 
         manager.info[_INSTRUMENTOR] = self
 
@@ -1445,7 +1445,8 @@ class Mapper(object):
                     if instance is EXT_CONTINUE:
                         instance = self.class_manager.new_instance()
                     else:
-                        manager = attributes.manager_for_cls(instance.__class__)
+                        # TODO: don't think theres coverage here
+                        manager = attributes.manager_of_class(instance.__class__)
                         # TODO: if manager is None, raise a friendly error about
                         # returning instances of unmapped types
                         manager.setup_instance(instance)
@@ -1488,11 +1489,11 @@ class Mapper(object):
                     if not populate_instance or extension.populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                         populate_state(state, row, isnew, attrs, instancekey=identitykey)
 
-            if result is not None and (not append_result or extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE):
-                result.append(instance)
-
             if loaded_instance:
                 state._run_on_load(instance)
+
+            if result is not None and (not append_result or extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE):
+                result.append(instance)
 
             return instance
         return _instance
@@ -1572,45 +1573,6 @@ def _event_on_init_failure(state, instance, args, kwargs):
             instrumenting_mapper, instrumenting_mapper.class_,
             state.manager.events.original_init, instance, args, kwargs)
 
-def _legacy_descriptors():
-    """Build compatibility descriptors mapping legacy to InstanceState.
-
-    These are slated for removal in 0.5.  They were never part of the
-    official public API but were suggested as temporary workarounds in a
-    number of mailing list posts.  Permanent and public solutions for those
-    needs should be available now.  Consult the applicable mailing list
-    threads for details.
-
-    """
-    def _instance_key(self):
-        state = attributes.instance_state(self)
-        if state.key is not None:
-            return state.key
-        else:
-            raise AttributeError("_instance_key")
-    _instance_key = util.deprecated(None, False)(_instance_key)
-    _instance_key = property(_instance_key)
-
-    def _sa_session_id(self):
-        state = attributes.instance_state(self)
-        if state.session_id is not None:
-            return state.session_id
-        else:
-            raise AttributeError("_sa_session_id")
-    _sa_session_id = util.deprecated(None, False)(_sa_session_id)
-    _sa_session_id = property(_sa_session_id)
-
-    def _entity_name(self):
-        state = attributes.instance_state(self)
-        if state.entity_name is attributes.NO_ENTITY_NAME:
-            return None
-        else:
-            return state.entity_name
-    _entity_name = util.deprecated(None, False)(_entity_name)
-    _entity_name = property(_entity_name)
-
-    return dict(locals())
-_legacy_descriptors = _legacy_descriptors()
 
 def _load_scalar_attributes(state, attribute_names):
     mapper = _state_mapper(state)

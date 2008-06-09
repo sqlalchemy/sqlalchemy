@@ -24,14 +24,14 @@ class FixtureDataTest(TransactionTest):
 
     def test_attrs_on_rollback(self):
         sess = self.session()
-        u1 = sess.get(User, 7)
+        u1 = sess.query(User).get(7)
         u1.name = 'ed'
         sess.rollback()
         self.assertEquals(u1.name, 'jack')
 
     def test_commit_persistent(self):
         sess = self.session()
-        u1 = sess.get(User, 7)
+        u1 = sess.query(User).get(7)
         u1.name = 'ed'
         sess.flush()
         sess.commit()
@@ -39,12 +39,12 @@ class FixtureDataTest(TransactionTest):
 
     def test_concurrent_commit_persistent(self):
         s1 = self.session()
-        u1 = s1.get(User, 7)
+        u1 = s1.query(User).get(7)
         u1.name = 'ed'
         s1.commit()
 
         s2 = self.session()
-        u2 = s2.get(User, 7)
+        u2 = s2.query(User).get(7)
         assert u2.name == 'ed'
         u2.name = 'will'
         s2.commit()

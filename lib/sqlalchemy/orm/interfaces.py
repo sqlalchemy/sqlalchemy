@@ -72,32 +72,15 @@ class MapperExtension(object):
     def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):
         return EXT_CONTINUE
 
-    def load(self, query, *args, **kwargs):
-        """Override the `load` method of the Query object.
-
-        The return value of this method is used as the result of
-        ``query.load()`` if the value is anything other than EXT_CONTINUE.
-        """
-
-        return EXT_CONTINUE
-
-    def get(self, query, *args, **kwargs):
-        """Override the `get` method of the Query object.
-
-        The return value of this method is used as the result of
-        ``query.get()`` if the value is anything other than EXT_CONTINUE.
-        """
-
-        return EXT_CONTINUE
-
     def translate_row(self, mapper, context, row):
         """Perform pre-processing on the given result row and return a
         new row instance.
 
-        This is called as the very first step in the ``_instance()``
-        method.
+        This is called when the mapper first receives a row, before 
+        the object identity or the instance itself has been derived
+        from that row.
+        
         """
-
         return EXT_CONTINUE
 
     def create_instance(self, mapper, selectcontext, row, class_):
@@ -121,8 +104,8 @@ class MapperExtension(object):
 
         return value
           A new object instance, or EXT_CONTINUE
-        """
 
+        """
         return EXT_CONTINUE
 
     def append_result(self, mapper, selectcontext, row, instance, result, **flags):
@@ -152,25 +135,50 @@ class MapperExtension(object):
 
         \**flags
           extra information about the row, same as criterion in
-          `create_row_processor()` method of [sqlalchemy.orm.interfaces#MapperProperty]
+          ``create_row_processor()`` method of [sqlalchemy.orm.interfaces#MapperProperty]
         """
 
         return EXT_CONTINUE
 
     def populate_instance(self, mapper, selectcontext, row, instance, **flags):
-        """Receive a newly-created instance before that instance has
+        """Receive an instance before that instance has
         its attributes populated.
+        
+        This usually corresponds to a newly loaded instance but may
+        also correspond to an already-loaded instance which has
+        unloaded attributes to be populated.  The method may be 
+        called many times for a single instance, as multiple
+        result rows are used to populate eagerly loaded collections.
 
-        The normal population of attributes is according to each
-        attribute's corresponding MapperProperty (which includes
-        column-based attributes as well as relationships to other
-        classes).  If this method returns EXT_CONTINUE, instance
+        If this method returns EXT_CONTINUE, instance
         population will proceed normally.  If any other value or None
         is returned, instance population will not proceed, giving this
         extension an opportunity to populate the instance itself, if
         desired.
+        
+        As of 0.5, most usages of this hook are obsolete.  
+        For a generic "object has been newly created from a row" hook, 
+        use ``on_reconstitute()``, or the @attributes.on_reconstitute 
+        decorator.
+        
         """
+        return EXT_CONTINUE
 
+    def on_reconstitute(self, mapper, instance):
+        """Receive an object instance after it has been created via 
+        ``__new__()``, and after initial attribute population has
+        occurred.  
+        
+        This typicically occurs when the instance is created based 
+        on incoming result rows, and is only called once for that
+        instance's lifetime.
+        
+        Note that during a result-row load, this method is called upon
+        the first row received for this instance; therefore, if eager loaders
+        are to further populate collections on the instance, those will
+        *not* have been completely loaded as of yet.
+        
+        """
         return EXT_CONTINUE
 
     def before_insert(self, mapper, connection, instance):

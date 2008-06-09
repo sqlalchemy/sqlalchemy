@@ -145,6 +145,10 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       called. This allows each database to roll back the entire transaction,
       before each transaction is committed.
 
+    query_cls
+      Class which should be used to create new Query objects, as returned
+      by the ``query()`` method.  Defaults to [sqlalchemy.orm.query#Query].
+      
     weak_identity_map
       When set to the default value of ``False``, a weak-referencing map is
       used; instances which are not externally referenced will be garbage
@@ -505,13 +509,13 @@ class Session(object):
     public_methods = (
         '__contains__', '__iter__', 'add', 'add_all', 'begin', 'begin_nested',
         'clear', 'close', 'commit', 'connection', 'delete', 'execute', 'expire',
-        'expire_all', 'expunge', 'flush', 'get', 'get_bind', 'is_modified',
-        'load', 'merge', 'query', 'refresh', 'rollback', 'save',
+        'expire_all', 'expunge', 'flush', 'get_bind', 'is_modified',
+        'merge', 'query', 'refresh', 'rollback', 'save',
         'save_or_update', 'scalar', 'update')
 
     def __init__(self, bind=None, autoflush=True, autoexpire=True,
                  autocommit=False, twophase=False, echo_uow=False,
-                 weak_identity_map=True, binds=None, extension=None):
+                 weak_identity_map=True, binds=None, extension=None, query_cls=query.Query):
         """Construct a new Session.
 
         Arguments to ``Session`` are described using the
@@ -536,7 +540,7 @@ class Session(object):
         self.autoexpire = autoexpire
         self.twophase = twophase
         self.extension = extension
-        self._query_cls = query.Query
+        self._query_cls = query_cls
         self._mapper_flush_opts = {}
 
         if binds is not None:
@@ -896,34 +900,6 @@ class Session(object):
         for state in states:
             state.commit_all()
 
-    def get(self, class_, ident, entity_name=None):
-        """Return the instance of class with ident or None.
-
-        The `ident` argument is a scalar or tuple of primary key column values
-        in the order of the table def's primary key columns.
-
-        The `entity_name` keyword argument may also be specified which further
-        qualifies the underlying Mapper used to perform the query.
-
-        """
-        return self.query(_class_to_mapper(class_, entity_name)).get(ident)
-
-        return self.query(class_, entity_name=entity_name).get(ident)
-
-    def load(self, class_, ident, entity_name=None):
-        """Reset and return the instance of class with ident or raise.
-
-        If not found, raises an exception.  The method will **remove all
-        pending changes** to the object already existing in the ``Session``.
-        The `ident` argument is a scalar or tuple of primary key columns in
-        the order of the table def's primary key columns.
-
-        The `entity_name` keyword argument may also be specified which further
-        qualifies the underlying ``Mapper`` used to perform the query.
-
-        """
-        return self.query(_class_to_mapper(class_, entity_name)).load(ident)
-
     def refresh(self, instance, attribute_names=None):
         """Refresh the attributes on the given instance.
 
@@ -1201,7 +1177,7 @@ class Session(object):
                 self._update_impl(merged_state)
                 new_instance = True
             else:
-                merged = self.get(mapper.class_, key[1])
+                merged = self.query(mapper.class_).get(key[1])
 
         if merged is None:
             merged = mapper.class_manager.new_instance()

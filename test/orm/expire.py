@@ -53,7 +53,7 @@ class ExpireTest(_fixtures.FixtureTest):
     def test_persistence_check(self):
         mapper(User, users)
         s = create_session()
-        u = s.get(User, 7)
+        u = s.query(User).get(7)
         s.clear()
 
         self.assertRaisesMessage(sa.exc.InvalidRequestError, r"is not persistent within this Session", s.expire, u)
@@ -61,26 +61,26 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_get_refreshes(self):
         mapper(User, users)
-        s = create_session()
-        u = s.get(User, 10)
+        s = create_session(autocommit=False)
+        u = s.query(User).get(10)
         s.expire_all()
 
         def go():
-            u = s.get(User, 10)  # get() refreshes
+            u = s.query(User).get(10)  # get() refreshes
         self.assert_sql_count(testing.db, go, 1)
         def go():
             self.assertEquals(u.name, 'chuck')  # attributes unexpired
         self.assert_sql_count(testing.db, go, 0)
         def go():
-            u = s.get(User, 10)  # expire flag reset, so not expired
+            u = s.query(User).get(10)  # expire flag reset, so not expired
         self.assert_sql_count(testing.db, go, 0)
 
         s.expire_all()
-        users.delete().where(User.id==10).execute()
+        s.execute(users.delete().where(User.id==10))
 
-        # object is gone, get() returns None
+        # object is gone, get() returns None, removes u from session
         assert u in s
-        assert s.get(User, 10) is None
+        assert s.query(User).get(10) is None
         assert u not in s # and expunges
 
         # add it back
@@ -88,16 +88,27 @@ class ExpireTest(_fixtures.FixtureTest):
         # nope, raises ObjectDeletedError
         self.assertRaises(sa.orm.exc.ObjectDeletedError, getattr, u, 'name')
 
+        # do a get()/remove u from session again
+        assert s.query(User).get(10) is None
+        assert u not in s
+        
+        s.rollback()
+
+        assert u in s
+        # but now its back, rollback has occured, the _remove_newly_deleted
+        # is reverted
+        self.assertEquals(u.name, 'chuck')
+        
     @testing.resolve_artifact_names
     def test_refresh_cancels_expire(self):
         mapper(User, users)
         s = create_session()
-        u = s.get(User, 7)
+        u = s.query(User).get(7)
         s.expire(u)
         s.refresh(u)
 
         def go():
-            u = s.get(User, 7)
+            u = s.query(User).get(7)
             self.assertEquals(u.name, 'jack')
         self.assert_sql_count(testing.db, go, 0)
 
@@ -221,7 +232,7 @@ class ExpireTest(_fixtures.FixtureTest):
         })
         mapper(Address, addresses)
         s = create_session()
-        u = s.get(User, 8)
+        u = s.query(User).get(8)
         assert u.addresses[0].email_address == 'ed@wood.com'
 
         u.addresses[0].email_address = 'someotheraddress'
@@ -693,7 +704,7 @@ class RefreshTest(_fixtures.FixtureTest):
             'addresses':relation(mapper(Address, addresses), backref='user')
         })
         s = create_session()
-        u = s.get(User, 7)
+        u = s.query(User).get(7)
         u.name = 'foo'
         a = Address()
         assert sa.orm.object_session(a) is None
@@ -730,7 +741,7 @@ class RefreshTest(_fixtures.FixtureTest):
     def test_persistence_check(self):
         mapper(User, users)
         s = create_session()
-        u = s.get(User, 7)
+        u = s.query(User).get(7)
         s.clear()
         self.assertRaisesMessage(sa.exc.InvalidRequestError, r"is not persistent within this Session", lambda: s.refresh(u))
 
@@ -738,7 +749,7 @@ class RefreshTest(_fixtures.FixtureTest):
     def test_refresh_expired(self):
         mapper(User, users)
         s = create_session()
-        u = s.get(User, 7)
+        u = s.query(User).get(7)
         s.expire(u)
         assert 'name' not in u.__dict__
         s.refresh(u)
@@ -767,13 +778,13 @@ class RefreshTest(_fixtures.FixtureTest):
         })
 
         s = create_session()
-        u = s.get(User, 8)
+        u = s.query(User).get(8)
         assert len(u.addresses) == 3
         s.refresh(u)
         assert len(u.addresses) == 3
 
         s = create_session()
-        u = s.get(User, 8)
+        u = s.query(User).get(8)
         assert len(u.addresses) == 3
         s.expire(u)
         assert len(u.addresses) == 3
