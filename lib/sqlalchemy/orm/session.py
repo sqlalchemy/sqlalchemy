@@ -788,16 +788,10 @@ class Session(object):
     def get(self, class_, ident, **kwargs):
         """Return an instance of the object based on the given
         identifier, or ``None`` if not found.
+        
+        DEPRECATED.  use session.query(class_).get(ident)
 
-        The `ident` argument is a scalar or tuple of primary key
-        column values in the order of the table def's primary key
-        columns.
-
-        The `entity_name` keyword argument may also be specified which
-        further qualifies the underlying Mapper used to perform the
-        query.
         """
-
         entity_name = kwargs.pop('entity_name', None)
         return self.query(class_, entity_name=entity_name).get(ident, **kwargs)
 
@@ -805,17 +799,9 @@ class Session(object):
         """Return an instance of the object based on the given
         identifier.
 
-        If not found, raises an exception.  The method will **remove
-        all pending changes** to the object already existing in the
-        ``Session``.  The `ident` argument is a scalar or tuple of primary
-        key columns in the order of the table def's primary key
-        columns.
+        DEPRECATED.  use session.query(class_).populate_existing().get(ident).
 
-        The `entity_name` keyword argument may also be specified which
-        further qualifies the underlying ``Mapper`` used to perform the
-        query.
         """
-
         entity_name = kwargs.pop('entity_name', None)
         return self.query(class_, entity_name=entity_name).load(ident, **kwargs)
 

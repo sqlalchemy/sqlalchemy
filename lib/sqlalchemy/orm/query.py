@@ -275,6 +275,8 @@ class Query(object):
         pending changes** to the object already existing in the Session.  The
         `ident` argument is a scalar or tuple of primary key column values in
         the order of the table def's primary key columns.
+        
+        DEPRECATED.  Use query.populate_existing().get() instead.
         """
 
         ret = self._extension.load(self, ident, **kwargs)
@@ -940,9 +942,26 @@ class Query(object):
         return self.iterate_instances(result, querycontext=querycontext)
 
     def instances(self, cursor, *mappers_or_columns, **kwargs):
+        """Given a ResultProxy cursor as returned by connection.execute(), return an ORM result as a list.
+
+        e.g.::
+        
+            result = engine.execute("select * from users")
+            users = session.query(User).instances(result)
+
+        """
         return list(self.iterate_instances(cursor, *mappers_or_columns, **kwargs))
 
     def iterate_instances(self, cursor, *mappers_or_columns, **kwargs):
+        """Given a ResultProxy cursor as returned by connection.execute(), return an ORM result as an iterator.
+        
+        e.g.::
+        
+            result = engine.execute("select * from users")
+            for u in session.query(User).iterate_instances(result):
+                print u
+
+        """
         session = self.session
 
         context = kwargs.pop('querycontext', None)
