@@ -80,6 +80,12 @@ user_defined_state
 
     - fixed bug preventing merge() from functioning in 
       conjunction with a comparable_property()
+
+    - the enable_typechecks=False setting on relation()
+      now only allows subtypes with inheriting mappers.  
+      Totally unrelated types, or subtypes not set up with
+      mapper inheritance against the target mapper are 
+      still not allowed.
       
 - mysql
     - Added 'CALL' to the list of SQL keywords which return
