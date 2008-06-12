@@ -945,9 +945,9 @@ class Mapper(object):
     def _primary_key_from_state(self, state):
         return [self._get_state_attr_by_column(state, column) for column in self.primary_key]
 
-    def _canload(self, state):
-        if self.polymorphic_on:
-            return issubclass(state.class_, self.class_)
+    def _canload(self, state, allow_subtypes):
+        if self.polymorphic_on or allow_subtypes:
+            return self.isa(_state_mapper(state))
         else:
             return state.class_ is self.class_
 

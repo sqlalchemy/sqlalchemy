@@ -15,6 +15,12 @@ CHANGES
     - Query.count() will take single-table inheritance
       subtypes into account the same way row-based
       results do. [ticket:1008]
+
+    - the enable_typechecks=False setting on relation()
+      now only allows subtypes with inheriting mappers.  
+      Totally unrelated types, or subtypes not set up with
+      mapper inheritance against the target mapper are 
+      still not allowed.
       
 - mysql
     - Added 'CALL' to the list of SQL keywords which return
