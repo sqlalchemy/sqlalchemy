@@ -61,9 +61,12 @@ class MyClass(object):
         return MyTypesManager(cls)
 
     __sa_instrumentation_manager__ = staticmethod(__sa_instrumentation_manager__)
-    
+
     # This proves SA can handle a class with non-string dict keys
-    locals()[42] = 99   # Don't remove this line!
+    try:
+        locals()[42] = 99   # Don't remove this line!
+    except:
+        pass
 
     def __init__(self, **kwargs):
         for k in kwargs:
