@@ -4,8 +4,14 @@
 CHANGES
 =======
 
-user_defined_state
+0.5beta1
 ==================
+    - An ongoing document describing the changes from 0.4 to 0.5
+      is at:  http://www.sqlalchemy.org/trac/wiki/05Migration
+
+      For this section, the list below primarily lists changes 
+      within the attribute instrumentation API and is only a
+      small fraction of the full changes between 0.4/0.5.
 
     - The "__init__" trigger/decorator added by mapper now attempts
       to exactly mirror the argument signature of the original
@@ -29,15 +35,6 @@ user_defined_state
       available in the old way, which is now deprecated, using
       descriptors attached to the class.  A deprecation warning will
       be issued when accessed.
-
-    - attribute savepoint/rollback capability has been added.  For
-      starters, this takes effect within the flush() call, so that
-      attribute changes which occur within flush() are rolled back
-      when the flush fails.  Since it's primarily new primary key
-      values that get assigned within flush(), expiring those
-      attributes is not an option.  The next place we might use
-      savepoints is within SAVEPOINT transactions, since rolling
-      back to a savepoint is a transaction-contained operation.
 
     - The _prepare_instrumentation alias for prepare_instrumentation
       has been removed.
