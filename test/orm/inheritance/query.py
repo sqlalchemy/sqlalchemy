@@ -55,7 +55,7 @@ def make_test(select_type):
               )
          
             machines = Table('machines', metadata,
-                Column('machine_id', Integer, primary_key=True),
+                Column('machine_id', Integer, Sequence('machine_id_seq'), primary_key=True),
                 Column('name', String(50)),
                 Column('engineer_id', Integer, ForeignKey('engineers.person_id')))
             
@@ -71,7 +71,7 @@ def make_test(select_type):
                 )
 
             paperwork = Table('paperwork', metadata,
-                Column('paperwork_id', Integer, primary_key=True),
+                Column('paperwork_id', Integer, Sequence('paperwork_id_seq'), primary_key=True),
                 Column('description', String(50)),
                 Column('person_id', Integer, ForeignKey('people.person_id')))
 
