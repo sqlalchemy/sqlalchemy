@@ -83,6 +83,10 @@ CHANGES
       Totally unrelated types, or subtypes not set up with
       mapper inheritance against the target mapper are 
       still not allowed.
+
+- postgres
+    - Repaired server_side_cursors to properly detect 
+      text() clauses.
       
 - mysql
     - Added 'CALL' to the list of SQL keywords which return

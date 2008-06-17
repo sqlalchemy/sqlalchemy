@@ -278,7 +278,10 @@ class PGExecutionContext(default.DefaultExecutionContext):
             self.dialect.server_side_cursors and \
             ((self.compiled and isinstance(self.compiled.statement, expression.Selectable)) \
             or \
-            (not self.compiled and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement)))
+            (
+                (not self.compiled or isinstance(self.compiled.statement, expression._TextClause)) 
+                and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement))
+            )
 
         if self.__is_server_side:
             # use server-side cursors:
