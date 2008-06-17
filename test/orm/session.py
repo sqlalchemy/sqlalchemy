@@ -6,7 +6,7 @@ from sqlalchemy.orm.session import SessionExtension
 from sqlalchemy.orm.session import Session as SessionCls
 from testlib import *
 from testlib.tables import *
-from testlib import fixtures, tables
+from testlib import fixtures, tables, config
 import pickle
 import gc
 
@@ -245,6 +245,13 @@ class SessionTest(TestBase, AssertsExecutionResults):
         assert len(u.addresses) == 3
         assert newad not in u.addresses
 
+    def test_active_flag(self):
+        sess = create_session(bind=config.db, transactional=False)
+        assert not sess.is_active
+        sess.begin()
+        assert sess.is_active
+        sess.rollback()
+        assert not sess.is_active
 
     @engines.close_open_connections
     def test_external_joined_transaction(self):

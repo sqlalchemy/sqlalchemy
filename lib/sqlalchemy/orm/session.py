@@ -1173,7 +1173,13 @@ class Session(object):
             if added or deleted:
                 return True
         return False
-
+    
+    def is_active(self):
+        """return True if this Session has an active transaction."""
+        
+        return self.transaction and self.transaction.is_active
+    is_active = property(is_active)
+    
     def dirty(self):
         """Return a ``Set`` of all instances marked as 'dirty' within this ``Session``.
 
