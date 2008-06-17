@@ -84,6 +84,11 @@ CHANGES
       mapper inheritance against the target mapper are 
       still not allowed.
 
+    - Added is_active flag to Sessions to detect when 
+      a transaction is in progress [ticket:976].  This
+      flag is always True with a "transactional" 
+      (in 0.5 a non-"autocommit") Session.
+    
 - postgres
     - Repaired server_side_cursors to properly detect 
       text() clauses.

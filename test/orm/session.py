@@ -3,7 +3,7 @@ import gc
 import inspect
 import pickle
 from sqlalchemy.orm import create_session, sessionmaker
-from testlib import engines, sa, testing
+from testlib import engines, sa, testing, config
 from testlib.sa import Table, Column, Integer, String
 from testlib.sa.orm import mapper, relation, backref
 from testlib.testing import eq_
@@ -282,6 +282,14 @@ class SessionTest(_fixtures.FixtureTest):
         session.begin()
         session.flush()
         session.commit()
+    
+    def test_active_flag(self):
+        sess = create_session(bind=config.db, autocommit=True)
+        assert not sess.is_active
+        sess.begin()
+        assert sess.is_active
+        sess.rollback()
+        assert not sess.is_active
         
     @testing.resolve_artifact_names
     def test_textual_execute(self):
