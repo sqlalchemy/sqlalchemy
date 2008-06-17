@@ -790,6 +790,16 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
     def tearDownAll(self):
         ss_engine.dispose()
     
+    def test_uses_ss(self):
+        result = ss_engine.execute("select 1")
+        assert result.cursor.name
+        
+        result = ss_engine.execute(text("select 1"))
+        assert result.cursor.name
+
+        result = ss_engine.execute(select([1]))
+        assert result.cursor.name
+        
     def test_roundtrip(self):
         test_table = Table('test_table', MetaData(ss_engine),
             Column('id', Integer, primary_key=True),
