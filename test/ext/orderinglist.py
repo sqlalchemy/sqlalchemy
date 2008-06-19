@@ -2,6 +2,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.orderinglist import *
+from testlib.testing import eq_
 from testlib import *
 
 
@@ -194,7 +195,6 @@ class OrderingListTest(TestBase):
 
         s1.bullets._reorder()
         self.assert_(s1.bullets[4].position == 5)
-
         session = create_session()
         session.save(s1)
         session.flush()
@@ -210,8 +210,17 @@ class OrderingListTest(TestBase):
 
         titles = ['s1/b1','s1/b2','s1/b100','s1/b4', 'raw']
         found = [b.text for b in srt.bullets]
+        eq_(titles, found)
 
-        self.assert_(titles == found)
+        srt.bullets._raw_append(Bullet('raw2'))
+        srt.bullets[-1].position = 6
+        session.flush()
+        session.clear()
+
+        srt = session.query(Slide).get(id)
+        titles = ['s1/b1','s1/b2','s1/b100','s1/b4', 'raw', 'raw2']
+        found = [b.text for b in srt.bullets]
+        eq_(titles, found)
 
     def test_insert(self):
         self._setup(ordering_list('position'))

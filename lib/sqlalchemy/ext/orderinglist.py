@@ -233,11 +233,11 @@ class OrderingList(list):
         super(OrderingList, self).append(entity)
         self._order_entity(len(self) - 1, entity, self.reorder_on_append)
 
-    @collection.adds(1)
     def _raw_append(self, entity):
         """Append without any ordering behavior."""
 
         super(OrderingList, self).append(entity)
+    _raw_append = collection.adds(1)(_raw_append)
 
     def insert(self, index, entity):
         self[index:index] = [entity]
