@@ -913,7 +913,8 @@ class Query(object):
     def __getitem__(self, item):
         if isinstance(item, slice):
             start, stop, step = util.decode_slice(item)
-            # if we slice from the end we need to execute the query
+            # if we slice from the end we need to execute the query before
+            # slicing
             if start < 0 or stop < 0:
                 return list(self)[item]
             else:
