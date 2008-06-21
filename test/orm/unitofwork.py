@@ -992,6 +992,11 @@ class ColumnPropertyTest(_base.MappedTest):
             Column('a', String(50)),
             Column('b', String(50))
             )
+
+        Table('subdata', metadata, 
+            Column('id', Integer, ForeignKey('data.id'), primary_key=True),
+            Column('c', String(50)),
+            )
             
     def setup_mappers(self):
         class Data(_base.BasicEntity):
@@ -1009,6 +1014,21 @@ class ColumnPropertyTest(_base.MappedTest):
         m = mapper(Data, data)
         m.add_property('aplusb', column_property(data.c.a + literal_column("' '") + data.c.b))
         self._test()
+    
+    @testing.resolve_artifact_names
+    def test_with_inheritance(self):
+        class SubData(Data):
+            pass
+        mapper(Data, data, properties={
+            'aplusb':column_property(data.c.a + literal_column("' '") + data.c.b)
+        })
+        mapper(SubData, subdata, inherits=Data)
+        
+        sess = create_session()
+        sd1 = SubData(a="hello", b="there", c="hi")
+        sess.add(sd1)
+        sess.flush()
+        self.assertEquals(sd1.aplusb, "hello there")
         
     @testing.resolve_artifact_names
     def _test(self):

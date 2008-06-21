@@ -368,7 +368,7 @@ class Mapper(object):
             for mapper in list(_mapper_registry):
                 if not mapper.compiled:
                     mapper.__initialize_properties()
-
+                    
             _new_mappers = False
             return self
         finally:
@@ -526,10 +526,10 @@ class Mapper(object):
         # mark these as "read only" properties which are refreshed upon 
         # INSERT/UPDATE
         self._readonly_props = util.Set([
-            self._columntoproperty[col] for col in all_cols if 
+            self._columntoproperty[col] for col in self._columntoproperty if 
                 not hasattr(col, 'table') or col.table not in self._cols_by_table
         ])
-            
+        
         # if explicit PK argument sent, add those columns to the primary key mappings
         if self.primary_key_argument:
             for k in self.primary_key_argument:
@@ -1190,7 +1190,7 @@ class Mapper(object):
                 
                 # expire readonly attributes
                 readonly = state.unmodified.intersection([
-                    p.key for p in chain(*[m._readonly_props for m in mapper.iterate_to_root()])
+                    p.key for p in mapper._readonly_props
                 ])
                 
                 if readonly:
