@@ -96,6 +96,9 @@ class CompositeColumnLoader(ColumnLoader):
             return self.parent_property.composite_class(*obj.__composite_values__())
             
         def compare(a, b):
+            if a is None or b is None:
+                return a is b
+                
             for col, aprop, bprop in zip(self.columns,
                                          a.__composite_values__(),
                                          b.__composite_values__()):

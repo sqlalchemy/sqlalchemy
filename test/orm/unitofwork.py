@@ -7,8 +7,8 @@ import operator
 from sqlalchemy.orm import mapper as orm_mapper
 
 from testlib import engines, sa, testing
-from testlib.sa import Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import mapper, relation, create_session
+from testlib.sa import Table, Column, Integer, String, ForeignKey, literal_column
+from testlib.sa.orm import mapper, relation, create_session, column_property
 from testlib.testing import eq_, ne_
 from testlib.compat import set
 from orm import _base, _fixtures
@@ -985,7 +985,50 @@ class DefaultTest(_base.MappedTest):
                     Secondary(data='s1'),
                     Secondary(data='s2')]))
 
+class ColumnPropertyTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        Table('data', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('a', String(50)),
+            Column('b', String(50))
+            )
+            
+    def setup_mappers(self):
+        class Data(_base.BasicEntity):
+            pass
+        
+    @testing.resolve_artifact_names
+    def test_refreshes(self):
+        mapper(Data, data, properties={
+            'aplusb':column_property(data.c.a + literal_column("' '") + data.c.b)
+        })
+        self._test()
 
+    @testing.resolve_artifact_names
+    def test_refreshes_post_init(self):
+        m = mapper(Data, data)
+        m.add_property('aplusb', column_property(data.c.a + literal_column("' '") + data.c.b))
+        self._test()
+        
+    @testing.resolve_artifact_names
+    def _test(self):
+        sess = create_session()
+        
+        d1 = Data(a="hello", b="there")
+        sess.add(d1)
+        sess.flush()
+        
+        self.assertEquals(d1.aplusb, "hello there")
+        
+        d1.b = "bye"
+        sess.flush()
+        self.assertEquals(d1.aplusb, "hello bye")
+        
+        d1.b = 'foobar'
+        d1.aplusb = 'im setting this explicitly'
+        sess.flush()
+        self.assertEquals(d1.aplusb, "im setting this explicitly")
+    
 class OneToManyTest(_fixtures.FixtureTest):
     run_inserts = None
 

@@ -5,9 +5,17 @@ CHANGES
 =======
 0.5beta2
 ========
+- orm
     - In addition to expired attributes, deferred attributes
-      also load if their data is present in the result set
+      also load if their data is present in the result set.
       [ticket:870]
+      
+    - column_property() attributes which represent SQL expressions
+      or columns that are not present in the mapped tables
+      (such as those from views) are automatically expired
+      after an INSERT or UPDATE, assuming they have not been
+      locally modified, so that they are refreshed with the
+      most recent data upon access.  [ticket:887]
 
 0.5beta1
 ========

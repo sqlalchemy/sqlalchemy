@@ -1262,12 +1262,12 @@ class DeferredPopulationTest(_base.MappedTest):
     def define_tables(self, metadata):
         Table("thing", metadata,
             Column("id", Integer, primary_key=True),
-            Column("name", String))
+            Column("name", String(20)))
 
         Table("human", metadata,
             Column("id", Integer, primary_key=True),
             Column("thing_id", Integer, ForeignKey("thing.id")),
-            Column("name", String))
+            Column("name", String(20)))
 
     @testing.resolve_artifact_names
     def setup_mappers(self):
