@@ -3,9 +3,14 @@
 =======
 CHANGES
 =======
+0.5beta2
+========
+    - In addition to expired attributes, deferred attributes
+      also load if their data is present in the result set
+      [ticket:870]
 
 0.5beta1
-==================
+========
     - An ongoing document describing the changes from 0.4 to 0.5
       is at:  http://www.sqlalchemy.org/trac/wiki/05Migration
 

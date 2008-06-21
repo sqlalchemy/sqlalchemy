@@ -883,6 +883,19 @@ class InstanceState(object):
             or (key in self.manager.mutable_attributes and not self.manager[key].impl.check_mutable_modified(self))
         ])
     unmodified = property(unmodified)
+    
+    def unloaded(self):
+        """a set of keys which do not have a loaded value.
+        
+        This includes expired attributes and any other attribute that
+        was never populated or modified.
+        
+        """
+        return util.Set([
+            key for key in self.manager.keys() if
+            key not in self.committed_state and key not in self.dict
+        ])
+    unloaded = property(unloaded)
 
     def expire_attributes(self, attribute_names):
         self.expired_attributes = util.Set(self.expired_attributes)

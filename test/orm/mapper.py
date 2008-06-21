@@ -4,7 +4,7 @@ import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import mapper, relation, backref, create_session
-from testlib.sa.orm import defer, deferred, synonym
+from testlib.sa.orm import defer, deferred, synonym, attributes
 from testlib.testing import eq_
 from testlib.compat import set
 import pickleable
@@ -1258,7 +1258,90 @@ class DeferredTest(_fixtures.FixtureTest):
         self.sql_count_(0, go)
         eq_(item.description, 'item 4')
 
+class DeferredPopulationTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        Table("thing", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String))
 
+        Table("human", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("thing_id", Integer, ForeignKey("thing.id")),
+            Column("name", String))
+
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        class Human(_base.BasicEntity): pass
+        class Thing(_base.BasicEntity): pass
+
+        mapper(Human, human, properties={"thing": relation(Thing)})
+        mapper(Thing, thing, properties={"name": deferred(thing.c.name)})
+    
+    @testing.resolve_artifact_names
+    def insert_data(self):
+        thing.insert().execute([
+            {"id": 1, "name": "Chair"},
+        ])
+
+        human.insert().execute([
+            {"id": 1, "thing_id": 1, "name": "Clark Kent"},
+        ])
+        
+    def _test(self, thing):
+        assert "name" in attributes.instance_state(thing).dict
+
+    @testing.resolve_artifact_names
+    def test_no_previous_query(self):
+        session = create_session()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    @testing.resolve_artifact_names
+    def test_query_twice_with_clear(self):
+        session = create_session()
+        result = session.query(Thing).first()
+        session.clear()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    @testing.resolve_artifact_names
+    def test_query_twice_no_clear(self):
+        session = create_session()
+        result = session.query(Thing).first()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+    
+    @testing.resolve_artifact_names
+    def test_eagerload_with_clear(self):
+        session = create_session()
+        human = session.query(Human).options(sa.orm.eagerload("thing")).first()
+        session.clear()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    @testing.resolve_artifact_names
+    def test_eagerload_no_clear(self):
+        session = create_session()
+        human = session.query(Human).options(sa.orm.eagerload("thing")).first()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    @testing.resolve_artifact_names
+    def test_join_with_clear(self):
+        session = create_session()
+        result = session.query(Human).add_entity(Thing).join("thing").first()
+        session.clear()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    @testing.resolve_artifact_names
+    def test_join_no_clear(self):
+        session = create_session()
+        result = session.query(Human).add_entity(Thing).join("thing").first()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+    
+        
 class CompositeTypesTest(_base.MappedTest):
 
     def define_tables(self, metadata):

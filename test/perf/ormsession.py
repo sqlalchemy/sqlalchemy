@@ -151,7 +151,8 @@ def run_queries():
     # the top 20 items from all purchases
 
     q = session.query(Purchase). \
-        limit(50).order_by(desc(Purchase.purchase_date)). \
+        order_by(desc(Purchase.purchase_date)). \
+        limit(50).\
         options(eagerload('items'), eagerload('items.subitems'),
                 eagerload('customer'))
 

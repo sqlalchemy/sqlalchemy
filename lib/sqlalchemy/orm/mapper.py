@@ -1473,16 +1473,15 @@ class Mapper(object):
 
             else:
                 # populate attributes on non-loading instances which have been expired
-                # TODO: also support deferred attributes here [ticket:870]
                 # TODO: apply eager loads to un-lazy loaded collections ?
-                # we might want to create an expanded form of 'state.expired_attributes' which includes deferred/un-lazy loaded
-                if state.expired_attributes:
+                if state in context.partials or state.unloaded:
+                        
                     if state in context.partials:
                         isnew = False
                         attrs = context.partials[state]
                     else:
                         isnew = True
-                        attrs = state.expired_attributes.intersection(state.unmodified)
+                        attrs = state.unloaded
                         context.partials[state] = attrs  #<-- allow query.instances to commit the subset of attrs
 
                     if not populate_instance or extension.populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
