@@ -753,8 +753,14 @@ class SchemaGenerator(DDLBase):
     def get_column_specification(self, column, first_pk=False):
         raise NotImplementedError()
 
+    def _can_create(self, table):
+        self.dialect.validate_identifier(table.name)
+        if table.schema:
+            self.dialect.validate_identifier(table.schema)
+        return not self.checkfirst or not self.dialect.has_table(self.connection, table.name, schema=table.schema)
+
     def visit_metadata(self, metadata):
-        collection = [t for t in metadata.table_iterator(reverse=False, tables=self.tables) if (not self.checkfirst or not self.dialect.has_table(self.connection, t.name, schema=t.schema))]
+        collection = [t for t in metadata.table_iterator(reverse=False, tables=self.tables) if self._can_create(t)]
         for table in collection:
             self.traverse_single(table)
         if self.dialect.supports_alter:
@@ -910,12 +916,18 @@ class SchemaDropper(DDLBase):
         self.dialect = dialect
 
     def visit_metadata(self, metadata):
-        collection = [t for t in metadata.table_iterator(reverse=True, tables=self.tables) if (not self.checkfirst or  self.dialect.has_table(self.connection, t.name, schema=t.schema))]
+        collection = [t for t in metadata.table_iterator(reverse=True, tables=self.tables) if self._can_drop(t)]
         if self.dialect.supports_alter:
             for alterable in self.find_alterables(collection):
                 self.drop_foreignkey(alterable)
         for table in collection:
             self.traverse_single(table)
+
+    def _can_drop(self, table):
+        self.dialect.validate_identifier(table.name)
+        if table.schema:
+            self.dialect.validate_identifier(table.schema)
+        return not self.checkfirst or self.dialect.has_table(self.connection, table.name, schema=table.schema)
 
     def visit_index(self, index):
         self.append("\nDROP INDEX " + self.preparer.format_index(index))

@@ -32,6 +32,8 @@ class CircularDependencyError(SQLAlchemyError):
 class CompileError(SQLAlchemyError):
     """Raised when an error occurs during SQL compilation"""
 
+class IdentifierError(SQLAlchemyError):
+    """Raised when a schema name is beyond the max character limit"""
 
 # Moved to orm.exc; compatability definition installed by orm import until 0.6
 ConcurrentModificationError = None

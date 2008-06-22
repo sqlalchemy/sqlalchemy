@@ -217,7 +217,11 @@ class LoadDeferredColumns(object):
         self.keys = keys
 
     def __getstate__(self):
-        return {'state':self.state, 'key':self.key, 'keys':self.keys}
+        return {
+            'state':self.state, 
+            'key':self.key, 
+            'keys':self.keys
+        }
     
     def __setstate__(self, state):
         self.state = state['state']
@@ -330,7 +334,7 @@ NoLoader.logger = log.class_logger(NoLoader)
 class LazyLoader(AbstractRelationLoader):
     def init(self):
         super(LazyLoader, self).init()
-        (self.__lazywhere, self.__bind_to_col, self._equated_columns) = self.__create_lazy_clause(self.parent_property)
+        (self.__lazywhere, self.__bind_to_col, self._equated_columns) = self._create_lazy_clause(self.parent_property)
         
         self.logger.info("%s lazy loading clause %s" % (self, self.__lazywhere))
 
@@ -352,7 +356,7 @@ class LazyLoader(AbstractRelationLoader):
         if not reverse_direction:
             (criterion, bind_to_col, rev) = (self.__lazywhere, self.__bind_to_col, self._equated_columns)
         else:
-            (criterion, bind_to_col, rev) = LazyLoader.__create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
+            (criterion, bind_to_col, rev) = LazyLoader._create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
 
         def visit_bindparam(bindparam):
             mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
@@ -371,7 +375,7 @@ class LazyLoader(AbstractRelationLoader):
         if not reverse_direction:
             (criterion, bind_to_col, rev) = (self.__lazywhere, self.__bind_to_col, self._equated_columns)
         else:
-            (criterion, bind_to_col, rev) = LazyLoader.__create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
+            (criterion, bind_to_col, rev) = LazyLoader._create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
 
         def visit_binary(binary):
             mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
@@ -434,7 +438,7 @@ class LazyLoader(AbstractRelationLoader):
 
             return (new_execute, None)
 
-    def __create_lazy_clause(cls, prop, reverse_direction=False):
+    def _create_lazy_clause(cls, prop, reverse_direction=False):
         binds = {}
         lookup = {}
         equated_columns = {}
@@ -474,7 +478,7 @@ class LazyLoader(AbstractRelationLoader):
         bind_to_col = dict([(binds[col].key, col) for col in binds])
         
         return (lazywhere, bind_to_col, equated_columns)
-    __create_lazy_clause = classmethod(__create_lazy_clause)
+    _create_lazy_clause = classmethod(_create_lazy_clause)
     
 LazyLoader.logger = log.class_logger(LazyLoader)
 
@@ -488,7 +492,12 @@ class LoadLazyAttribute(object):
         self.path = path
         
     def __getstate__(self):
-        return {'state':self.state, 'key':self.key, 'options':self.options, 'path':serialize_path(self.path)}
+        return {
+            'state':self.state, 
+            'key':self.key, 
+            'options':self.options, 
+            'path':serialize_path(self.path)
+        }
 
     def __setstate__(self, state):
         self.state = state['state']
@@ -510,7 +519,11 @@ class LoadLazyAttribute(object):
 
         session = sessionlib._state_session(state)
         if session is None:
-            raise sa_exc.UnboundExecutionError("Parent instance %s is not bound to a Session; lazy load operation of attribute '%s' cannot proceed" % (mapperutil.state_str(state), self.key))
+            raise sa_exc.UnboundExecutionError(
+                "Parent instance %s is not bound to a Session; "
+                "lazy load operation of attribute '%s' cannot proceed" % 
+                (mapperutil.state_str(state), self.key)
+            )
 
         q = session.query(prop.mapper).autoflush(False)._adapt_all_clauses()
         
@@ -547,7 +560,6 @@ class LoadLazyAttribute(object):
                 return result[0]
             else:
                 return None
-        
 
 class EagerLoader(AbstractRelationLoader):
     """Loads related objects inline with a parent query."""
@@ -576,8 +588,7 @@ class EagerLoader(AbstractRelationLoader):
                 context.attributes[("eager_row_processor", path)] = clauses = adapter
                 
         else:
-        
-            clauses = self.__create_eager_join(context, entity, path, adapter, parentmapper)
+            clauses = self._create_eager_join(context, entity, path, adapter, parentmapper)
             if not clauses:
                 return
 
@@ -586,7 +597,7 @@ class EagerLoader(AbstractRelationLoader):
         for value in self.mapper._iterate_polymorphic_properties():
             value.setup(context, entity, path + (self.mapper.base_mapper,), clauses, parentmapper=self.mapper, column_collection=context.secondary_columns)
     
-    def __create_eager_join(self, context, entity, path, adapter, parentmapper):
+    def _create_eager_join(self, context, entity, path, adapter, parentmapper):
         # check for join_depth or basic recursion,
         # if the current path was not explicitly stated as 
         # a desired "loaderstrategy" (i.e. via query.options())
@@ -662,7 +673,7 @@ class EagerLoader(AbstractRelationLoader):
             
         return clauses
         
-    def __create_eager_adapter(self, context, row, adapter, path):
+    def _create_eager_adapter(self, context, row, adapter, path):
         if ("eager_row_processor", path) in context.attributes:
             decorator = context.attributes[("eager_row_processor", path)]
         else:
@@ -682,7 +693,7 @@ class EagerLoader(AbstractRelationLoader):
     def create_row_processor(self, context, path, mapper, row, adapter):
         path = path + (self.key,)
             
-        eager_adapter = self.__create_eager_adapter(context, row, adapter, path)
+        eager_adapter = self._create_eager_adapter(context, row, adapter, path)
         
         if eager_adapter is not False:
             key = self.key

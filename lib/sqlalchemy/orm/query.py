@@ -1391,8 +1391,7 @@ class Query(object):
             statement.append_from(from_clause)
 
             if context.order_by:
-                local_adapter = sql_util.ClauseAdapter(inner)
-                statement.append_order_by(*local_adapter.copy_and_process(context.order_by))
+                statement.append_order_by(*context.adapter.copy_and_process(context.order_by))
 
             statement.append_order_by(*context.eager_order_by)
         else:
@@ -1580,7 +1579,14 @@ class _MapperEntity(_QueryEntity):
         for value in self.mapper._iterate_polymorphic_properties(self._with_polymorphic):
             if query._only_load_props and value.key not in query._only_load_props:
                 continue
-            value.setup(context, self, (self.path_entity,), adapter, only_load_props=query._only_load_props, column_collection=context.primary_columns)
+            value.setup(
+                context, 
+                self, 
+                (self.path_entity,), 
+                adapter, 
+                only_load_props=query._only_load_props, 
+                column_collection=context.primary_columns
+            )
 
     def __str__(self):
         return str(self.mapper)
@@ -1610,7 +1616,11 @@ class _ColumnEntity(_QueryEntity):
         self.column = column
         self.entity_name = None
         self.froms = util.Set()
-        self.entities = util.OrderedSet([elem._annotations['parententity'] for elem in visitors.iterate(column, {}) if 'parententity' in elem._annotations])
+        self.entities = util.OrderedSet([
+            elem._annotations['parententity'] for elem in visitors.iterate(column, {}) 
+            if 'parententity' in elem._annotations
+        ])
+        
         if self.entities:
             self.entity_zero = list(self.entities)[0]
         else:
@@ -1620,11 +1630,11 @@ class _ColumnEntity(_QueryEntity):
         self.selectable = from_obj
         self.froms.add(from_obj)
 
-    def __resolve_expr_against_query_aliases(self, query, expr, context):
+    def _resolve_expr_against_query_aliases(self, query, expr, context):
         return query._adapt_clause(expr, False, True)
 
     def row_processor(self, query, context, custom_rows):
-        column = self.__resolve_expr_against_query_aliases(query, self.column, context)
+        column = self._resolve_expr_against_query_aliases(query, self.column, context)
 
         if context.adapter:
             column = context.adapter.columns[column]
@@ -1635,7 +1645,7 @@ class _ColumnEntity(_QueryEntity):
         return (proc, getattr(column, 'name', None))
 
     def setup_context(self, query, context):
-        column = self.__resolve_expr_against_query_aliases(query, self.column, context)
+        column = self._resolve_expr_against_query_aliases(query, self.column, context)
         context.froms += list(self.froms)
         context.primary_columns.append(column)
 

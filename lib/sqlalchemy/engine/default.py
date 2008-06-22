@@ -15,7 +15,7 @@ as the base class for their own corresponding classes.
 import re, random
 from sqlalchemy.engine import base
 from sqlalchemy.sql import compiler, expression
-
+from sqlalchemy import exc
 
 AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
                                re.I | re.UNICODE)
@@ -70,7 +70,10 @@ class DefaultDialect(base.Dialect):
             typeobj = typeobj()
         return typeobj
 
-
+    def validate_identifier(self, ident):
+        if len(ident) > self.max_identifier_length:
+            raise exc.IdentifierError("Identifier '%s' exceeds maximum length of %d characters" % (ident, self.max_identifier_length))
+        
     def oid_column_name(self, column):
         return None
 
