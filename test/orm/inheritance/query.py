@@ -653,7 +653,7 @@ for select_type in ('', 'Polymorphic', 'Unions', 'AliasedJoins', 'Joins'):
     
 del testclass
 
-class SelfReferentialTest(ORMTest):
+class SelfReferentialTestJoinedToBase(ORMTest):
     keep_mappers = True
     
     def define_tables(self, metadata):
@@ -706,7 +706,62 @@ class SelfReferentialTest(ORMTest):
         sess.flush()
         sess.clear()
         
-        self.assertEquals(sess.query(Engineer).join('reports_to', aliased=True).filter(Person.name=='dogbert').first(), Engineer(name='dilbert'))
+        self.assertEquals(
+            sess.query(Engineer).join('reports_to', aliased=True).filter(Person.name=='dogbert').first(), 
+            Engineer(name='dilbert'))
+
+class SelfReferentialTestJoinedToJoined(ORMTest):
+    keep_mappers = True
+
+    def define_tables(self, metadata):
+        global people, engineers
+        people = Table('people', metadata,
+           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('name', String(50)),
+           Column('type', String(30)))
+
+        engineers = Table('engineers', metadata,
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('primary_language', String(50)),
+           Column('reports_to_id', Integer, ForeignKey('managers.person_id'))
+          )
+          
+        managers = Table('managers', metadata,
+            Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+        )
+
+        mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
+        mapper(Manager, managers, inherits=Person, polymorphic_identity='manager')
+        
+        mapper(Engineer, engineers, inherits=Person, 
+          polymorphic_identity='engineer', properties={
+          'reports_to':relation(Manager, primaryjoin=managers.c.person_id==engineers.c.reports_to_id)
+        })
+
+    def test_has(self):
+
+        m1 = Manager(name='dogbert')
+        e1 = Engineer(name='dilbert', primary_language='java', reports_to=m1)
+        sess = create_session()
+        sess.save(m1)
+        sess.save(e1)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(sess.query(Engineer).filter(Engineer.reports_to.has(Manager.name=='dogbert')).first(), Engineer(name='dilbert'))
+
+    def test_join(self):
+        m1 = Manager(name='dogbert')
+        e1 = Engineer(name='dilbert', primary_language='java', reports_to=m1)
+        sess = create_session()
+        sess.save(m1)
+        sess.save(e1)
+        sess.flush()
+        sess.clear()
+
+        self.assertEquals(
+            sess.query(Engineer).join('reports_to', aliased=True).filter(Manager.name=='dogbert').first(), 
+            Engineer(name='dilbert'))
         
 
 class M2MFilterTest(ORMTest):

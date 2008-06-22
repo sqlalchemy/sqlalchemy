@@ -20,6 +20,10 @@ CHANGES
       locally modified, so that they are refreshed with the
       most recent data upon access.  [ticket:887]
 
+    - Fixed explicit, self-referential joins between two 
+      joined-table inheritance mappers when using 
+      query.join(cls, aliased=True).  [ticket:1082]
+      
 0.5beta1
 ========
     - An ongoing document describing the changes from 0.4 to 0.5

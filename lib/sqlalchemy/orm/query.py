@@ -842,14 +842,14 @@ class Query(object):
                     right_entity = aliased(right_mapper, right_selectable)
                     alias_criterion = True
 
-                elif right_mapper.with_polymorphic or isinstance(right_mapper.mapped_table, expression.Join):
-                    aliased_entity = True
-                    right_entity = aliased(right_mapper)
-                    alias_criterion = True
-                
                 elif create_aliases:
                     right_entity = aliased(right_mapper)
                     alias_criterion = True
+
+                elif right_mapper.with_polymorphic or isinstance(right_mapper.mapped_table, expression.Join):
+                    right_entity = aliased(right_mapper)
+                    alias_criterion = True
+                    aliased_entity = True
                     
                 elif prop:
                     if prop.table in self.__currenttables:
@@ -873,7 +873,7 @@ class Query(object):
             if alias_criterion: 
                 self._filter_aliases = ORMAdapter(right_entity, 
                         equivalents=right_mapper._equivalent_columns, chain_to=self._filter_aliases)
-
+                
                 if aliased_entity:
                     self.__mapper_loads_polymorphically_with(right_mapper, ORMAdapter(right_entity, equivalents=right_mapper._equivalent_columns))
 
@@ -1567,7 +1567,7 @@ class _MapperEntity(_QueryEntity):
 
     def setup_context(self, query, context):
         adapter = self._get_entity_clauses(query, context)
-
+        
         context.froms.append(self.selectable)
 
         if context.order_by is False and self.mapper.order_by:
