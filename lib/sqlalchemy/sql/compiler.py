@@ -943,7 +943,7 @@ class SchemaDropper(DDLBase):
         return not self.checkfirst or self.dialect.has_table(self.connection, table.name, schema=table.schema)
 
     def visit_index(self, index):
-        self.append("\nDROP INDEX " + self.preparer.quote(index, self._validate_identifier(index.name, False)))
+        self.append("\nDROP INDEX " + self.preparer.quote(self._validate_identifier(index.name, False), index.quote))
         self.execute()
 
     def drop_foreignkey(self, constraint):
