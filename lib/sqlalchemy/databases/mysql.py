@@ -2064,7 +2064,7 @@ class MySQLSchemaGenerator(compiler.SchemaGenerator):
 class MySQLSchemaDropper(compiler.SchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX %s ON %s" %
-                    (self.preparer.format_index(index),
+                    (self.preparer.quote(index, self._validate_identifier(index.name, False)),
                      self.preparer.format_table(index.table)))
         self.execute()
 

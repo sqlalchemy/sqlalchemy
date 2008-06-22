@@ -844,7 +844,7 @@ class SybaseSQLSchemaDropper(compiler.SchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(index.table.name),
-            self.preparer.quote_identifier(index.name)
+            self.preparer.quote(index, self._validate_identifier(index.name, False))
             ))
         self.execute()
 
