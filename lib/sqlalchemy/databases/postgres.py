@@ -753,7 +753,7 @@ class PGSchemaGenerator(compiler.SchemaGenerator):
         if index.unique:
             self.append("UNIQUE ")
         self.append("INDEX %s ON %s (%s)" \
-                    % (preparer.format_index(index),
+                    % (preparer.quote(self._validate_identifier(index.name, True), index.quote),
                        preparer.format_table(index.table),
                        string.join([preparer.format_column(c) for c in index.columns], ', ')))
         whereclause = index.kwargs.get('postgres_where', None)

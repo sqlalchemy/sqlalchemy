@@ -5,6 +5,9 @@ CHANGES
 =======
 0.5beta2
 ========
+    - 0.5beta2 includes all bugfixes listed under release 
+      "0.4.7".
+
 - orm
     - In addition to expired attributes, deferred attributes
       also load if their data is present in the result set.
@@ -113,6 +116,13 @@ CHANGES
       looking for the name within the DB's catalog tables.
       [ticket:571]
 
+    - The index name generated when you say "index=True"
+      on a Column is truncated to the length appropriate
+      for the dialect. Additionally, an Index with a too-
+      long name cannot be explicitly dropped with
+      Index.drop(), similar to [ticket:571].
+      [ticket:820]
+      
 - postgres
     - Repaired server_side_cursors to properly detect 
       text() clauses.

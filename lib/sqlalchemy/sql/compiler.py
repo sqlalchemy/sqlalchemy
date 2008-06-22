@@ -742,6 +742,19 @@ class DDLBase(engine.SchemaIterator):
                 findalterables.traverse(c)
         return alterables
 
+    def _validate_identifier(self, ident, truncate):
+        if truncate:
+            if len(ident) > self.dialect.max_identifier_length:
+                counter = getattr(self, 'counter', 0)
+                self.counter = counter + 1
+                return ident[0:self.dialect.max_identifier_length - 6] + "_" + hex(self.counter)[2:]
+            else:
+                return ident
+        else:
+            self.dialect.validate_identifier(ident)
+            return ident
+
+
 class SchemaGenerator(DDLBase):
     def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
         super(SchemaGenerator, self).__init__(connection, **kwargs)
@@ -901,7 +914,7 @@ class SchemaGenerator(DDLBase):
         if index.unique:
             self.append("UNIQUE ")
         self.append("INDEX %s ON %s (%s)" \
-                    % (preparer.format_index(index),
+                    % (preparer.quote(self._validate_identifier(index.name, True), index.quote),
                        preparer.format_table(index.table),
                        string.join([preparer.quote(c.name, c.quote) for c in index.columns], ', ')))
         self.execute()
@@ -930,7 +943,7 @@ class SchemaDropper(DDLBase):
         return not self.checkfirst or self.dialect.has_table(self.connection, table.name, schema=table.schema)
 
     def visit_index(self, index):
-        self.append("\nDROP INDEX " + self.preparer.format_index(index))
+        self.append("\nDROP INDEX " + self.preparer.quote(index, self._validate_identifier(index.name, False)))
         self.execute()
 
     def drop_foreignkey(self, constraint):
@@ -1050,10 +1063,7 @@ class IdentifierPreparer(object):
 
     def format_constraint(self, constraint):
         return self.quote(constraint.name, constraint.quote)
-
-    def format_index(self, index):
-        return self.quote(index.name, index.quote)
-
+    
     def format_table(self, table, use_schema=True, name=None):
         """Prepare a quoted table and schema name."""
 

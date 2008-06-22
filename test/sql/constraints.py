@@ -201,7 +201,25 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
                                 winner='sweden')
         ss = events.select().execute().fetchall()
 
+    def test_too_long_idx_name(self):
+        dialect = testing.db.dialect.__class__()
+        dialect.max_identifier_length = 20
 
+        schemagen = dialect.schemagenerator(dialect, None)
+        schemagen.execute = lambda : None
+
+        t1 = Table("sometable", MetaData(), Column("foo", Integer))
+        schemagen.visit_index(Index("this_name_is_too_long_for_what_were_doing", t1.c.foo))
+        self.assertEquals(schemagen.buffer.getvalue(), "CREATE INDEX this_name_is_t_1 ON sometable (foo)")
+        schemagen.buffer.truncate(0)
+        schemagen.visit_index(Index("this_other_name_is_too_long_for_what_were_doing", t1.c.foo))
+        self.assertEquals(schemagen.buffer.getvalue(), "CREATE INDEX this_other_nam_2 ON sometable (foo)")
+
+        schemadrop = dialect.schemadropper(dialect, None)
+        schemadrop.execute = lambda: None
+        self.assertRaises(exc.IdentifierError, schemadrop.visit_index, Index("this_name_is_too_long_for_what_were_doing", t1.c.foo))
+
+    
 class ConstraintCompilationTest(TestBase, AssertsExecutionResults):
     class accum(object):
         def __init__(self):

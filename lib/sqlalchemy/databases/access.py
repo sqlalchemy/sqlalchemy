@@ -408,7 +408,8 @@ class AccessSchemaGenerator(compiler.SchemaGenerator):
 
 class AccessSchemaDropper(compiler.SchemaDropper):
     def visit_index(self, index):
-        self.append("\nDROP INDEX [%s].[%s]" % (index.table.name, index.name))
+        
+        self.append("\nDROP INDEX [%s].[%s]" % (index.table.name, self._validate_identifier(index.name, False)))
         self.execute()
 
 class AccessDefaultRunner(base.DefaultRunner):
