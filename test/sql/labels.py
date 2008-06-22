@@ -1,5 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
+from sqlalchemy import exceptions
 from testlib import *
 from sqlalchemy.engine import default
 
@@ -38,6 +39,14 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
         metadata.drop_all()
         testing.db.dialect.max_identifier_length = maxlen
 
+    def test_too_long_name_disallowed(self):
+        m = MetaData(testing.db)
+        t1 = Table("this_name_is_too_long_for_what_were_doing_in_this_test", m, Column('foo', Integer))
+        self.assertRaises(exceptions.IdentifierError, m.create_all)
+        self.assertRaises(exceptions.IdentifierError, m.drop_all)
+        self.assertRaises(exceptions.IdentifierError, t1.create)
+        self.assertRaises(exceptions.IdentifierError, t1.drop)
+        
     def test_result(self):
         table1.insert().execute(**{"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"})
         table1.insert().execute(**{"this_is_the_primarykey_column":2, "this_is_the_data_column":"data2"})

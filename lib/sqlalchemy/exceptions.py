@@ -34,7 +34,9 @@ class ConcurrentModificationError(SQLAlchemyError):
 class CircularDependencyError(SQLAlchemyError):
     """Raised by topological sorts when a circular dependency is detected"""
 
-
+class IdentifierError(SQLAlchemyError):
+    """Raised when a schema name is beyond the max character limit"""
+    
 class FlushError(SQLAlchemyError):
     """Raised when an invalid condition is detected upon a ``flush()``."""
 

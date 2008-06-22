@@ -26,11 +26,22 @@ CHANGES
       a transaction is in progress [ticket:976].  This
       flag is always True with a "transactional" 
       (in 0.5 a non-"autocommit") Session.
-    
+
+- schema
+    - create_all(), drop_all(), create(), drop() all raise
+      an error if the table name or schema name contains
+      more characters than that dialect's configured
+      character limit.  Some DB's can handle too-long
+      table names during usage, and SQLA can handle this
+      as well. But various reflection/
+      checkfirst-during-create scenarios fail since we are
+      looking for the name within the DB's catalog tables.
+      [ticket:571]
+
 - postgres
     - Repaired server_side_cursors to properly detect 
       text() clauses.
-      
+
 - mysql
     - Added 'CALL' to the list of SQL keywords which return
       result rows.
