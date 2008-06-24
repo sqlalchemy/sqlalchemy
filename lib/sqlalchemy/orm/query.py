@@ -1445,7 +1445,7 @@ class Query(object):
         self.logger.debug(msg)
 
     def __str__(self):
-        return str(self.compile())
+        return str(self._compile_context().statement)
 
 
 class _QueryEntity(object):

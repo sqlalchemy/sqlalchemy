@@ -169,6 +169,14 @@ class GetTest(QueryTest):
         assert u.addresses[0].email_address == 'jack@bean.com'
         assert u.orders[1].items[2].description == 'item 5'
 
+    def test_query_str(self):
+        s = create_session()
+        q = s.query(User).filter(User.id==1)
+        self.assertEquals(
+            str(q).replace('\n',''), 
+            'SELECT users.id AS users_id, users.name AS users_name FROM users WHERE users.id = ?'
+            )
+
 class InvalidGenerationsTest(QueryTest):
     def test_no_limit_offset(self):
         s = create_session()

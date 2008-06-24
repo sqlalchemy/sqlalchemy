@@ -23,7 +23,9 @@ CHANGES
     - Fixed explicit, self-referential joins between two 
       joined-table inheritance mappers when using 
       query.join(cls, aliased=True).  [ticket:1082]
-      
+
+    - Repaired `__str__()` method on Query. [ticket:1066]
+    
 0.5beta1
 ========
     - An ongoing document describing the changes from 0.4 to 0.5
