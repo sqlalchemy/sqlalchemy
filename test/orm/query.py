@@ -341,7 +341,7 @@ class CompileTest(QueryTest):
         session = create_session()
         s = session.query(User).filter(and_(addresses.c.email_address == bindparam('emailad'), Address.user_id==User.id)).statement
 
-        l = session.query(User).instances(s.execute(emailad = 'jack@bean.com'))
+        l = list(session.query(User).instances(s.execute(emailad = 'jack@bean.com')))
         assert [User(id=7)] == l
 
 class SliceTest(QueryTest):
@@ -1001,7 +1001,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         def go():
-            l = q.options(contains_alias('ulist'), contains_eager('addresses')).instances(query.execute())
+            l = list(q.options(contains_alias('ulist'), contains_eager('addresses')).instances(query.execute()))
             assert fixtures.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
 
@@ -1044,7 +1044,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         def go():
-            l = q.options(contains_eager('addresses')).instances(selectquery.execute())
+            l = list(q.options(contains_eager('addresses')).instances(selectquery.execute()))
             assert fixtures.user_address_result[0:3] == l
         self.assert_sql_count(testing.db, go, 1)
 
@@ -1052,7 +1052,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
 
         def go():
-            l = q.options(contains_eager(User.addresses)).instances(selectquery.execute())
+            l = list(q.options(contains_eager(User.addresses)).instances(selectquery.execute()))
             assert fixtures.user_address_result[0:3] == l
         self.assert_sql_count(testing.db, go, 1)
         sess.clear()
@@ -1070,14 +1070,14 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         
         # string alias name
         def go():
-            l = q.options(contains_eager('addresses', alias="adalias")).instances(selectquery.execute())
+            l = list(q.options(contains_eager('addresses', alias="adalias")).instances(selectquery.execute()))
             assert fixtures.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
         sess.clear()
 
         # expression.Alias object
         def go():
-            l = q.options(contains_eager('addresses', alias=adalias)).instances(selectquery.execute())
+            l = list(q.options(contains_eager('addresses', alias=adalias)).instances(selectquery.execute()))
             assert fixtures.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
 
@@ -1098,7 +1098,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = create_session().query(User)
         # test using string alias with more than one level deep
         def go():
-            l = q.options(contains_eager('orders', alias='o1'), contains_eager('orders.items', alias='i1')).instances(query.execute())
+            l = list(q.options(contains_eager('orders', alias='o1'), contains_eager('orders.items', alias='i1')).instances(query.execute()))
             assert fixtures.user_order_result == l
         self.assert_sql_count(testing.db, go, 1)
 
@@ -1106,7 +1106,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         # test using Alias with more than one level deep
         def go():
-            l = q.options(contains_eager('orders', alias=oalias), contains_eager('orders.items', alias=ialias)).instances(query.execute())
+            l = list(q.options(contains_eager('orders', alias=oalias), contains_eager('orders.items', alias=ialias)).instances(query.execute()))
             assert fixtures.user_order_result == l
         self.assert_sql_count(testing.db, go, 1)
         sess.clear()
@@ -1333,7 +1333,7 @@ class MixedEntitiesTest(QueryTest):
         sess = create_session()
 
         selectquery = users.outerjoin(addresses).select(use_labels=True, order_by=[users.c.id, addresses.c.id])
-        self.assertEquals(sess.query(User, Address).instances(selectquery.execute()), expected)
+        self.assertEquals(list(sess.query(User, Address).instances(selectquery.execute())), expected)
         sess.clear()
 
         for address_entity in (Address, aliased(Address)):

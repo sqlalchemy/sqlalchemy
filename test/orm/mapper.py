@@ -845,7 +845,7 @@ class OptionsTest(_fixtures.FixtureTest):
         # session's identity map)
         r = users.select().order_by(users.c.id).execute()
         def go():
-            l = sess.query(User).instances(r)
+            l = list(sess.query(User).instances(r))
             eq_(l, self.static.user_address_result)
         self.sql_count_(4, go)
 
@@ -889,7 +889,7 @@ class OptionsTest(_fixtures.FixtureTest):
         # then assert the data, which will launch 6 more lazy loads
         r = users.select().execute()
         def go():
-            l = sess.query(User).instances(r)
+            l = list(sess.query(User).instances(r))
             eq_(l, self.static.user_all_result)
         self.assert_sql_count(testing.db, go, 6)
 

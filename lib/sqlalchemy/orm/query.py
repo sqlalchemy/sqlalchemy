@@ -1040,28 +1040,16 @@ class Query(object):
 
     def _execute_and_instances(self, querycontext):
         result = self.session.execute(querycontext.statement, params=self._params, mapper=self._mapper_zero_or_none(), _state=self._refresh_state)
-        return self.iterate_instances(result, querycontext)
+        return self.instances(result, querycontext)
 
     def instances(self, cursor, __context=None):
-        """Given a ResultProxy cursor as returned by connection.execute(), return an ORM result as a list.
-
-        e.g.::
-        
-            result = engine.execute("select * from users")
-            users = session.query(User).instances(result)
-
-        """
-        return list(self.iterate_instances(cursor, __context))
-
-    def iterate_instances(self, cursor, __context=None):
         """Given a ResultProxy cursor as returned by connection.execute(), return an ORM result as an iterator.
-        
-        e.g.::
-        
-            result = engine.execute("select * from users")
-            for u in session.query(User).iterate_instances(result):
-                print u
 
+        e.g.::
+
+            result = engine.execute("select * from users")
+            for u in session.query(User).instances(result):
+                print u
         """
         session = self.session
 
@@ -1128,6 +1116,7 @@ class Query(object):
 
             if not self._yield_per:
                 break
+    iterate_instances = util.deprecated()(instances)
 
     def _get(self, key=None, ident=None, refresh_state=None, lockmode=None, only_load_props=None):
         lockmode = lockmode or self._lockmode

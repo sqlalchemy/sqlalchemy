@@ -268,7 +268,7 @@ class QueryAlternativesTest(_base.MappedTest):
         session = create_session()
 
         sel = users_table.join(addresses_table).select(use_labels=True)
-        res = session.query(User, Address).instances(sel.execute())
+        res = list(session.query(User, Address).instances(sel.execute()))
 
         assert len(res) == 4
         cola, colb = res[0]
