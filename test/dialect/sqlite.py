@@ -30,7 +30,23 @@ class TestTypes(TestBase, AssertsExecutionResults):
 
         finally:
             meta.drop_all()
+    
+    def test_time_microseconds(self):
+        dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)  # 125 usec
 
+        self.assertEquals(str(dt), '2008-06-27 12:00:00.000125')
+        sldt = sqlite.SLDateTime()
+        bp = sldt.bind_processor(None)
+        self.assertEquals(bp(dt), '2008-06-27 12:00:00.125')
+
+        rp = sldt.result_processor(None)
+        self.assertEquals(rp(bp(dt)), dt)
+
+        sldt.__legacy_microseconds__ = False
+        self.assertEquals(bp(dt), '2008-06-27 12:00:00.000125')
+        self.assertEquals(rp(bp(dt)), dt)
+        
+        
     @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)

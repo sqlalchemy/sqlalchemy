@@ -42,7 +42,8 @@ class SLSmallInteger(sqltypes.Smallinteger):
 
 class DateTimeMixin(object):
     __format__ = "%Y-%m-%d %H:%M:%S"
-
+    __legacy_microseconds__ = True
+    
     def bind_processor(self, dialect):
         def process(value):
             if isinstance(value, basestring):
@@ -50,7 +51,10 @@ class DateTimeMixin(object):
                 return value
             elif value is not None:
                 if self.__microsecond__ and getattr(value, 'microsecond', None) is not None:
-                    return value.strftime(self.__format__ + "." + str(value.microsecond))
+                    if self.__legacy_microseconds__:
+                        return value.strftime(self.__format__ + '.' + str(value.microsecond))
+                    else:
+                        return value.strftime(self.__format__ + ('.%06d' % value.microsecond))
                 else:
                     return value.strftime(self.__format__)
             else:
@@ -62,7 +66,10 @@ class DateTimeMixin(object):
             return None
         try:
             (value, microsecond) = value.split('.')
-            microsecond = int(microsecond)
+            if self.__legacy_microseconds__:
+                microsecond = int(microsecond)
+            else:
+                microsecond = int((microsecond + '000000')[0:6])
         except ValueError:
             microsecond = 0
         return time.strptime(value, self.__format__)[0:6] + (microsecond,)

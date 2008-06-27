@@ -74,6 +74,30 @@ CHANGES
       that row request (so BufferedColumnRow is still needed, 
       but less so). [ticket:1062]
 
+- sqlite
+    - SQLite supports a "forwards compatible" mode for its
+      DateTime and Time types, regarding the representation of
+      microseconds.  When the mode is enabled, microseconds 
+      are represented as fractional seconds in string format.  
+      This makes SQLA's SQLite date type compatible with datetimes 
+      that were saved directly using Pysqlite (which just calls 
+      str()).  This mode is the default in 0.5, where the 
+      same selector flag exists with the reverse default value.
+
+      To get the new behavior globally:
+
+         from sqlalchemy.databases.sqlite import DateTimeMixin
+         DateTimeMixin.__legacy_microseconds__ = False
+
+      To get the behavior on individual DateTime types:
+
+          t = sqlite.SLDateTime()
+          t.__legacy_microseconds__ = False
+
+      Then use "t" as the type on the Column.
+
+      [ticket:1090]
+
 
 0.4.6
 =====
