@@ -213,8 +213,8 @@ Accessing the Session
 SqlSoup uses a ScopedSession to provide thread-local sessions.  You
 can get a reference to the current one like this::
 
-    >>> from sqlalchemy.ext.sqlsoup import objectstore
-    >>> session = objectstore.current
+    >>> from sqlalchemy.ext.sqlsoup import Session
+    >>> session = Session()
 
 Now you have access to all the standard session-based SA features,
 such as transactions.  (SqlSoup's ``flush()`` is normally
@@ -325,7 +325,6 @@ Boring tests here.  Nothing of real expository value.
 from sqlalchemy import *
 from sqlalchemy import schema, sql
 from sqlalchemy.orm import *
-from sqlalchemy.orm.scoping import ScopedSession
 from sqlalchemy.exceptions import *
 from sqlalchemy.sql import expression
 
@@ -376,24 +375,7 @@ CREATE TABLE nopk (
 
 __all__ = ['PKNotFoundError', 'SqlSoup']
 
-#
-# thread local SessionContext
-#
-class Objectstore(ScopedSession):
-    def __getattr__(self, key):
-        if key.startswith('__'):        # dont trip the registry for module-level sweeps of things
-                                        # like '__bases__'.  the session gets bound to the
-                                        # module which is interfered with by other unit tests.
-                                        # (removal of mapper.get_session() revealed the issue)
-            raise AttributeError()
-        return getattr(self.registry(), key)
-    def current(self):
-        return self.registry()
-    current = property(current)
-    def get_session(self):
-        return self.registry()
-
-objectstore = Objectstore(create_session)
+Session = scoped_session(sessionmaker(autoflush=True))
 
 class PKNotFoundError(SQLAlchemyError):
     pass
@@ -494,14 +476,14 @@ def class_for_table(selectable, **mapper_kwargs):
     klass.c = expression.ColumnCollection()
     mappr = mapper(klass,
                    selectable,
-                   extension=objectstore.extension,
+                   extension=Session.extension,
                    allow_null_pks=_is_outer_join(selectable),
                    **mapper_kwargs)
                    
     for k in mappr.iterate_properties:
         klass.c[k.key] = k.columns[0]
 
-    klass._query = objectstore.query_property()
+    klass._query = Session.query_property()
     return klass
 
 class SqlSoup:
@@ -531,13 +513,13 @@ class SqlSoup:
     bind = engine
 
     def delete(self, *args, **kwargs):
-        objectstore.delete(*args, **kwargs)
+        Session.delete(*args, **kwargs)
 
     def flush(self):
-        objectstore.get_session().flush()
+        Session.flush()
 
     def clear(self):
-        objectstore.clear()
+        Session.clear()
 
     def map(self, selectable, **kwargs):
         try:
