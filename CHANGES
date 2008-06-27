@@ -25,7 +25,31 @@ CHANGES
       query.join(cls, aliased=True).  [ticket:1082]
 
     - Repaired `__str__()` method on Query. [ticket:1066]
-    
+
+- sqlite
+    - Modified SQLite's representation of "microseconds" to 
+      match the output of str(somedatetime), i.e. in that the
+      microseconds are represented as fractional seconds in
+      string format.  This makes SQLA's SQLite date type
+      compatible with datetimes that were saved directly
+      using Pysqlite (which just calls str()).  
+      Note that this is incompatible with the existing microseconds
+      values in a SQLA 0.4 generated SQLite database file.
+      
+      To get the old behavior globally:
+      
+           from sqlalchemy.databases.sqlite import DateTimeMixin
+           DateTimeMixin.__legacy_microseconds__ = True
+           
+      To get the behavior on individual DateTime types:
+      
+            t = sqlite.SLDateTime()
+            t.__legacy_microseconds__ = True
+            
+      Then use "t" as the type on the Column.
+           
+      [ticket:1090]
+      
 0.5beta1
 ========
     - An ongoing document describing the changes from 0.4 to 0.5
