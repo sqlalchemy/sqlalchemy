@@ -24,6 +24,10 @@ CHANGES
       joined-table inheritance mappers when using 
       query.join(cls, aliased=True).  [ticket:1082]
 
+    - Fixed query.join() when used in conjunction with a
+      columns-only clause and an SQL-expression 
+      ON clause in the join.
+      
     - Repaired `__str__()` method on Query. [ticket:1066]
 
 - sqlite

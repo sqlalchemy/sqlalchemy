@@ -169,6 +169,7 @@ class GetTest(QueryTest):
         assert u.addresses[0].email_address == 'jack@bean.com'
         assert u.orders[1].items[2].description == 'item 5'
 
+    @testing.fails_on_everything_except('sqlite')
     def test_query_str(self):
         s = create_session()
         q = s.query(User).filter(User.id==1)
@@ -732,6 +733,11 @@ class JoinTest(QueryTest):
         )
 
         self.assertEquals(
+            sess.query(User.name).select_from(join(User, Order).join(Item, Order.items)).filter(Item.description == 'item 4').all(),
+            [('jack',)]
+        )
+
+        self.assertEquals(
             sess.query(User).join(Order, (Item, Order.items)).filter(Item.description == 'item 4').all(),
             [User(name='jack')]
         )
@@ -748,8 +754,25 @@ class JoinTest(QueryTest):
             [User(name='jack')]
         )
 
-        # no arg error
-        result = sess.query(User).join('orders', aliased=True).order_by([Order.id]).reset_joinpoint().order_by(users.c.id).all()
+        self.assertEquals(
+            sess.query(User.name).join(
+                (Order, User.id==Order.user_id), 
+                (order_items, Order.id==order_items.c.order_id), 
+                (Item, order_items.c.item_id==Item.id)
+            ).filter(Item.description == 'item 4').all(),
+            [('jack',)]
+        )
+
+        ualias = aliased(User)
+        self.assertEquals(
+            sess.query(ualias.name).join(
+                (Order, ualias.id==Order.user_id), 
+                (order_items, Order.id==order_items.c.order_id), 
+                (Item, order_items.c.item_id==Item.id)
+            ).filter(Item.description == 'item 4').all(),
+            [('jack',)]
+        )
+
         
     def test_aliased_classes(self):
         sess = create_session()

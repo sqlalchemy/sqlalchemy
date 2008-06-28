@@ -222,6 +222,9 @@ class Query(object):
         return getattr(ent, 'extension', ent.mapper.extension)
 
     def _mapper_entities(self):
+        # TODO: this is wrong, its hardcoded to "priamry entity" when
+        # for the case of __all_equivs() it should not be
+        # the name of this accessor is wrong too
         for ent in self._entities:
             if hasattr(ent, 'primary_entity'):
                 yield ent
@@ -820,13 +823,13 @@ class Query(object):
                 if isinstance(onclause, interfaces.PropComparator):
                     clause = onclause.__clause_element__()
 
-                for ent in self._mapper_entities:
+                for ent in self._entities:
                     if ent.corresponds_to(left_entity):
                         clause = ent.selectable
                         break
 
             if not clause:
-                raise exc.InvalidRequestError("Could not find a FROM clause to join from")
+                raise sa_exc.InvalidRequestError("Could not find a FROM clause to join from")
 
             bogus, right_selectable, is_aliased_class = _entity_info(right_entity)
 
@@ -1618,6 +1621,15 @@ class _ColumnEntity(_QueryEntity):
     def setup_entity(self, entity, mapper, adapter, from_obj, is_aliased_class, with_polymorphic):
         self.selectable = from_obj
         self.froms.add(from_obj)
+
+    def corresponds_to(self, entity):
+        if _is_aliased_class(entity):
+            return entity is self.entity_zero
+        else:
+            # TODO: this will fail with inheritance, entity_zero
+            # is not a base mapper.  MapperEntity has path_entity
+            # which serves this purpose (when saying: query(FooBar.somecol).join(SomeClass, FooBar.id==SomeClass.foo_id))
+            return entity.base_mapper is self.entity_zero
 
     def _resolve_expr_against_query_aliases(self, query, expr, context):
         return query._adapt_clause(expr, False, True)
