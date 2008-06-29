@@ -664,7 +664,7 @@ class TestFormatArgspec(TestBase):
            grouped=False)
 
         test(lambda *a: None,
-           {'args': '(*a)', 'self_arg': None,
+           {'args': '(*a)', 'self_arg': 'a[0]',
             'apply_kw': '(*a)', 'apply_pos': '(*a)' })
 
         test(lambda **kw: None,
@@ -672,7 +672,7 @@ class TestFormatArgspec(TestBase):
             'apply_kw': '(**kw)', 'apply_pos': '(**kw)' })
 
         test(lambda *a, **kw: None,
-           {'args': '(*a, **kw)', 'self_arg': None,
+           {'args': '(*a, **kw)', 'self_arg': 'a[0]',
             'apply_kw': '(*a, **kw)', 'apply_pos': '(*a, **kw)' })
 
         test(lambda a, *b: None,

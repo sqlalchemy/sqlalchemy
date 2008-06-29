@@ -345,7 +345,8 @@ def format_argspec_plus(fn, grouped=True):
     args
       Full inspect.formatargspec for fn
     self_arg
-      The name of the first positional argument, or None
+      The name of the first positional argument, varargs[0], or None
+      if the function defines no positional arguments.
     apply_pos
       args, re-written in calling rather than receiving syntax.  Arguments are
       passed positionally.
@@ -363,7 +364,12 @@ def format_argspec_plus(fn, grouped=True):
     """
     spec = inspect.getargspec(fn)
     args = inspect.formatargspec(*spec)
-    self_arg = spec[0] and spec[0][0] or None
+    if spec[0]:
+        self_arg = spec[0][0]
+    elif spec[1]:
+        self_arg = '%s[0]' % spec[1]
+    else:
+        self_arg = None
     apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2])
     defaulted_vals = spec[3] is not None and spec[0][0-len(spec[3]):] or ()
     apply_kw = inspect.formatargspec(spec[0], spec[1], spec[2], defaulted_vals,
