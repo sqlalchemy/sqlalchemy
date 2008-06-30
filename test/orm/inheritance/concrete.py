@@ -158,11 +158,6 @@ class ConcreteTest(ORMTest):
         assert set([repr(x) for x in session.query(Manager).all()]) == set(["Manager Tom knows how to manage things"])
         assert set([repr(x) for x in session.query(Engineer).all()]) == set(["Engineer Jerry knows how to program", "Hacker Kurt 'Badass' knows how to hack"])
 
-        # because we are concrete, are intentionally repeating integer ids across
-        # tables, and have told the "Engineer" mapper to load polymorphically,
-        # this cannot work:
-        self.assertRaises(orm_exc.MultipleResultsFound, session.query(Engineer).filter(Engineer.employee_id==1).one)
-        
     def test_relation(self):
         class Employee(object):
             def __init__(self, name):
