@@ -30,6 +30,9 @@ CHANGES
       
     - Repaired `__str__()` method on Query. [ticket:1066]
 
+    - Session.bind gets used as a default even when table/mapper
+      specific binds are defined.
+
 - sqlite
     - Modified SQLite's representation of "microseconds" to 
       match the output of str(somedatetime), i.e. in that the

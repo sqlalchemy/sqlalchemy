@@ -865,7 +865,8 @@ class Session(object):
                 for t in sql_util.find_tables(clause):
                     if t in self.__binds:
                         return self.__binds[t]
-        elif self.bind:
+
+        if self.bind:
             return self.bind
 
         if isinstance(clause, sql.expression.ClauseElement) and clause.bind:
