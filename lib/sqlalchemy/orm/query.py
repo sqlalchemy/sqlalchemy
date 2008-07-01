@@ -1218,8 +1218,6 @@ class Query(object):
         primary_table = context.statement.froms[0]
         
         session = self.session
-        if self._autoflush:
-            session.flush()
         
         if synchronize_session == 'evaluate':
             try:
@@ -1266,8 +1264,6 @@ class Query(object):
         primary_table = context.statement.froms[0]
         
         session = self.session
-        if self._autoflush:
-            session.flush()
         
         if synchronize_session == 'evaluate':
             try:

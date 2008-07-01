@@ -2310,18 +2310,5 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
-    @testing.resolve_artifact_names
-    def test_update_changed_attributes(self):
-        sess = create_session(bind=testing.db, autocommit=False)
-        
-        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-        
-        jack.age = 21
-        
-        sess.query(User).filter(User.age > 29).update({'age': User.age - 10})
-        
-        eq_([john.age, jack.age, jill.age, jane.age], [25,21,29,27])
-        eq_(sess.query(User.age).order_by(User.id).all(), zip([25,21,29,27]))
-
 if __name__ == '__main__':
     testenv.main()
