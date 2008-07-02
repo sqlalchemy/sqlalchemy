@@ -97,7 +97,7 @@ class Pool(object):
       that connection, to call other functions which also ask the pool
       for a connection of the same arguments; those functions will act
       upon the same connection that the calling method is using.
-      Defaults to True.
+      Defaults to False.
 
     recycle
       If set to non -1, a number of seconds between connection
