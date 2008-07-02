@@ -789,12 +789,8 @@ class ForeignKey(SchemaItem):
     def _get_colspec(self):
         if isinstance(self._colspec, basestring):
             return self._colspec
-        elif self._colspec.table.schema is not None:
-            return "%s.%s.%s" % (self._colspec.table.schema,
-                                 self._colspec.table.name, self._colspec.key)
         else:
-            return "%s.%s" % (self._colspec.table.name, self._colspec.key)
-
+            return "%s.%s" % (self._colspec.table.fullname, self._colspec.key)
     target_fullname = property(_get_colspec)
 
     def references(self, table):
