@@ -32,6 +32,19 @@ class SLNumeric(sqltypes.Numeric):
         else:
             return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
 
+class SLFloat(sqltypes.Float):
+    def bind_processor(self, dialect):
+        type_ = self.asdecimal and str or float
+        def process(value):
+            if value is not None:
+                return type_(value)
+            else:
+                return value
+        return process
+
+    def get_col_spec(self):
+        return "FLOAT"
+    
 class SLInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -153,7 +166,7 @@ colspecs = {
     sqltypes.CHAR: SLChar,
     sqltypes.Date: SLDate,
     sqltypes.DateTime: SLDateTime,
-    sqltypes.Float: SLNumeric,
+    sqltypes.Float: SLFloat,
     sqltypes.Integer: SLInteger,
     sqltypes.NCHAR: SLChar,
     sqltypes.Numeric: SLNumeric,

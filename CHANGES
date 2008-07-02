@@ -98,6 +98,10 @@ CHANGES
 
       [ticket:1090]
 
+    - add SLFloat type, which matches the SQLite REAL 
+      type affinity.  Previously, only SLNumeric was provided
+      which fulfills NUMERIC affinity, but that's not the 
+      same as REAL.
 
 0.4.6
 =====
