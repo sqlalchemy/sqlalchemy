@@ -263,9 +263,12 @@ class ColumnsTest(TestBase, AssertsExecutionResults):
                           }
 
         db = testing.db
-        if testing.against('sqlite', 'oracle'):
+        if testing.against('oracle'):
             expectedResults['float_column'] = 'float_column NUMERIC(25, 2)'
 
+        if testing.against('sqlite'):
+            expectedResults['float_column'] = 'float_column FLOAT'
+            
         if testing.against('maxdb'):
             expectedResults['numeric_column'] = (
                 expectedResults['numeric_column'].replace('NUMERIC', 'FIXED'))

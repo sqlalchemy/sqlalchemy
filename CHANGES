@@ -189,6 +189,11 @@ CHANGES
       that row request (so BufferedColumnRow is still needed, 
       but less so). [ticket:1062]
 
+- sqlite
+      - add SLFloat type, which matches the SQLite REAL 
+        type affinity.  Previously, only SLNumeric was provided
+        which fulfills NUMERIC affinity, but that's not the 
+        same as REAL.
 
 0.4.6
 =====
