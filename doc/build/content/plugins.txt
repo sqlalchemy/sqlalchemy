@@ -135,7 +135,7 @@ The above synonym is then usable as an instance attribute as well as a class-lev
     x.attr = "some value"
     session.query(MyClass).filter(MyClass.attr == 'some other value').all()
 
-The `synonyn_for` decorator can accomplish the same task:
+The `synonym_for` decorator can accomplish the same task:
 
     {python}
     class MyClass(Base):
@@ -143,7 +143,7 @@ The `synonyn_for` decorator can accomplish the same task:
         
         _attr = Column('attr', String)
 
-        @synonyn_for('_attr')
+        @synonym_for('_attr')
         @property
         def attr(self):
             return self._some_attr
