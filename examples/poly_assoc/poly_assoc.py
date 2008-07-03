@@ -6,14 +6,14 @@ In this example, we are specifically targeting this ActiveRecord functionality:
 http://wiki.rubyonrails.org/rails/pages/UnderstandingPolymorphicAssociations
 
 The term "polymorphic" here means "object X can be referenced by objects A, B, and C,
-along a common line of association".  
+along a common line of association".
 
-In this example we illustrate the relationship in both directions.  
+In this example we illustrate the relationship in both directions.
 A little bit of property magic is used to smooth the edges.
 
 AR creates this relationship in such a way that disallows
-any foreign key constraint from existing on the association.  
-For a different way of doing this,  see 
+any foreign key constraint from existing on the association.
+For a different way of doing this,  see
 poly_assoc_fks.py.  The interface is the same, the efficiency is more or less the same,
 but foreign key constraints may be used.  That example also better separates
 the associated target object from those which associate with it.
@@ -28,7 +28,7 @@ metadata = MetaData('sqlite://')
 #######
 # addresses table, class, 'addressable interface'.
 
-addresses = Table("addresses", metadata, 
+addresses = Table("addresses", metadata,
     Column('id', Integer, primary_key=True),
     Column('addressable_id', Integer),
     Column('addressable_type', String(50)),
@@ -44,10 +44,10 @@ class Address(object):
 
 def addressable(cls, name, uselist=True):
     """addressable 'interface'.
-    
+
     if you really wanted to make a "generic" version of this function, it's straightforward.
     """
-    
+
     # create_address function, imitaes the rails example.
     # we could probably use property tricks as well to set
     # the Address object's "addressabletype" attribute.
@@ -58,8 +58,8 @@ def addressable(cls, name, uselist=True):
         else:
             setattr(self, name, a)
         return a
-    
-    mapper = class_mapper(cls)    
+
+    mapper = class_mapper(cls)
     table = mapper.local_table
     cls.create_address = create_address
     # no constraints.  therefore define constraints in an ad-hoc fashion.
@@ -73,18 +73,18 @@ def addressable(cls, name, uselist=True):
             primaryjoin=primaryjoin, uselist=uselist, foreign_keys=foreign_keys,
             backref=backref('_backref_%s' % table.name, primaryjoin=list(table.primary_key)[0] == addresses.c.addressable_id, foreign_keys=foreign_keys)
         )
-    )    
+    )
 
 mapper(Address, addresses)
 
 ######
 # sample # 1, users
 
-users = Table("users", metadata, 
+users = Table("users", metadata,
     Column('id', Integer, primary_key=True),
     Column('name', String(50), nullable=False)
     )
-    
+
 class User(object):
     pass
 
@@ -94,10 +94,10 @@ addressable(User, 'addresses', uselist=True)
 ######
 # sample # 2, orders
 
-orders = Table("orders", metadata, 
+orders = Table("orders", metadata,
     Column('id', Integer, primary_key=True),
     Column('description', String(50), nullable=False))
-    
+
 class Order(object):
     pass
 
@@ -132,16 +132,16 @@ sess.clear()
 
 # query objects, get their addresses
 
-bob = sess.query(User).get_by(name='bob')
+bob = sess.query(User).filter_by(name='bob').one()
 assert [s.street for s in bob.addresses] == ['123 anywhere street', '345 orchard ave']
 
-order = sess.query(Order).get_by(description='order 1')
+order = sess.query(Order).filter_by(description='order 1').one()
 assert order.address.street == '444 park ave.'
 
 # query from Address to members
 
-for address in sess.query(Address).list():
+for address in sess.query(Address).all():
     print "Street", address.street, "Member", address.member
 
 
-    
+
