@@ -32,6 +32,10 @@ class PGInet(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "INET"
 
+class PGCidr(sqltypes.TypeEngine):
+    def get_col_spec(self):
+        return "CIDR"
+
 class PGMacAddr(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "MACADDR"
@@ -200,6 +204,7 @@ ischema_names = {
     'float' : PGFloat,
     'real' : PGFloat,
     'inet': PGInet,
+    'cidr': PGCidr,
     'macaddr': PGMacAddr,
     'double precision' : PGFloat,
     'timestamp' : PGDateTime,

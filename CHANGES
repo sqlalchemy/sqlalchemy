@@ -49,6 +49,8 @@ CHANGES
     - Repaired server_side_cursors to properly detect 
       text() clauses.
 
+    - Added PGCidr type. [ticket:1092] 
+
 - mysql
     - Added 'CALL' to the list of SQL keywords which return
       result rows.
