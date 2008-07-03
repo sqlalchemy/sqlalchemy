@@ -185,14 +185,14 @@ class Table(SchemaItem, expression.TableClause):
             Deprecated; this is an oracle-only argument - "schema" should
             be used in its place.
 
-        quote
-          Force quoting of the identifier on or off, based on `True` or
-          `False`.  Defaults to `None`.  This flag is rarely needed,
-          as quoting is normally applied
-          automatically for known reserved words, as well as for
-          "case sensitive" identifiers.  An identifier is "case sensitive"
-          if it contains non-lowercase letters, otherwise it's
-          considered to be "case insensitive".
+          quote
+            Force quoting of the identifier on or off, based on `True` or
+            `False`.  Defaults to `None`.  This flag is rarely needed,
+            as quoting is normally applied
+            automatically for known reserved words, as well as for
+            "case sensitive" identifiers.  An identifier is "case sensitive"
+            if it contains non-lowercase letters, otherwise it's
+            considered to be "case insensitive".
 
           quote_schema
             same as 'quote' but applies to the schema identifier.

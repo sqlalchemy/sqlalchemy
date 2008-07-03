@@ -187,7 +187,7 @@ the source code transformed into 2.3-friendly syntax.
 
 TIPS
 ----
-Postgres: The tests require an 'alt_schema' and 'alt_schema2' to be present in
+Postgres: The tests require an 'alt_schema' and 'alt_schema_2' to be present in
 the testing database.
 
 Postgres: When running the tests on postgres, postgres can get slower and
