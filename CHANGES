@@ -33,6 +33,11 @@ CHANGES
     - Session.bind gets used as a default even when table/mapper
       specific binds are defined.
 
+- schema
+    - Added prefixes option to `Table` that accepts a list of 
+      strings to insert after CREATE in the CREATE TABLE statement.
+      [ticket:1075]
+
 - sqlite
     - Modified SQLite's representation of "microseconds" to 
       match the output of str(somedatetime), i.e. in that the

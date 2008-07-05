@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 import pickle
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, create_engine
 from testlib.sa import Table, Column, Integer, String, UniqueConstraint, \
      CheckConstraint, ForeignKey
 import testlib.sa as tsa
@@ -115,6 +115,35 @@ class MetaDataTest(TestBase, ComparesTables):
         self.assertRaises(tsa.exc.NoSuchTableError, Table,
                           'fake_table',
                           MetaData(testing.db), autoload=True)
+
+
+class TableOptionsTest(TestBase):
+    def mock_engine(self):
+        buffer = []
+        def executor(sql, *a, **kw):
+            buffer.append(sql)
+        engine = create_engine(testing.db.name + '://',
+                               strategy='mock', executor=executor)
+        assert not hasattr(engine, 'mock')
+        engine.mock = buffer
+        return engine
+
+    def setUp(self):
+        self.engine = self.mock_engine()
+        self.metadata = MetaData(self.engine)
+
+    def test_prefixes(self):
+        table1 = Table("temporary_table_1", self.metadata,
+                      Column("col1", Integer),
+                      prefixes = ["TEMPORARY"])
+        table1.create()
+        assert [str(x) for x in self.engine.mock if 'CREATE TEMPORARY TABLE' in str(x)]
+        del self.engine.mock[:]
+        table2 = Table("temporary_table_2", self.metadata,
+                      Column("col1", Integer),
+                      prefixes = ["VIRTUAL"])
+        table2.create()
+        assert [str(x) for x in self.engine.mock if 'CREATE VIRTUAL TABLE' in str(x)]
 
 if __name__ == '__main__':
     testenv.main()

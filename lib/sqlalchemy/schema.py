@@ -176,6 +176,10 @@ class Table(SchemaItem, expression.TableClause):
             been defined elsewhere in the application, else an exception is
             raised.
 
+          prefixes
+            A list of strings to insert after CREATE in the CREATE TABLE
+            statement.  They will be separated by spaces.
+
           useexisting
             Defaults to False: indicates that if this Table was already
             defined elsewhere in the application, disregard the rest of the
@@ -223,6 +227,8 @@ class Table(SchemaItem, expression.TableClause):
         self.quote_schema = kwargs.pop('quote_schema', None)
         if kwargs.get('info'):
             self._info = kwargs.pop('info')
+
+        self._prefixes = kwargs.pop('prefixes', [])
 
         self.__extra_kwargs(**kwargs)
 
