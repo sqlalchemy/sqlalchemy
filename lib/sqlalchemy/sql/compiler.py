@@ -788,7 +788,7 @@ class SchemaGenerator(DDLBase):
             if column.default is not None:
                 self.traverse_single(column.default)
 
-        self.append("\nCREATE " + " ".join(table._prefixes) + " TABLE " + self.preparer.format_table(table) + " (")
+        self.append("\nCREATE" + " ".join(table._prefixes) + " TABLE " + self.preparer.format_table(table) + " (")
 
         separator = "\n"
 

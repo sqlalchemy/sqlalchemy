@@ -1044,7 +1044,7 @@ class Query(object):
     def _execute_and_instances(self, querycontext):
         result = self.session.execute(querycontext.statement, params=self._params, mapper=self._mapper_zero_or_none(), _state=self._refresh_state)
         return self.instances(result, querycontext)
-
+    
     def instances(self, cursor, __context=None):
         """Given a ResultProxy cursor as returned by connection.execute(), return an ORM result as an iterator.
 
@@ -1081,7 +1081,7 @@ class Query(object):
             labels = dict([(label, property(util.itemgetter(i))) for i, label in enumerate(labels) if label])
             rowtuple = type.__new__(type, "RowTuple", (tuple,), labels)
             rowtuple.keys = labels.keys
-            
+        
         while True:
             context.progress = util.Set()
             context.partials = {}
@@ -1165,7 +1165,11 @@ class Query(object):
 
         if lockmode is not None:
             q._lockmode = lockmode
-        q.__get_options(populate_existing=bool(refresh_state), version_check=(lockmode is not None), only_load_props=only_load_props, refresh_state=refresh_state)
+        q.__get_options(
+            populate_existing=bool(refresh_state), 
+            version_check=(lockmode is not None), 
+            only_load_props=only_load_props, 
+            refresh_state=refresh_state)
         q._order_by = None
         try:
             # call using all() to avoid LIMIT compilation complexity
@@ -1174,7 +1178,13 @@ class Query(object):
             return None
 
     def _select_args(self):
-        return {'limit':self._limit, 'offset':self._offset, 'distinct':self._distinct, 'group_by':self._group_by or None, 'having':self._having or None}
+        return {
+            'limit':self._limit, 
+            'offset':self._offset, 
+            'distinct':self._distinct, 
+            'group_by':self._group_by or None, 
+            'having':self._having or None
+        }
     _select_args = property(_select_args)
 
     def _should_nest_selectable(self):
@@ -1343,6 +1353,13 @@ class Query(object):
         
         self._adjust_for_single_inheritance(context)
         
+        if not context.primary_columns:
+            if self._only_load_props:
+                raise sa_exc.InvalidRequestError("No column-based properties specified for refresh operation."
+                " Use session.expire() to reload collections and related items.")
+            else:
+                raise sa_exc.InvalidRequestError("Query contains no columns with which to SELECT from.")
+            
         if eager_joins and self._should_nest_selectable:
             # for eager joins present and LIMIT/OFFSET/DISTINCT, wrap the query inside a select,
             # then append eager joins onto that

@@ -12,6 +12,17 @@ CHANGES
     - In addition to expired attributes, deferred attributes
       also load if their data is present in the result set.
       [ticket:870]
+    
+    - session.refresh() raises an informative error message if
+      the list of attributes does not include any column-based
+      attributes.
+    
+    - query() raises an informative error message if no columns
+      or mappers are specified.
+      
+    - lazy loaders now trigger autoflush before proceeding.  This
+      allows expire() of a collection or scalar relation to 
+      function properly in the context of autoflush.
       
     - column_property() attributes which represent SQL expressions
       or columns that are not present in the mapped tables

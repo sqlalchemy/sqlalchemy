@@ -524,8 +524,8 @@ class LoadLazyAttribute(object):
                 "lazy load operation of attribute '%s' cannot proceed" % 
                 (mapperutil.state_str(state), self.key)
             )
-
-        q = session.query(prop.mapper).autoflush(False)._adapt_all_clauses()
+        
+        q = session.query(prop.mapper)._adapt_all_clauses()
         
         if self.path:
             q = q._with_current_path(self.path)

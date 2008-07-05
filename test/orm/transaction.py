@@ -81,6 +81,9 @@ class AutoExpireTest(TransactionTest):
         s.add(u1)
         s.commit()
 
+        # this actually tests that the delete() operation,
+        # when cascaded to the "addresses" collection, does not
+        # trigger a flush (via lazyload) before the cascade is complete.
         s.delete(u1)
         assert u1 in s.deleted
         s.rollback()

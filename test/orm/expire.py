@@ -3,7 +3,7 @@
 import testenv; testenv.configure_for_tests()
 import gc
 from testlib import sa, testing
-from testlib.sa import Table, Column, Integer, String, ForeignKey
+from testlib.sa import Table, Column, Integer, String, ForeignKey, exc as sa_exc
 from testlib.sa.orm import mapper, relation, create_session, attributes
 from orm import _base, _fixtures
 
@@ -98,6 +98,44 @@ class ExpireTest(_fixtures.FixtureTest):
         # but now its back, rollback has occured, the _remove_newly_deleted
         # is reverted
         self.assertEquals(u.name, 'chuck')
+    
+    @testing.resolve_artifact_names
+    def test_lazyload_autoflushes(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, order_by=addresses.c.email_address)
+        })
+        mapper(Address, addresses)
+        s = create_session(autoflush=True, autocommit=False)
+        u = s.query(User).get(8)
+        adlist = u.addresses
+        self.assertEquals(adlist, [
+            Address(email_address='ed@bettyboop.com'), 
+            Address(email_address='ed@lala.com'),
+            Address(email_address='ed@wood.com'), 
+        ])
+        a1 = u.addresses[2]
+        a1.email_address = 'aaaaa'
+        s.expire(u, ['addresses'])
+        self.assertEquals(u.addresses, [
+            Address(email_address='aaaaa'), 
+            Address(email_address='ed@bettyboop.com'), 
+            Address(email_address='ed@lala.com'),
+        ])
+
+    @testing.resolve_artifact_names
+    def test_refresh_collection_exception(self):
+        """test graceful failure for currently unsupported immediate refresh of a collection"""
+        
+        mapper(User, users, properties={
+            'addresses':relation(Address, order_by=addresses.c.email_address)
+        })
+        mapper(Address, addresses)
+        s = create_session(autoflush=True, autocommit=False)
+        u = s.query(User).get(8)
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "properties specified for refresh", s.refresh, u, ['addresses'])
+        
+        # in contrast to a regular query with no columns
+        self.assertRaisesMessage(sa_exc.InvalidRequestError, "no columns with which to SELECT", s.query().all)
         
     @testing.resolve_artifact_names
     def test_refresh_cancels_expire(self):
