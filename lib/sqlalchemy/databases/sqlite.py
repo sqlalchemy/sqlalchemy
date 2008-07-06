@@ -196,13 +196,6 @@ ischema_names = {
     'VARCHAR': SLString,
 }
 
-def descriptor():
-    return {'name':'sqlite',
-    'description':'SQLite',
-    'arguments':[
-        ('database', "Database Filename",None)
-    ]}
-
 class SQLiteExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
         if self.compiled.isinsert and not self.executemany:
@@ -213,6 +206,7 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         return SELECT_REGEXP.match(statement)
 
 class SQLiteDialect(default.DefaultDialect):
+    name = 'sqlite'
     supports_alter = False
     supports_unicode_statements = True
     default_paramstyle = 'qmark'

@@ -117,15 +117,6 @@ class AcTimeStamp(types.TIMESTAMP):
     def get_col_spec(self):
         return "TIMESTAMP"
 
-def descriptor():
-    return {'name':'access',
-    'description':'Microsoft Access',
-    'arguments':[
-        ('user',"Database user name",None),
-        ('password',"Database password",None),
-        ('db',"Path to database file",None),
-    ]}
-
 class AccessExecutionContext(default.DefaultExecutionContext):
     def _has_implicit_sequence(self, column):
         if column.primary_key and column.autoincrement:
@@ -176,7 +167,7 @@ class AccessDialect(default.DefaultDialect):
         types.CHAR: AcChar,
         types.TIMESTAMP: AcTimeStamp,
     }
-
+    name = 'access'
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
 

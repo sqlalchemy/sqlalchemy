@@ -225,16 +225,6 @@ ischema_names = {
     'interval':PGInterval,
 }
 
-def descriptor():
-    return {'name':'postgres',
-    'description':'PostGres',
-    'arguments':[
-        ('username',"Database Username",None),
-        ('password',"Database Password",None),
-        ('database',"Database Name",None),
-        ('host',"Hostname", None),
-    ]}
-
 SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',
     re.I | re.UNICODE)
@@ -316,6 +306,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
         super(PGExecutionContext, self).post_exec()
 
 class PGDialect(default.DefaultDialect):
+    name = 'postgres'
     supports_alter = True
     supports_unicode_statements = False
     max_identifier_length = 63

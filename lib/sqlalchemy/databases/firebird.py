@@ -262,17 +262,6 @@ ischema_names = {
       }
 
 
-def descriptor():
-    return {'name':'firebird',
-    'description':'Firebird',
-    'arguments':[
-        ('host', 'Host Server Name', None),
-        ('database', 'Database Name', None),
-        ('user', 'Username', None),
-        ('password', 'Password', None)
-    ]}
-
-
 SELECT_RE = re.compile(
     r'\s*(?:SELECT|(UPDATE|INSERT|DELETE))',
     re.I | re.UNICODE)
@@ -315,7 +304,7 @@ class FBExecutionContext(default.DefaultExecutionContext):
 
 class FBDialect(default.DefaultDialect):
     """Firebird dialect"""
-
+    name = 'firebird'
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
     max_identifier_length = 31

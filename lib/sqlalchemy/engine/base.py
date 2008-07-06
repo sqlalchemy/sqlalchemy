@@ -28,7 +28,10 @@ class Dialect(object):
     ExecutionContext, Compiled, DefaultGenerator, and TypeEngine.
 
     All Dialects implement the following attributes:
-
+    
+    name
+      identifying name for the dialect (i.e. 'sqlite')
+      
     positional
       True if the paramstyle for this Dialect is positional.
 
@@ -1124,8 +1127,8 @@ class Engine(Connectable):
 
     def name(self):
         "String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``."
-
-        return sys.modules[self.dialect.__module__].descriptor()['name']
+        
+        return self.dialect.name
     name = property(name)
 
     echo = log.echo_property()

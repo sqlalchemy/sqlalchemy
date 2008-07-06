@@ -178,14 +178,6 @@ ischema_names = {
     -1  : InfoText,         # CLOB
 }
 
-def descriptor():
-    return {'name':'informix',
-    'description':'Informix',
-    'arguments':[
-        ('dsn', 'Data Source Name', None),
-        ('user', 'Username', None),
-        ('password', 'Password', None)
-    ]}
 
 class InfoExecutionContext(default.DefaultExecutionContext):
     # cursor.sqlerrd
@@ -206,6 +198,7 @@ class InfoExecutionContext(default.DefaultExecutionContext):
         return informix_cursor( self.connection.connection )
 
 class InfoDialect(default.DefaultDialect):
+    name = 'informix'
     default_paramstyle = 'qmark'
     # for informix 7.31
     max_identifier_length = 18

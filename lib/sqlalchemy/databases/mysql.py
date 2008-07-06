@@ -1380,16 +1380,6 @@ ischema_names = {
     'year': MSYear,
 }
 
-def descriptor():
-    return {'name':'mysql',
-    'description':'MySQL',
-    'arguments':[
-        ('username',"Database Username",None),
-        ('password',"Database Password",None),
-        ('database',"Database Name",None),
-        ('host',"Hostname", None),
-    ]}
-
 
 class MySQLExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
@@ -1413,7 +1403,7 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
 
 class MySQLDialect(default.DefaultDialect):
     """Details of the MySQL dialect.  Not used directly in application code."""
-
+    name = 'mysql'
     supports_alter = True
     supports_unicode_statements = False
     # identifiers are 64, however aliases can be 255...

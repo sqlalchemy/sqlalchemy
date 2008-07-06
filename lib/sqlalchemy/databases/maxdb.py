@@ -466,6 +466,7 @@ class MaxDBResultProxy(engine_base.ResultProxy):
 
 
 class MaxDBDialect(default.DefaultDialect):
+    name = 'maxdb'
     supports_alter = True
     supports_unicode_statements = True
     max_identifier_length = 32
@@ -1091,15 +1092,6 @@ def _autoserial_column(table):
                 return index, col
 
     return None, None
-
-def descriptor():
-    return {'name': 'maxdb',
-    'description': 'MaxDB',
-    'arguments': [
-        ('user', "Database Username", None),
-        ('password', "Database Password", None),
-        ('database', "Database Name", None),
-        ('host', "Hostname", None)]}
 
 dialect = MaxDBDialect
 dialect.preparer = MaxDBIdentifierPreparer

@@ -278,16 +278,6 @@ class MSVariant(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "SQL_VARIANT"
 
-def descriptor():
-    return {'name':'mssql',
-    'description':'MSSQL',
-    'arguments':[
-        ('user',"Database Username",None),
-        ('password',"Database Password",None),
-        ('db',"Database Name",None),
-        ('host',"Hostname", None),
-    ]}
-
 class MSSQLExecutionContext(default.DefaultExecutionContext):
     def __init__(self, *args, **kwargs):
         self.IINSERT = self.HASIDENT = False
@@ -369,6 +359,7 @@ class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):
             super(MSSQLExecutionContext_pyodbc, self).post_exec()
 
 class MSSQLDialect(default.DefaultDialect):
+    name = 'mssql'
     colspecs = {
         sqltypes.Unicode : MSNVarchar,
         sqltypes.Integer : MSInteger,
@@ -983,6 +974,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         else:
             return super(MSSQLCompiler, self).label_select_column(select, column, asfrom)
 
+    # TODO: update this to use generic functions
     function_rewrites =  {'current_date': 'getdate',
                           'length':     'len',
                           }
