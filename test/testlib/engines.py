@@ -1,6 +1,5 @@
 import sys, types, weakref
-from sqlalchemy import create_engine
-from testlib import config, testing
+from testlib import config
 from testlib.compat import set, _function_named, deque
 
 class ConnectionKiller(object):
@@ -135,7 +134,9 @@ def utf8_engine(url=None, options=None):
 def mock_engine(db=None):
     """Provides a mocking engine based on the current testing.db."""
     
-    dbi = db or testing.db
+    from sqlalchemy import create_engine
+    
+    dbi = db or config.db
     buffer = []
     def executor(sql, *a, **kw):
         buffer.append(sql)
