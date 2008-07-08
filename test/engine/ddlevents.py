@@ -3,7 +3,7 @@ from sqlalchemy.schema import DDL
 from sqlalchemy import create_engine
 from testlib.sa import MetaData, Table, Column, Integer, String
 import testlib.sa as tsa
-from testlib import TestBase, testing
+from testlib import TestBase, testing, engines
 
 
 class DDLEventTest(TestBase):
@@ -37,18 +37,8 @@ class DDLEventTest(TestBase):
             assert bind is self.bind
             self.state = action
 
-    def mock_engine(self):
-        buffer = []
-        def executor(sql, *a, **kw):
-            buffer.append(sql)
-        engine = create_engine(testing.db.name + '://',
-                               strategy='mock', executor=executor)
-        assert not hasattr(engine, 'mock')
-        engine.mock = buffer
-        return engine
-
     def setUp(self):
-        self.bind = self.mock_engine()
+        self.bind = engines.mock_engine()
         self.metadata = MetaData()
         self.table = Table('t', self.metadata, Column('id', Integer))
 
@@ -191,18 +181,8 @@ class DDLEventTest(TestBase):
 
 
 class DDLExecutionTest(TestBase):
-    def mock_engine(self):
-        buffer = []
-        def executor(sql, *a, **kw):
-            buffer.append(sql)
-        engine = create_engine(testing.db.name + '://',
-                               strategy='mock', executor=executor)
-        assert not hasattr(engine, 'mock')
-        engine.mock = buffer
-        return engine
-
     def setUp(self):
-        self.engine = self.mock_engine()
+        self.engine = engines.mock_engine()
         self.metadata = MetaData(self.engine)
         self.users = Table('users', self.metadata,
                            Column('user_id', Integer, primary_key=True),

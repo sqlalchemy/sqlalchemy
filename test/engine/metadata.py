@@ -1,10 +1,10 @@
 import testenv; testenv.configure_for_tests()
 import pickle
-from sqlalchemy import MetaData, create_engine
+from sqlalchemy import MetaData
 from testlib.sa import Table, Column, Integer, String, UniqueConstraint, \
      CheckConstraint, ForeignKey
 import testlib.sa as tsa
-from testlib import TestBase, ComparesTables, testing
+from testlib import TestBase, ComparesTables, testing, engines
 
 
 class MetaDataTest(TestBase, ComparesTables):
@@ -118,18 +118,8 @@ class MetaDataTest(TestBase, ComparesTables):
 
 
 class TableOptionsTest(TestBase):
-    def mock_engine(self):
-        buffer = []
-        def executor(sql, *a, **kw):
-            buffer.append(sql)
-        engine = create_engine(testing.db.name + '://',
-                               strategy='mock', executor=executor)
-        assert not hasattr(engine, 'mock')
-        engine.mock = buffer
-        return engine
-
     def setUp(self):
-        self.engine = self.mock_engine()
+        self.engine = engines.mock_engine()
         self.metadata = MetaData(self.engine)
 
     def test_prefixes(self):
