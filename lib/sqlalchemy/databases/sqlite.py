@@ -12,7 +12,7 @@ from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
 import sqlalchemy.util as util
 from sqlalchemy.sql import compiler, functions as sql_functions
-
+from types import NoneType
 
 SELECT_REGEXP = re.compile(r'\s*(?:SELECT|PRAGMA)', re.I | re.UNICODE)
 
@@ -59,9 +59,8 @@ class DateTimeMixin(object):
     
     def bind_processor(self, dialect):
         def process(value):
-            if isinstance(value, basestring):
-                # pass string values thru
-                return value
+            if not isinstance(value, (NoneType, datetime.date, datetime.datetime, datetime.time)):
+                raise TypeError("SQLite Date, Time, and DateTime types only accept Python datetime objects as input.r")
             elif value is not None:
                 if self.__microsecond__ and getattr(value, 'microsecond', None) is not None:
                     if self.__legacy_microseconds__:

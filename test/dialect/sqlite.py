@@ -11,25 +11,8 @@ from testlib import *
 class TestTypes(TestBase, AssertsExecutionResults):
     __only_on__ = 'sqlite'
 
-    def test_date(self):
-        meta = MetaData(testing.db)
-        t = Table('testdate', meta,
-                  Column('id', Integer, primary_key=True),
-                  Column('adate', Date),
-                  Column('adatetime', DateTime))
-        meta.create_all()
-        try:
-            d1 = datetime.date(2007, 10, 30)
-            d2 = datetime.datetime(2007, 10, 30)
-
-            t.insert().execute(adate=str(d1), adatetime=str(d2))
-
-            self.assert_(t.select().execute().fetchall()[0] ==
-                         (1, datetime.date(2007, 10, 30),
-                          datetime.datetime(2007, 10, 30)))
-
-        finally:
-            meta.drop_all()
+    def test_string_dates_raise(self):
+        self.assertRaises(TypeError, testing.db.execute, select([1]).where(bindparam("date", type_=Date)), date=str(datetime.date(2007, 10, 30)))
     
     def test_time_microseconds(self):
         dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)  # 125 usec

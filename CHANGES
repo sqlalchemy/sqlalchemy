@@ -72,6 +72,13 @@ CHANGES
       Then use "t" as the type on the Column.
            
       [ticket:1090]
+
+    - SQLite Date, DateTime, and Time types only accept Python
+      datetime objects now, not strings.  If you'd like to format
+      dates as strings yourself with SQLite, use a String type.
+      If you'd like them to return datetime objects anyway despite 
+      their accepting strings as input, make a TypeDecorator around 
+      String - SQLA doesn't encourage this pattern.
       
 0.5beta1
 ========
