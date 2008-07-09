@@ -423,16 +423,16 @@ class Unicode(String):
     """A synonym for String(length, convert_unicode=True, assert_unicode='warn')."""
 
     def __init__(self, length=None, **kwargs):
-        kwargs['convert_unicode'] = True
-        kwargs['assert_unicode'] = 'warn'
+        kwargs.setdefault('convert_unicode', True)
+        kwargs.setdefault('assert_unicode', 'warn')
         super(Unicode, self).__init__(length=length, **kwargs)
 
 class UnicodeText(Text):
     """A synonym for Text(convert_unicode=True, assert_unicode='warn')."""
 
     def __init__(self, length=None, **kwargs):
-        kwargs['convert_unicode'] = True
-        kwargs['assert_unicode'] = 'warn'
+        kwargs.setdefault('convert_unicode', True)
+        kwargs.setdefault('assert_unicode', 'warn')
         super(UnicodeText, self).__init__(length=length, **kwargs)
 
 class Integer(TypeEngine):

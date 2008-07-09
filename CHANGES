@@ -49,6 +49,10 @@ CHANGES
       strings to insert after CREATE in the CREATE TABLE statement.
       [ticket:1075]
 
+    - Unicode, UnicodeText types now set "assert_unicode" and
+      "convert_unicode" by default, but accept overriding
+      **kwargs for these values.
+      
 - sqlite
     - Modified SQLite's representation of "microseconds" to 
       match the output of str(somedatetime), i.e. in that the
