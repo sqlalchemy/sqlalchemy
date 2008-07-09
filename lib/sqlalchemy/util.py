@@ -530,6 +530,9 @@ class OrderedDict(dict):
         self._list = []
         dict.clear(self)
 
+    def sort(self, fn=None):
+        self._list.sort(fn)
+            
     def update(self, ____sequence=None, **kwargs):
         if ____sequence is not None:
             if hasattr(____sequence, 'keys'):
@@ -1154,6 +1157,20 @@ def function_named(fn, name):
         fn = new.function(fn.func_code, fn.func_globals, name,
                           fn.func_defaults, fn.func_closure)
     return fn
+
+
+_creation_order = 1 
+def set_creation_order(instance): 
+    """assign a '_creation_order' sequence to the given instance. 
+ 
+    This allows multiple instances to be sorted in order of 
+    creation (typically within a single thread; the counter is 
+    not particularly threadsafe). 
+
+    """ 
+    global _creation_order 
+    instance._creation_order = _creation_order 
+    _creation_order +=1
 
 def conditional_cache_decorator(func):
     """apply conditional caching to the return value of a function."""

@@ -105,6 +105,13 @@ CHANGES
       which fulfills NUMERIC affinity, but that's not the 
       same as REAL.
 
+- extensions
+    - Merged 0.5's declarative behavior such that all 
+      Column and MapperProperty objects keep a state
+      variable indicating their creation order, which 
+      declarative_base() maintains when generating
+      Table constructs.
+      
 0.4.6
 =====
 - orm

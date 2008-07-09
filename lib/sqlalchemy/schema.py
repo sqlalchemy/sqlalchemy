@@ -525,6 +525,7 @@ class Column(SchemaItem, expression._ColumnClause):
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = util.Set()
         self.foreign_keys = util.OrderedSet()
+        util.set_creation_order(self)
         if kwargs.get('info'):
             self._info = kwargs.pop('info')
         if kwargs:
