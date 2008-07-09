@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 
 from sqlalchemy.ext import declarative as decl
 from testlib import sa, testing
-from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
+from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint
 from testlib.sa.orm import relation, create_session
 from testlib.testing import eq_
 from testlib.compat import set
@@ -255,7 +255,23 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             sa.exc.ArgumentError,
             "Mapper Mapper|User|users could not assemble any primary key",
             define)
+        
+    def test_table_args(self):
+        class Foo(Base):
+            __tablename__ = 'foo'
+            __table_args__ = {'mysql_engine':'InnoDB'}
+            id = Column('id', Integer, primary_key=True)
+            
+        assert Foo.__table__.kwargs['mysql_engine'] == 'InnoDB'
 
+        class Bar(Base):
+            __tablename__ = 'bar'
+            __table_args__ = (ForeignKeyConstraint(['id'], ['foo.id']), {'mysql_engine':'InnoDB'})
+            id = Column('id', Integer, primary_key=True)
+        
+        assert Bar.__table__.c.id.references(Foo.__table__.c.id)
+        assert Bar.__table__.kwargs['mysql_engine'] == 'InnoDB'
+            
     def test_expression(self):
         class User(Base, ComparableEntity):
             __tablename__ = 'users'

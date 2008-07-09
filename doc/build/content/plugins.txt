@@ -171,11 +171,21 @@ As an alternative to `__tablename__`, a direct `Table` construct may be used.  T
             Column('name', String(50))
         )
 
-This is the preferred approach when using reflected tables, as below:
+Other table-based attributes include `__table_args__`, which is
+either a dictionary as in:
 
     {python}
-    class MyClass(Base):
-        __table__ = Table('my_table', Base.metadata, autoload=True)
+    class MyClass(Base)
+        __tablename__ = 'sometable'
+        __table_args__ = {'mysql_engine':'InnoDB'}
+
+or a dictionary-containing tuple in the form 
+`(arg1, arg2, ..., {kwarg1:value, ...})`, as in:
+
+    {python}
+    class MyClass(Base)
+        __tablename__ = 'sometable'
+        __table_args__ = (ForeignKeyConstraint(['id'], ['remote_table.id']), {'autoload':True})
 
 Mapper arguments are specified using the `__mapper_args__` class variable. Note that the column objects declared on the class are immediately
 usable, as in this joined-table inheritance example:

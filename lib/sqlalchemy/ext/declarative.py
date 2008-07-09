@@ -146,10 +146,19 @@ added to the mapping just like a regular mapping to a table::
             Column('name', String(50))
         )
 
-This is the preferred approach when using reflected tables, as below::
+Other table-based attributes include ``__table_args__``, which is
+either a dictionary as in::
 
-    class MyClass(Base):
-        __table__ = Table('my_table', Base.metadata, autoload=True)
+    class MyClass(Base)
+        __tablename__ = 'sometable'
+        __table_args__ = {'mysql_engine':'InnoDB'}
+        
+or a dictionary-containing tuple in the form 
+``(arg1, arg2, ..., {kwarg1:value, ...})``, as in::
+
+    class MyClass(Base)
+        __tablename__ = 'sometable'
+        __table_args__ = (ForeignKeyConstraint(['id'], ['remote_table.id']), {'autoload':True})
 
 Mapper arguments are specified using the ``__mapper_args__`` class variable.
 Note that the column objects declared on the class are immediately usable, as
@@ -237,11 +246,20 @@ def _as_declarative(cls, classname, dict_):
     if '__table__' not in cls.__dict__:
         if '__tablename__' in cls.__dict__:
             tablename = cls.__tablename__
+            
+            table_args = cls.__dict__.get('__table_args__')
+            if isinstance(table_args, dict):
+                args, table_kw = (), table_args
+            elif isinstance(table_args, tuple):
+                args = table_args[0:-1]
+                table_kw = table_args[-1]
+            else:
+                args, table_kw = (), {}
+
             autoload = cls.__dict__.get('__autoload__')
             if autoload:
-                table_kw = {'autoload': True}
-            else:
-                table_kw = {}
+                table_kw['autoload'] = True
+
             cols = []
             for key, c in our_stuff.iteritems():
                 if isinstance(c, ColumnProperty):
@@ -253,7 +271,7 @@ def _as_declarative(cls, classname, dict_):
                     _undefer_column_name(key, c)
                     cols.append(c)
             cls.__table__ = table = Table(tablename, cls.metadata,
-                                          *cols, **table_kw)
+                                          *(tuple(cols) + tuple(args)), **table_kw)
     else:
         table = cls.__table__
 

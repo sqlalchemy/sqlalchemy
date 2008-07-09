@@ -83,6 +83,13 @@ CHANGES
       If you'd like them to return datetime objects anyway despite 
       their accepting strings as input, make a TypeDecorator around 
       String - SQLA doesn't encourage this pattern.
+
+- extensions
+    - Declarative supports a __table_args__ class variable, which
+      is either a dictionary, or tuple of the form
+      (arg1, arg2, ..., {kwarg1:value, ...}) which contains positional
+      + kw arguments to be passed to the Table constructor. 
+      [ticket:1096]
       
 0.5beta1
 ========
