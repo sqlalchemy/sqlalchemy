@@ -193,9 +193,25 @@ h3 {
 }
 #docs a.codepoplink:hover {
     text-decoration: none;
-	color:#fff;
-	border:1px solid #900;    
+    color:#fff;
+    border:1px solid #900;
     background-color: #900;
+}
+
+.versionheader {
+    margin-top: 0.5em;
+}
+.versionnum {
+    font-weight: bold;
+}
+.prerelease {
+    border: solid #c25757 2px;
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    background-color: #c21a1a;
+    color: white;
+    padding: 0.05em 0.2em;
 }
 
 @media print {
