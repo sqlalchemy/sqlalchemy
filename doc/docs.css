@@ -16,12 +16,12 @@ pre {
 }
 
 .prevnext {
-	padding: 5px 0px 0px 0px;
+    padding: 5px 0px 0px 0px;
+    font-size: 0.8em
 }
 
 .codetitle {
 	font-family: verdana, sans-serif;
-	font-size: 12px;
 	font-weight: bold;
 	text-decoration:underline;
 	padding:5px;
@@ -29,7 +29,8 @@ pre {
 
 .codeline {
 	font-family: courier, "courier new", serif;
-	font-size:1.1em;
+  font-family: "Deja Vu Sans Mono", "Vera Sans Mono", Courier, "Courier New", fixed;
+	font-size: 1em;
     color: #960;
 }
 
@@ -46,24 +47,24 @@ h1 {
 
 h2 {
     font-family:arial,helvetica,sans-serif;
-    font-size:20px;
+    font-size: 1.6em;
     font-weight:normal;
-    line-height:24px;
+    line-height: 1.6em;
     margin:0px;
 }
 
 h3 {
     font-family: arial, sans-serif;
-    font-size:16px;
+    font-size: 1.4em;
     font-weight:bold;
 }
 
 .topnav h3 {
 	font-weight: bold;
-	font-size: 16px;
+	font-size: 1.4em;
 	margin:0px;
 	display:inline;
-    font-family:verdana,sans-serif;	
+        font-family:verdana,sans-serif;
 }
 
 .topnav h2 {
@@ -93,7 +94,7 @@ h3 {
 
 
 .topnav li {
-   font-size:12px;
+   font-size: 1em;
    list-style-type:none;
    padding:0px 0px 3px 8px;
    margin:0px;
@@ -104,26 +105,30 @@ h3 {
 }
 
 .topnav ul ul li {
-   font-size: 11px;
+   font-size: 0.9em;
 }
 
 .bottomnav {
     background-color:#FBFBEE;
     border:1px solid #CCCCCC;
     float:right;
-    margin:0px 0px 15px 5px;
+    margin: 1em 0 1em 5px;
     padding:10px;
 }
 
 .toclink {
     font-weight: bold;
-	font-size: 12px;
+	font-size: 1em;
 	padding:0px 0px 3px 8px;
 	/*border:1px solid;*/
 }
 
+.totoc {
+    font-size: smaller;
+}
+
 .smalltoclink {
-	font-size: 11px;
+	font-size: 0.9em;
 	padding:0px 0px 3px 0px;
 }
 
@@ -134,7 +139,6 @@ h3 {
 }
 
 .darkcell {
-    /*font-family: courier, "courier new", serif;*/
 	margin:0px 0px 10px 0px;
 	padding:4px 4px 4px 4px;
 	background-color: #f0f0f0;	
@@ -142,8 +146,7 @@ h3 {
 }
 
 .sliding_code {
-	font-family: courier, "courier new", serif;
-	font-size:12px;
+        font-family: "Deja Vu Sans Mono", "Vera Sans Mono", "Monaco", Courier, "Courier New", fixed;
 	background-color: #f0f0f0;	
 	border: solid 1px #ccc;
 	padding:10px;
@@ -151,9 +154,14 @@ h3 {
 	overflow:auto;
 }
 
+code {
+    font-family: "Deja Vu Sans Mono", "Vera Sans Mono", Courier, "Courier New", fixed;
+    font-size: 0.95em;
+    color: #222;
+}
+
 .code {
-	font-family: courier, "courier new", serif;
-	font-size:12px;
+        font-family: "Deja Vu Sans Mono", "Vera Sans Mono", Courier, "Courier New", fixed;
 	background-color: #f0f0f0;	
 	border: solid 1px #ccc;
 	padding:10px; /*2px 2px 2px 10px;*/
@@ -163,12 +171,13 @@ h3 {
 
 .codepop
 {
-	font-family: courier, "courier new", serif;
+        font-family: "Deja Vu Sans Mono", "Vera Sans Mono", Courier, "Courier New", fixed;
+        font-size: 0.75em;
 	color:#000;
 	background-color: #fbfbee;
 	border: 1px solid #d9d9d9;
 	border-right: 1px solid #999;
-	border-bottom: 1px solid #999;		
+	border-bottom: 1px solid #999;
 	padding:10px;
 	width:95%;
 	/*margin:5px 10px 5px 0px;*/
@@ -181,7 +190,7 @@ h3 {
 	font-weight:normal;
 	font-family: arial, sans-serif;
     text-transform: uppercase;
-	font-size:11px;
+	font-size: 0.9em;
 	color:#666;
 	border:1px solid;
 	padding:1px 2px 1px 2px;

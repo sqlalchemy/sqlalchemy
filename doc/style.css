@@ -1,6 +1,5 @@
 body, td, .normaltype {
 	font-family: verdana, sans-serif;
-	font-size: 12px;
 }
 
 body {
@@ -49,29 +48,19 @@ strong a {
 }
 
 .headerbar {
-	padding-bottom:60px;
+	padding-bottom: 60px;
 }
-	
+
 .header {
 	font-weight: bold;
-	font-size: 20px;
+	font-size: 1.6em;
 }
 
 .smallheader {
 	font-weight: bold;
-	font-size: 16px;
+	font-size: 1.4em;
 }
 
-.filelist {
-	font-size:14px;
-	margin: 10px 10px 10px 70px;
-	line-height:25px;
-}
-
-.dirheader {
-	font-size:13px;
-	margin: 10px 50px 10px 20px
-}
 
 .toolbar {
 	text-align:right;
@@ -81,12 +70,12 @@ strong a {
 .copyright {
 	padding-top: 30px;
 	text-align:center;
-	font-size:9px;
+	font-size: 0.8em;
 	color: #5F5F5F;
 }
 
 .small {
-	font-size:9px;
+	font-size: 0.8em;
 }
 
 .sforgelogo {
@@ -95,8 +84,8 @@ strong a {
 }
 
 .source {
-	border:1px solid;
-	padding:10px;
-	width:auto;
+	border: 1px solid;
+	padding: 10px;
+	width: auto;
 }
 
