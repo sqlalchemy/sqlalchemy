@@ -17,6 +17,22 @@ class OrderedDictTest(TestBase):
         eq_(o.values(), [1, 2, 'attack', 3])
 
         o.pop('snack')
+        eq_(o.keys(), ['a', 'b', 'c'])
+        eq_(o.values(), [1, 2, 3])
+
+        try:
+            o.pop('eep')
+            assert False
+        except KeyError:
+            pass
+
+        eq_(o.pop('eep', 'woot'), 'woot')
+
+        try:
+            o.pop('whiff', 'bang', 'pow')
+            assert False
+        except TypeError:
+            pass
 
         eq_(o.keys(), ['a', 'b', 'c'])
         eq_(o.values(), [1, 2, 3])

@@ -759,9 +759,11 @@ class OrderedDict(dict):
         dict.__delitem__(self, key)
         self._list.remove(key)
 
-    def pop(self, key):
-        value = dict.pop(self, key)
-        self._list.remove(key)
+    def pop(self, key, *default):
+        present = key in self
+        value = dict.pop(self, key, *default)
+        if present:
+            self._list.remove(key)
         return value
 
     def popitem(self):
