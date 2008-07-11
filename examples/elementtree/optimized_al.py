@@ -5,7 +5,7 @@ which joins on only three tables.
 
 """
 
-################################# PART I - Imports/Coniguration ###########################################
+################################# PART I - Imports/Configuration ###########################################
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
