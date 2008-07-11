@@ -391,7 +391,7 @@ def comparable_using(comparator_factory):
     """Decorator, allow a Python @property to be used in query criteria.
 
     A decorator front end to [sqlalchemy.orm#comparable_property()], passes
-    throgh the comparator_factory and the function being decorated::
+    through the comparator_factory and the function being decorated::
 
       @comparable_using(MyComparatorType)
       @property
