@@ -81,6 +81,7 @@ OPERATORS =  {
     operators.ilike_op : lambda x, y, escape=None: "lower(%s) LIKE lower(%s)" % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
     operators.notilike_op : lambda x, y, escape=None: "lower(%s) NOT LIKE lower(%s)" % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
     operators.between_op : 'BETWEEN',
+    operators.match_op : 'MATCH',
     operators.in_op : 'IN',
     operators.notin_op : 'NOT IN',
     operators.comma_op : ', ',

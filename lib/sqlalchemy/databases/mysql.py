@@ -1887,7 +1887,8 @@ class MySQLCompiler(compiler.DefaultCompiler):
     operators = compiler.DefaultCompiler.operators.copy()
     operators.update({
         sql_operators.concat_op: lambda x, y: "concat(%s, %s)" % (x, y),
-        sql_operators.mod: '%%'
+        sql_operators.mod: '%%',
+        sql_operators.match_op: lambda x, y: "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (x, y)
     })
     functions = compiler.DefaultCompiler.functions.copy()
     functions.update ({

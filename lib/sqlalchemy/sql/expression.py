@@ -1250,6 +1250,9 @@ class ColumnOperators(Operators):
     def contains(self, other, **kwargs):
         return self.operate(operators.contains_op, other, **kwargs)
 
+    def match(self, other, **kwargs):
+        return self.operate(operators.match_op, other, **kwargs)
+
     def desc(self):
         return self.operate(operators.desc_op)
 
@@ -1389,6 +1392,14 @@ class _CompareMixin(ColumnOperators):
         """Produce the clause ``LIKE '%<other>%'``"""
 
         return self.__compare(operators.like_op, literal_column("'%'", type_=sqltypes.String) + self._check_literal(other) + literal_column("'%'", type_=sqltypes.String), escape=escape)
+
+    def match(self, other):
+        """Produce a MATCH clause, i.e. ``MATCH '<other>'``
+        
+        The allowed contents of ``other`` are database backend specific.
+        """
+
+        return self.__compare(operators.match_op, self._check_literal(other))
 
     def label(self, name):
         """Produce a column label, i.e. ``<columnname> AS <name>``.

@@ -423,6 +423,13 @@ Here's a rundown of some of the most common operators used in `filter()`:
         {python}
         from sqlalchemy import or_
         filter(or_(User.name == 'ed', User.name == 'wendy'))
+
+  * match
+        
+        {python}
+        query.filter(User.name.match('wendy'))
+
+    The contents of the match parameter are database backend specific.
         
 ### Returning Lists and Scalars {@name=scalars}
 

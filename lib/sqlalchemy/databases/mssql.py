@@ -41,6 +41,7 @@ import datetime, operator, re, sys
 
 from sqlalchemy import sql, schema, exc, util
 from sqlalchemy.sql import compiler, expression, operators as sqlops, functions as sql_functions
+from sqlalchemy.sql import compiler, expression, operators as sql_operators, functions as sql_functions
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
 from sqlalchemy.util import Decimal as _python_Decimal
@@ -867,7 +868,10 @@ dialect_mapping = {
 
 class MSSQLCompiler(compiler.DefaultCompiler):
     operators = compiler.OPERATORS.copy()
-    operators[sqlops.concat_op] = '+'
+    operators.update({
+        sql_operators.concat_op: '+',
+        sql_operators.match_op: lambda x, y: "CONTAINS (%s, %s)" % (x, y)
+    })
 
     functions = compiler.DefaultCompiler.functions.copy()
     functions.update (

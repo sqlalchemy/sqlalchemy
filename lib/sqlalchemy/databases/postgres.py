@@ -648,6 +648,7 @@ class PGCompiler(compiler.DefaultCompiler):
             sql_operators.mod : '%%',
             sql_operators.ilike_op: lambda x, y, escape=None: '%s ILIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
             sql_operators.notilike_op: lambda x, y, escape=None: '%s NOT ILIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
+            sql_operators.match_op: lambda x, y: '%s @@ to_tsquery(%s)' % (x, y),
         }
     )
 

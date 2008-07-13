@@ -61,6 +61,9 @@ def endswith_op(a, b, escape=None):
 def contains_op(a, b, escape=None):
     return a.contains(b, escape=escape)
 
+def match_op(a, b):
+    return a.match(b)
+
 def comma_op(a, b):
     raise NotImplementedError()
 
@@ -88,6 +91,7 @@ _PRECEDENCE = {
     add:6,
     sub:6,
     concat_op:6,
+    match_op:6,
     ilike_op:5,
     notilike_op:5,
     like_op:5,

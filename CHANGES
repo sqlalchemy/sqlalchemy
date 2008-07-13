@@ -52,7 +52,12 @@ CHANGES
     - Unicode, UnicodeText types now set "assert_unicode" and
       "convert_unicode" by default, but accept overriding
       **kwargs for these values.
-      
+
+- sql
+    - Added new match() operator that performs a full-text search.
+      Supported on PostgreSQL, SQLite, MySQL, MS-SQL, and Oracle
+      backends.
+
 - sqlite
     - Modified SQLite's representation of "microseconds" to 
       match the output of str(somedatetime), i.e. in that the

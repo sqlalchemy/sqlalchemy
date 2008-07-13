@@ -584,7 +584,8 @@ class OracleCompiler(compiler.DefaultCompiler):
     operators = compiler.DefaultCompiler.operators.copy()
     operators.update(
         {
-            sql_operators.mod : lambda x, y:"mod(%s, %s)" % (x, y)
+            sql_operators.mod : lambda x, y:"mod(%s, %s)" % (x, y),
+            sql_operators.match_op: lambda x, y: "CONTAINS (%s, %s)" % (x, y)
         }
     )
 

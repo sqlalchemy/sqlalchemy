@@ -251,6 +251,111 @@ class GenerativeQueryTest(TestBase):
         assert list(query[:10]) == orig[:10]
         assert list(query[:10]) == orig[:10]
 
+def full_text_search_missing():
+    """Test if full text search is not implemented and return False if 
+    it is and True otherwise."""
+
+    try:
+        connection = testing.db.connect()
+        connection.execute("CREATE FULLTEXT CATALOG Catalog AS DEFAULT")
+        return False
+    except:
+        return True
+    finally:
+        connection.close()
+
+class MatchTest(TestBase, AssertsCompiledSQL):
+    __only_on__ = 'mssql'
+    __skip_if__ = (full_text_search_missing, )
+
+    def setUpAll(self):
+        global metadata, cattable, matchtable
+        metadata = MetaData(testing.db)
+        
+        cattable = Table('cattable', metadata,
+            Column('id', Integer),
+            Column('description', String(50)),
+            PrimaryKeyConstraint('id', name='PK_cattable'),
+        )
+        matchtable = Table('matchtable', metadata,
+            Column('id', Integer),
+            Column('title', String(200)),
+            Column('category_id', Integer, ForeignKey('cattable.id')),
+            PrimaryKeyConstraint('id', name='PK_matchtable'),
+        )
+        DDL("""CREATE FULLTEXT INDEX 
+                       ON cattable (description) 
+                       KEY INDEX PK_cattable"""
+                   ).execute_at('after-create', matchtable)
+        DDL("""CREATE FULLTEXT INDEX 
+                       ON matchtable (title) 
+                       KEY INDEX PK_matchtable"""
+                   ).execute_at('after-create', matchtable)
+        metadata.create_all()
+
+        cattable.insert().execute([
+            {'id': 1, 'description': 'Python'},
+            {'id': 2, 'description': 'Ruby'},
+        ])
+        matchtable.insert().execute([
+            {'id': 1, 'title': 'Agile Web Development with Rails', 'category_id': 2},
+            {'id': 2, 'title': 'Dive Into Python', 'category_id': 1},
+            {'id': 3, 'title': 'Programming Matz''s Ruby', 'category_id': 2},
+            {'id': 4, 'title': 'The Definitive Guide to Django', 'category_id': 1},
+            {'id': 5, 'title': 'Python in a Nutshell', 'category_id': 1}
+        ])
+        DDL("WAITFOR DELAY '00:00:05'").execute(bind=engines.testing_engine())
+
+    def tearDownAll(self):
+        metadata.drop_all()
+        connection = testing.db.connect()
+        connection.execute("DROP FULLTEXT CATALOG Catalog")
+        connection.close()
+
+    def test_expression(self):
+        self.assert_compile(matchtable.c.title.match('somstr'), "CONTAINS (matchtable.title, ?)")
+
+    def test_simple_match(self):
+        results = matchtable.select().where(matchtable.c.title.match('python')).order_by(matchtable.c.id).execute().fetchall()
+        self.assertEquals([2, 5], [r.id for r in results])
+
+    def test_simple_match_with_apostrophe(self):
+        results = matchtable.select().where(matchtable.c.title.match('"Matz''s"')).execute().fetchall()
+        self.assertEquals([3], [r.id for r in results])
+
+    def test_simple_prefix_match(self):
+        results = matchtable.select().where(matchtable.c.title.match('"nut*"')).execute().fetchall()
+        self.assertEquals([5], [r.id for r in results])
+
+    def test_simple_inflectional_match(self):
+        results = matchtable.select().where(matchtable.c.title.match('FORMSOF(INFLECTIONAL, "dives")')).execute().fetchall()
+        self.assertEquals([2], [r.id for r in results])
+
+    def test_or_match(self):
+        results1 = matchtable.select().where(or_(matchtable.c.title.match('nutshell'), 
+                                                 matchtable.c.title.match('ruby'))
+                                            ).order_by(matchtable.c.id).execute().fetchall()
+        self.assertEquals([3, 5], [r.id for r in results1])
+        results2 = matchtable.select().where(matchtable.c.title.match('nutshell OR ruby'), 
+                                            ).order_by(matchtable.c.id).execute().fetchall()
+        self.assertEquals([3, 5], [r.id for r in results2])    
+
+    def test_and_match(self):
+        results1 = matchtable.select().where(and_(matchtable.c.title.match('python'), 
+                                                  matchtable.c.title.match('nutshell'))
+                                            ).execute().fetchall()
+        self.assertEquals([5], [r.id for r in results1])
+        results2 = matchtable.select().where(matchtable.c.title.match('python AND nutshell'), 
+                                            ).execute().fetchall()
+        self.assertEquals([5], [r.id for r in results2])
+
+    def test_match_across_joins(self):
+        results = matchtable.select().where(and_(cattable.c.id==matchtable.c.category_id, 
+                                            or_(cattable.c.description.match('Ruby'), 
+                                                matchtable.c.title.match('nutshell')))
+                                           ).order_by(matchtable.c.id).execute().fetchall()
+        self.assertEquals([1, 3, 5], [r.id for r in results])
+
 
 if __name__ == "__main__":
     testenv.main()
