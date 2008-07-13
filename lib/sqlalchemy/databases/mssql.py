@@ -115,7 +115,7 @@ class MSDateTime(sqltypes.DateTime):
 
 class MSSmallDate(sqltypes.Date):
     def __init__(self, *a, **kw):
-        super(MSDate, self).__init__(False)
+        super(MSSmallDate, self).__init__(False)
 
     def get_col_spec(self):
         return "SMALLDATETIME"
