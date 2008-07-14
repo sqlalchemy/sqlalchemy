@@ -470,7 +470,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         for expr, check, dialect in [
             (table1.c.myid.match('somstr'), "mytable.myid MATCH ?", sqlite.SQLiteDialect()),
             (table1.c.myid.match('somstr'), "MATCH (mytable.myid) AGAINST (%s IN BOOLEAN MODE)", mysql.MySQLDialect()),
-            (table1.c.myid.match('somstr'), "CONTAINS (mytable.myid, ?)", mssql.MSSQLDialect()),
+            (table1.c.myid.match('somstr'), "CONTAINS (mytable.myid, :myid_1)", mssql.MSSQLDialect()),
             (table1.c.myid.match('somstr'), "mytable.myid @@ to_tsquery(%(myid_1)s)", postgres.PGDialect()),
             (table1.c.myid.match('somstr'), "CONTAINS (mytable.myid, :myid_1)", oracle.OracleDialect()),            
         ]:
