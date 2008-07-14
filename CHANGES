@@ -39,6 +39,11 @@ CHANGES
       columns-only clause and an SQL-expression 
       ON clause in the join.
       
+    - The "allow_column_override" flag from mapper() has
+      been removed.  This flag is virtually always misunderstood.
+      Its specific functionality is available via the 
+      include_properties/exclude_properties mapper arguments.
+      
     - Repaired `__str__()` method on Query. [ticket:1066]
 
     - Session.bind gets used as a default even when table/mapper

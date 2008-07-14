@@ -82,7 +82,6 @@ class Mapper(object):
                  inherit_foreign_keys = None,
                  extension = None,
                  order_by = False,
-                 allow_column_override = False,
                  entity_name = None,
                  always_refresh = False,
                  version_id_col = None,
@@ -127,7 +126,6 @@ class Mapper(object):
         self.inherit_foreign_keys = inherit_foreign_keys
         self.extension = extension
         self._init_properties = properties or {}
-        self.allow_column_override = allow_column_override
         self.allow_null_pks = allow_null_pks
         self.delete_orphans = []
         self.batch = batch
@@ -717,10 +715,7 @@ class Mapper(object):
                     mapped_column.append(mc)
                 prop = ColumnProperty(*mapped_column)
             else:
-                if not self.allow_column_override:
-                    raise sa_exc.ArgumentError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))
-                else:
-                    return
+                raise sa_exc.ArgumentError("WARNING: column '%s' conflicts with property '%s'.  To resolve this, map the column to the class under a different name in the 'properties' dictionary.  Or, to remove all awareness of the column entirely (including its availability as a foreign key), use the 'include_properties' or 'exclude_properties' mapper arguments to control specifically which table columns get mapped." % (column.key, repr(prop)))
 
         if isinstance(prop, ColumnProperty):
             col = self.mapped_table.corresponding_column(prop.columns[0])

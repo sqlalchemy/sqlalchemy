@@ -565,12 +565,15 @@ class MapperTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_override_2(self):
-        """allow_column_override cancels the error."""
+        """exclude_properties cancels the error."""
+        
         mapper(User, users,
-               allow_column_override=True,
+               exclude_properties=['name'],
                properties=dict(
                    name=relation(mapper(Address, addresses))))
-
+        
+        assert bool(User.name)
+        
     @testing.resolve_artifact_names
     def test_override_3(self):
         """The column being named elsewhere also cancels the error,"""
