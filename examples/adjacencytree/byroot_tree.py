@@ -89,7 +89,7 @@ class TreeLoader(MapperExtension):
 
         if instance.root is instance:
             connection.execute(mapper.mapped_table.update(
-                TreeNode.c.id==instance.id, values=dict(root_id=instance.id)))
+                TreeNode.id==instance.id, values=dict(root_id=instance.id)))
             instance.root_id = instance.id
 
     def append_result(self, mapper, selectcontext, row, instance, result, **flags):
@@ -224,8 +224,8 @@ session.clear()
 # sub-tree in one pass.  the MapperExtension will assemble the incoming
 # nodes into a tree structure.
 t = (session.query(TreeNode).
-       filter(TreeNode.c.root_id==nodeid).
-       order_by([TreeNode.c.id]))[0]
+       filter(TreeNode.root_id==nodeid).
+       order_by([TreeNode.id]))[0]
 
 print "\n\n\n----------------------------"
 print "Full Tree:"
