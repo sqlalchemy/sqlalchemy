@@ -27,6 +27,9 @@ CHANGES
       flag is always True with a "transactional" 
       (in 0.5 a non-"autocommit") Session.
 
+    - Removed erroneous 'self' reference when raising
+      UnmappedColumnError during flush() operation.
+
 - schema
     - create_all(), drop_all(), create(), drop() all raise
       an error if the table name or schema name contains
