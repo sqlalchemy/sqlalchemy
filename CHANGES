@@ -92,9 +92,9 @@ CHANGES
 - extensions
     - Declarative supports a __table_args__ class variable, which
       is either a dictionary, or tuple of the form
-      (arg1, arg2, ..., {kwarg1:value, ...}) which contains positional
-      + kw arguments to be passed to the Table constructor. 
-      [ticket:1096]
+      (arg1, arg2, ..., {kwarg1:value, ...}) which contains 
+      positional + kw arguments to be passed to the Table 
+      constructor. [ticket:1096]
       
 0.5beta1
 ========
@@ -271,9 +271,9 @@ CHANGES
       class, not the mapped selectable, as the source of column
       attributes - so a warning is still issued.
 
-    - fixes to the "exists" function involving inheritance (any(), has(),
-      ~contains()); the full target join will be rendered into the
-      EXISTS clause for relations that link to subclasses.
+    - fixes to the "exists" function involving inheritance (any(), 
+      has(), ~contains()); the full target join will be rendered 
+      into the EXISTS clause for relations that link to subclasses.
       
     - restored usage of append_result() extension method for primary 
       query rows, when the extension is present and only a single-
