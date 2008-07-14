@@ -3,8 +3,8 @@
 import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
 from sqlalchemy.orm import eagerload, deferred, undefer
-from testlib.sa import Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import mapper, relation, create_session
+from testlib.sa import Table, Column, Integer, String, ForeignKey, and_
+from testlib.sa.orm import mapper, relation, create_session, lazyload
 from testlib.testing import eq_
 from orm import _base, _fixtures
 
@@ -571,6 +571,37 @@ class EagerTest(_fixtures.FixtureTest):
             assert a.user is u1
         self.assert_sql_count(testing.db, go, 1)
 
+    @testing.resolve_artifact_names
+    def test_many_to_one_null(self):
+        """test that a many-to-one eager load which loads None does
+        not later trigger a lazy load.
+        
+        """
+        
+        # use a primaryjoin intended to defeat SA's usage of 
+        # query.get() for a many-to-one lazyload
+        mapper(Order, orders, properties = dict(
+            address = relation(mapper(Address, addresses), 
+                primaryjoin=and_(
+                    addresses.c.id==orders.c.address_id,
+                    addresses.c.email_address != None
+                ),
+            
+            lazy=False)
+        ))
+        sess = create_session()
+
+        def go():
+            o1 = sess.query(Order).options(lazyload('address')).filter(Order.id==5).one()
+            self.assertEquals(o1.address, None)
+        self.assert_sql_count(testing.db, go, 2)
+        
+        sess.clear()
+        def go():
+            o1 = sess.query(Order).filter(Order.id==5).one()
+            self.assertEquals(o1.address, None)
+        self.assert_sql_count(testing.db, go, 1)
+        
     @testing.resolve_artifact_names
     def test_one_and_many(self):
         """tests eager load for a parent object with a child object that
