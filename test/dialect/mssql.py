@@ -257,10 +257,11 @@ def full_text_search_missing():
 
     try:
         connection = testing.db.connect()
-        connection.execute("CREATE FULLTEXT CATALOG Catalog AS DEFAULT")
-        return False
-    except:
-        return True
+        try:
+            connection.execute("CREATE FULLTEXT CATALOG Catalog AS DEFAULT")
+            return False
+        except:
+            return True
     finally:
         connection.close()
 
