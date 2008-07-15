@@ -44,7 +44,7 @@ from sqlalchemy.sql import compiler, expression, operators as sqlops, functions 
 from sqlalchemy.sql import compiler, expression, operators as sql_operators, functions as sql_functions
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
-from sqlalchemy.util import Decimal as _python_Decimal
+from decimal import Decimal as _python_Decimal
 
 
 MSSQL_RESERVED_WORDS = set(['function'])

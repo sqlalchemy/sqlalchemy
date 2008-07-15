@@ -153,7 +153,7 @@ Notes page on the wiki at http://www.sqlalchemy.org is a good resource for
 timely information affecting MySQL in SQLAlchemy.
 """
 
-import datetime, inspect, re, sys
+import datetime, decimal, inspect, re, sys
 from array import array as _array
 
 from sqlalchemy import exc, log, schema, sql, util
@@ -338,7 +338,7 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
     def result_processor(self, dialect):
         if not self.asdecimal:
             def process(value):
-                if isinstance(value, util.decimal_type):
+                if isinstance(value, decimal.Decimal):
                     return float(value)
                 else:
                     return value

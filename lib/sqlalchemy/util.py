@@ -27,20 +27,6 @@ try:
 except ImportError:
     import pickle
 
-try:
-    # Try the standard decimal for > 2.3 or the compatibility module
-    # for 2.3, if installed.
-    from decimal import Decimal
-    decimal_type = Decimal
-except ImportError:
-    def Decimal(arg):
-        if Decimal.warn:
-            warn("True Decimal types not available on this Python, "
-                "falling back to floats.")
-            Decimal.warn = False
-        return float(arg)
-    Decimal.warn = True
-    decimal_type = float
 
 try:
     from operator import attrgetter

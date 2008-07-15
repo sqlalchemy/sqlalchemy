@@ -1,3 +1,4 @@
+import decimal
 import testenv; testenv.configure_for_tests()
 import datetime, os, pickleable, re
 from sqlalchemy import *
@@ -716,17 +717,16 @@ class NumericTest(TestBase, AssertsExecutionResults):
             (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.75")),
         ]
 
-    @testing.emits_warning('True Decimal types not available')
     def test_decimal_fallback(self):
-        from sqlalchemy.util import Decimal  # could be Decimal or float
+        from decimal import Decimal
 
         numeric_table.insert().execute(ncasdec=12.4, fcasdec=15.75)
         numeric_table.insert().execute(ncasdec=Decimal("12.4"),
                                        fcasdec=Decimal("15.75"))
 
         for row in numeric_table.select().execute().fetchall():
-            assert isinstance(row['ncasdec'], util.decimal_type)
-            assert isinstance(row['fcasdec'], util.decimal_type)
+            assert isinstance(row['ncasdec'], decimal.Decimal)
+            assert isinstance(row['fcasdec'], decimal.Decimal)
 
 
 class IntervalTest(TestBase, AssertsExecutionResults):

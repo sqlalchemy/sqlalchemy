@@ -23,9 +23,10 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
 
 import inspect
 import datetime as dt
+from decimal import Decimal as _python_Decimal
 
 from sqlalchemy import exc
-from sqlalchemy.util import pickle, Decimal as _python_Decimal
+from sqlalchemy.util import pickle
 import sqlalchemy.util as util
 NoneType = type(None)
 

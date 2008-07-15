@@ -99,7 +99,7 @@ parameter when creating the queries::
 """
 
 
-import datetime, re
+import datetime, decimal, re
 
 from sqlalchemy import exc, schema, types as sqltypes, sql, util
 from sqlalchemy.engine import base, default
@@ -126,7 +126,7 @@ class FBNumeric(sqltypes.Numeric):
             return None
         else:
             def process(value):
-                if isinstance(value, util.decimal_type):
+                if isinstance(value, decimal.Decimal):
                     return float(value)
                 else:
                     return value
