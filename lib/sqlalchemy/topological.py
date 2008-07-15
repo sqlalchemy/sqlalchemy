@@ -18,7 +18,6 @@ conditions.
 
 """
 
-from sqlalchemy import util
 from sqlalchemy.exc import CircularDependencyError
 
 __all__ = ['sort', 'sort_with_cycles', 'sort_as_tree']
@@ -237,7 +236,7 @@ def _organize_as_tree(nodes):
     # order of the list has no semantics for the algorithmic
     independents = []
     # in reverse topological order
-    for node in util.reversed(nodes):
+    for node in reversed(nodes):
         # nodes subtree and cycles contain the node itself
         subtree = set([node])
         if node.cycles is not None:

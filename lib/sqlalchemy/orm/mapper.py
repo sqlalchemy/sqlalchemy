@@ -1175,7 +1175,7 @@ class Mapper(object):
                     # synchronize newly inserted ids from one table to the next
                     # TODO: this fires off more than needed, try to organize syncrules
                     # per table
-                    for m in util.reversed(list(mapper.iterate_to_root())):
+                    for m in reversed(list(mapper.iterate_to_root())):
                         if m.__inherits_equated_pairs:
                             m.__synchronize_inherited(state)
 
@@ -1562,7 +1562,7 @@ class Mapper(object):
         allconds = []
 
         start = False
-        for mapper in util.reversed(list(self.iterate_to_root())):
+        for mapper in reversed(list(self.iterate_to_root())):
             if mapper.local_table in tables:
                 start = True
             if start and not mapper.single:

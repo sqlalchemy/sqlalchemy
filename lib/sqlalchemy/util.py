@@ -28,16 +28,6 @@ except ImportError:
     import pickle
 
 try:
-    reversed = __builtin__.reversed
-except AttributeError:
-    def reversed(seq):
-        i = len(seq) -1
-        while  i >= 0:
-            yield seq[i]
-            i -= 1
-        raise StopIteration()
-
-try:
     # Try the standard decimal for > 2.3 or the compatibility module
     # for 2.3, if installed.
     from decimal import Decimal

@@ -755,7 +755,7 @@ class UOWExecutor(object):
             for task in tasks:
                 self.execute_save_steps(trans, task)
         if isdelete is not False:
-            for task in util.reversed(tasks):
+            for task in reversed(tasks):
                 self.execute_delete_steps(trans, task)
 
     def save_objects(self, trans, task):
@@ -782,7 +782,7 @@ class UOWExecutor(object):
             for dep in task.polymorphic_dependencies:
                 self.execute_dependency(trans, dep, False)
         if isdelete is not False:
-            for dep in util.reversed(list(task.polymorphic_dependencies)):
+            for dep in reversed(list(task.polymorphic_dependencies)):
                 self.execute_dependency(trans, dep, True)
 
     def execute_cyclical_dependencies(self, trans, task, isdelete):

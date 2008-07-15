@@ -20,7 +20,7 @@ def sort_tables(tables, reverse=False):
         visitors.traverse(table, {'schema_visitor':True}, {'foreign_key':visit_foreign_key})    
     sequence = topological.sort(tuples, tables)
     if reverse:
-        return util.reversed(sequence)
+        return reversed(sequence)
     else:
         return sequence
 
