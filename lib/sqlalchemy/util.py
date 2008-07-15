@@ -31,9 +31,11 @@ except ImportError:
 
 if sys.version_info >= (2, 5):
     class PopulateDict(dict):
-        """a dict which populates missing values via a creation function.
+        """A dict which populates missing values via a creation function.
 
-        note the creation function takes a key, unlike collections.defaultdict.
+        Note the creation function takes a key, unlike
+        collections.defaultdict.
+
         """
 
         def __init__(self, creator):
@@ -43,7 +45,7 @@ if sys.version_info >= (2, 5):
             return val
 else:
     class PopulateDict(dict):
-        """a dict which populates missing values via a creation function."""
+        """A dict which populates missing values via a creation function."""
 
         def __init__(self, creator):
             self.creator = creator
@@ -106,7 +108,6 @@ def array_as_starargs_decorator(fn):
     *args for the decorated method.
 
     """
-
     def starargs_as_list(self, *args, **kwargs):
         if isinstance(args, basestring) or (len(args) == 1 and not isinstance(args[0], tuple)):
             return fn(self, *to_list(args[0], []), **kwargs)
@@ -120,7 +121,6 @@ def array_as_starargs_fn_decorator(fn):
     *args for the decorated function.
 
     """
-
     def starargs_as_list(*args, **kwargs):
         if isinstance(args, basestring) or (len(args) == 1 and not isinstance(args[0], tuple)):
             return fn(*to_list(args[0], []), **kwargs)
@@ -150,9 +150,9 @@ def to_ascii(x):
 if sys.version_info >= (2, 5):
     def decode_slice(slc):
         """decode a slice object as sent to __getitem__.
-    
+
         takes into account the 2.5 __index__() method, basically.
-    
+
         """
         ret = []
         for x in slc.start, slc.stop, slc.step:
@@ -163,8 +163,7 @@ if sys.version_info >= (2, 5):
 else:
     def decode_slice(slc):
         return (slc.start, slc.stop, slc.step)
-    
-    
+
 def flatten_iterator(x):
     """Given an iterator of which further sub-elements may also be
     iterators, flatten the sub-elements into a single iterator.
@@ -439,17 +438,17 @@ def assert_arg_type(arg, argtype, name):
 
 _creation_order = 1
 def set_creation_order(instance):
-    """assign a '_creation_order' sequence to the given instance.
-    
-    This allows multiple instances to be sorted in order of
-    creation (typically within a single thread; the counter is
-    not particularly threadsafe).
-    
+    """Assign a '_creation_order' sequence to the given instance.
+
+    This allows multiple instances to be sorted in order of creation
+    (typically within a single thread; the counter is not particularly
+    threadsafe).
+
     """
     global _creation_order
     instance._creation_order = _creation_order
     _creation_order +=1
-    
+
 def warn_exception(func, *args, **kwargs):
     """executes the given function, catches all exceptions and converts to a warning."""
     try:
@@ -485,6 +484,7 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
         env = from_instance is not None and {name: from_instance} or {}
         exec py in env
         setattr(into_cls, method, env[method])
+
 
 class SimpleProperty(object):
     """A *default* property accessor."""
@@ -781,7 +781,7 @@ class IdentitySet(object):
     _working_set = set
 
     def __init__(self, iterable=None):
-        self._members = _IterableUpdatableDict()
+        self._members = dict()
         if iterable:
             for o in iterable:
                 self.add(o)
@@ -968,24 +968,11 @@ class IdentitySet(object):
     def __repr__(self):
         return '%s(%r)' % (type(self).__name__, self._members.values())
 
-if sys.version_info >= (2, 4):
-    _IterableUpdatableDict = dict
-else:
-    class _IterableUpdatableDict(dict):
-        """A dict that can update(iterable) like Python 2.4+'s dict."""
-        def update(self, __iterable=None, **kw):
-            if __iterable is not None:
-                if not isinstance(__iterable, dict):
-                    __iterable = dict(__iterable)
-                dict.update(self, __iterable)
-            if kw:
-                dict.update(self, **kw)
 
 def _iter_id(iterable):
     """Generator: ((id(o), o) for o in iterable)."""
     for item in iterable:
         yield id(item), item
-
 
 class OrderedIdentitySet(IdentitySet):
     class _working_set(OrderedSet):
@@ -1001,6 +988,7 @@ class OrderedIdentitySet(IdentitySet):
         if iterable:
             for o in iterable:
                 self.add(o)
+
 
 class UniqueAppender(object):
     """Only adds items to a collection once.
@@ -1027,6 +1015,7 @@ class UniqueAppender(object):
 
     def __iter__(self):
         return iter(self.data)
+
 
 class ScopedRegistry(object):
     """A Registry that can store one or multiple instances of a single
@@ -1071,6 +1060,7 @@ class ScopedRegistry(object):
     def _get_key(self):
         return self.scopefunc()
 
+
 class WeakCompositeKey(object):
     """an weak-referencable, hashable collection which is strongly referenced
     until any one of its members is garbage collected.
@@ -1100,6 +1090,7 @@ class WeakCompositeKey(object):
     def __iter__(self):
         return iter(arg() for arg in self.args)
 
+
 class _symbol(object):
     def __init__(self, name):
         """Construct a new named symbol."""
@@ -1110,6 +1101,7 @@ class _symbol(object):
     def __repr__(self):
         return "<symbol '%s>" % self.name
 _symbol.__name__ = 'symbol'
+
 
 class symbol(object):
     """A constant symbol.
@@ -1137,6 +1129,7 @@ class symbol(object):
             return sym
         finally:
             symbol._lock.release()
+
 
 def as_interface(obj, cls=None, methods=None, required=None):
     """Ensure basic interface compliance for an instance or dict of callables.
