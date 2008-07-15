@@ -26,6 +26,8 @@ to stay the same in future releases.
 """
 
 import itertools, re
+from operator import attrgetter
+
 from sqlalchemy import util, exc
 from sqlalchemy.sql import operators, visitors
 from sqlalchemy import types as sqltypes
@@ -1784,7 +1786,7 @@ class FromClause(Selectable):
                 delattr(self, attr)
 
     def _expr_attr_func(name):
-        get = util.attrgetter(name)
+        get = attrgetter(name)
         def attr(self):
             try:
                 return get(self)
@@ -2547,7 +2549,7 @@ class _Label(ColumnElement):
     _label = property(_label)
 
     def _proxy_attr(name):
-        get = util.attrgetter(name)
+        get = attrgetter(name)
         def attr(self):
             return get(self.element)
         return property(attr)

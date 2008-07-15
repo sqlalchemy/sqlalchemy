@@ -7,6 +7,7 @@ See the example ``examples/association/proxied_association.py``.
 
 """
 import itertools
+import operator
 import weakref
 from sqlalchemy import exceptions
 from sqlalchemy import orm
@@ -206,7 +207,7 @@ class AssociationProxy(object):
 
     def _default_getset(self, collection_class):
         attr = self.value_attr
-        getter = util.attrgetter(attr)
+        getter = operator.attrgetter(attr)
         if collection_class is dict:
             setter = lambda o, k, v: setattr(o, attr, v)
         else:

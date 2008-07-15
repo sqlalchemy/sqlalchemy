@@ -5,10 +5,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import operator
+from operator import attrgetter, itemgetter
 import weakref
 
 from sqlalchemy import util
-from sqlalchemy.util import attrgetter, itemgetter, EMPTY_SET
+from sqlalchemy.util import EMPTY_SET
 from sqlalchemy.orm import interfaces, collections, exc
 import sqlalchemy.exceptions as sa_exc
 

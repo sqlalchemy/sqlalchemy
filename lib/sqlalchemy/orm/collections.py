@@ -98,6 +98,7 @@ through the adapter, allowing for some very sophisticated behavior.
 
 import copy
 import inspect
+import operator
 import sets
 import sys
 import weakref
@@ -105,7 +106,7 @@ import weakref
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import schema
 import sqlalchemy.util as sautil
-from sqlalchemy.util import attrgetter
+
 
 
 __all__ = ['collection', 'collection_adapter',
@@ -162,7 +163,7 @@ def attribute_mapped_collection(attr_name):
     after a session flush.
 
     """
-    return lambda: MappedCollection(attrgetter(attr_name))
+    return lambda: MappedCollection(operator.attrgetter(attr_name))
 
 
 def mapped_collection(keyfunc):

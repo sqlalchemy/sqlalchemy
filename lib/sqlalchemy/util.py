@@ -27,19 +27,6 @@ try:
 except ImportError:
     import pickle
 
-
-try:
-    from operator import attrgetter
-except ImportError:
-    def attrgetter(attribute):
-        return lambda value: getattr(value, attribute)
-
-try:
-    from operator import itemgetter
-except ImportError:
-    def itemgetter(attribute):
-        return lambda value: value[attribute]
-
 if sys.version_info >= (2, 5):
     class PopulateDict(dict):
         """a dict which populates missing values via a creation function.
@@ -602,8 +589,9 @@ class OrderedProperties(object):
     def clear(self):
         self._data.clear()
 
+
 class OrderedDict(dict):
-    """A Dictionary that returns keys/values/items in the order they were added."""
+    """A dict that returns keys/values/items in the order they were added."""
 
     def __init__(self, ____sequence=None, **kwargs):
         self._list = []
@@ -616,10 +604,10 @@ class OrderedDict(dict):
     def clear(self):
         self._list = []
         dict.clear(self)
-    
+
     def sort(self, fn=None):
         self._list.sort(fn)
-        
+
     def update(self, ____sequence=None, **kwargs):
         if ____sequence is not None:
             if hasattr(____sequence, 'keys'):

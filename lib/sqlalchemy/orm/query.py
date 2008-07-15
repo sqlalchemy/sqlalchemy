@@ -19,6 +19,7 @@ iterable result sets.
 """
 
 from itertools import chain
+from operator import itemgetter
 
 from sqlalchemy import sql, util, log, schema
 from sqlalchemy import exc as sa_exc
@@ -1078,7 +1079,7 @@ class Query(object):
         (process, labels) = zip(*[query_entity.row_processor(self, context, custom_rows) for query_entity in self._entities])
 
         if not single_entity:
-            labels = dict((label, property(util.itemgetter(i)))
+            labels = dict((label, property(itemgetter(i)))
                           for i, label in enumerate(labels)
                           if label)
             rowtuple = type.__new__(type, "RowTuple", (tuple,), labels)
