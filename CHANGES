@@ -5,6 +5,9 @@ CHANGES
 =======
 0.5beta3
 ========
+    - 0.5beta3 includes all bugfixes listed under release
+      "0.4.7".
+      
 - orm
     - Added a new SessionExtension hook called after_attach().
       This is called at the point of attachment for objects
@@ -12,8 +15,8 @@ CHANGES
       
 0.5beta2
 ========
-    - 0.5beta2 includes all bugfixes listed under release 
-      "0.4.7".
+    - 0.5beta2 includes some of the bugfixes listed under 
+      release "0.4.7".
 
 - orm
     - In addition to expired attributes, deferred attributes
@@ -193,6 +196,10 @@ CHANGES
       flag is always True with a "transactional" 
       (in 0.5 a non-"autocommit") Session.
 
+- sql
+    - Fixed bug when calling select([literal('foo')])
+      or select([bindparam('foo')]).
+      
 - schema
     - create_all(), drop_all(), create(), drop() all raise
       an error if the table name or schema name contains
