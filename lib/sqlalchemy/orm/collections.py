@@ -28,11 +28,11 @@ and return values to events::
 The second approach is a bundle of targeted decorators that wrap appropriate
 append and remove notifiers around the mutation methods present in the
 standard Python ``list``, ``set`` and ``dict`` interfaces.  These could be
-specified in terms of generic decorator recipes, but are instead hand-tooled for
-increased efficiency.   The targeted decorators occasionally implement
-adapter-like behavior, such as mapping bulk-set methods (``extend``, ``update``,
-``__setslice__``, etc.) into the series of atomic mutation events that the ORM
-requires.
+specified in terms of generic decorator recipes, but are instead hand-tooled
+for increased efficiency.  The targeted decorators occasionally implement
+adapter-like behavior, such as mapping bulk-set methods (``extend``,
+``update``, ``__setslice__``, etc.) into the series of atomic mutation events
+that the ORM requires.
 
 The targeted decorators are used internally for automatic instrumentation of
 entity collection classes.  Every collection class goes through a
@@ -106,7 +106,6 @@ import weakref
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import schema
 import sqlalchemy.util as sautil
-
 
 
 __all__ = ['collection', 'collection_adapter',
@@ -364,9 +363,10 @@ class collection(object):
     def adds(cls, arg):
         """Mark the method as adding an entity to the collection.
 
-        Adds "add to collection" handling to the method.  The decorator argument
-        indicates which method argument holds the SQLAlchemy-relevant value.
-        Arguments can be specified positionally (i.e. integer) or by name::
+        Adds "add to collection" handling to the method.  The decorator
+        argument indicates which method argument holds the SQLAlchemy-relevant
+        value.  Arguments can be specified positionally (i.e. integer) or by
+        name::
 
             @collection.adds(1)
             def push(self, item): ...
@@ -529,7 +529,8 @@ class CollectionAdapter(object):
                 "Incompatible collection type: %s is not %s-like" % (
                 given, wanted))
 
-        # If the object is an adapted collection, return the (iterable) adapter.
+        # If the object is an adapted collection, return the (iterable)
+        # adapter.
         if getattr(obj, '_sa_adapter', None) is not None:
             return getattr(obj, '_sa_adapter')
         elif setting_type == dict:
@@ -606,9 +607,9 @@ class CollectionAdapter(object):
         self.attr.fire_pre_remove_event(self.owner_state, initiator=initiator)
 
     def __getstate__(self):
-        return { 'key': self.attr.key,
-                 'owner_state': self.owner_state,
-                 'data': self.data }
+        return {'key': self.attr.key,
+                'owner_state': self.owner_state,
+                'data': self.data}
 
     def __setstate__(self, d):
         self.attr = getattr(d['owner_state'].obj().__class__, d['key']).impl
@@ -641,7 +642,7 @@ def bulk_replace(values, existing_adapter, new_adapter):
     idset = sautil.IdentitySet
     constants = idset(existing_adapter or ()).intersection(values or ())
     additions = idset(values or ()).difference(constants)
-    removals  = idset(existing_adapter or ()).difference(constants)
+    removals = idset(existing_adapter or ()).difference(constants)
 
     for member in values or ():
         if member in additions:
@@ -783,7 +784,8 @@ def _instrument_class(cls):
     # apply ABC auto-decoration to methods that need it
     for method, decorator in decorators.items():
         fn = getattr(cls, method, None)
-        if fn and method not in methods and not hasattr(fn, '_sa_instrumented'):
+        if (fn and method not in methods and
+            not hasattr(fn, '_sa_instrumented')):
             setattr(cls, method, decorator(fn))
 
     # ensure all roles are present, and apply implicit instrumentation if
@@ -1110,7 +1112,8 @@ def _dict_decorators():
                 if __other is not Unspecified:
                     if hasattr(__other, 'keys'):
                         for key in __other.keys():
-                            if key not in self or self[key] is not __other[key]:
+                            if (key not in self or
+                                self[key] is not __other[key]):
                                 self[key] = __other[key]
                     else:
                         for key, value in __other:
@@ -1126,7 +1129,6 @@ def _dict_decorators():
     l.pop('_tidy')
     l.pop('Unspecified')
     return l
-
 
 _set_binop_bases = (set, frozenset, sets.BaseSet)
 
@@ -1325,19 +1327,19 @@ __canned_instrumentation = {
     }
 
 __interfaces = {
-    list: { 'appender': 'append',
-            'remover':  'remove',
-            'iterator': '__iter__',
-            '_decorators': _list_decorators(), },
-    set: { 'appender': 'add',
+    list: {'appender': 'append',
            'remover': 'remove',
            'iterator': '__iter__',
-           '_decorators': _set_decorators(), },
+           '_decorators': _list_decorators(), },
+    set: {'appender': 'add',
+          'remover': 'remove',
+          'iterator': '__iter__',
+          '_decorators': _set_decorators(), },
     # decorators are required for dicts and object collections.
-    dict: { 'iterator': 'itervalues',
-            '_decorators': _dict_decorators(), },
+    dict: {'iterator': 'itervalues',
+           '_decorators': _dict_decorators(), },
     # < 0.4 compatible naming, deprecated- use decorators instead.
-    None: { }
+    None: {}
     }
 
 class MappedCollection(dict):
