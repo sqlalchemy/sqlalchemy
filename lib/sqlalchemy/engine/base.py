@@ -12,7 +12,7 @@ higher-level statement-construction, connection-management, execution
 and result contexts.
 """
 
-import inspect, StringIO, sys
+import inspect, StringIO
 from sqlalchemy import exc, schema, util, types, log
 from sqlalchemy.sql import expression
 

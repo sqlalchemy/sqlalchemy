@@ -18,7 +18,7 @@ creating database-specific compilers and schema generators, the module
 is otherwise internal to SQLAlchemy.
 """
 
-import string, re, itertools
+import string, re
 from sqlalchemy import schema, engine, util, exc
 from sqlalchemy.sql import operators, functions
 from sqlalchemy.sql import expression as sql

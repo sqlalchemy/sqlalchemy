@@ -571,7 +571,7 @@ class MergeTest(_fixtures.FixtureTest):
         # assert merged instance has a mapper and lazy load proceeds
         state = sa.orm.attributes.instance_state(u2)
         assert state.entity_name is not sa.orm.attributes.NO_ENTITY_NAME
-        assert sa.orm.mapperlib.has_mapper(u2)
+        assert sa.orm.util.has_mapper(u2)
         def go():
             ne_( u2.addresses, [])
             eq_(len(u2.addresses), 1)

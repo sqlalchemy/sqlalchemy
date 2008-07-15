@@ -28,9 +28,9 @@ from sqlalchemy.orm.identity import IdentityManagedState
 from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, \
      PropComparator
 from sqlalchemy.orm.util import \
-     ExtensionCarrier, _INSTRUMENTOR, _class_to_mapper, _is_mapped_class, \
-     _state_has_identity, _state_mapper, class_mapper, has_identity, \
-     has_mapper, instance_str, object_mapper, state_str
+     ExtensionCarrier, _INSTRUMENTOR, _class_to_mapper, \
+     _state_has_identity, _state_mapper, class_mapper, \
+     instance_str, state_str
 
 
 __all__ = (

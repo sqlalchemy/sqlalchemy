@@ -26,8 +26,8 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import expression, visitors, operators
 from sqlalchemy.orm import attributes, interfaces, mapper, object_mapper, evaluator
-from sqlalchemy.orm.util import _state_mapper, _is_mapped_class, \
-     _is_aliased_class, _entity_descriptor, _entity_info, _class_to_mapper, \
+from sqlalchemy.orm.util import _is_mapped_class, \
+     _is_aliased_class, _entity_descriptor, _entity_info, \
      _orm_columns, AliasedClass, _orm_selectable, join as orm_join, ORMAdapter
 
 __all__ = ['Query', 'QueryContext', 'aliased']
@@ -1020,7 +1020,7 @@ class Query(object):
 
         """
         if self._statement:
-            raise exceptions.InvalidRequestError(
+            raise sa_exc.InvalidRequestError(
                 "one() not available when from_statement() is used; "
                 "use `first()` instead.")
 

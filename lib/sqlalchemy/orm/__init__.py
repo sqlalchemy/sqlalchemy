@@ -14,18 +14,19 @@ documentation for an overview of how this module is used.
 
 from sqlalchemy.orm import exc
 from sqlalchemy.orm.mapper import \
-     Mapper, _mapper_registry, class_mapper, object_mapper
+     Mapper, _mapper_registry, class_mapper
 from sqlalchemy.orm.interfaces import \
      EXT_CONTINUE, EXT_STOP, ExtensionOption, InstrumentationManager, \
      MapperExtension, PropComparator, SessionExtension
+from sqlalchemy.orm.util import \
+     AliasedClass as aliased, join, object_mapper, outerjoin, \
+     polymorphic_union, with_parent
 from sqlalchemy.orm.properties import \
      BackRef, ColumnProperty, ComparableProperty, CompositeProperty, \
      PropertyLoader, SynonymProperty
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import AliasOption, Query
-from sqlalchemy.orm.util import \
-     AliasedClass as aliased, join, outerjoin, polymorphic_union, with_parent
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.orm.session import Session as _Session
 from sqlalchemy.orm.session import object_session, sessionmaker

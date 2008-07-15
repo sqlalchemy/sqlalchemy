@@ -4,9 +4,6 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import inspect
-import types
-
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy.util import ScopedRegistry, to_list, get_cls_kwargs
 from sqlalchemy.orm import MapperExtension, EXT_CONTINUE, object_session, \
@@ -22,11 +19,11 @@ class ScopedSession(object):
     Usage::
 
       Session = scoped_session(sessionmaker(autoflush=True))
-      
+
       To map classes so that new instances are saved in the current
       Session automatically, as well as to provide session-aware
       class attributes such as "query":
-      
+
       mapper = Session.mapper
       mapper(Class, table, ...)
 
@@ -51,48 +48,48 @@ class ScopedSession(object):
                 return self.session_factory(**kwargs)
         else:
             return self.registry()
-    
+
     def remove(self):
         if self.registry.has():
             self.registry().close()
         self.registry.clear()
-    
+
     def mapper(self, *args, **kwargs):
         """return a mapper() function which associates this ScopedSession with the Mapper."""
-        
+
         from sqlalchemy.orm import mapper
-        
+
         extension_args = dict([(arg, kwargs.pop(arg))
                                for arg in get_cls_kwargs(_ScopedExt)
                                if arg in kwargs])
-        
+
         kwargs['extension'] = extension = to_list(kwargs.get('extension', []))
         if extension_args:
             extension.append(self.extension.configure(**extension_args))
         else:
             extension.append(self.extension)
         return mapper(*args, **kwargs)
-        
+
     def configure(self, **kwargs):
         """reconfigure the sessionmaker used by this ScopedSession."""
-        
+
         self.session_factory.configure(**kwargs)
 
     def query_property(self):
         """return a class property which produces a `Query` object against the
         class when called.
-        
+
         e.g.::
             Session = scoped_session(sessionmaker())
-            
+
             class MyClass(object):
                 query = Session.query_property()
-                
+
             # after mappers are defined
             result = MyClass.query.filter(MyClass.name=='foo').all()
-        
+
         """
-        
+
         class query(object):
             def __get__(s, instance, owner):
                 mapper = class_mapper(owner, raiseerror=False)
@@ -101,7 +98,7 @@ class ScopedSession(object):
                 else:
                     return None
         return query()
-        
+
 def instrument(name):
     def do(self, *args, **kwargs):
         return getattr(self.registry(), name)(*args, **kwargs)
@@ -124,20 +121,20 @@ def clslevel(name):
     return classmethod(do)
 for prop in ('close_all', 'object_session', 'identity_key'):
     setattr(ScopedSession, prop, clslevel(prop))
-    
+
 class _ScopedExt(MapperExtension):
     def __init__(self, context, validate=False, save_on_init=True):
         self.context = context
         self.validate = validate
         self.save_on_init = save_on_init
         self.set_kwargs_on_init = None
-    
+
     def validating(self):
         return _ScopedExt(self.context, validate=True)
-    
+
     def configure(self, **kwargs):
         return _ScopedExt(self.context, **kwargs)
-    
+
     def instrument_class(self, mapper, class_):
         class query(object):
             def __getattr__(s, key):
@@ -146,8 +143,8 @@ class _ScopedExt(MapperExtension):
                 return self.context.registry().query(class_)
             def __get__(self, instance, cls):
                 return self
-                
-        if not 'query' in class_.__dict__: 
+
+        if not 'query' in class_.__dict__:
             class_.query = query()
 
         if self.set_kwargs_on_init is None:
@@ -191,6 +188,3 @@ class _ScopedExt(MapperExtension):
                 delattr(class_, '__init__')
         if hasattr(class_, 'query'):
             delattr(class_, 'query')
-            
-
-            
