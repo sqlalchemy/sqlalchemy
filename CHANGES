@@ -1,6 +1,7 @@
 =======
 CHANGES
 =======
+
 0.4.7
 =====
 - orm
@@ -30,6 +31,10 @@ CHANGES
     - Removed erroneous 'self' reference when raising
       UnmappedColumnError during flush() operation.
 
+- sql
+    - Fixed bug when calling select([literal('foo')])
+      or select([bindparam('foo')]).
+      
 - schema
     - create_all(), drop_all(), create(), drop() all raise
       an error if the table name or schema name contains

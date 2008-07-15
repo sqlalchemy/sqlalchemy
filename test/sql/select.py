@@ -729,6 +729,9 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         
 
     def test_literal(self):
+        
+        self.assert_compile(select([literal('foo')]), "SELECT :param_1")
+        
         self.assert_compile(select([literal("foo") + literal("bar")], from_obj=[table1]),
             "SELECT :param_1 || :param_2 AS anon_1 FROM mytable")
 
