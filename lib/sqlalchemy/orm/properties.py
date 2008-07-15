@@ -15,11 +15,14 @@ from sqlalchemy import sql, util, log
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs
 from sqlalchemy.sql import operators, expression
-from sqlalchemy.orm import mapper, strategies, attributes, dependency, \
-     object_mapper
+from sqlalchemy.orm import (
+    attributes, dependency, mapper, object_mapper, strategies,
+    )
 from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, _orm_annotate
-from sqlalchemy.orm.interfaces import StrategizedProperty, PropComparator, \
-     MapperProperty, ONETOMANY, MANYTOONE, MANYTOMANY
+from sqlalchemy.orm.interfaces import (
+    MANYTOMANY, MANYTOONE, MapperProperty, ONETOMANY, PropComparator,
+    StrategizedProperty,
+    )
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
            'ComparableProperty', 'PropertyLoader', 'BackRef')

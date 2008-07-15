@@ -11,8 +11,10 @@ from sqlalchemy import sql, util, log
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors, expression, operators
 from sqlalchemy.orm import mapper, attributes
-from sqlalchemy.orm.interfaces import LoaderStrategy, StrategizedOption, \
-     MapperOption, PropertyOption, serialize_path, deserialize_path
+from sqlalchemy.orm.interfaces import (
+    LoaderStrategy, StrategizedOption, MapperOption, PropertyOption,
+    serialize_path, deserialize_path
+    )
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 

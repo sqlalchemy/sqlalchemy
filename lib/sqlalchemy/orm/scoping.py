@@ -6,9 +6,11 @@
 
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy.util import ScopedRegistry, to_list, get_cls_kwargs
-from sqlalchemy.orm import MapperExtension, EXT_CONTINUE, object_session, \
-     class_mapper
+from sqlalchemy.orm import (
+    EXT_CONTINUE, MapperExtension, class_mapper, object_session,
+    )
 from sqlalchemy.orm.session import Session
+
 
 __all__ = ['ScopedSession']
 

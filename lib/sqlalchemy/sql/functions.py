@@ -1,6 +1,7 @@
 from sqlalchemy import types as sqltypes
-from sqlalchemy.sql.expression import _Function, _literal_as_binds, \
-                                      ClauseList, _FigureVisitName
+from sqlalchemy.sql.expression import (
+    ClauseList, _FigureVisitName, _Function, _literal_as_binds,
+    )
 from sqlalchemy.sql import operators
 
 

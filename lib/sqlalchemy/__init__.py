@@ -10,32 +10,102 @@ import sys
 import sqlalchemy.exc as exceptions
 sys.modules['sqlalchemy.exceptions'] = exceptions
 
-from sqlalchemy.types import \
-    BLOB, BOOLEAN, CHAR, CLOB, DATE, DATETIME, DECIMAL, FLOAT, INT, \
-    NCHAR, NUMERIC, SMALLINT, TEXT, TIME, TIMESTAMP, VARCHAR, \
-    Binary, Boolean, Date, DateTime, Float, Integer, Interval, Numeric, \
-    PickleType, SmallInteger, String, Text, Time, Unicode, UnicodeText
+from sqlalchemy.types import (
+    BLOB,
+    BOOLEAN,
+    Binary,
+    Boolean,
+    CHAR,
+    CLOB,
+    DATE,
+    DATETIME,
+    DECIMAL,
+    Date,
+    DateTime,
+    FLOAT,
+    Float,
+    INT,
+    Integer,
+    Interval,
+    NCHAR,
+    NUMERIC,
+    Numeric,
+    PickleType,
+    SMALLINT,
+    SmallInteger,
+    String,
+    TEXT,
+    TIME,
+    TIMESTAMP,
+    Text,
+    Time,
+    Unicode,
+    UnicodeText,
+    VARCHAR,
+    )
 
-from sqlalchemy.sql import \
-    func, modifier, text, literal, literal_column, null, alias, \
-    and_, or_, not_, \
-    select, subquery, union, union_all, insert, update, delete, \
-    join, outerjoin, \
-    bindparam, outparam, asc, desc, collate, \
-    except_, except_all, exists, intersect, intersect_all, \
-    between, case, cast, distinct, extract
+from sqlalchemy.sql import (
+    alias,
+    and_,
+    asc,
+    between,
+    bindparam,
+    case,
+    cast,
+    collate,
+    delete,
+    desc,
+    distinct,
+    except_,
+    except_all,
+    exists,
+    extract,
+    func,
+    insert,
+    intersect,
+    intersect_all,
+    join,
+    literal,
+    literal_column,
+    modifier,
+    not_,
+    null,
+    or_,
+    outerjoin,
+    outparam,
+    select,
+    subquery,
+    text,
+    union,
+    union_all,
+    update,
+    )
 
-from sqlalchemy.schema import \
-    MetaData, ThreadLocalMetaData, Table, Column, ForeignKey, \
-    Sequence, Index, ForeignKeyConstraint, PrimaryKeyConstraint, \
-    CheckConstraint, UniqueConstraint, Constraint, \
-    DefaultClause, FetchedValue, PassiveDefault, ColumnDefault, DDL
+from sqlalchemy.schema import (
+    CheckConstraint,
+    Column,
+    ColumnDefault,
+    Constraint,
+    DDL,
+    DefaultClause,
+    FetchedValue,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    MetaData,
+    PassiveDefault,
+    PrimaryKeyConstraint,
+    Sequence,
+    Table,
+    ThreadLocalMetaData,
+    UniqueConstraint,
+    )
 
 from sqlalchemy.engine import create_engine, engine_from_config
 
-__all__ = [ name for name, obj in locals().items()
-            if not (name.startswith('_') or inspect.ismodule(obj)) ]
 
+__all__ = sorted(name for name, obj in locals().items()
+                 if not (name.startswith('_') or inspect.ismodule(obj)))
 __version__ = 'svn'
 
 del inspect, sys

@@ -12,11 +12,14 @@ import sqlalchemy.exceptions as sa_exc
 import sqlalchemy.orm.attributes
 from sqlalchemy import util, sql, engine
 from sqlalchemy.sql import util as sql_util, expression
-from sqlalchemy.orm import exc, unitofwork, query, attributes, \
-     util as mapperutil, SessionExtension
+from sqlalchemy.orm import (
+    SessionExtension, attributes, exc, query, unitofwork, util as mapperutil,
+    )
 from sqlalchemy.orm.util import object_mapper as _object_mapper
 from sqlalchemy.orm.util import class_mapper as _class_mapper
-from sqlalchemy.orm.util import _state_mapper, _state_has_identity, _class_to_mapper
+from sqlalchemy.orm.util import (
+    _class_to_mapper, _state_has_identity, _state_mapper,
+    )
 from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.orm.unitofwork import UOWTransaction
 from sqlalchemy.orm import identity

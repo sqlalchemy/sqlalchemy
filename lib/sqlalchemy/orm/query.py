@@ -26,10 +26,15 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import expression, visitors, operators
-from sqlalchemy.orm import attributes, interfaces, mapper, object_mapper, evaluator
-from sqlalchemy.orm.util import _is_mapped_class, \
-     _is_aliased_class, _entity_descriptor, _entity_info, \
-     _orm_columns, AliasedClass, _orm_selectable, join as orm_join, ORMAdapter
+from sqlalchemy.orm import (
+    attributes, interfaces, mapper, object_mapper, evaluator,
+    )
+from sqlalchemy.orm.util import (
+    AliasedClass, ORMAdapter, _entity_descriptor, _entity_info,
+    _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
+    join as orm_join,
+    )
+
 
 __all__ = ['Query', 'QueryContext', 'aliased']
 

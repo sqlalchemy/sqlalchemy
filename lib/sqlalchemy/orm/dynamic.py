@@ -14,8 +14,9 @@ basic add/delete mutation.
 from sqlalchemy import log, util
 import sqlalchemy.exceptions as sa_exc
 
-from sqlalchemy.orm import attributes, object_session, \
-     util as mapperutil, strategies
+from sqlalchemy.orm import (
+    attributes, object_session, util as mapperutil, strategies,
+    )
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import has_identity
 
