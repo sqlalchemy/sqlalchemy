@@ -154,7 +154,7 @@ def cloned_traverse(obj, opts, visitors):
 
 def replacement_traverse(obj, opts, replace):
     cloned = {}
-    stop_on = util.Set(opts.get('stop_on', []))
+    stop_on = set(opts.get('stop_on', []))
 
     def clone(element):
         newelem = replace(element)

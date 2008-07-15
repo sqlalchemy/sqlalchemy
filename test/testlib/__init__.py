@@ -18,7 +18,7 @@ from testlib.orm import mapper
 import testlib.profiling as profiling
 import testlib.engines as engines
 import testlib.requires as requires
-from testlib.compat import set, frozenset, sorted, _function_named
+from testlib.compat import _function_named
 
 
 __all__ = ('testing',
@@ -28,7 +28,7 @@ __all__ = ('testing',
            'TestBase', 'AssertsExecutionResults', 'ORMTest',
            'AssertsCompiledSQL', 'ComparesTables',
            'profiling', 'engines',
-           'set', 'frozenset', 'sorted', '_function_named')
+           '_function_named')
 
 
 testing.requires = requires

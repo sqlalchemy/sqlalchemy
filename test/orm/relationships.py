@@ -4,7 +4,6 @@ from testlib import sa, testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import mapper, relation, backref, create_session
 from testlib.testing import eq_, startswith_
-from testlib.compat import set
 from orm import _base
 
 

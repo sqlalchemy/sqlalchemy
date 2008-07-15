@@ -4,7 +4,7 @@ import sys
 import types
 from testlib import config, sa, testing
 from testlib.testing import resolve_artifact_names, adict
-from testlib.compat import set, sorted, _function_named
+from testlib.compat import _function_named
 
 
 _repr_stack = set()

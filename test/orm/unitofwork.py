@@ -10,7 +10,6 @@ from testlib import engines, sa, testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey, literal_column
 from testlib.sa.orm import mapper, relation, create_session, column_property
 from testlib.testing import eq_, ne_
-from testlib.compat import set
 from orm import _base, _fixtures
 from engine import _base as engine_base
 import pickleable

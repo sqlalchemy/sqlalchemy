@@ -10,15 +10,7 @@ from testlib.sa import Table, Column, Integer, String, ForeignKey
 from testlib.sa import util, exc as sa_exc
 from testlib.sa.orm import create_session, mapper, relation, \
     attributes
-from testlib.compat import set, frozenset
 from orm import _base
-
-
-try:
-    py_set = set
-except NameError:
-    import sets
-    py_set = sets.Set
 
 
 class Canary(sa.orm.interfaces.AttributeExtension):
@@ -749,7 +741,7 @@ class CollectionsTest(_base.ORMTest):
 
     def test_set_emulates(self):
         class SetIsh(object):
-            __emulates__ = py_set
+            __emulates__ = set
             def __init__(self):
                 self.data = set()
             def add(self, item):

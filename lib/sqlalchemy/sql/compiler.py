@@ -23,7 +23,7 @@ from sqlalchemy import schema, engine, util, exc
 from sqlalchemy.sql import operators, functions
 from sqlalchemy.sql import expression as sql
 
-RESERVED_WORDS = util.Set([
+RESERVED_WORDS = set([
     'all', 'analyse', 'analyze', 'and', 'any', 'array',
     'as', 'asc', 'asymmetric', 'authorization', 'between',
     'binary', 'both', 'case', 'cast', 'check', 'collate',
@@ -491,7 +491,7 @@ class DefaultCompiler(engine.Compiled):
 
         froms = select._get_display_froms(existingfroms)
 
-        correlate_froms = util.Set(sql._from_objects(*froms))
+        correlate_froms = set(sql._from_objects(*froms))
 
         # TODO: might want to propigate existing froms for select(select(select))
         # where innermost select should correlate to outermost
@@ -610,7 +610,7 @@ class DefaultCompiler(engine.Compiled):
                  ', '.join(c[1] for c in colparams)))
 
     def visit_update(self, update_stmt):
-        self.stack.append({'from':util.Set([update_stmt.table])})
+        self.stack.append({'from': set([update_stmt.table])})
 
         self.isupdate = True
         colparams = self._get_colparams(update_stmt)
@@ -716,7 +716,7 @@ class DefaultCompiler(engine.Compiled):
         return values
 
     def visit_delete(self, delete_stmt):
-        self.stack.append({'from':util.Set([delete_stmt.table])})
+        self.stack.append({'from': set([delete_stmt.table])})
         self.isdelete = True
 
         text = "DELETE FROM " + self.preparer.format_table(delete_stmt.table)
@@ -770,7 +770,7 @@ class SchemaGenerator(DDLBase):
     def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
         super(SchemaGenerator, self).__init__(connection, **kwargs)
         self.checkfirst = checkfirst
-        self.tables = tables and util.Set(tables) or None
+        self.tables = tables and set(tables) or None
         self.preparer = dialect.identifier_preparer
         self.dialect = dialect
 

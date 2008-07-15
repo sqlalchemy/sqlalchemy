@@ -475,7 +475,7 @@ class SQLiteSchemaDropper(compiler.SchemaDropper):
     pass
 
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
-    reserved_words = util.Set([
+    reserved_words = set([
         'add', 'after', 'all', 'alter', 'analyze', 'and', 'as', 'asc',
         'attach', 'autoincrement', 'before', 'begin', 'between', 'by',
         'cascade', 'case', 'cast', 'check', 'collate', 'column', 'commit',

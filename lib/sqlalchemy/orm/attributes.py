@@ -877,7 +877,7 @@ class InstanceState(object):
     def unmodified(self):
         """a set of keys which have no uncommitted changes"""
 
-        return util.Set(
+        return set(
             key for key in self.manager.keys()
             if (key not in self.committed_state or
                 (key in self.manager.mutable_attributes and
@@ -892,14 +892,14 @@ class InstanceState(object):
         was never populated or modified.
         
         """
-        return util.Set(
+        return set(
             key for key in self.manager.keys()
             if key not in self.committed_state and key not in self.dict)
 
     unloaded = property(unloaded)
 
     def expire_attributes(self, attribute_names):
-        self.expired_attributes = util.Set(self.expired_attributes)
+        self.expired_attributes = set(self.expired_attributes)
 
         if attribute_names is None:
             attribute_names = self.manager.keys()
@@ -1031,7 +1031,7 @@ class ClassManager(dict):
         self.factory = None  # where we came from, for inheritance bookkeeping
         self.info = {}
         self.mappers = {}
-        self.mutable_attributes = util.Set()
+        self.mutable_attributes = set()
         self.local_attrs = {}
         self.originals = {}
         for base in class_.__mro__[-2:0:-1]:   # reverse, skipping 1st and last
@@ -1594,7 +1594,7 @@ def collect_management_factories_for(cls):
 
     """
     hierarchy = util.class_hierarchy(cls)
-    factories = util.Set()
+    factories = set()
     for member in hierarchy:
         manager = manager_of_class(member)
         if manager is not None:

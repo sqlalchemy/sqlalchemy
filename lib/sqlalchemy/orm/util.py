@@ -12,9 +12,9 @@ from sqlalchemy.sql import expression, util as sql_util, operators
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, PropComparator, MapperProperty
 from sqlalchemy.orm import attributes, exc
 
-all_cascades = util.FrozenSet(("delete", "delete-orphan", "all", "merge",
-                               "expunge", "save-update", "refresh-expire",
-                               "none"))
+all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
+                          "expunge", "save-update", "refresh-expire",
+                          "none"))
 
 _INSTRUMENTOR = ('mapper', 'instrumentor')
 
@@ -22,7 +22,7 @@ class CascadeOptions(object):
     """Keeps track of the options sent to relation().cascade"""
 
     def __init__(self, arg=""):
-        values = util.Set(c.strip() for c in arg.split(','))
+        values = set(c.strip() for c in arg.split(','))
         self.delete_orphan = "delete-orphan" in values
         self.delete = "delete" in values or "all" in values
         self.save_update = "save-update" in values or "all" in values
@@ -49,7 +49,7 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     this is used.
     """
 
-    colnames = util.Set()
+    colnames = set()
     colnamemaps = {}
     types = {}
     for key in table_map.keys():
@@ -161,8 +161,8 @@ class ExtensionCarrier(object):
 
     """
 
-    interface = util.Set(method for method in dir(MapperExtension)
-                         if not method.startswith('_'))
+    interface = set(method for method in dir(MapperExtension)
+                    if not method.startswith('_'))
 
     def __init__(self, extensions=None):
         self.methods = {}

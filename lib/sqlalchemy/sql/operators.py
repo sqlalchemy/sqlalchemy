@@ -5,7 +5,7 @@
 
 from operator import and_, or_, inv, add, mul, sub, div, mod, truediv, \
      lt, le, ne, gt, ge, eq
-from sqlalchemy.util import Set, symbol
+from sqlalchemy.util import symbol
 
 def from_():
     raise NotImplementedError()
@@ -76,7 +76,7 @@ def desc_op(a):
 def asc_op(a):
     return a.asc()
 
-_commutative = Set([eq, ne, add, mul])
+_commutative = set([eq, ne, add, mul])
 def is_commutative(op):
     return op in _commutative
 

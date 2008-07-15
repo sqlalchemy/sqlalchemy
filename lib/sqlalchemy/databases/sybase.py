@@ -46,7 +46,7 @@ __all__ = [
     ]
 
 
-RESERVED_WORDS = util.Set([
+RESERVED_WORDS = set([
     "add", "all", "alter", "and",
     "any", "as", "asc", "backup",
     "begin", "between", "bigint", "binary",

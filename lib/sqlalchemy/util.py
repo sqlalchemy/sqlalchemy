@@ -16,62 +16,11 @@ except ImportError:
     import dummy_thread as thread
     import dummy_threading as threading
 
-try:
-    Set = set
-    FrozenSet = frozenset
-    set_types = set, sets.Set
-except NameError:
-    set_types = sets.Set,
+# TODO: 2.6 will whine about importing `sets`, but I think we still need it to
+# around to support older DB-API modules that return the 2.3 style set.
+set_types = set, sets.Set
 
-    def py24_style_ops():
-        """Layer some of __builtin__.set's binop behavior onto sets.Set."""
-
-        def _binary_sanity_check(self, other):
-            pass
-        def issubset(self, iterable):
-            other = type(self)(iterable)
-            return sets.Set.issubset(self, other)
-        def __le__(self, other):
-            sets.Set._binary_sanity_check(self, other)
-            return sets.Set.__le__(self, other)
-        def issuperset(self, iterable):
-            other = type(self)(iterable)
-            return sets.Set.issuperset(self, other)
-        def __ge__(self, other):
-            sets.Set._binary_sanity_check(self, other)
-            return sets.Set.__ge__(self, other)
-        # lt and gt still require a BaseSet
-        def __lt__(self, other):
-            sets.Set._binary_sanity_check(self, other)
-            return sets.Set.__lt__(self, other)
-        def __gt__(self, other):
-            sets.Set._binary_sanity_check(self, other)
-            return sets.Set.__gt__(self, other)
-
-        def __ior__(self, other):
-            if not isinstance(other, sets.BaseSet):
-                return NotImplemented
-            return sets.Set.__ior__(self, other)
-        def __iand__(self, other):
-            if not isinstance(other, sets.BaseSet):
-                return NotImplemented
-            return sets.Set.__iand__(self, other)
-        def __ixor__(self, other):
-            if not isinstance(other, sets.BaseSet):
-                return NotImplemented
-            return sets.Set.__ixor__(self, other)
-        def __isub__(self, other):
-            if not isinstance(other, sets.BaseSet):
-                return NotImplemented
-            return sets.Set.__isub__(self, other)
-        return locals()
-
-    py24_style_ops = py24_style_ops()
-    Set = type('Set', (sets.Set,), py24_style_ops)
-    FrozenSet = type('FrozenSet', (sets.ImmutableSet,), py24_style_ops)
-    del py24_style_ops
-
-EMPTY_SET = FrozenSet()
+EMPTY_SET = frozenset()
 
 try:
     import cPickle as pickle
@@ -233,9 +182,9 @@ def array_as_starargs_fn_decorator(fn):
 
 def to_set(x):
     if x is None:
-        return Set()
-    if not isinstance(x, Set):
-        return Set(to_list(x))
+        return set()
+    if not isinstance(x, set):
+        return set(to_list(x))
     else:
         return x
 
@@ -308,12 +257,12 @@ def get_cls_kwargs(cls):
 
     for c in cls.__mro__:
         if '__init__' in c.__dict__:
-            stack = Set([c])
+            stack = set([c])
             break
     else:
         return []
 
-    args = Set()
+    args = set()
     while stack:
         class_ = stack.pop()
         ctr = class_.__dict__.get('__init__', False)
@@ -437,7 +386,7 @@ def class_hierarchy(cls):
     class systemwide that derives from object.
 
     """
-    hier = Set([cls])
+    hier = set([cls])
     process = list(cls.__mro__)
     while process:
         c = process.pop()
@@ -482,10 +431,10 @@ def duck_type_collection(specimen, default=None):
     """
 
     if hasattr(specimen, '__emulates__'):
-        # canonicalize set vs sets.Set to a standard: util.Set
+        # canonicalize set vs sets.Set to a standard: the builtin set
         if (specimen.__emulates__ is not None and
             issubclass(specimen.__emulates__, set_types)):
-            return Set
+            return set
         else:
             return specimen.__emulates__
 
@@ -493,14 +442,14 @@ def duck_type_collection(specimen, default=None):
     if isa(specimen, list):
         return list
     elif isa(specimen, set_types):
-        return Set
+        return set
     elif isa(specimen, dict):
         return dict
 
     if hasattr(specimen, 'append'):
         return list
     elif hasattr(specimen, 'add'):
-        return Set
+        return set
     elif hasattr(specimen, 'set'):
         return dict
     else:
@@ -798,9 +747,9 @@ except ImportError:
             def __setattr__(self, key, value):
                 self._tdict[(thread.get_ident(), key)] = value
 
-class OrderedSet(Set):
+class OrderedSet(set):
     def __init__(self, d=None):
-        Set.__init__(self)
+        set.__init__(self)
         self._list = []
         if d is not None:
             self.update(d)
@@ -808,24 +757,24 @@ class OrderedSet(Set):
     def add(self, element):
         if element not in self:
             self._list.append(element)
-        Set.add(self, element)
+        set.add(self, element)
 
     def remove(self, element):
-        Set.remove(self, element)
+        set.remove(self, element)
         self._list.remove(element)
 
     def insert(self, pos, element):
         if element not in self:
             self._list.insert(pos, element)
-        Set.add(self, element)
+        set.add(self, element)
 
     def discard(self, element):
         if element in self:
             self._list.remove(element)
-            Set.remove(self, element)
+            set.remove(self, element)
 
     def clear(self):
-        Set.clear(self)
+        set.clear(self)
         self._list = []
 
     def __getitem__(self, key):
@@ -855,13 +804,13 @@ class OrderedSet(Set):
     __or__ = union
 
     def intersection(self, other):
-        other = Set(other)
+        other = set(other)
         return self.__class__(a for a in self if a in other)
 
     __and__ = intersection
 
     def symmetric_difference(self, other):
-        other = Set(other)
+        other = set(other)
         result = self.__class__(a for a in self if a not in other)
         result.update(a for a in other if a not in self)
         return result
@@ -869,21 +818,21 @@ class OrderedSet(Set):
     __xor__ = symmetric_difference
 
     def difference(self, other):
-        other = Set(other)
+        other = set(other)
         return self.__class__(a for a in self if a not in other)
 
     __sub__ = difference
 
     def intersection_update(self, other):
-        other = Set(other)
-        Set.intersection_update(self, other)
+        other = set(other)
+        set.intersection_update(self, other)
         self._list = [ a for a in self._list if a in other]
         return self
 
     __iand__ = intersection_update
 
     def symmetric_difference_update(self, other):
-        Set.symmetric_difference_update(self, other)
+        set.symmetric_difference_update(self, other)
         self._list =  [ a for a in self._list if a in self]
         self._list += [ a for a in other._list if a in self]
         return self
@@ -891,20 +840,12 @@ class OrderedSet(Set):
     __ixor__ = symmetric_difference_update
 
     def difference_update(self, other):
-        Set.difference_update(self, other)
+        set.difference_update(self, other)
         self._list = [ a for a in self._list if a in self]
         return self
 
     __isub__ = difference_update
 
-    if hasattr(Set, '__getstate__'):
-        def __getstate__(self):
-            base = Set.__getstate__(self)
-            return base, self._list
-
-        def __setstate__(self, state):
-            Set.__setstate__(self, state[0])
-            self._list = state[1]
 
 class IdentitySet(object):
     """A set that considers only object id() for uniqueness.
@@ -913,7 +854,7 @@ class IdentitySet(object):
     two 'foo' strings in one of these sets, for example.  Use sparingly.
     """
 
-    _working_set = Set
+    _working_set = set
 
     def __init__(self, iterable=None):
         self._members = _IterableUpdatableDict()
@@ -1211,7 +1152,7 @@ class WeakCompositeKey(object):
     until any one of its members is garbage collected.
 
     """
-    keys = Set()
+    keys = set()
 
     def __init__(self, *args):
         self.args = [self.__ref(arg) for arg in args]
@@ -1312,17 +1253,17 @@ def as_interface(obj, cls=None, methods=None, required=None):
     if isinstance(cls, type) and isinstance(obj, cls):
         return obj
 
-    interface = Set(methods or [m for m in dir(cls) if not m.startswith('_')])
-    implemented = Set(dir(obj))
+    interface = set(methods or [m for m in dir(cls) if not m.startswith('_')])
+    implemented = set(dir(obj))
 
     complies = operator.ge
     if isinstance(required, type):
         required = interface
     elif not required:
-        required = Set()
+        required = set()
         complies = operator.gt
     else:
-        required = Set(required)
+        required = set(required)
 
     if complies(implemented.intersection(interface), required):
         return obj
@@ -1338,7 +1279,7 @@ def as_interface(obj, cls=None, methods=None, required=None):
 
     if cls:
         AnonymousInterface.__name__ = 'Anonymous' + cls.__name__
-    found = Set()
+    found = set()
 
     for method, impl in dictlike_iteritems(obj):
         if method not in interface:

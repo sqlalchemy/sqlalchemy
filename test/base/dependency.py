@@ -1,6 +1,5 @@
 import testenv; testenv.configure_for_tests()
 import sqlalchemy.topological as topological
-from sqlalchemy import util
 from testlib import TestBase
 
 
@@ -26,7 +25,7 @@ class DependencySortTest(TestBase):
 
         if collection is None:
             collection = []
-        items = util.Set()
+        items = set()
         def assert_unique(node):
             for item in [i for i in node[1] or [node[0]]]:
                 assert item not in items

@@ -278,12 +278,12 @@ class SessionTransaction(object):
     def _restore_snapshot(self):
         assert self._is_transaction_boundary
 
-        for s in util.Set(self._deleted).union(self.session._deleted):
+        for s in set(self._deleted).union(self.session._deleted):
             self.session._update_impl(s)
 
         assert not self.session._deleted
 
-        for s in util.Set(self._new).union(self.session._new):
+        for s in set(self._new).union(self.session._new):
             self.session._expunge_state(s)
 
         for s in self.session.identity_map.all_states():
@@ -351,7 +351,7 @@ class SessionTransaction(object):
 
         if self._parent is None and self.session.twophase:
             try:
-                for t in util.Set(self._connections.values()):
+                for t in set(self._connections.values()):
                     t[1].prepare()
             except:
                 self.rollback()
@@ -366,7 +366,7 @@ class SessionTransaction(object):
             self._prepare_impl()
 
         if self._parent is None or self.nested:
-            for t in util.Set(self._connections.values()):
+            for t in set(self._connections.values()):
                 t[1].commit()
 
             if self.session.extension is not None:
@@ -398,7 +398,7 @@ class SessionTransaction(object):
         return self._parent
 
     def _rollback_impl(self):
-        for t in util.Set(self._connections.values()):
+        for t in set(self._connections.values()):
             t[1].rollback()
 
         self._restore_snapshot()
@@ -412,7 +412,7 @@ class SessionTransaction(object):
     def close(self):
         self.session.transaction = self._parent
         if self._parent is None:
-            for connection, transaction, autoclose in util.Set(self._connections.values()):
+            for connection, transaction, autoclose in set(self._connections.values()):
                 if autoclose:
                     connection.close()
                 else:
@@ -1339,10 +1339,10 @@ class Session(object):
             self.identity_map.modified = False
             return
 
-        deleted = util.Set(self._deleted)
-        new = util.Set(self._new)
+        deleted = set(self._deleted)
+        new = set(self._new)
 
-        dirty = util.Set(dirty).difference(deleted)
+        dirty = set(dirty).difference(deleted)
 
         flush_context = UOWTransaction(self)
 
@@ -1352,7 +1352,7 @@ class Session(object):
         # create the set of all objects we want to operate upon
         if objects:
             # specific list passed in
-            objset = util.Set()
+            objset = set()
             for o in objects:
                 try:
                     state = attributes.instance_state(o)
@@ -1361,10 +1361,10 @@ class Session(object):
                 objset.add(state)
         else:
             # or just everything
-            objset = util.Set(self.identity_map.all_states()).union(new)
+            objset = set(self.identity_map.all_states()).union(new)
 
         # store objects whose fate has been decided
-        processed = util.Set()
+        processed = set()
 
         # put all saves/updates into the flush context.  detect top-level
         # orphans and throw them into deleted.

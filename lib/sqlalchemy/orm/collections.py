@@ -105,7 +105,7 @@ import weakref
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import schema
 import sqlalchemy.util as sautil
-from sqlalchemy.util import attrgetter, Set
+from sqlalchemy.util import attrgetter
 
 
 __all__ = ['collection', 'collection_adapter',
@@ -1127,10 +1127,7 @@ def _dict_decorators():
     return l
 
 
-try:
-    _set_binop_bases = (set, frozenset, sets.BaseSet)
-except NameError:
-    _set_binop_bases = (sets.BaseSet,)
+_set_binop_bases = (set, frozenset, sets.BaseSet)
 
 def _set_binops_check_strict(self, obj):
     """Allow only set, frozenset and self.__class__-derived objects in binops."""
@@ -1139,7 +1136,7 @@ def _set_binops_check_strict(self, obj):
 def _set_binops_check_loose(self, obj):
     """Allow anything set-like to participate in set binops."""
     return (isinstance(obj, _set_binop_bases + (self.__class__,)) or
-            sautil.duck_type_collection(obj) == sautil.Set)
+            sautil.duck_type_collection(obj) == set)
 
 
 def _set_decorators():
@@ -1147,7 +1144,7 @@ def _set_decorators():
 
     def _tidy(fn):
         setattr(fn, '_sa_instrumented', True)
-        fn.__doc__ = getattr(getattr(Set, fn.__name__), '__doc__')
+        fn.__doc__ = getattr(getattr(set, fn.__name__), '__doc__')
 
     Unspecified = sautil.symbol('Unspecified')
 
@@ -1240,7 +1237,7 @@ def _set_decorators():
 
     def intersection_update(fn):
         def intersection_update(self, other):
-            want, have = self.intersection(other), Set(self)
+            want, have = self.intersection(other), set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1254,7 +1251,7 @@ def _set_decorators():
         def __iand__(self, other):
             if not _set_binops_check_strict(self, other):
                 return NotImplemented
-            want, have = self.intersection(other), Set(self)
+            want, have = self.intersection(other), set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1267,7 +1264,7 @@ def _set_decorators():
 
     def symmetric_difference_update(fn):
         def symmetric_difference_update(self, other):
-            want, have = self.symmetric_difference(other), Set(self)
+            want, have = self.symmetric_difference(other), set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1281,7 +1278,7 @@ def _set_decorators():
         def __ixor__(self, other):
             if not _set_binops_check_strict(self, other):
                 return NotImplemented
-            want, have = self.symmetric_difference(other), Set(self)
+            want, have = self.symmetric_difference(other), set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1306,8 +1303,8 @@ class InstrumentedList(list):
        'remover': 'remove',
        'iterator': '__iter__', }
 
-class InstrumentedSet(Set):
-    """An instrumented version of the built-in set (or Set)."""
+class InstrumentedSet(set):
+    """An instrumented version of the built-in set."""
 
     __instrumentation__ = {
        'appender': 'add',
@@ -1322,7 +1319,7 @@ class InstrumentedDict(dict):
 
 __canned_instrumentation = {
     list: InstrumentedList,
-    Set: InstrumentedSet,
+    set: InstrumentedSet,
     dict: InstrumentedDict,
     }
 
@@ -1331,7 +1328,7 @@ __interfaces = {
             'remover':  'remove',
             'iterator': '__iter__',
             '_decorators': _list_decorators(), },
-    Set: { 'appender': 'add',
+    set: { 'appender': 'add',
            'remover': 'remove',
            'iterator': '__iter__',
            '_decorators': _set_decorators(), },

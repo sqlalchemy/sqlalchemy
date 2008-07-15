@@ -1,17 +1,17 @@
+import operator
 from sqlalchemy.sql import operators, functions
 from sqlalchemy.sql import expression as sql
-from sqlalchemy.util import Set
-import operator
+
 
 class UnevaluatableError(Exception):
     pass
 
-_straight_ops = Set(getattr(operators, op)
+_straight_ops = set(getattr(operators, op)
                     for op in ('add', 'mul', 'sub', 'div', 'mod', 'truediv',
                                'lt', 'le', 'ne', 'gt', 'ge', 'eq'))
 
 
-_notimplemented_ops = Set(getattr(operators, op)
+_notimplemented_ops = set(getattr(operators, op)
                           for op in ('like_op', 'notlike_op', 'ilike_op',
                                      'notilike_op', 'between_op', 'in_op',
                                      'notin_op', 'endswith_op', 'concat_op'))

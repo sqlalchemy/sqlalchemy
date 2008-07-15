@@ -1,7 +1,7 @@
 """Profiling support for unit and performance tests."""
 
 import os, sys
-from testlib.compat import set, _function_named
+from testlib.compat import _function_named
 import testlib.config
 
 __all__ = 'profiled', 'function_call_count', 'conditional_call_count'

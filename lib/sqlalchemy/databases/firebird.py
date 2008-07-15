@@ -747,7 +747,7 @@ class FBDefaultRunner(base.DefaultRunner):
             self.dialect.identifier_preparer.format_sequence(seq))
 
 
-RESERVED_WORDS = util.Set(
+RESERVED_WORDS = set(
     ["action", "active", "add", "admin", "after", "all", "alter", "and", "any",
      "as", "asc", "ascending", "at", "auto", "autoddl", "avg", "based", "basename",
      "base_name", "before", "begin", "between", "bigint", "blob", "blobedit", "buffer",

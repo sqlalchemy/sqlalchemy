@@ -47,7 +47,7 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy.util import Decimal as _python_Decimal
 
 
-MSSQL_RESERVED_WORDS = util.Set(['function'])
+MSSQL_RESERVED_WORDS = set(['function'])
 
 class MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect):

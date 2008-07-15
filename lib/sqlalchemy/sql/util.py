@@ -64,7 +64,7 @@ def find_tables(clause, check_columns=False, include_aliases=False, include_join
 def find_columns(clause):
     """locate Column objects within the given expression."""
     
-    cols = util.Set()
+    cols = set()
     def visit_column(col):
         cols.add(col)
     visitors.traverse(clause, {}, {'column':visit_column})
@@ -82,7 +82,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False):
     
     """
     crit = []
-    constraints = util.Set()
+    constraints = set()
     for fk in b.foreign_keys:
         try:
             col = fk.get_referent(a)
@@ -212,7 +212,7 @@ def reduce_columns(columns, *clauses):
 
     columns = util.OrderedSet(columns)
 
-    omit = util.Set()
+    omit = set()
     for col in columns:
         for fk in col.foreign_keys:
             for c in columns:
@@ -225,7 +225,7 @@ def reduce_columns(columns, *clauses):
     if clauses:
         def visit_binary(binary):
             if binary.operator == operators.eq:
-                cols = util.Set(chain(*[c.proxy_set for c in columns.difference(omit)]))
+                cols = set(chain(*[c.proxy_set for c in columns.difference(omit)]))
                 if binary.left in cols and binary.right in cols:
                     for c in columns:
                         if c.shares_lineage(binary.right):
@@ -279,7 +279,7 @@ def folded_equivalents(join, equivs=None):
 
     """
     if equivs is None:
-        equivs = util.Set()
+        equivs = set()
     def visit_binary(binary):
         if binary.operator == operators.eq and binary.left.name == binary.right.name:
             equivs.add(binary.right)
@@ -294,7 +294,7 @@ def folded_equivalents(join, equivs=None):
         right = folded_equivalents(join.right, equivs)
     else:
         right = list(join.right.columns)
-    used = util.Set()
+    used = set()
     for c in left + right:
         if c in equivs:
             if c.name not in used:

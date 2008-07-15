@@ -7,7 +7,6 @@ from testlib import sa, testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import mapper, relation, create_session
 from testlib.testing import eq_
-from testlib.compat import sorted
 from orm import _base
 
 class NaturalPKTest(_base.MappedTest):

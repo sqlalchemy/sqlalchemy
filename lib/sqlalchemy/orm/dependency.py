@@ -279,7 +279,7 @@ class DetectKeySwitch(DependencyProcessor):
             self._process_key_switches(deplist, uowcommit)
 
     def _process_key_switches(self, deplist, uowcommit):
-        switchers = util.Set(s for s in deplist if self._pks_changed(uowcommit, s))
+        switchers = set(s for s in deplist if self._pks_changed(uowcommit, s))
         if switchers:
             # yes, we're doing a linear search right now through the UOW.  only
             # takes effect when primary key values have actually changed.

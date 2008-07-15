@@ -1,7 +1,6 @@
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import attributes
 from testlib.testing import ORMTest
-from testlib.compat import set
 
 
 __all__ = ['keywords', 'addresses', 'Base', 'Keyword', 'FixtureTest',

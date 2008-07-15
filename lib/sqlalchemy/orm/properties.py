@@ -638,7 +638,7 @@ class PropertyLoader(StrategizedProperty):
         else:
             self.secondary_synchronize_pairs = None
 
-        self._foreign_keys = util.Set(r for l, r in self.synchronize_pairs)
+        self._foreign_keys = set(r for l, r in self.synchronize_pairs)
         if self.secondary_synchronize_pairs:
             self._foreign_keys.update(r for l, r in self.secondary_synchronize_pairs)
 

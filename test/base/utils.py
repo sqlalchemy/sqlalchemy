@@ -3,7 +3,7 @@ import threading, unittest
 from sqlalchemy import util, sql, exc
 from testlib import TestBase
 from testlib.testing import eq_, is_, ne_
-from testlib.compat import frozenset, set, sorted
+
 
 class OrderedDictTest(TestBase):
     def test_odict(self):
@@ -351,16 +351,14 @@ class DuckTypeCollectionTest(TestBase):
 
         for type_ in (set,
                       sets.Set,
-                      util.Set,
                       SetLike,
                       ForcedSet):
-            eq_(util.duck_type_collection(type_), util.Set)
+            eq_(util.duck_type_collection(type_), set)
             instance = type_()
-            eq_(util.duck_type_collection(instance), util.Set)
+            eq_(util.duck_type_collection(instance), set)
 
         for type_ in (frozenset,
-                      sets.ImmutableSet,
-                      util.FrozenSet):
+                      sets.ImmutableSet):
             is_(util.duck_type_collection(type_), None)
             instance = type_()
             is_(util.duck_type_collection(instance), None)

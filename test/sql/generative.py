@@ -197,7 +197,7 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         assert c1 == str(clause)
         assert str(clause2) == c1 + " SOME MODIFIER=:lala"
         assert clause.bindparams.keys() == ['bar']
-        assert util.Set(clause2.bindparams.keys()) == util.Set(['bar', 'lala'])
+        assert set(clause2.bindparams.keys()) == set(['bar', 'lala'])
 
     def test_select(self):
         s2 = select([t1])

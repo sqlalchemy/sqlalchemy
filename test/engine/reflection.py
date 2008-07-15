@@ -3,7 +3,6 @@ import StringIO, unicodedata
 import sqlalchemy as sa
 from testlib.sa import MetaData, Table, Column
 from testlib import TestBase, ComparesTables, testing, engines, sa as tsa
-from testlib.compat import set
 
 
 metadata, users = None, None
@@ -588,12 +587,11 @@ class CreateDropTest(TestBase):
         self.assertEqual( testing.db.has_table('items'), False )
 
     def test_tablenames(self):
-        from sqlalchemy.util import Set
         metadata.create_all(bind=testing.db)
         # we only check to see if all the explicitly created tables are there, rather than
         # assertEqual -- the test db could have "extra" tables if there is a misconfigured
         # template.  (*cough* tsearch2 w/ the pg windows installer.)
-        self.assert_(not Set(metadata.tables) - Set(testing.db.table_names()))
+        self.assert_(not set(metadata.tables) - set(testing.db.table_names()))
         metadata.drop_all(bind=testing.db)
 
 class SchemaManipulationTest(TestBase):

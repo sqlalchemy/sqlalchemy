@@ -4,7 +4,6 @@ from sqlalchemy import Sequence, Column, func
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Integer, String, ForeignKey
 from testlib.testing import eq_
-from testlib.compat import set
 from sql import _base
 
 

@@ -185,7 +185,7 @@ class Mapper(object):
         self.exclude_properties = exclude_properties
 
         # a set of all mappers which inherit from this one.
-        self._inheriting_mappers = util.Set()
+        self._inheriting_mappers = set()
 
         self.compiled = False
 
@@ -258,7 +258,7 @@ class Mapper(object):
             mappers = []
 
         if selectable:
-            tables = util.Set(sqlutil.find_tables(selectable, include_aliases=True))
+            tables = set(sqlutil.find_tables(selectable, include_aliases=True))
             mappers = [m for m in mappers if m.local_table in tables]
 
         return mappers
@@ -487,7 +487,7 @@ class Mapper(object):
                         # TODO: this exception not covered
                         raise sa_exc.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
         else:
-            self._all_tables = util.Set()
+            self._all_tables = set()
             self.base_mapper = self
             self.mapped_table = self.local_table
             if self.polymorphic_identity:
@@ -509,11 +509,11 @@ class Mapper(object):
         self._pks_by_table = {}
         self._cols_by_table = {}
 
-        all_cols = util.Set(chain(*[col.proxy_set for col in self._columntoproperty]))
-        pk_cols = util.Set(c for c in all_cols if c.primary_key)
+        all_cols = set(chain(*[col.proxy_set for col in self._columntoproperty]))
+        pk_cols = set(c for c in all_cols if c.primary_key)
 
         # identify primary key columns which are also mapped by this mapper.
-        for t in util.Set(self.tables + [self.mapped_table]):
+        for t in set(self.tables + [self.mapped_table]):
             self._all_tables.add(t)
             if t.primary_key and pk_cols.issuperset(t.primary_key):
                 # ordering is important since it determines the ordering of mapper.primary_key (and therefore query.get())
@@ -522,7 +522,7 @@ class Mapper(object):
 
         # determine cols that aren't expressed within our tables; mark these
         # as "read only" properties which are refreshed upon INSERT/UPDATE
-        self._readonly_props = util.Set(
+        self._readonly_props = set(
             self._columntoproperty[col]
             for col in self._columntoproperty
             if not hasattr(col, 'table') or col.table not in self._cols_by_table)
@@ -593,11 +593,11 @@ class Mapper(object):
                 if binary.left in result:
                     result[binary.left].add(binary.right)
                 else:
-                    result[binary.left] = util.Set([binary.right])
+                    result[binary.left] = set((binary.right,))
                 if binary.right in result:
                     result[binary.right].add(binary.left)
                 else:
-                    result[binary.right] = util.Set([binary.left])
+                    result[binary.right] = set((binary.left,))
         for mapper in self.base_mapper.polymorphic_iterator():
             if mapper.inherit_condition:
                 visitors.traverse(mapper.inherit_condition, {}, {'binary':visit_binary})
@@ -920,7 +920,7 @@ class Mapper(object):
         if adapter:
             pk_cols = [adapter.columns[c] for c in pk_cols]
 
-        return (self._identity_class, tuple([row[column] for column in pk_cols]), self.entity_name)
+        return (self._identity_class, tuple(row[column] for column in pk_cols), self.entity_name)
 
     def identity_key_from_primary_key(self, primary_key):
         """Return an identity-map key for use in storing/retrieving an
@@ -1034,8 +1034,8 @@ class Mapper(object):
                     self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, state_str(state), state_str(existing)))
                 uowtransaction.set_row_switch(existing)
 
-        inserted_objects = util.Set()
-        updated_objects = util.Set()
+        inserted_objects = set()
+        updated_objects = set()
 
         table_to_mapper = {}
         for mapper in self.base_mapper.polymorphic_iterator():
@@ -1186,9 +1186,9 @@ class Mapper(object):
             for state, mapper, connection, has_identity in tups:
                 
                 # expire readonly attributes
-                readonly = state.unmodified.intersection([
+                readonly = state.unmodified.intersection(
                     p.key for p in mapper._readonly_props
-                ])
+                )
                 
                 if readonly:
                     _expire_state(state, readonly)
@@ -1370,7 +1370,7 @@ class Mapper(object):
 
         identity_class, entity_name = self._identity_class, self.entity_name
         def identity_key(row):
-            return (identity_class, tuple([row[column] for column in pk_cols]), entity_name)
+            return (identity_class, tuple(row[column] for column in pk_cols), entity_name)
 
         new_populators = []
         existing_populators = []
@@ -1544,7 +1544,7 @@ class Mapper(object):
 
     def _optimized_get_statement(self, state, attribute_names):
         props = self.__props
-        tables = util.Set([props[key].parent.local_table for key in attribute_names])
+        tables = set(props[key].parent.local_table for key in attribute_names)
         if self.base_mapper.local_table in tables:
             return None
 

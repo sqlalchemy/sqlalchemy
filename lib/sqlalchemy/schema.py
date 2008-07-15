@@ -205,8 +205,8 @@ class Table(SchemaItem, expression.TableClause):
         super(Table, self).__init__(name)
         self.metadata = metadata
         self.schema = kwargs.pop('schema', kwargs.pop('owner', None))
-        self.indexes = util.Set()
-        self.constraints = util.Set()
+        self.indexes = set()
+        self.constraints = set()
         self._columns = expression.ColumnCollection()
         self.primary_key = PrimaryKeyConstraint()
         self._foreign_keys = util.OrderedSet()
@@ -277,7 +277,7 @@ class Table(SchemaItem, expression.TableClause):
         True if any of them would be disallowed if sent to an existing
         Table singleton.
         """
-        return bool(args) or bool(util.Set(kwargs).difference(
+        return bool(args) or bool(set(kwargs).difference(
             ['autoload', 'autoload_with', 'schema', 'owner']))
 
     def __extra_kwargs(self, **kwargs):
@@ -569,7 +569,7 @@ class Column(SchemaItem, expression._ColumnClause):
         self.quote = kwargs.pop('quote', None)
         self.onupdate = kwargs.pop('onupdate', None)
         self.autoincrement = kwargs.pop('autoincrement', True)
-        self.constraints = util.Set()
+        self.constraints = set()
         self.foreign_keys = util.OrderedSet()
         util.set_creation_order(self)
 
@@ -1541,7 +1541,7 @@ class MetaData(SchemaItem):
         if tables is None:
             tables = self.tables.values()
         else:
-            tables = util.Set(tables).intersection(self.tables.values())
+            tables = set(tables).intersection(self.tables.values())
         return iter(sort_tables(tables, reverse=reverse))
 
     def reflect(self, bind=None, schema=None, only=None):
@@ -1588,7 +1588,7 @@ class MetaData(SchemaItem):
 
         available = util.OrderedSet(bind.engine.table_names(schema,
                                                             connection=conn))
-        current = util.Set(self.tables.keys())
+        current = set(self.tables.keys())
 
         if only is None:
             load = [name for name in available if name not in current]

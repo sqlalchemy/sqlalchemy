@@ -1,6 +1,5 @@
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import attributes
-from testlib.compat import set
 from testlib.testing import fixture
 from orm import _base
 

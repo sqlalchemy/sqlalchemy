@@ -72,7 +72,7 @@ class Query(object):
         self._params = {}
         self._yield_per = None
         self._criterion = None
-        self._correlate = util.Set()
+        self._correlate = set()
         self._joinpoint = None
         self._with_labels = False
         self.__joinable_tables = None
@@ -89,7 +89,7 @@ class Query(object):
         self._polymorphic_adapters = {}
         self._filter_aliases = None
         self._from_obj_alias = None
-        self.__currenttables = util.Set()
+        self.__currenttables = set()
 
         for ent in util.to_list(entities):
             _QueryEntity(self, ent, entity_name=entity_name)
@@ -304,7 +304,7 @@ class Query(object):
         if refresh_state:
             self._refresh_state = refresh_state
         if only_load_props:
-            self._only_load_props = util.Set(only_load_props)
+            self._only_load_props = set(only_load_props)
         return self
 
     def _clone(self):
@@ -757,7 +757,7 @@ class Query(object):
     outerjoin = util.array_as_starargs_decorator(outerjoin)
 
     def __join(self, keys, outerjoin, create_aliases, from_joinpoint):
-        self.__currenttables = util.Set(self.__currenttables)
+        self.__currenttables = set(self.__currenttables)
         self._polymorphic_adapters = self._polymorphic_adapters.copy()
 
         if not from_joinpoint:
@@ -1085,7 +1085,7 @@ class Query(object):
             rowtuple.keys = labels.keys
         
         while True:
-            context.progress = util.Set()
+            context.progress = set()
             context.partials = {}
 
             if self._yield_per:
@@ -1316,7 +1316,7 @@ class Query(object):
                     state.commit(list(to_evaluate))
                     
                     # expire attributes with pending changes (there was no autoflush, so they are overwritten)
-                    state.expire_attributes(util.Set(evaluated_keys).difference(to_evaluate))
+                    state.expire_attributes(set(evaluated_keys).difference(to_evaluate))
                     
         elif synchronize_session == 'expire':
             target_mapper = self._mapper_zero()
@@ -1629,7 +1629,7 @@ class _ColumnEntity(_QueryEntity):
 
         self.column = column
         self.entity_name = None
-        self.froms = util.Set()
+        self.froms = set()
         self.entities = util.OrderedSet(
             elem._annotations['parententity']
             for elem in visitors.iterate(column, {})

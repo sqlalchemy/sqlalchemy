@@ -1,6 +1,5 @@
 import inspect, re
 from testlib import config, testing
-from testlib.compat import sorted
 
 sa = None
 orm = None

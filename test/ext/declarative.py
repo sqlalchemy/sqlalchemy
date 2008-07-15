@@ -5,7 +5,6 @@ from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint
 from testlib.sa.orm import relation, create_session
 from testlib.testing import eq_
-from testlib.compat import set
 from orm._base import ComparableEntity
 
 

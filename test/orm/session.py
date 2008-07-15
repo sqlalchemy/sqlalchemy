@@ -7,7 +7,6 @@ from testlib import engines, sa, testing, config
 from testlib.sa import Table, Column, Integer, String
 from testlib.sa.orm import mapper, relation, backref
 from testlib.testing import eq_
-from testlib.compat import set
 from engine import _base as engine_base
 from orm import _base, _fixtures
 

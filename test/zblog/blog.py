@@ -1,7 +1,7 @@
-__all__ = ['Blog', 'Post', 'Topic', 'TopicAssociation', 'Comment']
-
 import datetime
-from testlib.compat import *
+
+
+__all__ = ['Blog', 'Post', 'Topic', 'TopicAssociation', 'Comment']
 
 class Blog(object):
     def __init__(self, owner=None):

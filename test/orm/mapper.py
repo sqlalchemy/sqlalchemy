@@ -6,7 +6,6 @@ from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import mapper, relation, backref, create_session
 from testlib.sa.orm import defer, deferred, synonym, attributes
 from testlib.testing import eq_
-from testlib.compat import set
 import pickleable
 from orm import _base, _fixtures
 

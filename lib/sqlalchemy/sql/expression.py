@@ -867,7 +867,7 @@ def _cloned_intersection(a, b):
     The returned set is in terms of the enties present within 'a'.
     
     """
-    all_overlap = util.Set(_expand_cloned(a)).intersection(_expand_cloned(b))
+    all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
     return a.intersection(
         [
             elem for elem in a if all_overlap.intersection(elem._cloned_set)
@@ -1501,14 +1501,14 @@ class ColumnElement(ClauseElement, _CompareMixin):
     
     def base_columns(self):
         if not hasattr(self, '_base_columns'):
-            self._base_columns = util.Set(c for c in self.proxy_set
-                                          if not hasattr(c, 'proxies'))
+            self._base_columns = set(c for c in self.proxy_set
+                                     if not hasattr(c, 'proxies'))
         return self._base_columns
     base_columns = property(base_columns)
 
     def proxy_set(self):
         if not hasattr(self, '_proxy_set'):
-            s = util.Set([self])
+            s = set([self])
             if hasattr(self, 'proxies'):
                 for c in self.proxies:
                     s.update(c.proxy_set)
@@ -1637,7 +1637,7 @@ class ColumnCollection(util.OrderedProperties):
         # have to use a Set here, because it will compare the identity
         # of the column, not just using "==" for comparison which will always return a
         # "True" value (i.e. a BinaryClause...)
-        return col in util.Set(self)
+        return col in set(self)
 
 class ColumnSet(util.OrderedSet):
     def contains_column(self, col):
@@ -1712,7 +1712,7 @@ class FromClause(Selectable):
 
         An example would be an Alias of a Table is derived from that Table.
         """
-        return fromclause in util.Set(self._cloned_set)
+        return fromclause in set(self._cloned_set)
 
     def replace_selectable(self, old, alias):
         """replace all occurences of FromClause 'old' with the given Alias object, returning a copy of this ``FromClause``."""
@@ -1805,7 +1805,7 @@ class FromClause(Selectable):
             return
         self._columns = ColumnCollection()
         self._primary_key = ColumnSet()
-        self._foreign_keys = util.Set()
+        self._foreign_keys = set()
         self._oid_column = None
         self._populate_column_collection()
 
@@ -2422,7 +2422,7 @@ class Alias(FromClause):
     description = property(description)
 
     def is_derived_from(self, fromclause):
-        if fromclause in util.Set(self._cloned_set):
+        if fromclause in set(self._cloned_set):
             return True
         return self.element.is_derived_from(fromclause)
 
@@ -2681,7 +2681,7 @@ class TableClause(_Immutable, FromClause):
         self._oid_column = _ColumnClause('oid', self, _is_oid=True)
         self._columns = ColumnCollection()
         self._primary_key = ColumnSet()
-        self._foreign_keys = util.Set()
+        self._foreign_keys = set()
         for c in columns:
             self.append_column(c)
         
@@ -2963,7 +2963,7 @@ class Select(_SelectBaseMixin, FromClause):
         self._should_correlate = correlate
         self._distinct = distinct
 
-        self._correlate = util.Set()
+        self._correlate = set()
         self._froms = util.OrderedSet()
 
         if columns:
@@ -3059,7 +3059,7 @@ class Select(_SelectBaseMixin, FromClause):
     inner_columns = property(inner_columns)
 
     def is_derived_from(self, fromclause):
-        if self in util.Set(fromclause._cloned_set):
+        if self in set(fromclause._cloned_set):
             return True
         
         for f in self.locate_all_froms():
@@ -3071,8 +3071,8 @@ class Select(_SelectBaseMixin, FromClause):
         self._reset_exported()
         from_cloned = dict((f, clone(f))
                            for f in self._froms.union(self._correlate))
-        self._froms = util.Set(from_cloned[f] for f in self._froms)
-        self._correlate = util.Set(from_cloned[f] for f in self._correlate)
+        self._froms = set(from_cloned[f] for f in self._froms)
+        self._correlate = set(from_cloned[f] for f in self._correlate)
         self._raw_columns = [clone(c) for c in self._raw_columns]
         for attr in ('_whereclause', '_having', '_order_by_clause', '_group_by_clause'):
             if getattr(self, attr) is not None:
@@ -3168,7 +3168,7 @@ class Select(_SelectBaseMixin, FromClause):
         s = self._generate()
         s._should_correlate = False
         if fromclauses == (None,):
-            s._correlate = util.Set()
+            s._correlate = set()
         else:
             s._correlate = s._correlate.union(fromclauses)
         return s

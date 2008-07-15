@@ -12,7 +12,7 @@ import warnings
 from cStringIO import StringIO
 
 import testlib.config as config
-from testlib.compat import set, _function_named, reversed
+from testlib.compat import _function_named
 
 # Delayed imports
 MetaData = None

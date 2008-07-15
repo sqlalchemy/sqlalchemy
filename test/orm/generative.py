@@ -3,7 +3,6 @@ from testlib import testing, sa
 from testlib.sa import Table, Column, Integer, String, ForeignKey, MetaData, func
 from sqlalchemy.orm import mapper, relation, create_session
 from testlib.testing import eq_
-from testlib.compat import set
 from orm import _base, _fixtures
 
 

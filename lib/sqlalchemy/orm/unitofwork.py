@@ -106,7 +106,7 @@ class UOWTransaction(object):
         
         # stores tuples of mapper/dependent mapper pairs,
         # representing a partial ordering fed into topological sort
-        self.dependencies = util.Set()
+        self.dependencies = set()
         
         # dictionary of mappers to UOWTasks
         self.tasks = {}
@@ -344,8 +344,8 @@ class UOWTask(object):
         self._objects = {} 
 
         self.dependent_tasks = []
-        self.dependencies = util.Set()
-        self.cyclical_dependencies = util.Set()
+        self.dependencies = set()
+        self.cyclical_dependencies = set()
 
     def polymorphic_tasks(self):
         """return an iterator of UOWTask objects corresponding to the inheritance sequence
@@ -403,7 +403,7 @@ class UOWTask(object):
         # postupdates are UPDATED immeditely (for now)
         # convert post_update_cols list to a Set so that __hash__() is used to compare columns
         # instead of __eq__()
-        self.mapper._save_obj([state], self.uowtransaction, postupdate=True, post_update_cols=util.Set(post_update_cols))
+        self.mapper._save_obj([state], self.uowtransaction, postupdate=True, post_update_cols=set(post_update_cols))
 
     def __contains__(self, state):
         """return True if the given object is contained within this UOWTask or inheriting tasks."""
@@ -483,7 +483,7 @@ class UOWTask(object):
             allobjects += [e.state for e in task.polymorphic_elements]
         tuples = []
 
-        cycles = util.Set(cycles)
+        cycles = set(cycles)
 
         extradeplist = []
         dependencies = {}
@@ -572,7 +572,7 @@ class UOWTask(object):
 
         head = topological.sort_as_tree(tuples, allobjects)
         
-        used_tasks = util.Set()
+        used_tasks = set()
         def make_task_tree(node, parenttask, nexttasks):
             (state, cycles, children) = node
             originating_task = object_to_original_task[state]
