@@ -1,4 +1,4 @@
-from sqlalchemy import util
+from collections import deque
 
 class ClauseVisitor(object):
     __traverse_options__ = {}
@@ -86,7 +86,7 @@ def iterate(obj, opts):
     traversal is configured to be breadth-first.
     
     """
-    stack = util.deque([obj])
+    stack = deque([obj])
     while stack:
         t = stack.popleft()
         yield t
@@ -99,8 +99,8 @@ def iterate_depthfirst(obj, opts):
     traversal is configured to be depth-first.
     
     """
-    stack = util.deque([obj])
-    traversal = util.deque()
+    stack = deque([obj])
+    traversal = deque()
     while stack:
         t = stack.pop()
         traversal.appendleft(t)

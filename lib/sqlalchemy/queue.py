@@ -7,16 +7,9 @@ rare cases be invoked within the ``get()`` method of the Queue itself,
 producing a ``put()`` inside the ``get()`` and therefore a reentrant
 condition."""
 
+from collections import deque
 from time import time as _time
 
-try:
-    # py2.4 deque class
-    from collections import deque
-except:
-    # roll our own...
-    class deque(list):
-        def popleft(self):
-            return self.pop(0)
 
 __all__ = ['Empty', 'Full', 'Queue']
 

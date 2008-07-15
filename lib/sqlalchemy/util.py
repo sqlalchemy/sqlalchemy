@@ -103,22 +103,6 @@ except ImportError:
             return 'defaultdict(%s, %s)' % (self.default_factory,
                                             dict.__repr__(self))
 
-try:
-    from collections import deque
-except ImportError:
-    class deque(list):
-        def appendleft(self, x):
-            self.insert(0, x)
-
-        def extendleft(self, iterable):
-            self[0:0] = list(iterable)
-
-        def popleft(self):
-            return self.pop(0)
-
-        def rotate(self, n):
-            for i in xrange(n):
-                self.appendleft(self.pop())
 
 def to_list(x, default=None):
     if x is None:
