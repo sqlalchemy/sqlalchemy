@@ -75,27 +75,26 @@ from sqlalchemy import util
 
 
 __all__ = (
-    'engine_descriptors', 'create_engine', 'engine_from_config',
-    'Dialect', 'ExecutionContext', 'Compiled', 'Connectable',
-    'Connection', 'Transaction', 'RootTransaction', 'NestedTransaction',
-    'TwoPhaseTransaction', 'Engine', 'RowProxy', 'BufferedColumnRow',
-    'ResultProxy', 'BufferedRowResultProxy', 'BufferedColumnResultProxy',
-    'SchemaIterator', 'DefaultRunner',
+    'BufferedColumnResultProxy',
+    'BufferedColumnRow',
+    'BufferedRowResultProxy',
+    'Compiled',
+    'Connectable',
+    'Connection',
+    'DefaultRunner',
+    'Dialect',
+    'Engine',
+    'ExecutionContext',
+    'NestedTransaction',
+    'ResultProxy',
+    'RootTransaction',
+    'RowProxy',
+    'SchemaIterator',
+    'Transaction',
+    'TwoPhaseTransaction',
+    'create_engine',
+    'engine_from_config',
     )
-
-def engine_descriptors():
-    """Provide a listing of all the database implementations supported.
-
-    This method will be removed in 0.5.
-
-    """
-    result = []
-    for module in sqlalchemy.databases.__all__:
-        module = getattr(
-            __import__('sqlalchemy.databases.%s' % module).databases, module)
-        result.append(module.descriptor())
-    return result
-engine_descriptors = util.deprecated()(engine_descriptors)
 
 
 default_strategy = 'plain'
