@@ -638,7 +638,8 @@ class MSSQLDialect(default.DefaultDialect):
 
         # Primary key constraints
         s = sql.select([C.c.column_name, TC.c.constraint_type], sql.and_(TC.c.constraint_name == C.c.constraint_name,
-                                                                         C.c.table_name == table.name))
+                                                                         C.c.table_name == table.name,
+                                                                         C.c.table_schema == table.schema))
         c = connection.execute(s)
         for row in c:
             if 'PRIMARY' in row[TC.c.constraint_type.name]:
