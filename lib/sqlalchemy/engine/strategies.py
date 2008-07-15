@@ -115,7 +115,7 @@ class DefaultEngineStrategy(EngineStrategy):
                 "Invalid argument(s) %s sent to create_engine(), "
                 "using configuration %s/%s/%s.  Please check that the "
                 "keyword arguments are appropriate for this combination "
-                "of components." % (','.join(["'%s'" % k for k in kwargs]),
+                "of components." % (','.join("'%s'" % k for k in kwargs),
                                     dialect.__class__.__name__,
                                     pool.__class__.__name__,
                                     engineclass.__name__))

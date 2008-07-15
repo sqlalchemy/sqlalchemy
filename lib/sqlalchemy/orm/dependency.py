@@ -279,7 +279,7 @@ class DetectKeySwitch(DependencyProcessor):
             self._process_key_switches(deplist, uowcommit)
 
     def _process_key_switches(self, deplist, uowcommit):
-        switchers = util.Set([s for s in deplist if self._pks_changed(uowcommit, s)])
+        switchers = util.Set(s for s in deplist if self._pks_changed(uowcommit, s))
         if switchers:
             # yes, we're doing a linear search right now through the UOW.  only
             # takes effect when primary key values have actually changed.
@@ -502,7 +502,7 @@ class MapperStub(object):
         self._inheriting_mappers = []
 
     def polymorphic_iterator(self):
-        return iter([self])
+        return iter((self,))
 
     def _register_dependencies(self, uowcommit):
         pass

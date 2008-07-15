@@ -445,7 +445,7 @@ class Query(object):
     query_from_parent = classmethod(util.deprecated(None, False)(query_from_parent))
 
     def correlate(self, *args):
-        self._correlate = self._correlate.union([_orm_selectable(s) for s in args])
+        self._correlate = self._correlate.union(_orm_selectable(s) for s in args)
     correlate = _generative()(correlate)
 
     def autoflush(self, setting):
@@ -1078,7 +1078,9 @@ class Query(object):
         (process, labels) = zip(*[query_entity.row_processor(self, context, custom_rows) for query_entity in self._entities])
 
         if not single_entity:
-            labels = dict([(label, property(util.itemgetter(i))) for i, label in enumerate(labels) if label])
+            labels = dict((label, property(util.itemgetter(i)))
+                          for i, label in enumerate(labels)
+                          if label)
             rowtuple = type.__new__(type, "RowTuple", (tuple,), labels)
             rowtuple.keys = labels.keys
         
@@ -1100,7 +1102,8 @@ class Query(object):
             elif single_entity:
                 rows = [process[0](context, row) for row in fetch]
             else:
-                rows = [rowtuple([proc(context, row) for proc in process]) for row in fetch]
+                rows = [rowtuple(proc(context, row) for proc in process)
+                        for row in fetch]
 
             if filter:
                 rows = filter(rows)
@@ -1160,7 +1163,7 @@ class Query(object):
                 try:
                     params[_get_params[primary_key].key] = ident[i]
                 except IndexError:
-                    raise sa_exc.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join(["'%s'" % str(c) for c in q.mapper.primary_key]))
+                    raise sa_exc.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join("'%s'" % str(c) for c in q.mapper.primary_key))
             q._params = params
 
         if lockmode is not None:
@@ -1444,7 +1447,9 @@ class Query(object):
         """
         for entity, (mapper, adapter, s, i, w) in self._mapper_adapter_map.iteritems():
             if mapper.single and mapper.inherits and mapper.polymorphic_on and mapper.polymorphic_identity is not None:
-                crit = mapper.polymorphic_on.in_([m.polymorphic_identity for m in mapper.polymorphic_iterator()])
+                crit = mapper.polymorphic_on.in_(
+                    m.polymorphic_identity
+                    for m in mapper.polymorphic_iterator())
                 if adapter:
                     crit = adapter.traverse(crit)
                 crit = self._adapt_clause(crit, False, False)
@@ -1625,10 +1630,10 @@ class _ColumnEntity(_QueryEntity):
         self.column = column
         self.entity_name = None
         self.froms = util.Set()
-        self.entities = util.OrderedSet([
-            elem._annotations['parententity'] for elem in visitors.iterate(column, {}) 
-            if 'parententity' in elem._annotations
-        ])
+        self.entities = util.OrderedSet(
+            elem._annotations['parententity']
+            for elem in visitors.iterate(column, {})
+            if 'parententity' in elem._annotations)
         
         if self.entities:
             self.entity_zero = list(self.entities)[0]

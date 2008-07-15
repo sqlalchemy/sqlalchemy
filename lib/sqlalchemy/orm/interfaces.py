@@ -368,7 +368,7 @@ class MapperProperty(object):
         See PropertyLoader for the related instance implementation.
         """
 
-        return iter([])
+        return iter(())
 
     def set_parent(self, parent):
         self.parent = parent

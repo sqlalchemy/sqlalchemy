@@ -76,7 +76,7 @@ class _Node(object):
             str(self.item) + \
             (self.cycles is not None and (" (cycles: " + repr([x for x in self.cycles]) + ")") or "") + \
             "\n" + \
-            ''.join([str(n) for n in self.children])
+            ''.join(str(n) for n in self.children)
 
     def __repr__(self):
         return "%s" % (str(self.item))
@@ -150,7 +150,7 @@ class _EdgeCollection(object):
                     yield child
 
     def __len__(self):
-        return sum([len(x) for x in self.parent_to_children.values()])
+        return sum(len(x) for x in self.parent_to_children.values())
 
     def __iter__(self):
         for parent, children in self.parent_to_children.iteritems():
@@ -301,7 +301,7 @@ def _find_cycles(edges):
         traverse(parent)
 
     # sets are not hashable, so uniquify with id
-    unique_cycles = dict([(id(s), s) for s in cycles.values()]).values()
+    unique_cycles = dict((id(s), s) for s in cycles.values()).values()
     for cycle in unique_cycles:
         edgecollection = [edge for edge in edges
                           if edge[0] in cycle and edge[1] in cycle]

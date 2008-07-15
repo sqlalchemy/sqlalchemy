@@ -146,8 +146,8 @@ def column_mapped_collection(mapping_spec):
         def keyfunc(value):
             state = instance_state(value)
             m = _state_mapper(state)
-            return tuple([m._get_state_attr_by_column(state, c)
-                          for c in mapping_spec])
+            return tuple(m._get_state_attr_by_column(state, c)
+                         for c in mapping_spec)
     return lambda: MappedCollection(keyfunc)
 
 def attribute_mapped_collection(attr_name):

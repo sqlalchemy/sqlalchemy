@@ -1501,7 +1501,8 @@ class ColumnElement(ClauseElement, _CompareMixin):
     
     def base_columns(self):
         if not hasattr(self, '_base_columns'):
-            self._base_columns = util.Set([c for c in self.proxy_set if not hasattr(c, 'proxies')])
+            self._base_columns = util.Set(c for c in self.proxy_set
+                                          if not hasattr(c, 'proxies'))
         return self._base_columns
     base_columns = property(base_columns)
 
@@ -1964,7 +1965,8 @@ class _TextClause(ClauseElement):
     type = property(type)
 
     def _copy_internals(self, clone=_clone):
-        self.bindparams = dict([(b.key, clone(b)) for b in self.bindparams.values()])
+        self.bindparams = dict((b.key, clone(b))
+                               for b in self.bindparams.values())
 
     def get_children(self, **kwargs):
         return self.bindparams.values()
@@ -2317,8 +2319,9 @@ class Join(FromClause):
         global sql_util
         if not sql_util:
             from sqlalchemy.sql import util as sql_util
-        self._primary_key.extend(sql_util.reduce_columns([c for c in columns if c.primary_key], self.onclause))
-        self._columns.update([(col._label, col) for col in columns])
+        self._primary_key.extend(sql_util.reduce_columns(
+                (c for c in columns if c.primary_key), self.onclause))
+        self._columns.update((col._label, col) for col in columns)
         self._foreign_keys.update(itertools.chain(*[col.foreign_keys for col in columns]))    
         self._oid_column = self.left.oid_column
 
@@ -2981,10 +2984,9 @@ class Select(_SelectBaseMixin, FromClause):
             self._whereclause = None
 
         if from_obj:
-            self._froms.update([
+            self._froms.update(
                 _is_literal(f) and _TextClause(f) or f
-                for f in util.to_list(from_obj)
-            ])
+                for f in util.to_list(from_obj))
 
         if having:
             self._having = _literal_as_text(having)
@@ -3067,9 +3069,10 @@ class Select(_SelectBaseMixin, FromClause):
 
     def _copy_internals(self, clone=_clone):
         self._reset_exported()
-        from_cloned = dict([(f, clone(f)) for f in self._froms.union(self._correlate)])
-        self._froms = util.Set([from_cloned[f] for f in self._froms])
-        self._correlate = util.Set([from_cloned[f] for f in self._correlate])
+        from_cloned = dict((f, clone(f))
+                           for f in self._froms.union(self._correlate))
+        self._froms = util.Set(from_cloned[f] for f in self._froms)
+        self._correlate = util.Set(from_cloned[f] for f in self._correlate)
         self._raw_columns = [clone(c) for c in self._raw_columns]
         for attr in ('_whereclause', '_having', '_order_by_clause', '_group_by_clause'):
             if getattr(self, attr) is not None:

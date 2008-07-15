@@ -1,10 +1,14 @@
 from ez_setup import use_setuptools
 use_setuptools()
+import os
+import sys
+from os import path
 from setuptools import setup, find_packages
 from distutils.command.build_py import build_py as _build_py
 from setuptools.command.sdist import sdist as _sdist
-import os
-from os import path
+
+if sys.version_info < (2, 4):
+    raise Exception("SQLAlchemy requires Python 2.4 or higher.")
 
 v = open(path.join(path.dirname(__file__), 'VERSION'))
 VERSION = v.readline().strip()

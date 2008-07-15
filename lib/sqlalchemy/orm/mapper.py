@@ -510,7 +510,7 @@ class Mapper(object):
         self._cols_by_table = {}
 
         all_cols = util.Set(chain(*[col.proxy_set for col in self._columntoproperty]))
-        pk_cols = util.Set([c for c in all_cols if c.primary_key])
+        pk_cols = util.Set(c for c in all_cols if c.primary_key)
 
         # identify primary key columns which are also mapped by this mapper.
         for t in util.Set(self.tables + [self.mapped_table]):
@@ -519,15 +519,14 @@ class Mapper(object):
                 # ordering is important since it determines the ordering of mapper.primary_key (and therefore query.get())
                 self._pks_by_table[t] = util.OrderedSet(t.primary_key).intersection(pk_cols)
             self._cols_by_table[t] = util.OrderedSet(t.c).intersection(all_cols)
-        
-        # determine cols that aren't expressed within our tables; 
-        # mark these as "read only" properties which are refreshed upon 
-        # INSERT/UPDATE
-        self._readonly_props = util.Set([
-            self._columntoproperty[col] for col in self._columntoproperty if 
-                not hasattr(col, 'table') or col.table not in self._cols_by_table
-        ])
-        
+
+        # determine cols that aren't expressed within our tables; mark these
+        # as "read only" properties which are refreshed upon INSERT/UPDATE
+        self._readonly_props = util.Set(
+            self._columntoproperty[col]
+            for col in self._columntoproperty
+            if not hasattr(col, 'table') or col.table not in self._cols_by_table)
+
         # if explicit PK argument sent, add those columns to the primary key mappings
         if self.primary_key_argument:
             for k in self.primary_key_argument:
@@ -544,9 +543,12 @@ class Mapper(object):
         else:
             # determine primary key from argument or mapped_table pks - reduce to the minimal set of columns
             if self.primary_key_argument:
-                primary_key = sqlutil.reduce_columns([self.mapped_table.corresponding_column(c) for c in self.primary_key_argument])
+                primary_key = sqlutil.reduce_columns(
+                    self.mapped_table.corresponding_column(c)
+                    for c in self.primary_key_argument)
             else:
-                primary_key = sqlutil.reduce_columns(self._pks_by_table[self.mapped_table])
+                primary_key = sqlutil.reduce_columns(
+                    self._pks_by_table[self.mapped_table])
 
             if len(primary_key) == 0:
                 raise sa_exc.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))

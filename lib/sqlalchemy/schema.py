@@ -282,8 +282,10 @@ class Table(SchemaItem, expression.TableClause):
 
     def __extra_kwargs(self, **kwargs):
         # validate remaining kwargs that they all specify DB prefixes
-        if len([k for k in kwargs if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
-            raise TypeError("Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
+        if len([k for k in kwargs
+                if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
+            raise TypeError(
+                "Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
         self.kwargs.update(kwargs)
 
     def __post_init(self, *args, **kwargs):
@@ -1251,7 +1253,7 @@ class PrimaryKeyConstraint(Constraint):
         if kwargs:
             raise exc.ArgumentError(
                 'Unknown PrimaryKeyConstraint argument(s): %s' %
-                ', '.join([repr(x) for x in kwargs.keys()]))
+                ', '.join(repr(x) for x in kwargs.keys()))
 
         super(PrimaryKeyConstraint, self).__init__(**constraint_args)
         self.__colnames = list(columns)
@@ -1314,7 +1316,7 @@ class UniqueConstraint(Constraint):
         if kwargs:
             raise exc.ArgumentError(
                 'Unknown UniqueConstraint argument(s): %s' %
-                ', '.join([repr(x) for x in kwargs.keys()]))
+                ', '.join(repr(x) for x in kwargs.keys()))
 
         super(UniqueConstraint, self).__init__(**constraint_args)
         self.__colnames = list(columns)
@@ -1410,8 +1412,7 @@ class Index(SchemaItem):
 
     def __repr__(self):
         return 'Index("%s", %s%s)' % (self.name,
-                                      ', '.join([repr(c)
-                                                 for c in self.columns]),
+                                      ', '.join(repr(c) for c in self.columns),
                                       (self.unique and ', unique=True') or '')
 
 class MetaData(SchemaItem):

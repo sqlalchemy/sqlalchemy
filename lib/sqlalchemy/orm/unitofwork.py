@@ -310,7 +310,9 @@ class UOWTransaction(object):
                 ret.append(task)
 
         if self._should_log_debug:
-            self.logger.debug("Dependent tuples:\n" + "\n".join(["(%s->%s)" % (d[0].class_.__name__, d[1].class_.__name__) for d in self.dependencies]))
+            self.logger.debug("Dependent tuples:\n" + "\n".join(
+                    "(%s->%s)" % (d[0].class_.__name__, d[1].class_.__name__)
+                    for d in self.dependencies))
             self.logger.debug("Dependency sort:\n"+ str(ret))
         return ret
 

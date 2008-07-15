@@ -475,7 +475,7 @@ class LazyLoader(AbstractRelationLoader):
                 secondaryjoin = visitors.replacement_traverse(secondaryjoin, {}, col_to_bind)
             lazywhere = sql.and_(lazywhere, secondaryjoin)
     
-        bind_to_col = dict([(binds[col].key, col) for col in binds])
+        bind_to_col = dict((binds[col].key, col) for col in binds)
         
         return (lazywhere, bind_to_col, equated_columns)
     _create_lazy_clause = classmethod(_create_lazy_clause)

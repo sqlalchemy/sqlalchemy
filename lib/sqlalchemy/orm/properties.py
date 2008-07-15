@@ -638,9 +638,9 @@ class PropertyLoader(StrategizedProperty):
         else:
             self.secondary_synchronize_pairs = None
 
-        self._foreign_keys = util.Set([r for l, r in self.synchronize_pairs])
+        self._foreign_keys = util.Set(r for l, r in self.synchronize_pairs)
         if self.secondary_synchronize_pairs:
-            self._foreign_keys.update([r for l, r in self.secondary_synchronize_pairs])
+            self._foreign_keys.update(r for l, r in self.secondary_synchronize_pairs)
 
     def _determine_direction(self):
         if self.secondaryjoin is not None:
@@ -726,9 +726,9 @@ class PropertyLoader(StrategizedProperty):
         if log.is_info_enabled(self.logger):
             self.logger.info(str(self) + " setup primary join %s" % self.primaryjoin)
             self.logger.info(str(self) + " setup secondary join %s" % self.secondaryjoin)
-            self.logger.info(str(self) + " synchronize pairs [%s]" % ",".join(["(%s => %s)" % (l, r) for l, r in self.synchronize_pairs]))
-            self.logger.info(str(self) + " secondary synchronize pairs [%s]" % ",".join(["(%s => %s)" % (l, r) for l, r in self.secondary_synchronize_pairs or []]))
-            self.logger.info(str(self) + " local/remote pairs [%s]" % ",".join(["(%s / %s)" % (l, r) for l, r in self.local_remote_pairs]))
+            self.logger.info(str(self) + " synchronize pairs [%s]" % ",".join("(%s => %s)" % (l, r) for l, r in self.synchronize_pairs))
+            self.logger.info(str(self) + " secondary synchronize pairs [%s]" % ",".join(("(%s => %s)" % (l, r) for l, r in self.secondary_synchronize_pairs or [])))
+            self.logger.info(str(self) + " local/remote pairs [%s]" % ",".join("(%s / %s)" % (l, r) for l, r in self.local_remote_pairs))
             self.logger.info(str(self) + " relation direction %s" % self.direction)
 
         if self.uselist is None and self.direction is MANYTOONE:

@@ -180,8 +180,9 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
 def _coerce_config(configuration, prefix):
     """Convert configuration values to expected types."""
 
-    options = dict([(key[len(prefix):], configuration[key])
-                 for key in configuration if key.startswith(prefix)])
+    options = dict((key[len(prefix):], configuration[key])
+                   for key in configuration
+                   if key.startswith(prefix))
     for option, type_ in (
         ('convert_unicode', bool),
         ('pool_timeout', int),

@@ -432,7 +432,7 @@ def _selectable_name(selectable):
     if isinstance(selectable, sql.Alias):
         return _selectable_name(selectable.element)
     elif isinstance(selectable, sql.Select):
-        return ''.join([_selectable_name(s) for s in selectable.froms])
+        return ''.join(_selectable_name(s) for s in selectable.froms)
     elif isinstance(selectable, schema.Table):
         return selectable.name.capitalize()
     else:

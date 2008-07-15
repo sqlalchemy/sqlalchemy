@@ -312,7 +312,8 @@ class DefaultCompiler(engine.Compiled):
             sep = ', '
         else:
             sep = " " + self.operator_string(clauselist.operator) + " "
-        return sep.join([s for s in [self.process(c) for c in clauselist.clauses] if s is not None])
+        return sep.join(s for s in (self.process(c) for c in clauselist.clauses)
+                        if s is not None)
 
     def visit_calculatedclause(self, clause, **kwargs):
         return self.process(clause.clause_expr)
@@ -346,7 +347,9 @@ class DefaultCompiler(engine.Compiled):
             stack_entry['is_subquery'] = True
         self.stack.append(stack_entry)
 
-        text = string.join([self.process(c, asfrom=asfrom, parens=False) for c in cs.selects], " " + cs.keyword + " ")
+        text = string.join((self.process(c, asfrom=asfrom, parens=False)
+                            for c in cs.selects),
+                           " " + cs.keyword + " ")
         group_by = self.process(cs._group_by_clause, asfrom=asfrom)
         if group_by:
             text += " GROUP BY " + group_by
@@ -519,7 +522,7 @@ class DefaultCompiler(engine.Compiled):
 
         if froms:
             text += " \nFROM "
-            text += string.join(from_strings, ', ')
+            text += ', '.join(from_strings)
         else:
             text += self.default_from()
 
@@ -602,9 +605,9 @@ class DefaultCompiler(engine.Compiled):
 
         return (insert + " INTO %s (%s) VALUES (%s)" %
                 (preparer.format_table(insert_stmt.table),
-                 ', '.join([preparer.quote(c[0].name, c[0].quote)
-                            for c in colparams]),
-                 ', '.join([c[1] for c in colparams])))
+                 ', '.join(preparer.quote(c[0].name, c[0].quote)
+                           for c in colparams),
+                 ', '.join(c[1] for c in colparams)))
 
     def visit_update(self, update_stmt):
         self.stack.append({'from':util.Set([update_stmt.table])})
@@ -612,7 +615,13 @@ class DefaultCompiler(engine.Compiled):
         self.isupdate = True
         colparams = self._get_colparams(update_stmt)
 
-        text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + string.join(["%s=%s" % (self.preparer.quote(c[0].name, c[0].quote), c[1]) for c in colparams], ', ')
+        text = ' '.join((
+            "UPDATE",
+            self.preparer.format_table(update_stmt.table),
+            'SET',
+            ', '.join(self.preparer.quote(c[0].name, c[0].quote) + '=' + c[1]
+                      for c in colparams)
+            ))
 
         if update_stmt._whereclause:
             text += " WHERE " + self.process(update_stmt._whereclause)
@@ -645,7 +654,8 @@ class DefaultCompiler(engine.Compiled):
         if self.column_keys is None:
             parameters = {}
         else:
-            parameters = dict([(getattr(key, 'key', key), None) for key in self.column_keys])
+            parameters = dict((getattr(key, 'key', key), None)
+                              for key in self.column_keys)
 
         if stmt.parameters is not None:
             for k, v in stmt.parameters.iteritems():
@@ -789,8 +799,11 @@ class SchemaGenerator(DDLBase):
             if column.default is not None:
                 self.traverse_single(column.default)
 
-        self.append("\n" + " ".join(['CREATE'] + table._prefixes + ['TABLE', self.preparer.format_table(table), "("]))
-
+        self.append("\n" + " ".join(['CREATE'] +
+                                    table._prefixes +
+                                    ['TABLE',
+                                     self.preparer.format_table(table),
+                                     "("]))
         separator = "\n"
 
         # if only one primary key, specify it along with the column
@@ -858,7 +871,8 @@ class SchemaGenerator(DDLBase):
         if constraint.name is not None:
             self.append("CONSTRAINT %s " % self.preparer.format_constraint(constraint))
         self.append("PRIMARY KEY ")
-        self.append("(%s)" % ', '.join([self.preparer.quote(c.name, c.quote) for c in constraint]))
+        self.append("(%s)" % ', '.join(self.preparer.quote(c.name, c.quote)
+                                       for c in constraint))
         self.define_constraint_deferrability(constraint)
 
     def visit_foreign_key_constraint(self, constraint):
@@ -879,9 +893,11 @@ class SchemaGenerator(DDLBase):
                         preparer.format_constraint(constraint))
         table = list(constraint.elements)[0].column.table
         self.append("FOREIGN KEY(%s) REFERENCES %s (%s)" % (
-            ', '.join([preparer.quote(f.parent.name, f.parent.quote) for f in constraint.elements]),
+            ', '.join(preparer.quote(f.parent.name, f.parent.quote)
+                      for f in constraint.elements),
             preparer.format_table(table),
-            ', '.join([preparer.quote(f.column.name, f.column.quote) for f in constraint.elements])
+            ', '.join(preparer.quote(f.column.name, f.column.quote)
+                      for f in constraint.elements)
         ))
         if constraint.ondelete is not None:
             self.append(" ON DELETE %s" % constraint.ondelete)
@@ -894,7 +910,7 @@ class SchemaGenerator(DDLBase):
         if constraint.name is not None:
             self.append("CONSTRAINT %s " %
                         self.preparer.format_constraint(constraint))
-        self.append(" UNIQUE (%s)" % (', '.join([self.preparer.quote(c.name, c.quote) for c in constraint])))
+        self.append(" UNIQUE (%s)" % (', '.join(self.preparer.quote(c.name, c.quote) for c in constraint)))
         self.define_constraint_deferrability(constraint)
 
     def define_constraint_deferrability(self, constraint):
@@ -917,7 +933,8 @@ class SchemaGenerator(DDLBase):
         self.append("INDEX %s ON %s (%s)" \
                     % (preparer.quote(self._validate_identifier(index.name, True), index.quote),
                        preparer.format_table(index.table),
-                       string.join([preparer.quote(c.name, c.quote) for c in index.columns], ', ')))
+                       ', '.join(preparer.quote(c.name, c.quote)
+                                 for c in index.columns)))
         self.execute()
 
 

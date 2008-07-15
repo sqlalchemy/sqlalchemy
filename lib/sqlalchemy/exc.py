@@ -126,8 +126,8 @@ class DBAPIError(SQLAlchemyError):
         self.connection_invalidated = connection_invalidated
 
     def __str__(self):
-        return ' '.join([SQLAlchemyError.__str__(self),
-                         repr(self.statement), repr(self.params)])
+        return ' '.join((SQLAlchemyError.__str__(self),
+                         repr(self.statement), repr(self.params)))
 
 
 # As of 0.4, SQLError is now DBAPIError.

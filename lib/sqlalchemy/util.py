@@ -525,7 +525,7 @@ def dictlike_iteritems(dictlike):
                 yield key, getter(key)
         return iterator()
     elif hasattr(dictlike, 'keys'):
-        return iter([(key, getter(key)) for key in dictlike.keys()])
+        return iter((key, getter(key)) for key in dictlike.keys())
     else:
         raise TypeError(
             "Object '%r' is not dict-like" % dictlike)
@@ -535,7 +535,7 @@ def assert_arg_type(arg, argtype, name):
         return arg
     else:
         if isinstance(argtype, tuple):
-            raise exc.ArgumentError("Argument '%s' is expected to be one of type %s, got '%s'" % (name, ' or '.join(["'%s'" % str(a) for a in argtype]), str(type(arg))))
+            raise exc.ArgumentError("Argument '%s' is expected to be one of type %s, got '%s'" % (name, ' or '.join("'%s'" % str(a) for a in argtype), str(type(arg))))
         else:
             raise exc.ArgumentError("Argument '%s' is expected to be of type '%s', got '%s'" % (name, str(argtype), str(type(arg))))
 
@@ -856,21 +856,21 @@ class OrderedSet(Set):
 
     def intersection(self, other):
         other = Set(other)
-        return self.__class__([a for a in self if a in other])
+        return self.__class__(a for a in self if a in other)
 
     __and__ = intersection
 
     def symmetric_difference(self, other):
         other = Set(other)
-        result = self.__class__([a for a in self if a not in other])
-        result.update([a for a in other if a not in self])
+        result = self.__class__(a for a in self if a not in other)
+        result.update(a for a in other if a not in self)
         return result
 
     __xor__ = symmetric_difference
 
     def difference(self, other):
         other = Set(other)
-        return self.__class__([a for a in self if a not in other])
+        return self.__class__(a for a in self if a not in other)
 
     __sub__ = difference
 
@@ -1233,7 +1233,7 @@ class WeakCompositeKey(object):
         return cmp(tuple(self), tuple(other))
 
     def __iter__(self):
-        return iter([arg() for arg in self.args])
+        return iter(arg() for arg in self.args)
 
 class _symbol(object):
     def __init__(self, name):

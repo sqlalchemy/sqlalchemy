@@ -877,11 +877,12 @@ class InstanceState(object):
     def unmodified(self):
         """a set of keys which have no uncommitted changes"""
 
-        return util.Set([
-            key for key in self.manager.keys() if
-            key not in self.committed_state
-            or (key in self.manager.mutable_attributes and not self.manager[key].impl.check_mutable_modified(self))
-        ])
+        return util.Set(
+            key for key in self.manager.keys()
+            if (key not in self.committed_state or
+                (key in self.manager.mutable_attributes and
+                 not self.manager[key].impl.check_mutable_modified(self))))
+
     unmodified = property(unmodified)
     
     def unloaded(self):
@@ -891,10 +892,10 @@ class InstanceState(object):
         was never populated or modified.
         
         """
-        return util.Set([
-            key for key in self.manager.keys() if
-            key not in self.committed_state and key not in self.dict
-        ])
+        return util.Set(
+            key for key in self.manager.keys()
+            if key not in self.committed_state and key not in self.dict)
+
     unloaded = property(unloaded)
 
     def expire_attributes(self, attribute_names):

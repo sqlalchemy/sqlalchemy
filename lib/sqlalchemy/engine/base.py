@@ -1346,8 +1346,8 @@ class RowProxy(object):
 
     def __eq__(self, other):
         return ((other is self) or
-                (other == tuple([self.__parent._get_col(self.__row, key)
-                                 for key in xrange(len(self.__row))])))
+                (other == tuple(self.__parent._get_col(self.__row, key)
+                                for key in xrange(len(self.__row)))))
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -1489,7 +1489,8 @@ class ResultProxy(object):
                         self.__props[o] = rec
 
             if self.__echo:
-                self.context.engine.logger.debug("Col " + repr(tuple([x[0] for x in metadata])))
+                self.context.engine.logger.debug(
+                    "Col " + repr(tuple(x[0] for x in metadata)))
 
     def _create_key_cache(self):
         # local copies to avoid circular ref against 'self'
@@ -1622,7 +1623,7 @@ class ResultProxy(object):
             # so we use an exception catch to reduce conditionals in _get_col
             if isinstance(key, slice):
                 indices = key.indices(len(row))
-                return tuple([self._get_col(row, i) for i in xrange(*indices)])
+                return tuple(self._get_col(row, i) for i in xrange(*indices))
             else:
                 raise
 
@@ -1773,7 +1774,7 @@ class BufferedColumnResultProxy(ResultProxy):
             # so we use an exception catch to reduce conditionals in _get_col
             if isinstance(key, slice):
                 indices = key.indices(len(row))
-                return tuple([self._get_col(row, i) for i in xrange(*indices)])
+                return tuple(self._get_col(row, i) for i in xrange(*indices))
             else:
                 raise
 

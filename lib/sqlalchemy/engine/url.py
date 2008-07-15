@@ -72,7 +72,7 @@ class URL(object):
         if self.query:
             keys = self.query.keys()
             keys.sort()
-            s += '?' + "&".join(["%s=%s" % (k, self.query[k]) for k in keys])
+            s += '?' + "&".join("%s=%s" % (k, self.query[k]) for k in keys)
         return s
     
     def __eq__(self, other):
@@ -169,7 +169,7 @@ def _parse_rfc1738_args(name):
             components['database'] = tokens[0]
             query = (len(tokens) > 1 and dict(cgi.parse_qsl(tokens[1]))) or None
             if query is not None:
-                query = dict([(k.encode('ascii'), query[k]) for k in query])
+                query = dict((k.encode('ascii'), query[k]) for k in query)
         else:
             query = None
         components['query'] = query
