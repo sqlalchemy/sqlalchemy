@@ -889,18 +889,21 @@ class SessionTest(_fixtures.FixtureTest):
                 log.append('after_flush_postexec')
             def after_begin(self, session, transaction, connection):
                 log.append('after_begin')
+            def after_attach(self, session, instance):
+                log.append('after_attach')
+
         sess = create_session(extension = MyExt())
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        assert log == ['before_flush', 'after_begin', 'after_flush', 'before_commit', 'after_commit', 'after_flush_postexec']
+        assert log == ['after_attach', 'before_flush', 'after_begin', 'after_flush', 'before_commit', 'after_commit', 'after_flush_postexec']
 
         log = []
         sess = create_session(autocommit=False, extension=MyExt())
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        assert log == ['before_flush', 'after_begin', 'after_flush', 'after_flush_postexec']
+        assert log == ['after_attach', 'before_flush', 'after_begin', 'after_flush', 'after_flush_postexec']
 
         log = []
         u.name = 'ed'

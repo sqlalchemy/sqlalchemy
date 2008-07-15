@@ -3,6 +3,13 @@
 =======
 CHANGES
 =======
+0.5beta3
+========
+- orm
+    - Added a new SessionExtension hook called after_attach().
+      This is called at the point of attachment for objects
+      via add(), add_all(), delete(), and merge().
+      
 0.5beta2
 ========
     - 0.5beta2 includes all bugfixes listed under release 

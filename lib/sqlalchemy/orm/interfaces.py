@@ -301,6 +301,11 @@ class SessionExtension(object):
         engine level transaction is begun on a connection.
         """
 
+    def after_attach(self, session, instance):
+        """Execute after an instance is attached to a session.
+
+        This is called after an add, delete or merge.
+        """
 
 class MapperProperty(object):
     """Manage the relationship of a ``Mapper`` to a single class

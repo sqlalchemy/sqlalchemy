@@ -1283,6 +1283,8 @@ class Session(object):
                                     state.session_id, self.hash_key))
         if state.session_id != self.hash_key:
             state.session_id = self.hash_key
+        if self.extension is not None:
+            self.extension.after_attach(self, state.obj())
 
     def __contains__(self, instance):
         """Return True if the instance is associated with this session.
