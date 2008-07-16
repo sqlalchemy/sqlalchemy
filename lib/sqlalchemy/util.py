@@ -1405,6 +1405,9 @@ def warn(msg):
 def warn_deprecated(msg):
     warnings.warn(msg, exc.SADeprecationWarning, stacklevel=3)
 
+def warn_pending_deprecation(msg):
+    warnings.warn(msg, exc.SAPendingDeprecationWarning, stacklevel=3)
+
 def deprecated(message=None, add_deprecation_to_docstring=True):
     """Decorates a function and issues a deprecation warning on use.
 

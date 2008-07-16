@@ -7,12 +7,17 @@ CHANGES
 ========
     - 0.5beta3 includes all bugfixes listed under release
       "0.4.7".
-      
+
 - orm
     - Added a new SessionExtension hook called after_attach().
       This is called at the point of attachment for objects
       via add(), add_all(), delete(), and merge().
-      
+
+- mysql
+    - Quoting of MSEnum values for use in CREATE TABLE is now
+      optional & will be quoted on demand as required.  (Quoting was
+      always optional for use with existing tables.) [ticket:1110]
+
 0.5beta2
 ========
     - 0.5beta2 includes some of the bugfixes listed under 

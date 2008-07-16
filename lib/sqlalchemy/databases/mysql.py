@@ -1128,16 +1128,14 @@ class MSEnum(MSString):
 
         Example:
 
-          Column('myenum', MSEnum("'foo'", "'bar'", "'baz'"))
+          Column('myenum', MSEnum("foo", "bar", "baz"))
 
         Arguments are:
 
         enums
-          The range of valid values for this ENUM.  Values will be used
-          exactly as they appear when generating schemas.  Strings must
-          be quoted, as in the example above.  Single-quotes are suggested
-          for ANSI compatability and are required for portability to servers
-          with ANSI_QUOTES enabled.
+          The range of valid values for this ENUM.  Values will be quoted
+          when generating the schema according to the quoting flag (see
+          below).
 
         strict
           Defaults to False: ensure that a given value is in this ENUM's
@@ -1167,20 +1165,58 @@ class MSEnum(MSString):
           that matches the column's character set.  Generates BINARY in
           schema.  This does not affect the type of data stored, only the
           collation of character data.
+
+        quoting
+          Defaults to 'auto': automatically determine enum value quoting.  If
+          all enum values are surrounded by the same quoting character, then
+          use 'quoted' mode.  Otherwise, use 'unquoted' mode.
+
+          'quoted': values in enums are already quoted, they will be used
+          directly when generating the schema.
+
+          'unquoted': values in enums are not quoted, they will be escaped and
+          surrounded by single quotes when generating the schema.
+
+          Previous versions of this type always required manually quoted
+          values to be supplied; future versions will always quote the string
+          literals for you.  This is a transitional option.
+
         """
+        self.quoting = kw.pop('quoting', 'auto')
 
-        self.__ddl_values = enums
+        if self.quoting == 'auto':
+            # What quoting character are we using?
+            q = None
+            for e in enums:
+                if len(e) == 0:
+                    self.quoting = 'unquoted'
+                    break
+                elif q is None:
+                    q = e[0]
 
-        strip_enums = []
-        for a in enums:
-            if a[0:1] == '"' or a[0:1] == "'":
-                # strip enclosing quotes and unquote interior
-                a = a[1:-1].replace(a[0] * 2, a[0])
-            strip_enums.append(a)
+                if e[0] != q or e[-1] != q:
+                    self.quoting = 'unquoted'
+                    break
+            else:
+                self.quoting = 'quoted'
 
-        self.enums = strip_enums
+        if self.quoting == 'quoted':
+            util.warn_pending_deprecation(
+                'Manually quoting ENUM value literals is deprecated.  Supply '
+                'unquoted values and use the quoting= option in cases of '
+                'ambiguity.')
+            strip_enums = []
+            for a in enums:
+                if a[0:1] == '"' or a[0:1] == "'":
+                    # strip enclosing quotes and unquote interior
+                    a = a[1:-1].replace(a[0] * 2, a[0])
+                strip_enums.append(a)
+            self.enums = strip_enums
+        else:
+            self.enums = list(enums)
+
         self.strict = kw.pop('strict', False)
-        length = max([len(v) for v in strip_enums] + [0])
+        length = max([len(v) for v in self.enums] + [0])
         super(MSEnum, self).__init__(length, **kw)
 
     def bind_processor(self, dialect):
@@ -1196,8 +1232,10 @@ class MSEnum(MSString):
         return process
 
     def get_col_spec(self):
-        return self._extend("ENUM(%s)" % ",".join(self.__ddl_values))
-
+        quoted_enums = []
+        for e in self.enums:
+            quoted_enums.append("'%s'" % e.replace("'", "''"))
+        return self._extend("ENUM(%s)" % ",".join(quoted_enums))
 
 class MSSet(MSString):
     """MySQL SET type."""
@@ -2179,6 +2217,9 @@ class MySQLSchemaReflector(object):
         for kw in ('charset', 'collate'):
             if spec.get(kw, False):
                 type_kw[kw] = spec[kw]
+
+        if type_ == 'enum':
+            type_kw['quoting'] = 'quoted'
 
         type_instance = col_type(*type_args, **type_kw)
 

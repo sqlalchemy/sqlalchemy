@@ -3,6 +3,7 @@ import sets
 from sqlalchemy import *
 from sqlalchemy import sql, exc
 from sqlalchemy.databases import mysql
+from testlib.testing import eq_
 from testlib import *
 
 
@@ -24,6 +25,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             Column('num4', mysql.MSDouble),
             Column('num5', mysql.MSDouble()),
             Column('enum1', mysql.MSEnum("'black'", "'white'")),
+            Column('enum2', mysql.MSEnum("dog", "cat")),
             )
         try:
             table.drop(checkfirst=True)
@@ -39,6 +41,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             assert isinstance(t2.c.num4.type, mysql.MSDouble)
             assert isinstance(t2.c.num5.type, mysql.MSDouble)
             assert isinstance(t2.c.enum1.type, mysql.MSEnum)
+            assert isinstance(t2.c.enum2.type, mysql.MSEnum)
             t2.drop()
             t2.create()
         finally:
@@ -236,7 +239,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             (mysql.MSLongText, [], {'ascii':True},
              'LONGTEXT ASCII'),
 
-            (mysql.MSEnum, ["'foo'", "'bar'"], {'unicode':True},
+            (mysql.MSEnum, ["foo", "bar"], {'unicode':True},
              '''ENUM('foo','bar') UNICODE''')
            ]
 
@@ -521,7 +524,10 @@ class TypesTest(TestBase, AssertsExecutionResults):
                    nullable=False),
             Column('e3', mysql.MSEnum("'a'", "'b'", strict=True)),
             Column('e4', mysql.MSEnum("'a'", "'b'", strict=True),
-                   nullable=False))
+                   nullable=False),
+            Column('e5', mysql.MSEnum("a", "b")),
+            Column('e6', mysql.MSEnum("'a'", "b")),
+            )
 
         self.assert_eq(colspec(enum_table.c.e1),
                        "e1 ENUM('a','b')")
@@ -531,6 +537,10 @@ class TypesTest(TestBase, AssertsExecutionResults):
                        "e3 ENUM('a','b')")
         self.assert_eq(colspec(enum_table.c.e4),
                        "e4 ENUM('a','b') NOT NULL")
+        self.assert_eq(colspec(enum_table.c.e5),
+                       "e5 ENUM('a','b')")
+        self.assert_eq(colspec(enum_table.c.e6),
+                       "e6 ENUM('''a''','b')")
         enum_table.drop(checkfirst=True)
         enum_table.create()
 
@@ -541,20 +551,23 @@ class TypesTest(TestBase, AssertsExecutionResults):
             self.assert_(True)
 
         try:
-            enum_table.insert().execute(e1='c', e2='c', e3='c', e4='c')
+            enum_table.insert().execute(e1='c', e2='c', e3='c',
+                                        e4='c', e5='c', e6='c')
             self.assert_(False)
         except exc.InvalidRequestError:
             self.assert_(True)
 
         enum_table.insert().execute()
-        enum_table.insert().execute(e1='a', e2='a', e3='a', e4='a')
-        enum_table.insert().execute(e1='b', e2='b', e3='b', e4='b')
+        enum_table.insert().execute(e1='a', e2='a', e3='a',
+                                    e4='a', e5='a', e6="'a'")
+        enum_table.insert().execute(e1='b', e2='b', e3='b',
+                                    e4='b', e5='b', e6='b')
 
         res = enum_table.select().execute().fetchall()
 
-        expected = [(None, 'a', None, 'a'),
-                    ('a', 'a', 'a', 'a'),
-                    ('b', 'b', 'b', 'b')]
+        expected = [(None, 'a', None, 'a', None, None),
+                    ('a', 'a', 'a', 'a', 'a', "'a'"),
+                    ('b', 'b', 'b', 'b', 'b', 'b')]
 
         # This is known to fail with MySQLDB 1.2.2 beta versions
         # which return these as sets.Set(['a']), sets.Set(['b'])
@@ -588,9 +601,11 @@ class TypesTest(TestBase, AssertsExecutionResults):
         enum_table = Table('mysql_enum', MetaData(testing.db),
             Column('e1', mysql.MSEnum("'a'")),
             Column('e2', mysql.MSEnum("''")),
-            Column('e3', mysql.MSEnum("'a'", "''")),
-            Column('e4', mysql.MSEnum("''", "'a'")),
-            Column('e5', mysql.MSEnum("''", "'''a'''", "'b''b'", "''''")))
+            Column('e3', mysql.MSEnum('a')),
+            Column('e4', mysql.MSEnum('')),
+            Column('e5', mysql.MSEnum("'a'", "''")),
+            Column('e6', mysql.MSEnum("''", "'a'")),
+            Column('e7', mysql.MSEnum("''", "'''a'''", "'b''b'", "''''")))
 
         for col in enum_table.c:
             self.assert_(repr(col))
@@ -599,11 +614,13 @@ class TypesTest(TestBase, AssertsExecutionResults):
             reflected = Table('mysql_enum', MetaData(testing.db),
                               autoload=True)
             for t in enum_table, reflected:
-                assert t.c.e1.type.enums == ["a"]
-                assert t.c.e2.type.enums == [""]
-                assert t.c.e3.type.enums == ["a", ""]
-                assert t.c.e4.type.enums == ["", "a"]
-                assert t.c.e5.type.enums == ["", "'a'", "b'b", "'"]
+                eq_(t.c.e1.type.enums, ["a"])
+                eq_(t.c.e2.type.enums, [""])
+                eq_(t.c.e3.type.enums, ["a"])
+                eq_(t.c.e4.type.enums, [""])
+                eq_(t.c.e5.type.enums, ["a", ""])
+                eq_(t.c.e6.type.enums, ["", "a"])
+                eq_(t.c.e7.type.enums, ["", "'a'", "b'b", "'"])
         finally:
             enum_table.drop()
 
