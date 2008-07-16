@@ -13,6 +13,16 @@ CHANGES
       This is called at the point of attachment for objects
       via add(), add_all(), delete(), and merge().
 
+    - A mapper which inherits from another, when inheriting
+      the columns of its inherited mapper, will use any
+      reassigned property names specified in that inheriting
+      mapper.  Previously, if "Base" had reassigned "base_id"
+      to the name "id", "SubBase(Base)" would still get 
+      an attribute called "base_id".   This could be worked
+      around by explicitly stating the column in each
+      submapper as well but this is fairly unworkable
+      and also impossible when using declarative [ticket:1111].
+    
 - mysql
     - Quoting of MSEnum values for use in CREATE TABLE is now
       optional & will be quoted on demand as required.  (Quoting was

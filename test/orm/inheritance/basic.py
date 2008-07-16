@@ -720,6 +720,8 @@ class OverrideColKeyTest(ORMTest):
         mapper(Base, base)
         mapper(Sub, subtable, inherits=Base)
         
+        # Sub gets a "base_id" property using the "base_id"
+        # column of both tables.
         self.assertEquals(
             class_mapper(Sub).get_property('base_id').columns,
             [base.c.base_id, subtable.c.base_id]
@@ -727,7 +729,8 @@ class OverrideColKeyTest(ORMTest):
 
     def test_override_explicit(self):
         # this pattern is what you see when using declarative
-        # in particular
+        # in particular, here we do a "manual" version of
+        # what we'd like the mapper to do.
         
         class Base(object):
             pass
@@ -738,7 +741,8 @@ class OverrideColKeyTest(ORMTest):
             'id':base.c.base_id
         })
         mapper(Sub, subtable, inherits=Base, properties={
-            # this is required...good luck getting any end users to figure this out
+            # this is the manual way to do it, is not really
+            # possible in declarative
             'id':[base.c.base_id, subtable.c.base_id]
         })
 
@@ -792,11 +796,10 @@ class OverrideColKeyTest(ORMTest):
         # PK col
         assert s2.id == s2.base_id != 15
         
-    @testing.fails_on_everything_except()
     def test_override_implicit(self):
-        # this is how the pattern looks intuitively,
-        # including the intuition of the SQLAlchemy creator,
-        # but unfortunately....zzzt
+        # this is how the pattern looks intuitively when 
+        # using declarative.
+        # fixed as part of [ticket:1111]
         
         class Base(object):
             pass
@@ -810,17 +813,16 @@ class OverrideColKeyTest(ORMTest):
             'id':subtable.c.base_id
         })
         
-        # what in fact happens is that "Sub" gets the column "base_id" mapped
-        # as well.   what *should* happen is, Sub mapper should reconcile
-        # the inherited "id" from Base.  right now Base's "id" is ignored
-        # totally because the same key is present in Sub.
+        # Sub mapper compilation needs to detect that "base.c.base_id"
+        # is renamed in the inherited mapper as "id", even though
+        # it has its own "id" property.  Sub's "id" property 
+        # gets joined normally with the extra column.
         
         self.assertEquals(
             class_mapper(Sub).get_property('id').columns,
             [base.c.base_id, subtable.c.base_id]
         )
         
-        # this fails too
         s1 = Sub()
         s1.id = 10
         sess = create_session()

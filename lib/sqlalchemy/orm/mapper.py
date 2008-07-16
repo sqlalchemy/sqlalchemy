@@ -386,7 +386,7 @@ class Mapper(object):
         l = [(key, prop) for key, prop in self.__props.iteritems()]
         for key, prop in l:
             self.__log("initialize prop " + key)
-            if getattr(prop, 'key', None) is None:
+            if not getattr(prop, '_compiled', False):
                 prop.init(key, self)
         self.__log("__initialize_properties() complete")
         self.compiled = True
@@ -674,6 +674,12 @@ class Mapper(object):
 
             column_key = (self.column_prefix or '') + column.key
 
+            # adjust the "key" used for this column to that
+            # of the inheriting mapper
+            for mapper in self.iterate_to_root():
+                if column in mapper._columntoproperty:
+                    column_key = mapper._columntoproperty[column].key
+                
             self._compile_property(column_key, column, init=False, setparent=True)
 
         # do a special check for the "discriminiator" column, as it may only be present
@@ -755,13 +761,15 @@ class Mapper(object):
                 self._compile_property(prop.name, ColumnProperty(self.mapped_table.c[key]), init=init, setparent=setparent)
 
         self.__props[key] = prop
-
+        prop.key = key
+        
         if setparent:
             prop.set_parent(self)
 
             if not self.non_primary:
                 self.class_manager.install_descriptor(
                     key, Mapper._CompileOnAttr(self.class_, key))
+                    
         if init:
             prop.init(key, self)
 

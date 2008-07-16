@@ -380,6 +380,7 @@ class MapperProperty(object):
         """
 
         self.key = key
+        self._compiled = True
         self.do_init()
 
     def do_init(self):
