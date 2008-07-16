@@ -411,6 +411,9 @@ class Query(object):
         key = self._only_mapper_zero().identity_key_from_primary_key(ident)
         return self._get(key, ident)
 
+    @classmethod
+    @util.deprecated('Deprecated.  Use sqlalchemy.orm.with_parent '
+                     'in conjunction with filter().')
     def query_from_parent(cls, instance, property, **kwargs):
         """Return a new Query with criterion corresponding to a parent instance.
 
@@ -429,16 +432,12 @@ class Query(object):
            all extra keyword arguments are propagated to the constructor of
            Query.
 
-       deprecated.  use sqlalchemy.orm.with_parent in conjunction with
-       filter().
-
         """
         mapper = object_mapper(instance)
         prop = mapper.get_property(property, resolve_synonyms=True)
         target = prop.mapper
         criterion = prop.compare(operators.eq, instance, value_is_parent=True)
         return Query(target, **kwargs).filter(criterion)
-    query_from_parent = classmethod(util.deprecated(None, False)(query_from_parent))
 
     @_generative()
     def correlate(self, *args):

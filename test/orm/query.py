@@ -648,7 +648,7 @@ class ParentTest(QueryTest):
         assert [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")] == o
         
         # test static method
-        @testing.uses_deprecated(".*query_from_parent")
+        @testing.uses_deprecated(".*Use sqlalchemy.orm.with_parent")
         def go():
             o = Query.query_from_parent(u1, property='orders', session=sess).all()
             assert [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")] == o

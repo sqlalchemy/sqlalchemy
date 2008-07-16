@@ -1043,6 +1043,7 @@ class Session(object):
         self._deleted.pop(state, None)
         del state.session_id
 
+    @util.pending_deprecation('0.5.x', "Use session.add()")
     def save(self, instance, entity_name=None):
         """Add a transient (unsaved) instance to this ``Session``.
 
@@ -1056,7 +1057,6 @@ class Session(object):
         state = _state_for_unsaved_instance(instance, entity_name)
         self._save_impl(state)
         self._cascade_save_or_update(state, entity_name)
-    save = util.pending_deprecation('0.5.x', "Use session.add()")(save)
 
     def _save_without_cascade(self, instance, entity_name=None):
         """Used by scoping.py to save on init without cascade."""
@@ -1064,6 +1064,7 @@ class Session(object):
         state = _state_for_unsaved_instance(instance, entity_name, create=True)
         self._save_impl(state)
 
+    @util.pending_deprecation('0.5.x', "Use session.add()")
     def update(self, instance, entity_name=None):
         """Bring a detached (saved) instance into this ``Session``.
 
@@ -1081,7 +1082,6 @@ class Session(object):
             raise exc.UnmappedInstanceError(instance, entity_name)
         self._update_impl(state)
         self._cascade_save_or_update(state, entity_name)
-    update = util.pending_deprecation('0.5.x', "Use session.add()")(update)
 
     def add(self, instance, entity_name=None):
         """Add the given instance into this ``Session``.

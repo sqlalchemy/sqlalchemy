@@ -962,7 +962,7 @@ UNION SELECT mytable.myid FROM mytable"
         self.assert_compile(s, "SELECT foo, bar UNION SELECT foo, bar UNION (SELECT foo, bar UNION SELECT foo, bar)")
         
 
-    @testing.uses_deprecated('//get_params')
+    @testing.uses_deprecated()
     def test_binds(self):
         for (
              stmt,

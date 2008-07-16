@@ -1483,11 +1483,10 @@ class MetaData(SchemaItem):
 
         return self._bind is not None
 
-    # @deprecated
+    @util.deprecated('Deprecated. Use ``metadata.bind = <engine>`` or '
+                     '``metadata.bind = <url>``.')
     def connect(self, bind, **kwargs):
         """Bind this MetaData to an Engine.
-
-        Use ``metadata.bind = <engine>`` or ``metadata.bind = <url>``.
 
         bind
           A string, ``URL``, ``Engine`` or ``Connection`` instance.  If a
@@ -1504,7 +1503,6 @@ class MetaData(SchemaItem):
             self._bind = create_engine(bind, **kwargs)
         else:
             self._bind = bind
-    connect = util.deprecated()(connect)
 
     def bind(self):
         """An Engine or Connection to which this MetaData is bound.
@@ -1724,11 +1722,10 @@ class ThreadLocalMetaData(MetaData):
         self.__engines = {}
         super(ThreadLocalMetaData, self).__init__()
 
-    # @deprecated
+    @util.deprecated('Deprecated. Use ``metadata.bind = <engine>`` or '
+                     '``metadata.bind = <url>``.')
     def connect(self, bind, **kwargs):
         """Bind to an Engine in the caller's thread.
-
-        Use ``metadata.bind=<engine>`` or ``metadata.bind=<url>``.
 
         bind
           A string, ``URL``, ``Engine`` or ``Connection`` instance.  If a
@@ -1749,7 +1746,6 @@ class ThreadLocalMetaData(MetaData):
                 engine = create_engine(bind, **kwargs)
             bind = engine
         self._bind_to(bind)
-    connect = util.deprecated()(connect)
 
     def bind(self):
         """The bound Engine or Connection for this thread.

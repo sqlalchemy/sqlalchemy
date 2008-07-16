@@ -94,7 +94,7 @@ class BindTest(testing.TestBase):
                     "assign this Table's .metadata.bind to enable implicit "
                     "execution.")
 
-    @testing.uses_deprecated('//connect')
+    @testing.uses_deprecated()
     def test_create_drop_bound(self):
 
         for meta in (MetaData,ThreadLocalMetaData):

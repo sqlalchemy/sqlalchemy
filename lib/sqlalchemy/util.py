@@ -1467,15 +1467,25 @@ def pending_deprecation(version, message=None,
 def _decorate_with_warning(func, wtype, message, docstring_header=None):
     """Wrap a function with a warnings.warn and augmented docstring."""
 
-    def func_with_warning(*args, **kwargs):
-        warnings.warn(wtype(message), stacklevel=2)
-        return func(*args, **kwargs)
+    @decorator
+    def warned(fn, *args, **kwargs):
+        warnings.warn(wtype(message), stacklevel=3)
+        return fn(*args, **kwargs)
 
     doc = func.__doc__ is not None and func.__doc__ or ''
     if docstring_header is not None:
-        doc = '\n'.join((docstring_header.rstrip(), doc))
+        docstring_header %= dict(func=func.__name__)
+        docs = doc and doc.expandtabs().split('\n') or []
+        indent = ''
+        for line in docs[1:]:
+            text = line.lstrip()
+            if text:
+                indent = line[0:len(line) - len(text)]
+                break
+        point = min(len(docs), 1)
+        docs.insert(point, '\n' + indent + docstring_header.rstrip())
+        doc = '\n'.join(docs)
 
-    func_with_warning.__doc__ = doc
-    func_with_warning.__dict__.update(func.__dict__)
-
-    return function_named(func_with_warning, func.__name__)
+    decorated = warned(func)
+    decorated.__doc__ = doc
+    return decorated
