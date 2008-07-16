@@ -187,8 +187,6 @@ class CascadeTest(ORMTest):
         assert t4_1 in sess.deleted
         sess.flush()
 
-
-
 class GetTest(ORMTest):
     def define_tables(self, metadata):
         global foo, bar, blub
@@ -275,7 +273,6 @@ class GetTest(ORMTest):
 
     test_get_polymorphic = create_test(True, 'test_get_polymorphic')
     test_get_nonpolymorphic = create_test(False, 'test_get_nonpolymorphic')
-
 
 class ConstructionTest(ORMTest):
     def define_tables(self, metadata):
@@ -557,8 +554,6 @@ class VersioningTest(ORMTest):
         except orm_exc.ConcurrentModificationError, e:
             assert True
 
-
-
 class DistinctPKTest(ORMTest):
     """test the construction of mapper.primary_key when an inheriting relationship
     joins on a column other than primary key column."""
@@ -699,7 +694,140 @@ class SyncCompileTest(ORMTest):
         assert len(session.query(B).all()) == 2
         assert len(session.query(C).all()) == 1
 
+class OverrideColKeyTest(ORMTest):
+    """test overriding of column names with a common name from parent to child."""
+    
+    def define_tables(self, metadata):
+        global base, subtable
+        
+        base = Table('base', metadata, 
+            Column('base_id', Integer, primary_key=True),
+            Column('data', String(255))
+            )
+            
+        subtable = Table('subtable', metadata,
+            Column('base_id', Integer, ForeignKey('base.base_id'), primary_key=True),
+            Column('subdata', String(255))
+        )
 
+    def test_plain(self):
+        # control case
+        class Base(object):
+            pass
+        class Sub(Base):
+            pass
+
+        mapper(Base, base)
+        mapper(Sub, subtable, inherits=Base)
+        
+        self.assertEquals(
+            class_mapper(Sub).get_property('base_id').columns,
+            [base.c.base_id, subtable.c.base_id]
+        )
+
+    def test_override_explicit(self):
+        # this pattern is what you see when using declarative
+        # in particular
+        
+        class Base(object):
+            pass
+        class Sub(Base):
+            pass
+        
+        mapper(Base, base, properties={
+            'id':base.c.base_id
+        })
+        mapper(Sub, subtable, inherits=Base, properties={
+            # this is required...good luck getting any end users to figure this out
+            'id':[base.c.base_id, subtable.c.base_id]
+        })
+
+        self.assertEquals(
+            class_mapper(Sub).get_property('id').columns,
+            [base.c.base_id, subtable.c.base_id]
+        )
+ 
+        s1 = Sub()
+        s1.id = 10
+        sess = create_session()
+        sess.add(s1)
+        sess.flush()
+        assert sess.query(Sub).get(10) is s1
+    
+    def test_override_onlyinparent(self):
+        class Base(object):
+            pass
+        class Sub(Base):
+            pass
+
+        mapper(Base, base, properties={
+            'id':base.c.base_id
+        })
+        mapper(Sub, subtable, inherits=Base)
+        
+        self.assertEquals(
+            class_mapper(Sub).get_property('id').columns,
+            [base.c.base_id]
+        )
+
+        self.assertEquals(
+            class_mapper(Sub).get_property('base_id').columns,
+            [subtable.c.base_id]
+        )
+        
+        s1 = Sub()
+        s1.id = 10
+        
+        s2 = Sub()
+        s2.base_id = 15
+        
+        sess = create_session()
+        sess.add_all([s1, s2])
+        sess.flush()
+        
+        # s1 gets '10'
+        assert sess.query(Sub).get(10) is s1
+        
+        # s2 gets a new id, base_id is overwritten by the ultimate
+        # PK col
+        assert s2.id == s2.base_id != 15
+        
+    @testing.fails_on_everything_except()
+    def test_override_implicit(self):
+        # this is how the pattern looks intuitively,
+        # including the intuition of the SQLAlchemy creator,
+        # but unfortunately....zzzt
+        
+        class Base(object):
+            pass
+        class Sub(Base):
+            pass
+
+        mapper(Base, base, properties={
+            'id':base.c.base_id
+        })
+        mapper(Sub, subtable, inherits=Base, properties={
+            'id':subtable.c.base_id
+        })
+        
+        # what in fact happens is that "Sub" gets the column "base_id" mapped
+        # as well.   what *should* happen is, Sub mapper should reconcile
+        # the inherited "id" from Base.  right now Base's "id" is ignored
+        # totally because the same key is present in Sub.
+        
+        self.assertEquals(
+            class_mapper(Sub).get_property('id').columns,
+            [base.c.base_id, subtable.c.base_id]
+        )
+        
+        # this fails too
+        s1 = Sub()
+        s1.id = 10
+        sess = create_session()
+        sess.add(s1)
+        sess.flush()
+        assert sess.query(Sub).get(10) is s1
+        
 
 if __name__ == "__main__":
     testenv.main()
