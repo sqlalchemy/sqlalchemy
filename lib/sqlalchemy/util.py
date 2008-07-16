@@ -103,31 +103,93 @@ def to_list(x, default=None):
     else:
         return x
 
-def array_as_starargs_decorator(fn):
-    """Interpret a single positional array argument as
-    *args for the decorated method.
+try:
+    from functools import update_wrapper
+except ImportError:
+    def update_wrapper(wrapper, wrapped,
+                       assigned=('__doc__', '__module__', '__name__'),
+                       updated=('__dict__',)):
+        for attr in assigned:
+            setattr(wrapper, attr, getattr(wrapped, attr))
+        for attr in updated:
+            getattr(wrapper, attr).update(getattr(wrapped, attr, ()))
+        return wrapper
 
-    """
-    def starargs_as_list(self, *args, **kwargs):
-        if isinstance(args, basestring) or (len(args) == 1 and not isinstance(args[0], tuple)):
-            return fn(self, *to_list(args[0], []), **kwargs)
+def accepts_a_list_as_starargs(list_deprecation=None):
+    def decorate(fn):
+
+        spec = inspect.getargspec(fn)
+        assert spec[1], 'Decorated function does not accept *args'
+
+        meta = format_argspec_plus(spec)
+        meta['name'] = fn.func_name
+        meta['varg'] = spec[1]
+        scratch = list(spec)
+        scratch[1] = '(%s[0])' % scratch[1]
+        meta['unpacked_pos'] = format_argspec_plus(scratch)['apply_pos']
+
+        def _deprecate():
+            if list_deprecation:
+                if list_deprecation == 'pending':
+                    warning_type = exc.SAPendingDeprecationWarning
+                else:
+                    warning_type = exc.SADeprecationWarning
+                    msg = (
+                        "%s%s now accepts multiple %s arguments as a "
+                        "variable argument list.  Supplying %s as a single "
+                        "list is deprecated and support will be removed "
+                        "in a future release." % (
+                            fn.func_name,
+                            inspect.formatargspec(*spec),
+                            spec[1], spec[1]))
+                    warnings.warn(msg, warning_type, stacklevel=3)
+
+        code = "\n".join((
+            "def %(name)s%(args)s:",
+            "    if len(%(varg)s) == 1 and isinstance(%(varg)s[0], list):",
+            "        _deprecate()",
+            "        return fn%(unpacked_pos)s",
+            "    else:",
+            "        return fn%(apply_pos)s")) % meta
+
+        env = locals().copy()
+        exec code in env
+        decorated = env[fn.func_name]
+        update_wrapper(decorated, fn)
+        decorated.generated_src = code
+        return decorated
+    return decorate
+
+def unique_symbols(used, *bases):
+    used = set(used)
+    for base in bases:
+        pool = itertools.chain((base,),
+                               itertools.imap(lambda i: base + str(i),
+                                              xrange(1000)))
+        for sym in pool:
+            if sym not in used:
+                used.add(sym)
+                yield sym
+                break
         else:
-            return fn(self, *args, **kwargs)
-    starargs_as_list.__doc__ = fn.__doc__
-    return function_named(starargs_as_list, fn.__name__)
+            raise NameError("exhausted namespace for symbol base %s" % base)
 
-def array_as_starargs_fn_decorator(fn):
-    """Interpret a single positional array argument as
-    *args for the decorated function.
+def decorator(target):
+    """A signature-matching decorator factory."""
 
-    """
-    def starargs_as_list(*args, **kwargs):
-        if isinstance(args, basestring) or (len(args) == 1 and not isinstance(args[0], tuple)):
-            return fn(*to_list(args[0], []), **kwargs)
-        else:
-            return fn(*args, **kwargs)
-    starargs_as_list.__doc__ = fn.__doc__
-    return function_named(starargs_as_list, fn.__name__)
+    def decorate(fn):
+        spec = inspect.getargspec(fn)
+        names = tuple(spec[0]) + spec[1:3] + (fn.func_name,)
+        targ_name, fn_name = unique_symbols(names, 'target', 'fn')
+
+        metadata = dict(target=targ_name, fn=fn_name)
+        metadata.update(format_argspec_plus(spec, grouped=False))
+
+        code = 'lambda %(args)s: %(target)s(%(fn)s, %(apply_kw)s)' % (
+                metadata)
+        decorated = eval(code, {targ_name:target, fn_name:fn})
+        return update_wrapper(decorated, fn)
+    return update_wrapper(decorate, target)
 
 def to_set(x):
     if x is None:
@@ -233,7 +295,7 @@ def format_argspec_plus(fn, grouped=True):
     A enhanced variant of inspect.formatargspec to support code generation.
 
     fn
-       An inspectable callable
+       An inspectable callable or tuple of inspect getargspec() results.
     grouped
       Defaults to True; include (parens, around, argument) lists
 
@@ -259,7 +321,7 @@ def format_argspec_plus(fn, grouped=True):
        'apply_pos': '(self, a, b, c, **d)'}
 
     """
-    spec = inspect.getargspec(fn)
+    spec = callable(fn) and inspect.getargspec(fn) or fn
     args = inspect.formatargspec(*spec)
     if spec[0]:
         self_arg = spec[0][0]

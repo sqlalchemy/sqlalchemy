@@ -716,6 +716,7 @@ def extension(ext):
     """
     return ExtensionOption(ext)
 
+@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
 def eagerload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
     name into an eager load.
@@ -724,8 +725,8 @@ def eagerload(*keys):
 
     """
     return strategies.EagerLazyOption(keys, lazy=False)
-eagerload = sa_util.array_as_starargs_fn_decorator(eagerload)
 
+@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
 def eagerload_all(*keys):
     """Return a ``MapperOption`` that will convert all properties along the
     given dot-separated path into an eager load.
@@ -741,8 +742,8 @@ def eagerload_all(*keys):
 
     """
     return strategies.EagerLazyOption(keys, lazy=False, chained=True)
-eagerload_all = sa_util.array_as_starargs_fn_decorator(eagerload_all)
 
+@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
 def lazyload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
     name into a lazy load.
@@ -751,7 +752,6 @@ def lazyload(*keys):
 
     """
     return strategies.EagerLazyOption(keys, lazy=True)
-lazyload = sa_util.array_as_starargs_fn_decorator(lazyload)
 
 def noload(*keys):
     """Return a ``MapperOption`` that will convert the property of the
@@ -772,6 +772,7 @@ def contains_alias(alias):
     """
     return AliasOption(alias)
 
+@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
 def contains_eager(*keys, **kwargs):
     """Return a ``MapperOption`` that will indicate to the query that
     the given attribute will be eagerly loaded.
@@ -790,8 +791,8 @@ def contains_eager(*keys, **kwargs):
         raise exceptions.ArgumentError("Invalid kwargs for contains_eager: %r" % kwargs.keys())
 
     return (strategies.EagerLazyOption(keys, lazy=False), strategies.LoadEagerFromAliasOption(keys, alias=alias))
-contains_eager = sa_util.array_as_starargs_fn_decorator(contains_eager)
 
+@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
 def defer(*keys):
     """Return a ``MapperOption`` that will convert the column property of the
     given name into a deferred load.
@@ -799,8 +800,8 @@ def defer(*keys):
     Used with ``query.options()``
     """
     return strategies.DeferredOption(keys, defer=True)
-defer = sa_util.array_as_starargs_fn_decorator(defer)
 
+@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
 def undefer(*keys):
     """Return a ``MapperOption`` that will convert the column property of the
     given name into a non-deferred (regular column) load.
@@ -809,7 +810,6 @@ def undefer(*keys):
 
     """
     return strategies.DeferredOption(keys, defer=False)
-undefer = sa_util.array_as_starargs_fn_decorator(undefer)
 
 def undefer_group(name):
     """Return a ``MapperOption`` that will convert the given group of deferred

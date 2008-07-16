@@ -42,24 +42,15 @@ __all__ = ['Query', 'QueryContext', 'aliased']
 aliased = AliasedClass
 
 def _generative(*assertions):
-    """mark a method as generative."""
-
-    def decorate(fn):
-        argspec = util.format_argspec_plus(fn)
-        run_assertions = assertions
-        code = "\n".join([
-            "def %s%s:",
-            "    %r",
-            "    self = self._clone()",
-            "    for a in run_assertions:",
-            "        a(self, %r)",
-            "    fn%s",
-            "    return self"
-        ]) % (fn.__name__, argspec['args'], fn.__doc__, fn.__name__, argspec['apply_pos'])
-        env = locals().copy()
-        exec code in env
-        return env[fn.__name__]
-    return decorate
+    """Mark a method as generative."""
+    def generate(fn, *args, **kw):
+        self = args[0]._clone()
+        fn_name = fn.func_name
+        for assertion in assertions:
+            assertion(self, fn_name)
+        fn(self, *args[1:], **kw)
+        return self
+    return util.decorator(generate)
 
 class Query(object):
     """Encapsulates the object-fetching operations provided by Mappers."""
@@ -194,10 +185,10 @@ class Query(object):
                         return e
         return replace
 
+    @_generative()
     def _adapt_all_clauses(self):
         self._disable_orm_filtering = True
-    _adapt_all_clauses = _generative()(_adapt_all_clauses)
-    
+
     def _adapt_clause(self, clause, as_filter, orm_only):
         adapters = []    
         if as_filter and self._filter_aliases:
@@ -298,9 +289,9 @@ class Query(object):
             "To modify the row-limited results of a Query, call from_self() first.  Otherwise, call %s() before limit() or offset() are applied." % (meth, meth)
             )
 
+    @_generative(__no_criterion_condition)
     def __no_criterion(self):
         """generate a Query with no criterion, warn if criterion was present"""
-    __no_criterion = _generative(__no_criterion_condition)(__no_criterion)
 
     def __get_options(self, populate_existing=None, version_check=None, only_load_props=None, refresh_state=None):
         if populate_existing:
@@ -329,27 +320,27 @@ class Query(object):
         
         return self.statement.alias()
         
+    @_generative()
     def with_labels(self):
         """Apply column labels to the return value of Query.statement.
-        
-        Indicates that this Query's `statement` accessor should return a SELECT statement
-        that applies labels to all columns in the form <tablename>_<columnname>; this
-        is commonly used to disambiguate columns from multiple tables which have the
-        same name.
-        
+
+        Indicates that this Query's `statement` accessor should return a
+        SELECT statement that applies labels to all columns in the form
+        <tablename>_<columnname>; this is commonly used to disambiguate
+        columns from multiple tables which have the same name.
+
         When the `Query` actually issues SQL to load rows, it always uses 
         column labeling.
-        
+
         """
         self._with_labels = True
-    with_labels = _generative()(with_labels)
-    
-    
+
     def whereclause(self):
         """return the WHERE criterion for this Query."""
         return self._criterion
     whereclause = property(whereclause)
 
+    @_generative()
     def _with_current_path(self, path):
         """indicate that this query applies to objects loaded within a certain path.
 
@@ -359,8 +350,8 @@ class Query(object):
 
         """
         self._current_path = path
-    _with_current_path = _generative()(_with_current_path)
 
+    @_generative(__no_from_condition, __no_criterion_condition)
     def with_polymorphic(self, cls_or_mappers, selectable=None):
         """Load columns for descendant mappers of this Query's mapper.
 
@@ -388,8 +379,8 @@ class Query(object):
         """
         entity = self._generate_mapper_zero()
         entity.set_with_polymorphic(self, cls_or_mappers, selectable=selectable)
-    with_polymorphic = _generative(__no_from_condition, __no_criterion_condition)(with_polymorphic)
 
+    @_generative()
     def yield_per(self, count):
         """Yield only ``count`` rows at a time.
 
@@ -404,7 +395,6 @@ class Query(object):
 
         """
         self._yield_per = count
-    yield_per = _generative()(yield_per)
 
     def get(self, ident):
         """Return an instance of the object based on the given identifier, or None if not found.
@@ -450,10 +440,11 @@ class Query(object):
         return Query(target, **kwargs).filter(criterion)
     query_from_parent = classmethod(util.deprecated(None, False)(query_from_parent))
 
+    @_generative()
     def correlate(self, *args):
         self._correlate = self._correlate.union(_orm_selectable(s) for s in args)
-    correlate = _generative()(correlate)
 
+    @_generative()
     def autoflush(self, setting):
         """Return a Query with a specific 'autoflush' setting.
 
@@ -464,8 +455,8 @@ class Query(object):
 
         """
         self._autoflush = setting
-    autoflush = _generative()(autoflush)
 
+    @_generative()
     def populate_existing(self):
         """Return a Query that will refresh all instances loaded.
 
@@ -480,21 +471,23 @@ class Query(object):
 
         """
         self._populate_existing = True
-    populate_existing = _generative()(populate_existing)
 
     def with_parent(self, instance, property=None):
-        """add a join criterion corresponding to a relationship to the given parent instance.
+        """Add a join criterion corresponding to a relationship to the given
+        parent instance.
 
-            instance
-                a persistent or detached instance which is related to class represented
-                by this query.
+        instance
+          a persistent or detached instance which is related to class
+          represented by this query.
 
-            property
-                string name of the property which relates this query's class to the
-                instance.  if None, the method will attempt to find a suitable property.
+        property
+          string name of the property which relates this query's class to the
+          instance.  if None, the method will attempt to find a suitable
+          property.
 
-        currently, this method only works with immediate parent relationships, but in the
-        future may be enhanced to work across a chain of parent mappers.
+        Currently, this method only works with immediate parent relationships,
+        but in the future may be enhanced to work across a chain of parent
+        mappers.
 
         """
         from sqlalchemy.orm import properties
@@ -509,6 +502,7 @@ class Query(object):
             prop = mapper.get_property(property, resolve_synonyms=True)
         return self.filter(prop.compare(operators.eq, instance, value_is_parent=True))
 
+    @_generative()
     def add_entity(self, entity, alias=None):
         """add a mapped entity to the list of result columns to be returned."""
 
@@ -518,8 +512,8 @@ class Query(object):
         self._entities = list(self._entities)
         m = _MapperEntity(self, entity)
         self.__setup_aliasizers([m])
-    add_entity = _generative()(add_entity)
 
+    @_generative()
     def from_self(self, *entities):
         """return a Query that selects from this Query's SELECT statement.
 
@@ -538,7 +532,6 @@ class Query(object):
                 _QueryEntity(self, ent)
             self.__setup_aliasizers(self._entities)
 
-    from_self = _generative()(from_self)
     _from_self = from_self
 
     def values(self, *columns):
@@ -556,13 +549,13 @@ class Query(object):
         return iter(q)
     _values = values
 
+    @_generative()
     def add_column(self, column):
         """Add a SQL ColumnElement to the list of result columns to be returned."""
 
         self._entities = list(self._entities)
         c = _ColumnEntity(self, column)
         self.__setup_aliasizers([c])
-    add_column = _generative()(add_column)
 
     def options(self, *args):
         """Return a new Query object, applying the given list of
@@ -574,6 +567,7 @@ class Query(object):
     def _conditional_options(self, *args):
         return self.__options(True, *args)
 
+    @_generative()
     def __options(self, conditional, *args):
         # most MapperOptions write to the '_attributes' dictionary,
         # so copy that as well
@@ -586,14 +580,14 @@ class Query(object):
         else:
             for opt in opts:
                 opt.process_query(self)
-    __options = _generative()(__options)
 
+    @_generative()
     def with_lockmode(self, mode):
         """Return a new Query object with the specified locking mode."""
 
         self._lockmode = mode
-    with_lockmode = _generative()(with_lockmode)
 
+    @_generative()
     def params(self, *args, **kwargs):
         """add values for bind parameters which may have been specified in filter().
 
@@ -609,8 +603,8 @@ class Query(object):
             raise sa_exc.ArgumentError("params() takes zero or one positional argument, which is a dictionary.")
         self._params = self._params.copy()
         self._params.update(kwargs)
-    params = _generative()(params)
 
+    @_generative(__no_statement_condition, __no_limit_offset)
     def filter(self, criterion):
         """apply the given filtering criterion to the query and return the newly resulting ``Query``
 
@@ -629,7 +623,6 @@ class Query(object):
             self._criterion = self._criterion & criterion
         else:
             self._criterion = criterion
-    filter = _generative(__no_statement_condition, __no_limit_offset)(filter)
 
     def filter_by(self, **kwargs):
         """apply the given filtering criterion to the query and return the newly resulting ``Query``."""
@@ -640,6 +633,8 @@ class Query(object):
         return self.filter(sql.and_(*clauses))
 
 
+    @_generative(__no_statement_condition, __no_limit_offset)
+    @util.accepts_a_list_as_starargs(list_deprecation='pending')
     def order_by(self, *criterion):
         """apply one or more ORDER BY criterion to the query and return the newly resulting ``Query``"""
 
@@ -649,9 +644,9 @@ class Query(object):
             self._order_by = criterion
         else:
             self._order_by = self._order_by + criterion
-    order_by = util.array_as_starargs_decorator(order_by)
-    order_by = _generative(__no_statement_condition, __no_limit_offset)(order_by)
 
+    @_generative(__no_statement_condition, __no_limit_offset)
+    @util.accepts_a_list_as_starargs(list_deprecation='pending')
     def group_by(self, *criterion):
         """apply one or more GROUP BY criterion to the query and return the newly resulting ``Query``"""
 
@@ -661,9 +656,8 @@ class Query(object):
             self._group_by = criterion
         else:
             self._group_by = self._group_by + criterion
-    group_by = util.array_as_starargs_decorator(group_by)
-    group_by = _generative(__no_statement_condition, __no_limit_offset)(group_by)
 
+    @_generative(__no_statement_condition, __no_limit_offset)
     def having(self, criterion):
         """apply a HAVING criterion to the query and return the newly resulting ``Query``."""
 
@@ -679,26 +673,25 @@ class Query(object):
             self._having = self._having & criterion
         else:
             self._having = criterion
-    having = _generative(__no_statement_condition, __no_limit_offset)(having)
 
+    @util.accepts_a_list_as_starargs(list_deprecation='pending')
     def join(self, *props, **kwargs):
         """Create a join against this ``Query`` object's criterion
         and apply generatively, returning the newly resulting ``Query``.
 
-        each element in \*props may be:
-        
-          * a string property name, i.e. "rooms".  This will join along
-            the relation of the same name from this Query's "primary"
-            mapper, if one is present.
-          
+        Each element in \*props may be:
+
+          * a string property name, i.e. "rooms".  This will join along the
+            relation of the same name from this Query's "primary" mapper, if
+            one is present.
+
           * a class-mapped attribute, i.e. Houses.rooms.  This will create a
             join from "Houses" table to that of the "rooms" relation.
-          
-          * a 2-tuple containing a target class or selectable, and 
-            an "ON" clause.  The ON clause can be the property name/
-            attribute like above, or a SQL expression.
-          
-          
+
+          * a 2-tuple containing a target class or selectable, and an "ON"
+            clause.  The ON clause can be the property name/ attribute like
+            above, or a SQL expression.
+
         e.g.::
 
             # join along string attribute names
@@ -714,17 +707,17 @@ class Query(object):
             # "Colonials" subclass of Houses, then join to the 
             # "closets" relation on Room
             session.query(Houses).join(Colonials.rooms, Room.closets)
-            
+
             # join from Company entities to the "employees" collection,
             # using "people JOIN engineers" as the target.  Then join
             # to the "computers" collection on the Engineer entity.
             session.query(Company).join((people.join(engineers), 'employees'), Engineer.computers)
-            
+
             # join from Articles to Keywords, using the "keywords" attribute.
             # assume this is a many-to-many relation.
             session.query(Article).join(Article.keywords)
-            
-            # same thing, but spelled out entirely explicitly 
+
+            # same thing, but spelled out entirely explicitly
             # including the association table.
             session.query(Article).join(
                 (article_keywords, Articles.id==article_keywords.c.article_id),
@@ -747,8 +740,8 @@ class Query(object):
         if kwargs:
             raise TypeError("unknown arguments: %s" % ','.join(kwargs.keys()))
         return self.__join(props, outerjoin=False, create_aliases=aliased, from_joinpoint=from_joinpoint)
-    join = util.array_as_starargs_decorator(join)
 
+    @util.accepts_a_list_as_starargs(list_deprecation='pending')
     def outerjoin(self, *props, **kwargs):
         """Create a left outer join against this ``Query`` object's criterion
         and apply generatively, retunring the newly resulting ``Query``.
@@ -760,8 +753,8 @@ class Query(object):
         if kwargs:
             raise TypeError("unknown arguments: %s" % ','.join(kwargs.keys()))
         return self.__join(props, outerjoin=True, create_aliases=aliased, from_joinpoint=from_joinpoint)
-    outerjoin = util.array_as_starargs_decorator(outerjoin)
 
+    @_generative(__no_statement_condition, __no_limit_offset)
     def __join(self, keys, outerjoin, create_aliases, from_joinpoint):
         self.__currenttables = set(self.__currenttables)
         self._polymorphic_adapters = self._polymorphic_adapters.copy()
@@ -889,8 +882,7 @@ class Query(object):
         self._from_obj = clause
         self._joinpoint = right_entity
 
-    __join = _generative(__no_statement_condition, __no_limit_offset)(__join)
-
+    @_generative(__no_statement_condition)
     def reset_joinpoint(self):
         """return a new Query reset the 'joinpoint' of this Query reset
         back to the starting mapper.  Subsequent generative calls will
@@ -901,8 +893,8 @@ class Query(object):
 
         """
         self.__reset_joinpoint()
-    reset_joinpoint = _generative(__no_statement_condition)(reset_joinpoint)
 
+    @_generative(__no_from_condition, __no_criterion_condition)
     def select_from(self, from_obj):
         """Set the `from_obj` parameter of the query and return the newly
         resulting ``Query``.  This replaces the table which this Query selects
@@ -915,9 +907,7 @@ class Query(object):
         if isinstance(from_obj, (tuple, list)):
             util.warn_deprecated("select_from() now accepts a single Selectable as its argument, which replaces any existing FROM criterion.")
             from_obj = from_obj[-1]
-        
         self.__set_select_from(from_obj)
-    select_from = _generative(__no_from_condition, __no_criterion_condition)(select_from)
 
     def __getitem__(self, item):
         if isinstance(item, slice):
@@ -934,10 +924,10 @@ class Query(object):
                     return list(res)
         else:
             return list(self[item:item+1])[0]
-    
+
+    @_generative(__no_statement_condition)
     def slice(self, start, stop):
         """apply LIMIT/OFFSET to the ``Query`` based on a range and return the newly resulting ``Query``."""
-        
         if start is not None and stop is not None:
             self._offset = (self._offset or 0) + start
             self._limit = stop - start
@@ -945,34 +935,31 @@ class Query(object):
             self._limit = stop
         elif start is not None and stop is None:
             self._offset = (self._offset or 0) + start
-    slice = _generative(__no_statement_condition)(slice)
-        
+
+    @_generative(__no_statement_condition)
     def limit(self, limit):
         """Apply a ``LIMIT`` to the query and return the newly resulting
 
         ``Query``.
 
         """
-        
         self._limit = limit
-    limit = _generative(__no_statement_condition)(limit)
-    
+
+    @_generative(__no_statement_condition)
     def offset(self, offset):
         """Apply an ``OFFSET`` to the query and return the newly resulting
         ``Query``.
 
         """
-        
         self._offset = offset
-    offset = _generative(__no_statement_condition)(offset)
-    
+
+    @_generative(__no_statement_condition)
     def distinct(self):
         """Apply a ``DISTINCT`` to the query and return the newly resulting
         ``Query``.
 
         """
         self._distinct = True
-    distinct = _generative(__no_statement_condition)(distinct)
 
     def all(self):
         """Return the results represented by this ``Query`` as a list.
@@ -982,6 +969,7 @@ class Query(object):
         """
         return list(self)
 
+    @_generative(__no_criterion_condition)
     def from_statement(self, statement):
         """Execute the given SELECT statement and return results.
 
@@ -998,7 +986,6 @@ class Query(object):
         if isinstance(statement, basestring):
             statement = sql.text(statement)
         self._statement = statement
-    from_statement = _generative(__no_criterion_condition)(from_statement)
 
     def first(self):
         """Return the first result of this ``Query`` or None if the result doesn't contain any row.
@@ -1445,11 +1432,12 @@ class Query(object):
 
     def _adjust_for_single_inheritance(self, context):
         """Apply single-table-inheritance filtering.
-        
-        For all distinct single-table-inheritance mappers represented in the columns
-        clause of this query, add criterion to the WHERE clause of the given QueryContext
-        such that only the appropriate subtypes are selected from the total results.
-        
+
+        For all distinct single-table-inheritance mappers represented in the
+        columns clause of this query, add criterion to the WHERE clause of the
+        given QueryContext such that only the appropriate subtypes are
+        selected from the total results.
+
         """
         for entity, (mapper, adapter, s, i, w) in self._mapper_adapter_map.iteritems():
             if mapper.single and mapper.inherits and mapper.polymorphic_on and mapper.polymorphic_identity is not None:
