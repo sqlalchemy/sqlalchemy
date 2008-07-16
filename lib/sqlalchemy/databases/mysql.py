@@ -1613,19 +1613,6 @@ class MySQLDialect(default.DefaultDialect):
                 version.append(n)
         return tuple(version)
 
-    # @deprecated
-    def get_version_info(self, connectable):
-        """A tuple of the database server version.
-
-        Deprecated, use ``server_version_info()``.
-        """
-
-        if isinstance(connectable, engine_base.Engine):
-            connectable = connectable.contextual_connect()
-
-        return self.server_version_info(connectable)
-    get_version_info = util.deprecated()(get_version_info)
-
     def reflecttable(self, connection, table, include_columns):
         """Load column definitions from the server."""
 
