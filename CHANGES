@@ -22,7 +22,13 @@ CHANGES
       around by explicitly stating the column in each
       submapper as well but this is fairly unworkable
       and also impossible when using declarative [ticket:1111].
-    
+
+    - Fixed a series of potential race conditions in 
+      Session whereby asynchronous GC could remove unmodified,
+      no longer referenced items from the session as they were 
+      present in a list of items to be processed, typically 
+      during session.expunge_all() and dependent methods.
+      
 - mysql
     - Quoting of MSEnum values for use in CREATE TABLE is now
       optional & will be quoted on demand as required.  (Quoting was

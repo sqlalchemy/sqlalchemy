@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import gc
 import inspect
 import pickle
-from sqlalchemy.orm import create_session, sessionmaker
+from sqlalchemy.orm import create_session, sessionmaker, attributes
 from testlib import engines, sa, testing, config
 from testlib.sa import Table, Column, Integer, String
 from testlib.sa.orm import mapper, relation, backref
@@ -990,7 +990,87 @@ class SessionTest(_fixtures.FixtureTest):
         assert b in sess
         assert len(list(sess)) == 1
 
+class DisposedStates(testing.ORMTest):
+    keep_mappers = True
+    keep_tables = True
+    
+    def define_tables(self, metadata):
+        global t1
+        t1 = Table('t1', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+            )
 
+    def setup_mappers(self):
+        global T
+        class T(object):
+            def __init__(self, data):
+                self.data = data
+        mapper(T, t1)
+    
+    def tearDown(self):
+        from sqlalchemy.orm.session import _sessions
+        _sessions.clear()
+        super(DisposedStates, self).tearDown()
+        
+    def _set_imap_in_disposal(self, sess, *objs):
+        """remove selected objects from the given session, as though they 
+        were dereferenced and removed from WeakIdentityMap.
+        
+        Hardcodes the identity map's "all_states()" method to return the full list
+        of states.  This simulates the all_states() method returning results, afterwhich
+        some of the states get garbage collected (this normally only happens during
+        asynchronous gc).  The Session now has one or more 
+        InstanceState's which have been removed from the identity map and disposed.
+        
+        Will the Session not trip over this ???  Stay tuned.
+        
+        """
+        all_states = sess.identity_map.all_states()
+        sess.identity_map.all_states = lambda: all_states
+        for obj in objs:
+            state = attributes.instance_state(obj)
+            sess.identity_map.remove(state)
+            state.dispose()
+    
+    def _test_session(self, **kwargs):
+        global sess
+        sess = create_session(**kwargs)
+
+        data = o1, o2, o3, o4, o5 = [T('t1'), T('t2'), T('t3'), T('t4'), T('t5')]
+
+        sess.add_all(data)
+
+        sess.flush()
+
+        o1.data = 't1modified'
+        o5.data = 't5modified'
+        
+        self._set_imap_in_disposal(sess, o2, o4, o5)
+        return sess
+        
+    def test_flush(self):
+        self._test_session().flush()
+    
+    def test_clear(self):
+        self._test_session().clear()
+    
+    def test_close(self):
+        self._test_session().close()
+        
+    def test_expunge_all(self):
+        self._test_session().expunge_all()
+        
+    def test_expire_all(self):
+        self._test_session().expire_all()
+    
+    def test_rollback(self):
+        sess = self._test_session(autocommit=False, autoexpire=True)
+        sess.commit()
+        
+        sess.rollback()
+        
+        
 class SessionInterface(testing.TestBase):
     """Bogus args to Session methods produce actionable exceptions."""
 

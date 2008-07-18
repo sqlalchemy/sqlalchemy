@@ -774,7 +774,13 @@ class Session(object):
 
         """
         for state in self.identity_map.all_states() + list(self._new):
-            del state.session_id
+            try:
+                del state.session_id
+            except AttributeError:
+                # asynchronous GC can sometimes result
+                # in the auto-disposal of an InstanceState within this process
+                # see test/orm/session.py DisposedStates
+                pass
 
         self.identity_map = self._identity_cls()
         self._new = {}
