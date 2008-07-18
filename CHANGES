@@ -9,6 +9,14 @@ CHANGES
       "0.4.7".
 
 - orm
+    - Cascade rules can now function unidirectionally on an
+      otherwise bidirectional relation(), taking only
+      the cascade behavior of the operation's initiator into 
+      account.  This means that a cascade of "none" on one 
+      side won't trigger a "save-update" operation when an element
+      is attached to that relation, even if the backref
+      does indicate "save-update" cascade.
+      
     - Added a new SessionExtension hook called after_attach().
       This is called at the point of attachment for objects
       via add(), add_all(), delete(), and merge().

@@ -36,10 +36,8 @@ class UOWEventHandler(interfaces.AttributeExtension):
     session cascade operations.
     """
 
-    def __init__(self, key, class_, cascade):
+    def __init__(self, key):
         self.key = key
-        self.class_ = class_
-        self.cascade = cascade
     
     def _target_mapper(self, state):
         prop = _state_mapper(state).get_property(self.key)
@@ -49,14 +47,16 @@ class UOWEventHandler(interfaces.AttributeExtension):
         # process "save_update" cascade rules for when an instance is appended to the list of another instance
         sess = _state_session(state)
         if sess:
-            if self.cascade.save_update and item not in sess:
+            initiating_property = initiator.class_manager[initiator.key].property
+            if initiating_property.cascade.save_update and item not in sess:
                 sess.save_or_update(item, entity_name=self._target_mapper(state).entity_name)
 
     def remove(self, state, item, initiator):
         sess = _state_session(state)
         if sess:
+            initiating_property = initiator.class_manager[initiator.key].property
             # expunge pending orphans
-            if self.cascade.delete_orphan and item in sess.new:
+            if initiating_property.cascade.delete_orphan and item in sess.new:
                 if self._target_mapper(state)._is_orphan(attributes.instance_state(item)):
                     sess.expunge(item)
 
@@ -66,9 +66,10 @@ class UOWEventHandler(interfaces.AttributeExtension):
             return
         sess = _state_session(state)
         if sess:
-            if newvalue is not None and self.cascade.save_update and newvalue not in sess:
+            initiating_property = initiator.class_manager[initiator.key].property
+            if newvalue is not None and initiating_property.cascade.save_update and newvalue not in sess:
                 sess.save_or_update(newvalue, entity_name=self._target_mapper(state).entity_name)
-            if self.cascade.delete_orphan and oldvalue in sess.new:
+            if initiating_property.cascade.delete_orphan and oldvalue in sess.new:
                 sess.expunge(oldvalue)
 
 
@@ -77,13 +78,12 @@ def register_attribute(class_, key, *args, **kwargs):
     to new InstrumentedAttributes.
     """
     
-    cascade = kwargs.pop('cascade', None)
     useobject = kwargs.get('useobject', False)
     if useobject:
         # for object-holding attributes, instrument UOWEventHandler
         # to process per-attribute cascades
         extension = util.to_list(kwargs.pop('extension', None) or [])
-        extension.insert(0, UOWEventHandler(key, class_, cascade=cascade))
+        extension.insert(0, UOWEventHandler(key))
         kwargs['extension'] = extension
     return attributes.register_attribute(class_, key, *args, **kwargs)
     

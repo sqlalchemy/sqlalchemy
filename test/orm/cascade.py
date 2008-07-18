@@ -155,6 +155,99 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         assert users.count().scalar() == 1
         assert orders.count().scalar() == 0
 
+class NoSaveCascadeTest(_fixtures.FixtureTest):
+    """test that backrefs don't force save-update cascades to occur
+    when they're not desired in the forwards direction."""
+    
+    @testing.resolve_artifact_names
+    def test_unidirectional_cascade_o2m(self):
+        mapper(Order, orders)
+        mapper(User, users, properties = dict(
+            orders = relation(
+                Order, cascade="none", backref="user")
+        ))
+        
+        sess = create_session()
+        
+        o1 = Order()
+        sess.add(o1)
+        u1 = User(orders=[o1])
+        assert u1 not in sess
+        assert o1 in sess
+        
+        sess.clear()
+        u1 = User()
+        sess.add(u1)
+        o1 = Order()
+        o1.user = u1
+        assert u1 in sess
+        assert o1 in sess
+
+    @testing.resolve_artifact_names
+    def test_unidirectional_cascade_m2o(self):
+        mapper(Order, orders, properties={
+            'user':relation(User, cascade="none", backref="orders")
+        })
+        mapper(User, users)
+        
+        sess = create_session()
+
+        o1 = Order()
+        sess.add(o1)
+        o1.user = u1 = User()
+        assert u1 not in sess
+        assert o1 in sess
+
+        sess.clear()
+
+        o1 = Order()
+        sess.add(o1)
+        u1 = User(orders=[o1])
+        assert u1 in sess
+        assert o1 in sess
+        
+        sess.clear()
+        
+        o1 = Order()
+        o1.user = u1 = User()
+        sess.add(o1)
+        assert u1 not in sess
+        assert o1 in sess
+
+        sess.clear()
+
+        o1 = Order()
+        u1 = User(orders=[o1])
+        sess.add(u1)
+        assert u1 in sess
+        assert o1 in sess
+
+    @testing.resolve_artifact_names
+    def test_unidirectional_cascade_m2m(self):
+        mapper(Item, items, properties={
+            'keywords':relation(Keyword, secondary=item_keywords, cascade="none", backref="items")
+        })
+        mapper(Keyword, keywords)
+
+        sess = create_session()
+
+        i1 = Item()
+        k1 = Keyword()
+        sess.add(i1)
+        i1.keywords.append(k1)
+        assert i1 in sess
+        assert k1 not in sess
+        
+        sess.clear()
+        
+        i1 = Item()
+        k1 = Keyword()
+        sess.add(i1)
+        k1.items.append(i1)
+        assert i1 in sess
+        assert k1 in sess
+        
+    
 class O2MCascadeNoOrphanTest(_fixtures.FixtureTest):
     run_inserts = None
 

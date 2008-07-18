@@ -306,7 +306,6 @@ class AbstractRelationLoader(LoaderStrategy):
             uselist=self.uselist, 
             useobject=True, 
             extension=attribute_ext, 
-            cascade=self.parent_property.cascade,  
             trackparent=True, 
             typecallable=self.parent_property.collection_class, 
             callable_=callable_, 
