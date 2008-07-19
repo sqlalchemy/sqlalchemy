@@ -135,6 +135,9 @@ class SessionExtension(object):
         engine level transaction is begun on a connection.
         """
 
+    def after_attach(self, session, instance):
+        """Execute after an instance is attached to a session."""
+
 class SessionTransaction(object):
     """Represents a Session-level Transaction.
 
@@ -1122,6 +1125,9 @@ class Session(object):
             if key is not None:
                 self.identity_map[key] = instance
             instance._sa_session_id = self.hash_key
+
+            if self.extension is not None:
+                self.extension.after_attach(self, instance)
 
     def _unattach(self, instance):
         if instance._sa_session_id == self.hash_key:

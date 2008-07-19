@@ -31,6 +31,11 @@ CHANGES
     - Removed erroneous 'self' reference when raising
       UnmappedColumnError during flush() operation.
 
+    - Added a new SessionExtension hook called after_attach().
+      This is called at the point of attachment for objects
+      via save(), update(), delete(), and merge() 
+      (backported from 0.5).
+
 - sql
     - Fixed bug when calling select([literal('foo')])
       or select([bindparam('foo')]).
