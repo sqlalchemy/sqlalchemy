@@ -129,7 +129,10 @@ class FlushTest(_fixtures.FixtureTest):
         u1.addresses.append(Address(email_address='lala@hoho.com'))
         sess.add_all((u1, u2))
         sess.flush()
-
+        
+        from sqlalchemy.orm import attributes
+        self.assertEquals(attributes.get_history(attributes.instance_state(u1), 'addresses'), ([], [Address(email_address='lala@hoho.com')], []))
+        
         sess.clear()
 
         # test the test fixture a little bit
@@ -140,7 +143,18 @@ class FlushTest(_fixtures.FixtureTest):
             User(name='jack', addresses=[Address(email_address='lala@hoho.com')]),
             User(name='ed', addresses=[Address(email_address='foo@bar.com')])
         ] == sess.query(User).all()
-
+    
+    @testing.resolve_artifact_names
+    def test_hasattr(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        u1 = User(name='jack')
+        
+        assert 'addresses' not in u1.__dict__.keys()
+        u1.addresses = [Address(email_address='test')]
+        assert 'addresses' in dir(u1)
+        
     @testing.resolve_artifact_names
     def test_rollback(self):
         mapper(User, users, properties={

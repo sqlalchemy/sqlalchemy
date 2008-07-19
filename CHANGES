@@ -12,6 +12,10 @@ CHANGES
     - The 'cascade' parameter to relation() accepts None
       as a value, which is equivalent to no cascades.
     
+    - A critical fix to dynamic relations allows the 
+      "modified" history to be properly cleared after
+      a flush().
+      
     - Added a new SessionExtension hook called after_attach().
       This is called at the point of attachment for objects
       via add(), add_all(), delete(), and merge().
