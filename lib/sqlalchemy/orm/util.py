@@ -22,7 +22,10 @@ class CascadeOptions(object):
     """Keeps track of the options sent to relation().cascade"""
 
     def __init__(self, arg=""):
-        values = set(c.strip() for c in arg.split(','))
+        if not arg:
+            values = set()
+        else:
+            values = set(c.strip() for c in arg.split(','))
         self.delete_orphan = "delete-orphan" in values
         self.delete = "delete" in values or "all" in values
         self.save_update = "save-update" in values or "all" in values

@@ -236,7 +236,7 @@ class PropertyLoader(StrategizedProperty):
         backref=None,
         _is_backref=False,
         post_update=False,
-        cascade=None,
+        cascade=False,
         viewonly=False, lazy=True,
         collection_class=None, passive_deletes=False,
         passive_updates=True, remote_side=None,
@@ -280,7 +280,7 @@ class PropertyLoader(StrategizedProperty):
 
         self._reverse_property = None
 
-        if cascade is not None:
+        if cascade is not False:
             self.cascade = CascadeOptions(cascade)
         else:
             self.cascade = CascadeOptions("save-update, merge")

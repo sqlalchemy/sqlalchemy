@@ -173,8 +173,22 @@ def relation(argument, secondary=None, **kwargs):
           configurability.
 
         cascade
-          a string list of cascade rules which determines how persistence
-          operations should be "cascaded" from parent to child.
+          a comma-separated list of cascade rules which determines how Session
+          operations should be "cascaded" from parent to child.  This defaults
+          to "False", which means the default cascade should be used.
+          The default value is "save-update, merge".
+          Available cascades are:
+            save-update - cascade the "add()" operation 
+            (formerly known as save() and update())
+            merge - cascade the "merge()" operation
+            expunge - cascade the "expunge()" operation
+            delete - cascade the "delete()" operation
+            delete-orphan - if an item of the child's type with no parent is detected,
+            mark it for deletion.  Note that this option prevents a pending item
+            of the child's class from being persisted without a parent 
+            present.
+            refresh-expire - cascade the expire() and refresh() operations
+            all - shorthand for "save-update,merge, refresh-expire, expunge, delete"
 
         collection_class
           a class or function that returns a new list-holding object. will be
@@ -325,7 +339,7 @@ def relation(argument, secondary=None, **kwargs):
     return PropertyLoader(argument, secondary=secondary, **kwargs)
 
 def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None,
-    foreign_keys=None, backref=None, post_update=False, cascade=None, remote_side=None, enable_typechecks=True,
+    foreign_keys=None, backref=None, post_update=False, cascade=False, remote_side=None, enable_typechecks=True,
     passive_deletes=False, order_by=None):
     """Construct a dynamically-loading mapper property.
 

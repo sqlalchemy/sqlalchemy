@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 
 from testlib.sa import Table, Column, Integer, String, ForeignKey, Sequence
-from testlib.sa.orm import mapper, relation, create_session, class_mapper
+from testlib.sa.orm import mapper, relation, create_session, class_mapper, backref
 from testlib.sa.orm import attributes, exc as orm_exc
 from testlib import testing
 from testlib.testing import eq_
@@ -157,14 +157,14 @@ class O2MCascadeTest(_fixtures.FixtureTest):
 
 class NoSaveCascadeTest(_fixtures.FixtureTest):
     """test that backrefs don't force save-update cascades to occur
-    when they're not desired in the forwards direction."""
+    when the cascade initiated from the forwards side."""
     
     @testing.resolve_artifact_names
     def test_unidirectional_cascade_o2m(self):
         mapper(Order, orders)
         mapper(User, users, properties = dict(
             orders = relation(
-                Order, cascade="none", backref="user")
+                Order, backref=backref("user", cascade=None))
         ))
         
         sess = create_session()
@@ -176,51 +176,37 @@ class NoSaveCascadeTest(_fixtures.FixtureTest):
         assert o1 in sess
         
         sess.clear()
-        u1 = User()
-        sess.add(u1)
+        
         o1 = Order()
-        o1.user = u1
-        assert u1 in sess
+        u1 = User(orders=[o1])
+        sess.add(o1)
+        assert u1 not in sess
         assert o1 in sess
 
     @testing.resolve_artifact_names
     def test_unidirectional_cascade_m2o(self):
         mapper(Order, orders, properties={
-            'user':relation(User, cascade="none", backref="orders")
+            'user':relation(User, backref=backref("orders", cascade=None))
         })
         mapper(User, users)
         
         sess = create_session()
-
-        o1 = Order()
-        sess.add(o1)
-        o1.user = u1 = User()
-        assert u1 not in sess
-        assert o1 in sess
-
-        sess.clear()
-
-        o1 = Order()
-        sess.add(o1)
-        u1 = User(orders=[o1])
-        assert u1 in sess
-        assert o1 in sess
         
-        sess.clear()
-        
-        o1 = Order()
-        o1.user = u1 = User()
-        sess.add(o1)
-        assert u1 not in sess
-        assert o1 in sess
-
-        sess.clear()
-
-        o1 = Order()
-        u1 = User(orders=[o1])
+        u1 = User()
         sess.add(u1)
+        o1 = Order()
+        o1.user = u1
+        assert o1 not in sess
         assert u1 in sess
-        assert o1 in sess
+        
+        sess.clear()
+
+        u1 = User()
+        o1 = Order()
+        o1.user = u1
+        sess.add(u1)
+        assert o1 not in sess
+        assert u1 in sess
 
     @testing.resolve_artifact_names
     def test_unidirectional_cascade_m2m(self):
@@ -245,7 +231,7 @@ class NoSaveCascadeTest(_fixtures.FixtureTest):
         sess.add(i1)
         k1.items.append(i1)
         assert i1 in sess
-        assert k1 in sess
+        assert k1 not in sess
         
     
 class O2MCascadeNoOrphanTest(_fixtures.FixtureTest):

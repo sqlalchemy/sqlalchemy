@@ -39,25 +39,22 @@ class UOWEventHandler(interfaces.AttributeExtension):
     def __init__(self, key):
         self.key = key
     
-    def _target_mapper(self, state):
-        prop = _state_mapper(state).get_property(self.key)
-        return prop.mapper
-
     def append(self, state, item, initiator):
         # process "save_update" cascade rules for when an instance is appended to the list of another instance
         sess = _state_session(state)
         if sess:
-            initiating_property = initiator.class_manager[initiator.key].property
-            if initiating_property.cascade.save_update and item not in sess:
-                sess.save_or_update(item, entity_name=self._target_mapper(state).entity_name)
+            prop = _state_mapper(state).get_property(self.key)
+            if prop.cascade.save_update and item not in sess:
+                sess.save_or_update(item, entity_name=prop.mapper.entity_name)
 
     def remove(self, state, item, initiator):
         sess = _state_session(state)
         if sess:
-            initiating_property = initiator.class_manager[initiator.key].property
+            prop = _state_mapper(state).get_property(self.key)
             # expunge pending orphans
-            if initiating_property.cascade.delete_orphan and item in sess.new:
-                if self._target_mapper(state)._is_orphan(attributes.instance_state(item)):
+            if prop.cascade.delete_orphan and \
+                item in sess.new and \
+                prop.mapper._is_orphan(attributes.instance_state(item)):
                     sess.expunge(item)
 
     def set(self, state, newvalue, oldvalue, initiator):
@@ -66,10 +63,10 @@ class UOWEventHandler(interfaces.AttributeExtension):
             return
         sess = _state_session(state)
         if sess:
-            initiating_property = initiator.class_manager[initiator.key].property
-            if newvalue is not None and initiating_property.cascade.save_update and newvalue not in sess:
-                sess.save_or_update(newvalue, entity_name=self._target_mapper(state).entity_name)
-            if initiating_property.cascade.delete_orphan and oldvalue in sess.new:
+            prop = _state_mapper(state).get_property(self.key)
+            if newvalue is not None and prop.cascade.save_update and newvalue not in sess:
+                sess.save_or_update(newvalue, entity_name=prop.mapper.entity_name)
+            if prop.cascade.delete_orphan and oldvalue in sess.new:
                 sess.expunge(oldvalue)
 
 
