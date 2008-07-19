@@ -3,7 +3,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy.ext import declarative as decl
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint
-from testlib.sa.orm import relation, create_session
+from testlib.sa.orm import relation, create_session, class_mapper
 from testlib.testing import eq_
 from orm._base import ComparableEntity
 
@@ -113,17 +113,26 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             __tablename__ = 'addresses'
             id = Column(Integer, primary_key=True)
             email = Column(String(50))
-            user_id = Column(Integer)  # note no foreign key
+            user_id = Column(Integer, ForeignKey('users.id'))
 
         class User(Base, ComparableEntity):
             __tablename__ = 'users'
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             addresses = relation("Address", order_by=Address.email, 
-                foreign_keys=Address.user_id, remote_side=Address.user_id,
-                primaryjoin=id==Address.user_id, 
+                foreign_keys=Address.user_id, 
+                remote_side=Address.user_id,
                 )
-
+        
+        # get the mapper for User.   User mapper will compile,
+        # "addresses" relation will call upon Address.user_id for
+        # its clause element.  Address.user_id is a _CompileOnAttr,
+        # which then calls class_mapper(Address).  But !  We're already
+        # "in compilation", but class_mapper(Address) needs to initialize
+        # regardless, or COA's assertion fails
+        # and things generally go downhill from there.
+        class_mapper(User)
+        
         Base.metadata.create_all()
 
         sess = create_session()

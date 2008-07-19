@@ -355,6 +355,7 @@ class Mapper(object):
             # re-entrance to compile() occurs rarely, when a class-mapped construct is 
             # used within a ForeignKey, something that is possible 
             # when using the declarative layer
+            self.__initialize_properties()
             return
         _already_compiling = True
         try:
@@ -385,8 +386,8 @@ class Mapper(object):
         self.__log("__initialize_properties() started")
         l = [(key, prop) for key, prop in self.__props.iteritems()]
         for key, prop in l:
-            self.__log("initialize prop " + key)
             if not getattr(prop, '_compiled', False):
+                self.__log("initialize prop " + key)
                 prop.init(key, self)
         self.__log("__initialize_properties() complete")
         self.compiled = True
