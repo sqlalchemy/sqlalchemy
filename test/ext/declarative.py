@@ -107,7 +107,33 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         self.assertEquals(sess.query(User).filter(User.name == 'ed').one(),
             User(name='ed', addresses=[Address(email='xyz'), Address(email='def'), Address(email='abc')])
         )
-        
+    
+    def test_uncompiled_attributes_in_relation(self):
+        class Address(Base, ComparableEntity):
+            __tablename__ = 'addresses'
+            id = Column(Integer, primary_key=True)
+            email = Column(String(50))
+            user_id = Column(Integer)  # note no foreign key
+
+        class User(Base, ComparableEntity):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            addresses = relation("Address", order_by=Address.email, 
+                foreign_keys=Address.user_id, remote_side=Address.user_id,
+                primaryjoin=id==Address.user_id, 
+                )
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+        u1 = User(name='ed', addresses=[Address(email='abc'), Address(email='xyz'), Address(email='def')])
+        sess.add(u1)
+        sess.flush()
+        sess.clear()
+        self.assertEquals(sess.query(User).filter(User.name == 'ed').one(),
+            User(name='ed', addresses=[Address(email='abc'), Address(email='def'), Address(email='xyz')])
+        )
             
     def test_nice_dependency_error(self):
         class User(Base):

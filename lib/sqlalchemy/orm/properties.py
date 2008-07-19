@@ -532,9 +532,9 @@ class PropertyLoader(StrategizedProperty):
         for attr in ('order_by', 'primaryjoin', 'secondaryjoin', 'secondary', '_foreign_keys', 'remote_side'):
             if callable(getattr(self, attr)):
                 setattr(self, attr, getattr(self, attr)())
-
-        self._foreign_keys = util.to_set(self._foreign_keys)
-        self.remote_side = util.to_set(self.remote_side)
+        
+        self._foreign_keys = set(expression._literal_as_column(x) for x in util.to_set(self._foreign_keys))
+        self.remote_side = set(expression._literal_as_column(x) for x in util.to_set(self.remote_side))
 
         if not self.parent.concrete:
             for inheriting in self.parent.iterate_to_root():

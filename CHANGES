@@ -31,6 +31,11 @@ CHANGES
       no longer referenced items from the session as they were 
       present in a list of items to be processed, typically 
       during session.expunge_all() and dependent methods.
+
+- ext
+    - Class-bound attributes sent as arguments to 
+      relation()'s remote_side and foreign_keys parameters 
+      are now accepted, allowing them to be used with declarative.
       
 - mysql
     - Quoting of MSEnum values for use in CREATE TABLE is now
