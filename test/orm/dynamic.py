@@ -118,7 +118,10 @@ class FlushTest(FixtureTest):
         sess.save(u1)
         sess.save(u2)
         sess.flush()
-
+        
+        from sqlalchemy.orm import attributes
+        self.assertEquals(attributes.get_history(u1._state, 'addresses'), ([], [Address(email_address='lala@hoho.com')], []))
+        
         sess.clear()
 
         # test the test fixture a little bit
@@ -129,6 +132,31 @@ class FlushTest(FixtureTest):
             User(name='jack', addresses=[Address(email_address='lala@hoho.com')]),
             User(name='ed', addresses=[Address(email_address='foo@bar.com')])
         ] == sess.query(User).all()
+    
+    def test_hasattr(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        u1 = User(name='jack')
+        
+        assert 'addresses' not in u1.__dict__.keys()
+        u1.addresses = [Address(email_address='test')]
+        assert 'addresses' in dir(u1)
+        
+    def test_rollback(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        sess = create_session(transactional=True, autoflush=True)
+        u1 = User(name='jack')
+        u1.addresses.append(Address(email_address='lala@hoho.com'))
+        sess.save(u1)
+        sess.flush()
+        sess.commit()
+        u1.addresses.append(Address(email_address='foo@bar.com'))
+        self.assertEquals(u1.addresses.all(), [Address(email_address='lala@hoho.com'), Address(email_address='foo@bar.com')])
+        sess.rollback()
+        self.assertEquals(u1.addresses.all(), [Address(email_address='lala@hoho.com')])
 
     @testing.fails_on('maxdb')
     def test_delete_nocascade(self):

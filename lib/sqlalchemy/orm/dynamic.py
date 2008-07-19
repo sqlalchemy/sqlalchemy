@@ -5,7 +5,7 @@ from sqlalchemy import exceptions, util, logging
 from sqlalchemy.orm import attributes, object_session, util as mapperutil, strategies
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.mapper import has_identity, object_mapper
-
+from sqlalchemy.orm.util import _state_has_identity
 
 class DynaLoader(strategies.AbstractRelationLoader):
     def init_class_attribute(self):
@@ -38,7 +38,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             return history.added_items + history.unchanged_items
 
     def fire_append_event(self, state, value, initiator):
-        state.modified = True
+        collection_history = self._modified_event(state)
+        collection_history.added_items.append(value)
 
         if self.trackparent and value is not None:
             self.sethasparent(value._state, True)
@@ -47,7 +48,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             ext.append(instance, value, initiator or self)
 
     def fire_remove_event(self, state, value, initiator):
-        state.modified = True
+        collection_history = self._modified_event(state)
+        collection_history.deleted_items.append(value)
 
         if self.trackparent and value is not None:
             self.sethasparent(value._state, False)
@@ -55,15 +57,28 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         instance = state.obj()
         for ext in self.extensions:
             ext.remove(instance, value, initiator or self)
+    
+    def _modified_event(self, state):
+        state.modified = True
+        if self.key not in state.committed_state:
+            state.committed_state[self.key] = CollectionHistory(self, state)
+
+        # this is a hack to allow the _base.ComparableEntity fixture
+        # to work
+        state.dict[self.key] = True
+        
+        return state.committed_state[self.key]
         
     def set(self, state, value, initiator):
         if initiator is self:
             return
-
-        old_collection = self.get(state).assign(value)
-
-        # TODO: emit events ???
-        state.modified = True
+        
+        collection_history = self._modified_event(state)
+        if _state_has_identity(state):
+            old_collection = list(self.get(state))
+        else:
+            old_collection = []
+        collection_history.replace(old_collection, value)
 
     def delete(self, *args, **kwargs):
         raise NotImplementedError()
@@ -73,11 +88,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         return (c.added_items, c.unchanged_items, c.deleted_items)
         
     def _get_collection_history(self, state, passive=False):
-        try:
-            c = state.dict[self.key]
-        except KeyError:
-            state.dict[self.key] = c = CollectionHistory(self, state)
-
+        if self.key in state.committed_state:
+            c = state.committed_state[self.key]
+        else:
+            c = CollectionHistory(self, state)
+            
         if not passive:
             return CollectionHistory(self, state, apply_to=c)
         else:
@@ -85,15 +100,13 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         
     def append(self, state, value, initiator, passive=False):
         if initiator is not self:
-            self._get_collection_history(state, passive=True).added_items.append(value)
             self.fire_append_event(state, value, initiator)
     
     def remove(self, state, value, initiator, passive=False):
         if initiator is not self:
-            self._get_collection_history(state, passive=True).deleted_items.append(value)
             self.fire_remove_event(state, value, initiator)
 
-            
+        
 class AppenderQuery(Query):
     def __init__(self, attr, state):
         super(AppenderQuery, self).__init__(attr.target_mapper, None)
@@ -152,15 +165,6 @@ class AppenderQuery(Query):
             q = q.order_by(self.attr.order_by)
         return q
 
-    def assign(self, collection):
-        instance = self.instance
-        if has_identity(instance):
-            oldlist = list(self)
-        else:
-            oldlist = []
-        self.attr._get_collection_history(self.instance._state, passive=True).replace(oldlist, collection)
-        return oldlist
-        
     def append(self, item):
         self.attr.append(self.instance._state, item, None)
 

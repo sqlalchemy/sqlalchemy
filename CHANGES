@@ -10,6 +10,10 @@ CHANGES
       that multiple contains() calls will not conflict
       with each other [ticket:1058]
 
+    - A critical fix to dynamic relations allows the 
+      "modified" history to be properly cleared after
+      a flush() (backported from 0.5).
+
     - fixed bug preventing merge() from functioning in 
       conjunction with a comparable_property()
 
