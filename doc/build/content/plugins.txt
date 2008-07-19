@@ -217,7 +217,7 @@ and Table objects. A typical application setup using `scoped_session` might look
 
     {python}
     engine = create_engine('postgres://scott:tiger@localhost/test')
-    Session = scoped_session(sessionmaker(transactional=True, autoflush=False, bind=engine))
+    Session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
     Base = declarative_base()
     
 Mapped instances then make usage of `Session` in the usual way.

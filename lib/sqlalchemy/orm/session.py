@@ -746,7 +746,7 @@ class Session(object):
 
         This clears all items and ends any transaction in progress.
 
-        If this session were created with ``transactional=True``, a new
+        If this session were created with ``autocommit=False``, a new
         transaction is immediately begun.  Note that this new transaction does
         not use any connection resources until they are first needed.
 

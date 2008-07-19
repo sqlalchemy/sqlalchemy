@@ -192,7 +192,7 @@ objects.  A typical application setup using ``scoped_session`` might look
 like::
 
     engine = create_engine('postgres://scott:tiger@localhost/test')
-    Session = scoped_session(sessionmaker(transactional=True,
+    Session = scoped_session(sessionmaker(autocommit=False,
                                           autoflush=False,
                                           bind=engine))
     Base = declarative_base()
