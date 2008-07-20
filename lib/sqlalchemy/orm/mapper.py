@@ -647,9 +647,8 @@ class Mapper(object):
         
         """
         # check for an existing descriptor
-        if isinstance(
-            getattr(self.class_, name, None),
-            property):
+        if getattr(self.class_, name, None) \
+            and hasattr(getattr(self.class_, name), '__get__'):
             return True
         
         if (self.include_properties is not None and

@@ -15,12 +15,17 @@ CHANGES
     - A critical fix to dynamic relations allows the 
       "modified" history to be properly cleared after
       a flush().
-    
-    - An inheriting class can now override an attribute
-      inherited from the base class with a plain descriptor, 
-      or exclude an inherited attribute via the 
+
+    - user-defined @properties on a class are detected
+      and left in place during mapper initialization.
+      This means that a table-bound column of the same
+      name will not be mapped at all if a @property is
+      in the way (and the column is not remapped to 
+      a different name), nor will an instrumented attribute
+      from an inherited class be applied.  The same
+      rules apply for names excluded using the 
       include_properties/exclude_properties collections.
-      
+
     - Added a new SessionExtension hook called after_attach().
       This is called at the point of attachment for objects
       via add(), add_all(), delete(), and merge().

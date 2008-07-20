@@ -848,6 +848,29 @@ class OverrideColKeyTest(ORMTest):
         sess.add(s1)
         sess.flush()
         assert sess.query(Sub).one().data == "im the data"
+
+    def test_custom_descriptor(self):
+        """test that descriptors prevent inheritance from propigating properties to subclasses."""
+
+        class MyDesc(object):
+            def __get__(self, instance, owner):
+                if instance is None:
+                    return self
+                return "im the data"
+            
+        class Base(object):
+            pass
+        class Sub(Base):
+            data = MyDesc()
+
+        mapper(Base, base)
+        mapper(Sub, subtable, inherits=Base)
+
+        s1 = Sub()
+        sess = create_session()
+        sess.add(s1)
+        sess.flush()
+        assert sess.query(Sub).one().data == "im the data"
         
 
 if __name__ == "__main__":
