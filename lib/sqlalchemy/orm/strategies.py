@@ -24,7 +24,7 @@ class DefaultColumnLoader(LoaderStrategy):
         self.logger.info("%s register managed attribute" % self)
 
         for mapper in self.parent.polymorphic_iterator():
-            if mapper is self.parent or not mapper.concrete:
+            if (mapper is self.parent or not mapper.concrete) and mapper.has_property(self.key):
                 sessionlib.register_attribute(
                     mapper.class_, 
                     self.key, 

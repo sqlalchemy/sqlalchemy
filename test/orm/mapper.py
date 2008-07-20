@@ -3,7 +3,7 @@
 import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import mapper, relation, backref, create_session
+from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper
 from testlib.sa.orm import defer, deferred, synonym, attributes
 from testlib.testing import eq_
 import pickleable
@@ -396,7 +396,7 @@ class MapperTest(_fixtures.FixtureTest):
           exclude_properties=('vendor_id',))
 
         m_m = mapper(Manager, inherits=e_m, polymorphic_identity='manager',
-                     include_properties=())
+                     include_properties=('id', 'type'))
 
         v_m = mapper(Vendor, inherits=p_m, polymorphic_identity='vendor',
                      exclude_properties=('boss_id', 'employee_number'))
@@ -412,15 +412,32 @@ class MapperTest(_fixtures.FixtureTest):
             want = set(want)
             eq_(have, want)
 
+        def assert_instrumented(cls, want):
+            have = set([p.key for p in class_mapper(cls).iterate_properties])
+            want = set(want)
+            eq_(have, want)
+            
         assert_props(Person, ['id', 'name', 'type'])
+        assert_instrumented(Person, ['id', 'name', 'type'])
         assert_props(Employee, ['boss', 'boss_id', 'employee_number',
                                 'id', 'name', 'type'])
+        assert_instrumented(Employee,['boss', 'boss_id', 'employee_number',
+                                                        'id', 'name', 'type'])
         assert_props(Manager, ['boss', 'boss_id', 'employee_number', 'peon',
                                'id', 'name', 'type'])
+                               
+        # 'peon' and 'type' are both explicitly stated properties
+        assert_instrumented(Manager, ['peon', 'type', 'id'])
+        
         assert_props(Vendor, ['vendor_id', 'id', 'name', 'type'])
         assert_props(Hoho, ['id', 'name', 'type'])
         assert_props(Lala, ['p_employee_number', 'p_id', 'p_name', 'p_type'])
 
+        # excluding the discriminator column is currently not allowed
+        class Foo(Person):
+            pass
+        self.assertRaises(sa.exc.InvalidRequestError, mapper, Foo, inherits=Person, polymorphic_identity='foo', exclude_properties=('type',) )
+    
     @testing.resolve_artifact_names
     def test_mapping_to_join(self):
         """Mapping to a join"""

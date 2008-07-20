@@ -695,7 +695,7 @@ class SyncCompileTest(ORMTest):
         assert len(session.query(C).all()) == 1
 
 class OverrideColKeyTest(ORMTest):
-    """test overriding of column names with a common name from parent to child."""
+    """test overriding of column attributes."""
     
     def define_tables(self, metadata):
         global base, subtable
@@ -829,6 +829,25 @@ class OverrideColKeyTest(ORMTest):
         sess.add(s1)
         sess.flush()
         assert sess.query(Sub).get(10) is s1
+    
+    def test_plain_descriptor(self):
+        """test that descriptors prevent inheritance from propigating properties to subclasses."""
+        
+        class Base(object):
+            pass
+        class Sub(Base):
+            @property
+            def data(self):
+                return "im the data"
+
+        mapper(Base, base)
+        mapper(Sub, subtable, inherits=Base)
+        
+        s1 = Sub()
+        sess = create_session()
+        sess.add(s1)
+        sess.flush()
+        assert sess.query(Sub).one().data == "im the data"
         
 
 if __name__ == "__main__":

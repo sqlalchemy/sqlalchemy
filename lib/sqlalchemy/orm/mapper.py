@@ -220,6 +220,9 @@ class Mapper(object):
             o = o or bool(mapper.delete_orphans)
         return o
 
+    def has_property(self, key):
+        return key in self.__props
+        
     def get_property(self, key, resolve_synonyms=False, raiseerr=True):
         """return a MapperProperty associated with the given key."""
 
@@ -636,6 +639,31 @@ class Mapper(object):
 
             return getattr(getattr(cls, clskey), key)
 
+    def _should_exclude(self, name):
+        """determine whether a particular property should be implicitly present on the class.
+        
+        This occurs when properties are propagated from an inherited class, or are 
+        applied from the columns present in the mapped table.
+        
+        """
+        # check for an existing descriptor
+        if isinstance(
+            getattr(self.class_, name, None),
+            property):
+            return True
+        
+        if (self.include_properties is not None and
+            name not in self.include_properties):
+            self.__log("not including property %s" % (name))
+            return True
+
+        if (self.exclude_properties is not None and
+            name in self.exclude_properties):
+            self.__log("excluding property %s" % (name))
+            return True
+            
+        return False
+        
     def __compile_properties(self):
 
         # object attribute names mapped to MapperProperty objects
@@ -654,7 +682,7 @@ class Mapper(object):
         # pull properties from the inherited mapper if any.
         if self.inherits:
             for key, prop in self.inherits.__props.iteritems():
-                if key not in self.__props:
+                if key not in self.__props and not self._should_exclude(key):
                     self._adapt_inherited_property(key, prop)
 
         # create properties for each column in the mapped table,
@@ -662,15 +690,8 @@ class Mapper(object):
         for column in self.mapped_table.columns:
             if column in self._columntoproperty:
                 continue
-
-            if (self.include_properties is not None and
-                column.key not in self.include_properties):
-                self.__log("not including property %s" % (column.key))
-                continue
-
-            if (self.exclude_properties is not None and
-                column.key in self.exclude_properties):
-                self.__log("excluding property %s" % (column.key))
+                
+            if self._should_exclude(column.key):
                 continue
 
             column_key = (self.column_prefix or '') + column.key
@@ -687,6 +708,8 @@ class Mapper(object):
         # in the 'with_polymorphic' selectable but we need it for the base mapper
         if self.polymorphic_on and self.polymorphic_on not in self._columntoproperty:
             col = self.mapped_table.corresponding_column(self.polymorphic_on) or self.polymorphic_on
+            if self._should_exclude(col.key):
+                raise sa_exc.InvalidRequestError("Cannot exclude or override the discriminator column %r" % col.key)
             self._compile_property(col.key, ColumnProperty(col), init=False, setparent=True)
 
     def _adapt_inherited_property(self, key, prop):

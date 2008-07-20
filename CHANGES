@@ -15,6 +15,11 @@ CHANGES
     - A critical fix to dynamic relations allows the 
       "modified" history to be properly cleared after
       a flush().
+    
+    - An inheriting class can now override an attribute
+      inherited from the base class with a plain descriptor, 
+      or exclude an inherited attribute via the 
+      include_properties/exclude_properties collections.
       
     - Added a new SessionExtension hook called after_attach().
       This is called at the point of attachment for objects

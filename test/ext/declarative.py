@@ -37,7 +37,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         eq_(Address.__table__.c['id'].name, 'id')
         eq_(Address.__table__.c['_email'].name, 'email')
         eq_(Address.__table__.c['_user_id'].name, 'user_id')
-
+        
         u1 = User(name='u1', addresses=[
             Address(email='one'),
             Address(email='two'),
