@@ -1264,7 +1264,7 @@ class Mapper(object):
             generated_cols.append(self.version_id_col)
 
         for c in generated_cols:
-            if c.key in params:
+            if c.key in params and c in self._columntoproperty:
                 self._set_state_attr_by_column(state, c, params[c.key])
 
         deferred_props = [prop.key for prop in [self._columntoproperty[c] for c in postfetch_cols]]

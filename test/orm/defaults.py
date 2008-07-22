@@ -98,6 +98,24 @@ class TriggerDefaultsTest(_base.MappedTest):
         eq_(d1.col3, 'up')
         eq_(d1.col4, 'up')
 
-
+class ExcludedDefaultsTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        dt = Table('dt', metadata,
+                   Column('id', Integer, primary_key=True),
+                   Column('col1', String(20), default="hello"),
+        )
+        
+    @testing.resolve_artifact_names
+    def test_exclude(self):
+        class Foo(_base.ComparableEntity):
+            pass
+        mapper(Foo, dt, exclude_properties=('col1',))
+    
+        f1 = Foo()
+        sess = create_session()
+        sess.add(f1)
+        sess.flush()
+        eq_(dt.select().execute().fetchall(), [(1, "hello")])
+    
 if __name__ == "__main__":
     testenv.main()
