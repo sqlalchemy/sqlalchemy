@@ -582,7 +582,7 @@ class MSSQLDialect(default.DefaultDialect):
                 if a is not None:
                     args.append(a)
             coltype = self.ischema_names.get(type, None)
-            if coltype == MSString and charlen == -1:
+            if coltype == MSText or (coltype == MSString and charlen == -1):
                 coltype = MSText()
             else:
                 if coltype is None:
@@ -639,7 +639,7 @@ class MSSQLDialect(default.DefaultDialect):
         # Primary key constraints
         s = sql.select([C.c.column_name, TC.c.constraint_type], sql.and_(TC.c.constraint_name == C.c.constraint_name,
                                                                          C.c.table_name == table.name,
-                                                                         C.c.table_schema == table.schema))
+                                                                         C.c.table_schema == (table.schema or current_schema)))
         c = connection.execute(s)
         for row in c:
             if 'PRIMARY' in row[TC.c.constraint_type.name]:
@@ -804,7 +804,12 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         return [[";".join (connectors)], {}]
 
     def is_disconnect(self, e):
-        return isinstance(e, self.dbapi.Error) and '[08S01]' in str(e)
+        if isinstance(e, self.dbapi.ProgrammingError):
+            return "The cursor's connection has been closed." in str(e) or 'Attempt to use a closed connection.' in str(e)
+        elif isinstance(e, self.dbapi.Error):
+            return '[08S01]' in str(e)
+        else:
+            return False
 
     def create_execution_context(self, *args, **kwargs):
         return MSSQLExecutionContext_pyodbc(self, *args, **kwargs)

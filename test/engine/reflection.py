@@ -618,7 +618,7 @@ class UnicodeReflectionTest(TestBase):
             bind = engines.utf8_engine(options={'convert_unicode':True})
             metadata = MetaData(bind)
 
-            if testing.against('sybase', 'maxdb', 'oracle'):
+            if testing.against('sybase', 'maxdb', 'oracle', 'mssql'):
                 names = set(['plain'])
             else:
                 names = set([u'plain', u'Unit\u00e9ble', u'\u6e2c\u8a66'])
