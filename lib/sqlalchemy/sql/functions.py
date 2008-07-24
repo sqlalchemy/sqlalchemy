@@ -1,6 +1,6 @@
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql.expression import (
-    ClauseList, _FigureVisitName, _Function, _literal_as_binds,
+    ClauseList, _FigureVisitName, _Function, _literal_as_binds, text
     )
 from sqlalchemy.sql import operators
 
@@ -60,6 +60,16 @@ class random(GenericFunction):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('type_', None)
         GenericFunction.__init__(self, args=args, **kwargs)
+
+class count(GenericFunction):
+    """The ANSI COUNT aggregate function.  With no arguments, emits COUNT *."""
+
+    __return_type__ = sqltypes.Integer
+
+    def __init__(self, expression=None, **kwargs):
+        if expression is None:
+            expression = text('*')
+        GenericFunction.__init__(self, args=(expression,), **kwargs)
 
 class current_date(AnsiFunction):
     __return_type__ = sqltypes.Date

@@ -8,6 +8,7 @@ from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
 from testlib import *
 from sqlalchemy.sql.functions import GenericFunction
+from testlib.testing import eq_
 
 from sqlalchemy.databases import *
 # every dialect in databases.__all__ is expected to pass these tests.
@@ -67,6 +68,14 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             ('random()', oracle.dialect())
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
+
+    def test_generic_count(self):
+        assert isinstance(func.count().type, sqltypes.Integer)
+
+        self.assert_compile(func.count(), 'count(*)')
+        self.assert_compile(func.count(1), 'count(:param_1)')
+        c = column('abc')
+        self.assert_compile(func.count(c), 'count(abc)')
 
     def test_constructor(self):
         try:
