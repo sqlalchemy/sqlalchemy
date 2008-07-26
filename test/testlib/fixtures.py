@@ -84,43 +84,55 @@ metadata = MetaData()
 
 users = Table('users', metadata,
     Column('id', Integer, primary_key=True),
-    Column('name', String(30), nullable=False))
+    Column('name', String(30), nullable=False),
+    test_needs_acid=True,
+    )
 
 orders = Table('orders', metadata,
     Column('id', Integer, primary_key=True),
     Column('user_id', None, ForeignKey('users.id')),
     Column('address_id', None, ForeignKey('addresses.id')),
     Column('description', String(30)),
-    Column('isopen', Integer)
+    Column('isopen', Integer),
+    test_needs_acid=True,
     )
 
 addresses = Table('addresses', metadata,
     Column('id', Integer, primary_key=True),
     Column('user_id', None, ForeignKey('users.id')),
-    Column('email_address', String(50), nullable=False))
+    Column('email_address', String(50), nullable=False),
+    test_needs_acid=True,
+    )
 
 dingalings = Table("dingalings", metadata,
     Column('id', Integer, primary_key=True),
     Column('address_id', None, ForeignKey('addresses.id')),
-    Column('data', String(30))
+    Column('data', String(30)),
+    test_needs_acid=True,
     )
 
 items = Table('items', metadata,
     Column('id', Integer, primary_key=True),
-    Column('description', String(30), nullable=False)
+    Column('description', String(30), nullable=False),
+    test_needs_acid=True,
     )
 
 order_items = Table('order_items', metadata,
     Column('item_id', None, ForeignKey('items.id')),
-    Column('order_id', None, ForeignKey('orders.id')))
+    Column('order_id', None, ForeignKey('orders.id')),
+    test_needs_acid=True,
+    )
 
 item_keywords = Table('item_keywords', metadata,
     Column('item_id', None, ForeignKey('items.id')),
-    Column('keyword_id', None, ForeignKey('keywords.id')))
+    Column('keyword_id', None, ForeignKey('keywords.id')),
+    test_needs_acid=True,
+    )
 
 keywords = Table('keywords', metadata,
     Column('id', Integer, primary_key=True),
-    Column('name', String(30), nullable=False)
+    Column('name', String(30), nullable=False),
+    test_needs_acid=True,
     )
 
 def install_fixture_data():

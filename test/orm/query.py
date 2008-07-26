@@ -1080,17 +1080,17 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             q = sess.query(User)
 
             q = q.add_entity(Address).outerjoin('addresses', aliased=aliased)
-            l = q.all()
-            assert l == expected
+            l = q.order_by(User.id).order_by(Address.id).all()
+            self.assertEquals(l, expected)
             sess.clear()
 
             q = sess.query(User).add_entity(Address)
             l = q.join('addresses', aliased=aliased).filter_by(email_address='ed@bettyboop.com').all()
-            assert l == [(user8, address3)]
+            self.assertEquals(l, [(user8, address3)])
             sess.clear()
 
             q = sess.query(User, Address).join('addresses', aliased=aliased).filter_by(email_address='ed@bettyboop.com')
-            assert q.all() == [(user8, address3)]
+            self.assertEquals(q.all(), [(user8, address3)])
             sess.clear()
 
             q = sess.query(User, Address).join('addresses', aliased=aliased).options(eagerload('addresses')).filter_by(email_address='ed@bettyboop.com')
