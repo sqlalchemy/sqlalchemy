@@ -147,7 +147,23 @@ class SessionTest(TestBase, AssertsExecutionResults):
         session.flush(objects=set())
         session.flush(objects=())
         session.flush(objects=iter([]))
-
+    
+    def test_forwards_compat_add(self):
+        class User(object):pass
+        mapper(User, users)
+        sess = create_session()
+        u1 = User()
+        sess.add(u1)
+        assert u1 in sess
+        u2, u3 = User(), User()
+        sess.add_all([u2, u3])
+        assert u2, u3 in sess
+        sess.flush()
+        sess.expunge(u1)
+        assert u1 not in sess
+        sess.add(u1)
+        assert u1 in sess
+        
     @testing.unsupported('sqlite', 'mssql') # TEMP: test causes mssql to hang
     @engines.close_open_connections
     def test_autoflush(self):

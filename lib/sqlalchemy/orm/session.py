@@ -930,6 +930,23 @@ class Session(object):
         self._save_or_update_impl(instance, entity_name=entity_name)
         self._cascade_save_or_update(instance)
 
+    def add(self, instance, entity_name=None):
+        """Add the given instance into this ``Session``.
+
+        This provides forwards compatibility with 0.5.
+
+        """
+        self.save_or_update(instance, entity_name)
+
+    def add_all(self, instances):
+        """Add the given collection of instances to this ``Session``.
+        
+        This provides forwards compatibility with 0.5.
+        """
+
+        for instance in instances:
+            self.add(instance)
+
     def _cascade_save_or_update(self, instance):
         for obj, mapper in _cascade_iterator('save-update', instance, halt_on=lambda c:c in self):
             self._save_or_update_impl(obj, mapper.entity_name)

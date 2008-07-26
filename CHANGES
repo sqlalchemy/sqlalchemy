@@ -14,6 +14,9 @@ CHANGES
       "modified" history to be properly cleared after
       a flush() (backported from 0.5).
 
+    - added add() and add_all() methods to Session,
+      establishing forwards compatibility with 0.5.
+      
     - fixed bug preventing merge() from functioning in 
       conjunction with a comparable_property()
 
