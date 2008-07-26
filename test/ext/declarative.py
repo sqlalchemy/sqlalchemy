@@ -82,6 +82,42 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         assert User.addresses
         assert mapperlib._new_mappers is False
 
+    def test_uncompiled_attributes_in_relation(self):
+        class Address(Base, Fixture):
+            __tablename__ = 'addresses'
+            id = Column(Integer, primary_key=True)
+            email = Column(String(50))
+            user_id = Column(Integer, ForeignKey('users.id'))
+
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            addresses = relation("Address", order_by=Address.email, 
+                foreign_keys=Address.user_id, 
+                remote_side=Address.user_id,
+                )
+
+        # get the mapper for User.   User mapper will compile,
+        # "addresses" relation will call upon Address.user_id for
+        # its clause element.  Address.user_id is a _CompileOnAttr,
+        # which then calls class_mapper(Address).  But !  We're already
+        # "in compilation", but class_mapper(Address) needs to initialize
+        # regardless, or COA's assertion fails
+        # and things generally go downhill from there.
+        class_mapper(User)
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+        u1 = User(name='ed', addresses=[Address(email='abc'), Address(email='xyz'), Address(email='def')])
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+        self.assertEquals(sess.query(User).filter(User.name == 'ed').one(),
+            User(name='ed', addresses=[Address(email='abc'), Address(email='def'), Address(email='xyz')])
+        )
+
     def test_nice_dependency_error(self):
         class User(Base):
             __tablename__ = 'users'

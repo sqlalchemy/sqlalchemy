@@ -12,7 +12,7 @@ invidual ORM-mapped attributes.
 
 from sqlalchemy import sql, schema, util, exceptions, logging
 from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, find_columns
-from sqlalchemy.sql import visitors, operators, ColumnElement
+from sqlalchemy.sql import visitors, operators, ColumnElement, expression
 from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency, object_mapper
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm.mapper import _class_to_mapper
@@ -551,7 +551,7 @@ class PropertyLoader(StrategizedProperty):
         if self._legacy_foreignkey and not self._refers_to_parent_table():
             self.foreign_keys = self._legacy_foreignkey
 
-        arg_foreign_keys = self.foreign_keys
+        arg_foreign_keys = set(expression._literal_as_column(x) for x in util.to_set(self.foreign_keys))
 
         if self._arg_local_remote_pairs:
             if not arg_foreign_keys:
@@ -613,10 +613,12 @@ class PropertyLoader(StrategizedProperty):
             else:
                 eq_pairs = self._arg_local_remote_pairs
         elif self.remote_side:
+            remote_side = set(expression._literal_as_column(x) for x in util.to_set(self.remote_side))
+            
             if self.direction is MANYTOONE:
-                eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_referenced_keys=self.remote_side, any_operator=True)
+                eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_referenced_keys=remote_side, any_operator=True)
             else:
-                eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self.remote_side, any_operator=True)
+                eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=remote_side, any_operator=True)
         else:
             if self.viewonly:
                 eq_pairs = self.synchronize_pairs

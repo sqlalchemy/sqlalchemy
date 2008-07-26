@@ -128,6 +128,12 @@ CHANGES
       variable indicating their creation order, which 
       declarative_base() maintains when generating
       Table constructs.
+
+    - Class-bound attributes sent as arguments to 
+      relation()'s remote_side and foreign_keys parameters 
+      are now accepted, allowing them to be used with 
+      declarative (and therefore self-referential many-to-one
+      relations); merged from 0.5.
       
 0.4.6
 =====
