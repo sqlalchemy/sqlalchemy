@@ -702,7 +702,8 @@ class OverrideColKeyTest(ORMTest):
         
         base = Table('base', metadata, 
             Column('base_id', Integer, primary_key=True),
-            Column('data', String(255))
+            Column('data', String(255)),
+            Column('sqlite_fixer', String(10))
             )
             
         subtable = Table('subtable', metadata,
