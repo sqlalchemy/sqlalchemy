@@ -1042,7 +1042,22 @@ class ScopedSessionTest(ORMTest):
         self.assertEquals(SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]), Session.query(SomeObject).one())
         self.assertEquals(SomeObject(id=1, data="hello", options=[SomeOtherObject(someid=1)]), SomeObject.query.one())
         self.assertEquals(SomeOtherObject(someid=1), SomeOtherObject.query.filter(SomeOtherObject.someid==sso.someid).one())
-
+    
+    def test_forwards_compat_add(self):
+        Session = scoped_session(sessionmaker())
+        class User(object):
+            pass
+        
+        mapper(User, table)
+        u1 = User()
+        Session.add(u1)
+        assert u1 in Session()
+        
+        u2, u3 = User(), User()
+        Session.add_all([u2, u3])
+        assert u2 in Session()
+        assert u3 in Session()
+        
 class ScopedMapperTest(TestBase):
     def setUpAll(self):
         global metadata, table, table2

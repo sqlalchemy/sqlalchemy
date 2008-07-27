@@ -1,7 +1,19 @@
 =======
 CHANGES
 =======
-
+0.4.8
+=====
+- orm 
+    - Added "add()" and "add_all()" to scoped_session
+      methods.  Workaround for 0.4.7:
+      
+        from sqlalchemy.orm.scoping import ScopedSession,\
+        instrument
+        setattr(
+            ScopedSession, "add", instrument("add"))
+        setattr(
+            ScopedSession, "add_all", instrument("add_all"))
+        
 0.4.7
 =====
 - orm
