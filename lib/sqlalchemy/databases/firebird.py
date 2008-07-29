@@ -537,7 +537,7 @@ class FBDialect(default.DefaultDialect):
             # does it have a default value?
             if row['fdefault'] is not None:
                 # the value comes down as "DEFAULT 'value'"
-                assert row['fdefault'].startswith('DEFAULT ')
+                assert row['fdefault'].upper().startswith('DEFAULT '), row
                 defvalue = row['fdefault'][8:]
                 args.append(schema.DefaultClause(sql.text(defvalue)))
 
