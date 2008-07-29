@@ -1482,7 +1482,7 @@ Use `passive_deletes=True` to disable child object loading on a DELETE operation
             ForeignKeyConstraint(['parent_id'],['mytable.id'], ondelete="CASCADE"),
             )
 
-        mmapper(MyOtherClass, myothertable)
+        mapper(MyOtherClass, myothertable)
         
         mapper(MyClass, mytable, properties={
             'children':relation(MyOtherClass, cascade="all, delete-orphan", passive_deletes=True)
