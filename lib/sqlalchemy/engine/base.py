@@ -16,7 +16,6 @@ import inspect, StringIO
 from sqlalchemy import exc, schema, util, types, log
 from sqlalchemy.sql import expression
 
-
 class Dialect(object):
     """Define the behavior of a specific database and DB-API combination.
 
@@ -1497,7 +1496,6 @@ class ResultProxy(object):
     def _create_key_cache(self):
         # local copies to avoid circular ref against 'self'
         props = self.__props
-        context = self.context
         def lookup_key(key):
             """Given a key, which could be a ColumnElement, string, etc.,
             matches it to the appropriate key we got from the result set's

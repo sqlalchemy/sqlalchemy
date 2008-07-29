@@ -2,8 +2,8 @@ import testenv; testenv.configure_for_tests()
 
 from sqlalchemy.ext import declarative as decl
 from testlib import sa, testing
-from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint
-from testlib.sa.orm import relation, create_session, class_mapper
+from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint, asc
+from testlib.sa.orm import relation, create_session, class_mapper, eagerload
 from testlib.testing import eq_
 from orm._base import ComparableEntity
 
@@ -205,7 +205,37 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         a1 = sess.query(Address).filter(Address.email == 'two').one()
         eq_(a1, Address(email='two'))
         eq_(a1.user, User(name='u1'))
+    
+    def test_eager_order_by(self):
+        class Address(Base, ComparableEntity):
+            __tablename__ = 'addresses'
 
+            id = Column('id', Integer, primary_key=True)
+            email = Column('email', String(50))
+            user_id = Column('user_id', Integer, ForeignKey('users.id'))
+
+        class User(Base, ComparableEntity):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            addresses = relation("Address", order_by=Address.email)
+
+        Base.metadata.create_all()
+        u1 = User(name='u1', addresses=[
+            Address(email='two'),
+            Address(email='one'),
+        ])
+        sess = create_session()
+        sess.save(u1)
+        sess.flush()
+        sess.clear()
+        eq_(sess.query(User).options(eagerload(User.addresses)).all(), [User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])])
+
+            
     def test_as_declarative(self):
         class User(ComparableEntity):
             __tablename__ = 'users'

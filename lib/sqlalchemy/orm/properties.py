@@ -533,6 +533,9 @@ class PropertyLoader(StrategizedProperty):
             if callable(getattr(self, attr)):
                 setattr(self, attr, getattr(self, attr)())
         
+        if self.order_by:
+            self.order_by = [expression._literal_as_column(x) for x in util.to_list(self.order_by)]
+        
         self._foreign_keys = set(expression._literal_as_column(x) for x in util.to_set(self._foreign_keys))
         self.remote_side = set(expression._literal_as_column(x) for x in util.to_set(self.remote_side))
 

@@ -9,7 +9,6 @@
 import weakref
 
 import sqlalchemy.exceptions as sa_exc
-import sqlalchemy.orm.attributes
 from sqlalchemy import util, sql, engine
 from sqlalchemy.sql import util as sql_util, expression
 from sqlalchemy.orm import (
@@ -902,6 +901,7 @@ class Session(object):
         """Return a new ``Query`` object corresponding to this ``Session``."""
 
         return self._query_cls(entities, self, **kwargs)
+
     def _autoflush(self):
         if self.autoflush and (self.transaction is None or self.transaction.autoflush):
             self.flush()
@@ -941,6 +941,7 @@ class Session(object):
 
     def expire_all(self):
         """Expires all persistent instances within this Session."""
+
         for state in self.identity_map.all_states():
             _expire_state(state, None)
 

@@ -59,6 +59,9 @@ CHANGES
     - Class-bound attributes sent as arguments to 
       relation()'s remote_side and foreign_keys parameters 
       are now accepted, allowing them to be used with declarative.
+      Additionally fixed bugs involving order_by being
+      specified as a class-bound attribute in conjunction
+      with eager loading.
       
 - mysql
     - Quoting of MSEnum values for use in CREATE TABLE is now
