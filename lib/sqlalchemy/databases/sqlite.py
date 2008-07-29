@@ -222,6 +222,8 @@ class SQLiteDialect(default.DefaultDialect):
                      "and will cause errors in some cases.  Version 2.1.3 "
                      "or greater is recommended.") %
                     '.'.join([str(subver) for subver in sqlite_ver]))
+            if self.dbapi.sqlite_version_info < (3, 3, 8):
+                self.supports_default_values = False
         self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
 
     def dbapi(cls):
@@ -439,8 +441,12 @@ class SQLiteCompiler(compiler.DefaultCompiler):
         preparer = self.preparer
 
         if not colparams:
-            return "INSERT INTO %s DEFAULT VALUES" % (
-                (preparer.format_table(insert_stmt.table),))
+            if not self.dialect.supports_default_values:
+                raise exc.NotSupportedError(
+                    "The version of SQLite you are using, %s, does not support DEFAULT VALUES." % (self.dialect.dbapi.sqlite_version))
+
+            return ("INSERT INTO %s DEFAULT VALUES" % (
+                (preparer.format_table(insert_stmt.table),)))
         else:
             return ("INSERT INTO %s (%s) VALUES (%s)" %
                     (preparer.format_table(insert_stmt.table),

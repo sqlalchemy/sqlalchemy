@@ -101,6 +101,8 @@ class Dialect(object):
       result sets against textual statements where no explicit
       typemap was present.
 
+    supports_default_values
+      Indicates if the construct ``INSERT INTO tablename DEFAULT VALUES`` is supported
     """
 
     def create_connect_args(self, url):

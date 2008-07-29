@@ -219,9 +219,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'sqlite'
 
     # empty insert (i.e. INSERT INTO table DEFAULT VALUES)
-    # fails as recently as sqlite 3.3.6.  passes on 3.4.1.  this syntax
-    # is nowhere to be found in the sqlite3 documentation or changelog, so can't
-    # determine what versions in between it's legal for.
+    # fails on 3.3.7 and before
     def _test_empty_insert(self, table, expect=1):
         try:
             table.create()
@@ -235,13 +233,13 @@ class InsertTest(TestBase, AssertsExecutionResults):
         finally:
             table.drop()
 
-    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
+    @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk1(self):
         self._test_empty_insert(
             Table('a', MetaData(testing.db),
                   Column('id', Integer, primary_key=True)))
 
-    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
+    @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk2(self):
         self.assertRaises(
             exc.DBAPIError,
@@ -250,7 +248,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
                   Column('x', Integer, primary_key=True),
                   Column('y', Integer, primary_key=True)))
 
-    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
+    @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk3(self):
         self.assertRaises(
             exc.DBAPIError,
@@ -260,20 +258,20 @@ class InsertTest(TestBase, AssertsExecutionResults):
                   Column('y', Integer, DefaultClause('123'),
                          primary_key=True)))
 
-    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
+    @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_pk4(self):
         self._test_empty_insert(
             Table('d', MetaData(testing.db),
                   Column('x', Integer, primary_key=True),
                   Column('y', Integer, DefaultClause('123'))))
 
-    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
+    @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_nopk1(self):
         self._test_empty_insert(
             Table('e', MetaData(testing.db),
                   Column('id', Integer)))
 
-    @testing.exclude('sqlite', '<', (3, 4), 'no database support')
+    @testing.exclude('sqlite', '<', (3, 3, 8), 'no database support')
     def test_empty_insert_nopk2(self):
         self._test_empty_insert(
             Table('f', MetaData(testing.db),

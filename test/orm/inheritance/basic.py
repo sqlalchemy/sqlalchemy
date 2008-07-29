@@ -830,7 +830,7 @@ class OverrideColKeyTest(ORMTest):
         sess.add(s1)
         sess.flush()
         assert sess.query(Sub).get(10) is s1
-    
+
     def test_plain_descriptor(self):
         """test that descriptors prevent inheritance from propigating properties to subclasses."""
         
