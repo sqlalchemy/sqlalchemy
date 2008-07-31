@@ -17,7 +17,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
             'BOOLEAN', 'SMALLINT', 'DATE', 'TIME',
             'String', 'Integer', 'SmallInteger','Smallinteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
-            'Boolean', 'Unicode', 'UnicodeText', 'PickleType', 'Interval',
+            'Boolean', 'Unicode', 'MutableType', 'Concatenable', 'UnicodeText', 'PickleType', 'Interval',
             'type_map'
             ]
 
