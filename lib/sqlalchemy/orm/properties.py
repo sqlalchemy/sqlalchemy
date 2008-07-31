@@ -551,7 +551,7 @@ class PropertyLoader(StrategizedProperty):
         if self._legacy_foreignkey and not self._refers_to_parent_table():
             self.foreign_keys = self._legacy_foreignkey
 
-        arg_foreign_keys = set(expression._literal_as_column(x) for x in util.to_set(self.foreign_keys))
+        arg_foreign_keys = util.Set([expression._literal_as_column(x) for x in util.to_set(self.foreign_keys)])
 
         if self._arg_local_remote_pairs:
             if not arg_foreign_keys:
@@ -613,7 +613,7 @@ class PropertyLoader(StrategizedProperty):
             else:
                 eq_pairs = self._arg_local_remote_pairs
         elif self.remote_side:
-            remote_side = set(expression._literal_as_column(x) for x in util.to_set(self.remote_side))
+            remote_side = util.Set([expression._literal_as_column(x) for x in util.to_set(self.remote_side)])
             
             if self.direction is MANYTOONE:
                 eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_referenced_keys=remote_side, any_operator=True)

@@ -1,7 +1,7 @@
 =======
 CHANGES
 =======
-0.4.8
+0.4.7p1
 =====
 - orm 
     - Added "add()" and "add_all()" to scoped_session
@@ -13,7 +13,10 @@ CHANGES
             ScopedSession, "add", instrument("add"))
         setattr(
             ScopedSession, "add_all", instrument("add_all"))
-        
+
+    - Fixed non-2.3 compatible usage of set() and generator
+      expression within relation().
+
 0.4.7
 =====
 - orm
