@@ -54,7 +54,6 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
             )
         metadata.create_all()
 
-    @testing.unsupported('mysql')
     def test_check_constraint(self):
         foo = Table('foo', metadata,
             Column('id', Integer, primary_key=True),
@@ -81,6 +80,7 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
             assert False
         except exceptions.SQLError:
             assert True
+    test_check_constraint = testing.unsupported('mysql')(test_check_constraint)
 
     def test_unique_constraint(self):
         foo = Table('foo', metadata,

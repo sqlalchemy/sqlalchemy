@@ -324,7 +324,6 @@ class EagerTest(FixtureTest):
         assert 'orders' not in noeagers[0].__dict__
         assert 'addresses' not in noeagers[0].__dict__
 
-    @testing.fails_on('maxdb')
     def test_limit(self):
         """test limit operations combined with lazy-load relationships."""
 
@@ -348,6 +347,7 @@ class EagerTest(FixtureTest):
             print fixtures.user_all_result[1:3]
             print l
             assert fixtures.user_all_result[1:3] == l
+    test_limit = testing.fails_on('maxdb')(test_limit)
 
     def test_distinct(self):
         # this is an involved 3x union of the users table to get a lot of rows.
@@ -368,7 +368,6 @@ class EagerTest(FixtureTest):
             assert fixtures.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
 
-    @testing.fails_on('maxdb')
     def test_limit_2(self):
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
@@ -381,8 +380,8 @@ class EagerTest(FixtureTest):
             order_by(Item.id).limit(2).all()
 
         assert fixtures.item_keyword_result[1:3] == l
+    test_limit_2 = testing.fails_on('maxdb')(test_limit_2)
 
-    @testing.fails_on('maxdb')
     def test_limit_3(self):
         """test that the ORDER BY is propigated from the inner select to the outer select, when using the
         'wrapped' select statement resulting from the combination of eager loading and limit/offset clauses."""
@@ -421,6 +420,7 @@ class EagerTest(FixtureTest):
                 addresses=[Address(id=1)]
             )
         ] == l.all()
+    test_limit_3 = testing.fails_on('maxdb')(test_limit_3)
 
     def test_limit_4(self):
         # tests the LIMIT/OFFSET aliasing on a mapper against a select.   original issue from ticket #904
@@ -450,7 +450,6 @@ class EagerTest(FixtureTest):
             assert [User(id=7, address=Address(id=1))] == l
         self.assert_sql_count(testing.db, go, 1)
 
-    @testing.fails_on('maxdb')
     def test_many_to_one(self):
         mapper(Address, addresses, properties = dict(
             user = relation(mapper(User, users), lazy=False)
@@ -464,6 +463,7 @@ class EagerTest(FixtureTest):
             u1 = sess.query(User).get(7)
             assert a.user is u1
         self.assert_sql_count(testing.db, go, 1)
+    test_many_to_one = testing.fails_on('maxdb')(test_many_to_one)
 
 
     def test_one_and_many(self):
@@ -710,7 +710,6 @@ class SelfReferentialEagerTest(ORMTest):
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
 
-    @testing.fails_on('maxdb')
     def test_basic(self):
         class Node(Base):
             def append(self, node):
@@ -742,6 +741,7 @@ class SelfReferentialEagerTest(ORMTest):
                 Node(data='n13')
             ]) == d
         self.assert_sql_count(testing.db, go, 1)
+    test_basic = testing.fails_on('maxdb')(test_basic)
 
 
     def test_lazy_fallback_doesnt_affect_eager(self):
@@ -866,7 +866,6 @@ class SelfReferentialEagerTest(ORMTest):
                 ),
             ])
 
-    @testing.fails_on('maxdb')
     def test_no_depth(self):
         class Node(Base):
             def append(self, node):
@@ -898,6 +897,7 @@ class SelfReferentialEagerTest(ORMTest):
                 Node(data='n13')
             ]) == d
         self.assert_sql_count(testing.db, go, 3)
+    test_no_depth = testing.fails_on('maxdb')(test_no_depth)
 
 class SelfReferentialM2MEagerTest(ORMTest):
     def define_tables(self, metadata):
@@ -1003,14 +1003,14 @@ class SubqueryTest(ORMTest):
         
         """
         class User(Base):
-            @property
             def prop_score(self):
                 return sum([tag.prop_score for tag in self.tags])
+            prop_score = property(prop_score)
 
         class Tag(Base):
-            @property
             def prop_score(self):
                 return self.score1 * self.score2
+            prop_score = property(prop_score)
         
         for labeled, labelname in [(True, 'score'), (True, None), (False, None)]:
             clear_mappers()

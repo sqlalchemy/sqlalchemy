@@ -281,7 +281,6 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :col1_2) AS anon_2 "\
         "WHERE anon_1.col2 = anon_2.col2")
 
-    @testing.emits_warning('.*replaced by another column with the same key')
     def test_alias(self):
         subq = t2.select().alias('subq')
         s = select([t1.c.col1, subq.c.col1], from_obj=[t1, subq, t1.join(subq, t1.c.col1==subq.c.col2)])
@@ -297,6 +296,7 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
 
         s4 = sql_util.ClauseAdapter(table('foo')).traverse(s3, clone=True)
         assert orig == str(s) == str(s3) == str(s4)
+    test_alias = testing.emits_warning('.*replaced by another column with the same key')(test_alias)
 
     def test_correlated_select(self):
         s = select(['*'], t1.c.col1==t2.c.col1, from_obj=[t1, t2]).correlate(t2)

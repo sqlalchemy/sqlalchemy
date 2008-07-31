@@ -338,7 +338,6 @@ class EagerLazyTest(ORMTest):
                         Column('foo_id', Integer, ForeignKey('foo.id'))
         )
 
-    @testing.fails_on('maxdb')
     def testbasic(self):
         class Foo(object): pass
         class Bar(Foo): pass
@@ -364,6 +363,7 @@ class EagerLazyTest(ORMTest):
         q = sess.query(Bar)
         self.assert_(len(q.first().lazy) == 1)
         self.assert_(len(q.first().eager) == 1)
+    testbasic = testing.fails_on('maxdb')(testbasic)
 
 
 class FlushTest(ORMTest):
@@ -473,7 +473,6 @@ class VersioningTest(ORMTest):
             Column('parent', Integer, ForeignKey('base.id'))
             )
 
-    @engines.close_open_connections
     def test_save_update(self):
         class Base(fixtures.Base):
             pass
@@ -520,6 +519,7 @@ class VersioningTest(ORMTest):
         assert s2.subdata == 'sess1 subdata'
         s2.subdata = 'sess2 subdata'
         sess2.flush()
+    test_save_update = engines.close_open_connections(test_save_update)
 
     def test_delete(self):
         class Base(fixtures.Base):

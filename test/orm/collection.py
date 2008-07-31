@@ -944,14 +944,14 @@ class CollectionsTest(TestBase):
 
     def test_dict_subclass(self):
         class MyDict(dict):
-            @collection.appender
-            @collection.internally_instrumented
             def set(self, item, _sa_initiator=None):
                 self.__setitem__(item.a, item, _sa_initiator=_sa_initiator)
-            @collection.remover
-            @collection.internally_instrumented
+            set = collection.internally_instrumented(set)
+            set = collection.appender(set)
             def _remove(self, item, _sa_initiator=None):
                 self.__delitem__(item.a, _sa_initiator=_sa_initiator)
+            _remove = collection.internally_instrumented(_remove)
+            _remove = collection.remover(_remove)
 
         self._test_adapter(MyDict, dictable_entity,
                            to_set=lambda c: set(c.values()))
@@ -987,15 +987,15 @@ class CollectionsTest(TestBase):
             def __init__(self):
                 self.data = dict()
 
-            @collection.appender
-            @collection.replaces(1)
             def set(self, item):
                 current = self.data.get(item.a, None)
                 self.data[item.a] = item
                 return current
-            @collection.remover
+            set = collection.appender(set)
+            set = collection.replaces(1)(set)
             def _remove(self, item):
                 del self.data[item.a]
+            _remove = collection.remover(_remove)
             def __setitem__(self, key, value):
                 self.data[key] = value
             def __getitem__(self, key):
@@ -1006,9 +1006,9 @@ class CollectionsTest(TestBase):
                 return self.data.values()
             def __contains__(self, key):
                 return key in self.data
-            @collection.iterator
             def itervalues(self):
                 return self.data.itervalues()
+            itervalues = collection.iterator(itervalues)
             def __eq__(self, other):
                 return self.data == other
             def __repr__(self):
@@ -1026,15 +1026,15 @@ class CollectionsTest(TestBase):
             def __init__(self):
                 self.data = dict()
 
-            @collection.appender
-            @collection.replaces(1)
             def set(self, item):
                 current = self.data.get(item.a, None)
                 self.data[item.a] = item
                 return current
-            @collection.remover
+            set = collection.replaces(1)(set)
+            set = collection.appender(set)
             def _remove(self, item):
                 del self.data[item.a]
+            _remove = collection.remover(_remove)
             def __setitem__(self, key, value):
                 self.data[key] = value
             def __getitem__(self, key):
@@ -1045,9 +1045,9 @@ class CollectionsTest(TestBase):
                 return self.data.values()
             def __contains__(self, key):
                 return key in self.data
-            @collection.iterator
             def itervalues(self):
                 return self.data.itervalues()
+            itervalues = collection.iterator(itervalues)
             def __eq__(self, other):
                 return self.data == other
             def __repr__(self):
@@ -1108,20 +1108,20 @@ class CollectionsTest(TestBase):
         class MyCollection(object):
             def __init__(self):
                 self.data = set()
-            @collection.appender
             def push(self, item):
                 self.data.add(item)
-            @collection.remover
+            push = collection.appender(push)
             def zark(self, item):
                 self.data.remove(item)
-            @collection.removes_return()
+            zark = collection.remover(zark)
             def maybe_zark(self, item):
                 if item in self.data:
                     self.data.remove(item)
                     return item
-            @collection.iterator
+            maybe_zark = collection.removes_return()(maybe_zark)
             def __iter__(self):
                 return iter(self.data)
+            __iter__ = collection.iterator(__iter__)
             def __eq__(self, other):
                 return self.data == other
 
@@ -1138,20 +1138,20 @@ class CollectionsTest(TestBase):
             # looks like a list
             def append(self, item):
                 assert False
-            @collection.appender
             def push(self, item):
                 self.data.add(item)
-            @collection.remover
+            push = collection.appender(push)
             def zark(self, item):
                 self.data.remove(item)
-            @collection.removes_return()
+            zark = collection.remover(zark)
             def maybe_zark(self, item):
                 if item in self.data:
                     self.data.remove(item)
                     return item
-            @collection.iterator
+            maybe_zark = collection.removes_return()(maybe_zark)
             def __iter__(self):
                 return iter(self.data)
+            __iter__ = collection.iterator(__iter__)
             def __eq__(self, other):
                 return self.data == other
 
@@ -1164,36 +1164,36 @@ class CollectionsTest(TestBase):
         class Custom(object):
             def __init__(self):
                 self.data = []
-            @collection.appender
-            @collection.adds('entity')
             def put(self, entity):
                 self.data.append(entity)
+            put = collection.adds('entity')(put)
+            put = collection.appender(put)
 
-            @collection.remover
-            @collection.removes(1)
             def remove(self, entity):
                 self.data.remove(entity)
+            remove = collection.removes(1)(remove)
+            remove = collection.remover(remove)
 
-            @collection.adds(1)
             def push(self, *args):
                 self.data.append(args[0])
+            push = collection.adds(1)(push)
 
-            @collection.removes('entity')
             def yank(self, entity, arg):
                 self.data.remove(entity)
+            yank = collection.removes('entity')(yank)
 
-            @collection.replaces(2)
             def replace(self, arg, entity, **kw):
                 self.data.insert(0, entity)
                 return self.data.pop()
+            replace = collection.replaces(2)(replace)
 
-            @collection.removes_return()
             def pop(self, key):
                 return self.data.pop()
+            pop = collection.removes_return()(pop)
 
-            @collection.iterator
             def __iter__(self):
                 return iter(self.data)
+            __iter__ = collection.iterator(__iter__)
 
         class Foo(object):
             pass
@@ -1505,13 +1505,13 @@ class CustomCollectionsTest(ORMTest):
         class Bar(object):
             pass
         class AppenderDict(dict):
-            @collection.appender
             def set(self, item):
                 self[id(item)] = item
-            @collection.remover
+            set = collection.appender(set)
             def remove(self, item):
                 if id(item) in self:
                     del self[id(item)]
+            remove = collection.remover(remove)
 
         mapper(Foo, sometable, properties={
             'bars':relation(Bar, collection_class=AppenderDict)
@@ -1695,15 +1695,15 @@ class CustomCollectionsTest(ORMTest):
         class MyCollection(object):
             def __init__(self):
                 self.data = []
-            @collection.appender
             def append(self, value):
                 self.data.append(value)
-            @collection.remover
+            append = collection.appender(append)
             def remove(self, value):
                 self.data.remove(value)
-            @collection.iterator
+            remove = collection.remover(remove)
             def __iter__(self):
                 return iter(self.data)
+            __iter__ = collection.iterator(__iter__)
 
         mapper(Parent, sometable, properties={
             'children':relation(Child, collection_class=MyCollection)

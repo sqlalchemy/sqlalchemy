@@ -9,7 +9,6 @@ class EntityTest(TestBase, AssertsExecutionResults):
     """tests mappers that are constructed based on "entity names", which allows the same class
     to have multiple primary mappers """
 
-    @testing.uses_deprecated('SessionContext')
     def setUpAll(self):
         global user1, user2, address1, address2, metadata, ctx
         metadata = MetaData(testing.db)
@@ -42,6 +41,7 @@ class EntityTest(TestBase, AssertsExecutionResults):
             Column('email', String(100), nullable=False)
             )
         metadata.create_all()
+    setUpAll = testing.uses_deprecated('SessionContext')(setUpAll)
     def tearDownAll(self):
         metadata.drop_all()
     def tearDown(self):
@@ -50,7 +50,6 @@ class EntityTest(TestBase, AssertsExecutionResults):
         for t in metadata.table_iterator(reverse=True):
             t.delete().execute()
 
-    @testing.uses_deprecated('SessionContextExt')
     def testbasic(self):
         """tests a pair of one-to-many mapper structures, establishing that both
         parent and child objects honor the "entity_name" attribute attached to the object
@@ -95,6 +94,7 @@ class EntityTest(TestBase, AssertsExecutionResults):
         u1 = ctx.current.query(User, entity_name='user1').first()
         ctx.current.refresh(u1)
         ctx.current.expire(u1)
+    testbasic = testing.uses_deprecated('SessionContextExt')(testbasic)
 
 
     def testcascade(self):

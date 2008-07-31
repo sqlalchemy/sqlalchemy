@@ -9,7 +9,6 @@ from testlib import engines
 
 class ReflectionTest(TestBase, ComparesTables):
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_basic_reflection(self):
         meta = MetaData(testing.db)
 
@@ -48,6 +47,7 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             addresses.drop()
             users.drop()
+    test_basic_reflection = testing.exclude('mysql', '<', (4, 1, 1))(test_basic_reflection)
 
     def test_include_columns(self):
         meta = MetaData(testing.db)
@@ -103,11 +103,11 @@ class ReflectionTest(TestBase, ComparesTables):
             except exceptions.SAWarning:
                 assert True
 
-            @testing.emits_warning('Did not recognize type')
             def warns():
                 m3 = MetaData(testing.db)
                 t3 = Table("test", m3, autoload=True)
                 assert t3.c.foo.type.__class__ == sqltypes.NullType
+            warns = testing.emits_warning('Did not recognize type')(warns)
 
         finally:
             dialect_module.ischema_names = ischema_names
@@ -370,7 +370,6 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             testing.db.execute("drop table book")
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_composite_fk(self):
         """test reflection of composite foreign keys"""
 
@@ -405,9 +404,9 @@ class ReflectionTest(TestBase, ComparesTables):
             self.assert_(and_(table.c.multi_id==table2.c.foo, table.c.multi_rev==table2.c.bar, table.c.multi_hoho==table2.c.lala).compare(j.onclause))
         finally:
             meta.drop_all()
+    test_composite_fk = testing.exclude('mysql', '<', (4, 1, 1))(test_composite_fk)
 
 
-    @testing.unsupported('oracle')
     def testreserved(self):
         # check a table that uses an SQL reserved name doesn't cause an error
         meta = MetaData(testing.db)
@@ -449,6 +448,7 @@ class ReflectionTest(TestBase, ComparesTables):
             table_c2 = Table('is', meta2, autoload=True)
         finally:
             meta.drop_all()
+    testreserved = testing.unsupported('oracle')(testreserved)
 
     def test_reflect_all(self):
         existing = testing.db.table_names()
@@ -563,7 +563,6 @@ class CreateDropTest(TestBase):
         finally:
             metadata.drop_all(bind=testing.db)
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_createdrop(self):
         metadata.create_all(bind=testing.db)
         self.assertEqual( testing.db.has_table('items'), True )
@@ -576,6 +575,7 @@ class CreateDropTest(TestBase):
         self.assertEqual( testing.db.has_table('email_addresses'), False )
         metadata.drop_all(bind=testing.db)
         self.assertEqual( testing.db.has_table('items'), False )
+    test_createdrop = testing.exclude('mysql', '<', (4, 1, 1))(test_createdrop)
 
     def test_tablenames(self):
         from sqlalchemy.util import Set
@@ -666,9 +666,6 @@ class SchemaTest(TestBase):
             assert buf.index("CREATE TABLE someschema.table1") > -1
             assert buf.index("CREATE TABLE someschema.table2") > -1
 
-    @testing.unsupported('sqlite', 'firebird')
-    # fixme: revisit these below.
-    @testing.fails_on('mssql', 'sybase', 'access')
     def test_explicit_default_schema(self):
         engine = testing.db
 
@@ -697,6 +694,9 @@ class SchemaTest(TestBase):
             table2 = Table('table2', metadata, autoload=True, schema=schema)
         finally:
             metadata.drop_all()
+    test_explicit_default_schema = testing.fails_on('mssql', 'sybase', 'access')(test_explicit_default_schema)
+    # fixme: revisit these below.
+    test_explicit_default_schema = testing.unsupported('sqlite', 'firebird')(test_explicit_default_schema)
 
 
 class HasSequenceTest(TestBase):
@@ -708,12 +708,12 @@ class HasSequenceTest(TestBase):
                       Column('user_name', String(40)),
                       )
 
-    @testing.unsupported('sqlite', 'mysql', 'mssql', 'access', 'sybase')
     def test_hassequence(self):
         metadata.create_all(bind=testing.db)
         self.assertEqual(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), True)
         metadata.drop_all(bind=testing.db)
         self.assertEqual(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), False)
+    test_hassequence = testing.unsupported('sqlite', 'mysql', 'mssql', 'access', 'sybase')(test_hassequence)
 
 
 if __name__ == "__main__":

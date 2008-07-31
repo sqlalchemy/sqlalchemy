@@ -5,7 +5,6 @@ from sqlalchemy.orm import *
 from testlib import *
 
 class AssociationTest(TestBase):
-    @testing.uses_deprecated('association option')
     def setUpAll(self):
         global items, item_keywords, keywords, metadata, Item, Keyword, KeywordAssociation
         metadata = MetaData(testing.db)
@@ -48,6 +47,7 @@ class AssociationTest(TestBase):
         mapper(Item, items, properties={
             'keywords' : relation(KeywordAssociation, association=Keyword)
         })
+    setUpAll = testing.uses_deprecated('association option')(setUpAll)
 
     def tearDown(self):
         for t in metadata.table_iterator(reverse=True):
@@ -123,7 +123,6 @@ class AssociationTest(TestBase):
         print loaded
         self.assert_(saved == loaded)
 
-    @testing.uses_deprecated('association option')
     def testdelete(self):
         sess = create_session()
         item1 = Item('item1')
@@ -140,6 +139,7 @@ class AssociationTest(TestBase):
         sess.delete(item2)
         sess.flush()
         self.assert_(item_keywords.count().scalar() == 0)
+    testdelete = testing.uses_deprecated('association option')(testdelete)
 
 class AssociationTest2(TestBase):
     def setUpAll(self):

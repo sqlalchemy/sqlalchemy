@@ -230,7 +230,6 @@ class FixtureTest(ORMTest):
 FixtureTest.metadata = metadata
 
 class Fixtures(object):
-    @property
     def user_address_result(self):
         return [
             User(id=7, addresses=[
@@ -246,8 +245,8 @@ class Fixtures(object):
             ]),
             User(id=10, addresses=[])
         ]
+    user_address_result = property(user_address_result)
 
-    @property
     def user_all_result(self):
         return [
             User(id=7, addresses=[
@@ -270,8 +269,8 @@ class Fixtures(object):
             ]),
             User(id=10, addresses=[])
         ]
+    user_all_result = property(user_all_result)
 
-    @property
     def user_order_result(self):
         return [
             User(id=7, orders=[
@@ -286,8 +285,8 @@ class Fixtures(object):
             ]),
             User(id=10)
         ]
+    user_order_result = property(user_order_result)
 
-    @property
     def item_keyword_result(self):
         return [
             Item(id=1, keywords=[Keyword(name='red'), Keyword(name='big'), Keyword(name='round')]),
@@ -296,4 +295,5 @@ class Fixtures(object):
             Item(id=4, keywords=[]),
             Item(id=5, keywords=[]),
         ]
+    item_keyword_result = property(item_keyword_result)
 fixtures = Fixtures()

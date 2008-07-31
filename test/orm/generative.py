@@ -38,8 +38,6 @@ class GenerativeQueryTest(TestBase):
         assert res.order_by([Foo.c.bar])[0].bar == 5
         assert res.order_by([desc(Foo.c.bar)])[0].bar == 95
 
-    @testing.unsupported('mssql')
-    @testing.fails_on('maxdb')
     def test_slice(self):
         sess = create_session(bind=testing.db)
         query = sess.query(Foo)
@@ -52,8 +50,9 @@ class GenerativeQueryTest(TestBase):
         assert list(query[10:40:3]) == orig[10:40:3]
         assert list(query[-5:]) == orig[-5:]
         assert query[10:20][5] == orig[10:20][5]
+    test_slice = testing.fails_on('maxdb')(test_slice)
+    test_slice = testing.unsupported('mssql')(test_slice)
 
-    @testing.uses_deprecated('Call to deprecated function apply_max')
     def test_aggregate(self):
         sess = create_session(bind=testing.db)
         query = sess.query(Foo)
@@ -62,6 +61,7 @@ class GenerativeQueryTest(TestBase):
         assert query.filter(foo.c.bar<30).max(foo.c.bar) == 29
         assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).first() == 29
         assert query.filter(foo.c.bar<30).apply_max(foo.c.bar).one() == 29
+    test_aggregate = testing.uses_deprecated('Call to deprecated function apply_max')(test_aggregate)
 
     def test_aggregate_1(self):
         if (testing.against('mysql') and
@@ -71,14 +71,12 @@ class GenerativeQueryTest(TestBase):
         query = create_session(bind=testing.db).query(Foo)
         assert query.filter(foo.c.bar<30).sum(foo.c.bar) == 435
 
-    @testing.fails_on('firebird', 'mssql')
     def test_aggregate_2(self):
         query = create_session(bind=testing.db).query(Foo)
         avg = query.filter(foo.c.bar < 30).avg(foo.c.bar)
         assert round(avg, 1) == 14.5
+    test_aggregate_2 = testing.fails_on('firebird', 'mssql')(test_aggregate_2)
 
-    @testing.fails_on('firebird', 'mssql')
-    @testing.uses_deprecated('Call to deprecated function apply_avg')
     def test_aggregate_3(self):
         query = create_session(bind=testing.db).query(Foo)
 
@@ -87,6 +85,8 @@ class GenerativeQueryTest(TestBase):
 
         avg_o = query.filter(foo.c.bar<30).apply_avg(foo.c.bar).one()
         assert round(avg_o, 1) == 14.5
+    test_aggregate_3 = testing.uses_deprecated('Call to deprecated function apply_avg')(test_aggregate_3)
+    test_aggregate_3 = testing.fails_on('firebird', 'mssql')(test_aggregate_3)
 
     def test_filter(self):
         query = create_session(bind=testing.db).query(Foo)

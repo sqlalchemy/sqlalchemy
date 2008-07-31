@@ -158,7 +158,6 @@ class FlushTest(FixtureTest):
         sess.rollback()
         self.assertEquals(u1.addresses.all(), [Address(email_address='lala@hoho.com')])
 
-    @testing.fails_on('maxdb')
     def test_delete_nocascade(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), backref='user')
@@ -190,8 +189,8 @@ class FlushTest(FixtureTest):
         sess.close()
 
         assert testing.db.scalar(addresses.count(addresses.c.user_id != None)) ==0
+    test_delete_nocascade = testing.fails_on('maxdb')(test_delete_nocascade)
 
-    @testing.fails_on('maxdb')
     def test_delete_cascade(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), backref='user', cascade="all, delete-orphan")
@@ -223,8 +222,8 @@ class FlushTest(FixtureTest):
         sess.close()
 
         assert testing.db.scalar(addresses.count()) ==0
+    test_delete_cascade = testing.fails_on('maxdb')(test_delete_cascade)
 
-    @testing.fails_on('maxdb')
     def test_remove_orphans(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), cascade="all, delete-orphan", backref='user')
@@ -259,6 +258,7 @@ class FlushTest(FixtureTest):
 
         sess.delete(u)
         sess.close()
+    test_remove_orphans = testing.fails_on('maxdb')(test_remove_orphans)
 
 
 def create_backref_test(autoflush, saveuser):

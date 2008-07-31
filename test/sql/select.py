@@ -240,7 +240,6 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable ORDER BY (SELECT myothertable.otherid FROM myothertable WHERE mytable.myid = myothertable.otherid) DESC"
         )
 
-    @testing.uses_deprecated('scalar option')
     def test_scalar_select(self):
         try:
             s = select([table1.c.myid, table1.c.name]).as_scalar()
@@ -321,6 +320,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         j1 = table1.join(table2, table1.c.myid==table2.c.otherid)
         s2 = select([table1, s1], from_obj=j1)
         self.assert_compile(s2, "SELECT mytable.myid, mytable.name, mytable.description, (SELECT t2alias.otherid FROM myothertable AS t2alias WHERE mytable.myid = t2alias.otherid) AS anon_1 FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
+    test_scalar_select = testing.uses_deprecated('scalar option')(test_scalar_select)
 
     def test_label_comparison(self):
         x = func.lala(table1.c.myid).label('foo')
@@ -952,7 +952,6 @@ UNION SELECT mytable.myid FROM mytable"
         self.assert_compile(s, "SELECT foo, bar UNION SELECT foo, bar UNION (SELECT foo, bar UNION SELECT foo, bar)")
         
 
-    @testing.uses_deprecated('//get_params')
     def test_binds(self):
         for (
              stmt,
@@ -1055,6 +1054,7 @@ UNION SELECT mytable.myid FROM mytable"
 
         s = select([table1], or_(table1.c.myid==7, table1.c.myid==8, table1.c.myid==bindparam('myid_1')))
         self.assertRaisesMessage(exceptions.CompileError, "conflicts with unique bind parameter of the same name", str, s)
+    test_binds = testing.uses_deprecated('//get_params')(test_binds)
 
 
 
@@ -1156,7 +1156,6 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
         self.assert_compile(select([table1], table1.c.myid.in_([])),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (CASE WHEN (mytable.myid IS NULL) THEN NULL ELSE 0 END = 1)")
 
-    @testing.uses_deprecated('passing in_')
     def test_in_deprecated_api(self):
         self.assert_compile(select([table1], table1.c.myid.in_('abc')),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:myid_1)")
@@ -1169,6 +1168,7 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
 
         self.assert_compile(select([table1], table1.c.myid.in_()),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (CASE WHEN (mytable.myid IS NULL) THEN NULL ELSE 0 END = 1)")
+    test_in_deprecated_api = testing.uses_deprecated('passing in_')(test_in_deprecated_api)
 
     def test_cast(self):
         tbl = table('casttest',
@@ -1414,7 +1414,6 @@ class InlineDefaultTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(t.update(inline=True, values={'col3':'foo'}), "UPDATE test SET col1=foo(:foo_1), col2=(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM foo), col3=:col3")
 
 class SchemaTest(TestBase, AssertsCompiledSQL):
-    @testing.fails_on('mssql')
     def test_select(self):
         # these tests will fail with the MS-SQL compiler since it will alias schema-qualified tables
         self.assert_compile(table4.select(), "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id, remote_owner.remotetable.value FROM remote_owner.remotetable")
@@ -1427,6 +1426,7 @@ class SchemaTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(s, "SELECT remote_owner.remotetable.rem_id AS remote_owner_remotetable_rem_id, remote_owner.remotetable.datatype_id AS remote_owner_remotetable_datatype_id, remote_owner.remotetable.value "\
             "AS remote_owner_remotetable_value FROM remote_owner.remotetable WHERE "\
             "remote_owner.remotetable.datatype_id = :datatype_id_1 AND remote_owner.remotetable.value = :value_1")
+    test_select = testing.fails_on('mssql')(test_select)
 
     def test_alias(self):
         a = alias(table4, 'remtable')

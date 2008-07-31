@@ -20,7 +20,6 @@ class AssignMapperTest(TestBase):
             )
         metadata.create_all()
 
-    @testing.uses_deprecated('SessionContext', 'assign_mapper')
     def setUp(self):
         global SomeObject, SomeOtherObject, ctx
         class SomeObject(object):pass
@@ -39,6 +38,7 @@ class AssignMapperTest(TestBase):
         s.options.append(sso)
         ctx.current.flush()
         ctx.current.clear()
+    setUp = testing.uses_deprecated('SessionContext', 'assign_mapper')(setUp)
 
     def tearDownAll(self):
         metadata.drop_all()
@@ -48,7 +48,6 @@ class AssignMapperTest(TestBase):
             table.delete().execute()
         clear_mappers()
 
-    @testing.uses_deprecated('assign_mapper')
     def test_override_attributes(self):
 
         sso = SomeOtherObject.query().first()
@@ -67,8 +66,8 @@ class AssignMapperTest(TestBase):
             assert False
         except exceptions.ArgumentError:
             pass
+    test_override_attributes = testing.uses_deprecated('assign_mapper')(test_override_attributes)
 
-    @testing.uses_deprecated('assign_mapper')
     def test_dont_clobber_methods(self):
         class MyClass(object):
             def expunge(self):
@@ -77,6 +76,7 @@ class AssignMapperTest(TestBase):
         assign_mapper(ctx, MyClass, table2)
 
         assert MyClass().expunge() == "an expunge !"
+    test_dont_clobber_methods = testing.uses_deprecated('assign_mapper')(test_dont_clobber_methods)
 
 
 if __name__ == '__main__':

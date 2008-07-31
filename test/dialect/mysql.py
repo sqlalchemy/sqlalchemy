@@ -177,7 +177,6 @@ class TypesTest(TestBase, AssertsExecutionResults):
             raise
         numeric_table.drop()
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_charset(self):
         """Exercise CHARACTER SET and COLLATE-ish options on string types."""
 
@@ -260,8 +259,8 @@ class TypesTest(TestBase, AssertsExecutionResults):
         except:
             raise
         charset_table.drop()
+    test_charset = testing.exclude('mysql', '<', (4, 1, 1))(test_charset)
 
-    @testing.exclude('mysql', '<', (5, 0, 5))
     def test_bit_50(self):
         """Exercise BIT types on 5.0+ (not valid for all engine types)"""
 
@@ -323,6 +322,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                 roundtrip([0, 0, 0, 0, 0, 0, 0, i])
         finally:
             meta.drop_all()
+    test_bit_50 = testing.exclude('mysql', '<', (5, 0, 5))(test_bit_50)
 
     def test_boolean(self):
         """Test BOOL/TINYINT(1) compatability and reflection."""
@@ -381,7 +381,6 @@ class TypesTest(TestBase, AssertsExecutionResults):
         finally:
             meta.drop_all()
 
-    @testing.exclude('mysql', '<', (4, 1, 0))
     def test_timestamp(self):
         """Exercise funky TIMESTAMP default syntax."""
 
@@ -423,6 +422,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                     self.assert_(r.c.t is not None)
         finally:
             meta.drop_all()
+    test_timestamp = testing.exclude('mysql', '<', (4, 1, 0))(test_timestamp)
 
     def test_year(self):
         """Exercise YEAR."""
@@ -579,7 +579,6 @@ class TypesTest(TestBase, AssertsExecutionResults):
         self.assert_eq(res, expected)
         enum_table.drop()
 
-    @testing.exclude('mysql', '>', (3))
     def test_enum_parse(self):
         """More exercises for the ENUM type."""
 
@@ -606,6 +605,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                 assert t.c.e5.type.enums == ["", "'a'", "b'b", "'"]
         finally:
             enum_table.drop()
+    test_enum_parse = testing.exclude('mysql', '>', (3))(test_enum_parse)
 
     def test_default_reflection(self):
         """Test reflection of column defaults."""
@@ -626,8 +626,6 @@ class TypesTest(TestBase, AssertsExecutionResults):
         finally:
             def_table.drop()
 
-    @testing.exclude('mysql', '<', (5, 0, 0))
-    @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
         specs = [( String(), mysql.MSText(), ),
@@ -693,6 +691,8 @@ class TypesTest(TestBase, AssertsExecutionResults):
                 db.execute('DROP VIEW mysql_types_v')
         finally:
             m.drop_all()
+    test_type_reflection = testing.uses_deprecated('Using String type with no length')(test_type_reflection)
+    test_type_reflection = testing.exclude('mysql', '<', (5, 0, 0))(test_type_reflection)
 
     def test_autoincrement(self):
         meta = MetaData(testing.db)

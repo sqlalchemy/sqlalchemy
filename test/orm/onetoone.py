@@ -25,7 +25,6 @@ class Port(object):
         self.description = description
 
 class O2OTest(TestBase, AssertsExecutionResults):
-    @testing.uses_deprecated('SessionContext')
     def setUpAll(self):
         global jack, port, metadata, ctx
         metadata = MetaData(testing.db)
@@ -47,6 +46,7 @@ class O2OTest(TestBase, AssertsExecutionResults):
             Column('jack_id', Integer, ForeignKey("jack.id")),
         )
         metadata.create_all()
+    setUpAll = testing.uses_deprecated('SessionContext')(setUpAll)
     def setUp(self):
         pass
     def tearDown(self):
@@ -54,7 +54,6 @@ class O2OTest(TestBase, AssertsExecutionResults):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.uses_deprecated('SessionContext')
     def test1(self):
         mapper(Port, port, extension=ctx.mapper_extension)
         mapper(Jack, jack, order_by=[jack.c.number],properties = {
@@ -88,6 +87,7 @@ class O2OTest(TestBase, AssertsExecutionResults):
 
         ctx.current.delete(j)
         ctx.current.flush()
+    test1 = testing.uses_deprecated('SessionContext')(test1)
 
 if __name__ == "__main__":
     testenv.main()

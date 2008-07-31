@@ -294,8 +294,6 @@ class QueryTest(TestBase):
         r = users.select(limit=3, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
 
-    @testing.unsupported('mssql')
-    @testing.fails_on('maxdb')
     def test_select_limit_offset(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
@@ -308,8 +306,9 @@ class QueryTest(TestBase):
         self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
         r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
+    test_select_limit_offset = testing.fails_on('maxdb')(test_select_limit_offset)
+    test_select_limit_offset = testing.unsupported('mssql')(test_select_limit_offset)
 
-    @testing.exclude('mysql', '<', (5, 0, 37))
     def test_scalar_select(self):
         """test that scalar subqueries with labels get their type propigated to the result set."""
         # mysql and/or mysqldb has a bug here, type isn't propagated for scalar
@@ -326,6 +325,7 @@ class QueryTest(TestBase):
             assert isinstance(s2.execute().fetchone()['somelabel'], datetime.datetime)
         finally:
             datetable.drop()
+    test_scalar_select = testing.exclude('mysql', '<', (5, 0, 37))(test_scalar_select)
 
     def test_order_by(self):
         """Exercises ORDER BY clause generation.
@@ -489,7 +489,6 @@ class QueryTest(TestBase):
         self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
 
-    @testing.unsupported('oracle', 'firebird', 'maxdb')
     def test_column_accessor_shadow(self):
         meta = MetaData(testing.db)
         shadowed = Table('test_shadowed', meta,
@@ -518,8 +517,8 @@ class QueryTest(TestBase):
             r.close()
         finally:
             shadowed.drop(checkfirst=True)
+    test_column_accessor_shadow = testing.unsupported('oracle', 'firebird', 'maxdb')(test_column_accessor_shadow)
 
-    @testing.fails_on('maxdb')
     def test_in_filtering(self):
         """test the behavior of the in_() function."""
 
@@ -569,6 +568,7 @@ class QueryTest(TestBase):
         s = users.select(users.c.user_name.in_([]) == None)
         r = s.execute().fetchall()
         assert len(r) == 1
+    test_in_filtering = testing.fails_on('maxdb')(test_in_filtering)
 
 
 class CompoundTest(TestBase):
@@ -647,7 +647,6 @@ class CompoundTest(TestBase):
                   ('ccc', 'aaa')]
         self.assertEquals(u.execute().fetchall(), wanted)
 
-    @testing.fails_on('maxdb')
     def test_union_ordered_alias(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
@@ -660,8 +659,8 @@ class CompoundTest(TestBase):
         wanted = [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'),
                   ('ccc', 'aaa')]
         self.assertEquals(u.alias('bar').select().execute().fetchall(), wanted)
+    test_union_ordered_alias = testing.fails_on('maxdb')(test_union_ordered_alias)
 
-    @testing.unsupported('sqlite', 'mysql', 'oracle')
     def test_union_all(self):
         e = union_all(
             select([t1.c.col3]),
@@ -677,8 +676,8 @@ class CompoundTest(TestBase):
 
         found2 = self._fetchall_sorted(e.alias('foo').select().execute())
         self.assertEquals(found2, wanted)
+    test_union_all = testing.unsupported('sqlite', 'mysql', 'oracle')(test_union_all)
 
-    @testing.unsupported('firebird', 'mysql', 'sybase')
     def test_intersect(self):
         i = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -692,8 +691,8 @@ class CompoundTest(TestBase):
 
         found2 = self._fetchall_sorted(i.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
+    test_intersect = testing.unsupported('firebird', 'mysql', 'sybase')(test_intersect)
 
-    @testing.unsupported('firebird', 'mysql', 'oracle', 'sybase')
     def test_except_style1(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -706,8 +705,8 @@ class CompoundTest(TestBase):
 
         found = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found, wanted)
+    test_except_style1 = testing.unsupported('firebird', 'mysql', 'oracle', 'sybase')(test_except_style1)
 
-    @testing.unsupported('firebird', 'mysql', 'oracle', 'sybase')
     def test_except_style2(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -723,8 +722,8 @@ class CompoundTest(TestBase):
 
         found2 = self._fetchall_sorted(e.alias('bar').select().execute())
         self.assertEquals(found2, wanted)
+    test_except_style2 = testing.unsupported('firebird', 'mysql', 'oracle', 'sybase')(test_except_style2)
 
-    @testing.unsupported('firebird', 'mysql', 'oracle', 'sqlite', 'sybase')
     def test_except_style3(self):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
         e = except_(
@@ -737,8 +736,8 @@ class CompoundTest(TestBase):
         self.assertEquals(e.execute().fetchall(), [('ccc',)])
         self.assertEquals(e.alias('foo').select().execute().fetchall(),
                           [('ccc',)])
+    test_except_style3 = testing.unsupported('firebird', 'mysql', 'oracle', 'sqlite', 'sybase')(test_except_style3)
 
-    @testing.unsupported('firebird', 'mysql')
     def test_composite(self):
         u = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -752,8 +751,8 @@ class CompoundTest(TestBase):
         found = self._fetchall_sorted(u.execute())
 
         self.assertEquals(found, wanted)
+    test_composite = testing.unsupported('firebird', 'mysql')(test_composite)
 
-    @testing.unsupported('firebird', 'mysql')
     def test_composite_alias(self):
         ua = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -767,6 +766,7 @@ class CompoundTest(TestBase):
         wanted = [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         found = self._fetchall_sorted(ua.select().execute())
         self.assertEquals(found, wanted)
+    test_composite_alias = testing.unsupported('firebird', 'mysql')(test_composite_alias)
 
 
 class JoinTest(TestBase):
@@ -1058,13 +1058,13 @@ class OperatorTest(TestBase):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.fails_on('maxdb')
     def test_modulo(self):
         self.assertEquals(
             select([flds.c.intcol % 3],
                    order_by=flds.c.idcol).execute().fetchall(),
             [(2,),(1,)]
         )
+    test_modulo = testing.fails_on('maxdb')(test_modulo)
 
 
 

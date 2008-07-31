@@ -320,37 +320,37 @@ class ZooMarkTest(TestBase):
         engine = create_engine('postgres:///', creator=player)
         metadata = MetaData(engine)
 
-    @profiling.function_call_count(3230, {'2.4': 1796})
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
+    test_profile_1_create_tables = profiling.function_call_count(3230, {'2.4': 1796})(test_profile_1_create_tables)
 
-    @profiling.function_call_count(6064, {'2.4': 3635})
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
+    test_profile_1a_populate = profiling.function_call_count(6064, {'2.4': 3635})(test_profile_1a_populate)
 
-    @profiling.function_call_count(339, {'2.4': 195})
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
+    test_profile_2_insert = profiling.function_call_count(339, {'2.4': 195})(test_profile_2_insert)
 
-    @profiling.function_call_count(4923, {'2.4': 2557})
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
+    test_profile_3_properties = profiling.function_call_count(4923, {'2.4': 2557})(test_profile_3_properties)
 
-    @profiling.function_call_count(18119, {'2.4': 10549})
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
+    test_profile_4_expressions = profiling.function_call_count(18119, {'2.4': 10549})(test_profile_4_expressions)
 
-    @profiling.function_call_count(1617, {'2.4': 1032})
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
+    test_profile_5_aggregates = profiling.function_call_count(1617, {'2.4': 1032})(test_profile_5_aggregates)
 
-    @profiling.function_call_count(1988, {'2.4': 1048})
     def test_profile_6_editing(self):
         self.test_baseline_6_editing()
+    test_profile_6_editing = profiling.function_call_count(1988, {'2.4': 1048})(test_profile_6_editing)
 
-    @profiling.function_call_count(3614, {'2.4': 2198})
     def test_profile_7_multiview(self):
         self.test_baseline_7_multiview()
+    test_profile_7_multiview = profiling.function_call_count(3614, {'2.4': 2198})(test_profile_7_multiview)
 
     def test_profile_8_drop(self):
         self.test_baseline_8_drop()

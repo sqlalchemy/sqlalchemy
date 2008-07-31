@@ -36,12 +36,12 @@ class SessionContextTest(TestBase, AssertsExecutionResults):
         obj2 = class_()
         assert context.current == object_session(obj2)
 
-    @testing.uses_deprecated('SessionContext')
     def test_mapper_extension(self):
         context = SessionContext(Session)
         class User(object): pass
         User.mapper = mapper(User, users, extension=context.mapper_extension)
         self.do_test(User, context)
+    test_mapper_extension = testing.uses_deprecated('SessionContext')(test_mapper_extension)
 
 
 if __name__ == "__main__":

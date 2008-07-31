@@ -74,7 +74,6 @@ class GetTest(QueryTest):
         except exceptions.SAWarning, e:
             assert str(e) == "Query.get() being called on a Query with existing criterion; criterion is being ignored."
 
-        @testing.emits_warning('Query.*')
         def warns():
             assert s.query(User).filter(User.id==7).get(19) is None
 
@@ -96,6 +95,7 @@ class GetTest(QueryTest):
             assert s.query(User).join('addresses').filter(Address.user_id==8).get(7).id == u.id
 
             assert s.query(User).join('addresses').filter(Address.user_id==8).load(7).id == u.id
+        warns = testing.emits_warning('Query.*')(warns)
         warns()
 
     def test_unique_param_names(self):
@@ -140,7 +140,6 @@ class GetTest(QueryTest):
         assert u2.name =='jack'
         assert a not in u2.addresses
 
-    @testing.exclude('mysql', '<', (4, 1))
     def test_unicode(self):
         """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail
         on postgres, mysql and oracle unless it is converted to an encoded string"""
@@ -160,6 +159,7 @@ class GetTest(QueryTest):
                               LocalFoo(id=ustring, data=ustring))
         finally:
             metadata.drop_all()
+    test_unicode = testing.exclude('mysql', '<', (4, 1))(test_unicode)
 
     def test_populate_existing(self):
         s = create_session()
@@ -303,13 +303,13 @@ class FilterTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
 
-    @testing.fails_on('maxdb')
     def test_limit(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).limit(2).offset(1).all()
 
         assert [User(id=8), User(id=9)] == list(create_session().query(User)[1:3])
 
         assert User(id=8) == create_session().query(User)[1]
+    test_limit = testing.fails_on('maxdb')(test_limit)
 
     def test_onefilter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.name.endswith('ed')).all()
@@ -349,12 +349,12 @@ class FilterTest(QueryTest):
 
         assert [User(id=9)] == sess.query(User).filter(User.addresses.any(email_address='fred@fred.com')).all()
 
-    @testing.fails_on_everything_except()
     def test_broken_any_1(self):
         sess = create_session()
         
         # overcorrelates
         assert [User(id=7), User(id=8)] == sess.query(User).join("addresses").filter(~User.addresses.any(Address.email_address=='fred@fred.com')).all()
+    test_broken_any_1 = testing.fails_on_everything_except()(test_broken_any_1)
 
     def test_broken_any_2(self):
         sess = create_session()
@@ -368,14 +368,13 @@ class FilterTest(QueryTest):
         # works, filter is after the join, but reset_joinpoint is called, removing aliasing
         assert [User(id=7), User(id=8)] == sess.query(User).join("addresses", aliased=True).filter(Address.email_address != None).reset_joinpoint().filter(~User.addresses.any(email_address='fred@fred.com')).all()
 
-    @testing.fails_on_everything_except()
     def test_broken_any_4(self):
         sess = create_session()
         
         # filter is after the join, gets aliased.  in 0.5 any(), has() and not contains() are shielded from aliasing
         assert [User(id=10)] == sess.query(User).outerjoin("addresses", aliased=True).filter(~User.addresses.any()).all()
+    test_broken_any_4 = testing.fails_on_everything_except()(test_broken_any_4)
 
-    @testing.unsupported('maxdb') # can core
     def test_has(self):
         sess = create_session()
         assert [Address(id=5)] == sess.query(Address).filter(Address.user.has(name='fred')).all()
@@ -386,6 +385,7 @@ class FilterTest(QueryTest):
 
         dingaling = sess.query(Dingaling).get(2)
         assert [User(id=9)] == sess.query(User).filter(User.addresses.any(Address.dingaling==dingaling)).all()
+    test_has = testing.unsupported('maxdb')(test_has) # can core
         
     def test_contains_m2m(self):
         sess = create_session()
@@ -468,10 +468,10 @@ class AggregateTest(QueryTest):
         orders = sess.query(Order).filter(Order.id.in_([2, 3, 4]))
         assert orders.sum(Order.user_id * Order.address_id) == 79
 
-    @testing.uses_deprecated('Call to deprecated function apply_sum')
     def test_apply(self):
         sess = create_session()
         assert sess.query(Order).apply_sum(Order.user_id * Order.address_id).filter(Order.id.in_([2, 3, 4])).one() == 79
+    test_apply = testing.uses_deprecated('Call to deprecated function apply_sum')(test_apply)
 
     def test_having(self):
         sess = create_session()

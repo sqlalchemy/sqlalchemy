@@ -35,7 +35,6 @@ class MetaDataTest(TestBase, ComparesTables):
         finally:
             metadata.drop_all()
 
-    @testing.exclude('mysql', '<', (4, 1, 1))
     def test_to_metadata(self):
         meta = MetaData()
 
@@ -107,6 +106,7 @@ class MetaDataTest(TestBase, ComparesTables):
                     assert not c.columns.contains_column(table.c.name)
         finally:
             meta.drop_all(testing.db)
+    test_to_metadata = testing.exclude('mysql', '<', (4, 1, 1))(test_to_metadata)
 
     def test_nonexistent(self):
         self.assertRaises(exceptions.NoSuchTableError, Table,

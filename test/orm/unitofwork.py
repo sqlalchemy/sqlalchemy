@@ -56,7 +56,6 @@ class VersioningTest(ORMTest):
         Column('value', String(40), nullable=False)
         )
 
-    @engines.close_open_connections
     def test_basic(self):
         s = Session(scope=None)
         class Foo(object):pass
@@ -103,8 +102,8 @@ class VersioningTest(ORMTest):
             success = True
         if testing.db.dialect.supports_sane_multi_rowcount:
             assert success
+    test_basic = engines.close_open_connections(test_basic)
 
-    @engines.close_open_connections
     def test_versioncheck(self):
         """test that query.with_lockmode performs a 'version check' on an already loaded instance"""
         s1 = Session(scope=None)
@@ -130,8 +129,8 @@ class VersioningTest(ORMTest):
         # assert brand new load is OK too
         s1.close()
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
+    test_versioncheck = engines.close_open_connections(test_versioncheck)
 
-    @engines.close_open_connections
     def test_noversioncheck(self):
         """test that query.with_lockmode works OK when the mapper has no version id col"""
         s1 = Session()
@@ -144,6 +143,7 @@ class VersioningTest(ORMTest):
         f1s2 = s2.query(Foo).with_lockmode('read').get(f1s1.id)
         assert f1s2.id == f1s1.id
         assert f1s2.value == f1s1.value
+    test_noversioncheck = engines.close_open_connections(test_noversioncheck)
 
 class UnicodeTest(ORMTest):
     def define_tables(self, metadata):
@@ -426,9 +426,6 @@ class PKTest(ORMTest):
             Column('data', String(30), )
             )
 
-    # not supported on sqlite since sqlite's auto-pk generation only works with
-    # single column primary keys
-    @testing.fails_on('sqlite')
     def test_primarykey(self):
         class Entry(object):
             pass
@@ -441,6 +438,9 @@ class PKTest(ORMTest):
         Session.close()
         e2 = Query(Entry).get((e.multi_id, 2))
         self.assert_(e is not e2 and e._instance_key == e2._instance_key)
+    # not supported on sqlite since sqlite's auto-pk generation only works with
+    # single column primary keys
+    test_primarykey = testing.fails_on('sqlite')(test_primarykey)
 
     # this one works with sqlite since we are manually setting up pk values
     def test_manualpk(self):
@@ -551,7 +551,6 @@ class ClauseAttributesTest(ORMTest):
         assert u.name == 'test2'
         assert u.counter == 2
 
-    @testing.unsupported('mssql')
     def test_insert(self):
         class User(object):
             pass
@@ -561,6 +560,7 @@ class ClauseAttributesTest(ORMTest):
         sess.save(u)
         sess.flush()
         assert (u.counter == 5) is True
+    test_insert = testing.unsupported('mssql')(test_insert)
 
 
 class PassiveDeletesTest(ORMTest):
@@ -581,7 +581,6 @@ class PassiveDeletesTest(ORMTest):
             test_needs_fk=True,
             )
 
-    @testing.unsupported('sqlite')
     def test_basic(self):
         class MyClass(object):
             pass
@@ -609,6 +608,7 @@ class PassiveDeletesTest(ORMTest):
         sess.commit()
         assert mytable.count().scalar() == 0
         assert myothertable.count().scalar() == 0
+    test_basic = testing.unsupported('sqlite')(test_basic)
 
 class ExtraPassiveDeletesTest(ORMTest):
     def define_tables(self, metadata):
@@ -644,7 +644,6 @@ class ExtraPassiveDeletesTest(ORMTest):
         except exceptions.ArgumentError, e:
             assert str(e) == "Can't set passive_deletes='all' in conjunction with 'delete' or 'delete-orphan' cascade"
 
-    @testing.unsupported('sqlite')
     def test_extra_passive(self):
         class MyClass(object):
             pass
@@ -670,8 +669,8 @@ class ExtraPassiveDeletesTest(ORMTest):
         mc = sess.query(MyClass).get(mc.id)
         sess.delete(mc)
         self.assertRaises(exceptions.DBAPIError, sess.commit)
+    test_extra_passive = testing.unsupported('sqlite')(test_extra_passive)
 
-    @testing.unsupported('sqlite')
     def test_extra_passive_2(self):
         class MyClass(object):
             pass
@@ -695,6 +694,7 @@ class ExtraPassiveDeletesTest(ORMTest):
         sess.delete(mc)
         mc.children[0].data = 'some new data'
         self.assertRaises(exceptions.DBAPIError, sess.commit)
+    test_extra_passive_2 = testing.unsupported('sqlite')(test_extra_passive_2)
 
 
 class DefaultTest(ORMTest):
@@ -1200,7 +1200,6 @@ class SaveTest(ORMTest):
 
     # why no support on oracle ?  because oracle doesn't save
     # "blank" strings; it saves a single space character.
-    @testing.unsupported('oracle')
     def test_dont_update_blanks(self):
         mapper(User, users)
         u = User()
@@ -1212,6 +1211,7 @@ class SaveTest(ORMTest):
         def go():
             Session.commit()
         self.assert_sql_count(testing.db, go, 0)
+    test_dont_update_blanks = testing.unsupported('oracle')(test_dont_update_blanks)
 
     def test_multitable(self):
         """tests a save of an object where each instance spans two tables. also tests

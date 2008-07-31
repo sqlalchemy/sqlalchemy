@@ -69,7 +69,6 @@ class BindTest(TestBase):
                     "assign this Table's .metadata.bind to enable implicit "
                     "execution.")
 
-    @testing.future
     def test_create_drop_err2(self):
         for meth in [
             table.exists,
@@ -88,8 +87,8 @@ class BindTest(TestBase):
                     "against.  Either execute with an explicit connection or "
                     "assign this Table's .metadata.bind to enable implicit "
                     "execution.")
+    test_create_drop_err2 = testing.future(test_create_drop_err2)
 
-    @testing.uses_deprecated('//connect')
     def test_create_drop_bound(self):
 
         for meta in (MetaData,ThreadLocalMetaData):
@@ -124,6 +123,7 @@ class BindTest(TestBase):
                 assert not table.exists()
                 if isinstance(bind, engine.Connection):
                     bind.close()
+    test_create_drop_bound = testing.uses_deprecated('//connect')(test_create_drop_bound)
 
     def test_create_drop_constructor_bound(self):
         for bind in (

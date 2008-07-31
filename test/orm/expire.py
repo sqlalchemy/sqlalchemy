@@ -744,7 +744,6 @@ class RefreshTest(FixtureTest):
         s.expire(u)
         assert len(u.addresses) == 3
 
-    @testing.fails_on('maxdb')
     def test_refresh2(self):
         """test a hang condition that was occuring on expire/refresh"""
 
@@ -767,6 +766,7 @@ class RefreshTest(FixtureTest):
         assert u.name == 'Justin'
 
         s.refresh(u)
+    test_refresh2 = testing.fails_on('maxdb')(test_refresh2)
 
 if __name__ == '__main__':
     testenv.main()

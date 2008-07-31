@@ -208,8 +208,6 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
             assert Foo.__mapper__.compile().extension.create_instance() == 'CHECK'
 
 
-    @testing.emits_warning('Ignoring declarative-like tuple value of '
-                           'attribute id')
     def test_oops(self):
         def define():
             class User(Base, Fixture):
@@ -222,6 +220,7 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
             exceptions.ArgumentError,
             "Mapper Mapper|User|users could not assemble any primary key",
             define)
+    test_oops = testing.emits_warning('Ignoring declarative-like tuple value of attribute id')(test_oops)
 
     def test_expression(self):
         class User(Base, Fixture):
@@ -370,7 +369,6 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         sess.flush()
         self.assertEquals(sess.query(User).filter(User.name=="SOMENAME someuser").one(), u1)
 
-    @testing.uses_deprecated('Call to deprecated function declared_synonym')
     def test_decl_synonym_inline(self):
         class User(Base, Fixture):
             __tablename__ = 'users'
@@ -391,6 +389,7 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         sess.save(u1)
         sess.flush()
         self.assertEquals(sess.query(User).filter(User.name=="SOMENAME someuser").one(), u1)
+    test_decl_synonym_inline = testing.uses_deprecated('Call to deprecated function declared_synonym')(test_decl_synonym_inline)
 
     def test_synonym_added(self):
         class User(Base, Fixture):
@@ -414,7 +413,6 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         sess.flush()
         self.assertEquals(sess.query(User).filter(User.name=="SOMENAME someuser").one(), u1)
 
-    @testing.uses_deprecated('Call to deprecated function declared_synonym')
     def test_decl_synonym_added(self):
         class User(Base, Fixture):
             __tablename__ = 'users'
@@ -436,6 +434,7 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         sess.save(u1)
         sess.flush()
         self.assertEquals(sess.query(User).filter(User.name=="SOMENAME someuser").one(), u1)
+    test_decl_synonym_added = testing.uses_deprecated('Call to deprecated function declared_synonym')(test_decl_synonym_added)
 
     def test_joined_inheritance(self):
         class Company(Base, Fixture):
@@ -773,10 +772,10 @@ class DeclarativeReflectionTest(TestBase):
             id = Column('id', Integer, primary_key=True)
             name = Column('name', String(50))
 
-            @synonym_for('name')
-            @property
             def namesyn(self):
                 return self.name
+            namesyn = property(namesyn)
+            namesyn = synonym_for('name')(namesyn)
 
         Base.metadata.create_all()
 
@@ -792,11 +791,11 @@ class DeclarativeReflectionTest(TestBase):
 
     def test_comparable_using(self):
         class NameComparator(PropComparator):
-            @property
             def upperself(self):
                 cls = self.prop.parent.class_
                 col = getattr(cls, 'name')
                 return func.upper(col)
+            upperself = property(upperself)
 
             def operate(self, op, other, **kw):
                 return op(self.upperself, other, **kw)
@@ -807,10 +806,10 @@ class DeclarativeReflectionTest(TestBase):
             id = Column('id', Integer, primary_key=True)
             name = Column('name', String(50))
 
-            @comparable_using(NameComparator)
-            @property
             def uc_name(self):
                 return self.name is not None and self.name.upper() or None
+            uc_name = property(uc_name)
+            uc_name = comparable_using(NameComparator)(uc_name)
 
         Base.metadata.create_all()
 

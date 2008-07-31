@@ -8,12 +8,12 @@ from testlib import *
 
 
 class DictCollection(dict):
-    @collection.appender
     def append(self, obj):
         self[obj.foo] = obj
-    @collection.remover
+    append = collection.appender(append)
     def remove(self, obj):
         del self[obj.foo]
+    remove = collection.remover(remove)
 
 class SetCollection(set):
     pass
@@ -24,12 +24,12 @@ class ListCollection(list):
 class ObjectCollection(object):
     def __init__(self):
         self.values = list()
-    @collection.appender
     def append(self, obj):
         self.values.append(obj)
-    @collection.remover
+    append = collection.appender(append)
     def remove(self, obj):
         self.values.remove(obj)
+    remove = collection.remover(remove)
     def __iter__(self):
         return iter(self.values)
 

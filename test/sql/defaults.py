@@ -240,7 +240,6 @@ class DefaultTest(TestBase):
         l = l.fetchone()
         self.assert_(l['col3'] == 55)
 
-    @testing.fails_on_everything_except('postgres')
     def testpassiveoverride(self):
         """primarily for postgres, tests that when we get a primary key column back
         from reflecting a table which has a default value on it, we pre-execute
@@ -266,6 +265,7 @@ class DefaultTest(TestBase):
             self.assert_(l == [(1, 'user', 'lala')])
         finally:
             testing.db.execute("drop table speedy_users", None)
+    testpassiveoverride = testing.fails_on_everything_except('postgres')(testpassiveoverride)
 
 class PKDefaultTest(TestBase):
     def setUpAll(self):
@@ -285,7 +285,6 @@ class PKDefaultTest(TestBase):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.unsupported('mssql')
     def test_basic(self):
         t2.insert().execute(nextid=1)
         r = t1.insert().execute(data='hi')
@@ -294,6 +293,7 @@ class PKDefaultTest(TestBase):
         t2.insert().execute(nextid=2)
         r = t1.insert().execute(data='there')
         assert r.last_inserted_ids() == [2]
+    test_basic = testing.unsupported('mssql')(test_basic)
 
 
 class AutoIncrementTest(TestBase):
@@ -311,8 +311,6 @@ class AutoIncrementTest(TestBase):
     def tearDown(self):
         aimeta.drop_all()
 
-    # should fail everywhere... was: @supported('postgres', 'mysql', 'maxdb')
-    @testing.fails_on('sqlite')
     def testnonautoincrement(self):
         # sqlite INT primary keys can be non-unique! (only for ints)
         meta = MetaData(testing.db)
@@ -334,6 +332,8 @@ class AutoIncrementTest(TestBase):
             nonai_table.insert().execute(id=1, data='row 1')
         finally:
             nonai_table.drop()
+    # should fail everywhere... was: @supported('postgres', 'mysql', 'maxdb')
+    testnonautoincrement = testing.fails_on('sqlite')(testnonautoincrement)
 
     # TODO: add coverage for increment on a secondary column in a key
     def _test_autoincrement(self, bind):
@@ -462,9 +462,6 @@ class SequenceTest(TestBase):
         cartitems.select().execute().fetchall()
 
 
-    @testing.fails_on('maxdb')
-    # maxdb db-api seems to double-execute NEXTVAL internally somewhere,
-    # throwing off the numbers for these tests...
     def test_implicit_sequence_exec(self):
         s = Sequence("my_sequence", metadata=MetaData(testing.db))
         s.create()
@@ -473,8 +470,10 @@ class SequenceTest(TestBase):
             self.assert_(x == 1)
         finally:
             s.drop()
+    # maxdb db-api seems to double-execute NEXTVAL internally somewhere,
+    # throwing off the numbers for these tests...
+    test_implicit_sequence_exec = testing.fails_on('maxdb')(test_implicit_sequence_exec)
 
-    @testing.fails_on('maxdb')
     def teststandalone_explicit(self):
         s = Sequence("my_sequence")
         s.create(bind=testing.db)
@@ -483,6 +482,7 @@ class SequenceTest(TestBase):
             self.assert_(x == 1)
         finally:
             s.drop(testing.db)
+    teststandalone_explicit = testing.fails_on('maxdb')(teststandalone_explicit)
 
     def test_checkfirst(self):
         s = Sequence("my_sequence")
@@ -491,10 +491,10 @@ class SequenceTest(TestBase):
         s.drop(testing.db, checkfirst=False)
         s.drop(testing.db, checkfirst=True)
 
-    @testing.fails_on('maxdb')
     def teststandalone2(self):
         x = cartitems.c.cart_id.sequence.execute()
         self.assert_(1 <= x <= 4)
+    teststandalone2 = testing.fails_on('maxdb')(teststandalone2)
 
     def tearDownAll(self):
         metadata.drop_all()

@@ -103,7 +103,6 @@ class MapperTest(MapperSuperTest):
         assert len(list(sess)) == 0
         self.assertRaises(TypeError, Foo, 'one')
 
-    @testing.uses_deprecated('SessionContext', 'SessionContextExt')
     def test_constructorexceptions(self):
         """test that exceptions raised in the mapped class are not masked by sa decorations"""
         ex = AssertionError('oops')
@@ -155,6 +154,7 @@ class MapperTest(MapperSuperTest):
             assert False
         except TypeError:
             assert True
+    test_constructorexceptions = testing.uses_deprecated('SessionContext', 'SessionContextExt')(test_constructorexceptions)
 
     def test_props(self):
         m = mapper(User, users, properties = {
@@ -398,7 +398,6 @@ class MapperTest(MapperSuperTest):
         assert_props(Hoho, ['id', 'name', 'type'])
         assert_props(Lala, ['p_employee_number', 'p_id', 'p_name', 'p_type'])
 
-    @testing.uses_deprecated('//select_by', '//join_via', '//list')
     def test_recursive_select_by_deprecated(self):
         """test that no endless loop occurs when traversing for select_by"""
         m = mapper(User, users, properties={
@@ -407,6 +406,7 @@ class MapperTest(MapperSuperTest):
         })
         q = create_session().query(m)
         q.select_by(email_address='foo')
+    test_recursive_select_by_deprecated = testing.uses_deprecated('//select_by', '//join_via', '//list')(test_recursive_select_by_deprecated)
 
     def test_mappingtojoin(self):
         """test mapping to a join"""
@@ -472,7 +472,6 @@ class MapperTest(MapperSuperTest):
 
         self.assert_result(l, User, user_result[0])
 
-    @testing.uses_deprecated('//select')
     def test_customjoin_deprecated(self):
         """test that the from_obj parameter to query.select() can be used
         to totally replace the FROM parameters of the generated query."""
@@ -486,6 +485,7 @@ class MapperTest(MapperSuperTest):
         q = create_session().query(m)
         l = q.select((orderitems.c.item_name=='item 4'), from_obj=[users.join(orders).join(orderitems)])
         self.assert_result(l, User, user_result[0])
+    test_customjoin_deprecated = testing.uses_deprecated('//select')(test_customjoin_deprecated)
 
     def test_orderby(self):
         """test ordering at the mapper and query level"""
@@ -501,7 +501,6 @@ class MapperTest(MapperSuperTest):
         #l = create_session().query(User).select(order_by=None)
 
 
-    @testing.unsupported('firebird')
     def test_function(self):
         """Test mapping to a SELECT statement that has functions in it."""
 
@@ -518,8 +517,8 @@ class MapperTest(MapperSuperTest):
             print "User", u.user_id, u.user_name, u.concat, u.count
         assert l[0].concat == l[0].user_id * 2 == 14
         assert l[1].concat == l[1].user_id * 2 == 16
+    test_function = testing.unsupported('firebird')(test_function)
 
-    @testing.unsupported('firebird')
     def test_count(self):
         """test the count function on Query.
 
@@ -528,13 +527,14 @@ class MapperTest(MapperSuperTest):
         q = create_session().query(User)
         self.assert_(q.count()==3)
         self.assert_(q.count(users.c.user_id.in_([8,9]))==2)
+    test_count = testing.unsupported('firebird')(test_count)
 
-    @testing.unsupported('firebird')
-    @testing.uses_deprecated('//count_by', '//join_by', '//join_via')
     def test_count_by_deprecated(self):
         mapper(User, users)
         q = create_session().query(User)
         self.assert_(q.count_by(user_name='fred')==1)
+    test_count_by_deprecated = testing.uses_deprecated('//count_by', '//join_by', '//join_via')(test_count_by_deprecated)
+    test_count_by_deprecated = testing.unsupported('firebird')(test_count_by_deprecated)
 
     def test_manytomany_count(self):
         mapper(Item, orderitems, properties = dict(
@@ -681,11 +681,11 @@ class MapperTest(MapperSuperTest):
 
         def map_(with_explicit_property):
             class User(object):
-                @extendedproperty
                 def uc_user_name(self):
                     if self.user_name is None:
                         return None
                     return self.user_name.upper()
+                uc_user_name = extendedproperty(uc_user_name)
             if with_explicit_property:
                 args = (UCComparator, User.uc_user_name)
             else:
@@ -729,7 +729,6 @@ class MapperTest(MapperSuperTest):
             sess.rollback()
 
 class OptionsTest(MapperSuperTest):
-    @testing.fails_on('maxdb')
     def test_synonymoptions(self):
         sess = create_session()
         mapper(User, users, properties = dict(
@@ -741,8 +740,8 @@ class OptionsTest(MapperSuperTest):
             u = sess.query(User).options(eagerload('adlist')).filter_by(user_name='jack').one()
             self.assert_result(u.adlist, Address, *(user_address_result[0]['addresses'][1]))
         self.assert_sql_count(testing.db, go, 1)
+    test_synonymoptions = testing.fails_on('maxdb')(test_synonymoptions)
 
-    @testing.uses_deprecated('//select_by')
     def test_extension_options(self):
         sess  = create_session()
         class ext1(MapperExtension):
@@ -769,6 +768,7 @@ class OptionsTest(MapperSuperTest):
         assert l.TEST_2 == "also hello world"
         assert not hasattr(l.addresses[0], 'TEST')
         assert not hasattr(l.addresses[0], 'TEST2')
+    test_extension_options = testing.uses_deprecated('//select_by')(test_extension_options)
 
     def test_eageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
@@ -782,7 +782,6 @@ class OptionsTest(MapperSuperTest):
             self.assert_result(l, User, *user_address_result)
         self.assert_sql_count(testing.db, go, 0)
 
-    @testing.fails_on('maxdb')
     def test_eageroptionswithlimit(self):
         sess = create_session()
         mapper(User, users, properties = dict(
@@ -803,8 +802,8 @@ class OptionsTest(MapperSuperTest):
             assert u.user_id == 8
             assert len(u.addresses) == 3
         assert "tbl_row_count" not in self.capture_sql(testing.db, go)
+    test_eageroptionswithlimit = testing.fails_on('maxdb')(test_eageroptionswithlimit)
 
-    @testing.fails_on('maxdb')
     def test_lazyoptionswithlimit(self):
         sess = create_session()
         mapper(User, users, properties = dict(
@@ -816,6 +815,7 @@ class OptionsTest(MapperSuperTest):
             assert u.user_id == 8
             assert len(u.addresses) == 3
         self.assert_sql_count(testing.db, go, 1)
+    test_lazyoptionswithlimit = testing.fails_on('maxdb')(test_lazyoptionswithlimit)
 
     def test_eagerdegrade(self):
         """tests that an eager relation automatically degrades to a lazy relation if eager columns are not available"""

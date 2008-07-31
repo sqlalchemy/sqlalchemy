@@ -403,12 +403,12 @@ class AttributesTest(TestBase):
             assert str(e) == "Type InstrumentedDict must elect an appender method to be a collection class"
 
         class MyDict(dict):
-            @collection.appender
             def append(self, item):
                 self[item.foo] = item
-            @collection.remover
+            append = collection.appender(append)
             def remove(self, item):
                 del self[item.foo]
+            remove = collection.remover(remove)
         attributes.register_attribute(Foo, "collection", uselist=True, typecallable=MyDict, useobject=True)
         assert isinstance(Foo().collection, MyDict)
 
@@ -422,15 +422,15 @@ class AttributesTest(TestBase):
             assert str(e) == "Type MyColl must elect an appender method to be a collection class"
 
         class MyColl(object):
-            @collection.iterator
             def __iter__(self):
                 return iter([])
-            @collection.appender
+            __iter__ = collection.iterator(__iter__)
             def append(self, item):
                 pass
-            @collection.remover
+            append = collection.appender(append)
             def remove(self, item):
                 pass
+            remove = collection.remover(remove)
         attributes.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl, useobject=True)
         try:
             Foo().collection

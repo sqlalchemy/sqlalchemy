@@ -22,26 +22,26 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
     # and though the solution there is simple, it still doesn't solve the
     # issue of "dead" weakrefs sitting in the dict taking up space
 
-    @profiling.function_call_count(63, {'2.3': 42, '2.4': 43})
     def test_first_connect(self):
         conn = pool.connect()
+    test_first_connect = profiling.function_call_count(63, {'2.3': 42, '2.4': 43})(test_first_connect)
 
     def test_second_connect(self):
         conn = pool.connect()
         conn.close()
 
-        @profiling.function_call_count(39, {'2.3': 26, '2.4': 26})
         def go():
             conn2 = pool.connect()
             return conn2
+        go = profiling.function_call_count(39, {'2.3': 26, '2.4': 26})(go)
         c2 = go()
 
     def test_second_samethread_connect(self):
         conn = pool.connect()
 
-        @profiling.function_call_count(7, {'2.3': 4, '2.4': 4})
         def go():
             return pool.connect()
+        go = profiling.function_call_count(7, {'2.3': 4, '2.4': 4})(go)
         c2 = go()
 
 

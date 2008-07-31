@@ -231,7 +231,6 @@ class ExecuteTest(TestBase):
         finally:
             meta.drop_all()
 
-    @testing.fails_on_everything_except('postgres')
     def test_as_from(self):
         # TODO: shouldnt this work on oracle too ?
         x = testing.db.func.current_date().execute().scalar()
@@ -245,6 +244,7 @@ class ExecuteTest(TestBase):
         r = s.alias('datequery').select().scalar()
 
         assert x == y == z == w == q == r
+    test_as_from = testing.fails_on_everything_except('postgres')(test_as_from)
 
 def exec_sorted(statement, *args, **kw):
     """Executes a statement and returns a sorted list plain tuple rows."""

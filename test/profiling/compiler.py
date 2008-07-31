@@ -15,18 +15,18 @@ class CompileTest(TestBase, AssertsExecutionResults):
             Column('c1', Integer, primary_key=True),
             Column('c2', String(30)))
 
-    @profiling.function_call_count(74, {'2.3': 44, '2.4': 42})
     def test_insert(self):
         t1.insert().compile()
+    test_insert = profiling.function_call_count(74, {'2.3': 44, '2.4': 42})(test_insert)
 
-    @profiling.function_call_count(75, {'2.3': 47, '2.4': 42})
     def test_update(self):
         t1.update().compile()
+    test_update = profiling.function_call_count(75, {'2.3': 47, '2.4': 42})(test_update)
 
-    @profiling.function_call_count(228, versions={'2.3': 153, '2.4':116})
     def test_select(self):
         s = select([t1], t1.c.c2==t2.c.c1)
         s.compile()
+    test_select = profiling.function_call_count(228, versions={'2.3': 153, '2.4':116})(test_select)
 
 
 if __name__ == '__main__':

@@ -144,7 +144,6 @@ class testcase(TestBase):
         self.assertEquals(len(person.addresses), 2)
         self.assertEquals(person.addresses[0].postal_code, '30338')
 
-    @testing.unsupported('mysql')
     def test_update(self):
         p1 = self.create_person_one()
         objectstore.flush()
@@ -179,6 +178,7 @@ class testcase(TestBase):
                 assert False
         except exceptions.ConcurrentModificationError:
             pass
+    test_update = testing.unsupported('mysql')(test_update)
 
 
     def test_delete(self):

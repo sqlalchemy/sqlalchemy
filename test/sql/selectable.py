@@ -214,7 +214,6 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert j4.corresponding_column(j2.c.aid) is j4.c.aid
         assert j4.corresponding_column(a.c.id) is j4.c.id
 
-    @testing.emits_warning('.*replaced by another column with the same key')
     def test_oid(self):
         # the oid column of a selectable currently proxies all
         # oid columns found within.
@@ -231,6 +230,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert u.corresponding_column(table2.oid_column) is u.oid_column
         assert u.corresponding_column(s.oid_column) is u.oid_column
         assert u.corresponding_column(s2.oid_column) is u.oid_column
+    test_oid = testing.emits_warning('.*replaced by another column with the same key')(test_oid)
     
     def test_two_metadata_join_raises(self):
         m = MetaData()

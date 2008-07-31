@@ -21,7 +21,6 @@ class LazyTest(FixtureTest):
         q = sess.query(User)
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(users.c.id == 7).all()
 
-    @testing.uses_deprecated('SessionContext')
     def test_bindstosession(self):
         """test that lazy loaders use the mapper's contextual session if the parent instance
         is not in a session, and that an error is raised if no contextual session"""
@@ -50,6 +49,7 @@ class LazyTest(FixtureTest):
             assert False
         except exceptions.InvalidRequestError, err:
             assert "not bound to a Session, and no contextual session" in str(err)
+    test_bindstosession = testing.uses_deprecated('SessionContext')(test_bindstosession)
 
     def test_orderby(self):
         mapper(User, users, properties = {

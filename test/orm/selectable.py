@@ -23,7 +23,6 @@ class SelectableNoFromsTest(ORMTest):
         selectable = select(["x", "y", "z"])
         self.assertRaisesMessage(exceptions.InvalidRequestError, "Could not find any Table objects", mapper, Subset, selectable)
 
-    @testing.emits_warning('.*creating an Alias.*')
     def test_basic(self):
         class Subset(Base):
             pass
@@ -44,6 +43,7 @@ class SelectableNoFromsTest(ORMTest):
         
         subset_select = class_mapper(Subset).mapped_table
         self.assertEquals(sess.query(Subset).filter(subset_select.c.data==1).one(), Subset(data=1))
+    test_basic = testing.emits_warning('.*creating an Alias.*')(test_basic)
 
         
     # TODO: more tests mapping to selects

@@ -18,7 +18,6 @@ class ExecuteTest(TestBase):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.fails_on_everything_except('firebird', 'maxdb', 'sqlite')
     def test_raw_qmark(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (?, ?)", (1,"jack"))
@@ -29,8 +28,8 @@ class ExecuteTest(TestBase):
             res = conn.execute("select * from users order by user_id")
             assert res.fetchall() == [(1, "jack"), (2, "fred"), (3, "ed"), (4, "horse"), (5, "barney"), (6, "donkey"), (7, 'sally')]
             conn.execute("delete from users")
+    test_raw_qmark = testing.fails_on_everything_except('firebird', 'maxdb', 'sqlite')(test_raw_qmark)
 
-    @testing.fails_on_everything_except('mysql', 'postgres')
     # some psycopg2 versions bomb this.
     def test_raw_sprintf(self):
         for conn in (testing.db, testing.db.connect()):
@@ -41,11 +40,10 @@ class ExecuteTest(TestBase):
             res = conn.execute("select * from users order by user_id")
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally'), (5, None)]
             conn.execute("delete from users")
+    test_raw_sprintf = testing.fails_on_everything_except('mysql', 'postgres')(test_raw_sprintf)
 
     # pyformat is supported for mysql, but skipping because a few driver
     # versions have a bug that bombs out on this test. (1.2.2b3, 1.2.2c1, 1.2.2)
-    @testing.unsupported('mysql')
-    @testing.fails_on_everything_except('postgres')
     def test_raw_python(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':1, 'name':'jack'})
@@ -54,8 +52,9 @@ class ExecuteTest(TestBase):
             res = conn.execute("select * from users order by user_id")
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
             conn.execute("delete from users")
+    test_raw_python = testing.fails_on_everything_except('postgres')(test_raw_python)
+    test_raw_python = testing.unsupported('mysql')(test_raw_python)
 
-    @testing.fails_on_everything_except('sqlite', 'oracle')
     def test_raw_named(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (:id, :name)", {'id':1, 'name':'jack'})
@@ -64,6 +63,7 @@ class ExecuteTest(TestBase):
             res = conn.execute("select * from users order by user_id")
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
             conn.execute("delete from users")
+    test_raw_named = testing.fails_on_everything_except('sqlite', 'oracle')(test_raw_named)
 
     def test_exception_wrapping(self):
         for conn in (testing.db, testing.db.connect()):

@@ -70,7 +70,6 @@ class MemUsageTest(EnsureZeroed):
 
         m3 = mapper(A, table1, non_primary=True)
 
-        @profile_memory
         def go():
             sess = create_session()
             a1 = A(col2="a1")
@@ -96,6 +95,7 @@ class MemUsageTest(EnsureZeroed):
             for a in alist:
                 sess.delete(a)
             sess.flush()
+        go = profile_memory(go)
         go()
 
         metadata.drop_all()
@@ -116,7 +116,6 @@ class MemUsageTest(EnsureZeroed):
             Column('col3', Integer, ForeignKey("mytable.col1"))
             )
 
-        @profile_memory
         def go():
             m1 = mapper(A, table1, properties={
                 "bs":relation(B)
@@ -151,6 +150,7 @@ class MemUsageTest(EnsureZeroed):
             sess.flush()
             sess.close()
             clear_mappers()
+        go = profile_memory(go)
 
         metadata.create_all()
         try:
@@ -172,7 +172,6 @@ class MemUsageTest(EnsureZeroed):
             Column('col3', String(30)),
             )
 
-        @profile_memory
         def go():
             class A(Base):
                 pass
@@ -206,6 +205,7 @@ class MemUsageTest(EnsureZeroed):
             # dont need to clear_mappers()
             del B
             del A
+        go = profile_memory(go)
 
         metadata.create_all()
         try:
@@ -232,7 +232,6 @@ class MemUsageTest(EnsureZeroed):
             Column('t2', Integer, ForeignKey('mytable2.col1')),
             )
 
-        @profile_memory
         def go():
             class A(Base):
                 pass
@@ -270,6 +269,7 @@ class MemUsageTest(EnsureZeroed):
             # dont need to clear_mappers()
             del B
             del A
+        go = profile_memory(go)
 
         metadata.create_all()
         try:

@@ -109,19 +109,18 @@ class PolymorphicCircularTest(ORMTest):
         table1_mapper.compile()
         assert table1_mapper.primary_key == [table1.c.id], table1_mapper.primary_key
 
-    @testing.fails_on('maxdb')
     def testone(self):
         self.do_testlist([Table1, Table2, Table1, Table2])
+    testone = testing.fails_on('maxdb')(testone)
 
-    @testing.fails_on('maxdb')
     def testtwo(self):
         self.do_testlist([Table3])
+    testtwo = testing.fails_on('maxdb')(testtwo)
 
-    @testing.fails_on('maxdb')
     def testthree(self):
         self.do_testlist([Table2, Table1, Table1B, Table3, Table3, Table1B, Table1B, Table2, Table1])
+    testthree = testing.fails_on('maxdb')(testthree)
 
-    @testing.fails_on('maxdb')
     def testfour(self):
         self.do_testlist([
                 Table2('t2', [Data('data1'), Data('data2')]),
@@ -129,6 +128,7 @@ class PolymorphicCircularTest(ORMTest):
                 Table3('t3', [Data('data3')]),
                 Table1B('t1b', [Data('data4'), Data('data5')])
                 ])
+    testfour = testing.fails_on('maxdb')(testfour)
 
     def do_testlist(self, classes):
         sess = create_session( )

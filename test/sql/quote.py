@@ -68,7 +68,6 @@ class QuoteTest(TestBase):
         print res2
         assert(res2==[(1,2,3),(2,2,3),(4,3,2)])
 
-    @testing.unsupported('oracle')
     def testlabels(self):
         """test the quoting of labels.
 
@@ -80,6 +79,7 @@ class QuoteTest(TestBase):
         where the "UPPERCASE" column of "LaLa" doesnt exist.
         """
         x = table1.select(distinct=True).alias("LaLa").select().scalar()
+    testlabels = testing.unsupported('oracle')(testlabels)
 
     def testlabels2(self):
         metadata = MetaData()

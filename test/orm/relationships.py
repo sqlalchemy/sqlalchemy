@@ -416,7 +416,6 @@ class RelationTest4(ORMTest):
         except exceptions.AssertionError, e:
             assert str(e).startswith("Dependency rule tried to blank-out primary key column 'B.id' on instance ")
 
-    @testing.fails_on_everything_except('sqlite', 'mysql')
     def test_nullPKsOK_BtoA(self):
         # postgres cant handle a nullable PK column...?
         tableC = Table('tablec', tableA.metadata,
@@ -437,6 +436,7 @@ class RelationTest4(ORMTest):
         sess.save(c1)
         # test that no error is raised.
         sess.flush()
+    test_nullPKsOK_BtoA = testing.fails_on_everything_except('sqlite', 'mysql')(test_nullPKsOK_BtoA)
 
     def test_delete_cascade_BtoA(self):
         """test that the 'blank the PK' error doesnt get raised when the child is to be deleted as part of a

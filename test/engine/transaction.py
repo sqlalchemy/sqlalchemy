@@ -69,7 +69,6 @@ class TransactionTest(TestBase):
         assert len(result.fetchall()) == 0
         connection.close()
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedrollback(self):
         connection = testing.db.connect()
 
@@ -97,9 +96,9 @@ class TransactionTest(TestBase):
                 assert str(e) == 'uh oh'  # and not "This transaction is inactive"
             finally:
                 connection.close()
+    testnestedrollback = testing.exclude('mysql', '<', (5, 0, 3))(testnestedrollback)
 
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnesting(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -116,8 +115,8 @@ class TransactionTest(TestBase):
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
+    testnesting = testing.exclude('mysql', '<', (5, 0, 3))(testnesting)
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testclose(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -137,8 +136,8 @@ class TransactionTest(TestBase):
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 5
         connection.close()
+    testclose = testing.exclude('mysql', '<', (5, 0, 3))(testclose)
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testclose2(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -158,10 +157,9 @@ class TransactionTest(TestBase):
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
+    testclose2 = testing.exclude('mysql', '<', (5, 0, 3))(testclose2)
 
 
-    @testing.unsupported('sqlite', 'mssql', 'sybase', 'access')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactionrollback(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -177,9 +175,9 @@ class TransactionTest(TestBase):
             [(1,),(3,)]
         )
         connection.close()
+    testnestedsubtransactionrollback = testing.exclude('mysql', '<', (5, 0, 3))(testnestedsubtransactionrollback)
+    testnestedsubtransactionrollback = testing.unsupported('sqlite', 'mssql', 'sybase', 'access')(testnestedsubtransactionrollback)
 
-    @testing.unsupported('sqlite', 'mssql', 'sybase', 'access')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnestedsubtransactioncommit(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -195,9 +193,9 @@ class TransactionTest(TestBase):
             [(1,),(2,),(3,)]
         )
         connection.close()
+    testnestedsubtransactioncommit = testing.exclude('mysql', '<', (5, 0, 3))(testnestedsubtransactioncommit)
+    testnestedsubtransactioncommit = testing.unsupported('sqlite', 'mssql', 'sybase', 'access')(testnestedsubtransactioncommit)
 
-    @testing.unsupported('sqlite', 'mssql', 'sybase', 'access')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testrollbacktosubtransaction(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -215,10 +213,9 @@ class TransactionTest(TestBase):
             [(1,),(4,)]
         )
         connection.close()
+    testrollbacktosubtransaction = testing.exclude('mysql', '<', (5, 0, 3))(testrollbacktosubtransaction)
+    testrollbacktosubtransaction = testing.unsupported('sqlite', 'mssql', 'sybase', 'access')(testrollbacktosubtransaction)
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testtwophasetransaction(self):
         connection = testing.db.connect()
 
@@ -245,10 +242,9 @@ class TransactionTest(TestBase):
             [(1,),(2,)]
         )
         connection.close()
+    testtwophasetransaction = testing.exclude('mysql', '<', (5, 0, 3))(testtwophasetransaction)
+    testtwophasetransaction = testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access', 'oracle', 'maxdb')(testtwophasetransaction)
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testmixedtwophasetransaction(self):
         connection = testing.db.connect()
 
@@ -280,11 +276,9 @@ class TransactionTest(TestBase):
             [(1,),(2,),(5,)]
         )
         connection.close()
+    testmixedtwophasetransaction = testing.exclude('mysql', '<', (5, 0, 3))(testmixedtwophasetransaction)
+    testmixedtwophasetransaction = testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access', 'oracle', 'maxdb')(testmixedtwophasetransaction)
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    # fixme: see if this is still true and/or can be convert to fails_on()
-    @testing.unsupported('mysql')
     def testtwophaserecover(self):
         # MySQL recovery doesn't currently seem to work correctly
         # Prepared transactions disappear when connections are closed and even
@@ -315,10 +309,10 @@ class TransactionTest(TestBase):
             [(1,)]
         )
         connection2.close()
+    testtwophaserecover = testing.unsupported('mysql')(testtwophaserecover)
+    # fixme: see if this is still true and/or can be convert to fails_on()
+    testtwophaserecover = testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access', 'oracle', 'maxdb')(testtwophaserecover)
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testmultipletwophase(self):
         conn = testing.db.connect()
 
@@ -345,6 +339,8 @@ class TransactionTest(TestBase):
         self.assertEqual(result.fetchall(), [('user1',),('user4',)])
 
         conn.close()
+    testmultipletwophase = testing.exclude('mysql', '<', (5, 0, 3))(testmultipletwophase)
+    testmultipletwophase = testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access', 'oracle', 'maxdb')(testmultipletwophase)
 
 class AutoRollbackTest(TestBase):
     def setUpAll(self):
@@ -354,7 +350,6 @@ class AutoRollbackTest(TestBase):
     def tearDownAll(self):
         metadata.drop_all(testing.db)
 
-    @testing.unsupported('sqlite')
     def testrollback_deadlock(self):
         """test that returning connections to the pool clears any object locks."""
         conn1 = testing.db.connect()
@@ -374,6 +369,7 @@ class AutoRollbackTest(TestBase):
         # comment out the rollback in pool/ConnectionFairy._close() to see !
         users.drop(conn2)
         conn2.close()
+    testrollback_deadlock = testing.unsupported('sqlite')(testrollback_deadlock)
 
 class ExplicitAutoCommitTest(TestBase):
     """test the 'autocommit' flag on select() and text() objects.  
@@ -601,8 +597,6 @@ class TLTransactionTest(TestBase):
         finally:
             external_connection.close()
 
-    @testing.unsupported('sqlite')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testnesting(self):
         """tests nesting of transactions"""
         external_connection = tlengine.connect()
@@ -620,8 +614,9 @@ class TLTransactionTest(TestBase):
             self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
         finally:
             external_connection.close()
+    testnesting = testing.exclude('mysql', '<', (5, 0, 3))(testnesting)
+    testnesting = testing.unsupported('sqlite')(testnesting)
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testmixednesting(self):
         """tests nesting of transactions off the TLEngine directly inside of
         tranasctions off the connection from the TLEngine"""
@@ -649,8 +644,8 @@ class TLTransactionTest(TestBase):
             self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
         finally:
             external_connection.close()
+    testmixednesting = testing.exclude('mysql', '<', (5, 0, 3))(testmixednesting)
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testmoremixednesting(self):
         """tests nesting of transactions off the connection from the TLEngine
         inside of tranasctions off thbe TLEngine directly."""
@@ -673,8 +668,8 @@ class TLTransactionTest(TestBase):
             self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
         finally:
             external_connection.close()
+    testmoremixednesting = testing.exclude('mysql', '<', (5, 0, 3))(testmoremixednesting)
 
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testsessionnesting(self):
         class User(object):
             pass
@@ -689,6 +684,7 @@ class TLTransactionTest(TestBase):
             tlengine.commit()
         finally:
             clear_mappers()
+    testsessionnesting = testing.exclude('mysql', '<', (5, 0, 3))(testsessionnesting)
 
 
     def testconnections(self):
@@ -699,9 +695,6 @@ class TLTransactionTest(TestBase):
         c2.close()
         assert c1.connection.connection is not None
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access',
-                         'oracle', 'maxdb')
-    @testing.exclude('mysql', '<', (5, 0, 3))
     def testtwophasetransaction(self):
         tlengine.begin_twophase()
         tlengine.execute(users.insert(), user_id=1, user_name='user1')
@@ -725,6 +718,8 @@ class TLTransactionTest(TestBase):
             tlengine.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
             [(1,),(2,)]
         )
+    testtwophasetransaction = testing.exclude('mysql', '<', (5, 0, 3))(testtwophasetransaction)
+    testtwophasetransaction = testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access', 'oracle', 'maxdb')(testtwophasetransaction)
 
 class ForUpdateTest(TestBase):
     def setUpAll(self):
@@ -768,8 +763,6 @@ class ForUpdateTest(TestBase):
                 break
         con.close()
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
-
     def testqueued_update(self):
         """Test SELECT FOR UPDATE with concurrent modifications.
 
@@ -800,6 +793,7 @@ class ForUpdateTest(TestBase):
         sel = counters.select(whereclause=counters.c.counter_id==1)
         final = db.execute(sel).fetchone()
         self.assert_(final['counter_value'] == iterations * thread_count)
+    testqueued_update = testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')(testqueued_update)
 
     def overlap(self, ids, errors, update_style):
         sel = counters.select(for_update=update_style,
@@ -831,7 +825,6 @@ class ForUpdateTest(TestBase):
 
         return errors
 
-    @testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')
     def testqueued_select(self):
         """Simple SELECT FOR UPDATE conflict test"""
 
@@ -839,15 +832,15 @@ class ForUpdateTest(TestBase):
         for e in errors:
             sys.stderr.write("Failure: %s\n" % e)
         self.assert_(len(errors) == 0)
+    testqueued_select = testing.unsupported('sqlite', 'mssql', 'firebird', 'sybase', 'access')(testqueued_select)
 
-    @testing.unsupported('sqlite', 'mysql', 'mssql', 'firebird',
-                         'sybase', 'access')
     def testnowait_select(self):
         """Simple SELECT FOR UPDATE NOWAIT conflict test"""
 
         errors = self._threaded_overlap(2, [(1,2,3),(3,4,5)],
                                         update_style='nowait')
         self.assert_(len(errors) != 0)
+    testnowait_select = testing.unsupported('sqlite', 'mysql', 'mssql', 'firebird', 'sybase', 'access')(testnowait_select)
 
 
 if __name__ == "__main__":

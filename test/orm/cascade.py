@@ -209,7 +209,6 @@ class M2OCascadeTest(ORMTest):
         sess.flush()
         sess.close()
 
-    @testing.fails_on('maxdb')
     def test_orphan(self):
         sess = create_session()
         assert prefs.count().scalar() == 3
@@ -219,8 +218,8 @@ class M2OCascadeTest(ORMTest):
         sess.flush()
         assert prefs.count().scalar() == 2
         assert extra.count().scalar() == 2
+    test_orphan = testing.fails_on('maxdb')(test_orphan)
 
-    @testing.fails_on('maxdb')
     def test_orphan_on_update(self):
         sess = create_session()
         jack = sess.query(User).filter_by(name="jack").one()
@@ -237,6 +236,7 @@ class M2OCascadeTest(ORMTest):
         sess.flush()
         assert prefs.count().scalar() == 2
         assert extra.count().scalar() == 2
+    test_orphan_on_update = testing.fails_on('maxdb')(test_orphan_on_update)
     
     def test_pending_expunge(self):
         sess = create_session()
@@ -344,7 +344,6 @@ class M2OCascadeDeleteTest(ORMTest):
         self.assertEquals(sess.query(T2).all(), [T2()])
         self.assertEquals(sess.query(T3).all(), [T3()])
 
-    @testing.future
     def test_preserves_orphans_onelevel_postremove(self):
         sess = create_session()
 
@@ -358,6 +357,7 @@ class M2OCascadeDeleteTest(ORMTest):
         self.assertEquals(sess.query(T1).all(), [])
         self.assertEquals(sess.query(T2).all(), [T2()])
         self.assertEquals(sess.query(T3).all(), [T3()])
+    test_preserves_orphans_onelevel_postremove = testing.future(test_preserves_orphans_onelevel_postremove)
 
     def test_preserves_orphans_twolevel(self):
         sess = create_session()

@@ -125,7 +125,6 @@ class EagerTest(TestBase, AssertsExecutionResults):
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
 
-    @testing.uses_deprecated('//select')
     def test_withouteagerload_deprecated(self):
         s = create_session()
         l=s.query(Test).select ( and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False)),
@@ -133,6 +132,7 @@ class EagerTest(TestBase, AssertsExecutionResults):
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
+    test_withouteagerload_deprecated = testing.uses_deprecated('//select')(test_withouteagerload_deprecated)
 
     def test_witheagerload(self):
         """test that an eagerload locates the correct "from" clause with
@@ -152,7 +152,6 @@ class EagerTest(TestBase, AssertsExecutionResults):
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
 
-    @testing.uses_deprecated('//select')
     def test_witheagerload_deprecated(self):
         """As test_witheagerload, but via select()."""
         s = create_session()
@@ -162,6 +161,7 @@ class EagerTest(TestBase, AssertsExecutionResults):
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
+    test_witheagerload_deprecated = testing.uses_deprecated('//select')(test_witheagerload_deprecated)
 
     def test_dslish(self):
         """test the same as witheagerload except using generative"""
@@ -175,7 +175,6 @@ class EagerTest(TestBase, AssertsExecutionResults):
         print result
         assert result == [u'1 Some Category', u'3 Some Category']
 
-    @testing.unsupported('sybase')
     def test_withoutouterjoin_literal(self):
         s = create_session()
         q = s.query(Test).options(eagerload('category'))
@@ -187,9 +186,8 @@ class EagerTest(TestBase, AssertsExecutionResults):
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'3 Some Category']
+    test_withoutouterjoin_literal = testing.unsupported('sybase')(test_withoutouterjoin_literal)
 
-    @testing.unsupported('sybase')
-    @testing.uses_deprecated('//select', '//join_to')
     def test_withoutouterjoin_literal_deprecated(self):
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
@@ -197,6 +195,8 @@ class EagerTest(TestBase, AssertsExecutionResults):
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'3 Some Category']
+    test_withoutouterjoin_literal_deprecated = testing.uses_deprecated('//select', '//join_to')(test_withoutouterjoin_literal_deprecated)
+    test_withoutouterjoin_literal_deprecated = testing.unsupported('sybase')(test_withoutouterjoin_literal_deprecated)
 
     def test_withoutouterjoin(self):
         s = create_session()
@@ -206,7 +206,6 @@ class EagerTest(TestBase, AssertsExecutionResults):
         print result
         assert result == [u'3 Some Category']
 
-    @testing.uses_deprecated('//select', '//join_to', '//join_via')
     def test_withoutouterjoin_deprecated(self):
         s = create_session()
         q=s.query(Test).options(eagerload('category'))
@@ -214,6 +213,7 @@ class EagerTest(TestBase, AssertsExecutionResults):
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
         assert result == [u'3 Some Category']
+    test_withoutouterjoin_deprecated = testing.uses_deprecated('//select', '//join_to', '//join_via')(test_withoutouterjoin_deprecated)
 
 class EagerTest2(TestBase, AssertsExecutionResults):
     def setUpAll(self):
@@ -240,7 +240,6 @@ class EagerTest2(TestBase, AssertsExecutionResults):
         for t in metadata.table_iterator(reverse=True):
             t.delete().execute()
 
-    @testing.fails_on('maxdb')
     def testeagerterminate(self):
         """test that eager query generation does not include the same mapper's table twice.
 
@@ -269,6 +268,7 @@ class EagerTest2(TestBase, AssertsExecutionResults):
         session.clear()
         obj = session.query(Left).filter_by(tag='tag1').one()
         print obj.middle.right[0]
+    testeagerterminate = testing.fails_on('maxdb')(testeagerterminate)
 
 class EagerTest3(ORMTest):
     """test eager loading combined with nested SELECT statements, functions, and aggregates"""
@@ -287,7 +287,6 @@ class EagerTest3(ORMTest):
         Column ( 'data_id', Integer, ForeignKey('datas.id')),
         Column ( 'somedata', Integer, nullable=False ))
 
-    @testing.fails_on('maxdb')
     def test_nesting_with_functions(self):
         class Data(object): pass
         class Foo(object):pass
@@ -339,6 +338,7 @@ class EagerTest3(ORMTest):
         # assert equality including ordering (may break if the DB "ORDER BY" and python's sort() used differing
         # algorithms and there are repeated 'somedata' values in the list)
         assert verify_result == arb_result
+    test_nesting_with_functions = testing.fails_on('maxdb')(test_nesting_with_functions)
 
 class EagerTest4(ORMTest):
     def define_tables(self, metadata):
@@ -353,7 +353,6 @@ class EagerTest4(ORMTest):
                           Column('department_id', Integer,
                                  ForeignKey('departments.department_id')))
 
-    @testing.fails_on('maxdb')
     def test_basic(self):
         class Department(object):
             def __init__(self, **kwargs):
@@ -392,6 +391,7 @@ class EagerTest4(ORMTest):
         q = q.join('employees').filter(Employee.c.name.startswith('J')).distinct().order_by([desc(Department.c.name)])
         assert q.count() == 2
         assert q[0] is d2
+    test_basic = testing.fails_on('maxdb')(test_basic)
 
 class EagerTest5(ORMTest):
     """test the construction of AliasedClauses for the same eager load property but different
@@ -543,7 +543,6 @@ class EagerTest6(ORMTest):
         x.inheritedParts
 
 class EagerTest7(ORMTest):
-    @testing.uses_deprecated('SessionContext')
     def define_tables(self, metadata):
         global companies_table, addresses_table, invoice_table, phones_table, items_table, ctx
         global Company, Address, Phone, Item,Invoice
@@ -605,8 +604,8 @@ class EagerTest7(ORMTest):
         class Item(object):
             def __repr__(self):
                 return "Item: " + repr(getattr(self, 'item_id', None)) + " " + repr(getattr(self, 'invoice_id', None)) + " " + repr(self.code) + " " + repr(self.qty)
+    define_tables = testing.uses_deprecated('SessionContext')(define_tables)
 
-    @testing.uses_deprecated('SessionContext')
     def testone(self):
         """tests eager load of a many-to-one attached to a one-to-many.  this testcase illustrated
         the bug, which is that when the single Company is loaded, no further processing of the rows
@@ -649,6 +648,7 @@ class EagerTest7(ORMTest):
         print repr(c)
         print repr(i.company)
         self.assert_(repr(c) == repr(i.company))
+    testone = testing.uses_deprecated('SessionContext')(testone)
 
     def testtwo(self):
         """this is the original testcase that includes various complicating factors"""
@@ -794,7 +794,6 @@ class EagerTest8(ORMTest):
         testing.db.execute(task_type_t.insert(), {'id':1})
         testing.db.execute(task_t.insert(), {'title':u'task 1', 'task_type_id':1, 'status_id':1, 'prj_id':1})
 
-    @testing.fails_on('maxdb')
     def test_nested_joins(self):
         # this is testing some subtle column resolution stuff,
         # concerning corresponding_column() being extremely accurate
@@ -844,6 +843,7 @@ class EagerTest8(ORMTest):
 
         for t in session.query(cls.mapper).limit(10).offset(0).all():
             print t.id, t.title, t.props_cnt
+    test_nested_joins = testing.fails_on('maxdb')(test_nested_joins)
 
 class EagerTest9(ORMTest):
     """test the usage of query options to eagerly load specific paths.
@@ -870,7 +870,6 @@ class EagerTest9(ORMTest):
             Column('transaction_id', Integer, ForeignKey(transactions_table.c.transaction_id)),
         )
 
-    @testing.fails_on('maxdb')
     def test_eagerload_on_path(self):
         class Account(fixtures.Base):
             pass
@@ -921,6 +920,7 @@ class EagerTest9(ORMTest):
                 assert e.account is acc
 
         self.assert_sql_count(testing.db, go, 1)
+    test_eagerload_on_path = testing.fails_on('maxdb')(test_eagerload_on_path)
 
 
 

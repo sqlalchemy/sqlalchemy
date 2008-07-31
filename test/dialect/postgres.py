@@ -61,7 +61,6 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 class ReturningTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
 
-    @testing.exclude('postgres', '<', (8, 2))
     def test_update_returning(self):
         meta = MetaData(testing.db)
         table = Table('tables', meta,
@@ -80,8 +79,8 @@ class ReturningTest(TestBase, AssertsExecutionResults):
             self.assertEqual(result2.fetchall(), [(1,True),(2,False)])
         finally:
             table.drop()
+    test_update_returning = testing.exclude('postgres', '<', (8, 2))(test_update_returning)
 
-    @testing.exclude('postgres', '<', (8, 2))
     def test_insert_returning(self):
         meta = MetaData(testing.db)
         table = Table('tables', meta,
@@ -108,6 +107,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
             self.assertEqual([dict(row) for row in result4], [{'persons': 10}])
         finally:
             table.drop()
+    test_insert_returning = testing.exclude('postgres', '<', (8, 2))(test_insert_returning)
 
 
 class InsertTest(TestBase, AssertsExecutionResults):

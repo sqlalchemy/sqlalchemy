@@ -292,7 +292,6 @@ class InvalidateDuringResultTest(TestBase):
         meta.drop_all()
         engine.dispose()
     
-    @testing.fails_on('mysql')    
     def test_invalidate_on_results(self):
         conn = engine.connect()
         
@@ -309,6 +308,7 @@ class InvalidateDuringResultTest(TestBase):
                 raise
 
         assert conn.invalidated
+    test_invalidate_on_results = testing.fails_on('mysql')    (test_invalidate_on_results)
         
 if __name__ == '__main__':
     testenv.main()
