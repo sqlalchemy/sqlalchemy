@@ -873,6 +873,43 @@ class OverrideColKeyTest(ORMTest):
         sess.flush()
         assert sess.query(Sub).one().data == "im the data"
         
-
+class DeleteOrphanTest(ORMTest):
+    def define_tables(self, metadata):
+        global single, parent
+        single = Table('single', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('type', String(50), nullable=False),
+            Column('data', String(50)),
+            Column('parent_id', Integer, ForeignKey('parent.id'), nullable=False),
+            )
+            
+        parent = Table('parent', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('data', String(50))
+            )
+    
+    def test_orphan_message(self):
+        class Base(fixtures.Base):
+            pass
+        
+        class SubClass(Base):
+            pass
+        
+        class Parent(fixtures.Base):
+            pass
+        
+        mapper(Base, single, polymorphic_on=single.c.type, polymorphic_identity='base')
+        mapper(SubClass, inherits=Base, polymorphic_identity='sub')
+        mapper(Parent, parent, properties={
+            'related':relation(Base, cascade="all, delete-orphan")
+        })
+        
+        sess = create_session()
+        s1 = SubClass(data='s1')
+        sess.add(s1)
+        self.assertRaisesMessage(orm_exc.FlushError, 
+            "is not attached to any parent 'Parent' instance via that classes' 'related' attribute", sess.flush)
+        
+    
 if __name__ == "__main__":
     testenv.main()

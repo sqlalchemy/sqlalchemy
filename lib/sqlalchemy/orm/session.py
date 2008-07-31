@@ -7,7 +7,7 @@
 """Provides the Session class and related utilities."""
 
 import weakref
-
+from itertools import chain
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import util, sql, engine
 from sqlalchemy.sql import util as sql_util, expression
@@ -1385,7 +1385,7 @@ class Session(object):
                     ["any parent '%s' instance "
                      "via that classes' '%s' attribute" %
                      (cls.__name__, key)
-                     for (key, cls) in _state_mapper(state).delete_orphans])
+                     for (key, cls) in chain(*(m.delete_orphans for m in _state_mapper(state).iterate_to_root()))])
                 raise exc.FlushError(
                     "Instance %s is an unsaved, pending instance and is an "
                     "orphan (is not attached to %s)" % (

@@ -50,6 +50,11 @@ CHANGES
       should reduce the probability of "Attribute x was 
       not replaced during compile" warnings. (this generally
       applies to SQLA hackers, like Elixir devs).
+      
+    - Fixed bug whereby the "unsaved, pending instance" 
+      FlushError raised for a pending orphan would not take
+      superclass mappers into account when generating 
+      the list of relations responsible for the error.
 
 - sql
     - func.count() with no arguments renders as COUNT(*),
