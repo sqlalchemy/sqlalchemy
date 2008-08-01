@@ -873,39 +873,57 @@ class OverrideColKeyTest(ORMTest):
         sess.flush()
         assert sess.query(Sub).one().data == "im the data"
     
-    def test_two_levels(self):
+    def test_sub_columns_over_base_descriptors(self):
         class Base(object):
-            pass
+            @property
+            def subdata(self):
+                return "this is base"
 
         class Sub(Base):
-            @property
-            def data(self):
-                return "im sub"
+            pass
 
-        class SubSub(Sub):
-            @property
-            def data(self):
-                return "im sub sub"
-        
         mapper(Base, base)
         mapper(Sub, subtable, inherits=Base)
-        mapper(SubSub, inherits=Sub)
         
         sess = create_session()
-        s1 = Sub()
-        assert s1.data == "im sub"
-        s2 = SubSub()
-        assert s2.data == "im sub sub"
         b1 = Base()
-        b1.data="this is some data"
-        assert b1.data == "this is some data"
-        
-        sess.add_all([s1, s2, b1])
+        assert b1.subdata == "this is base"
+        s1 = Sub()
+        s1.subdata = "this is sub"
+        assert s1.subdata == "this is sub"
+
+        sess.add_all([s1, b1])
         sess.flush()
         sess.clear()
         
-        assert sess.query(Sub).get(s1.base_id).data == "im sub"
-        assert sess.query(SubSub).get(s2.base_id).data == "im sub sub"
+        assert sess.query(Base).get(b1.base_id).subdata == "this is base"
+        assert sess.query(Sub).get(s1.base_id).subdata == "this is sub"
+
+    def test_base_descriptors_over_base_cols(self):
+        class Base(object):
+            @property
+            def data(self):
+                return "this is base"
+
+        class Sub(Base):
+            pass
+
+        mapper(Base, base)
+        mapper(Sub, subtable, inherits=Base)
+
+        sess = create_session()
+        b1 = Base()
+        assert b1.data == "this is base"
+        s1 = Sub()
+        assert s1.data == "this is base"
+
+        sess.add_all([s1, b1])
+        sess.flush()
+        sess.clear()
+
+        assert sess.query(Base).get(b1.base_id).data == "this is base"
+        assert sess.query(Sub).get(s1.base_id).data == "this is base"
+
         
 class DeleteOrphanTest(ORMTest):
     def define_tables(self, metadata):

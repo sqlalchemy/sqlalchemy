@@ -639,18 +639,25 @@ class Mapper(object):
 
             return getattr(getattr(cls, clskey), key)
 
-    def _should_exclude(self, name):
+    def _should_exclude(self, name, local):
         """determine whether a particular property should be implicitly present on the class.
         
         This occurs when properties are propagated from an inherited class, or are 
         applied from the columns present in the mapped table.
         
         """
-        # check for an existing descriptor
-        if getattr(self.class_, name, None) \
-            and hasattr(getattr(self.class_, name), '__get__'):
-            return True
         
+        # check for descriptors, either local or from
+        # an inherited class
+        if local:
+            if self.class_.__dict__.get(name, None)\
+                and hasattr(self.class_.__dict__[name], '__get__'):
+                return True
+        else:
+            if getattr(self.class_, name, None)\
+                and hasattr(getattr(self.class_, name), '__get__'):
+                return True
+
         if (self.include_properties is not None and
             name not in self.include_properties):
             self.__log("not including property %s" % (name))
@@ -681,7 +688,7 @@ class Mapper(object):
         # pull properties from the inherited mapper if any.
         if self.inherits:
             for key, prop in self.inherits.__props.iteritems():
-                if key not in self.__props and not self._should_exclude(key):
+                if key not in self.__props and not self._should_exclude(key, local=False):
                     self._adapt_inherited_property(key, prop)
 
         # create properties for each column in the mapped table,
@@ -690,9 +697,6 @@ class Mapper(object):
             if column in self._columntoproperty:
                 continue
                 
-            if self._should_exclude(column.key):
-                continue
-
             column_key = (self.column_prefix or '') + column.key
 
             # adjust the "key" used for this column to that
@@ -700,14 +704,15 @@ class Mapper(object):
             for mapper in self.iterate_to_root():
                 if column in mapper._columntoproperty:
                     column_key = mapper._columntoproperty[column].key
-                
-            self._compile_property(column_key, column, init=False, setparent=True)
+            
+            if not self._should_exclude(column_key, local=self.local_table.c.contains_column(column)):
+                self._compile_property(column_key, column, init=False, setparent=True)
 
         # do a special check for the "discriminiator" column, as it may only be present
         # in the 'with_polymorphic' selectable but we need it for the base mapper
         if self.polymorphic_on and self.polymorphic_on not in self._columntoproperty:
             col = self.mapped_table.corresponding_column(self.polymorphic_on) or self.polymorphic_on
-            if self._should_exclude(col.key):
+            if self._should_exclude(col.key, local=False):
                 raise sa_exc.InvalidRequestError("Cannot exclude or override the discriminator column %r" % col.key)
             self._compile_property(col.key, ColumnProperty(col), init=False, setparent=True)
 
