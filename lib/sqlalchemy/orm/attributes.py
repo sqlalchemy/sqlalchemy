@@ -123,18 +123,18 @@ class InstrumentedAttribute(QueryableAttribute):
             return self
         return self.impl.get(instance_state(instance))
 
+class _ProxyImpl(object):
+    accepts_scalar_loader = False
+
+    def __init__(self, key):
+        self.key = key
+
 def proxied_attribute_factory(descriptor):
     """Create an InstrumentedAttribute / user descriptor hybrid.
 
     Returns a new InstrumentedAttribute type that delegates descriptor
     behavior and getattr() to the given descriptor.
     """
-
-    class ProxyImpl(object):
-        accepts_scalar_loader = False
-
-        def __init__(self, key):
-            self.key = key
 
     class Proxy(InstrumentedAttribute):
         """A combination of InsturmentedAttribute and a regular descriptor."""
@@ -145,7 +145,7 @@ def proxied_attribute_factory(descriptor):
             self.descriptor = self.user_prop = descriptor
             self._comparator = comparator
             self._parententity = parententity
-            self.impl = ProxyImpl(key)
+            self.impl = _ProxyImpl(key)
 
         def comparator(self):
             if callable(self._comparator):
