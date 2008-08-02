@@ -319,6 +319,7 @@ class DeclarativeMeta(type):
         else:
             type.__setattr__(cls, key, value)
 
+
 class _GetColumns(object):
     def __init__(self, cls):
         self.cls = cls
@@ -328,6 +329,7 @@ class _GetColumns(object):
             return getattr(self.cls, key)
         else:
             return mapper.get_property(key).columns[0]
+
 
 def _deferred_relation(cls, prop):
     def resolve_arg(arg):
@@ -386,7 +388,6 @@ def synonym_for(name, map_column=False):
         return _orm_synonym(name, map_column=map_column, descriptor=fn)
     return decorate
 
-
 def comparable_using(comparator_factory):
     """Decorator, allow a Python @property to be used in query criteria.
 
@@ -408,7 +409,24 @@ def comparable_using(comparator_factory):
         return comparable_property(comparator_factory, fn)
     return decorate
 
+def _declarative_constructor(self, **kwargs):
+    """A simple constructor that allows initialization from kwargs.
+
+    Sets kwargs on the constructed instance.  Only keys that are present as
+    attributes of type(self) are allowed (for example, any mapped column or
+    relation).
+    
+    """
+    for k in kwargs:
+        if not hasattr(type(self), k):
+            raise TypeError(
+                "%r is an invalid keyword argument for %s" %
+                (k, type(self).__name__))
+        setattr(self, k, kwargs[k])
+_declarative_constructor.__name__ = '__init__'
+
 def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
+                     name='Base', constructor=_declarative_constructor,
                      metaclass=DeclarativeMeta, engine=None):
     """Construct a base class for declarative class definitions.
 
@@ -418,14 +436,9 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
     into Table and Mapper assignments.  See the `declarative` module
     documentation for examples.
 
-    cls
-      Defaults to `object`.  A class to use as the base for the generated
-      declarative base class.
-
-    metaclass
-      Defaults to `DeclarativeMeta`.  A metaclass or __metaclass__
-      compatible callable to use as the meta type of the generated
-      declarative base class.
+    bind
+      An optional `Connectable`, will be assigned to the `metadata.bind`.
+      The `engine` keyword argument is a deprecated synonym for `bind`.
 
     metadata
       An optional `MetaData` instance.  All Tables implicitly declared by
@@ -434,32 +447,46 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
       available via the `metadata` attribute of the generated declarative
       base class.
 
-    bind
-      An optional `Connectable`, will be assigned to the `metadata.bind`.
-      The `engine` keyword argument is a deprecated synonym for `bind`.
-
     mapper
       An optional callable, defaults to `sqlalchemy.orm.mapper`.  Will be
       used to map subclasses to their Tables.
+
+    cls
+      Defaults to `object`.  A type to use as the base for the generated
+      declarative base class.  May be a type or tuple of types.
+
+    name
+      Defaults to 'Base', Python's internal display name for the generated
+      class.  Customizing this is not required, but can improve clarity in
+      tracebacks and debugging.
+
+    constructor
+      Defaults to declarative._declarative_constructor, an __init__
+      implementation that assigns **kwargs for declared fields and relations
+      to an instance.  If `None` is supplied, no __init__ will be installed
+      and construction will fall back to cls.__init__ with normal Python
+      semantics.
+
+    metaclass
+      Defaults to `DeclarativeMeta`.  A metaclass or __metaclass__
+      compatible callable to use as the meta type of the generated
+      declarative base class.
 
     """
     lcl_metadata = metadata or MetaData()
     if bind or engine:
         lcl_metadata.bind = bind or engine
-    class Base(cls):
-        __metaclass__ = metaclass
-        metadata = lcl_metadata
-        if mapper:
-            __mapper_cls__ = mapper
-        _decl_class_registry = {}
-        def __init__(self, **kwargs):
-            for k in kwargs:
-                if not hasattr(type(self), k):
-                    raise TypeError(
-                        "%r is an invalid keyword argument for %s" %
-                        (k, type(self).__name__))
-                setattr(self, k, kwargs[k])
-    return Base
+
+    bases = not isinstance(cls, tuple) and (cls,) or cls
+    class_dict = dict(_decl_class_registry=dict(),
+                      metadata=lcl_metadata)
+
+    if constructor:
+        class_dict['__init__'] = constructor
+    if mapper:
+        class_dict['__mapper_cls__'] = mapper
+
+    return metaclass(name, bases, class_dict)
 
 def _undefer_column_name(key, column):
     if column.key is None:
