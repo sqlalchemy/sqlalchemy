@@ -229,7 +229,7 @@ class PropertyLoader(StrategizedProperty):
 
     def __init__(self, argument,
         secondary=None, primaryjoin=None,
-        secondaryjoin=None, entity_name=None,
+        secondaryjoin=None, 
         foreign_keys=None,
         uselist=None,
         order_by=False,
@@ -245,7 +245,6 @@ class PropertyLoader(StrategizedProperty):
 
         self.uselist = uselist
         self.argument = argument
-        self.entity_name = entity_name
         self.secondary = secondary
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
@@ -460,7 +459,7 @@ class PropertyLoader(StrategizedProperty):
             dest_list = []
             for current in instances:
                 _recursive[(current, self)] = True
-                obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
+                obj = session.merge(current, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     dest_list.append(obj)
             if dont_load:
@@ -473,7 +472,7 @@ class PropertyLoader(StrategizedProperty):
             current = instances[0]
             if current is not None:
                 _recursive[(current, self)] = True
-                obj = session.merge(current, entity_name=self.mapper.entity_name, dont_load=dont_load, _recursive=_recursive)
+                obj = session.merge(current, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     if dont_load:
                         dest.__dict__[self.key] = obj
@@ -495,7 +494,7 @@ class PropertyLoader(StrategizedProperty):
                     visited_instances.add(c)
 
                     # cascade using the mapper local to this object, so that its individual properties are located
-                    instance_mapper = object_mapper(c, entity_name=mapper.entity_name)
+                    instance_mapper = object_mapper(c)
                     yield (c, instance_mapper, attributes.instance_state(c))
 
     def _get_target_class(self):
@@ -518,12 +517,12 @@ class PropertyLoader(StrategizedProperty):
 
     def _determine_targets(self):
         if isinstance(self.argument, type):
-            self.mapper = mapper.class_mapper(self.argument, entity_name=self.entity_name, compile=False)
+            self.mapper = mapper.class_mapper(self.argument, compile=False)
         elif isinstance(self.argument, mapper.Mapper):
             self.mapper = self.argument
         elif callable(self.argument):
             # accept a callable to suit various deferred-configurational schemes
-            self.mapper = mapper.class_mapper(self.argument(), entity_name=self.entity_name, compile=False)
+            self.mapper = mapper.class_mapper(self.argument(), compile=False)
         else:
             raise sa_exc.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
         assert isinstance(self.mapper, mapper.Mapper), self.mapper

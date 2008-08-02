@@ -283,16 +283,20 @@ class EagerTest(_fixtures.FixtureTest):
         closedorders = sa.alias(orders, 'closedorders')
 
         mapper(Address, addresses)
-
+        mapper(Order, orders)
+        
+        open_mapper = mapper(Order, openorders, non_primary=True)
+        closed_mapper = mapper(Order, closedorders, non_primary=True)
+        
         mapper(User, users, properties = dict(
             addresses = relation(Address, lazy=False),
             open_orders = relation(
-                mapper(Order, openorders, entity_name='open'),
+                open_mapper,
                 primaryjoin=sa.and_(openorders.c.isopen == 1,
                                  users.c.id==openorders.c.user_id),
                 lazy=False),
             closed_orders = relation(
-                mapper(Order, closedorders,entity_name='closed'),
+                closed_mapper,
                 primaryjoin=sa.and_(closedorders.c.isopen == 0,
                                  users.c.id==closedorders.c.user_id),
                 lazy=False)))

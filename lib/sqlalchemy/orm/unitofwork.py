@@ -45,7 +45,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
         if sess:
             prop = _state_mapper(state).get_property(self.key)
             if prop.cascade.save_update and item not in sess:
-                sess.save_or_update(item, entity_name=prop.mapper.entity_name)
+                sess.save_or_update(item)
 
     def remove(self, state, item, initiator):
         sess = _state_session(state)
@@ -65,7 +65,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
         if sess:
             prop = _state_mapper(state).get_property(self.key)
             if newvalue is not None and prop.cascade.save_update and newvalue not in sess:
-                sess.save_or_update(newvalue, entity_name=prop.mapper.entity_name)
+                sess.save_or_update(newvalue)
             if prop.cascade.delete_orphan and oldvalue in sess.new:
                 sess.expunge(oldvalue)
 

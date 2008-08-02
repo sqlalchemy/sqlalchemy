@@ -22,7 +22,6 @@ PASSIVE_NORESULT = util.symbol('PASSIVE_NORESULT')
 ATTR_WAS_SET = util.symbol('ATTR_WAS_SET')
 NO_VALUE = util.symbol('NO_VALUE')
 NEVER_SET = util.symbol('NEVER_SET')
-NO_ENTITY_NAME = util.symbol('NO_ENTITY_NAME')
 
 INSTRUMENTATION_MANAGER = '__sa_instrumentation_manager__'
 """Attribute, elects custom instrumentation when present on a mapped class.
@@ -740,9 +739,8 @@ class InstanceState(object):
     session_id = None
     key = None
     runid = None
-    entity_name = NO_ENTITY_NAME
     expired_attributes = EMPTY_SET
-
+    
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
         self.manager = manager
@@ -807,6 +805,7 @@ class InstanceState(object):
         impl = self.get_impl(key)
         x = impl.get(self, passive=passive)
         if x is PASSIVE_NORESULT:
+            
             return None
         elif hasattr(impl, 'get_collection'):
             return impl.get_collection(self, x, passive=passive)
@@ -822,7 +821,6 @@ class InstanceState(object):
 
     def __getstate__(self):
         return {'key': self.key,
-                'entity_name': self.entity_name,
                 'committed_state': self.committed_state,
                 'pending': self.pending,
                 'parents': self.parents,
@@ -837,7 +835,6 @@ class InstanceState(object):
         self.parents = state['parents']
         self.key = state['key']
         self.session_id = None
-        self.entity_name = state['entity_name']
         self.pending = state['pending']
         self.modified = state['modified']
         self.obj = weakref.ref(state['instance'])
@@ -1031,7 +1028,7 @@ class ClassManager(dict):
         self.class_ = class_
         self.factory = None  # where we came from, for inheritance bookkeeping
         self.info = {}
-        self.mappers = {}
+        self.mapper = None
         self.mutable_attributes = set()
         self.local_attrs = {}
         self.originals = {}
@@ -1398,13 +1395,8 @@ def unregister_class(class_):
     manager.unregister()
 
 def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_property=None, mutable_scalars=False, impl_class=None, **kwargs):
-
     manager = manager_of_class(class_)
     if manager.is_instrumented(key):
-        # this currently only occurs if two primary mappers are made for the
-        # same class.  TODO: possibly have InstrumentedAttribute check
-        # "entity_name" when searching for impl.  raise an error if two
-        # attrs attached simultaneously otherwise
         return
 
     if uselist:
@@ -1430,7 +1422,7 @@ def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_pr
                     impl_class=impl_class,
                     **kwargs),
                 comparator=comparator, parententity=parententity)
-
+    
     manager.instrument_attribute(key, descriptor)
 
 def unregister_attribute(class_, key):

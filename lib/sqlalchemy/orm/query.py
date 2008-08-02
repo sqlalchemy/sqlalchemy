@@ -55,7 +55,7 @@ def _generative(*assertions):
 class Query(object):
     """Encapsulates the object-fetching operations provided by Mappers."""
 
-    def __init__(self, entities, session=None, entity_name=None):
+    def __init__(self, entities, session=None):
         self.session = session
 
         self._with_options = []
@@ -89,7 +89,7 @@ class Query(object):
         self.__currenttables = set()
 
         for ent in util.to_list(entities):
-            _QueryEntity(self, ent, entity_name=entity_name)
+            _QueryEntity(self, ent)
 
         self.__setup_aliasizers(self._entities)
 
@@ -105,7 +105,7 @@ class Query(object):
         for ent in entities:
             for entity in ent.entities:
                 if entity not in d:
-                    mapper, selectable, is_aliased_class = _entity_info(entity, ent.entity_name)
+                    mapper, selectable, is_aliased_class = _entity_info(entity)
                     if not is_aliased_class and mapper.with_polymorphic:
                         with_polymorphic = mapper._with_polymorphic_mappers
                         self.__mapper_loads_polymorphically_with(mapper, sql_util.ColumnAdapter(selectable, mapper._equivalent_columns))
@@ -1246,7 +1246,7 @@ class Query(object):
             target_cls = self._mapper_zero().class_
             
             #TODO: detect when the where clause is a trivial primary key match
-            objs_to_expunge = [obj for (cls, pk, entity_name),obj in session.identity_map.iteritems()
+            objs_to_expunge = [obj for (cls, pk),obj in session.identity_map.iteritems()
                 if issubclass(cls, target_cls) and eval_condition(obj)]
             for obj in objs_to_expunge:
                 session._remove_newly_deleted(attributes.instance_state(obj))
@@ -1294,7 +1294,7 @@ class Query(object):
         if synchronize_session == 'evaluate':
             target_cls = self._mapper_zero().class_
             
-            for (cls, pk, entity_name),obj in session.identity_map.iteritems():
+            for (cls, pk),obj in session.identity_map.iteritems():
                 evaluated_keys = value_evaluators.keys()
                 
                 if issubclass(cls, target_cls) and eval_condition(obj):
@@ -1475,13 +1475,12 @@ class _QueryEntity(object):
 class _MapperEntity(_QueryEntity):
     """mapper/class/AliasedClass entity"""
 
-    def __init__(self, query, entity, entity_name=None):
+    def __init__(self, query, entity):
         self.primary_entity = not query._entities
         query._entities.append(self)
 
         self.entities = [entity]
         self.entity_zero = entity
-        self.entity_name = entity_name
         
     def setup_entity(self, entity, mapper, adapter, from_obj, is_aliased_class, with_polymorphic):
         self.mapper = mapper
@@ -1602,7 +1601,7 @@ class _MapperEntity(_QueryEntity):
 class _ColumnEntity(_QueryEntity):
     """Column/expression based entity."""
 
-    def __init__(self, query, column, entity_name=None):
+    def __init__(self, query, column):
         if isinstance(column, expression.FromClause) and not isinstance(column, expression.ColumnElement):
             for c in column.c:
                 _ColumnEntity(query, c)
@@ -1621,7 +1620,6 @@ class _ColumnEntity(_QueryEntity):
             column = column.label(None)
 
         self.column = column
-        self.entity_name = None
         self.froms = set()
         self.entities = util.OrderedSet(
             elem._annotations['parententity']

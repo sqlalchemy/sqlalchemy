@@ -543,39 +543,6 @@ class MergeTest(_fixtures.FixtureTest):
             sess3.flush()
         self.assert_sql_count(testing.db, go, 0)
 
-    @testing.resolve_artifact_names
-    def test_dont_load_sets_entityname(self):
-        """dont_load-merged entity has entity_name set, has_mapper() passes, and lazyloads work"""
-
-        mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), uselist=True)})
-
-        sess = create_session()
-        u = User()
-        u.id = 7
-        u.name = "fred"
-        a1 = Address()
-        a1.email_address='foo@bar.com'
-        u.addresses.append(a1)
-
-        sess.add(u)
-        sess.flush()
-        sess.clear()
-
-        # reload 'u' such that its addresses list hasn't loaded
-        u = sess.query(User).get(7)
-
-        sess2 = create_session()
-        u2 = sess2.merge(u, dont_load=True)
-        assert not sess2.dirty
-        # assert merged instance has a mapper and lazy load proceeds
-        state = sa.orm.attributes.instance_state(u2)
-        assert state.entity_name is not sa.orm.attributes.NO_ENTITY_NAME
-        assert sa.orm.util.has_mapper(u2)
-        def go():
-            ne_( u2.addresses, [])
-            eq_(len(u2.addresses), 1)
-        self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
     def test_dont_load_sets_backrefs(self):

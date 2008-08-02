@@ -158,7 +158,6 @@ class _ScopedExt(MapperExtension):
 
     def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
         if self.save_on_init:
-            entity_name = kwargs.pop('_sa_entity_name', None)
             session = kwargs.pop('_sa_session', None)
 
         if self.set_kwargs_on_init:
@@ -173,7 +172,7 @@ class _ScopedExt(MapperExtension):
 
         if self.save_on_init:
             session = session or self.context.registry()
-            session._save_without_cascade(instance, entity_name=entity_name)
+            session._save_without_cascade(instance)
         return EXT_CONTINUE
 
     def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):

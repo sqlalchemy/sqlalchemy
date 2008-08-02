@@ -63,7 +63,6 @@ ComparableProperty = None
 _expire_state = None
 _state_session = None
 
-
 class Mapper(object):
     """Define the correlation of class attributes to database table
     columns.
@@ -83,7 +82,6 @@ class Mapper(object):
                  inherit_foreign_keys = None,
                  extension = None,
                  order_by = False,
-                 entity_name = None,
                  always_refresh = False,
                  version_id_col = None,
                  polymorphic_on=None,
@@ -108,7 +106,7 @@ class Mapper(object):
 
         self.class_ = class_
         self.class_manager = None
-        self.entity_name = entity_name
+            
         self.primary_key_argument = primary_key
         self.non_primary = non_primary
         
@@ -204,11 +202,11 @@ class Mapper(object):
 
     def __log(self, msg):
         if self.__should_log_info:
-            self.logger.info("(" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "") + ") " + msg)
+            self.logger.info("(" + self.class_.__name__ + "|" + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "") + ") " + msg)
 
     def __log_debug(self, msg):
         if self.__should_log_debug:
-            self.logger.debug("(" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "") + ") " + msg)
+            self.logger.debug("(" + self.class_.__name__ + "|" + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "") + ") " + msg)
 
     def _is_orphan(self, state):
         o = False
@@ -329,11 +327,9 @@ class Mapper(object):
         self.compiled = True
 
         manager = self.class_manager
-        mappers = manager.mappers
 
-        if not self.non_primary and self.entity_name in mappers:
-            del mappers[self.entity_name]
-        if not mappers and manager.info.get(_INSTRUMENTOR, False):
+        if not self.non_primary and manager.mapper is self:
+            manager.mapper = None
             manager.events.remove_listener('on_init', _event_on_init)
             manager.events.remove_listener('on_init_failure',
                                            _event_on_init_failure)
@@ -818,7 +814,7 @@ class Mapper(object):
         manager = attributes.manager_of_class(self.class_)
 
         if self.non_primary:
-            if not manager or None not in manager.mappers:
+            if not manager or manager.mapper is None:
                 raise sa_exc.InvalidRequestError(
                     "Class %s has no primary mapper configured.  Configure "
                     "a primary mapper first before setting up a non primary "
@@ -830,14 +826,15 @@ class Mapper(object):
         if manager is not None:
             if manager.class_ is not self.class_:
                 # An inherited manager.  Install one for this subclass.
+                raise "eh?"
                 manager = None
-            elif self.entity_name in manager.mappers:
+            elif manager.mapper:
                 raise sa_exc.ArgumentError(
-                    "Class '%s' already has a primary mapper defined "
-                    "with entity name '%s'.  Use non_primary=True to "
+                    "Class '%s' already has a primary mapper defined. "
+                    "Use non_primary=True to "
                     "create a non primary Mapper.  clear_mappers() will "
                     "remove *all* current mappers from all classes." %
-                    (self.class_, self.entity_name))
+                    self.class_)
 
         _mapper_registry[self] = True
 
@@ -846,11 +843,10 @@ class Mapper(object):
 
         self.class_manager = manager
 
-        has_been_initialized = bool(manager.info.get(_INSTRUMENTOR, False))
-        manager.mappers[self.entity_name] = self
+        manager.mapper = self
 
         # The remaining members can be added by any mapper, e_name None or not.
-        if has_been_initialized:
+        if manager.info.get(_INSTRUMENTOR, False):
             return
 
         self.extension.instrument_class(self, self.class_)
@@ -866,7 +862,6 @@ class Mapper(object):
             def reconstitute(instance):
                 self.extension.on_reconstitute(self, instance)
             event_registry.add_listener('on_load', reconstitute)
-
 
         manager.info[_INSTRUMENTOR] = self
 
@@ -937,11 +932,11 @@ class Mapper(object):
             id(self), self.class_.__name__)
 
     def __str__(self):
-        return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "")
+        return "Mapper|" + self.class_.__name__ + "|" + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "")
 
     def primary_mapper(self):
-        """Return the primary mapper corresponding to this mapper's class key (class + entity_name)."""
-        return self.class_manager.mappers[self.entity_name]
+        """Return the primary mapper corresponding to this mapper's class key (class)."""
+        return self.class_manager.mapper
 
     def identity_key_from_row(self, row, adapter=None):
         """Return an identity-map key for use in storing/retrieving an
@@ -957,7 +952,7 @@ class Mapper(object):
         if adapter:
             pk_cols = [adapter.columns[c] for c in pk_cols]
 
-        return (self._identity_class, tuple(row[column] for column in pk_cols), self.entity_name)
+        return (self._identity_class, tuple(row[column] for column in pk_cols))
 
     def identity_key_from_primary_key(self, primary_key):
         """Return an identity-map key for use in storing/retrieving an
@@ -966,7 +961,7 @@ class Mapper(object):
         primary_key
           A list of values indicating the identifier.
         """
-        return (self._identity_class, tuple(util.to_list(primary_key)), self.entity_name)
+        return (self._identity_class, tuple(util.to_list(primary_key)))
 
     def identity_key_from_instance(self, instance):
         """Return the identity key for the given instance, based on
@@ -1405,9 +1400,9 @@ class Mapper(object):
             if version_id_col:
                 version_id_col = adapter.columns[version_id_col]
 
-        identity_class, entity_name = self._identity_class, self.entity_name
+        identity_class = self._identity_class
         def identity_key(row):
-            return (identity_class, tuple(row[column] for column in pk_cols), entity_name)
+            return (identity_class, tuple(row[column] for column in pk_cols))
 
         new_populators = []
         existing_populators = []
@@ -1518,8 +1513,8 @@ class Mapper(object):
                     self.__log_debug("_instance(): created new instance %s identity %s" % (instance_str(instance), str(identitykey)))
 
                 state = attributes.instance_state(instance)
-                state.entity_name = self.entity_name
                 state.key = identitykey
+
                 # manually adding instance to session.  for a complete add,
                 # session._finalize_loaded() must be called.
                 state.session_id = context.session.hash_key

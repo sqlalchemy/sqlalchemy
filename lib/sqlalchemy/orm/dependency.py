@@ -289,11 +289,11 @@ class DetectKeySwitch(DependencyProcessor):
             for s in [elem for elem in uowcommit.session.identity_map.all_states()
                 if issubclass(elem.class_, self.parent.class_) and
                     self.key in elem.dict and
+                    elem.dict[self.key] is not None and 
                     attributes.instance_state(elem.dict[self.key]) in switchers
                 ]:
                 uowcommit.register_object(s, listonly=self.passive_updates)
                 sync.populate(attributes.instance_state(s.dict[self.key]), self.mapper, s, self.parent, self.prop.synchronize_pairs)
-                #self.syncrules.execute(s.dict[self.key]._state, s, None, None, False)
 
     def _pks_changed(self, uowcommit, state):
         return sync.source_changes(uowcommit, state, self.mapper, self.prop.synchronize_pairs)

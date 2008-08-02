@@ -55,6 +55,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         except orm_exc.FlushError, e:
             assert "is an orphan" in str(e)
 
+
     @testing.resolve_artifact_names
     def test_delete(self):
         sess = create_session()
@@ -154,6 +155,32 @@ class O2MCascadeTest(_fixtures.FixtureTest):
 
         assert users.count().scalar() == 1
         assert orders.count().scalar() == 0
+
+
+class O2MBackrefTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        mapper(User, users, properties = dict(
+            orders = relation(
+                mapper(Order, orders), cascade="all, delete-orphan", backref="user")
+        ))
+
+    @testing.resolve_artifact_names
+    def test_lazyload_bug(self):
+        sess = create_session()
+
+        u = User(name="jack")
+        sess.add(u)
+        sess.expunge(u)
+
+        o1 = Order(description='someorder')
+        o1.user = u
+        sess.add(u)
+        assert u in sess
+        assert o1 in sess
+
 
 class NoSaveCascadeTest(_fixtures.FixtureTest):
     """test that backrefs don't force save-update cascades to occur

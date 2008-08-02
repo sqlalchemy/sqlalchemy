@@ -676,21 +676,6 @@ class MiscTest(_base.ORMTest):
             session.add(a)
             assert b in session, 'base: %s' % base
 
-    def test_compileonattr_rel_entity_name(self):
-        m = MetaData()
-        t1 = Table('t1', m,
-                   Column('id', Integer, primary_key=True),
-                   Column('x', Integer))
-        t2 = Table('t2', m,
-                   Column('id', Integer, primary_key=True),
-                   Column('t1_id', Integer, ForeignKey('t1.id')))
-        class A(object): pass
-        class B(object): pass
-        mapper(A, t1, properties=dict(bs=relation(B)), entity_name='x')
-        mapper(B, t2)
-
-        a = A()
-        assert not a.bs
 
 class FinderTest(_base.ORMTest):
     def test_standard(self):

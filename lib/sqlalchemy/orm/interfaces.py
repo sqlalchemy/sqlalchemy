@@ -566,7 +566,7 @@ def serialize_path(path):
         return None
 
     return [
-        (mapper.class_, mapper.entity_name, key)
+        (mapper.class_, key)
         for mapper, key in [(path[i], path[i+1]) for i in range(0, len(path)-1, 2)]
     ]
 
@@ -579,7 +579,7 @@ def deserialize_path(path):
         from sqlalchemy.orm import class_mapper
 
     return tuple(
-        chain(*[(class_mapper(cls, entity), key) for cls, entity, key in path])
+        chain(*[(class_mapper(cls), key) for cls, key in path])
     )
 
 class MapperOption(object):

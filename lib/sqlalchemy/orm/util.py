@@ -92,7 +92,7 @@ def identity_key(*args, **kwargs):
 
     Valid call signatures:
 
-    * ``identity_key(class, ident, entity_name=None)``
+    * ``identity_key(class, ident)``
 
       class
           mapped class (must be a positional argument)
@@ -100,15 +100,13 @@ def identity_key(*args, **kwargs):
       ident
           primary key, if the key is composite this is a tuple
 
-      entity_name
-          optional entity name
 
     * ``identity_key(instance=instance)``
 
       instance
           object instance (must be given as a keyword arg)
 
-    * ``identity_key(class, row=row, entity_name=None)``
+    * ``identity_key(class, row=row)``
 
       class
           mapped class (must be a positional argument)
@@ -116,8 +114,6 @@ def identity_key(*args, **kwargs):
       row
           result proxy row (must be given as a keyword arg)
 
-      entity_name
-          optional entity name (must be given as a keyword arg)
     """
     if args:
         if len(args) == 1:
@@ -126,19 +122,17 @@ def identity_key(*args, **kwargs):
                 row = kwargs.pop("row")
             except KeyError:
                 ident = kwargs.pop("ident")
-            entity_name = kwargs.pop("entity_name", None)
         elif len(args) == 2:
             class_, ident = args
-            entity_name = kwargs.pop("entity_name", None)
         elif len(args) == 3:
-            class_, ident, entity_name = args
+            class_, ident = args
         else:
             raise sa_exc.ArgumentError("expected up to three "
                 "positional arguments, got %s" % len(args))
         if kwargs:
             raise sa_exc.ArgumentError("unknown keyword arguments: %s"
                 % ", ".join(kwargs.keys()))
-        mapper = class_mapper(class_, entity_name=entity_name)
+        mapper = class_mapper(class_)
         if "ident" in locals():
             return mapper.identity_key_from_primary_key(ident)
         return mapper.identity_key_from_row(row)
@@ -395,12 +389,12 @@ def with_parent(instance, prop):
     return prop.compare(operators.eq, instance, value_is_parent=True)
 
 
-def _entity_info(entity, entity_name=None, compile=True):
+def _entity_info(entity, compile=True):
     if isinstance(entity, AliasedClass):
         return entity._AliasedClass__mapper, entity._AliasedClass__alias, True
     elif _is_mapped_class(entity):
         if isinstance(entity, type):
-            mapper = class_mapper(entity, entity_name, compile)
+            mapper = class_mapper(entity, compile)
         else:
             if compile:
                 mapper = entity.compile()
@@ -435,22 +429,14 @@ def _orm_selectable(entity):
 def _is_aliased_class(entity):
     return isinstance(entity, AliasedClass)
 
-def _state_mapper(state, entity_name=None):
-    if state.entity_name is not attributes.NO_ENTITY_NAME:
-        # Override the given entity name if the object is not transient.
-        entity_name = state.entity_name
-    return state.manager.mappers[entity_name]
+def _state_mapper(state):
+    return state.manager.mapper
 
-def object_mapper(object, entity_name=None, raiseerror=True):
+def object_mapper(object, raiseerror=True):
     """Given an object, return the primary Mapper associated with the object instance.
 
         object
             The object instance.
-
-        entity_name
-            Entity name of the mapper to retrieve, if the given instance is
-            transient.  Otherwise uses the entity name already associated
-            with the instance.
 
         raiseerror
             Defaults to True: raise an ``InvalidRequestError`` if no mapper can
@@ -462,16 +448,12 @@ def object_mapper(object, entity_name=None, raiseerror=True):
     except exc.NO_STATE:
         if not raiseerror:
             return None
-        raise exc.UnmappedInstanceError(object, entity_name)
-    if state.entity_name is not attributes.NO_ENTITY_NAME:
-        # Override the given entity name if the object is not transient.
-        entity_name = state.entity_name
+        raise exc.UnmappedInstanceError(object)
     return class_mapper(
-        type(object), entity_name=entity_name,
-        compile=False, raiseerror=raiseerror)
+        type(object), compile=False, raiseerror=raiseerror)
 
-def class_mapper(class_, entity_name=None, compile=True, raiseerror=True):
-    """Given a class (or an object) and optional entity_name, return the primary Mapper associated with the key.
+def class_mapper(class_, compile=True, raiseerror=True):
+    """Given a class (or an object), return the primary Mapper associated with the key.
 
     If no mapper can be located, raises ``InvalidRequestError``.
 
@@ -481,30 +463,27 @@ def class_mapper(class_, entity_name=None, compile=True, raiseerror=True):
         class_ = type(class_)
     try:
         class_manager = attributes.manager_of_class(class_)
-        mapper = class_manager.mappers[entity_name]
+        mapper = class_manager.mapper
     except exc.NO_STATE:
         if not raiseerror:
             return
-        raise exc.UnmappedClassError(class_, entity_name)
-        raise sa_exc.InvalidRequestError(
-            "Class '%s' entity name '%s' has no mapper associated with it" %
-            (class_.__name__, entity_name))
+        raise exc.UnmappedClassError(class_)
     if compile:
         mapper = mapper.compile()
     return mapper
 
-def _class_to_mapper(class_or_mapper, entity_name=None, compile=True):
+def _class_to_mapper(class_or_mapper, compile=True):
     if _is_aliased_class(class_or_mapper):
         return class_or_mapper._AliasedClass__mapper
     elif isinstance(class_or_mapper, type):
-        return class_mapper(class_or_mapper, entity_name=entity_name, compile=compile)
+        return class_mapper(class_or_mapper, compile=compile)
     elif hasattr(class_or_mapper, 'compile'):
         if compile:
             return class_or_mapper.compile()
         else:
             return class_or_mapper
     else:
-        raise exc.UnmappedClassError(class_or_mapper, entity_name)
+        raise exc.UnmappedClassError(class_or_mapper)
 
 def has_identity(object):
     state = attributes.instance_state(object)
@@ -512,13 +491,6 @@ def has_identity(object):
 
 def _state_has_identity(state):
     return bool(state.key)
-
-def has_mapper(object):
-    state = attributes.instance_state(object)
-    return _state_has_mapper(state)
-
-def _state_has_mapper(state):
-    return state.entity_name is not attributes.NO_ENTITY_NAME
 
 def _is_mapped_class(cls):
     from sqlalchemy.orm import mapperlib as mapper

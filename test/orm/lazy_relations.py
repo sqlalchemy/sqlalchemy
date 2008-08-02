@@ -176,15 +176,20 @@ class LazyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_double(self):
         """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
+
         openorders = sa.alias(orders, 'openorders')
         closedorders = sa.alias(orders, 'closedorders')
 
         mapper(Address, addresses)
-
+        
+        mapper(Order, orders)
+        
+        open_mapper = mapper(Order, openorders, non_primary=True)
+        closed_mapper = mapper(Order, closedorders, non_primary=True)
         mapper(User, users, properties = dict(
             addresses = relation(Address, lazy = True),
-            open_orders = relation(mapper(Order, openorders, entity_name='open'), primaryjoin = sa.and_(openorders.c.isopen == 1, users.c.id==openorders.c.user_id), lazy=True),
-            closed_orders = relation(mapper(Order, closedorders,entity_name='closed'), primaryjoin = sa.and_(closedorders.c.isopen == 0, users.c.id==closedorders.c.user_id), lazy=True)
+            open_orders = relation(open_mapper, primaryjoin = sa.and_(openorders.c.isopen == 1, users.c.id==openorders.c.user_id), lazy=True),
+            closed_orders = relation(closed_mapper, primaryjoin = sa.and_(closedorders.c.isopen == 0, users.c.id==closedorders.c.user_id), lazy=True)
         ))
         q = create_session().query(User)
 
@@ -213,8 +218,8 @@ class LazyTest(_fixtures.FixtureTest):
 
         sess = create_session()
         user = sess.query(User).get(7)
-        assert [Order(id=1), Order(id=5)] == create_session().query(Order, entity_name='closed').with_parent(user, property='closed_orders').all()
-        assert [Order(id=3)] == create_session().query(Order, entity_name='open').with_parent(user, property='open_orders').all()
+        assert [Order(id=1), Order(id=5)] == create_session().query(closed_mapper).with_parent(user, property='closed_orders').all()
+        assert [Order(id=3)] == create_session().query(open_mapper).with_parent(user, property='open_orders').all()
 
     @testing.resolve_artifact_names
     def test_many_to_many(self):

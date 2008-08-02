@@ -1708,43 +1708,6 @@ class MapperExtensionTest(_fixtures.FixtureTest):
              'create_instance', 'populate_instance', 'on_reconstitute', 'append_result',
              'before_update', 'after_update', 'before_delete', 'after_delete'])
 
-    @testing.resolve_artifact_names
-    def test_single_instrumentor(self):
-        ext_None, methods_None = self.extension()
-        ext_x, methods_x = self.extension()
-
-        def reset():
-            sa.orm.clear_mappers()
-            del methods_None[:]
-            del methods_x[:]
-
-        mapper(User, users, extension=ext_None())
-        mapper(User, users, extension=ext_x(), entity_name='x')
-        User()
-
-        eq_(methods_None, ['instrument_class', 'init_instance'])
-        eq_(methods_x, [])
-
-        reset()
-
-        mapper(User, users, extension=ext_x(), entity_name='x')
-        mapper(User, users, extension=ext_None())
-        User()
-
-        eq_(methods_x, ['instrument_class', 'init_instance'])
-        eq_(methods_None, [])
-
-        reset()
-
-        ext_y, methods_y = self.extension()
-
-        mapper(User, users, extension=ext_x(), entity_name='x')
-        mapper(User, users, extension=ext_y(), entity_name='y')
-        User()
-
-        eq_(methods_x, ['instrument_class', 'init_instance'])
-        eq_(methods_y, [])
-
 
 class RequirementsTest(_base.MappedTest):
     """Tests the contract for user classes."""

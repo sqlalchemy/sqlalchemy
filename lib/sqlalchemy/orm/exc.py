@@ -27,10 +27,10 @@ class UnmappedError(sa.exc.InvalidRequestError):
 class UnmappedInstanceError(UnmappedError):
     """An mapping operation was requested for an unknown instance."""
 
-    def __init__(self, obj, entity_name=None, msg=None):
+    def __init__(self, obj, msg=None):
         if not msg:
             try:
-                mapper = sa.orm.class_mapper(type(obj), entity_name)
+                mapper = sa.orm.class_mapper(type(obj))
                 name = _safe_cls_name(type(obj))
                 msg = ("Class %r is mapped, but this instance lacks "
                        "instrumentation.  Possible causes: instance created "
@@ -38,7 +38,7 @@ class UnmappedInstanceError(UnmappedError):
                        "instance was pickled/depickled without instrumentation"
                        "information." % (name, name))
             except UnmappedClassError:
-                msg = _default_unmapped(type(obj), entity_name)
+                msg = _default_unmapped(type(obj))
                 if isinstance(obj, type):
                     msg += (
                         '; was a class (%s) supplied where an instance was '
@@ -49,9 +49,9 @@ class UnmappedInstanceError(UnmappedError):
 class UnmappedClassError(UnmappedError):
     """An mapping operation was requested for an unknown class."""
 
-    def __init__(self, cls, entity_name=None, msg=None):
+    def __init__(self, cls, msg=None):
         if not msg:
-            msg = _default_unmapped(cls, entity_name)
+            msg = _default_unmapped(cls)
         UnmappedError.__init__(self, msg)
 
 
@@ -85,7 +85,7 @@ def _safe_cls_name(cls):
             cls_name = repr(cls)
     return cls_name
 
-def _default_unmapped(cls, entity_name):
+def _default_unmapped(cls):
     try:
         mappers = sa.orm.attributes.manager_of_class(cls).mappers
     except NO_STATE:
@@ -94,8 +94,5 @@ def _default_unmapped(cls, entity_name):
         mappers = {}
     name = _safe_cls_name(cls)
 
-    if not mappers and entity_name is None:
+    if not mappers:
         return "Class '%s' is not mapped" % name
-    else:
-        return "Class '%s' is not mapped with entity_name %r" % (
-            name, entity_name)

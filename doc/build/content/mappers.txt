@@ -697,10 +697,7 @@ Above, the "customers" table is joined against the "orders" table to produce a f
 
 #### Multiple Mappers for One Class {@name=multiple}
 
-The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well, these come in two varieties.
-
-* **secondary mapper**
-    this is a mapper that must be constructed with the keyword argument `non_primary=True`, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new `relation()`s to a non-primary mapper. To use this mapper with the Session, specify it to the `query` method:
+The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well on the "load side" - these are called **secondary mappers**.   This is a mapper that must be constructed with the keyword argument `non_primary=True`, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new `relation()`s to a non-primary mapper. To use this mapper with the Session, specify it to the `query` method:
 
     example:
 
@@ -714,36 +711,9 @@ The first mapper created for a certain class is known as that class's "primary m
         # select
         result = session.query(othermapper).select()
 
-    The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases, the `Query` object can produce any kind of query that's desired.  It's recommended that a straight `Query` be used in place of a non-primary mapper unless the mapper approach is absolutely needed.  Current use cases for the "non primary mapper" are when you want to map the class to a particular select statement or view to which additional query criterion can be added, and for when the particular mapped select statement or view is to be placed in a `relation()` of a parent mapper.
+The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases, the `Query` object can produce any kind of query that's desired.  It's recommended that a straight `Query` be used in place of a non-primary mapper unless the mapper approach is absolutely needed.  Current use cases for the "non primary mapper" are when you want to map the class to a particular select statement or view to which additional query criterion can be added, and for when the particular mapped select statement or view is to be placed in a `relation()` of a parent mapper.
 
-* **entity name mapper**
-    this is a mapper that is a fully functioning primary mapper for a class, which is distinguished from the regular primary mapper by an `entity_name` parameter.  Instances loaded with this mapper will be totally managed by this new mapper and have no connection to the original one.  Most methods on `Session` include an optional `entity_name` parameter in order to specify this condition.
-
-    example:
-
-        {python}
-        # primary mapper
-        mapper(User, users_table)
-    
-        # make an entity name mapper that stores User objects in another table
-        mapper(User, alternate_users_table, entity_name='alt')
-    
-        # make two User objects
-        user1 = User()
-        user2 = User()
-    
-        # save one in in the "users" table
-        session.save(user1)
-    
-        # save the other in the "alternate_users_table"
-        session.save(user2, entity_name='alt')
-    
-        session.flush()
-    
-        # select from the alternate mapper
-        session.query(User, entity_name='alt').select()
-
-    Use the "entity name" mapper when different instances of the same class are persisted in completely different tables.  The "entity name" approach can also perform limited levels of horizontal partitioning as well.   A more comprehensive approach to horizontal partitioning is provided by the Sharding API.
+Versions of SQLAlchemy previous to 0.5 included another mapper flag called "entity_name", as of version 0.5.0 this feature has been removed (it never worked very well).
 
 #### Extending Mapper {@name=extending}
 

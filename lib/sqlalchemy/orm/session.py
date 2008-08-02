@@ -792,7 +792,7 @@ class Session(object):
     # TODO: need much more test coverage for bind_mapper() and similar !
     # TODO: + crystalize + document resolution order vis. bind_mapper/bind_table
 
-    def bind_mapper(self, mapper, bind, entity_name=None):
+    def bind_mapper(self, mapper, bind):
         """Bind operations for a mapper to a Connectable.
 
         mapper
@@ -801,15 +801,12 @@ class Session(object):
         bind
           Any Connectable: a ``Engine`` or ``Connection``.
 
-        entity_name
-          Defaults to None.
-
         All subsequent operations involving this mapper will use the given
         `bind`.
 
         """
         if isinstance(mapper, type):
-            mapper = _class_mapper(mapper, entity_name=entity_name)
+            mapper = _class_mapper(mapper)
 
         self.__binds[mapper.base_mapper] = bind
         for t in mapper._all_tables:
@@ -1051,28 +1048,26 @@ class Session(object):
         del state.session_id
 
     @util.pending_deprecation('0.5.x', "Use session.add()")
-    def save(self, instance, entity_name=None):
+    def save(self, instance):
         """Add a transient (unsaved) instance to this ``Session``.
 
         This operation cascades the `save_or_update` method to associated
         instances if the relation is mapped with ``cascade="save-update"``.
 
-        The `entity_name` keyword argument will further qualify the specific
-        ``Mapper`` used to handle this instance.
 
         """
-        state = _state_for_unsaved_instance(instance, entity_name)
+        state = _state_for_unsaved_instance(instance)
         self._save_impl(state)
-        self._cascade_save_or_update(state, entity_name)
+        self._cascade_save_or_update(state)
 
-    def _save_without_cascade(self, instance, entity_name=None):
+    def _save_without_cascade(self, instance):
         """Used by scoping.py to save on init without cascade."""
 
-        state = _state_for_unsaved_instance(instance, entity_name, create=True)
+        state = _state_for_unsaved_instance(instance, create=True)
         self._save_impl(state)
 
     @util.pending_deprecation('0.5.x', "Use session.add()")
-    def update(self, instance, entity_name=None):
+    def update(self, instance):
         """Bring a detached (saved) instance into this ``Session``.
 
         If there is a persistent instance with the same instance key, but
@@ -1086,11 +1081,11 @@ class Session(object):
         try:
             state = attributes.instance_state(instance)
         except exc.NO_STATE:
-            raise exc.UnmappedInstanceError(instance, entity_name)
+            raise exc.UnmappedInstanceError(instance)
         self._update_impl(state)
-        self._cascade_save_or_update(state, entity_name)
+        self._cascade_save_or_update(state)
 
-    def add(self, instance, entity_name=None):
+    def add(self, instance):
         """Add the given instance into this ``Session``.
 
         TODO: rephrase the below in user terms; possibly tie into future
@@ -1100,8 +1095,8 @@ class Session(object):
         to ``save()`` or ``update()`` the instance.
 
         """
-        state = _state_for_unknown_persistence_instance(instance, entity_name)
-        self._save_or_update_state(state, entity_name)
+        state = _state_for_unknown_persistence_instance(instance)
+        self._save_or_update_state(state)
 
     def add_all(self, instances):
         """Add the given collection of instances to this ``Session``."""
@@ -1109,14 +1104,14 @@ class Session(object):
         for instance in instances:
             self.add(instance)
 
-    def _save_or_update_state(self, state, entity_name):
+    def _save_or_update_state(self, state):
         self._save_or_update_impl(state)
-        self._cascade_save_or_update(state, entity_name)
+        self._cascade_save_or_update(state)
 
     save_or_update = (
         util.pending_deprecation('0.5.x', "Use session.add()")(add))
 
-    def _cascade_save_or_update(self, state, entity_name):
+    def _cascade_save_or_update(self, state):
         for state, mapper in _cascade_unknown_state_iterator('save-update', state, halt_on=lambda c:c in self):
             self._save_or_update_impl(state)
 
@@ -1138,7 +1133,7 @@ class Session(object):
         for state, m, o in cascade_states:
             self._delete_impl(state, ignore_transient=True)
 
-    def merge(self, instance, entity_name=None, dont_load=False,
+    def merge(self, instance, dont_load=False,
               _recursive=None):
         """Copy the state an instance onto the persistent instance with the same identifier.
 
@@ -1156,10 +1151,7 @@ class Session(object):
             # TODO: this should be an IdentityDict for instances, but will
             # need a separate dict for PropertyLoader tuples
             _recursive = {}
-        if entity_name is not None:
-            mapper = _class_mapper(instance.__class__, entity_name=entity_name)
-        else:
-            mapper = _object_mapper(instance)
+        mapper = _object_mapper(instance)
         if instance in _recursive:
             return _recursive[instance]
 
@@ -1188,7 +1180,6 @@ class Session(object):
                 merged = mapper.class_manager.new_instance()
                 merged_state = attributes.instance_state(merged)
                 merged_state.key = key
-                merged_state.entity_name = entity_name
                 self._update_impl(merged_state)
                 new_instance = True
             else:
@@ -1198,7 +1189,7 @@ class Session(object):
             merged = mapper.class_manager.new_instance()
             merged_state = attributes.instance_state(merged)
             new_instance = True
-            self.save(merged, entity_name=mapper.entity_name)
+            self.save(merged)
 
         _recursive[instance] = merged
 
@@ -1533,12 +1524,12 @@ def _cascade_state_iterator(cascade, state, **kwargs):
 def _cascade_unknown_state_iterator(cascade, state, **kwargs):
     mapper = _state_mapper(state)
     for (o, m) in mapper.cascade_iterator(cascade, state, **kwargs):
-        yield _state_for_unknown_persistence_instance(o, m.entity_name), m
+        yield _state_for_unknown_persistence_instance(o), m
 
-def _state_for_unsaved_instance(instance, entity_name, create=False):
+def _state_for_unsaved_instance(instance, create=False):
     manager = attributes.manager_of_class(instance.__class__)
     if manager is None:
-        raise exc.UnmappedInstanceError(instance, entity_name)
+        raise exc.UnmappedInstanceError(instance)
     if manager.has_state(instance):
         state = manager.state_of(instance)
         if state.key is not None:
@@ -1548,16 +1539,16 @@ def _state_for_unsaved_instance(instance, entity_name, create=False):
     elif create:
         state = manager.setup_instance(instance)
     else:
-        raise exc.UnmappedInstanceError(instance, entity_name)
-    state.entity_name = entity_name
+        raise exc.UnmappedInstanceError(instance)
+
     return state
 
-def _state_for_unknown_persistence_instance(instance, entity_name):
+def _state_for_unknown_persistence_instance(instance):
     try:
         state = attributes.instance_state(instance)
     except exc.NO_STATE:
-        raise exc.UnmappedInstanceError(instance, entity_name)
-    state.entity_name = entity_name
+        raise exc.UnmappedInstanceError(instance)
+
     return state
 
 def object_session(instance):

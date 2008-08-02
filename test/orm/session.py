@@ -837,16 +837,11 @@ class SessionTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_identity_key_1(self):
         mapper(User, users)
-        mapper(User, users, entity_name="en")
         s = create_session()
         key = s.identity_key(User, 1)
-        eq_(key, (User, (1,), None))
-        key = s.identity_key(User, 1, "en")
-        eq_(key, (User, (1,), "en"))
-        key = s.identity_key(User, 1, entity_name="en")
-        eq_(key, (User, (1,), "en"))
-        key = s.identity_key(User, ident=1, entity_name="en")
-        eq_(key, (User, (1,), "en"))
+        eq_(key, (User, (1,)))
+        key = s.identity_key(User, ident=1)
+        eq_(key, (User, (1,)))
 
     @testing.resolve_artifact_names
     def test_identity_key_2(self):
@@ -856,18 +851,15 @@ class SessionTest(_fixtures.FixtureTest):
         s.add(u)
         s.flush()
         key = s.identity_key(instance=u)
-        eq_(key, (User, (u.id,), None))
+        eq_(key, (User, (u.id,)))
 
     @testing.resolve_artifact_names
     def test_identity_key_3(self):
         mapper(User, users)
-        mapper(User, users, entity_name="en")
         s = create_session()
         row = {users.c.id: 1, users.c.name: "Frank"}
         key = s.identity_key(User, row=row)
-        eq_(key, (User, (1,), None))
-        key = s.identity_key(User, row=row, entity_name="en")
-        eq_(key, (User, (1,), "en"))
+        eq_(key, (User, (1,)))
 
     @testing.resolve_artifact_names
     def test_extension(self):

@@ -338,7 +338,7 @@ def relation(argument, secondary=None, **kwargs):
     """
     return PropertyLoader(argument, secondary=secondary, **kwargs)
 
-def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=None, entity_name=None,
+def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=None, 
     foreign_keys=None, backref=None, post_update=False, cascade=False, remote_side=None, enable_typechecks=True,
     passive_deletes=False, order_by=None):
     """Construct a dynamically-loading mapper property.
@@ -355,7 +355,7 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=Non
     from sqlalchemy.orm.dynamic import DynaLoader
 
     return PropertyLoader(argument, secondary=secondary, primaryjoin=primaryjoin,
-            secondaryjoin=secondaryjoin, entity_name=entity_name, foreign_keys=foreign_keys, backref=backref,
+            secondaryjoin=secondaryjoin, foreign_keys=foreign_keys, backref=backref,
             post_update=post_update, cascade=cascade, remote_side=remote_side, enable_typechecks=enable_typechecks,
             passive_deletes=passive_deletes, order_by=order_by,
             strategy_class=DynaLoader)
@@ -464,10 +464,6 @@ def mapper(class_, local_table=None, *args, **params):
       local_table
         The table to which the class is mapped, or None if this mapper
         inherits from another mapper using concrete table inheritance.
-
-      entity_name
-        A name to be associated with the `class`, to allow alternate mappings
-        for a single class.
 
       always_refresh
         If True, all query operations for this mapped class will overwrite all

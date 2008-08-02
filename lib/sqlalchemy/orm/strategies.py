@@ -190,15 +190,14 @@ class DeferredColumnLoader(DefaultColumnLoader):
             self.parent_property._get_strategy(ColumnLoader).setup_query(context, entity, path, adapter, **kwargs)
     
     def class_level_loader(self, state, props=None):
-        if not mapperutil._state_has_mapper(state):
+        if not mapperutil._state_has_identity(state):
             return None
             
         localparent = mapper._state_mapper(state)
 
         # adjust for the ColumnProperty associated with the instance
-        # not being our own ColumnProperty.  This can occur when entity_name
-        # mappers are used to map different versions of the same ColumnProperty
-        # to the class.
+        # not being our own ColumnProperty.  
+        # TODO: this may no longer be relevant without entity_name.
         prop = localparent.get_property(self.key)
         if prop is not self.parent_property:
             return prop._get_strategy(DeferredColumnLoader).setup_loader(state)
@@ -392,15 +391,14 @@ class LazyLoader(AbstractRelationLoader):
         return visitors.cloned_traverse(criterion, {}, {'binary':visit_binary})
         
     def class_level_loader(self, state, options=None, path=None):
-        if not mapperutil._state_has_mapper(state):
+        if not mapperutil._state_has_identity(state):
             return None
 
         localparent = mapper._state_mapper(state)
 
         # adjust for the PropertyLoader associated with the instance
-        # not being our own PropertyLoader.  This can occur when entity_name
-        # mappers are used to map different versions of the same PropertyLoader
-        # to the class.
+        # not being our own PropertyLoader.  
+        # TODO: this may no longer be relevant without entity_name
         prop = localparent.get_property(self.key)
         if prop is not self.parent_property:
             return prop._get_strategy(LazyLoader).setup_loader(state)

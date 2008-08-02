@@ -145,7 +145,7 @@ Knowing these states is important, since the `Session` tries to be strict about 
   
 ### Querying
 
-The `query()` function takes one or more *entities* and returns a new `Query` object which will issue mapper queries within the context of this Session.  An entity is defined as a mapped class, a `Mapper` object, an orm-enabled *descriptor*, or an `AliasedClass` object (a future release will also include an `Entity` object for use with entity_name mappers).
+The `query()` function takes one or more *entities* and returns a new `Query` object which will issue mapper queries within the context of this Session.  An entity is defined as a mapped class, a `Mapper` object, an orm-enabled *descriptor*, or an `AliasedClass` object.
 
     {python}
     # query from a class

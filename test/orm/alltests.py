@@ -36,7 +36,6 @@ def suite():
 
         'orm.cycles',
 
-        'orm.entity',
         'orm.compile',
         'orm.manytomany',
         'orm.onetoone',

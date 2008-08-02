@@ -9,6 +9,10 @@ CHANGES
       "0.4.7".
 
 - orm
+    - The "entity_name" feature of SQLAlchemy mappers
+      has been removed.  For rationale, see
+      http://tinyurl.com/6nm2ne
+      
     - The 'cascade' parameter to relation() accepts None
       as a value, which is equivalent to no cascades.
     
