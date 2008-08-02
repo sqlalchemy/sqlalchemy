@@ -408,12 +408,46 @@ def comparable_using(comparator_factory):
         return comparable_property(comparator_factory, fn)
     return decorate
 
-def declarative_base(engine=None, metadata=None, mapper=None, cls=object):
+def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
+                     metaclass=DeclarativeMeta, engine=None):
+    """Construct a base class for declarative class definitions.
+
+    The new base class will be given a metaclass that invokes
+    `instrument_declarative()` upon each subclass definition, and routes
+    later Column- and Mapper-related attribute assignments made on the class
+    into Table and Mapper assignments.  See the `declarative` module
+    documentation for examples.
+
+    cls
+      Defaults to `object`.  A class to use as the base for the generated
+      declarative base class.
+
+    metaclass
+      Defaults to `DeclarativeMeta`.  A metaclass or __metaclass__
+      compatible callable to use as the meta type of the generated
+      declarative base class.
+
+    metadata
+      An optional `MetaData` instance.  All Tables implicitly declared by
+      subclasses of the base will share this MetaData.  A MetaData instance
+      will be create if none is provided.  The MetaData instance will be
+      available via the `metadata` attribute of the generated declarative
+      base class.
+
+    bind
+      An optional `Connectable`, will be assigned to the `metadata.bind`.
+      The `engine` keyword argument is a deprecated synonym for `bind`.
+
+    mapper
+      An optional callable, defaults to `sqlalchemy.orm.mapper`.  Will be
+      used to map subclasses to their Tables.
+
+    """
     lcl_metadata = metadata or MetaData()
-    if engine:
-        lcl_metadata.bind = engine
+    if bind or engine:
+        lcl_metadata.bind = bind or engine
     class Base(cls):
-        __metaclass__ = DeclarativeMeta
+        __metaclass__ = metaclass
         metadata = lcl_metadata
         if mapper:
             __mapper_cls__ = mapper

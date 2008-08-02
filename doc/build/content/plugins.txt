@@ -45,10 +45,10 @@ The `declarative_base` base class contains a `MetaData` object where newly defin
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
 
-The `Engine` created above may also be directly associated with the declarative base class using the `engine` keyword argument, where it will be associated with the underlying `MetaData` object and allow SQL operations involving that metadata and its tables to make use of that engine automatically:
+The `Engine` created above may also be directly associated with the declarative base class using the `bind` keyword argument, where it will be associated with the underlying `MetaData` object and allow SQL operations involving that metadata and its tables to make use of that engine automatically:
 
     {python}
-    Base = declarative_base(engine=create_engine('sqlite://'))
+    Base = declarative_base(bind=create_engine('sqlite://'))
 
 Or, as `MetaData` allows, at any time using the `bind` attribute:
 
