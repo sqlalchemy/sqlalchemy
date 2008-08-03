@@ -126,9 +126,12 @@ def scoped_session(session_factory, scopefunc=None):
 def create_session(bind=None, **kwargs):
     """create a new [sqlalchemy.orm.session#Session].
 
-    The session by default does not begin a transaction, and requires that
-    flush() be called explicitly in order to persist results to the database.
-
+    The defaults of create_session() are the opposite of
+    that of sessionmaker(); autoflush and expire_on_commit
+    are false, autocommit is True. 
+    In this sense the session acts more like the "classic"
+    SQLAlchemy 0.3 session with these defaults.
+    
     It is recommended to use the [sqlalchemy.orm#sessionmaker()] function
     instead of create_session().
     """
@@ -143,7 +146,7 @@ def create_session(bind=None, **kwargs):
 
     kwargs.setdefault('autoflush', False)
     kwargs.setdefault('autocommit', True)
-    kwargs.setdefault('autoexpire', False)
+    kwargs.setdefault('expire_on_commit', False)
     return _Session(bind=bind, **kwargs)
 
 def relation(argument, secondary=None, **kwargs):

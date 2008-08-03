@@ -1057,7 +1057,7 @@ class DisposedStates(testing.ORMTest):
         self._test_session().expire_all()
     
     def test_rollback(self):
-        sess = self._test_session(autocommit=False, autoexpire=True)
+        sess = self._test_session(autocommit=False, expire_on_commit=True)
         sess.commit()
         
         sess.rollback()

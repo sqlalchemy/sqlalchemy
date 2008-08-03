@@ -12,6 +12,19 @@ CHANGES
     - The "entity_name" feature of SQLAlchemy mappers
       has been removed.  For rationale, see
       http://tinyurl.com/6nm2ne
+     
+    - the "autoexpire" flag on Session, sessionmaker(),
+      and scoped_session() has been renamed to 
+      "expire_on_commit".  It does not affect 
+      the expiration behavior of rollback().
+      
+    - a legacy-support flag 
+      "_enable_transation_accounting" flag added
+      to Session which when False, disables
+      all transaction-level object accounting,
+      including expire on rollback, expire 
+      on commit, new/deleted
+      list maintenance, and autoflush on begin.
       
     - The 'cascade' parameter to relation() accepts None
       as a value, which is equivalent to no cascades.

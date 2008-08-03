@@ -160,7 +160,7 @@ class FlushTest(_fixtures.FixtureTest):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
-        sess = create_session(autoexpire=False, autocommit=False, autoflush=True)
+        sess = create_session(expire_on_commit=False, autocommit=False, autoflush=True)
         u1 = User(name='jack')
         u1.addresses.append(Address(email_address='lala@hoho.com'))
         sess.add(u1)

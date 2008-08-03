@@ -258,7 +258,7 @@ The flush process *always* occurs within a transaction, even if the `Session` ha
 
 `commit()` is used to commit the current transaction.  It always issues `flush()` beforehand to flush any remaining state to the database; this is independent of the "autoflush" setting.   If no transaction is present, it raises an error.  Note that the default behavior of the `Session` is that a transaction is always present; this behavior can be disabled by setting `autocommit=True`.  In autocommit mode, a transaction can be initiated by calling the `begin()` method.
 
-Another behavior of `commit()` is that by default it expires the state of all instances present after the commit is complete.  This is so that when the instances are next accessed, either through attribute access or by them being present in a `Query` result set, they receive the most recent state.  To disable this behavior, configure `sessionmaker()` with `autoexpire=False`.
+Another behavior of `commit()` is that by default it expires the state of all instances present after the commit is complete.  This is so that when the instances are next accessed, either through attribute access or by them being present in a `Query` result set, they receive the most recent state.  To disable this behavior, configure `sessionmaker()` with `expire_on_commit=False`.
 
 Normally, instances loaded into the `Session` are never changed by subsequent queries; the assumption is that the current transaction is isolated so the state most recently loaded is correct as long as the transaction continues.  Setting `autocommit=True` works against this model to some degree since the `Session` behaves in exactly the same way with regard to attribute state, except no transaction is present.
 
@@ -270,7 +270,7 @@ Normally, instances loaded into the `Session` are never changed by subsequent qu
   a Connection, in which case the connection is still maintained (but still rolled back).
   * Objects which were initially in the *pending* state when they were added to the `Session` within the lifespan of the transaction are expunged, corresponding to their INSERT statement being rolled back.  The state of their attributes remains unchanged.
   * Objects which were marked as *deleted* within the lifespan of the transaction are promoted back to the *persistent* state, corresponding to their DELETE statement being rolled back.  Note that if those objects were first *pending* within the transaction, that operation takes precedence instead.
-  * All objects not expunged are fully expired.  This aspect of the behavior may be disabled by configuring `sessionmaker()` with `autoexpire=False`.
+  * All objects not expunged are fully expired.  
 
 With that state understood, the `Session` may safely continue usage after a rollback occurs (note that this is a new feature as of version 0.5).
 

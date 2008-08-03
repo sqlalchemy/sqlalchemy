@@ -27,7 +27,7 @@ __all__ = ['Session', 'SessionTransaction', 'SessionExtension']
 
 
 def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
-                 autoexpire=True, **kwargs):
+                 expire_on_commit=True, **kwargs):
     """Generate a custom-configured [sqlalchemy.orm.session#Session] class.
 
     The returned object is a subclass of ``Session``, which, when instantiated
@@ -83,12 +83,18 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       by any of these methods, the ``Session`` is ready for the next usage,
       which will again acquire and maintain a new connection/transaction.
 
-    autoexpire
-      When ``True``, all instances will be fully expired after each
-      ``rollback()`` and after each ``commit()``, so that all attribute/object
-      access subsequent to a completed transaction will load from the most
-      recent database state.
-
+    expire_on_commit
+      Defaults to ``True``. When ``True``, all instances will be fully expired after
+      each ``commit()``, so that all attribute/object access subsequent to a completed
+      transaction will load from the most recent database state.
+    
+    _enable_transaction_accounting
+      Defaults to ``True``.  A legacy-only flag which when ``False``
+      disables *all* 0.5-style object accounting on transaction boundaries,
+      including auto-expiry of instances on rollback and commit, maintenance of
+      the "new" and "deleted" lists upon rollback, and autoflush
+      of pending changes upon begin(), all of which are interdependent.
+    
     autoflush
       When ``True``, all query operations will issue a ``flush()`` call to
       this ``Session`` before proceeding. This is a convenience feature so
@@ -172,7 +178,7 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
     kwargs['bind'] = bind
     kwargs['autoflush'] = autoflush
     kwargs['autocommit'] = autocommit
-    kwargs['autoexpire'] = autoexpire
+    kwargs['expire_on_commit'] = expire_on_commit
 
     if class_ is None:
         class_ = Session
@@ -212,11 +218,11 @@ class SessionTransaction(object):
 
     """
 
-    def __init__(self, session, parent=None, autoflush=True, nested=False):
+    def __init__(self, session, parent=None, nested=False, reentrant_flush=False):
         self.session = session
         self._connections = {}
         self._parent = parent
-        self.autoflush = autoflush
+        self.reentrant_flush = reentrant_flush
         self.nested = nested
         self._active = True
         self._prepared = False
@@ -224,7 +230,9 @@ class SessionTransaction(object):
             raise sa_exc.InvalidRequestError(
                 "Can't start a SAVEPOINT transaction when no existing "
                 "transaction is in progress")
-        self._take_snapshot()
+
+        if self.session._enable_transaction_accounting:
+            self._take_snapshot()
 
     def is_active(self):
         return self.session is not None and self._active
@@ -250,10 +258,10 @@ class SessionTransaction(object):
         engine = self.session.get_bind(bindkey, **kwargs)
         return self._connection_for_bind(engine)
 
-    def _begin(self, autoflush=True, nested=False):
+    def _begin(self, reentrant_flush=False, nested=False):
         self._assert_is_active()
         return SessionTransaction(
-            self.session, self, autoflush=autoflush, nested=nested)
+            self.session, self, reentrant_flush=reentrant_flush, nested=nested)
 
     def _iterate_parents(self, upto=None):
         if self._parent is upto:
@@ -271,7 +279,7 @@ class SessionTransaction(object):
             self._deleted = self._parent._deleted
             return
 
-        if self.autoflush:
+        if not self.reentrant_flush:
             self.session.flush()
 
         self._new = weakref.WeakKeyDictionary()
@@ -288,13 +296,14 @@ class SessionTransaction(object):
         for s in set(self._new).union(self.session._new):
             self.session._expunge_state(s)
 
-        for s in self.session.identity_map.all_states():
-            _expire_state(s, None)
+        if self.session._enable_transaction_accounting:
+            for s in self.session.identity_map.all_states():
+                _expire_state(s, None)
 
     def _remove_snapshot(self):
         assert self._is_transaction_boundary
 
-        if not self.nested and self.session.autoexpire:
+        if not self.nested and self.session.expire_on_commit:
             for s in self.session.identity_map.all_states():
                 _expire_state(s, None)
 
@@ -348,7 +357,7 @@ class SessionTransaction(object):
             for subtransaction in stx._iterate_parents(upto=self):
                 subtransaction.commit()
 
-        if self.autoflush:
+        if not self.reentrant_flush:
             self.session.flush()
 
         if self._parent is None and self.session.twophase:
@@ -374,7 +383,8 @@ class SessionTransaction(object):
             if self.session.extension is not None:
                 self.session.extension.after_commit(self.session)
 
-            self._remove_snapshot()
+            if self.session._enable_transaction_accounting:
+                self._remove_snapshot()
 
         self.close()
         return self._parent
@@ -403,7 +413,8 @@ class SessionTransaction(object):
         for t in set(self._connections.values()):
             t[1].rollback()
 
-        self._restore_snapshot()
+        if self.session._enable_transaction_accounting:
+            self._restore_snapshot()
 
         if self.session.extension is not None:
             self.session.extension.after_rollback(self.session)
@@ -515,7 +526,8 @@ class Session(object):
         'merge', 'query', 'refresh', 'rollback', 'save',
         'save_or_update', 'scalar', 'update')
 
-    def __init__(self, bind=None, autoflush=True, autoexpire=True,
+    def __init__(self, bind=None, autoflush=True, expire_on_commit=True,
+                _enable_transaction_accounting=True,
                  autocommit=False, twophase=False, echo_uow=False,
                  weak_identity_map=True, binds=None, extension=None, query_cls=query.Query):
         """Construct a new Session.
@@ -539,7 +551,8 @@ class Session(object):
         self.hash_key = id(self)
         self.autoflush = autoflush
         self.autocommit = autocommit
-        self.autoexpire = autoexpire
+        self.expire_on_commit = expire_on_commit
+        self._enable_transaction_accounting = _enable_transaction_accounting
         self.twophase = twophase
         self.extension = extension
         self._query_cls = query_cls
@@ -558,7 +571,7 @@ class Session(object):
             self.begin()
         _sessions[self.hash_key] = self
 
-    def begin(self, subtransactions=False, nested=False, _autoflush=True):
+    def begin(self, subtransactions=False, nested=False, _reentrant_flush=False):
         """Begin a transaction on this Session.
 
         If this Session is already within a transaction, either a plain
@@ -584,14 +597,14 @@ class Session(object):
         if self.transaction is not None:
             if subtransactions or nested:
                 self.transaction = self.transaction._begin(
-                    nested=nested, autoflush=_autoflush)
+                    nested=nested, reentrant_flush=_reentrant_flush)
             else:
                 raise sa_exc.InvalidRequestError(
                     "A transaction is already begun.  Use subtransactions=True "
                     "to allow subtransactions.")
         else:
             self.transaction = SessionTransaction(
-                self, nested=nested, autoflush=_autoflush)
+                self, nested=nested, reentrant_flush=_reentrant_flush)
         return self.transaction  # needed for __enter__/__exit__ hook
 
     def begin_nested(self):
@@ -900,7 +913,7 @@ class Session(object):
         return self._query_cls(entities, self, **kwargs)
 
     def _autoflush(self):
-        if self.autoflush and (self.transaction is None or self.transaction.autoflush):
+        if self.autoflush and (self.transaction is None or not self.transaction.reentrant_flush):
             self.flush()
 
     def _finalize_loaded(self, states):
@@ -1035,12 +1048,12 @@ class Session(object):
 
         # remove from new last, might be the last strong ref
         if state in self._new:
-            if self.transaction:
+            if self._enable_transaction_accounting and self.transaction:
                 self.transaction._new[state] = True
             self._new.pop(state)
 
     def _remove_newly_deleted(self, state):
-        if self.transaction:
+        if self._enable_transaction_accounting and self.transaction:
             self.transaction._deleted[state] = True
 
         self.identity_map.discard(state)
@@ -1392,7 +1405,7 @@ class Session(object):
             return
 
         flush_context.transaction = transaction = self.begin(
-            subtransactions=True, _autoflush=False)
+            subtransactions=True, _reentrant_flush=True)
         try:
             flush_context.execute()
 

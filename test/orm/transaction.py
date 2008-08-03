@@ -181,7 +181,10 @@ class RollbackRecoverTest(TransactionTest):
         u1.name = 'edward'
         a1.email_address = 'foober'
         s.commit()
-        assert s.query(User).all() == [User(id=1, name='edward', addresses=[Address(email_address='foober')])]
+        self.assertEquals(
+            s.query(User).all(),
+            [User(id=1, name='edward', addresses=[Address(email_address='foober')])]
+        )
 
     @testing.requires.savepoints
     def test_pk_violation_with_savepoint(self):
@@ -351,7 +354,72 @@ class SavepointTest(TransactionTest):
         assert u1 not in s.deleted
 
 
+class AccountingFlagsTest(TransactionTest):
+    
+    def test_no_expire_on_commit(self):
+        sess = sessionmaker(expire_on_commit=False)()
+        u1 = User(name='ed')
+        sess.add(u1)
+        sess.commit()
 
+        testing.db.execute(users.update(users.c.name=='ed').values(name='edward'))
+        
+        assert u1.name == 'ed'
+        sess.expire_all()
+        assert u1.name == 'edward'
+
+    def test_rollback_no_accounting(self):
+        sess = sessionmaker(_enable_transaction_accounting=False)()
+        u1 = User(name='ed')
+        sess.add(u1)
+        sess.commit()
+
+        u1.name = 'edwardo'
+        sess.rollback()
+        
+        testing.db.execute(users.update(users.c.name=='ed').values(name='edward'))
+
+        assert u1.name == 'edwardo'
+        sess.expire_all()
+        assert u1.name == 'edward'
+
+    def test_commit_no_accounting(self):
+        sess = sessionmaker(_enable_transaction_accounting=False)()
+        u1 = User(name='ed')
+        sess.add(u1)
+        sess.commit()
+
+        u1.name = 'edwardo'
+        sess.rollback()
+
+        testing.db.execute(users.update(users.c.name=='ed').values(name='edward'))
+
+        assert u1.name == 'edwardo'
+        sess.commit()
+        
+        assert testing.db.execute(select([users.c.name])).fetchall() == [('edwardo',)]
+        assert u1.name == 'edwardo'
+
+        sess.delete(u1)
+        sess.commit()
+        
+    def test_preflush_no_accounting(self):
+        sess = sessionmaker(_enable_transaction_accounting=False, autocommit=True)()
+        u1 = User(name='ed')
+        sess.add(u1)
+        sess.flush()
+        
+        sess.begin()
+        u1.name = 'edwardo'
+        u2 = User(name="some other user")
+        sess.add(u2)
+        
+        sess.rollback()
+
+        sess.begin()
+        assert testing.db.execute(select([users.c.name])).fetchall() == [('ed',)]
+        
+    
 class AutocommitTest(TransactionTest):
     def test_begin_nested_requires_trans(self):
         sess = create_session(autocommit=True)
