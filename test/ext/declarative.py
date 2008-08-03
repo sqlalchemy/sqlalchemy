@@ -1,9 +1,10 @@
 import testenv; testenv.configure_for_tests()
 
 from sqlalchemy.ext import declarative as decl
+from sqlalchemy import exc
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint, asc
-from testlib.sa.orm import relation, create_session, class_mapper, eagerload
+from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers
 from testlib.testing import eq_
 from orm._base import ComparableEntity
 
@@ -107,6 +108,12 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         self.assertEquals(sess.query(User).filter(User.name == 'ed').one(),
             User(name='ed', addresses=[Address(email='xyz'), Address(email='def'), Address(email='abc')])
         )
+        
+        class Foo(Base, ComparableEntity):
+            __tablename__ = 'foo'
+            id = Column(Integer, primary_key=True)
+            rel = relation("User", primaryjoin="User.addresses==Foo.id")
+        self.assertRaisesMessage(exc.InvalidRequestError, "'addresses' is not an instance of ColumnProperty", compile_mappers)
     
     def test_uncompiled_attributes_in_relation(self):
         class Address(Base, ComparableEntity):
