@@ -154,6 +154,38 @@ class QueryTest(TestBase):
             assert row['anon_1'] == 8
             assert row['anon_2'] == 10
 
+    def test_order_by_label(self):
+        """test that a label within an ORDER BY works on each backend.
+        
+        simple labels in ORDER BYs now render as the actual labelname 
+        which not every database supports.
+        
+        """
+        users.insert().execute(
+            {'user_id':7, 'user_name':'jack'},
+            {'user_id':8, 'user_name':'ed'},
+            {'user_id':9, 'user_name':'fred'},
+        )
+        
+        concat = ("test: " + users.c.user_name).label('thedata')
+        self.assertEquals(
+            select([concat]).order_by(concat).execute().fetchall(),
+            [("test: ed",), ("test: fred",), ("test: jack",)]
+        )
+
+        concat = ("test: " + users.c.user_name).label('thedata')
+        self.assertEquals(
+            select([concat]).order_by(desc(concat)).execute().fetchall(),
+            [("test: jack",), ("test: fred",), ("test: ed",)]
+        )
+
+        concat = ("test: " + users.c.user_name).label('thedata')
+        self.assertEquals(
+            select([concat]).order_by(concat + "x").execute().fetchall(),
+            [("test: ed",), ("test: fred",), ("test: jack",)]
+        )
+        
+        
     def test_row_comparison(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         rp = users.select().execute().fetchone()

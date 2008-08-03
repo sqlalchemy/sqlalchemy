@@ -226,17 +226,24 @@ class DefaultCompiler(engine.Compiled):
     def visit_grouping(self, grouping, **kwargs):
         return "(" + self.process(grouping.element) + ")"
 
-    def visit_label(self, label, result_map=None, render_labels=False):
-        if not render_labels:
+    def visit_label(self, label, result_map=None, within_columns_clause=False, within_order_by=False):
+        # only render labels within the columns clause
+        # or ORDER BY clause of a select.  dialect-specific compilers
+        # can modify this behavior.
+        if within_columns_clause:
+            labelname = self._truncated_identifier("colident", label.name)
+
+            if result_map is not None:
+                result_map[labelname.lower()] = (label.name, (label, label.element, labelname), label.element.type)
+
+            return " ".join([self.process(label.element), self.operator_string(operators.as_), self.preparer.format_label(label, labelname)])
+        elif within_order_by and self.dialect.supports_simple_order_by_label:
+            labelname = self._truncated_identifier("colident", label.name)
+
+            return self.preparer.format_label(label, labelname)
+        else:
             return self.process(label.element)
             
-        labelname = self._truncated_identifier("colident", label.name)
-
-        if result_map is not None:
-            result_map[labelname.lower()] = (label.name, (label, label.element, labelname), label.element.type)
-
-        return " ".join([self.process(label.element), self.operator_string(operators.as_), self.preparer.format_label(label, labelname)])
-
     def visit_column(self, column, result_map=None, **kwargs):
 
         if column._is_oid:
@@ -304,7 +311,7 @@ class DefaultCompiler(engine.Compiled):
     def visit_null(self, null, **kwargs):
         return 'NULL'
 
-    def visit_clauselist(self, clauselist, **kwargs):
+    def visit_clauselist(self, clauselist, within_order_by=False, **kwargs):
         sep = clauselist.operator
         if sep is None:
             sep = " "
@@ -312,7 +319,7 @@ class DefaultCompiler(engine.Compiled):
             sep = ', '
         else:
             sep = " " + self.operator_string(clauselist.operator) + " "
-        return sep.join(s for s in (self.process(c) for c in clauselist.clauses)
+        return sep.join(s for s in (self.process(c, within_order_by=within_order_by) for c in clauselist.clauses)
                         if s is not None)
 
     def visit_calculatedclause(self, clause, **kwargs):
@@ -332,8 +339,8 @@ class DefaultCompiler(engine.Compiled):
         else:
             return ".".join(func.packagenames + [name]) % {'expr':self.function_argspec(func)}
 
-    def function_argspec(self, func):
-        return self.process(func.clause_expr)
+    def function_argspec(self, func, **kwargs):
+        return self.process(func.clause_expr, **kwargs)
 
     def function_string(self, func):
         return self.functions.get(func.__class__, self.functions.get(func.name, func.name + "%(expr)s"))
@@ -364,8 +371,8 @@ class DefaultCompiler(engine.Compiled):
         else:
             return text
 
-    def visit_unary(self, unary, **kwargs):
-        s = self.process(unary.element)
+    def visit_unary(self, unary, within_order_by=False, **kwargs):
+        s = self.process(unary.element, within_order_by=within_order_by)
         if unary.operator:
             s = self.operator_string(unary.operator) + " " + s
         if unary.modifier:
@@ -505,7 +512,7 @@ class DefaultCompiler(engine.Compiled):
             [c for c in [
                 self.process(
                     self.label_select_column(select, co, asfrom=asfrom), 
-                    render_labels=True,
+                    within_columns_clause=True,
                     **column_clause_args) 
                 for co in select.inner_columns
             ]
@@ -557,7 +564,7 @@ class DefaultCompiler(engine.Compiled):
         return select._distinct and "DISTINCT " or ""
 
     def order_by_clause(self, select):
-        order_by = self.process(select._order_by_clause)
+        order_by = self.process(select._order_by_clause, within_order_by=True)
         if order_by:
             return " ORDER BY " + order_by
         else:

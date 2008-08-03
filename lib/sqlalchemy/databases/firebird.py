@@ -310,6 +310,7 @@ class FBDialect(default.DefaultDialect):
     max_identifier_length = 31
     preexecute_pk_sequences = True
     supports_pk_autoincrement = False
+    supports_simple_order_by_label = False
 
     def __init__(self, type_conv=200, concurrency_level=1, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -675,7 +676,7 @@ class FBCompiler(sql.compiler.DefaultCompiler):
                         yield co
                 else:
                     yield c
-        columns = [self.process(c, render_labels=True)
+        columns = [self.process(c, within_columns_clause=True)
                    for c in flatten_columnlist(returning_cols)]
         text += ' RETURNING ' + ', '.join(columns)
         return text

@@ -76,6 +76,13 @@ CHANGES
 - sql
     - func.count() with no arguments renders as COUNT(*),
       equivalent to func.count(text('*')). 
+      
+    - simple label names in ORDER BY expressions render as 
+      themselves, and not as a re-statement of their 
+      corresponding expression.  This feature is currently 
+      enabled only for SQLite, MySQL, and Postgres.  
+      It can be enabled on other dialects as each is shown 
+      to support this behavior. [ticket:1068]
  
 - ext
     - Class-bound attributes sent as arguments to 

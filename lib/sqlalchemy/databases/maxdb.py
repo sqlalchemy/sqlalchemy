@@ -473,6 +473,7 @@ class MaxDBDialect(default.DefaultDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
     preexecute_pk_sequences = True
+    supports_simple_order_by_label = False
 
     # MaxDB-specific
     datetimeformat = 'internal'
