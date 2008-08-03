@@ -296,9 +296,8 @@ class SessionTransaction(object):
         for s in set(self._new).union(self.session._new):
             self.session._expunge_state(s)
 
-        if self.session._enable_transaction_accounting:
-            for s in self.session.identity_map.all_states():
-                _expire_state(s, None)
+        for s in self.session.identity_map.all_states():
+            _expire_state(s, None)
 
     def _remove_snapshot(self):
         assert self._is_transaction_boundary
