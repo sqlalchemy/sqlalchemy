@@ -692,6 +692,9 @@ class Mapper(object):
         for column in self.mapped_table.columns:
             if column in self._columntoproperty:
                 continue
+
+            if self._should_exclude(column.key, local=self.local_table.c.contains_column(column)):
+                continue
                 
             column_key = (self.column_prefix or '') + column.key
 
@@ -701,8 +704,7 @@ class Mapper(object):
                 if column in mapper._columntoproperty:
                     column_key = mapper._columntoproperty[column].key
             
-            if not self._should_exclude(column_key, local=self.local_table.c.contains_column(column)):
-                self._compile_property(column_key, column, init=False, setparent=True)
+            self._compile_property(column_key, column, init=False, setparent=True)
 
         # do a special check for the "discriminiator" column, as it may only be present
         # in the 'with_polymorphic' selectable but we need it for the base mapper
