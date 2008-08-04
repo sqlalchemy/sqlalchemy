@@ -181,16 +181,23 @@ def relation(argument, secondary=None, **kwargs):
           to "False", which means the default cascade should be used.
           The default value is "save-update, merge".
           Available cascades are:
+
             save-update - cascade the "add()" operation 
             (formerly known as save() and update())
+
             merge - cascade the "merge()" operation
+            
             expunge - cascade the "expunge()" operation
+            
             delete - cascade the "delete()" operation
+            
             delete-orphan - if an item of the child's type with no parent is detected,
             mark it for deletion.  Note that this option prevents a pending item
             of the child's class from being persisted without a parent 
             present.
+            
             refresh-expire - cascade the expire() and refresh() operations
+            
             all - shorthand for "save-update,merge, refresh-expire, expunge, delete"
 
         collection_class
