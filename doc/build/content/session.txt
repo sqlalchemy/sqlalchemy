@@ -238,7 +238,7 @@ The solution is to use proper cascading:
 
 When the `Session` is used with its default configuration, the flush step is nearly always done transparently.  Specifically, the flush occurs before any individual `Query` is issued, as well as within the `commit()` call before the transaction is committed.  It also occurs before a SAVEPOINT is issued when `begin_nested()` is used.  The "flush-on-Query" aspect of the behavior can be disabled by constructing `sessionmaker()` with the flag `autoflush=False`.
 
-Regardless of the autoflush setting, a flush can always be forced by issing `flush()`:
+Regardless of the autoflush setting, a flush can always be forced by issuing `flush()`:
     
     {python}
     session.flush()
