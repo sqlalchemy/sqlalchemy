@@ -1009,8 +1009,8 @@ class Mapper(object):
         state = attributes.instance_state(obj)
         return self._get_committed_state_attr_by_column(state, column)
 
-    def _get_committed_state_attr_by_column(self, state, column):
-        return self._get_col_to_prop(column).getcommitted(state, column)
+    def _get_committed_state_attr_by_column(self, state, column, passive=False):
+        return self._get_col_to_prop(column).getcommitted(state, column, passive=passive)
 
     def _save_obj(self, states, uowtransaction, postupdate=False, post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
@@ -1458,7 +1458,7 @@ class Mapper(object):
                     identitykey = self._identity_key_from_state(refresh_state)
             else:
                 identitykey = identity_key(row)
-
+            
             if identitykey in session_identity_map:
                 instance = session_identity_map[identitykey]
                 state = attributes.instance_state(instance)
@@ -1582,6 +1582,9 @@ class Mapper(object):
         if self.base_mapper.local_table in tables:
             return None
 
+        class ColumnsNotAvailable(Exception):
+            pass
+            
         def visit_binary(binary):
             leftcol = binary.left
             rightcol = binary.right
@@ -1589,19 +1592,28 @@ class Mapper(object):
                 return
 
             if leftcol.table not in tables:
-                binary.left = sql.bindparam(None, self._get_committed_state_attr_by_column(state, leftcol), type_=binary.right.type)
+                leftval = self._get_committed_state_attr_by_column(state, leftcol, passive=True)
+                if leftval is attributes.PASSIVE_NORESULT:
+                    raise ColumnsNotAvailable()
+                binary.left = sql.bindparam(None, leftval, type_=binary.right.type)
             elif rightcol.table not in tables:
-                binary.right = sql.bindparam(None, self._get_committed_state_attr_by_column(state, rightcol), type_=binary.right.type)
+                rightval = self._get_committed_state_attr_by_column(state, rightcol, passive=True)
+                if rightval is attributes.PASSIVE_NORESULT:
+                    raise ColumnsNotAvailable()
+                binary.right = sql.bindparam(None, rightval, type_=binary.right.type)
 
         allconds = []
 
-        start = False
-        for mapper in reversed(list(self.iterate_to_root())):
-            if mapper.local_table in tables:
-                start = True
-            if start and not mapper.single:
-                allconds.append(visitors.cloned_traverse(mapper.inherit_condition, {}, {'binary':visit_binary}))
-
+        try:
+            start = False
+            for mapper in reversed(list(self.iterate_to_root())):
+                if mapper.local_table in tables:
+                    start = True
+                if start and not mapper.single:
+                    allconds.append(visitors.cloned_traverse(mapper.inherit_condition, {}, {'binary':visit_binary}))
+        except ColumnsNotAvailable:
+            return None
+            
         cond = sql.and_(*allconds)
         return sql.select(tables, cond, use_labels=True)
 
@@ -1638,7 +1650,7 @@ def _load_scalar_attributes(state, attribute_names):
         raise sa_exc.UnboundExecutionError("Instance %s is not bound to a Session; attribute refresh operation cannot proceed" % (state_str(state)))
 
     has_key = _state_has_identity(state)
-
+    
     result = False
     if mapper.inherits and not mapper.concrete:
         statement = mapper._optimized_get_statement(state, attribute_names)

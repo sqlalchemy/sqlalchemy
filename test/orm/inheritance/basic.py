@@ -924,6 +924,48 @@ class OverrideColKeyTest(ORMTest):
         assert sess.query(Base).get(b1.base_id).data == "this is base"
         assert sess.query(Sub).get(s1.base_id).data == "this is base"
 
+class OptimizedLoadTest(ORMTest):
+    """test that the 'optimized load' routine doesn't crash when 
+    a column in the join condition is not available.
+    
+    """
+    def define_tables(self, metadata):
+        global base, sub
+        base = Table('base', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+            Column('type', String(50))
+        )
+        sub = Table('sub', metadata, 
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+            Column('sub', String(50))
+        )
+    
+    def test_optimized_passes(self):
+        class Base(object):
+            pass
+        class Sub(Base):
+            pass
+            
+        mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='base')
+        
+        # redefine Sub's "id" to favor the "id" col in the subtable.
+        # "id" is also part of the primary join condition
+        mapper(Sub, sub, inherits=Base, polymorphic_identity='sub', properties={'id':sub.c.id})
+        sess = create_session()
+        s1 = Sub()
+        s1.data = 's1data'
+        s1.sub = 's1sub'
+        sess.save(s1)
+        sess.flush()
+        sess.clear()
+        
+        # load s1 via Base.  s1.id won't populate since it's relative to 
+        # the "sub" table.  The optimized load kicks in and tries to 
+        # generate on the primary join, but cannot since "id" is itself unloaded.
+        # the optimized load needs to return "None" so regular full-row loading proceeds
+        s1 = sess.query(Base).get(s1.id)
+        assert s1.sub == 's1sub'
         
 class DeleteOrphanTest(ORMTest):
     def define_tables(self, metadata):

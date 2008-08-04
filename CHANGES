@@ -17,6 +17,10 @@ CHANGES
       and scoped_session() has been renamed to 
       "expire_on_commit".  It does not affect 
       the expiration behavior of rollback().
+    
+    - fixed endless loop bug which could occur
+      within a mapper's deferred load of 
+      inherited attributes.
       
     - a legacy-support flag 
       "_enable_transation_accounting" flag added
@@ -91,7 +95,15 @@ CHANGES
       Additionally fixed bugs involving order_by being
       specified as a class-bound attribute in conjunction
       with eager loading.
-      
+    
+    - declarative initialization of Columns adjusted so that
+      non-renamed columns initialize in the same way as a non
+      declarative mapper.   This allows an inheriting mapper
+      to set up its same-named "id" columns in particular 
+      such that the parent "id" column is favored over the child
+      column, reducing database round trips when this value
+      is requested.
+    
 - mysql
     - Quoting of MSEnum values for use in CREATE TABLE is now
       optional & will be quoted on demand as required.  (Quoting was

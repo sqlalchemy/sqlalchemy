@@ -64,8 +64,8 @@ class ColumnProperty(StrategizedProperty):
     def getattr(self, state, column):
         return state.get_impl(self.key).get(state)
 
-    def getcommitted(self, state, column):
-        return state.get_impl(self.key).get_committed_value(state)
+    def getcommitted(self, state, column, passive=False):
+        return state.get_impl(self.key).get_committed_value(state, passive=passive)
 
     def setattr(self, state, value, column):
         state.get_impl(self.key).set(state, value, None)
@@ -118,8 +118,8 @@ class CompositeProperty(ColumnProperty):
         obj = state.get_impl(self.key).get(state)
         return self.get_col_value(column, obj)
 
-    def getcommitted(self, state, column):
-        obj = state.get_impl(self.key).get_committed_value(state)
+    def getcommitted(self, state, column, passive=False):
+        obj = state.get_impl(self.key).get_committed_value(state, passive=passive)
         return self.get_col_value(column, obj)
 
     def setattr(self, state, value, column):

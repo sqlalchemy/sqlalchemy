@@ -270,6 +270,13 @@ def _as_declarative(cls, classname, dict_):
                 elif isinstance(c, Column):
                     _undefer_column_name(key, c)
                     cols.append(c)
+                    # if the column is the same name as the key, 
+                    # remove it from the explicit properties dict.
+                    # the normal rules for assigning column-based properties
+                    # will take over, including precedence of columns
+                    # in multi-column ColumnProperties.
+                    if key == c.key:
+                        del our_stuff[key]
             cls.__table__ = table = Table(tablename, cls.metadata,
                                           *(tuple(cols) + tuple(args)), **table_kw)
     else:

@@ -339,7 +339,7 @@ class AttributeImpl(object):
     def set(self, state, value, initiator):
         raise NotImplementedError()
 
-    def get_committed_value(self, state):
+    def get_committed_value(self, state, passive=False):
         """return the unchanged value of this attribute"""
 
         if self.key in state.committed_state:
@@ -348,7 +348,7 @@ class AttributeImpl(object):
             else:
                 return state.committed_state.get(self.key)
         else:
-            return self.get(state)
+            return self.get(state, passive=passive)
 
     def set_committed_value(self, state, value):
         """set an attribute value on the given instance and 'commit' it."""

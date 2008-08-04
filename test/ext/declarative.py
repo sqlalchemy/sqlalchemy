@@ -567,6 +567,23 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
                     any(Engineer.primary_language == 'cobol')).first()),
             c2)
 
+        # ensure that the Manager mapper was compiled
+        # with the Person id column as higher priority.
+        # this ensures that "id" will get loaded from the Person row
+        # and not the possibly non-present Manager row
+        assert Manager.id.property.columns == [Person.__table__.c.id, Manager.__table__.c.id]
+        
+        # assert that the "id" column is available without a second load.
+        # this would be the symptom of the previous step not being correct.
+        sess.clear()
+        def go():
+            assert sess.query(Manager).filter(Manager.name=='dogbert').one().id
+        self.assert_sql_count(testing.db, go, 1)
+        sess.clear()
+        def go():
+            assert sess.query(Person).filter(Manager.name=='dogbert').one().id
+        self.assert_sql_count(testing.db, go, 1)
+        
     def test_inheritance_with_undefined_relation(self):
         class Parent(Base):
            __tablename__ = 'parent'

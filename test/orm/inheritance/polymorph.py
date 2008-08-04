@@ -234,6 +234,9 @@ def generate_round_trip_test(include_base, lazy_relation, redefine_colprop, with
             session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first(),
             dilbert
         )
+
+        assert session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first().person_id
+
         self.assertEquals(
             session.query(Engineer).filter(getattr(Person, person_attribute_name)=='dilbert').first(),
             dilbert
