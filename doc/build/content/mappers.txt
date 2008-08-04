@@ -715,6 +715,28 @@ The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases
 
 Versions of SQLAlchemy previous to 0.5 included another mapper flag called "entity_name", as of version 0.5.0 this feature has been removed (it never worked very well).
 
+#### Performing Initialization When an Object Is Loaded {@name=onreconstitute}
+
+While a mapped object's `__init__()` method works as always during object construction, it's not called when instances of the object are re-created from the database.  This is so that the `__init__()` method can be constructed in any desired way without SQLA requiring any sort of behavior, and also so that an object can control the way it's initialized when constructed new versus reconstituted.
+
+To support the common use case of instance management which occurs during load, SQLA 0.5 supports this most easily using the `@on_reconstitute` decorator, which is a shortcut to the `MapperExtension.on_reconstitute` method:
+
+    {python}
+    from sqlalchemy.orm.attributes import on_reconstitute
+    
+    class MyMappedClass(object):
+        def __init__(self, data):
+            self.data = data
+            self.description = "The data is: " + data
+            
+        @on_reconstitute
+        def init_on_load(self):
+            self.description = "The data is: " + self.data
+
+Above, when `MyMappedClass` is constructed, `__init__()` is called with the requirement that the `data` argument is passed, but when loaded during a `Query` operation, `init_on_load()` is called instead.   This method is called after the object's row has been loaded, so scalar attributes will be present, such as above where the `self.data` is available.  Eagerly-loaded collections are generally not available at this stage and will usually only contain the first element.   Any state changes to objects at this stage will not be recorded for the next flush() operation, so the activity within a reconstitute hook should be conservative.
+
+The non-declarative form of `@on_reconsitute` is to use the `on_reconstitute` method of `MapperExtension`, the ORM's mapper-level extension API which is described in the next section.
+
 #### Extending Mapper {@name=extending}
 
 Mappers can have functionality augmented or replaced at many points in its execution via the usage of the MapperExtension class.  This class is just a series of "hooks" where various functionality takes place.  An application can make its own MapperExtension objects, overriding only the methods it needs.  Methods that are not overridden return the special value `sqlalchemy.orm.EXT_CONTINUE` to allow processing to continue to the next MapperExtension or simply proceed normally if there are no more extensions.

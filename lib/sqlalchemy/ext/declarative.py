@@ -465,7 +465,7 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
 
     constructor
       Defaults to declarative._declarative_constructor, an __init__
-      implementation that assigns **kwargs for declared fields and relations
+      implementation that assigns \**kwargs for declared fields and relations
       to an instance.  If `None` is supplied, no __init__ will be installed
       and construction will fall back to cls.__init__ with normal Python
       semantics.

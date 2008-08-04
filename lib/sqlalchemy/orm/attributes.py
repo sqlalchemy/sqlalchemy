@@ -3,6 +3,20 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
+"""
+
+Defines SQLAlchemy's system of class instrumentation.
+
+This module is usually not visible to user applications, but forms
+a large part of the ORM's interactivity.  The primary "public"
+function is the ``on_reconstitute`` decorator which is described in
+the main mapper documentation.
+
+SQLA's instrumentation system is completely customizable, in which
+case an understanding of the general mechanics of this module is helpful.
+An example of full customization is in /examples/custom_attributes.
+
+"""
 
 import operator
 from operator import attrgetter, itemgetter
@@ -69,8 +83,9 @@ class QueryableAttribute(interfaces.PropComparator):
 
     def __init__(self, impl, comparator=None, parententity=None):
         """Construct an InstrumentedAttribute.
-        comparator
-          a sql.Comparator to which class-level compare/math events will be sent
+        
+          comparator
+            a sql.Comparator to which class-level compare/math events will be sent
         """
 
         self.impl = impl
@@ -188,13 +203,13 @@ class AttributeImpl(object):
     def __init__(self, class_, key, callable_, class_manager, trackparent=False, extension=None, compare_function=None, **kwargs):
         """Construct an AttributeImpl.
 
-        class_
+        \class_
           the class to be instrumented.
 
         key
           string name of the attribute
 
-        callable_
+        \callable_
           optional function which generates a callable based on a parent
           instance, which produces the "default" values for a scalar or
           collection attribute when it's first accessed, if not present
@@ -262,7 +277,7 @@ class AttributeImpl(object):
         fired.
 
         The callable overrides the class level callable set in the
-        ``InstrumentedAttribute` constructor.
+        ``InstrumentedAttribute`` constructor.
 
         """
         if callable_ is None:
@@ -466,10 +481,10 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         """Set a value on the given InstanceState.
 
         `initiator` is the ``InstrumentedAttribute`` that initiated the
-        ``set()` operation and is used to control the depth of a circular
+        ``set()`` operation and is used to control the depth of a circular
         setter operation.
+        
         """
-
         if initiator is self:
             return
 
@@ -607,7 +622,7 @@ class CollectionAttributeImpl(AttributeImpl):
         """Set a value on the given object.
 
         `initiator` is the ``InstrumentedAttribute`` that initiated the
-        ``set()` operation and is used to control the depth of a circular
+        ``set()`` operation and is used to control the depth of a circular
         setter operation.
         """
 

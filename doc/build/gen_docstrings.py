@@ -34,6 +34,7 @@ def make_all_docs():
         make_doc(obj=expression,include_all_classes=True),
         make_doc(obj=types),
         make_doc(obj=orm),
+        make_doc(obj=orm.attributes),
         make_doc(obj=orm.collections, classes=[orm.collections.collection,
                                                orm.collections.MappedCollection,
                                                orm.collections.CollectionAdapter]),
