@@ -538,6 +538,11 @@ def make_test(select_type):
             )
 
 
+            row = sess.query(Engineer.name, Engineer.primary_language).filter(Engineer.name=='dilbert').first()
+            assert row.name == 'dilbert'
+            assert row.primary_language == 'java'
+            
+
             self.assertEquals(
                 sess.query(Engineer.name, Engineer.primary_language).all(),
                 [(u'dilbert', u'java'), (u'wally', u'c++'), (u'vlad', u'cobol')]

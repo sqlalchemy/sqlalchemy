@@ -58,6 +58,21 @@ class UnicodeSchemaTest(QueryTest):
         mapper(User, uni_users)
         assert User(id=7) == create_session(bind=testing.db).query(User).get(7)
 
+class RowTupleTest(QueryTest):
+    keep_mappers = False
+
+    def setup_mappers(self):
+        pass
+
+    def test_custom_names(self):
+        mapper(User, users, properties={
+            'uname':users.c.name
+        })
+        
+        row  = create_session().query(User.id, User.uname).filter(User.id==7).first()
+        assert row.id == 7
+        assert row.uname == 'jack'
+
 class GetTest(QueryTest):
     def test_get(self):
         s = create_session()

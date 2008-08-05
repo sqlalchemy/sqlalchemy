@@ -1611,11 +1611,15 @@ class _ColumnEntity(_QueryEntity):
 
         if isinstance(column, basestring):
             column = sql.literal_column(column)
+            self._result_label = column.name
         elif isinstance(column, (attributes.QueryableAttribute, mapper.Mapper._CompileOnAttr)):
+            self._result_label = column.impl.key
             column = column.__clause_element__()
         elif not isinstance(column, sql.ColumnElement):
             raise sa_exc.InvalidRequestError("Invalid column expression '%r'" % column)
-
+        else:
+            self._result_label = getattr(column, 'key', None)
+            
         if not hasattr(column, '_label'):
             column = column.label(None)
 
@@ -1656,7 +1660,7 @@ class _ColumnEntity(_QueryEntity):
         def proc(context, row):
             return row[column]
             
-        return (proc, getattr(column, 'name', None))
+        return (proc, self._result_label)
 
     def setup_context(self, query, context):
         column = self._resolve_expr_against_query_aliases(query, self.column, context)

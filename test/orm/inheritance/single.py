@@ -53,6 +53,10 @@ class SingleInheritanceTest(MappedTest):
         session.expire(m1, ['manager_data'])
         self.assertEquals(m1.manager_data, "knows how to manage things")
 
+        row = session.query(Engineer.name, Engineer.employee_id).filter(Engineer.name=='Kurt').first()
+        assert row.name == 'Kurt'
+        assert row.employee_id == e1.employee_id
+
     @testing.resolve_artifact_names
     def test_multi_qualification(self):
         session = create_session()
