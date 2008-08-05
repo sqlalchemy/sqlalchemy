@@ -40,7 +40,7 @@ class CascadeOptions(object):
         return getattr(self, item.replace("-", "_"), False)
 
     def __repr__(self):
-        return "CascadeOptions(arg=%s)" % repr(",".join(
+        return "CascadeOptions(%s)" % repr(",".join(
             [x for x in ['delete', 'save_update', 'merge', 'expunge',
                          'delete_orphan', 'refresh-expire']
              if getattr(self, x, False) is True]))
