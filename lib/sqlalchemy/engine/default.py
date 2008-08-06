@@ -40,7 +40,6 @@ class DefaultDialect(base.Dialect):
     dbapi_type_map = {}
     default_paramstyle = 'named'
     supports_default_values = True
-    supports_simple_order_by_label = True
 
     def __init__(self, convert_unicode=False, assert_unicode=False, encoding='utf-8', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode

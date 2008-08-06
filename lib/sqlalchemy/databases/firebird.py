@@ -310,7 +310,6 @@ class FBDialect(default.DefaultDialect):
     max_identifier_length = 31
     preexecute_pk_sequences = True
     supports_pk_autoincrement = False
-    supports_simple_order_by_label = False
 
     def __init__(self, type_conv=200, concurrency_level=1, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)

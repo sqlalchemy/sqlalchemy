@@ -5,7 +5,6 @@ CHANGES
 =======
 0.5beta4
 ========
-
 - orm
     - The RowTuple object returned by Query(*cols) now
       features keynames which prefer mapped attribute 
@@ -16,6 +15,11 @@ CHANGES
       of the underlying Column objects.  Direct 
       Column objects such as Query(table.c.col) will
       return the "key" attribute of the Column.
+
+- sql
+    - Temporarily rolled back the "ORDER BY" enhancement
+      from [ticket:1068].  This feature is on hold 
+      pending further development.
 
 0.5beta3
 ========

@@ -170,7 +170,6 @@ class AccessDialect(default.DefaultDialect):
     name = 'access'
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
-    supports_simple_order_by_label = False
 
     def type_descriptor(self, typeobj):
         newobj = types.adapt_type(typeobj, self.colspecs)

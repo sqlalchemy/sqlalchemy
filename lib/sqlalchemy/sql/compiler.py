@@ -226,7 +226,7 @@ class DefaultCompiler(engine.Compiled):
     def visit_grouping(self, grouping, **kwargs):
         return "(" + self.process(grouping.element) + ")"
 
-    def visit_label(self, label, result_map=None, within_columns_clause=False, within_order_by=False):
+    def visit_label(self, label, result_map=None, within_columns_clause=False):
         # only render labels within the columns clause
         # or ORDER BY clause of a select.  dialect-specific compilers
         # can modify this behavior.
@@ -237,10 +237,6 @@ class DefaultCompiler(engine.Compiled):
                 result_map[labelname.lower()] = (label.name, (label, label.element, labelname), label.element.type)
 
             return " ".join([self.process(label.element), self.operator_string(operators.as_), self.preparer.format_label(label, labelname)])
-        elif within_order_by and self.dialect.supports_simple_order_by_label:
-            labelname = self._truncated_identifier("colident", label.name)
-
-            return self.preparer.format_label(label, labelname)
         else:
             return self.process(label.element)
             
@@ -311,7 +307,7 @@ class DefaultCompiler(engine.Compiled):
     def visit_null(self, null, **kwargs):
         return 'NULL'
 
-    def visit_clauselist(self, clauselist, within_order_by=False, **kwargs):
+    def visit_clauselist(self, clauselist, **kwargs):
         sep = clauselist.operator
         if sep is None:
             sep = " "
@@ -319,7 +315,7 @@ class DefaultCompiler(engine.Compiled):
             sep = ', '
         else:
             sep = " " + self.operator_string(clauselist.operator) + " "
-        return sep.join(s for s in (self.process(c, within_order_by=within_order_by) for c in clauselist.clauses)
+        return sep.join(s for s in (self.process(c) for c in clauselist.clauses)
                         if s is not None)
 
     def visit_calculatedclause(self, clause, **kwargs):
@@ -371,8 +367,8 @@ class DefaultCompiler(engine.Compiled):
         else:
             return text
 
-    def visit_unary(self, unary, within_order_by=False, **kwargs):
-        s = self.process(unary.element, within_order_by=within_order_by)
+    def visit_unary(self, unary, **kwargs):
+        s = self.process(unary.element)
         if unary.operator:
             s = self.operator_string(unary.operator) + " " + s
         if unary.modifier:
@@ -564,7 +560,7 @@ class DefaultCompiler(engine.Compiled):
         return select._distinct and "DISTINCT " or ""
 
     def order_by_clause(self, select):
-        order_by = self.process(select._order_by_clause, within_order_by=True)
+        order_by = self.process(select._order_by_clause)
         if order_by:
             return " ORDER BY " + order_by
         else:
