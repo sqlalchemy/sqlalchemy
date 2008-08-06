@@ -16,6 +16,12 @@ CHANGES
       Column objects such as Query(table.c.col) will
       return the "key" attribute of the Column.
 
+    - Improved the determination of the FROM clause
+      when placing SQL expressions in the query()
+      list of entities.  In particular scalar subqueries
+      should not "leak" their inner FROM objects out
+      into the enclosing query.
+      
 - sql
     - Temporarily rolled back the "ORDER BY" enhancement
       from [ticket:1068].  This feature is on hold 

@@ -1625,11 +1625,22 @@ class _ColumnEntity(_QueryEntity):
 
         self.column = column
         self.froms = set()
+        
+        # look for ORM entities represented within the
+        # given expression.  Try to count only entities 
+        # for columns whos FROM object is in the actual list
+        # of FROMs for the overall expression - this helps
+        # subqueries which were built from ORM constructs from
+        # leaking out their entities into the main select construct
+        actual_froms = set(column._get_from_objects())
+
         self.entities = util.OrderedSet(
             elem._annotations['parententity']
             for elem in visitors.iterate(column, {})
-            if 'parententity' in elem._annotations)
-        
+            if 'parententity' in elem._annotations
+            and actual_froms.intersection(elem._get_from_objects())
+            )
+            
         if self.entities:
             self.entity_zero = list(self.entities)[0]
         else:

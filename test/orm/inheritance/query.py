@@ -510,7 +510,6 @@ def make_test(select_type):
             
             self.assertEquals(sess.query(Person).filter(Person.person_id==subq).one(), e1)
             
-        
         def test_mixed_entities(self):
             sess = create_session()
 
@@ -536,7 +535,6 @@ def make_test(select_type):
                 sess.query(Manager.name + " foo").all(), 
                 [('pointy haired boss foo', ), ('dogbert foo',)]
             )
-
 
             row = sess.query(Engineer.name, Engineer.primary_language).filter(Engineer.name=='dilbert').first()
             assert row.name == 'dilbert'

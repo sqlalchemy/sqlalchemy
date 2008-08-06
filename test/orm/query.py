@@ -1207,6 +1207,36 @@ class MixedEntitiesTest(QueryTest):
         q2 = q.select_from(sel).filter(users.c.id==8).filter(users.c.id>sel.c.id).values(users.c.name, sel.c.name, User.name)
         self.assertEquals(list(q2), [(u'ed', u'jack', u'jack')])
     
+    def test_scalar_subquery(self):
+        """test that a subquery constructed from ORM attributes doesn't leak out 
+        those entities to the outermost query.
+        
+        """
+        sess = create_session()
+        
+        subq = select([func.count()]).\
+            where(User.id==Address.user_id).\
+            correlate(users).\
+            label('count')
+
+        # we don't want Address to be outside of the subquery here
+        self.assertEquals(
+            list(sess.query(User, subq)[0:3]),
+            [(User(id=7,name=u'jack'), 1), (User(id=8,name=u'ed'), 3), (User(id=9,name=u'fred'), 1)]
+            )
+
+        # same thing without the correlate, as it should
+        # not be needed
+        subq = select([func.count()]).\
+            where(User.id==Address.user_id).\
+            label('count')
+
+        # we don't want Address to be outside of the subquery here
+        self.assertEquals(
+            list(sess.query(User, subq)[0:3]),
+            [(User(id=7,name=u'jack'), 1), (User(id=8,name=u'ed'), 3), (User(id=9,name=u'fred'), 1)]
+            )
+    
     def test_tuple_labeling(self):
         sess = create_session()
         for row in sess.query(User, Address).join(User.addresses).all():
