@@ -26,6 +26,7 @@ from sqlalchemy import util
 from sqlalchemy.util import EMPTY_SET
 from sqlalchemy.orm import interfaces, collections, exc
 import sqlalchemy.exceptions as sa_exc
+import types
 
 # lazy imports
 _entity_info = None
@@ -1055,9 +1056,15 @@ class ClassManager(dict):
         self._instantiable = False
         self.events = self.event_registry_factory()
 
-        for meth in class_.__dict__.values():
-            if hasattr(meth, '_sa_reconstitute'):
-                self.events.add_listener('on_load', meth)
+        # TODO: generalize (and document the rationalization for) this traversal.
+        # TODO: figure out why getattr(cls, key) for all attributes
+        # causes test failures
+        for cls in class_.__mro__[0:-1]:
+            for key, meth in cls.__dict__.iteritems():
+                if isinstance(meth, types.FunctionType) and \
+                    hasattr(meth, '__sa_reconstitute__') and \
+                    hasattr(getattr(class_, key), '__sa_reconstitute__'):
+                    self.events.add_listener('on_load', meth)
 
     def instantiable(self, boolean):
         # experiment, probably won't stay in this form
@@ -1473,7 +1480,7 @@ def on_reconstitute(fn):
     to MapperExtension.on_reconstitute().
 
     """
-    fn._sa_reconstitute = True
+    fn.__sa_reconstitute__ = True
     return fn
     
     

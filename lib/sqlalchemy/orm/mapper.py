@@ -618,6 +618,7 @@ class Mapper(object):
             cls = object.__getattribute__(self, 'class_')
             clskey = object.__getattribute__(self, 'key')
 
+            # ugly hack
             if key.startswith('__') and key != '__clause_element__':
                 return object.__getattribute__(self, key)
 

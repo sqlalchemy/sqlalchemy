@@ -21,6 +21,10 @@ CHANGES
       list of entities.  In particular scalar subqueries
       should not "leak" their inner FROM objects out
       into the enclosing query.
+    
+    - Fixed @on_reconsitute hook for subclasses 
+      which inherit from a base class.
+      [ticket:1129]
       
 - sql
     - Temporarily rolled back the "ORDER BY" enhancement
