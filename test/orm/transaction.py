@@ -153,6 +153,20 @@ class AutoExpireTest(TransactionTest):
 
         assert u1.name == 'will'
 
+class TwoPhaseTest(TransactionTest):
+    only_tables = True
+
+    @testing.requires.two_phase_transactions
+    def test_rollback_on_prepare(self):
+        s = self.session(twophase=True)
+    
+        u = User(name='ed')
+        s.add(u)
+        s.prepare()
+        s.rollback()
+        
+        assert u not in s
+        
 class RollbackRecoverTest(TransactionTest):
     only_tables = True
 
