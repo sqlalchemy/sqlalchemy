@@ -391,7 +391,7 @@ class PropertyLoader(StrategizedProperty):
                 raise sa_exc.InvalidRequestError("'has()' not implemented for collections.  Use any().")
             return self._criterion_exists(criterion, **kwargs)
 
-        def contains(self, other):
+        def contains(self, other, **kwargs):
             if not self.prop.uselist:
                 raise sa_exc.InvalidRequestError("'contains' not implemented for scalar attributes.  Use ==")
             clause = self.prop._optimized_compare(other)
