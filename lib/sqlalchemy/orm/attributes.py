@@ -1064,7 +1064,8 @@ class ClassManager(dict):
                 if isinstance(meth, types.FunctionType) and \
                     hasattr(meth, '__sa_reconstitute__') and \
                     hasattr(getattr(class_, key), '__sa_reconstitute__'):
-                    self.events.add_listener('on_load', meth)
+                    self.events.add_listener('on_load', getattr(class_, key))
+                    break
 
     def instantiable(self, boolean):
         # experiment, probably won't stay in this form
