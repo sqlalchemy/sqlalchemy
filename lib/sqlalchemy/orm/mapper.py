@@ -1578,12 +1578,13 @@ class Mapper(object):
         def visit_binary(binary):
             leftcol = binary.left
             rightcol = binary.right
+
             if leftcol is None or rightcol is None:
                 return
             if leftcol.table not in needs_tables:
                 binary.left = sql.bindparam(None, None, type_=binary.right.type)
                 param_names.append((leftcol, binary.left))
-            elif rightcol not in needs_tables:
+            elif rightcol.table not in needs_tables:
                 binary.right = sql.bindparam(None, None, type_=binary.right.type)
                 param_names.append((rightcol, binary.right))
 
@@ -1595,7 +1596,7 @@ class Mapper(object):
                 break
             if not mapper.single:
                 allconds.append(visitors.traverse(mapper.inherit_condition, clone=True, visit_binary=visit_binary))
-
+        
         return sql.and_(*allconds), param_names
 
 Mapper.logger = logging.class_logger(Mapper)

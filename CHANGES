@@ -1,6 +1,13 @@
 =======
 CHANGES
 =======
+0.4.8
+=====
+- orm
+    - Fixed bug regarding inherit_condition passed
+      with "A=B" versus "B=A" leading to errors
+      [ticket:1039]
+      
 0.4.7p1
 =====
 - orm 
