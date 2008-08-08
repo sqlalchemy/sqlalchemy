@@ -275,7 +275,11 @@ def folded_equivalents(join, equivs=None):
 
     This function is used by Join.select(fold_equivalents=True).
     
-    TODO: deprecate ?
+    Deprecated.   This function is used for a certain kind of 
+    "polymorphic_union" which is designed to achieve joined
+    table inheritance where the base table has no "discriminator"
+    column; [ticket:1131] will provide a better way to 
+    achieve this.
 
     """
     if equivs is None:
