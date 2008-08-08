@@ -1056,16 +1056,9 @@ class ClassManager(dict):
         self._instantiable = False
         self.events = self.event_registry_factory()
 
-        # TODO: generalize (and document the rationalization for) this traversal.
-        # TODO: figure out why getattr(cls, key) for all attributes
-        # causes test failures
-        for cls in class_.__mro__[0:-1]:
-            for key, meth in cls.__dict__.iteritems():
-                if isinstance(meth, types.FunctionType) and \
-                    hasattr(meth, '__sa_reconstitute__') and \
-                    hasattr(getattr(class_, key), '__sa_reconstitute__'):
-                    self.events.add_listener('on_load', getattr(class_, key))
-                    break
+        for key, meth in util.iterate_attributes(class_):
+            if isinstance(meth, types.FunctionType) and hasattr(meth, '__sa_reconstitute__'):
+                self.events.add_listener('on_load', meth)
 
     def instantiable(self, boolean):
         # experiment, probably won't stay in this form

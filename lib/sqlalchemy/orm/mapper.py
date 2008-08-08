@@ -644,15 +644,18 @@ class Mapper(object):
         
         """
         
+        def is_userland_descriptor(obj):
+            return not isinstance(obj, attributes.InstrumentedAttribute) and hasattr(obj, '__get__')
+            
         # check for descriptors, either local or from
         # an inherited class
         if local:
             if self.class_.__dict__.get(name, None)\
-                and hasattr(self.class_.__dict__[name], '__get__'):
+                and is_userland_descriptor(self.class_.__dict__[name]):
                 return True
         else:
             if getattr(self.class_, name, None)\
-                and hasattr(getattr(self.class_, name), '__get__'):
+                and is_userland_descriptor(getattr(self.class_, name)):
                 return True
 
         if (self.include_properties is not None and

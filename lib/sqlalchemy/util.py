@@ -410,6 +410,20 @@ def class_hierarchy(cls):
             hier.add(s)
     return list(hier)
 
+def iterate_attributes(cls):
+    """iterate all the keys and attributes associated with a class, without using getattr().
+    
+    Does not use getattr() so that class-sensitive descriptors (i.e. property.__get__())
+    are not called.
+    
+    """
+    keys = dir(cls)
+    for key in keys:
+        for c in cls.__mro__:
+            if key in c.__dict__:
+                yield (key, c.__dict__[key])
+                break
+                
 # from paste.deploy.converters
 def asbool(obj):
     if isinstance(obj, (str, unicode)):

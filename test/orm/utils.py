@@ -201,7 +201,7 @@ class AliasedClassTest(TestBase):
 
         assert_table(Point.left_of(p2), table)
         assert_table(alias.left_of(p2), alias_table)
-
+    
 
 if __name__ == '__main__':
     testenv.main()
