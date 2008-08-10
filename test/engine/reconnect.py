@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import sys, weakref
 from sqlalchemy import create_engine, exceptions, select, MetaData, Table, Column, Integer, String
 from testlib import *
-
+import time
 
 class MockDisconnect(Exception):
     pass
@@ -275,6 +275,22 @@ class RealReconnectTest(TestBase):
         self.assertEquals(conn.execute(select([1])).scalar(), 1)
         assert not conn.invalidated
 
+class RecycleTest(TestBase):
+    def test_basic(self):
+        for threadlocal in (False, True):
+            engine = engines.reconnecting_engine(options={'pool_recycle':1, 'pool_threadlocal':threadlocal})
+        
+            conn = engine.connect()
+            self.assertEquals(conn.execute(select([1])).scalar(), 1)
+            conn.close()
+
+            engine.test_shutdown()
+            time.sleep(2)
+    
+            conn = engine.connect()
+            self.assertEquals(conn.execute(select([1])).scalar(), 1)
+            conn.close()
+    
 class InvalidateDuringResultTest(TestBase):
     def setUp(self):
         global meta, table, engine

@@ -87,7 +87,10 @@ class ReconnectFixture(object):
 def reconnecting_engine(url=None, options=None):
     url = url or config.db_url
     dbapi = config.db.dialect.dbapi
-    engine = testing_engine(url, {'module':ReconnectFixture(dbapi)})
+    if not options:
+        options = {}
+    options['module'] = ReconnectFixture(dbapi)
+    engine = testing_engine(url, options)
     engine.test_shutdown = engine.dialect.dbapi.shutdown
     return engine
 
