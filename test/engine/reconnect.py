@@ -3,7 +3,7 @@ import weakref
 from testlib.sa import select, MetaData, Table, Column, Integer, String
 import testlib.sa as tsa
 from testlib import TestBase, testing, engines
-
+import time
 
 class MockDisconnect(Exception):
     pass
@@ -277,6 +277,22 @@ class RealReconnectTest(TestBase):
         self.assertEquals(conn.execute(select([1])).scalar(), 1)
         assert not conn.invalidated
 
+class RecycleTest(TestBase):
+    def test_basic(self):
+        for threadlocal in (False, True):
+            engine = engines.reconnecting_engine(options={'pool_recycle':1, 'pool_threadlocal':threadlocal})
+        
+            conn = engine.contextual_connect()
+            self.assertEquals(conn.execute(select([1])).scalar(), 1)
+            conn.close()
+
+            engine.test_shutdown()
+            time.sleep(2)
+    
+            conn = engine.contextual_connect()
+            self.assertEquals(conn.execute(select([1])).scalar(), 1)
+            conn.close()
+    
 meta, table, engine = None, None, None
 class InvalidateDuringResultTest(TestBase):
     def setUp(self):
