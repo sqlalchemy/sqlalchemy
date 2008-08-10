@@ -280,14 +280,14 @@ class RecycleTest(TestBase):
         for threadlocal in (False, True):
             engine = engines.reconnecting_engine(options={'pool_recycle':1, 'pool_threadlocal':threadlocal})
         
-            conn = engine.connect()
+            conn = engine.contextual_connect()
             self.assertEquals(conn.execute(select([1])).scalar(), 1)
             conn.close()
 
             engine.test_shutdown()
             time.sleep(2)
     
-            conn = engine.connect()
+            conn = engine.contextual_connect()
             self.assertEquals(conn.execute(select([1])).scalar(), 1)
             conn.close()
     
