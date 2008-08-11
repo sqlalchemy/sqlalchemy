@@ -30,6 +30,15 @@ Above, the `declarative_base` callable produces a new base class from which all 
 completed, a new `Table` and `mapper()` have been generated, accessible via the `__table__` and `__mapper__` attributes on the
 `SomeClass` class.
 
+You may omit the names from the Column definitions.  Declarative will fill
+them in for you:
+
+    {python}
+    class SomeClass(Base):
+        __tablename__ = 'some_table'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+
 Attributes may be added to the class after its construction, and they will be added to the underlying `Table` and `mapper()` definitions as
 appropriate:
 
