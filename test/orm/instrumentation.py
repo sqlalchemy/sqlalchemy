@@ -403,6 +403,39 @@ class InitTest(_base.ORMTest):
         obj = C()
         eq_(inits, [(C, 'on_init', C)])
 
+    def test_defaulted_init(self):
+        class X(object):
+            def __init__(self_, a, b=123, c='abc'):
+                self_.a = a
+                self_.b = b
+                self_.c = c
+        attributes.register_class(X)
+
+        o = X('foo')
+        eq_(o.a, 'foo')
+        eq_(o.b, 123)
+        eq_(o.c, 'abc')
+
+        class Y(object):
+            unique = object()
+
+            class OutOfScopeForEval(object):
+                def __repr__(self_):
+                    # misleading repr
+                    return '123'
+
+            outofscope = OutOfScopeForEval()
+
+            def __init__(self_, u=unique, o=outofscope):
+                self_.u = u
+                self_.o = o
+
+        attributes.register_class(Y)
+
+        o = Y()
+        assert o.u is Y.unique
+        assert o.o is Y.outofscope
+
 
 class MapperInitTest(_base.ORMTest):
 
@@ -438,6 +471,7 @@ class MapperInitTest(_base.ORMTest):
         cobj = C()
         self.assertRaises((AttributeError, TypeError),
                           attributes.instance_state, cobj)
+
 
 class InstrumentationCollisionTest(_base.ORMTest):
     def test_none(self):

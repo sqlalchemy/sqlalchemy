@@ -1647,7 +1647,7 @@ def _generate_init(class_, class_manager):
     # FIXME: need to juggle local names to avoid constructor argument
     # clashes.
     func_body = """\
-def __init__(%(args)s):
+def __init__(%(apply_pos)s):
     new_state = class_manager._new_state_if_none(%(self_arg)s)
     if new_state:
         return new_state.initialize_instance(%(apply_kw)s)
@@ -1658,8 +1658,13 @@ def __init__(%(args)s):
     func_text = func_body % func_vars
     #TODO: log debug #print func_text
 
+    func = getattr(original__init__, 'im_func', original__init__)
+    func_defaults = getattr(func, 'func_defaults', None)
+
     env = locals().copy()
     exec func_text in env
     __init__ = env['__init__']
     __init__.__doc__ = original__init__.__doc__
+    if func_defaults:
+        __init__.func_defaults = func_defaults
     return __init__
