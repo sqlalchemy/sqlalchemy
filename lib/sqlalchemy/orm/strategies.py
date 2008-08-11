@@ -95,6 +95,8 @@ class CompositeColumnLoader(ColumnLoader):
         self.logger.info("%s register managed composite attribute" % self)
 
         def copy(obj):
+            if obj is None:
+                return None
             return self.parent_property.composite_class(*obj.__composite_values__())
             
         def compare(a, b):

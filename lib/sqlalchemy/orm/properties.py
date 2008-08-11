@@ -103,6 +103,7 @@ class CompositeProperty(ColumnProperty):
 
     def __init__(self, class_, *columns, **kwargs):
         super(CompositeProperty, self).__init__(*columns, **kwargs)
+        self._col_position_map = dict((c, i) for i, c in enumerate(columns))
         self.composite_class = class_
         self.comparator_factory = kwargs.pop('comparator', CompositeProperty.Comparator)
         self.strategy_class = strategies.CompositeColumnLoader
@@ -123,17 +124,22 @@ class CompositeProperty(ColumnProperty):
         return self.get_col_value(column, obj)
 
     def setattr(self, state, value, column):
-        # TODO: test coverage for this method
+
         obj = state.get_impl(self.key).get(state)
         if obj is None:
             obj = self.composite_class(*[None for c in self.columns])
             state.get_impl(self.key).set(state, obj, None)
 
-        for a, b in zip(self.columns, value.__composite_values__()):
-            if a is column:
-                setattr(obj, b, value)
-
+        if hasattr(obj, '__set_composite_values__'):
+            values = list(obj.__composite_values__())
+            values[self._col_position_map[column]] = value
+            obj.__set_composite_values__(*values)
+        else:
+            setattr(obj, column.key, value)
+            
     def get_col_value(self, column, value):
+        if value is None:
+            return None
         for a, b in zip(self.columns, value.__composite_values__()):
             if a is column:
                 return b
@@ -144,16 +150,12 @@ class CompositeProperty(ColumnProperty):
 
         def __eq__(self, other):
             if other is None:
-                return sql.and_(*[a==None for a in self.prop.columns])
+                values = [None] * len(self.prop.columns)
             else:
-                return sql.and_(*[a==b for a, b in
-                                  zip(self.prop.columns,
-                                      other.__composite_values__())])
-
+                values = other.__composite_values__()
+            return sql.and_(*[a==b for a, b in zip(self.prop.columns, values)])
         def __ne__(self, other):
-            return sql.or_(*[a!=b for a, b in
-                             zip(self.prop.columns,
-                                 other.__composite_values__())])
+            return sql.not_(self.__eq__(other))
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key

@@ -25,6 +25,15 @@ CHANGES
     - Fixed @on_reconsitute hook for subclasses 
       which inherit from a base class.
       [ticket:1129]
+
+    - The composite() property type now supports
+      a __set_composite_values__() method on the composite
+      class which is required if the class represents
+      state using attribute names other than the 
+      column's keynames; default-generated values now
+      get populated properly upon flush.  Also,
+      composites with attributes set to None compare
+      correctly.  [ticket:1132]
       
 - sql
     - Temporarily rolled back the "ORDER BY" enhancement

@@ -1150,7 +1150,7 @@ class Query(object):
 
             _get_clause = q._adapt_clause(_get_clause, True, False)
             q._criterion = _get_clause
-
+            
             for i, primary_key in enumerate(mapper.primary_key):
                 try:
                     params[_get_params[primary_key].key] = ident[i]

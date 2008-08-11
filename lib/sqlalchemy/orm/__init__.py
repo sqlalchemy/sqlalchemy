@@ -416,10 +416,28 @@ def composite(class_, *cols, **kwargs):
               self.x = x
               self.y = y
           def __composite_values__(self):
-              return (self.x, self.y)
-
+              return self.x, self.y
+          def __eq__(self, other):
+              return other is not None and self.x == other.x and self.y == other.y
+              
       # and then in the mapping:
       ... composite(Point, mytable.c.x, mytable.c.y) ...
+
+    The composite object may have its attributes populated based on the names
+    of the mapped columns.  To override the way internal state is set,
+    additionally implement ``__set_composite_values__``:
+        
+        class Point(object):
+            def __init__(self, x, y):
+                self.some_x = x
+                self.some_y = y
+            def __composite_values__(self):
+                return self.some_x, self.some_y
+            def __set_composite_values__(self, x, y):
+                self.some_x = x
+                self.some_y = y
+            def __eq__(self, other):
+                return other is not None and self.some_x == other.x and self.some_y == other.y
 
     Arguments are:
 
