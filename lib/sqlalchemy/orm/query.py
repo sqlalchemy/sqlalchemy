@@ -829,7 +829,10 @@ class Query(object):
             if not clause:
                 raise sa_exc.InvalidRequestError("Could not find a FROM clause to join from")
 
-            bogus, right_selectable, is_aliased_class = _entity_info(right_entity)
+            mp, right_selectable, is_aliased_class = _entity_info(right_entity)
+            
+            if not right_mapper and mp:
+                right_mapper = mp
 
             if right_mapper and not is_aliased_class:
                 if right_entity is right_selectable:
@@ -851,7 +854,7 @@ class Query(object):
                     right_entity = aliased(right_mapper)
                     alias_criterion = True
                     aliased_entity = True
-                    
+                        
                 elif prop:
                     if prop.table in self.__currenttables:
                         if prop.secondary is not None and prop.secondary not in self.__currenttables:
@@ -867,13 +870,19 @@ class Query(object):
 
                     right_entity = prop.mapper
 
+            if alias_criterion:
+                right_adapter = ORMAdapter(right_entity, 
+                    equivalents=right_mapper._equivalent_columns, chain_to=self._filter_aliases)
+                    
+                if isinstance(onclause, sql.ClauseElement):
+                    onclause = right_adapter.traverse(onclause)
+
             if prop:
                 onclause = prop
             
             clause = orm_join(clause, right_entity, onclause, isouter=outerjoin)
             if alias_criterion: 
-                self._filter_aliases = ORMAdapter(right_entity, 
-                        equivalents=right_mapper._equivalent_columns, chain_to=self._filter_aliases)
+                self._filter_aliases = right_adapter
                 
                 if aliased_entity:
                     self.__mapper_loads_polymorphically_with(right_mapper, ORMAdapter(right_entity, equivalents=right_mapper._equivalent_columns))

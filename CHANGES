@@ -22,6 +22,11 @@ CHANGES
       should not "leak" their inner FROM objects out
       into the enclosing query.
     
+    - Improved the behavior of query.join()
+      when joining to joined-table inheritance
+      subclasses, using explicit join criteria
+      (i.e. not on a relation).
+      
     - Fixed @on_reconsitute hook for subclasses 
       which inherit from a base class.
       [ticket:1129]
