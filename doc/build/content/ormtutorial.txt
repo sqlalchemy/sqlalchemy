@@ -336,6 +336,34 @@ The `Query` also accepts ORM-instrumented descriptors as arguments.  Any time mu
     mary Mary Contrary
     fred Fred Flinstone
 
+The tuples returned by `Query` are *named* tuples, and can be treated much like an ordinary Python object.  The names are the same as the attribute's name for an attribute, and the class name for a class:
+
+    {python}
+    {sql}>>> for row in session.query(User, User.name).all():
+    ...    print row.User, row.name
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    FROM users
+    []
+    {stop}<User('ed','Ed Jones', 'f8s7ccs')> ed
+    <User('wendy','Wendy Williams', 'foobar')> wendy
+    <User('mary','Mary Contrary', 'xxg527')> mary
+    <User('fred','Fred Flinstone', 'blah')> fred
+        
+You can control the names using the `label()` construct for scalar attributes and `aliased()` for class constructs:
+
+    {python}
+    >>> from sqlalchemy.orm import aliased
+    >>> user_alias = aliased(User, name='user_alias')
+    {sql}>>> for row in session.query(user_alias, user_alias.name.label('name_label')).all():
+    ...    print row.user_alias, row.name_label
+    SELECT users_1.id AS users_1_id, users_1.name AS users_1_name, users_1.fullname AS users_1_fullname, users_1.password AS users_1_password, users_1.name AS name_label 
+    FROM users AS users_1
+    []
+    <User('ed','Ed Jones', 'f8s7ccs')> ed
+    <User('wendy','Wendy Williams', 'foobar')> wendy
+    <User('mary','Mary Contrary', 'xxg527')> mary
+    <User('fred','Fred Flinstone', 'blah')> fred
+
 Basic operations with `Query` include issuing LIMIT and OFFSET, most conveniently using Python array slices and typically in conjunction with ORDER BY:
 
     {python}
