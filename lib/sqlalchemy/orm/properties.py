@@ -790,6 +790,21 @@ class PropertyLoader(StrategizedProperty):
         aliased = aliased or bool(source_selectable)
 
         primaryjoin, secondaryjoin, secondary = self.primaryjoin, self.secondaryjoin, self.secondary
+        
+        # adjust the join condition for single table inheritance,
+        # in the case that the join is to a subclass
+        # this is analgous to the "_adjust_for_single_table_inheritance()"
+        # method in Query.
+        if self.mapper.single and self.mapper.inherits and self.mapper.polymorphic_on and self.mapper.polymorphic_identity is not None:
+            crit = self.mapper.polymorphic_on.in_(
+                m.polymorphic_identity
+                for m in self.mapper.polymorphic_iterator())
+            if secondaryjoin:
+                secondaryjoin = secondaryjoin & crit
+            else:
+                primaryjoin = primaryjoin & crit
+            
+
         if aliased:
             if secondary:
                 secondary = secondary.alias()

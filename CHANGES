@@ -21,7 +21,20 @@ CHANGES
       list of entities.  In particular scalar subqueries
       should not "leak" their inner FROM objects out
       into the enclosing query.
-    
+
+    - joins along a relation() from a mapped
+      class to a mapped subclass, where the mapped
+      subclass is configured with single table
+      inheritance, will include an 
+      IN clause which limits the subtypes of the
+      joined class to those requsted, within the
+      ON clause of the join.  This takes effect for 
+      eager load joins as well as query.join().    
+      Note that in some scenarios the IN clause will 
+      appear in the WHERE clause of the query 
+      as well since this discrimination has multiple
+      trigger points.
+      
     - Improved the behavior of query.join()
       when joining to joined-table inheritance
       subclasses, using explicit join criteria
