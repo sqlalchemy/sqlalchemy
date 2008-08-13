@@ -161,11 +161,15 @@ class Pool(object):
             return _ConnectionFairy(self).checkout()
 
         try:
-            return self._threadconns.current().checkout()
+            rec = self._threadconns.current()
+            if rec:
+                return rec.checkout()
         except AttributeError:
-            agent = _ConnectionFairy(self)
-            self._threadconns.current = weakref.ref(agent)
-            return agent.checkout()
+            pass
+
+        agent = _ConnectionFairy(self)
+        self._threadconns.current = weakref.ref(agent)
+        return agent.checkout()
 
     def return_conn(self, record):
         if self._use_threadlocal and hasattr(self._threadconns, "current"):
