@@ -286,7 +286,7 @@ class ZooMarkTest(TestBase):
         metadata = MetaData(engine)
         session = sessionmaker()()
 
-    @profiling.function_call_count(4659)
+    @profiling.function_call_count(4898)
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
