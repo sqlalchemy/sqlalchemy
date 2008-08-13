@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 import threading, time, gc
-from sqlalchemy import pool
+from sqlalchemy import pool, interfaces
 import testlib.sa as tsa
 from testlib import TestBase
 
@@ -443,6 +443,7 @@ class PoolTest(TestBase):
                 # con can be None if invalidated
                 assert record is not None
                 self.checked_in.append(con)
+
         class ListenAll(tsa.interfaces.PoolListener, InstrumentingListener):
             pass
         class ListenConnect(InstrumentingListener):
