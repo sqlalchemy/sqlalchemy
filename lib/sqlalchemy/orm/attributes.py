@@ -16,6 +16,7 @@ An example of full customization is in /examples/custom_attributes.
 
 import operator
 from operator import attrgetter, itemgetter
+import types
 import weakref
 
 from sqlalchemy import util
@@ -1083,6 +1084,8 @@ class ClassManager(dict):
             self.install_descriptor(key, inst)
         self[key] = inst
         for cls in self.class_.__subclasses__():
+            if isinstance(cls, types.ClassType):
+                continue
             manager = manager_of_class(cls)
             if manager is None:
                 manager = create_manager_for_cls(cls)
@@ -1101,6 +1104,8 @@ class ClassManager(dict):
         if key in self.mutable_attributes:
             self.mutable_attributes.remove(key)
         for cls in self.class_.__subclasses__():
+            if isinstance(cls, types.ClassType):
+                continue
             manager = manager_of_class(cls)
             if manager is None:
                 manager = create_manager_for_cls(cls)
