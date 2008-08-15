@@ -1,19 +1,19 @@
 """Strategies for creating new instances of Engine types.
 
-These are semi-private implementation classes which 
-provide the underlying behavior for the "strategy" keyword argument 
-available on [sqlalchemy.engine#create_engine()].
-Current available options are ``plain``, ``threadlocal``, and
-``mock``.
+These are semi-private implementation classes which provide the
+underlying behavior for the "strategy" keyword argument available on
+[sqlalchemy.engine#create_engine()].  Current available options are
+``plain``, ``threadlocal``, and ``mock``.
 
-New strategies can be added via new ``EngineStrategy``
-classes.
+New strategies can be added via new ``EngineStrategy`` classes.
+
 """
-
+from operator import attrgetter
 
 from sqlalchemy.engine import base, threadlocal, url
 from sqlalchemy import util, exc
 from sqlalchemy import pool as poollib
+
 
 strategies = {}
 
@@ -189,7 +189,8 @@ class MockEngineStrategy(EngineStrategy):
             self.execute = execute
 
         engine = property(lambda s: s)
-        dialect = property(lambda s:s._dialect)
+        dialect = property(attrgetter('_dialect'))
+        name = property(lambda s: s._dialect.name)
 
         def contextual_connect(self, **kwargs):
             return self

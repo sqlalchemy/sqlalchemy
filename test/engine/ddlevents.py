@@ -319,12 +319,12 @@ class DDLTest(TestBase):
                           'S S-T T-"s s"."t t"-b')
     def test_filter(self):
         cx = self.mock_engine()
-        cx.name = 'mock'
 
         tbl = Table('t', MetaData(), Column('id', Integer))
+        target = cx.name
 
         assert DDL('')._should_execute('x', tbl, cx)
-        assert DDL('', on='mock')._should_execute('x', tbl, cx)
+        assert DDL('', on=target)._should_execute('x', tbl, cx)
         assert not DDL('', on='bogus')._should_execute('x', tbl, cx)
         assert DDL('', on=lambda x,y,z: True)._should_execute('x', tbl, cx)
         assert(DDL('', on=lambda x,y,z: z.engine.name != 'bogus').
