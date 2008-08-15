@@ -155,6 +155,7 @@ def accepts_a_list_as_starargs(list_deprecation=None):
         env = locals().copy()
         exec code in env
         decorated = env[fn.func_name]
+        decorated.func_defaults = fn.func_defaults
         update_wrapper(decorated, fn)
         decorated.generated_src = code
         return decorated
@@ -188,6 +189,7 @@ def decorator(target):
         code = 'lambda %(args)s: %(target)s(%(fn)s, %(apply_kw)s)' % (
                 metadata)
         decorated = eval(code, {targ_name:target, fn_name:fn})
+        decorated.func_defaults = getattr(fn, 'im_func', fn).func_defaults
         return update_wrapper(decorated, fn)
     return update_wrapper(decorate, target)
 
@@ -547,7 +549,14 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
                        not hasattr(into_cls, m) and m not in skip)]
     for method in dunders:
         try:
-            spec = inspect.getargspec(getattr(from_cls, method))
+            fn = getattr(from_cls, method)
+            if not hasattr(fn, '__call__'):
+                continue
+            fn = getattr(fn, 'im_func', fn)
+        except AttributeError:
+            continue
+        try:
+            spec = inspect.getargspec(fn)
             fn_args = inspect.formatargspec(spec[0])
             d_args = inspect.formatargspec(spec[0][1:])
         except TypeError:
@@ -559,8 +568,11 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
 
         env = from_instance is not None and {name: from_instance} or {}
         exec py in env
+        try:
+            env[method].func_defaults = fn.func_defaults
+        except AttributeError:
+            pass
         setattr(into_cls, method, env[method])
-
 
 class SimpleProperty(object):
     """A *default* property accessor."""
