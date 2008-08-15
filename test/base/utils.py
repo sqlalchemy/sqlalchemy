@@ -884,5 +884,40 @@ class AsInterfaceTest(TestBase):
         obj = {'foo': 123}
         self.assertRaises(TypeError, util.as_interface, obj, cls=self.Something)
 
+
+class TestClassHierarchy(TestBase):
+    def test_object(self):
+        eq_(set(util.class_hierarchy(object)), set((object,)))
+
+    def test_single(self):
+        class A(object):
+            pass
+
+        class B(object):
+            pass
+
+        eq_(set(util.class_hierarchy(A)), set((A, object)))
+        eq_(set(util.class_hierarchy(B)), set((B, object)))
+
+        class C(A, B):
+            pass
+
+        eq_(set(util.class_hierarchy(A)), set((A, B, C, object)))
+        eq_(set(util.class_hierarchy(B)), set((A, B, C, object)))
+
+    def test_oldstyle_mixin(self):
+        class A(object):
+            pass
+
+        class Mixin:
+            pass
+
+        class B(A, Mixin):
+            pass
+
+        eq_(set(util.class_hierarchy(B)), set((A, B, object)))
+        eq_(set(util.class_hierarchy(Mixin)), set())
+        eq_(set(util.class_hierarchy(A)), set((A, B, object)))
+
 if __name__ == "__main__":
     testenv.main()

@@ -397,15 +397,23 @@ def class_hierarchy(cls):
     class_hierarchy(class A(object)) returns (A, object), not A plus every
     class systemwide that derives from object.
 
+    Old-style classes are discarded and hierarchies rooted on them
+    will not be descended.
+
     """
+    if isinstance(cls, types.ClassType):
+        return list()
     hier = set([cls])
     process = list(cls.__mro__)
     while process:
         c = process.pop()
-        for b in [_ for _ in c.__bases__ if _ not in hier]:
+        if isinstance(c, types.ClassType):
+            continue
+        for b in (_ for _ in c.__bases__
+                  if _ not in hier and not isinstance(_, types.ClassType)):
             process.append(b)
             hier.add(b)
-        if c.__module__ == '__builtin__':
+        if c.__module__ == '__builtin__' or not hasattr(c, '__subclasses__'):
             continue
         for s in [_ for _ in c.__subclasses__() if _ not in hier]:
             process.append(s)
@@ -414,10 +422,10 @@ def class_hierarchy(cls):
 
 def iterate_attributes(cls):
     """iterate all the keys and attributes associated with a class, without using getattr().
-    
+
     Does not use getattr() so that class-sensitive descriptors (i.e. property.__get__())
     are not called.
-    
+
     """
     keys = dir(cls)
     for key in keys:
@@ -425,7 +433,7 @@ def iterate_attributes(cls):
             if key in c.__dict__:
                 yield (key, c.__dict__[key])
                 break
-                
+
 # from paste.deploy.converters
 def asbool(obj):
     if isinstance(obj, (str, unicode)):
@@ -1121,7 +1129,7 @@ class ScopedRegistry(object):
             return object.__new__(_TLocalRegistry)
         else:
             return object.__new__(cls)
-        
+
     def __init__(self, createfunc, scopefunc):
         self.createfunc = createfunc
         self.scopefunc = scopefunc
