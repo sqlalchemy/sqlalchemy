@@ -301,34 +301,6 @@ class UserDefinedExtensionTest(_base.ORMTest):
         self.assertRaises((AttributeError, KeyError),
                           attributes.instance_state, None)
 
-class ReconstituteTest(testing.TestBase):
-    def test_on_reconstitute(self):
-        recon = []
-        class MyClass(object):
-            @attributes.on_reconstitute
-            def recon(self):
-                recon.append('go')
-        
-        attributes.register_class(MyClass)
-        m = attributes.manager_of_class(MyClass).new_instance()
-        s = attributes.instance_state(m)
-        s._run_on_load(m)
-        assert recon == ['go']
-
-    def test_inheritance(self):
-        recon = []
-        class MyBaseClass(object):
-            @attributes.on_reconstitute
-            def recon(self):
-                recon.append('go')
-        
-        class MySubClass(MyBaseClass):
-            pass
-        attributes.register_class(MySubClass)
-        m = attributes.manager_of_class(MySubClass).new_instance()
-        s = attributes.instance_state(m)
-        s._run_on_load(m)
-        assert recon == ['go']
 
 if __name__ == '__main__':
     testing.main()

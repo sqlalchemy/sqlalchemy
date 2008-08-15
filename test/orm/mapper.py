@@ -3,7 +3,7 @@
 import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper
+from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper, reconstructor
 from testlib.sa.orm import defer, deferred, synonym, attributes
 from testlib.testing import eq_
 import pickleable
@@ -764,6 +764,75 @@ class MapperTest(_fixtures.FixtureTest):
             eq_(User.uc_name.attribute, 123)
             eq_(User.uc_name['key'], 'value')
             sess.rollback()
+
+    @testing.resolve_artifact_names
+    def test_reconstructor(self):
+        recon = []
+
+        class User(object):
+            @reconstructor
+            def reconstruct(self):
+                recon.append('go')
+
+        mapper(User, users)
+
+        User()
+        eq_(recon, [])
+        create_session().query(User).first()
+        eq_(recon, ['go'])
+
+    @testing.resolve_artifact_names
+    def test_reconstructor_inheritance(self):
+        recon = []
+        class A(object):
+            @reconstructor
+            def reconstruct(self):
+                recon.append('A')
+
+        class B(A):
+            @reconstructor
+            def reconstruct(self):
+                recon.append('B')
+
+        class C(A):
+            @reconstructor
+            def reconstruct(self):
+                recon.append('C')
+
+        mapper(A, users, polymorphic_on=users.c.name,
+               polymorphic_identity='jack')
+        mapper(B, inherits=A, polymorphic_identity='ed')
+        mapper(C, inherits=A, polymorphic_identity='chuck')
+
+        A()
+        B()
+        C()
+        eq_(recon, [])
+
+        sess = create_session()
+        sess.query(A).first()
+        sess.query(B).first()
+        sess.query(C).first()
+        eq_(recon, ['A', 'B', 'C'])
+
+    @testing.resolve_artifact_names
+    def test_unmapped_reconstructor_inheritance(self):
+        recon = []
+        class Base(object):
+            @reconstructor
+            def reconstruct(self):
+                recon.append('go')
+
+        class User(Base):
+            pass
+
+        mapper(User, users)
+
+        User()
+        eq_(recon, [])
+
+        create_session().query(User).first()
+        eq_(recon, ['go'])
 
 class OptionsTest(_fixtures.FixtureTest):
 
@@ -1696,8 +1765,8 @@ class MapperExtensionTest(_fixtures.FixtureTest):
                 methods.append('create_instance')
                 return sa.orm.EXT_CONTINUE
 
-            def on_reconstitute(self, mapper, instance):
-                methods.append('on_reconstitute')
+            def reconstruct_instance(self, mapper, instance):
+                methods.append('reconstruct_instance')
                 return sa.orm.EXT_CONTINUE
 
             def append_result(self, mapper, selectcontext, row, instance, result, **flags):
@@ -1755,8 +1824,8 @@ class MapperExtensionTest(_fixtures.FixtureTest):
             ['instrument_class', 'init_instance', 'before_insert',
              'after_insert', 'translate_row', 'populate_instance',
              'append_result', 'translate_row', 'create_instance',
-             'populate_instance', 'on_reconstitute', 'append_result', 'before_update',
-             'after_update', 'before_delete', 'after_delete'])
+             'populate_instance', 'reconstruct_instance', 'append_result',
+             'before_update', 'after_update', 'before_delete', 'after_delete'])
 
     @testing.resolve_artifact_names
     def test_inheritance(self):
@@ -1783,8 +1852,9 @@ class MapperExtensionTest(_fixtures.FixtureTest):
             ['instrument_class', 'instrument_class', 'init_instance',
              'before_insert', 'after_insert', 'translate_row',
              'populate_instance', 'append_result', 'translate_row',
-             'create_instance', 'populate_instance', 'on_reconstitute', 'append_result',
-             'before_update', 'after_update', 'before_delete', 'after_delete'])
+             'create_instance', 'populate_instance', 'reconstruct_instance',
+             'append_result', 'before_update', 'after_update', 'before_delete',
+             'after_delete'])
 
     @testing.resolve_artifact_names
     def test_after_with_no_changes(self):
@@ -1840,8 +1910,9 @@ class MapperExtensionTest(_fixtures.FixtureTest):
             ['instrument_class', 'instrument_class', 'init_instance',
              'before_insert', 'after_insert', 'translate_row',
              'populate_instance', 'append_result', 'translate_row',
-             'create_instance', 'populate_instance', 'on_reconstitute', 'append_result',
-             'before_update', 'after_update', 'before_delete', 'after_delete'])
+             'create_instance', 'populate_instance', 'reconstruct_instance',
+             'append_result', 'before_update', 'after_update', 'before_delete',
+             'after_delete'])
 
 
 class RequirementsTest(_base.MappedTest):

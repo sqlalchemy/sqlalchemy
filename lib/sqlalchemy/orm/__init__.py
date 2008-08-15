@@ -44,6 +44,7 @@ from sqlalchemy.orm.properties import (
      SynonymProperty,
      )
 from sqlalchemy.orm import mapper as mapperlib
+from sqlalchemy.orm.mapper import reconstructor
 from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import AliasOption, Query
 from sqlalchemy.sql import util as sql_util
@@ -83,6 +84,7 @@ __all__ = (
     'object_mapper',
     'object_session',
     'polymorphic_union',
+    'reconstructor',
     'relation',
     'scoped_session',
     'sessionmaker',

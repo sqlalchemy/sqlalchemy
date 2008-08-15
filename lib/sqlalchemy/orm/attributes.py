@@ -3,14 +3,10 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-"""
+"""Defines SQLAlchemy's system of class instrumentation..
 
-Defines SQLAlchemy's system of class instrumentation.
-
-This module is usually not visible to user applications, but forms
-a large part of the ORM's interactivity.  The primary "public"
-function is the ``on_reconstitute`` decorator which is described in
-the main mapper documentation.
+This module is usually not directly visible to user applications, but
+defines a large part of the ORM's interactivity.
 
 SQLA's instrumentation system is completely customizable, in which
 case an understanding of the general mechanics of this module is helpful.
@@ -26,7 +22,6 @@ from sqlalchemy import util
 from sqlalchemy.util import EMPTY_SET
 from sqlalchemy.orm import interfaces, collections, exc
 import sqlalchemy.exceptions as sa_exc
-import types
 
 # lazy imports
 _entity_info = None
@@ -1056,10 +1051,6 @@ class ClassManager(dict):
         self._instantiable = False
         self.events = self.event_registry_factory()
 
-        for key, meth in util.iterate_attributes(class_):
-            if isinstance(meth, types.FunctionType) and hasattr(meth, '__sa_reconstitute__'):
-                self.events.add_listener('on_load', meth)
-
     def instantiable(self, boolean):
         # experiment, probably won't stay in this form
         assert boolean ^ self._instantiable, (boolean, self._instantiable)
@@ -1465,19 +1456,6 @@ def del_attribute(instance, key):
 def is_instrumented(instance, key):
     return manager_of_class(instance.__class__).is_instrumented(key, search=True)
 
-def on_reconstitute(fn):
-    """Decorate a method as the 'reconstitute' hook.
-    
-    This method will be called based on the 'on_load' event hook.
-    
-    Note that when using ORM mappers, this method is equivalent
-    to MapperExtension.on_reconstitute().
-
-    """
-    fn.__sa_reconstitute__ = True
-    return fn
-    
-    
 class InstrumentationRegistry(object):
     """Private instrumentation registration singleton."""
 

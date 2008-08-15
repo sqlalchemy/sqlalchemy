@@ -14,6 +14,7 @@ available in [sqlalchemy.orm#].
 
 """
 
+import types
 import weakref
 from itertools import chain
 
@@ -106,15 +107,15 @@ class Mapper(object):
 
         self.class_ = class_
         self.class_manager = None
-            
+
         self.primary_key_argument = primary_key
         self.non_primary = non_primary
-        
+
         if order_by:
             self.order_by = util.to_list(order_by)
         else:
             self.order_by = order_by
-            
+
         self.always_refresh = always_refresh
         self.version_id_col = version_id_col
         self.concrete = concrete
@@ -135,7 +136,7 @@ class Mapper(object):
         self._clause_adapter = None
         self._requires_row_aliasing = False
         self.__inherits_equated_pairs = None
-        
+
         if not issubclass(class_, object):
             raise sa_exc.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
 
@@ -220,7 +221,7 @@ class Mapper(object):
 
     def has_property(self, key):
         return key in self.__props
-        
+
     def get_property(self, key, resolve_synonyms=False, raiseerr=True):
         """return a MapperProperty associated with the given key."""
 
@@ -347,12 +348,12 @@ class Mapper(object):
         global _new_mappers
         if self.compiled and not _new_mappers:
             return self
-            
+
         _COMPILE_MUTEX.acquire()
         global _already_compiling
         if _already_compiling:
-            # re-entrance to compile() occurs rarely, when a class-mapped construct is 
-            # used within a ForeignKey, something that is possible 
+            # re-entrance to compile() occurs rarely, when a class-mapped construct is
+            # used within a ForeignKey, something that is possible
             # when using the declarative layer
             self.__initialize_properties()
             return
@@ -367,7 +368,7 @@ class Mapper(object):
             for mapper in list(_mapper_registry):
                 if not mapper.compiled:
                     mapper.__initialize_properties()
-                    
+
             _new_mappers = False
             return self
         finally:
@@ -468,7 +469,7 @@ class Mapper(object):
 
             if self.order_by is False and not self.concrete and self.inherits.order_by is not False:
                 self.order_by = self.inherits.order_by
-                
+
             self.polymorphic_map = self.inherits.polymorphic_map
             self.batch = self.inherits.batch
             self.inherits._inheriting_mappers.add(self)
@@ -496,7 +497,7 @@ class Mapper(object):
                     raise sa_exc.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument" % (str(self), self.polymorphic_identity))
                 self.polymorphic_map[self.polymorphic_identity] = self
             self._identity_class = self.class_
-            
+
         if self.mapped_table is None:
             raise sa_exc.ArgumentError("Mapper '%s' does not have a mapped_table specified.  (Are you using the return value of table.create()?  It no longer has a return value.)" % str(self))
 
@@ -571,9 +572,9 @@ class Mapper(object):
         """Create a map of all *equivalent* columns, based on
         the determination of column pairs that are equated to
         one another based on inherit condition.  This is designed
-        to work with the queries that util.polymorphic_union 
+        to work with the queries that util.polymorphic_union
         comes up with, which often don't include the columns from
-        the base table directly (including the subclass table columns 
+        the base table directly (including the subclass table columns
         only).
 
         The resulting structure is a dictionary of columns mapped
@@ -638,15 +639,15 @@ class Mapper(object):
 
     def _should_exclude(self, name, local):
         """determine whether a particular property should be implicitly present on the class.
-        
-        This occurs when properties are propagated from an inherited class, or are 
+
+        This occurs when properties are propagated from an inherited class, or are
         applied from the columns present in the mapped table.
-        
+
         """
-        
+
         def is_userland_descriptor(obj):
             return not isinstance(obj, attributes.InstrumentedAttribute) and hasattr(obj, '__get__')
-            
+
         # check for descriptors, either local or from
         # an inherited class
         if local:
@@ -667,9 +668,9 @@ class Mapper(object):
             name in self.exclude_properties):
             self.__log("excluding property %s" % (name))
             return True
-            
+
         return False
-        
+
     def __compile_properties(self):
 
         # object attribute names mapped to MapperProperty objects
@@ -699,7 +700,7 @@ class Mapper(object):
 
             if self._should_exclude(column.key, local=self.local_table.c.contains_column(column)):
                 continue
-                
+
             column_key = (self.column_prefix or '') + column.key
 
             # adjust the "key" used for this column to that
@@ -707,7 +708,7 @@ class Mapper(object):
             for mapper in self.iterate_to_root():
                 if column in mapper._columntoproperty:
                     column_key = mapper._columntoproperty[column].key
-            
+
             self._compile_property(column_key, column, init=False, setparent=True)
 
         # do a special check for the "discriminiator" column, as it may only be present
@@ -762,13 +763,13 @@ class Mapper(object):
             # columns (included in zblog tests)
             if col is None:
                 col = prop.columns[0]
-                
+
                 # column is coming in after _readonly_props was initialized; check
                 # for 'readonly'
                 if hasattr(self, '_readonly_props') and \
                     (not hasattr(col, 'table') or col.table not in self._cols_by_table):
                         self._readonly_props.add(prop)
-                    
+
             else:
                 # if column is coming in after _cols_by_table was initialized, ensure the col is in the
                 # right set
@@ -792,14 +793,14 @@ class Mapper(object):
 
         self.__props[key] = prop
         prop.key = key
-        
+
         if setparent:
             prop.set_parent(self)
 
             if not self.non_primary:
                 self.class_manager.install_descriptor(
                     key, Mapper._CompileOnAttr(self.class_, key))
-                    
+
         if init:
             prop.init(key, self)
 
@@ -864,10 +865,16 @@ class Mapper(object):
         event_registry = manager.events
         event_registry.add_listener('on_init', _event_on_init)
         event_registry.add_listener('on_init_failure', _event_on_init_failure)
-        if 'on_reconstitute' in self.extension.methods:
-            def reconstitute(instance):
-                self.extension.on_reconstitute(self, instance)
-            event_registry.add_listener('on_load', reconstitute)
+        for key, method in util.iterate_attributes(self.class_):
+            if (isinstance(method, types.FunctionType) and
+                hasattr(method, '__sa_reconstructor__')):
+                event_registry.add_listener('on_load', method)
+                break
+
+        if 'reconstruct_instance' in self.extension.methods:
+            def reconstruct(instance):
+                self.extension.reconstruct_instance(self, instance)
+            event_registry.add_listener('on_load', reconstruct)
 
         manager.info[_INSTRUMENTOR] = self
 
@@ -1219,15 +1226,15 @@ class Mapper(object):
 
                     # testlib.pragma exempt:__hash__
                     inserted_objects.add((state, connection))
-        
+
         if not postupdate:
             for state, mapper, connection, has_identity in tups:
-                
+
                 # expire readonly attributes
                 readonly = state.unmodified.intersection(
                     p.key for p in mapper._readonly_props
                 )
-                
+
                 if readonly:
                     _expire_state(state, readonly)
 
@@ -1238,7 +1245,7 @@ class Mapper(object):
                     uowtransaction.session.query(self)._get(
                         state.key, refresh_state=state,
                         only_load_props=state.unloaded)
-                
+
                 # call after_XXX extensions
                 if not has_identity:
                     if 'after_insert' in mapper.extension.methods:
@@ -1253,10 +1260,10 @@ class Mapper(object):
     def __postfetch(self, uowtransaction, connection, table, state, resultproxy, params, value_params):
         """For a given Table that has just been inserted/updated,
         mark as 'expired' those attributes which correspond to columns
-        that are marked as 'postfetch', and populate attributes which 
+        that are marked as 'postfetch', and populate attributes which
         correspond to columns marked as 'prefetch' or were otherwise generated
         within _save_obj().
-        
+
         """
         postfetch_cols = resultproxy.postfetch_cols()
         generated_cols = list(resultproxy.prefetch_cols())
@@ -1274,7 +1281,7 @@ class Mapper(object):
                 self._set_state_attr_by_column(state, c, params[c.key])
 
         deferred_props = [prop.key for prop in [self._columntoproperty[c] for c in postfetch_cols]]
-        
+
         if deferred_props:
             _expire_state(state, deferred_props)
 
@@ -1462,7 +1469,7 @@ class Mapper(object):
                     identitykey = self._identity_key_from_state(refresh_state)
             else:
                 identitykey = identity_key(row)
-            
+
             if identitykey in session_identity_map:
                 instance = session_identity_map[identitykey]
                 state = attributes.instance_state(instance)
@@ -1538,7 +1545,7 @@ class Mapper(object):
                 # populate attributes on non-loading instances which have been expired
                 # TODO: apply eager loads to un-lazy loaded collections ?
                 if state in context.partials or state.unloaded:
-                        
+
                     if state in context.partials:
                         isnew = False
                         attrs = context.partials[state]
@@ -1588,7 +1595,7 @@ class Mapper(object):
 
         class ColumnsNotAvailable(Exception):
             pass
-            
+
         def visit_binary(binary):
             leftcol = binary.left
             rightcol = binary.right
@@ -1617,11 +1624,31 @@ class Mapper(object):
                     allconds.append(visitors.cloned_traverse(mapper.inherit_condition, {}, {'binary':visit_binary}))
         except ColumnsNotAvailable:
             return None
-            
+
         cond = sql.and_(*allconds)
         return sql.select(tables, cond, use_labels=True)
 
 Mapper.logger = log.class_logger(Mapper)
+
+
+def reconstructor(fn):
+    """Decorate a method as the 'reconstructor' hook.
+
+    Designates a method as the "reconstructor", an ``__init__``-like
+    method that will be called by the ORM after the instance has been
+    loaded from the database or otherwise reconstituted.
+
+    The reconstructor will be invoked with no arguments.  Scalar
+    (non-collection) database-mapped attributes of the instance will
+    be available for use within the function.  Eagerly-loaded
+    collections are generally not yet available and will usually only
+    contain the first element.  ORM state changes made to objects at
+    this stage will not be recorded for the next flush() operation, so
+    the activity within a reconstructor should be conservative.
+
+    """
+    fn.__sa_reconstructor__ = True
+    return fn
 
 
 def _event_on_init(state, instance, args, kwargs):
@@ -1654,7 +1681,7 @@ def _load_scalar_attributes(state, attribute_names):
         raise sa_exc.UnboundExecutionError("Instance %s is not bound to a Session; attribute refresh operation cannot proceed" % (state_str(state)))
 
     has_key = _state_has_identity(state)
-    
+
     result = False
     if mapper.inherits and not mapper.concrete:
         statement = mapper._optimized_get_statement(state, attribute_names)

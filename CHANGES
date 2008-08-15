@@ -34,7 +34,11 @@ CHANGES
       joined-table inheritance subclasses, using explicit join
       criteria (i.e. not on a relation).
 
-    - Fixed @on_reconsitute hook for subclasses which inherit from a
+    - @orm.attributes.on_reconsitute and
+      MapperExtension.on_reconstitute have been renamed to
+      @orm.reconstructor and MapperExtension.reconstruct_instance
+
+    - Fixed @reconstructor hook for subclasses which inherit from a
       base class.  [ticket:1129]
 
     - The composite() property type now supports a
