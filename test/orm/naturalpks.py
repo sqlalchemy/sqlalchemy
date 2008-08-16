@@ -134,6 +134,7 @@ class NaturalPKTest(_base.MappedTest):
         assert sess.query(Address).get('jack1').username is None
         u1 = sess.query(User).get('fred')
         self.assertEquals(User(username='fred', fullname='jack'), u1)
+        
 
     @testing.fails_on('sqlite')
     @testing.fails_on('mysql')
@@ -284,6 +285,15 @@ class NaturalPKTest(_base.MappedTest):
         self.assertEquals(['jack'], [u.username for u in r[0].users])
         self.assertEquals(Item(itemname='item2'), r[1])
         self.assertEquals(['ed', 'jack'], sorted([u.username for u in r[1].users]))
+        
+        sess.clear()
+        u2 = sess.query(User).get(u2.username)
+        u2.username='wendy'
+        sess.flush()
+        r = sess.query(Item).with_parent(u2).all()
+        self.assertEquals(Item(itemname='item2'), r[0])
+        
+        
 
 class SelfRefTest(_base.MappedTest):
     def define_tables(self, metadata):

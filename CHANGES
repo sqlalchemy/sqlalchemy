@@ -32,6 +32,10 @@ CHANGES
     
     - class.someprop.in_() raises NotImplementedError pending
       the implementation of "in_" for relation [ticket:1140]
+
+    - fixed primary key update for many-to-many collections
+      where the collection had not been loaded yet
+      [ticket:1127]
       
     - Improved the behavior of query.join() when joining to
       joined-table inheritance subclasses, using explicit join

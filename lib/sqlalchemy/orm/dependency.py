@@ -433,7 +433,10 @@ class ManyToManyDP(DependencyProcessor):
                         uowcommit.attributes[(self, "manytomany", state, child)] = True
                         secondary_delete.append(associationrow)
 
-                if not self.passive_updates and unchanged and self._pks_changed(uowcommit, state):
+                if not self.passive_updates and self._pks_changed(uowcommit, state):
+                    if not unchanged:
+                        (added, unchanged, deleted) = uowcommit.get_attribute_history(state, self.key, passive=False)
+                    
                     for child in unchanged:
                         associationrow = {}
                         sync.update(state, self.parent, associationrow, "old_", self.prop.synchronize_pairs)
