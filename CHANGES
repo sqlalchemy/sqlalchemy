@@ -29,7 +29,10 @@ CHANGES
       well as query.join().  Note that in some scenarios the IN
       clause will appear in the WHERE clause of the query as well
       since this discrimination has multiple trigger points.
-
+    
+    - class.someprop.in_() raises NotImplementedError pending
+      the implementation of "in_" for relation [ticket:1140]
+      
     - Improved the behavior of query.join() when joining to
       joined-table inheritance subclasses, using explicit join
       criteria (i.e. not on a relation).
