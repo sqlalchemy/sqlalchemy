@@ -33,9 +33,19 @@ CHANGES
     - class.someprop.in_() raises NotImplementedError pending
       the implementation of "in_" for relation [ticket:1140]
 
-    - fixed primary key update for many-to-many collections
+    - Fixed primary key update for many-to-many collections
       where the collection had not been loaded yet
       [ticket:1127]
+    
+    - The before_flush() hook on SessionExtension takes place
+      before the list of new/dirty/deleted is calculated for the
+      final time, allowing routines within before_flush() to
+      further change the state of the Session before the flush 
+      proceeds.   [ticket:1128]
+      
+    - Reentrant calls to flush() raise an error.  This also
+      serves as a rudimentary, but not foolproof, check against 
+      concurrent calls to Session.flush().
       
     - Improved the behavior of query.join() when joining to
       joined-table inheritance subclasses, using explicit join

@@ -218,11 +218,10 @@ class SessionTransaction(object):
 
     """
 
-    def __init__(self, session, parent=None, nested=False, reentrant_flush=False):
+    def __init__(self, session, parent=None, nested=False):
         self.session = session
         self._connections = {}
         self._parent = parent
-        self.reentrant_flush = reentrant_flush
         self.nested = nested
         self._active = True
         self._prepared = False
@@ -258,10 +257,10 @@ class SessionTransaction(object):
         engine = self.session.get_bind(bindkey, **kwargs)
         return self._connection_for_bind(engine)
 
-    def _begin(self, reentrant_flush=False, nested=False):
+    def _begin(self, nested=False):
         self._assert_is_active()
         return SessionTransaction(
-            self.session, self, reentrant_flush=reentrant_flush, nested=nested)
+            self.session, self, nested=nested)
 
     def _iterate_parents(self, upto=None):
         if self._parent is upto:
@@ -279,7 +278,7 @@ class SessionTransaction(object):
             self._deleted = self._parent._deleted
             return
 
-        if not self.reentrant_flush:
+        if not self.session._flushing:
             self.session.flush()
 
         self._new = weakref.WeakKeyDictionary()
@@ -356,7 +355,7 @@ class SessionTransaction(object):
             for subtransaction in stx._iterate_parents(upto=self):
                 subtransaction.commit()
 
-        if not self.reentrant_flush:
+        if not self.session._flushing:
             self.session.flush()
 
         if self._parent is None and self.session.twophase:
@@ -546,6 +545,7 @@ class Session(object):
         self._deleted = {}  # same
         self.bind = bind
         self.__binds = {}
+        self._flushing = False
         self.transaction = None
         self.hash_key = id(self)
         self.autoflush = autoflush
@@ -570,7 +570,7 @@ class Session(object):
             self.begin()
         _sessions[self.hash_key] = self
 
-    def begin(self, subtransactions=False, nested=False, _reentrant_flush=False):
+    def begin(self, subtransactions=False, nested=False):
         """Begin a transaction on this Session.
 
         If this Session is already within a transaction, either a plain
@@ -596,14 +596,14 @@ class Session(object):
         if self.transaction is not None:
             if subtransactions or nested:
                 self.transaction = self.transaction._begin(
-                    nested=nested, reentrant_flush=_reentrant_flush)
+                    nested=nested)
             else:
                 raise sa_exc.InvalidRequestError(
                     "A transaction is already begun.  Use subtransactions=True "
                     "to allow subtransactions.")
         else:
             self.transaction = SessionTransaction(
-                self, nested=nested, reentrant_flush=_reentrant_flush)
+                self, nested=nested)
         return self.transaction  # needed for __enter__/__exit__ hook
 
     def begin_nested(self):
@@ -912,7 +912,7 @@ class Session(object):
         return self._query_cls(entities, self, **kwargs)
 
     def _autoflush(self):
-        if self.autoflush and (self.transaction is None or not self.transaction.reentrant_flush):
+        if self.autoflush and not self._flushing:
             self.flush()
 
     def _finalize_loaded(self, states):
@@ -1320,7 +1320,6 @@ class Session(object):
     def _contains_state(self, state):
         return state in self._new or self.identity_map.contains_state(state)
 
-
     def flush(self, objects=None):
         """Flush all the object changes to the database.
 
@@ -1343,6 +1342,17 @@ class Session(object):
           to only these objects, rather than all pending changes.
 
         """
+        
+        if self._flushing:
+            raise sa_exc.InvalidRequestError("Session is already flushing")
+            
+        try:
+            self._flushing = True
+            self._flush(objects)
+        finally:
+            self._flushing = False
+            
+    def _flush(self, objects=None):
         if (not self.identity_map.check_modified() and
             not self._deleted and not self._new):
             return
@@ -1352,15 +1362,15 @@ class Session(object):
             self.identity_map.modified = False
             return
 
-        deleted = set(self._deleted)
-        new = set(self._new)
-
-        dirty = set(dirty).difference(deleted)
-
         flush_context = UOWTransaction(self)
 
         if self.extension is not None:
             self.extension.before_flush(self, flush_context, objects)
+
+        deleted = set(self._deleted)
+        new = set(self._new)
+
+        dirty = set(dirty).difference(deleted)
 
         # create the set of all objects we want to operate upon
         if objects:
@@ -1404,7 +1414,7 @@ class Session(object):
             return
 
         flush_context.transaction = transaction = self.begin(
-            subtransactions=True, _reentrant_flush=True)
+            subtransactions=True)
         try:
             flush_context.execute()
 

@@ -326,7 +326,6 @@ class Mapper(object):
     def dispose(self):
         # Disable any attribute-based compilation.
         self.compiled = True
-
         manager = self.class_manager
 
         if not self.non_primary and manager.mapper is self:
