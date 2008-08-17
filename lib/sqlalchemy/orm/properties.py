@@ -530,7 +530,9 @@ class PropertyLoader(StrategizedProperty):
             self.mapper = mapper.class_mapper(self.argument(), compile=False)
         else:
             raise sa_exc.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
-        assert isinstance(self.mapper, mapper.Mapper), self.mapper
+
+        # TODO: an informative assertion ?
+        assert isinstance(self.mapper, mapper.Mapper)
 
         # accept callables for other attributes which may require deferred initialization
         for attr in ('order_by', 'primaryjoin', 'secondaryjoin', 'secondary', '_foreign_keys', 'remote_side'):

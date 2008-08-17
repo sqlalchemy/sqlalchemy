@@ -464,6 +464,11 @@ def class_mapper(class_, compile=True, raiseerror=True):
     try:
         class_manager = attributes.manager_of_class(class_)
         mapper = class_manager.mapper
+        
+        # HACK until [ticket:1142] is complete
+        if mapper is None:
+            raise exc.NO_STATE
+            
     except exc.NO_STATE:
         if not raiseerror:
             return

@@ -834,6 +834,17 @@ class MapperTest(_fixtures.FixtureTest):
         create_session().query(User).first()
         eq_(recon, ['go'])
 
+    @testing.resolve_artifact_names
+    def test_unmapped_error(self):
+        mapper(Address, addresses)
+        sa.orm.clear_mappers()
+        
+        mapper(User, users, properties={
+            'addresses':relation(Address)
+        })
+
+        self.assertRaises(sa.orm.exc.UnmappedClassError, sa.orm.compile_mappers)
+        
 class OptionsTest(_fixtures.FixtureTest):
 
     @testing.fails_on('maxdb')
