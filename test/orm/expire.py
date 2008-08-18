@@ -731,7 +731,7 @@ class PolymorphicExpireTest(_base.MappedTest):
             assert e1.status == 'new engineer'
             assert e2.status == 'old engineer'
         self.assert_sql_count(testing.db, go, 2)
-        self.assertEquals(Engineer.name.get_history(e1), (['new engineer name'], [], ['engineer1']))
+        self.assertEquals(Engineer.name.get_history(e1), (['new engineer name'],(), ['engineer1']))
 
 
 class RefreshTest(_fixtures.FixtureTest):

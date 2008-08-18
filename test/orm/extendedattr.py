@@ -250,7 +250,7 @@ class UserDefinedExtensionTest(_base.ORMTest):
             f1 = Foo()
             f1.name = 'f1'
 
-            self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'name'), (['f1'], [], []))
+            self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'name'), (['f1'], (), ()))
 
             b1 = Bar()
             b1.name = 'b1'
@@ -260,14 +260,14 @@ class UserDefinedExtensionTest(_base.ORMTest):
             attributes.instance_state(f1).commit_all()
             attributes.instance_state(b1).commit_all()
 
-            self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'name'), ([], ['f1'], []))
-            self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'bars'), ([], [b1], []))
+            self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'name'), ((), ['f1'], ()))
+            self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'bars'), ((), [b1], ()))
 
             f1.name = 'f1mod'
             b2 = Bar()
             b2.name = 'b2'
             f1.bars.append(b2)
-            self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'name'), (['f1mod'], [], ['f1']))
+            self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'name'), (['f1mod'], (), ['f1']))
             self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b2], [b1], []))
             f1.bars.remove(b1)
             self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b2], [], [b1]))

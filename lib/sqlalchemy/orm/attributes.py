@@ -1306,7 +1306,12 @@ class _ClassInstrumentationAdapter(ClassManager):
 
 
 class History(tuple):
-    # TODO: migrate [] marker for empty slots to ()
+    """A 3-tuple of added, unchanged and deleted values.
+
+    Each tuple member is an iterable sequence.
+
+    """
+
     __slots__ = ()
 
     added = property(itemgetter(0))
@@ -1323,9 +1328,9 @@ class History(tuple):
         if hasattr(attribute, 'get_collection'):
             current = attribute.get_collection(state, current)
             if original is NO_VALUE:
-                return cls(list(current), [], [])
+                return cls(list(current), (), ())
             elif original is NEVER_SET:
-                return cls([], list(current), [])
+                return cls((), list(current), ())
             else:
                 collection = util.OrderedIdentitySet(current)
                 s = util.OrderedIdentitySet(original)
@@ -1337,20 +1342,20 @@ class History(tuple):
                 if original not in [None, NEVER_SET, NO_VALUE]:
                     deleted = [original]
                 else:
-                    deleted = []
-                return cls([], [], deleted)
+                    deleted = ()
+                return cls((), (), deleted)
             elif original is NO_VALUE:
-                return cls([current], [], [])
+                return cls([current], (), ())
             elif (original is NEVER_SET or
                   attribute.is_equal(current, original) is True):
                 # dont let ClauseElement expressions here trip things up
-                return cls([], [current], [])
+                return cls((), [current], ())
             else:
                 if original is not None:
                     deleted = [original]
                 else:
-                    deleted = []
-                return cls([current], [], deleted)
+                    deleted = ()
+                return cls([current], (), deleted)
 
 
 class PendingCollection(object):
