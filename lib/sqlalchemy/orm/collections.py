@@ -208,7 +208,8 @@ class collection(object):
     # Bundled as a class solely for ease of use: packaging, doc strings,
     # importability.
 
-    def appender(cls, fn):
+    @staticmethod
+    def appender(fn):
         """Tag the method as the collection appender.
 
         The appender method is called with one positional argument: the value
@@ -250,9 +251,9 @@ class collection(object):
         """
         setattr(fn, '_sa_instrument_role', 'appender')
         return fn
-    appender = classmethod(appender)
 
-    def remover(cls, fn):
+    @staticmethod
+    def remover(fn):
         """Tag the method as the collection remover.
 
         The remover method is called with one positional argument: the value
@@ -277,9 +278,9 @@ class collection(object):
         """
         setattr(fn, '_sa_instrument_role', 'remover')
         return fn
-    remover = classmethod(remover)
 
-    def iterator(cls, fn):
+    @staticmethod
+    def iterator(fn):
         """Tag the method as the collection remover.
 
         The iterator method is called with no arguments.  It is expected to
@@ -291,9 +292,9 @@ class collection(object):
         """
         setattr(fn, '_sa_instrument_role', 'iterator')
         return fn
-    iterator = classmethod(iterator)
 
-    def internally_instrumented(cls, fn):
+    @staticmethod
+    def internally_instrumented(fn):
         """Tag the method as instrumented.
 
         This tag will prevent any decoration from being applied to the method.
@@ -311,9 +312,9 @@ class collection(object):
         """
         setattr(fn, '_sa_instrumented', True)
         return fn
-    internally_instrumented = classmethod(internally_instrumented)
 
-    def on_link(cls, fn):
+    @staticmethod
+    def on_link(fn):
         """Tag the method as a the "linked to attribute" event handler.
 
         This optional event handler will be called when the collection class
@@ -325,9 +326,9 @@ class collection(object):
         """
         setattr(fn, '_sa_instrument_role', 'on_link')
         return fn
-    on_link = classmethod(on_link)
 
-    def converter(cls, fn):
+    @staticmethod
+    def converter(fn):
         """Tag the method as the collection converter.
 
         This optional method will be called when a collection is being
@@ -358,9 +359,9 @@ class collection(object):
         """
         setattr(fn, '_sa_instrument_role', 'converter')
         return fn
-    converter = classmethod(converter)
 
-    def adds(cls, arg):
+    @staticmethod
+    def adds(arg):
         """Mark the method as adding an entity to the collection.
 
         Adds "add to collection" handling to the method.  The decorator
@@ -379,9 +380,9 @@ class collection(object):
             setattr(fn, '_sa_instrument_before', ('fire_append_event', arg))
             return fn
         return decorator
-    adds = classmethod(adds)
 
-    def replaces(cls, arg):
+    @staticmethod
+    def replaces(arg):
         """Mark the method as replacing an entity in the collection.
 
         Adds "add to collection" and "remove from collection" handling to
@@ -400,9 +401,9 @@ class collection(object):
             setattr(fn, '_sa_instrument_after', 'fire_remove_event')
             return fn
         return decorator
-    replaces = classmethod(replaces)
 
-    def removes(cls, arg):
+    @staticmethod
+    def removes(arg):
         """Mark the method as removing an entity in the collection.
 
         Adds "remove from collection" handling to the method.  The decorator
@@ -421,9 +422,9 @@ class collection(object):
             setattr(fn, '_sa_instrument_before', ('fire_remove_event', arg))
             return fn
         return decorator
-    removes = classmethod(removes)
 
-    def removes_return(cls):
+    @staticmethod
+    def removes_return():
         """Mark the method as removing an entity in the collection.
 
         Adds "remove from collection" handling to the method.  The return value
@@ -441,7 +442,6 @@ class collection(object):
             setattr(fn, '_sa_instrument_after', 'fire_remove_event')
             return fn
         return decorator
-    removes_return = classmethod(removes_return)
 
 
 # public instrumentation interface for 'internally instrumented'

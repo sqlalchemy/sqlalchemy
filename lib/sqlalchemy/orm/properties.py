@@ -310,9 +310,9 @@ class PropertyLoader(StrategizedProperty):
             if of_type:
                 self._of_type = _class_to_mapper(of_type)
 
+        @property
         def parententity(self):
             return self.prop.parent
-        parententity = property(parententity)
 
         def __clause_element__(self):
             return self.prop.parent._with_polymorphic_selectable
@@ -325,10 +325,7 @@ class PropertyLoader(StrategizedProperty):
 
         def of_type(self, cls):
             return PropertyLoader.Comparator(self.prop, self.mapper, cls)
-        
-        def in_(self, other):
-            raise NotImplementedError("in_() not yet supported for relations.  For a simple many-to-one, use in_() against the set of foreign key values.")
-            
+
         def __eq__(self, other):
             if other is None:
                 if self.prop.direction in [ONETOMANY, MANYTOMANY]:
@@ -530,9 +527,7 @@ class PropertyLoader(StrategizedProperty):
             self.mapper = mapper.class_mapper(self.argument(), compile=False)
         else:
             raise sa_exc.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
-
-        # TODO: an informative assertion ?
-        assert isinstance(self.mapper, mapper.Mapper)
+        assert isinstance(self.mapper, mapper.Mapper), self.mapper
 
         # accept callables for other attributes which may require deferred initialization
         for attr in ('order_by', 'primaryjoin', 'secondaryjoin', 'secondary', '_foreign_keys', 'remote_side'):

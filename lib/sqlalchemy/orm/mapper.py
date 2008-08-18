@@ -237,11 +237,11 @@ class Mapper(object):
             raise sa_exc.InvalidRequestError("Mapper '%s' has no property '%s'" % (str(self), key))
         return prop
 
+    @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""
         self.compile()
         return self.__props.itervalues()
-    iterate_properties = property(iterate_properties)
 
     def __mappers_from_spec(self, spec, selectable):
         """given a with_polymorphic() argument, return the set of mappers it represents.
@@ -282,12 +282,15 @@ class Mapper(object):
 
         return from_obj
 
+    @property
+    @util.cache_decorator
     def _with_polymorphic_mappers(self):
         if not self.with_polymorphic:
             return [self]
         return self.__mappers_from_spec(*self.with_polymorphic)
-    _with_polymorphic_mappers = property(util.cache_decorator(_with_polymorphic_mappers))
 
+    @property
+    @util.cache_decorator
     def _with_polymorphic_selectable(self):
         if not self.with_polymorphic:
             return self.mapped_table
@@ -297,7 +300,6 @@ class Mapper(object):
             return selectable
         else:
             return self.__selectable_from_mappers(self.__mappers_from_spec(spec, selectable))
-    _with_polymorphic_selectable = property(util.cache_decorator(_with_polymorphic_selectable))
 
     def _with_polymorphic_args(self, spec=None, selectable=False):
         if self.with_polymorphic:
@@ -319,9 +321,9 @@ class Mapper(object):
             chain(*[list(mapper.iterate_properties) for mapper in [self] + mappers])
         ))
 
+    @property
     def properties(self):
         raise NotImplementedError("Public collection of MapperProperty objects is provided by the get_property() and iterate_properties accessors.")
-    properties = property(properties)
 
     def dispose(self):
         # Disable any attribute-based compilation.
@@ -557,6 +559,8 @@ class Mapper(object):
             self.primary_key = primary_key
             self.__log("Identified primary key columns: " + str(primary_key))
 
+    @property
+    @util.cache_decorator
     def _get_clause(self):
         """create a "get clause" based on the primary key.  this is used
         by query.get() and many-to-one lazyloads to load this item
@@ -565,8 +569,9 @@ class Mapper(object):
         """
         params = [(primary_key, sql.bindparam(None, type_=primary_key.type)) for primary_key in self.primary_key]
         return sql.and_(*[k==v for (k, v) in params]), dict(params)
-    _get_clause = property(util.cache_decorator(_get_clause))
 
+    @property
+    @util.cache_decorator
     def _equivalent_columns(self):
         """Create a map of all *equivalent* columns, based on
         the determination of column pairs that are equated to
@@ -604,7 +609,6 @@ class Mapper(object):
                 visitors.traverse(mapper.inherit_condition, {}, {'binary':visit_binary})
 
         return result
-    _equivalent_columns = property(util.cache_decorator(_equivalent_columns))
 
     class _CompileOnAttr(PropComparator):
         """A placeholder descriptor which triggers compilation on access."""

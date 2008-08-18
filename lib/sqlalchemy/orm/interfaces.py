@@ -441,25 +441,25 @@ class PropComparator(expression.ColumnOperators):
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
 
+    @staticmethod
     def contains_op(a, b):
         return a.contains(b)
-    contains_op = staticmethod(contains_op)
 
+    @staticmethod
     def any_op(a, b, **kwargs):
         return a.any(b, **kwargs)
-    any_op = staticmethod(any_op)
 
+    @staticmethod
     def has_op(a, b, **kwargs):
         return a.has(b, **kwargs)
-    has_op = staticmethod(has_op)
 
     def __init__(self, prop, mapper):
         self.prop = self.property = prop
         self.mapper = mapper
 
+    @staticmethod
     def of_type_op(a, class_):
         return a.of_type(class_)
-    of_type_op = staticmethod(of_type_op)
 
     def of_type(self, class_):
         """Redefine this object in terms of a polymorphic subclass.

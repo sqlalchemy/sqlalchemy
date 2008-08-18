@@ -87,14 +87,14 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       Defaults to ``True``. When ``True``, all instances will be fully expired after
       each ``commit()``, so that all attribute/object access subsequent to a completed
       transaction will load from the most recent database state.
-    
+
     _enable_transaction_accounting
       Defaults to ``True``.  A legacy-only flag which when ``False``
       disables *all* 0.5-style object accounting on transaction boundaries,
       including auto-expiry of instances on rollback and commit, maintenance of
       the "new" and "deleted" lists upon rollback, and autoflush
       of pending changes upon begin(), all of which are interdependent.
-    
+
     autoflush
       When ``True``, all query operations will issue a ``flush()`` call to
       this ``Session`` before proceeding. This is a convenience feature so
@@ -156,7 +156,7 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
     query_cls
       Class which should be used to create new Query objects, as returned
       by the ``query()`` method.  Defaults to [sqlalchemy.orm.query#Query].
-      
+
     weak_identity_map
       When set to the default value of ``False``, a weak-referencing map is
       used; instances which are not externally referenced will be garbage
@@ -233,9 +233,9 @@ class SessionTransaction(object):
         if self.session._enable_transaction_accounting:
             self._take_snapshot()
 
+    @property
     def is_active(self):
         return self.session is not None and self._active
-    is_active = property(is_active)
 
     def _assert_is_active(self):
         self._assert_is_open()
@@ -248,9 +248,9 @@ class SessionTransaction(object):
         if self.session is None:
             raise sa_exc.InvalidRequestError("The transaction is closed")
 
+    @property
     def _is_transaction_boundary(self):
         return self.nested or not self._parent
-    _is_transaction_boundary = property(_is_transaction_boundary)
 
     def connection(self, bindkey, **kwargs):
         self._assert_is_active()
@@ -1137,11 +1137,11 @@ class Session(object):
             state = attributes.instance_state(instance)
         except exc.NO_STATE:
             raise exc.UnmappedInstanceError(instance)
-        
+
         # grab the full cascade list first, since lazyloads/autoflush
         # may be triggered by this operation (delete cascade lazyloads by default)
         cascade_states = list(_cascade_state_iterator('delete', state))
-        self._delete_impl(state)    
+        self._delete_impl(state)
         for state, m, o in cascade_states:
             self._delete_impl(state, ignore_transient=True)
 
@@ -1463,61 +1463,62 @@ class Session(object):
             if added or deleted:
                 return True
         return False
-    
-    def is_active(self):
-        """return True if this Session has an active transaction."""
-        
-        return self.transaction and self.transaction.is_active
-    is_active = property(is_active)
-    
-    def _dirty_states(self):
-        """Return a set of all persistent states considered dirty.
 
-        This method returns all states that were modified including those that
-        were possibly deleted.
+    @property
+    def is_active(self):
+        """True if this Session has an active transaction."""
+
+        return self.transaction and self.transaction.is_active
+
+    @property
+    def _dirty_states(self):
+        """The set of all persistent states considered dirty.
+
+        This method returns all states that were modified including
+        those that were possibly deleted.
 
         """
         return util.IdentitySet(
             [state
              for state in self.identity_map.all_states()
              if state.check_modified()])
-    _dirty_states = property(_dirty_states)
 
+    @property
     def dirty(self):
-        """Return a set of all persistent instances considered dirty.
+        """The set of all persistent instances considered dirty.
 
         Instances are considered dirty when they were modified but not
         deleted.
 
         Note that this 'dirty' calculation is 'optimistic'; most
-        attribute-setting or collection modification operations will mark an
-        instance as 'dirty' and place it in this set, even if there is no net
-        change to the attribute's value.  At flush time, the value of each
-        attribute is compared to its previously saved value, and if there's no
-        net change, no SQL operation will occur (this is a more expensive
-        operation so it's only done at flush time).
+        attribute-setting or collection modification operations will
+        mark an instance as 'dirty' and place it in this set, even if
+        there is no net change to the attribute's value.  At flush
+        time, the value of each attribute is compared to its
+        previously saved value, and if there's no net change, no SQL
+        operation will occur (this is a more expensive operation so
+        it's only done at flush time).
 
-        To check if an instance has actionable net changes to its attributes,
-        use the is_modified() method.
+        To check if an instance has actionable net changes to its
+        attributes, use the is_modified() method.
 
         """
         return util.IdentitySet(
             [state.obj()
              for state in self._dirty_states
              if state not in self._deleted])
-    dirty = property(dirty)
 
+    @property
     def deleted(self):
-        "Return a set of all instances marked as 'deleted' within this ``Session``"
+        "The set of all instances marked as 'deleted' within this ``Session``"
 
         return util.IdentitySet(self._deleted.values())
-    deleted = property(deleted)
 
+    @property
     def new(self):
-        "Return a set of all instances marked as 'new' within this ``Session``."
+        "The set of all instances marked as 'new' within this ``Session``."
 
         return util.IdentitySet(self._new.values())
-    new = property(new)
 
 def _expire_state(state, attribute_names):
     """Stand-alone expire instance function.

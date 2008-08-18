@@ -80,7 +80,7 @@ class QueryableAttribute(interfaces.PropComparator):
 
     def __init__(self, impl, comparator=None, parententity=None):
         """Construct an InstrumentedAttribute.
-        
+
           comparator
             a sql.Comparator to which class-level compare/math events will be sent
         """
@@ -158,11 +158,11 @@ def proxied_attribute_factory(descriptor):
             self._parententity = parententity
             self.impl = _ProxyImpl(key)
 
+        @property
         def comparator(self):
             if callable(self._comparator):
                 self._comparator = self._comparator()
             return self._comparator
-        comparator = property(comparator)
 
         def __get__(self, instance, owner):
             """Delegate __get__ to the original descriptor."""
@@ -399,9 +399,10 @@ class ScalarAttributeImpl(AttributeImpl):
         for ext in self.extensions:
             ext.remove(state, value, initiator or self)
 
+    @property
     def type(self):
         self.property.columns[0].type
-    type = property(type)
+
 
 class MutableScalarAttributeImpl(ScalarAttributeImpl):
     """represents a scalar value-holding InstrumentedAttribute, which can detect
@@ -480,7 +481,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         `initiator` is the ``InstrumentedAttribute`` that initiated the
         ``set()`` operation and is used to control the depth of a circular
         setter operation.
-        
+
         """
         if initiator is self:
             return
@@ -752,7 +753,7 @@ class InstanceState(object):
     key = None
     runid = None
     expired_attributes = EMPTY_SET
-    
+
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
         self.manager = manager
@@ -817,7 +818,7 @@ class InstanceState(object):
         impl = self.get_impl(key)
         x = impl.get(self, passive=passive)
         if x is PASSIVE_NORESULT:
-            
+
             return None
         elif hasattr(impl, 'get_collection'):
             return impl.get_collection(self, x, passive=passive)
@@ -884,6 +885,7 @@ class InstanceState(object):
         del self.expired_attributes
         return ATTR_WAS_SET
 
+    @property
     def unmodified(self):
         """a set of keys which have no uncommitted changes"""
 
@@ -893,20 +895,17 @@ class InstanceState(object):
                 (key in self.manager.mutable_attributes and
                  not self.manager[key].impl.check_mutable_modified(self))))
 
-    unmodified = property(unmodified)
-    
+    @property
     def unloaded(self):
         """a set of keys which do not have a loaded value.
-        
+
         This includes expired attributes and any other attribute that
         was never populated or modified.
-        
+
         """
         return set(
             key for key in self.manager.keys()
             if key not in self.committed_state and key not in self.dict)
-
-    unloaded = property(unloaded)
 
     def expire_attributes(self, attribute_names):
         self.expired_attributes = set(self.expired_attributes)
@@ -1158,13 +1157,13 @@ class ClassManager(dict):
 
     get_inst = dict.__getitem__
 
+    @property
     def attributes(self):
         return self.itervalues()
-    attributes = property(attributes)
 
+    @classmethod
     def deferred_scalar_loader(cls, state, keys):
         """TODO"""
-    deferred_scalar_loader = classmethod(deferred_scalar_loader)
 
     ## InstanceState management
 
@@ -1317,6 +1316,7 @@ class History(tuple):
     def __new__(cls, added, unchanged, deleted):
         return tuple.__new__(cls, (added, unchanged, deleted))
 
+    @classmethod
     def from_attribute(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, NEVER_SET)
 
@@ -1351,7 +1351,6 @@ class History(tuple):
                 else:
                     deleted = []
                 return cls([current], [], deleted)
-    from_attribute = classmethod(from_attribute)
 
 
 class PendingCollection(object):
@@ -1434,7 +1433,7 @@ def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_pr
                     impl_class=impl_class,
                     **kwargs),
                 comparator=comparator, parententity=parententity)
-    
+
     manager.instrument_attribute(key, descriptor)
 
 def unregister_attribute(class_, key):

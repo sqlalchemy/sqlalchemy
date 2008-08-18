@@ -12,6 +12,7 @@ from sqlalchemy.sql import expression, util as sql_util, operators
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, PropComparator, MapperProperty
 from sqlalchemy.orm import attributes, exc
 
+
 all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
                           "expunge", "save-update", "refresh-expire",
                           "none"))
@@ -209,9 +210,9 @@ class ExtensionCarrier(object):
             pass
         return _do
 
+    @staticmethod
     def _pass(*args, **kwargs):
         return EXT_CONTINUE
-    _pass = staticmethod(_pass)
 
     def __getattr__(self, key):
         """Delegate MapperExtension methods to bundled fronts."""
