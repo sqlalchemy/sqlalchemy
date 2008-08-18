@@ -468,7 +468,7 @@ def class_mapper(class_, compile=True, raiseerror=True):
         
         # HACK until [ticket:1142] is complete
         if mapper is None:
-            raise exc.NO_STATE
+            raise AttributeError
             
     except exc.NO_STATE:
         if not raiseerror:
