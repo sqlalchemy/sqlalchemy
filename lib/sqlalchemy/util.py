@@ -1173,7 +1173,10 @@ class _TLocalRegistry(ScopedRegistry):
         self.registry.value = obj
 
     def clear(self):
-        del self.registry.value
+        try:
+            del self.registry.value
+        except AttributeError:
+            pass
 
 class WeakCompositeKey(object):
     """an weak-referencable, hashable collection which is strongly referenced
