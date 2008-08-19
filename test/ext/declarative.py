@@ -392,7 +392,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
 
         u1 = User(name='u1', a='a', b='b')
         eq_(u1.a, 'a')
-        eq_(User.a.get_history(u1), (['a'], [], []))
+        eq_(User.a.get_history(u1), (['a'], (), ()))
         sess = create_session()
         sess.save(u1)
         sess.flush()
@@ -777,7 +777,7 @@ class DeclarativeReflectionTest(testing.TestBase):
         Base = decl.declarative_base(testing.db)
 
     def tearDown(self):
-        for t in reflection_metadata.table_iterator():
+        for t in reflection_metadata.sorted_tables:
             t.delete().execute()
 
     def tearDownAll(self):

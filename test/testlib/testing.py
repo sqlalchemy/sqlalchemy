@@ -911,7 +911,7 @@ class ORMTest(TestBase, AssertsExecutionResults):
         if not self.keep_mappers:
             clear_mappers()
         if not self.keep_data:
-            for t in _otest_metadata.table_iterator(reverse=True):
+            for t in reversed(_otest_metadata.sorted_tables):
                 try:
                     t.delete().execute().close()
                 except Exception, e:

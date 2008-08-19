@@ -652,7 +652,7 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         metadata.drop_all()
     def tearDown(self):
         clear_mappers()
-        for t in metadata.table_iterator(reverse=True):
+        for t in reversed(metadata.sorted_tables):
             t.delete().execute()
 
     def testjointo(self):

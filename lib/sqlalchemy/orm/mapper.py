@@ -1314,7 +1314,7 @@ class Mapper(object):
             for t in mapper.tables:
                 table_to_mapper[t] = mapper
 
-        for table in sqlutil.sort_tables(table_to_mapper.keys(), reverse=True):
+        for table in reversed(sqlutil.sort_tables(table_to_mapper.keys())):
             delete = {}
             for state, mapper, connection in tups:
                 if table not in mapper._pks_by_table:

@@ -153,7 +153,7 @@ item_keywords = fixture_table(
 
 
 def _load_fixtures():
-    for table in fixture_metadata.table_iterator(reverse=False):
+    for table in fixture_metadata.sorted_tables:
         table.info[('fixture', 'loader')]()
 
 def run_inserts_for(table, bind=None):

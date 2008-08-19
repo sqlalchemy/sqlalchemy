@@ -1534,14 +1534,23 @@ class MetaData(SchemaItem):
         # TODO: scan all other tables and remove FK _column
         del self.tables[table.key]
 
+    @util.deprecated('Deprecated. Use ``metadata.sorted_tables``')
     def table_iterator(self, reverse=True, tables=None):
         from sqlalchemy.sql.util import sort_tables
         if tables is None:
             tables = self.tables.values()
         else:
             tables = set(tables).intersection(self.tables.values())
-        return iter(sort_tables(tables, reverse=reverse))
-
+        ret = sort_tables(tables)
+        if reverse:
+            ret = reversed(ret)
+        return iter(ret)
+    
+    @property
+    def sorted_tables(self):
+        from sqlalchemy.sql.util import sort_tables
+        return sort_tables(self.tables.values())
+        
     def reflect(self, bind=None, schema=None, only=None):
         """Load all available table definitions from the database.
 
@@ -1660,8 +1669,8 @@ class MetaData(SchemaItem):
         checkfirst
           Defaults to True, don't issue CREATEs for tables already present
           in the target database.
+          
         """
-
         if bind is None:
             bind = _bind_or_error(self)
         for listener in self.ddl_listeners['before-create']:

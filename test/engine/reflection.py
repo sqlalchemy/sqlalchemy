@@ -555,7 +555,7 @@ class CreateDropTest(TestBase):
         )
 
     def test_sorter( self ):
-        tables = metadata.table_iterator(reverse=False)
+        tables = metadata.sorted_tables
         table_names = [t.name for t in tables]
         self.assert_( table_names == ['users', 'orders', 'items', 'email_addresses'] or table_names ==  ['users', 'email_addresses', 'orders', 'items'])
 
@@ -657,7 +657,7 @@ class SchemaTest(TestBase):
             Column('col2', sa.Integer, sa.ForeignKey('someschema.table1.col1')),
             schema='someschema')
         # ensure this doesnt crash
-        print [t for t in metadata.table_iterator()]
+        print [t for t in metadata.sorted_tables]
         buf = StringIO.StringIO()
         def foo(s, p=None):
             buf.write(s)

@@ -4,7 +4,7 @@ from itertools import chain
 
 """Utility functions that build upon SQL and Schema constructs."""
 
-def sort_tables(tables, reverse=False):
+def sort_tables(tables):
     """sort a collection of Table objects in order of their foreign-key dependency."""
     
     tuples = []
@@ -18,11 +18,7 @@ def sort_tables(tables, reverse=False):
 
     for table in tables:
         visitors.traverse(table, {'schema_visitor':True}, {'foreign_key':visit_foreign_key})    
-    sequence = topological.sort(tuples, tables)
-    if reverse:
-        return reversed(sequence)
-    else:
-        return sequence
+    return topological.sort(tuples, tables)
 
 def search(clause, target):
     if not clause:

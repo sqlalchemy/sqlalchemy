@@ -69,7 +69,15 @@ CHANGES
       may now be a mix of lists and tuples.  (Previously members
       were always lists.)
 
-
+- schema
+    - Added "sorted_tables" accessor to MetaData, which returns
+      Table objects sorted in order of dependency as a list.
+      This deprecates the MetaData.table_iterator() method.
+      The "reverse=False" keyword argument has also been
+      removed from util.sort_tables(); use the Python
+      'reversed' function to reverse the results.
+      [ticket:1033]
+      
 - sql
     - Temporarily rolled back the "ORDER BY" enhancement from
       [ticket:1068].  This feature is on hold pending further

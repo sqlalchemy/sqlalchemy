@@ -20,7 +20,7 @@ is otherwise internal to SQLAlchemy.
 
 import string, re
 from sqlalchemy import schema, engine, util, exc
-from sqlalchemy.sql import operators, functions
+from sqlalchemy.sql import operators, functions, util as sql_util
 from sqlalchemy.sql import expression as sql
 
 RESERVED_WORDS = set([
@@ -787,7 +787,11 @@ class SchemaGenerator(DDLBase):
         return not self.checkfirst or not self.dialect.has_table(self.connection, table.name, schema=table.schema)
 
     def visit_metadata(self, metadata):
-        collection = [t for t in metadata.table_iterator(reverse=False, tables=self.tables) if self._can_create(t)]
+        if self.tables:
+            tables = self.tables
+        else:
+            tables = metadata.tables.values()
+        collection = [t for t in sql_util.sort_tables(tables) if self._can_create(t)]
         for table in collection:
             self.traverse_single(table)
         if self.dialect.supports_alter:
@@ -950,7 +954,11 @@ class SchemaDropper(DDLBase):
         self.dialect = dialect
 
     def visit_metadata(self, metadata):
-        collection = [t for t in metadata.table_iterator(reverse=True, tables=self.tables) if self._can_drop(t)]
+        if self.tables:
+            tables = self.tables
+        else:
+            tables = metadata.tables.values()
+        collection = [t for t in reversed(sql_util.sort_tables(tables)) if self._can_drop(t)]
         if self.dialect.supports_alter:
             for alterable in self.find_alterables(collection):
                 self.drop_foreignkey(alterable)

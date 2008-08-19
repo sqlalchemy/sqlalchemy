@@ -653,7 +653,7 @@ class SyncCompileTest(ORMTest):
         for j1 in (None, _b_table.c.a_id==_a_table.c.id, _a_table.c.id==_b_table.c.a_id):
             for j2 in (None, _b_table.c.a_id==_c_table.c.b_a_id, _c_table.c.b_a_id==_b_table.c.a_id):
                 self._do_test(j1, j2)
-                for t in _a_table.metadata.table_iterator(reverse=True):
+                for t in reversed(_a_table.metadata.sorted_tables):
                     t.delete().execute().close()
 
     def _do_test(self, j1, j2):

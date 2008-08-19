@@ -202,7 +202,7 @@ class MappedTest(ORMTest):
 
         # no need to run deletes if tables are recreated on setup
         if self.run_define_tables != 'each' and self.run_deletes:
-            for table in self.metadata.table_iterator(reverse=True):
+            for table in reversed(self.metadata.sorted_tables):
                 try:
                     table.delete().execute().close()
                 except sa.exc.DBAPIError, ex:
@@ -264,7 +264,7 @@ class MappedTest(ORMTest):
                 table = self.tables[table]
             headers[table] = data[0]
             rows[table] = data[1:]
-        for table in self.metadata.table_iterator(reverse=False):
+        for table in self.metadata.sorted_tables:
             if table not in headers:
                 continue
             table.bind.execute(
