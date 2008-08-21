@@ -838,13 +838,31 @@ class MapperTest(_fixtures.FixtureTest):
     def test_unmapped_error(self):
         mapper(Address, addresses)
         sa.orm.clear_mappers()
-        
+
         mapper(User, users, properties={
             'addresses':relation(Address)
         })
 
         self.assertRaises(sa.orm.exc.UnmappedClassError, sa.orm.compile_mappers)
-        
+
+    @testing.resolve_artifact_names
+    def test_oldstyle_mixin(self):
+        class OldStyle:
+            pass
+        class NewStyle(object):
+            pass
+
+        class A(NewStyle, OldStyle):
+            pass
+
+        mapper(A, users)
+
+        class B(OldStyle, NewStyle):
+            pass
+
+        mapper(B, users)
+
+
 class OptionsTest(_fixtures.FixtureTest):
 
     @testing.fails_on('maxdb')

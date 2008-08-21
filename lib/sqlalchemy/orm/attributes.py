@@ -1044,6 +1044,8 @@ class ClassManager(dict):
         self.local_attrs = {}
         self.originals = {}
         for base in class_.__mro__[-2:0:-1]:   # reverse, skipping 1st and last
+            if not isinstance(base, type):
+                continue
             cls_state = manager_of_class(base)
             if cls_state:
                 self.update(cls_state)
