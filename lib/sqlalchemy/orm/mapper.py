@@ -640,6 +640,9 @@ class Mapper(object):
 
             return getattr(getattr(cls, clskey), key)
 
+    def _is_userland_descriptor(self, obj):
+        return not isinstance(obj, (MapperProperty, attributes.InstrumentedAttribute)) and hasattr(obj, '__get__')
+        
     def _should_exclude(self, name, local):
         """determine whether a particular property should be implicitly present on the class.
 
@@ -648,18 +651,15 @@ class Mapper(object):
 
         """
 
-        def is_userland_descriptor(obj):
-            return not isinstance(obj, attributes.InstrumentedAttribute) and hasattr(obj, '__get__')
-
         # check for descriptors, either local or from
         # an inherited class
         if local:
             if self.class_.__dict__.get(name, None)\
-                and is_userland_descriptor(self.class_.__dict__[name]):
+                and self._is_userland_descriptor(self.class_.__dict__[name]):
                 return True
         else:
             if getattr(self.class_, name, None)\
-                and is_userland_descriptor(getattr(self.class_, name)):
+                and self._is_userland_descriptor(getattr(self.class_, name)):
                 return True
 
         if (self.include_properties is not None and
@@ -786,9 +786,11 @@ class Mapper(object):
 
         elif isinstance(prop, (ComparableProperty, SynonymProperty)) and setparent:
             if prop.descriptor is None:
-                prop.descriptor = getattr(self.class_, key, None)
-                if isinstance(prop.descriptor, Mapper._CompileOnAttr):
-                    prop.descriptor = object.__getattribute__(prop.descriptor, 'existing_prop')
+                desc = getattr(self.class_, key, None)
+                if isinstance(desc, Mapper._CompileOnAttr):
+                    desc = object.__getattribute__(desc, 'existing_prop')
+                if self._is_userland_descriptor(desc):
+                    prop.descriptor = desc
             if getattr(prop, 'map_column', False):
                 if key not in self.mapped_table.c:
                     raise sa_exc.ArgumentError("Can't compile synonym '%s': no column on table '%s' named '%s'"  % (prop.name, self.mapped_table.description, key))

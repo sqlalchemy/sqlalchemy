@@ -41,7 +41,7 @@ class ColumnProperty(StrategizedProperty):
         self.columns = [expression._labeled(c) for c in columns]
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
-        self.comparator_factory = ColumnProperty.ColumnComparator
+        self.comparator_factory = kwargs.pop('comparator_factory', ColumnProperty.ColumnComparator)
         util.set_creation_order(self)
         if self.deferred:
             self.strategy_class = strategies.DeferredColumnLoader
@@ -161,10 +161,11 @@ class CompositeProperty(ColumnProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 class SynonymProperty(MapperProperty):
-    def __init__(self, name, map_column=None, descriptor=None):
+    def __init__(self, name, map_column=None, descriptor=None, comparator_factory=None):
         self.name = name
         self.map_column = map_column
         self.descriptor = descriptor
+        self.comparator_factory = comparator_factory
         util.set_creation_order(self)
 
     def setup(self, context, entity, path, adapter, **kwargs):
@@ -192,10 +193,14 @@ class SynonymProperty(MapperProperty):
         def comparator_callable(prop, mapper):
             def comparator():
                 prop = self.parent._get_property(self.key, resolve_synonyms=True)
-                return prop.comparator_factory(prop, mapper)
+                if self.comparator_factory:
+                    return self.comparator_factory(prop, mapper)
+                else:
+                    return prop.comparator_factory(prop, mapper)
             return comparator
 
-        strategies.DefaultColumnLoader(self)._register_attribute(None, None, False, comparator_callable, proxy_property=self.descriptor)
+        strategies.DefaultColumnLoader(self)._register_attribute(
+            None, None, False, comparator_callable, proxy_property=self.descriptor)
 
     def merge(self, session, source, dest, dont_load, _recursive):
         pass

@@ -642,7 +642,7 @@ def mapper(class_, local_table=None, *args, **params):
     """
     return Mapper(class_, local_table, *args, **params)
 
-def synonym(name, map_column=False, descriptor=None, proxy=False):
+def synonym(name, map_column=False, descriptor=None, comparator_factory=None, proxy=False):
     """Set up `name` as a synonym to another mapped property.
 
     Used with the ``properties`` dictionary sent to  [sqlalchemy.orm#mapper()].
@@ -684,7 +684,7 @@ def synonym(name, map_column=False, descriptor=None, proxy=False):
     is not already available.
 
     """
-    return SynonymProperty(name, map_column=map_column, descriptor=descriptor)
+    return SynonymProperty(name, map_column=map_column, descriptor=descriptor, comparator_factory=comparator_factory)
 
 def comparable_property(comparator_factory, descriptor=None):
     """Provide query semantics for an unmanaged attribute.
