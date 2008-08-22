@@ -197,7 +197,7 @@ def proxied_attribute_factory(descriptor):
 class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
 
-    def __init__(self, class_, key, callable_, class_manager, trackparent=False, extension=None, compare_function=None, **kwargs):
+    def __init__(self, class_, key, callable_, class_manager, trackparent=False, extension=None, compare_function=None, active_history=False, **kwargs):
         """Construct an AttributeImpl.
 
         \class_
@@ -231,6 +231,7 @@ class AttributeImpl(object):
         self.callable_ = callable_
         self.class_manager = class_manager
         self.trackparent = trackparent
+        self.active_history = active_history
         if compare_function is None:
             self.is_equal = operator.eq
         else:
@@ -364,11 +365,16 @@ class ScalarAttributeImpl(AttributeImpl):
     uses_objects = False
 
     def delete(self, state):
-        state.modified_event(self, False, state.dict.get(self.key, NO_VALUE))
 
         # TODO: catch key errors, convert to attributeerror?
-        if self.extensions:
+        if self.active_history or self.extensions:
             old = self.get(state)
+        else:
+            old = state.dict.get(self.key, NO_VALUE)
+
+        state.modified_event(self, False, old)
+
+        if self.extensions:
             del state.dict[self.key]
             self.fire_remove_event(state, old, None)
         else:
@@ -382,10 +388,14 @@ class ScalarAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
-        state.modified_event(self, False, state.dict.get(self.key, NO_VALUE))
+        if self.active_history or self.extensions:
+            old = self.get(state)
+        else:
+            old = state.dict.get(self.key, NO_VALUE)
+            
+        state.modified_event(self, False, old)
 
         if self.extensions:
-            old = self.get(state)
             state.dict[self.key] = value
             self.fire_replace_event(state, value, old, initiator)
         else:

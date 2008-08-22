@@ -20,7 +20,7 @@ from sqlalchemy.orm import util as mapperutil
 
 
 class DefaultColumnLoader(LoaderStrategy):
-    def _register_attribute(self, compare_function, copy_function, mutable_scalars, comparator_factory, callable_=None, proxy_property=None):
+    def _register_attribute(self, compare_function, copy_function, mutable_scalars, comparator_factory, callable_=None, proxy_property=None, active_history=False):
         self.logger.info("%s register managed attribute" % self)
 
         for mapper in self.parent.polymorphic_iterator():
@@ -36,7 +36,8 @@ class DefaultColumnLoader(LoaderStrategy):
                     comparator=comparator_factory(self.parent_property, mapper), 
                     parententity=mapper,
                     callable_=callable_,
-                    proxy_property=proxy_property
+                    proxy_property=proxy_property,
+                    active_history=active_history
                     )
 
 DefaultColumnLoader.logger = log.class_logger(DefaultColumnLoader)
@@ -57,12 +58,15 @@ class ColumnLoader(DefaultColumnLoader):
     def init_class_attribute(self):
         self.is_class_level = True
         coltype = self.columns[0].type
+        active_history = self.columns[0].primary_key  # TODO: check all columns ?  check for foreign Key as well?
         
         self._register_attribute(
             coltype.compare_values,
             coltype.copy_value,
             self.columns[0].type.is_mutable(),
-            self.parent_property.comparator_factory
+            self.parent_property.comparator_factory,
+            active_history = active_history
+            
        )
         
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
