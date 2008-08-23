@@ -777,7 +777,7 @@ class DeclarativeReflectionTest(testing.TestBase):
         Base = decl.declarative_base(testing.db)
 
     def tearDown(self):
-        for t in reflection_metadata.sorted_tables:
+        for t in reversed(reflection_metadata.sorted_tables):
             t.delete().execute()
 
     def tearDownAll(self):
