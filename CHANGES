@@ -69,6 +69,10 @@ CHANGES
       may now be a mix of lists and tuples.  (Previously members
       were always lists.)
 
+    - Session.delete() adds the given object to the session if 
+      not already present.  This was a regression bug from 0.4
+      [ticket:1150]
+      
     - The `echo_uow` flag on `Session` is deprecated, and unit-of-work
       logging is now application-level only, not per-session level.
       

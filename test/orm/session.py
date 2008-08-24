@@ -660,7 +660,11 @@ class SessionTest(_fixtures.FixtureTest):
         u2 = s2.query(User).get(user.id)
         self.assertRaisesMessage(sa.exc.InvalidRequestError, "already persisted with a different identity", s.delete, u2)
 
+        s.expunge(user)
+        assert user not in s
         s.delete(user)
+        assert user in s
+        
         s.flush()
         assert user not in s
         assert s.query(User).count() == 0

@@ -1241,6 +1241,7 @@ class Session(object):
             raise sa_exc.InvalidRequestError(
                 "Object '%s' already has an identity - it can't be registered "
                 "as pending" % mapperutil.state_str(state))
+                
         self._attach(state)
         if state not in self._new:
             self._new[state] = state.obj()
@@ -1290,8 +1291,9 @@ class Session(object):
                 "different identity" % (mapperutil.state_str(state),
                                         state.key))
 
-        self._deleted[state] = state.obj()
         self._attach(state)
+        self._deleted[state] = state.obj()
+        self.identity_map.add(state)
 
     def _attach(self, state):
         if state.session_id and state.session_id is not self.hash_key:
