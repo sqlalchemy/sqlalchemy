@@ -7,6 +7,9 @@ CHANGES
     - Fixed bug regarding inherit_condition passed
       with "A=B" versus "B=A" leading to errors
       [ticket:1039]
+
+- mysql
+    - Added MSMediumInteger type [ticket:1146].
       
 0.4.7p1
 =====

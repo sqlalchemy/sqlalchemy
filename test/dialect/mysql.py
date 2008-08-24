@@ -23,6 +23,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             Column('num3', mysql.MSBigInteger()),
             Column('num4', mysql.MSDouble),
             Column('num5', mysql.MSDouble()),
+            Column('num6', mysql.MSMediumInteger),
             Column('enum1', mysql.MSEnum("'black'", "'white'")),
             )
         try:
@@ -38,6 +39,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             assert isinstance(t2.c.num3.type, mysql.MSBigInteger)
             assert isinstance(t2.c.num4.type, mysql.MSDouble)
             assert isinstance(t2.c.num5.type, mysql.MSDouble)
+            assert isinstance(t2.c.num6.type, mysql.MSMediumInteger)
             assert isinstance(t2.c.enum1.type, mysql.MSEnum)
             t2.drop()
             t2.create()
@@ -132,6 +134,17 @@ class TypesTest(TestBase, AssertsExecutionResults):
              'BIGINT(4) ZEROFILL'),
             (mysql.MSBigInteger, [4], {'zerofill':True, 'unsigned':True},
              'BIGINT(4) UNSIGNED ZEROFILL'),
+
+             (mysql.MSMediumInteger, [], {},
+              'MEDIUMINT'),
+             (mysql.MSMediumInteger, [4], {},
+              'MEDIUMINT(4)'),
+             (mysql.MSMediumInteger, [4], {'unsigned':True},
+              'MEDIUMINT(4) UNSIGNED'),
+             (mysql.MSMediumInteger, [4], {'zerofill':True},
+              'MEDIUMINT(4) ZEROFILL'),
+             (mysql.MSMediumInteger, [4], {'zerofill':True, 'unsigned':True},
+              'MEDIUMINT(4) UNSIGNED ZEROFILL'),
 
             (mysql.MSTinyInteger, [], {},
              'TINYINT'),
@@ -645,6 +658,8 @@ class TypesTest(TestBase, AssertsExecutionResults):
                  ( SmallInteger(4), mysql.MSSmallInteger(4), ),
                  ( mysql.MSSmallInteger(), ),
                  ( mysql.MSSmallInteger(4), mysql.MSSmallInteger(4), ),
+                 ( mysql.MSMediumInteger(), mysql.MSMediumInteger(), ),
+                 ( mysql.MSMediumInteger(8), mysql.MSMediumInteger(8), ),
                  ( Binary(3), mysql.MSBlob(3), ),
                  ( Binary(), mysql.MSBlob() ),
                  ( mysql.MSBinary(3), mysql.MSBinary(3), ),
