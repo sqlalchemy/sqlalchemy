@@ -68,6 +68,10 @@ CHANGES
     - The 3-tuple of iterables returned by attributes.get_history()
       may now be a mix of lists and tuples.  (Previously members
       were always lists.)
+      
+    - Fixed bug whereby changing a primary key attribute on an 
+      entity where the attribute's previous value had been expired 
+      would produce an error upon flush(). [ticket:1151]
 
     - Session.delete() adds the given object to the session if 
       not already present.  This was a regression bug from 0.4

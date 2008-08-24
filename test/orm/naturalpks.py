@@ -62,7 +62,7 @@ class NaturalPKTest(_base.MappedTest):
         self.assertEquals(User(username='ed', fullname='jack'), u1)
 
     @testing.resolve_artifact_names
-    def test_expiry(self):
+    def test_load_after_expire(self):
         mapper(User, users)
 
         sess = create_session()
@@ -83,6 +83,23 @@ class NaturalPKTest(_base.MappedTest):
         sess.clear()
         assert sess.query(User).get('jack') is None
         assert sess.query(User).get('ed').fullname == 'jack'
+
+    @testing.resolve_artifact_names
+    def test_flush_new_pk_after_expire(self):
+        mapper(User, users)
+        sess = create_session()
+        u1 = User(username='jack', fullname='jack')
+
+        sess.add(u1)
+        sess.flush()
+        assert sess.query(User).get('jack') is u1
+
+        sess.expire(u1)
+        u1.username = 'ed'
+        sess.flush()
+        sess.clear()
+        assert sess.query(User).get('ed').fullname == 'jack'
+        
 
     @testing.fails_on('mysql')
     @testing.fails_on('sqlite')

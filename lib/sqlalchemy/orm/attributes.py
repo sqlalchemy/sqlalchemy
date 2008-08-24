@@ -217,12 +217,17 @@ class AttributeImpl(object):
           to it via this attribute.
 
         extension
-          an AttributeExtension object which will receive
-          set/delete/append/remove/etc. events.
+          a single or list of AttributeExtension object(s) which will 
+          receive set/delete/append/remove/etc. events.
 
         compare_function
           a function that compares two values which are normally
           assignable to this attribute.
+        
+        active_history
+          indicates that get_history() should always return the "old" value,
+          even if it means executing a lazy callable upon attribute change.
+          This flag is set to True if any extensions are present.
 
         """
 
@@ -231,12 +236,12 @@ class AttributeImpl(object):
         self.callable_ = callable_
         self.class_manager = class_manager
         self.trackparent = trackparent
-        self.active_history = active_history
         if compare_function is None:
             self.is_equal = operator.eq
         else:
             self.is_equal = compare_function
         self.extensions = util.to_list(extension or [])
+        self.active_history = active_history or bool(self.extensions)
 
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to the given item.
@@ -367,7 +372,7 @@ class ScalarAttributeImpl(AttributeImpl):
     def delete(self, state):
 
         # TODO: catch key errors, convert to attributeerror?
-        if self.active_history or self.extensions:
+        if self.active_history:
             old = self.get(state)
         else:
             old = state.dict.get(self.key, NO_VALUE)
@@ -388,7 +393,7 @@ class ScalarAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
-        if self.active_history or self.extensions:
+        if self.active_history:
             old = self.get(state)
         else:
             old = state.dict.get(self.key, NO_VALUE)

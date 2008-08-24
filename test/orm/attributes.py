@@ -1147,7 +1147,7 @@ class HistoryTest(_base.ORMTest):
         attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, useobject=False)
         lazy_load = "hi"
 
-        # with scalar non-object, the lazy callable is only executed on gets, not history
+        # with scalar non-object and active_history=False, the lazy callable is only executed on gets, not history
         # operations
 
         f = Foo()
@@ -1163,6 +1163,44 @@ class HistoryTest(_base.ORMTest):
         eq_(attributes.get_history(attributes.instance_state(f), 'bar'), (["there"], (), ()))
         f.bar = "hi"
         eq_(attributes.get_history(attributes.instance_state(f), 'bar'), (["hi"], (), ()))
+
+        f = Foo()
+        eq_(f.bar, "hi")
+        del f.bar
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ((), (), ["hi"]))
+        assert f.bar is None
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], (), ["hi"]))
+
+    def test_scalar_via_lazyload_with_active(self):
+        class Foo(_base.BasicEntity):
+            pass
+
+        lazy_load = None
+        def lazyload(instance):
+            def load():
+                return lazy_load
+            return load
+
+        attributes.register_class(Foo)
+        attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, useobject=False, active_history=True)
+        lazy_load = "hi"
+
+        # active_history=True means the lazy callable is executed on set as well as get,
+        # causing the old value to appear in the history
+
+        f = Foo()
+        eq_(f.bar, "hi")
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ((), ["hi"], ()))
+
+        f = Foo()
+        f.bar = None
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], (), ['hi']))
+
+        f = Foo()
+        f.bar = "there"
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), (["there"], (), ['hi']))
+        f.bar = "hi"
+        eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ((), ["hi"], ()))
 
         f = Foo()
         eq_(f.bar, "hi")

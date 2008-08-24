@@ -1220,15 +1220,15 @@ class Session(object):
             merged_state._run_on_load(merged)
         return merged
 
+    @classmethod
     def identity_key(cls, *args, **kwargs):
         return mapperutil.identity_key(*args, **kwargs)
-    identity_key = classmethod(identity_key)
 
+    @classmethod
     def object_session(cls, instance):
         """Return the ``Session`` to which an object belongs."""
 
         return object_session(instance)
-    object_session = classmethod(object_session)
 
     def _validate_persistent(self, state):
         if not self.identity_map.contains_state(state):
