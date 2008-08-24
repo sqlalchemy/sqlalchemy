@@ -40,13 +40,12 @@ class DefaultColumnLoader(LoaderStrategy):
                     active_history=active_history
                     )
 
-DefaultColumnLoader.logger = log.class_logger(DefaultColumnLoader)
+log.class_logger(DefaultColumnLoader)
     
 class ColumnLoader(DefaultColumnLoader):
     
     def init(self):
         self.columns = self.parent_property.columns
-        self._should_log_debug = log.is_debug_enabled(self.logger)
         self.is_composite = hasattr(self.parent_property, 'composite_class')
         
     def setup_query(self, context, entity, path, adapter, column_collection=None, **kwargs):
@@ -91,7 +90,7 @@ class ColumnLoader(DefaultColumnLoader):
                 self.logger.debug("%s deferring load" % self)
             return (new_execute, None)
 
-ColumnLoader.logger = log.class_logger(ColumnLoader)
+log.class_logger(ColumnLoader)
 
 class CompositeColumnLoader(ColumnLoader):
     def init_class_attribute(self):
@@ -146,7 +145,7 @@ class CompositeColumnLoader(ColumnLoader):
 
             return (new_execute, None)
 
-CompositeColumnLoader.logger = log.class_logger(CompositeColumnLoader)
+log.class_logger(CompositeColumnLoader)
     
 class DeferredColumnLoader(DefaultColumnLoader):
     """Deferred column loader, a per-column or per-column-group lazy loader."""
@@ -176,7 +175,6 @@ class DeferredColumnLoader(DefaultColumnLoader):
             raise NotImplementedError("Deferred loading for composite types not implemented yet")
         self.columns = self.parent_property.columns
         self.group = self.parent_property.group
-        self._should_log_debug = log.is_debug_enabled(self.logger)
 
     def init_class_attribute(self):
         self.is_class_level = True
@@ -213,7 +211,7 @@ class DeferredColumnLoader(DefaultColumnLoader):
     def setup_loader(self, state, props=None, create_statement=None):
         return LoadDeferredColumns(state, self.key, props)
                 
-DeferredColumnLoader.logger = log.class_logger(DeferredColumnLoader)
+log.class_logger(DeferredColumnLoader)
 
 class LoadDeferredColumns(object):
     """serializable loader object used by DeferredColumnLoader"""
@@ -289,7 +287,6 @@ class AbstractRelationLoader(LoaderStrategy):
     def init(self):
         for attr in ['mapper', 'target', 'table', 'uselist']:
             setattr(self, attr, getattr(self.parent_property, attr))
-        self._should_log_debug = log.is_debug_enabled(self.logger)
         
     def _init_instance_attribute(self, state, callable_=None):
         if callable_:
@@ -335,7 +332,7 @@ class NoLoader(AbstractRelationLoader):
             )
         return (new_execute, None)
 
-NoLoader.logger = log.class_logger(NoLoader)
+log.class_logger(NoLoader)
         
 class LazyLoader(AbstractRelationLoader):
     def init(self):
@@ -485,7 +482,7 @@ class LazyLoader(AbstractRelationLoader):
         return (lazywhere, bind_to_col, equated_columns)
     _create_lazy_clause = classmethod(_create_lazy_clause)
     
-LazyLoader.logger = log.class_logger(LazyLoader)
+log.class_logger(LazyLoader)
 
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
@@ -743,7 +740,7 @@ class EagerLoader(AbstractRelationLoader):
                 self.logger.debug("%s degrading to lazy loader" % self)
             return self.parent_property._get_strategy(LazyLoader).create_row_processor(context, path, mapper, row, adapter)
 
-EagerLoader.logger = log.class_logger(EagerLoader)
+log.class_logger(EagerLoader)
 
 class EagerLazyOption(StrategizedOption):
     def __init__(self, key, lazy=True, chained=False, mapper=None):

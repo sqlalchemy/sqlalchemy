@@ -135,8 +135,7 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       directly to the constructor for ``Session``.
 
     echo_uow
-      When ``True``, configure Python logging to dump all unit-of-work
-      transactions. This is the equivalent of
+      Deprecated.  Use
       ``logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG)``.
 
     extension
@@ -526,7 +525,7 @@ class Session(object):
 
     def __init__(self, bind=None, autoflush=True, expire_on_commit=True,
                 _enable_transaction_accounting=True,
-                 autocommit=False, twophase=False, echo_uow=False,
+                 autocommit=False, twophase=False, echo_uow=None,
                  weak_identity_map=True, binds=None, extension=None, query_cls=query.Query):
         """Construct a new Session.
 
@@ -534,7 +533,13 @@ class Session(object):
         [sqlalchemy.orm#sessionmaker()] function.
 
         """
-        self.echo_uow = echo_uow
+        
+        if echo_uow is not None:
+            util.warn_deprecated(
+                "echo_uow is deprecated. "
+                "Use logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG).")
+            log.class_logger(UOWTransaction, echo_uow)
+
         if weak_identity_map:
             self._identity_cls = identity.WeakInstanceDict
         else:

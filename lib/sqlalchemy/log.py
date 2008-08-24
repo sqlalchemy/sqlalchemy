@@ -6,16 +6,13 @@
 
 """Logging control and utilities.
 
-Provides a few functions used by instances to turn on/off their logging,
-including support for the usual "echo" parameter.
-
 Control of logging for SA can be performed from the regular python logging
 module.  The regular dotted module namespace is used, starting at
-'sqlalchemy'.  For class-level logging, the class name is appended, and for
-instance-level logging, the hex id of the instance is appended.
+'sqlalchemy'.  For class-level logging, the class name is appended.
 
-The "echo" keyword parameter which is available on some SA objects corresponds
-to an instance-level logger for that instance.
+The "echo" keyword parameter which is available on SQLA ``Engine``
+and ``Pool`` objects corresponds to a logger specific to that 
+instance only.
 
 E.g.::
 
@@ -26,11 +23,12 @@ is equivalent to::
     import logging
     logger = logging.getLogger('sqlalchemy.engine.Engine.%s' % hex(id(engine)))
     logger.setLevel(logging.DEBUG)
+    
 """
 
 import logging
 import sys
-import weakref
+
 
 rootlogger = logging.getLogger('sqlalchemy')
 if rootlogger.level == logging.NOTSET:
@@ -48,27 +46,34 @@ def default_logging(name):
             '%(asctime)s %(levelname)s %(name)s %(message)s'))
         rootlogger.addHandler(handler)
 
-def _get_instance_name(instance):
-    # since getLogger() does not have any way of removing logger objects from
-    # memory, instance logging displays the instance id as a modulus of 16 to
-    # prevent endless memory growth also speeds performance as logger
-    # initialization is apparently slow
-    return "%s.%s.0x..%s" % (instance.__class__.__module__,
-                             instance.__class__.__name__,
-                             hex(id(instance))[-2:])
-
-def class_logger(cls):
-    return logging.getLogger(cls.__module__ + "." + cls.__name__)
-
-def is_debug_enabled(logger):
-    return logger.isEnabledFor(logging.DEBUG)
-
-def is_info_enabled(logger):
-    return logger.isEnabledFor(logging.INFO)
+def class_logger(cls, enable=False):
+    logger = logging.getLogger(cls.__module__ + "." + cls.__name__)
+    if enable == 'debug':
+        logger.setLevel(logging.DEBUG)
+    elif enable == 'info':
+        logger.setLevel(logging.INFO)
+    cls._should_log_debug = logger.isEnabledFor(logging.DEBUG)
+    cls._should_log_info = logger.isEnabledFor(logging.INFO)
+    cls.logger = logger
 
 def instance_logger(instance, echoflag=None):
+    """create a logger for an instance.
+    
+    Warning: this is an expensive call which also results in a permanent
+    increase in memory overhead for each call.  Use only for 
+    low-volume, long-time-spanning objects.
+    
+    """
+    
+    # limit the number of loggers by chopping off the hex(id).
+    # many novice users unfortunately create an unlimited number 
+    # of Engines in their applications which would otherwise
+    # cause the app to run out of memory.
+    name = "%s.%s.0x...%s" % (instance.__class__.__module__,
+                             instance.__class__.__name__,
+                             hex(id(instance))[-4:])
+    
     if echoflag is not None:
-        name = _get_instance_name(instance)
         l = logging.getLogger(name)
         if echoflag == 'debug':
             default_logging(name)
@@ -78,15 +83,8 @@ def instance_logger(instance, echoflag=None):
             l.setLevel(logging.INFO)
         elif echoflag is False:
             l.setLevel(logging.NOTSET)
-
-        def cleanup(ref):
-            # the id() of an instance may be reused again after the
-            # previous instance has been gc'ed.  set a cleanup handler
-            # to remove logging config
-            logging.getLogger(name).setLevel(logging.NOTSET)
-        instance._logging_cleanup = weakref.ref(instance, cleanup)
     else:
-        l = logging.getLogger(_get_instance_name(instance))
+        l = logging.getLogger(name)
     instance._should_log_debug = l.isEnabledFor(logging.DEBUG)
     instance._should_log_info = l.isEnabledFor(logging.INFO)
     return l
@@ -94,7 +92,6 @@ def instance_logger(instance, echoflag=None):
 class echo_property(object):
     __doc__ = """\
     When ``True``, enable log output for this element.
-
 
     This has the effect of setting the Python logging level for the namespace
     of this element's class and object reference.  A value of boolean ``True``

@@ -1693,7 +1693,7 @@ class _ColumnEntity(_QueryEntity):
     def __str__(self):
         return str(self.column)
 
-Query.logger = log.class_logger(Query)
+log.class_logger(Query)
 
 class QueryContext(object):
     def __init__(self, query):

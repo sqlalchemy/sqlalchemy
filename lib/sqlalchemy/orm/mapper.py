@@ -189,9 +189,6 @@ class Mapper(object):
 
         self.compiled = False
 
-        self.__should_log_info = log.is_info_enabled(self.logger)
-        self.__should_log_debug = log.is_debug_enabled(self.logger)
-
         self.__compile_inheritance()
         self.__compile_extensions()
         self.__compile_class()
@@ -202,11 +199,11 @@ class Mapper(object):
         self.__log("constructed")
 
     def __log(self, msg):
-        if self.__should_log_info:
+        if self._should_log_info:
             self.logger.info("(" + self.class_.__name__ + "|" + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "") + ") " + msg)
 
     def __log_debug(self, msg):
-        if self.__should_log_debug:
+        if self._should_log_debug:
             self.logger.debug("(" + self.class_.__name__ + "|" + (self.local_table and self.local_table.description or str(self.local_table)) + (self.non_primary and "|non-primary" or "") + ") " + msg)
 
     def _is_orphan(self, state):
@@ -1042,7 +1039,7 @@ class Mapper(object):
         mapper which does not inherit from any other mapper.
         """
 
-        if self.__should_log_debug:
+        if self._should_log_debug:
             self.__log_debug("_save_obj() start, " + (single and "non-batched" or "batched"))
 
         # if batch=false, call _save_obj separately for each object
@@ -1080,7 +1077,7 @@ class Mapper(object):
                 existing = attributes.instance_state(instance)
                 if not uowtransaction.is_deleted(existing):
                     raise exc.FlushError("New instance %s with identity key %s conflicts with persistent instance %s" % (state_str(state), str(instance_key), state_str(existing)))
-                if self.__should_log_debug:
+                if self._should_log_debug:
                     self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, state_str(state), state_str(existing)))
                 uowtransaction.set_row_switch(existing)
 
@@ -1102,7 +1099,7 @@ class Mapper(object):
                 pks = mapper._pks_by_table[table]
                 instance_key = mapper._identity_key_from_state(state)
 
-                if self.__should_log_debug:
+                if self._should_log_debug:
                     self.__log_debug("_save_obj() table '%s' instance %s identity %s" % (table.name, state_str(state), str(instance_key)))
 
                 isinsert = not instance_key in uowtransaction.session.identity_map and not postupdate and not has_identity
@@ -1119,7 +1116,7 @@ class Mapper(object):
                             if value is not None:
                                 params[col.key] = value
                         elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col):
-                            if self.__should_log_debug:
+                            if self._should_log_debug:
                                 self.__log_debug("Using polymorphic identity '%s' for insert column '%s'" % (mapper.polymorphic_identity, col.key))
                             value = mapper.polymorphic_identity
                             if ((col.default is None and
@@ -1297,7 +1294,7 @@ class Mapper(object):
         flush operation.
         """
 
-        if self.__should_log_debug:
+        if self._should_log_debug:
             self.__log_debug("_delete_obj() start")
 
         if 'connection_callable' in uowtransaction.mapper_flush_opts:
@@ -1479,7 +1476,7 @@ class Mapper(object):
                 instance = session_identity_map[identitykey]
                 state = attributes.instance_state(instance)
 
-                if self.__should_log_debug:
+                if self._should_log_debug:
                     self.__log_debug("_instance(): using existing instance %s identity %s" % (instance_str(instance), str(identitykey)))
 
                 isnew = state.runid != context.runid
@@ -1498,7 +1495,7 @@ class Mapper(object):
                 currentload = True
                 loaded_instance = False
             else:
-                if self.__should_log_debug:
+                if self._should_log_debug:
                     self.__log_debug("_instance(): identity key %s not in session" % str(identitykey))
 
                 if self.allow_null_pks:
@@ -1527,7 +1524,7 @@ class Mapper(object):
                 else:
                     instance = self.class_manager.new_instance()
 
-                if self.__should_log_debug:
+                if self._should_log_debug:
                     self.__log_debug("_instance(): created new instance %s identity %s" % (instance_str(instance), str(identitykey)))
 
                 state = attributes.instance_state(instance)
@@ -1633,7 +1630,7 @@ class Mapper(object):
         cond = sql.and_(*allconds)
         return sql.select(tables, cond, use_labels=True)
 
-Mapper.logger = log.class_logger(Mapper)
+log.class_logger(Mapper)
 
 
 def reconstructor(fn):

@@ -69,6 +69,9 @@ CHANGES
       may now be a mix of lists and tuples.  (Previously members
       were always lists.)
 
+    - The `echo_uow` flag on `Session` is deprecated, and unit-of-work
+      logging is now application-level only, not per-session level.
+      
 - schema
     - Added "sorted_tables" accessor to MetaData, which returns
       Table objects sorted in order of dependency as a list.

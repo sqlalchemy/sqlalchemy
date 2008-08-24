@@ -566,8 +566,6 @@ class OracleDialect(default.DefaultDialect):
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name))
 
 
-OracleDialect.logger = log.class_logger(OracleDialect)
-
 class _OuterJoinColumn(sql.ClauseElement):
     __visit_name__ = 'outer_join_column'
     def __init__(self, column):

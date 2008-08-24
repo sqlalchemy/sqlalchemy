@@ -85,8 +85,6 @@ def register_attribute(class_, key, *args, **kwargs):
     return attributes.register_attribute(class_, key, *args, **kwargs)
 
 
-
-
 class UOWTransaction(object):
     """Handles the details of organizing and executing transaction
     tasks during a UnitOfWork object's flush() operation.
@@ -111,9 +109,7 @@ class UOWTransaction(object):
         # dictionary used by external actors to store arbitrary state
         # information.
         self.attributes = {}
-
-        self.logger = log.instance_logger(self, echoflag=session.echo_uow)
-
+        
     def get_attribute_history(self, state, key, passive=True):
         hashkey = ("history", state, key)
 
@@ -312,6 +308,8 @@ class UOWTransaction(object):
                     for d in self.dependencies))
             self.logger.debug("Dependency sort:\n"+ str(ret))
         return ret
+
+log.class_logger(UOWTransaction)
 
 class UOWTask(object):
     """Represents all of the objects in the UOWTransaction which correspond to

@@ -29,7 +29,7 @@ class DynaLoader(strategies.AbstractRelationLoader):
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         return (None, None)
 
-DynaLoader.logger = log.class_logger(DynaLoader)
+log.class_logger(DynaLoader)
 
 class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True

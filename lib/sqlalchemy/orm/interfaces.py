@@ -623,8 +623,6 @@ class PropertyOption(MapperOption):
         self._process(query, False)
 
     def _process(self, query, raiseerr):
-        if self._should_log_debug:
-            self.logger.debug("applying option to Query, property key '%s'" % self.key)
         paths = self.__get_paths(query, raiseerr)
         if paths:
             self.process_query_property(query, paths)
@@ -702,9 +700,6 @@ class PropertyOption(MapperOption):
                     path_element = path_element.base_mapper
 
         return l
-
-PropertyOption.logger = log.class_logger(PropertyOption)
-PropertyOption._should_log_debug = log.is_debug_enabled(PropertyOption.logger)
 
 class AttributeExtension(object):
     """An abstract class which specifies `append`, `delete`, and `set`

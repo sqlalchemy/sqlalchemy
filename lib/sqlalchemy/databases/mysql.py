@@ -2664,7 +2664,7 @@ class MySQLSchemaReflector(object):
 
         return self._re_keyexprs.findall(identifiers)
 
-MySQLSchemaReflector.logger = log.class_logger(MySQLSchemaReflector)
+log.class_logger(MySQLSchemaReflector)
 
 
 class _MySQLIdentifierPreparer(compiler.IdentifierPreparer):
