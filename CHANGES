@@ -93,6 +93,8 @@ CHANGES
 - mysql
     - The 'length' argument to MSInteger, MSBigInteger, MSTinyInteger,
       MSSmallInteger and MSYear has been renamed to 'display_width'.
+      
+    - Added MSMediumInteger type [ticket:1146].
 
 0.5beta3
 ========

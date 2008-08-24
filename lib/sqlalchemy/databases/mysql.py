@@ -166,7 +166,7 @@ from sqlalchemy import types as sqltypes
 
 
 __all__ = (
-    'MSBigInteger', 'MSBinary', 'MSBit', 'MSBlob', 'MSBoolean',
+    'MSBigInteger', 'MSMediumInteger', 'MSBinary', 'MSBit', 'MSBlob', 'MSBoolean',
     'MSChar', 'MSDate', 'MSDateTime', 'MSDecimal', 'MSDouble',
     'MSEnum', 'MSFloat', 'MSInteger', 'MSLongBlob', 'MSLongText',
     'MSMediumBlob', 'MSMediumText', 'MSNChar', 'MSNVarChar',
@@ -551,6 +551,33 @@ class MSBigInteger(MSInteger):
             return self._extend("BIGINT(%(display_width)s)" % {'display_width': self.display_width})
         else:
             return self._extend("BIGINT")
+
+class MSMediumInteger(MSInteger):
+    """MySQL MEDIUMINTEGER type."""
+
+    def __init__(self, display_width=None, **kw):
+        """Construct a MEDIUMINTEGER
+
+        display_width
+          Optional, maximum display width for this number.
+
+        unsigned
+          Optional.
+
+        zerofill
+          Optional. If true, values will be stored as strings left-padded with
+          zeros. Note that this does not effect the values returned by the
+          underlying database API, which continue to be numeric.
+        """
+
+        super(MSMediumInteger, self).__init__(display_width, **kw)
+
+    def get_col_spec(self):
+        if self.display_width is not None:
+            return self._extend("MEDIUMINT(%(display_width)s)" % {'display_width': self.display_width})
+        else:
+            return self._extend("MEDIUMINT")
+
 
 
 class MSTinyInteger(MSInteger):
@@ -1404,7 +1431,7 @@ ischema_names = {
     'longblob': MSLongBlob,
     'longtext': MSLongText,
     'mediumblob': MSMediumBlob,
-    'mediumint': MSInteger,
+    'mediumint': MSMediumInteger,
     'mediumtext': MSMediumText,
     'nchar': MSNChar,
     'nvarchar': MSNVarChar,
