@@ -45,7 +45,7 @@ class InfoNumeric(sqltypes.Numeric):
         if not self.precision:
             return 'NUMERIC'
         else:
-            return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+            return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': self.precision, 'scale' : self.scale}
 
 class InfoInteger(sqltypes.Integer):
     def get_col_spec(self):

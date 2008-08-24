@@ -231,9 +231,9 @@ SET_RE = re.compile(
 class _NumericType(object):
     """Base for MySQL numeric types."""
 
-    def __init__(self, unsigned=False, zerofill=False, **kw):
-        self.unsigned = unsigned
-        self.zerofill = zerofill
+    def __init__(self, kw):
+        self.unsigned = kw.pop('unsigned', False)
+        self.zerofill = kw.pop('zerofill', False)
 
     def _extend(self, spec):
         "Extend a numeric-type declaration with MySQL specific extensions."
@@ -304,14 +304,14 @@ class _StringType(object):
 class MSNumeric(sqltypes.Numeric, _NumericType):
     """MySQL NUMERIC type."""
 
-    def __init__(self, precision=10, length=2, asdecimal=True, **kw):
+    def __init__(self, precision=10, scale=2, asdecimal=True, **kw):
         """Construct a NUMERIC.
 
         precision
-          Total digits in this number.  If length and precision are both
+          Total digits in this number.  If scale and precision are both
           None, values are stored to limits allowed by the server.
 
-        length
+        scale
           The number of digits after the decimal point.
 
         unsigned
@@ -323,14 +323,14 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
           underlying database API, which continue to be numeric.
         """
 
-        _NumericType.__init__(self, **kw)
-        sqltypes.Numeric.__init__(self, precision, length, asdecimal=asdecimal)
+        _NumericType.__init__(self, kw)
+        sqltypes.Numeric.__init__(self, precision, scale, asdecimal=asdecimal, **kw)
 
     def get_col_spec(self):
         if self.precision is None:
             return self._extend("NUMERIC")
         else:
-            return self._extend("NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
+            return self._extend("NUMERIC(%(precision)s, %(scale)s)" % {'precision': self.precision, 'scale' : self.scale})
 
     def bind_processor(self, dialect):
         return None
@@ -350,14 +350,14 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
 class MSDecimal(MSNumeric):
     """MySQL DECIMAL type."""
 
-    def __init__(self, precision=10, length=2, asdecimal=True, **kw):
+    def __init__(self, precision=10, scale=2, asdecimal=True, **kw):
         """Construct a DECIMAL.
 
         precision
-          Total digits in this number.  If length and precision are both None,
+          Total digits in this number.  If scale and precision are both None,
           values are stored to limits allowed by the server.
 
-        length
+        scale
           The number of digits after the decimal point.
 
         unsigned
@@ -369,28 +369,28 @@ class MSDecimal(MSNumeric):
           underlying database API, which continue to be numeric.
         """
 
-        super(MSDecimal, self).__init__(precision, length, asdecimal=asdecimal, **kw)
+        super(MSDecimal, self).__init__(precision, scale, asdecimal=asdecimal, **kw)
 
     def get_col_spec(self):
         if self.precision is None:
             return self._extend("DECIMAL")
-        elif self.length is None:
+        elif self.scale is None:
             return self._extend("DECIMAL(%(precision)s)" % {'precision': self.precision})
         else:
-            return self._extend("DECIMAL(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
+            return self._extend("DECIMAL(%(precision)s, %(scale)s)" % {'precision': self.precision, 'scale' : self.scale})
 
 
 class MSDouble(sqltypes.Float, _NumericType):
     """MySQL DOUBLE type."""
 
-    def __init__(self, precision=None, length=None, asdecimal=True, **kw):
+    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a DOUBLE.
 
         precision
-          Total digits in this number.  If length and precision are both None,
+          Total digits in this number.  If scale and precision are both None,
           values are stored to limits allowed by the server.
 
-        length
+        scale
           The number of digits after the decimal point.
 
         unsigned
@@ -402,22 +402,22 @@ class MSDouble(sqltypes.Float, _NumericType):
           underlying database API, which continue to be numeric.
         """
 
-        if ((precision is None and length is not None) or
-            (precision is not None and length is None)):
+        if ((precision is None and scale is not None) or
+            (precision is not None and scale is None)):
             raise exc.ArgumentError(
-                "You must specify both precision and length or omit "
+                "You must specify both precision and scale or omit "
                 "both altogether.")
 
-        _NumericType.__init__(self, **kw)
-        sqltypes.Float.__init__(self, asdecimal=asdecimal)
-        self.length = length
+        _NumericType.__init__(self, kw)
+        sqltypes.Float.__init__(self, asdecimal=asdecimal, **kw)
+        self.scale = scale
         self.precision = precision
 
     def get_col_spec(self):
-        if self.precision is not None and self.length is not None:
-            return self._extend("DOUBLE(%(precision)s, %(length)s)" %
+        if self.precision is not None and self.scale is not None:
+            return self._extend("DOUBLE(%(precision)s, %(scale)s)" %
                                 {'precision': self.precision,
-                                 'length' : self.length})
+                                 'scale' : self.scale})
         else:
             return self._extend('DOUBLE')
 
@@ -425,14 +425,14 @@ class MSDouble(sqltypes.Float, _NumericType):
 class MSReal(MSDouble):
     """MySQL REAL type."""
 
-    def __init__(self, precision=None, length=None, asdecimal=True, **kw):
+    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a REAL.
 
         precision
-          Total digits in this number.  If length and precision are both None,
+          Total digits in this number.  If scale and precision are both None,
           values are stored to limits allowed by the server.
 
-        length
+        scale
           The number of digits after the decimal point.
 
         unsigned
@@ -443,13 +443,13 @@ class MSReal(MSDouble):
           zeros. Note that this does not effect the values returned by the
           underlying database API, which continue to be numeric.
         """
-        MSDouble.__init__(self, precision, length, asdecimal, **kw)
+        MSDouble.__init__(self, precision, scale, asdecimal, **kw)
 
     def get_col_spec(self):
-        if self.precision is not None and self.length is not None:
-            return self._extend("REAL(%(precision)s, %(length)s)" %
+        if self.precision is not None and self.scale is not None:
+            return self._extend("REAL(%(precision)s, %(scale)s)" %
                                 {'precision': self.precision,
-                                 'length' : self.length})
+                                 'scale' : self.scale})
         else:
             return self._extend('REAL')
 
@@ -457,14 +457,14 @@ class MSReal(MSDouble):
 class MSFloat(sqltypes.Float, _NumericType):
     """MySQL FLOAT type."""
 
-    def __init__(self, precision=None, length=None, asdecimal=False, **kw):
+    def __init__(self, precision=None, scale=None, asdecimal=False, **kw):
         """Construct a FLOAT.
 
         precision
-          Total digits in this number.  If length and precision are both None,
+          Total digits in this number.  If scale and precision are both None,
           values are stored to limits allowed by the server.
 
-        length
+        scale
           The number of digits after the decimal point.
 
         unsigned
@@ -476,14 +476,14 @@ class MSFloat(sqltypes.Float, _NumericType):
           underlying database API, which continue to be numeric.
         """
 
-        _NumericType.__init__(self, **kw)
-        sqltypes.Float.__init__(self, asdecimal=asdecimal)
-        self.length = length
+        _NumericType.__init__(self, kw)
+        sqltypes.Float.__init__(self, asdecimal=asdecimal, **kw)
+        self.scale = scale
         self.precision = precision
 
     def get_col_spec(self):
-        if self.length is not None and self.precision is not None:
-            return self._extend("FLOAT(%s, %s)" % (self.precision, self.length))
+        if self.scale is not None and self.precision is not None:
+            return self._extend("FLOAT(%s, %s)" % (self.precision, self.scale))
         elif self.precision is not None:
             return self._extend("FLOAT(%s)" % (self.precision,))
         else:
@@ -496,10 +496,10 @@ class MSFloat(sqltypes.Float, _NumericType):
 class MSInteger(sqltypes.Integer, _NumericType):
     """MySQL INTEGER type."""
 
-    def __init__(self, length=None, **kw):
+    def __init__(self, display_width=None, **kw):
         """Construct an INTEGER.
 
-        length
+        display_width
           Optional, maximum display width for this number.
 
         unsigned
@@ -511,13 +511,17 @@ class MSInteger(sqltypes.Integer, _NumericType):
           underlying database API, which continue to be numeric.
         """
 
-        self.length = length
-        _NumericType.__init__(self, **kw)
-        sqltypes.Integer.__init__(self)
+        if 'length' in kw:
+            util.warn_deprecated("'length' is deprecated for MSInteger and subclasses.  Use 'display_width'.")
+            self.display_width = kw.pop('length')
+        else:
+            self.display_width = display_width
+        _NumericType.__init__(self, kw)
+        sqltypes.Integer.__init__(self, **kw)
 
     def get_col_spec(self):
-        if self.length is not None:
-            return self._extend("INTEGER(%(length)s)" % {'length': self.length})
+        if self.display_width is not None:
+            return self._extend("INTEGER(%(display_width)s)" % {'display_width': self.display_width})
         else:
             return self._extend("INTEGER")
 
@@ -525,10 +529,10 @@ class MSInteger(sqltypes.Integer, _NumericType):
 class MSBigInteger(MSInteger):
     """MySQL BIGINTEGER type."""
 
-    def __init__(self, length=None, **kw):
+    def __init__(self, display_width=None, **kw):
         """Construct a BIGINTEGER.
 
-        length
+        display_width
           Optional, maximum display width for this number.
 
         unsigned
@@ -540,11 +544,11 @@ class MSBigInteger(MSInteger):
           underlying database API, which continue to be numeric.
         """
 
-        super(MSBigInteger, self).__init__(length, **kw)
+        super(MSBigInteger, self).__init__(display_width, **kw)
 
     def get_col_spec(self):
-        if self.length is not None:
-            return self._extend("BIGINT(%(length)s)" % {'length': self.length})
+        if self.display_width is not None:
+            return self._extend("BIGINT(%(display_width)s)" % {'display_width': self.display_width})
         else:
             return self._extend("BIGINT")
 
@@ -552,14 +556,14 @@ class MSBigInteger(MSInteger):
 class MSTinyInteger(MSInteger):
     """MySQL TINYINT type."""
 
-    def __init__(self, length=None, **kw):
+    def __init__(self, display_width=None, **kw):
         """Construct a TINYINT.
 
         Note: following the usual MySQL conventions, TINYINT(1) columns
         reflected during Table(..., autoload=True) are treated as
         Boolean columns.
 
-        length
+        display_width
           Optional, maximum display width for this number.
 
         unsigned
@@ -571,11 +575,11 @@ class MSTinyInteger(MSInteger):
           underlying database API, which continue to be numeric.
         """
 
-        super(MSTinyInteger, self).__init__(length, **kw)
+        super(MSTinyInteger, self).__init__(display_width, **kw)
 
     def get_col_spec(self):
-        if self.length is not None:
-            return self._extend("TINYINT(%s)" % self.length)
+        if self.display_width is not None:
+            return self._extend("TINYINT(%s)" % self.display_width)
         else:
             return self._extend("TINYINT")
 
@@ -583,10 +587,10 @@ class MSTinyInteger(MSInteger):
 class MSSmallInteger(sqltypes.Smallinteger, MSInteger):
     """MySQL SMALLINTEGER type."""
 
-    def __init__(self, length=None, **kw):
+    def __init__(self, display_width=None, **kw):
         """Construct a SMALLINTEGER.
 
-        length
+        display_width
           Optional, maximum display width for this number.
 
         unsigned
@@ -598,13 +602,13 @@ class MSSmallInteger(sqltypes.Smallinteger, MSInteger):
           underlying database API, which continue to be numeric.
         """
 
-        self.length = length
-        _NumericType.__init__(self, **kw)
-        sqltypes.SmallInteger.__init__(self, length)
+        self.display_width = display_width
+        _NumericType.__init__(self, kw)
+        sqltypes.SmallInteger.__init__(self, **kw)
 
     def get_col_spec(self):
-        if self.length is not None:
-            return self._extend("SMALLINT(%(length)s)" % {'length': self.length})
+        if self.display_width is not None:
+            return self._extend("SMALLINT(%(display_width)s)" % {'display_width': self.display_width})
         else:
             return self._extend("SMALLINT")
 
@@ -690,14 +694,14 @@ class MSTimeStamp(sqltypes.TIMESTAMP):
 class MSYear(sqltypes.TypeEngine):
     """MySQL YEAR type, for single byte storage of years 1901-2155."""
 
-    def __init__(self, length=None):
-        self.length = length
+    def __init__(self, display_width=None):
+        self.display_width = display_width
 
     def get_col_spec(self):
-        if self.length is None:
+        if self.display_width is None:
             return "YEAR"
         else:
-            return "YEAR(%s)" % self.length
+            return "YEAR(%s)" % self.display_width
 
 class MSText(_StringType, sqltypes.Text):
     """MySQL TEXT type, for text up to 2^16 characters."""

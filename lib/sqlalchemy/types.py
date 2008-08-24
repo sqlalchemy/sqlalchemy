@@ -450,13 +450,16 @@ Smallinteger = SmallInteger
 class Numeric(TypeEngine):
     """Numeric datatype, usually resolves to DECIMAL or NUMERIC."""
 
-    def __init__(self, precision=10, length=2, asdecimal=True):
+    def __init__(self, precision=10, scale=2, asdecimal=True, length=None):
+        if length:
+            util.warn_deprecated("'length' is deprecated for Numeric.  Use 'scale'.")
+            scale = length
         self.precision = precision
-        self.length = length
+        self.scale = scale
         self.asdecimal = asdecimal
 
     def adapt(self, impltype):
-        return impltype(precision=self.precision, length=self.length, asdecimal=self.asdecimal)
+        return impltype(precision=self.precision, scale=self.scale, asdecimal=self.asdecimal)
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER

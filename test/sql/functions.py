@@ -5,22 +5,16 @@ from sqlalchemy.sql import table, column
 from sqlalchemy import databases, sql, util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.engine import default
+from testlib.engines import all_dialects
 from sqlalchemy import types as sqltypes
 from testlib import *
 from sqlalchemy.sql.functions import GenericFunction
 from testlib.testing import eq_
 
 from sqlalchemy.databases import *
-# every dialect in databases.__all__ is expected to pass these tests.
-dialects = [getattr(databases, mod).dialect()
-            for mod in databases.__all__
-            # fixme!
-            if mod not in ('access',)]
 
-# if the configured dialect is out-of-tree or not yet in __all__, include it
-# too.
-if testing.db.name not in databases.__all__:
-    dialects.append(testing.db.dialect)
+# FIXME!
+dialects = [d for d in all_dialects() if d.name not in ('access', 'informix')]
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):

@@ -168,18 +168,18 @@ class SybaseTypeError(sqltypes.TypeEngine):
 
 class SybaseNumeric(sqltypes.Numeric):
     def get_col_spec(self):
-        if self.length is None:
+        if self.scale is None:
             if self.precision is None:
                 return "NUMERIC"
             else:
                 return "NUMERIC(%(precision)s)" % {'precision' : self.precision}
         else:
-            return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+            return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': self.precision, 'scale' : self.scale}
 
 class SybaseFloat(sqltypes.FLOAT, SybaseNumeric):
-    def __init__(self, precision = 10, asdecimal = False, length = 2, **kwargs):
+    def __init__(self, precision = 10, asdecimal = False, scale = 2, **kwargs):
         super(sqltypes.FLOAT, self).__init__(precision, asdecimal, **kwargs)
-        self.length = length
+        self.scale = scale
 
     def get_col_spec(self):
         # if asdecimal is True, handle same way as SybaseNumeric

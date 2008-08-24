@@ -77,11 +77,19 @@ CHANGES
       removed from util.sort_tables(); use the Python
       'reversed' function to reverse the results.
       [ticket:1033]
+
+    - The 'length' argument to all Numeric types has been renamed
+      to 'scale'.  'length' is deprecated and is still accepted
+      with a warning.
       
 - sql
     - Temporarily rolled back the "ORDER BY" enhancement from
       [ticket:1068].  This feature is on hold pending further
       development.
+
+- mysql
+    - The 'length' argument to MSInteger, MSBigInteger, MSTinyInteger,
+      MSSmallInteger and MSYear has been renamed to 'display_width'.
 
 0.5beta3
 ========

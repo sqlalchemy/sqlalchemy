@@ -30,7 +30,7 @@ class SLNumeric(sqltypes.Numeric):
         if self.precision is None:
             return "NUMERIC"
         else:
-            return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+            return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': self.precision, 'scale' : self.scale}
 
 class SLFloat(sqltypes.Float):
     def bind_processor(self, dialect):

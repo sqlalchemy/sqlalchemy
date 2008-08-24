@@ -109,14 +109,14 @@ _initialized_kb = False
 
 
 class FBNumeric(sqltypes.Numeric):
-    """Handle ``NUMERIC(precision,length)`` datatype."""
+    """Handle ``NUMERIC(precision,scale)`` datatype."""
 
     def get_col_spec(self):
         if self.precision is None:
             return "NUMERIC"
         else:
-            return "NUMERIC(%(precision)s, %(length)s)" % { 'precision': self.precision,
-                                                            'length' : self.length }
+            return "NUMERIC(%(precision)s, %(scale)s)" % { 'precision': self.precision,
+                                                            'scale' : self.scale }
 
     def bind_processor(self, dialect):
         return None

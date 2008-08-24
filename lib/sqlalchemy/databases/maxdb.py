@@ -169,17 +169,17 @@ class MaxSmallInteger(MaxInteger):
 class MaxNumeric(sqltypes.Numeric):
     """The FIXED (also NUMERIC, DECIMAL) data type."""
 
-    def __init__(self, precision=None, length=None, **kw):
+    def __init__(self, precision=None, scale=None, **kw):
         kw.setdefault('asdecimal', True)
-        super(MaxNumeric, self).__init__(length=length, precision=precision,
+        super(MaxNumeric, self).__init__(scale=scale, precision=precision,
                                          **kw)
 
     def bind_processor(self, dialect):
         return None
 
     def get_col_spec(self):
-        if self.length and self.precision:
-            return 'FIXED(%s, %s)' % (self.precision, self.length)
+        if self.scale and self.precision:
+            return 'FIXED(%s, %s)' % (self.precision, self.scale)
         elif self.precision:
             return 'FIXED(%s)' % self.precision
         else:

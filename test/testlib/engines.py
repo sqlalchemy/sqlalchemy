@@ -66,6 +66,12 @@ def close_open_connections(fn):
             testing_reaper.close_all()
     return _function_named(decorated, fn.__name__)
 
+def all_dialects():
+    import sqlalchemy.databases as d
+    for name in d.__all__:
+        mod = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
+        yield mod.dialect()
+        
 class ReconnectFixture(object):
     def __init__(self, dbapi):
         self.dbapi = dbapi

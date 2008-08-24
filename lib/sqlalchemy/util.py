@@ -380,6 +380,7 @@ def getargspec_init(method):
         else:
             return (['self'], 'args', 'kwargs', None)
 
+    
 def unbound_method_to_callable(func_or_cls):
     """Adjust the incoming callable such that a 'self' argument is not required."""
 

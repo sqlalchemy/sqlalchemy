@@ -19,7 +19,7 @@ class OracleNumeric(sqltypes.Numeric):
         if self.precision is None:
             return "NUMERIC"
         else:
-            return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+            return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': self.precision, 'scale' : self.scale}
 
 class OracleInteger(sqltypes.Integer):
     def get_col_spec(self):
