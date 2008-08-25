@@ -8,6 +8,9 @@ CHANGES
 ========
 
 - orm
+    - Query now has delete() and update(values) methods. This allows
+      to perform bulk deletes/updates with the Query object.
+
     - The RowTuple object returned by Query(*cols) now features
       keynames which prefer mapped attribute names over column keys,
       column keys over column names, i.e.  Query(Class.foo,

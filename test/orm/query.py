@@ -2237,7 +2237,7 @@ class UpdateDeleteTest(_base.MappedTest):
     def test_delete_rollback(self):
         sess = sessionmaker()()
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete()
+        sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete(synchronize_session='evaluate')
         assert john not in sess and jill not in sess
         sess.rollback()
         assert john in sess and jill in sess
@@ -2279,7 +2279,7 @@ class UpdateDeleteTest(_base.MappedTest):
         sess = create_session(bind=testing.db, autocommit=False)
         
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(User.name == select([func.max(User.name)])).delete()
+        sess.query(User).filter(User.name == select([func.max(User.name)])).delete(synchronize_session='evaluate')
         
         assert john not in sess
         
@@ -2290,7 +2290,7 @@ class UpdateDeleteTest(_base.MappedTest):
         sess = create_session(bind=testing.db, autocommit=False)
         
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(User.age > 29).update({'age': User.age - 10})
+        sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='evaluate')
         
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
@@ -2306,7 +2306,7 @@ class UpdateDeleteTest(_base.MappedTest):
         
         # autoflush is false.  therefore our '50' and '37' are getting blown away by this operation.
         
-        sess.query(User).filter(User.age > 29).update({'age': User.age - 10})
+        sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='evaluate')
 
         for x in (john, jack, jill, jane):
             assert not sess.is_modified(x)
@@ -2329,7 +2329,7 @@ class UpdateDeleteTest(_base.MappedTest):
         john.age = 50
         jack.age = 37
 
-        sess.query(User).filter(User.age > 29).update({'age': User.age - 10})
+        sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='evaluate')
 
         for x in (john, jack, jill, jane):
             assert not sess.is_modified(x)

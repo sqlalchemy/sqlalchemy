@@ -1226,9 +1226,40 @@ class Query(object):
             self.session._autoflush()
         return self.session.scalar(s, params=self._params, mapper=self._mapper_zero())
 
-    def delete(self, synchronize_session='evaluate'):
-        """EXPERIMENTAL"""
+    def delete(self, synchronize_session='fetch'):
+        """Perform a bulk delete query.
+
+        Deletes rows matched by this query from the database. The synchronize_session
+        parameter chooses the strategy for the removal of matched objects from the
+        session. Valid values are:
+
+        False
+          don't synchronize the session. Use this when you don't need to use the
+          session after the delete or you can be sure that none of the matched objects
+          are in the session. The behavior of deleted objects still in the session is
+          undefined.
+
+        'fetch'
+          performs a select query before the delete to find objects that are matched
+          by the delete query and need to be removed from the session. Matched objects
+          are removed from the session. 'fetch' is the default strategy.
+
+        'evaluate'
+          experimental feature. Tries to evaluate the querys criteria in Python
+          straight on the objects in the session. If evaluation of the criteria isn't
+          implemented, the 'fetch' strategy will be used as a fallback.
+
+          The expression evaluator currently doesn't account for differing string
+          collations between the database and Python.
+
+        Warning - this currently doesn't account for any foreign key/relation cascades.
+        """
         #TODO: lots of duplication and ifs - probably needs to be refactored to strategies
+        #TODO: cascades need handling.
+
+        if synchronize_session not in [False, 'evaluate', 'fetch']:
+            raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'fetch'")
+
         context = self._compile_context()
         if len(context.statement.froms) != 1 or not isinstance(context.statement.froms[0], schema.Table):
             raise sa_exc.ArgumentError("Only deletion via a single table query is currently supported")
@@ -1269,11 +1300,40 @@ class Query(object):
                 if identity_key in session.identity_map:
                     session._remove_newly_deleted(attributes.instance_state(session.identity_map[identity_key]))
 
-    def update(self, values, synchronize_session='evaluate'):
-        """EXPERIMENTAL"""
+    def update(self, values, synchronize_session='expire'):
+        """Perform a bulk update query.
+
+        Updates rows matched by this query in the database. The values parameter takes
+        a dictionary with object attributes as keys and literal values or sql expressions
+        as values. The synchronize_session parameter chooses the strategy to update the
+        attributes on objects in the session. Valid values are:
+
+        False
+          don't synchronize the session. Use this when you don't need to use the
+          session after the update or you can be sure that none of the matched objects
+          are in the session.
+
+        'expire'
+          performs a select query before the update to find objects that are matched
+          by the update query. The updated attributes are expired on matched objects.
+
+        'evaluate'
+          experimental feature. Tries to evaluate the querys criteria in Python
+          straight on the objects in the session. If evaluation of the criteria isn't
+          implemented, the 'expire' strategy will be used as a fallback.
+
+          The expression evaluator currently doesn't account for differing string
+          collations between the database and Python.
+
+        Warning - this currently doesn't account for any foreign key/relation cascades.
+        """
 
         #TODO: value keys need to be mapped to corresponding sql cols and instr.attr.s to string keys
         #TODO: updates of manytoone relations need to be converted to fk assignments
+        #TODO: cascades need handling.
+
+        if synchronize_session not in [False, 'evaluate', 'expire']:
+            raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'expire'")
 
         context = self._compile_context()
         if len(context.statement.froms) != 1 or not isinstance(context.statement.froms[0], schema.Table):
