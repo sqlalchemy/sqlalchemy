@@ -119,10 +119,10 @@ User-defined types can be created which can augment the bind parameter and resul
         
         impl = types.Unicode
         
-        def process_bind_param(self, value, engine):
+        def process_bind_param(self, value, dialect):
             return "PREFIX:" + value
             
-        def process_result_value(self, value, engine):
+        def process_result_value(self, value, dialect):
             return value[7:]
         
         def copy(self):
@@ -144,10 +144,10 @@ To build a type object from scratch, which will not have a corresponding databas
         def get_col_spec(self):
             return "MYTYPE(%s)" % self.precision
             
-        def convert_bind_param(self, value, engine):
+        def convert_bind_param(self, value, dialect):
             return value
             
-        def convert_result_value(self, value, engine):
+        def convert_result_value(self, value, dialect):
             return value
 
 Once you make your type, it's immediately useable:
