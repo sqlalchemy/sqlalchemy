@@ -528,7 +528,8 @@ class SingletonThreadPool(Pool):
     def do_get(self):
         try:
             c = self._conn.current()
-            return c
+            if c:
+                return c
         except AttributeError:
             pass
         c = self.create_connection()
