@@ -527,14 +527,16 @@ class SingletonThreadPool(Pool):
 
     def do_get(self):
         try:
-            return self._conn.current()
-        except AttributeError:
-            c = self.create_connection()
-            self._conn.current = weakref.ref(c)
-            self._all_conns.add(c)
-            if len(self._all_conns) > self.size:
-                self.cleanup()
+            c = self._conn.current()
             return c
+        except AttributeError:
+            pass
+        c = self.create_connection()
+        self._conn.current = weakref.ref(c)
+        self._all_conns.add(c)
+        if len(self._all_conns) > self.size:
+            self.cleanup()
+        return c
 
 class QueuePool(Pool):
     """A Pool that imposes a limit on the number of open connections.
