@@ -39,6 +39,10 @@ CHANGES
     - Fixed primary key update for many-to-many collections where
       the collection had not been loaded yet [ticket:1127]
 
+    - Fixed bug whereby deferred() columns with a group in conjunction
+      with an otherwise unrelated synonym() would produce 
+      an AttributeError during deferred load.
+      
     - The before_flush() hook on SessionExtension takes place before
       the list of new/dirty/deleted is calculated for the final
       time, allowing routines within before_flush() to further

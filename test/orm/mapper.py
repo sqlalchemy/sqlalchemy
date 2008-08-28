@@ -1144,6 +1144,17 @@ class DeferredTest(_fixtures.FixtureTest):
         self.sql_count_(0, go)
 
     @testing.resolve_artifact_names
+    def test_synonym_group_bug(self):
+        mapper(Order, orders, properties={
+            'isopen':synonym('_isopen', map_column=True),
+            'description':deferred(orders.c.description, group='foo')
+        })
+        
+        sess = create_session()
+        o1 = sess.query(Order).get(1)
+        eq_(o1.description, "order 1")
+
+    @testing.resolve_artifact_names
     def test_unsaved_2(self):
         mapper(Order, orders, properties={
             'description': deferred(orders.c.description)})

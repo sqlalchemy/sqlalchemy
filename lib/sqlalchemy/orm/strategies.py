@@ -13,7 +13,7 @@ from sqlalchemy.sql import visitors, expression, operators
 from sqlalchemy.orm import mapper, attributes
 from sqlalchemy.orm.interfaces import (
     LoaderStrategy, StrategizedOption, MapperOption, PropertyOption,
-    serialize_path, deserialize_path
+    serialize_path, deserialize_path, StrategizedProperty
     )
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
@@ -247,7 +247,13 @@ class LoadDeferredColumns(object):
         if self.keys:
             toload = self.keys
         elif strategy.group:
-            toload = [p.key for p in localparent.iterate_properties if isinstance(p.strategy, DeferredColumnLoader) and p.group==strategy.group]
+            toload = [
+                    p.key for p in 
+                    localparent.iterate_properties 
+                    if isinstance(p, StrategizedProperty) and 
+                      isinstance(p.strategy, DeferredColumnLoader) and 
+                      p.group==strategy.group
+                    ]
         else:
             toload = [self.key]
 
