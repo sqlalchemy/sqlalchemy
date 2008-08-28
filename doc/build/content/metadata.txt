@@ -328,7 +328,7 @@ Similarly, the "onupdate" keyword does the same thing for update statements:
         Column('id', Integer, primary_key=True),
     
         # define 'last_updated' to be populated with datetime.now()
-        Column('last_updated', DateTime, onupdate=datetime.now),
+        Column('last_updated', DateTime, onupdate=datetime.datetime.now),
     )
 
 #### Pre-executed and Inline SQL Expressions {@name=sqlexpression}
