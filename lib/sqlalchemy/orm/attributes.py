@@ -197,7 +197,9 @@ def proxied_attribute_factory(descriptor):
 class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
 
-    def __init__(self, class_, key, callable_, class_manager, trackparent=False, extension=None, compare_function=None, active_history=False, **kwargs):
+    def __init__(self, class_, key, 
+                    callable_, class_manager, trackparent=False, extension=None, 
+                    compare_function=None, active_history=False, **kwargs):
         """Construct an AttributeImpl.
 
         \class_
@@ -426,8 +428,11 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
 
     uses_objects = False
 
-    def __init__(self, class_, key, callable_, class_manager, copy_function=None, compare_function=None, **kwargs):
-        super(ScalarAttributeImpl, self).__init__(class_, key, callable_, class_manager, compare_function=compare_function, **kwargs)
+    def __init__(self, class_, key, callable_, 
+                    class_manager, copy_function=None, 
+                    compare_function=None, **kwargs):
+        super(ScalarAttributeImpl, self).__init__(class_, key, callable_, 
+                                class_manager, compare_function=compare_function, **kwargs)
         class_manager.mutable_attributes.add(key)
         if copy_function is None:
             raise sa_exc.ArgumentError("MutableScalarAttributeImpl requires a copy function")
@@ -467,7 +472,9 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     accepts_scalar_loader = False
     uses_objects = True
 
-    def __init__(self, class_, key, callable_, class_manager, trackparent=False, extension=None, copy_function=None, compare_function=None, **kwargs):
+    def __init__(self, class_, key, callable_, class_manager, 
+                    trackparent=False, extension=None, copy_function=None, 
+                    compare_function=None, **kwargs):
         super(ScalarObjectAttributeImpl, self).__init__(class_, key,
           callable_, class_manager, trackparent=trackparent, extension=extension,
           compare_function=compare_function, **kwargs)
@@ -542,7 +549,9 @@ class CollectionAttributeImpl(AttributeImpl):
     accepts_scalar_loader = False
     uses_objects = True
 
-    def __init__(self, class_, key, callable_, class_manager, typecallable=None, trackparent=False, extension=None, copy_function=None, compare_function=None, **kwargs):
+    def __init__(self, class_, key, callable_, class_manager, 
+                    typecallable=None, trackparent=False, extension=None, 
+                    copy_function=None, compare_function=None, **kwargs):
         super(CollectionAttributeImpl, self).__init__(class_,
           key, callable_, class_manager, trackparent=trackparent,
           extension=extension, compare_function=compare_function, **kwargs)
@@ -1427,7 +1436,9 @@ def unregister_class(class_):
     manager.instantiable = False
     manager.unregister()
 
-def register_attribute(class_, key, uselist, useobject, callable_=None, proxy_property=None, mutable_scalars=False, impl_class=None, **kwargs):
+def register_attribute(class_, key, uselist, useobject, 
+                        callable_=None, proxy_property=None, 
+                        mutable_scalars=False, impl_class=None, **kwargs):
     manager = manager_of_class(class_)
     if manager.is_instrumented(key):
         return

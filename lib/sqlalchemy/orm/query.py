@@ -43,6 +43,8 @@ aliased = AliasedClass
 
 def _generative(*assertions):
     """Mark a method as generative."""
+    
+    @util.decorator
     def generate(fn, *args, **kw):
         self = args[0]._clone()
         fn_name = fn.func_name
@@ -50,7 +52,7 @@ def _generative(*assertions):
             assertion(self, fn_name)
         fn(self, *args[1:], **kw)
         return self
-    return util.decorator(generate)
+    return generate
 
 class Query(object):
     """Encapsulates the object-fetching operations provided by Mappers."""

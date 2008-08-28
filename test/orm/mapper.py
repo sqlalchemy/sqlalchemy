@@ -138,11 +138,7 @@ class MapperTest(_fixtures.FixtureTest):
             raise Exception("this exception should be stated as a warning")
 
         sess.expunge = bad_expunge
-        try:
-            Foo(_sa_session=sess)
-            assert False
-        except Exception, e:
-            assert isinstance(e, sa.exc.SAWarning), e
+        self.assertRaises(sa.exc.SAWarning, Foo, _sa_session=sess)
 
     @testing.resolve_artifact_names
     def test_constructor_exc_2(self):
@@ -156,17 +152,8 @@ class MapperTest(_fixtures.FixtureTest):
 
         mapper(Foo, users)
         mapper(Bar, addresses)
-        try:
-            Foo(x=5)
-            assert False
-        except TypeError:
-            assert True
-
-        try:
-            Bar(x=5)
-            assert False
-        except TypeError:
-            assert True
+        self.assertRaises(TypeError, Foo, x=5)
+        self.assertRaises(TypeError, Bar, x=5)
 
     @testing.resolve_artifact_names
     def test_props(self):
