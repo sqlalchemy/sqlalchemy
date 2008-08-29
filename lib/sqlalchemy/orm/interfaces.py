@@ -702,17 +702,20 @@ class PropertyOption(MapperOption):
         return l
 
 class AttributeExtension(object):
-    """An abstract class which specifies `append`, `delete`, and `set`
-    event handlers to be attached to an object property.
+    """An event handler for individual attribute change events.
+    
+    AttributeExtension is assembled within the descriptors associated 
+    with a mapped class.
+    
     """
 
-    def append(self, obj, child, initiator):
+    def append(self, state, value, initiator):
         pass
 
-    def remove(self, obj, child, initiator):
+    def remove(self, state, value, initiator):
         pass
 
-    def set(self, obj, child, oldchild, initiator):
+    def set(self, state, value, oldvalue, initiator):
         pass
 
 

@@ -1545,7 +1545,10 @@ class InstrumentationRegistry(object):
     def state_of(self, instance):
         if instance is None:
             raise AttributeError("None has no persistent state.")
-        return self.state_finders[instance.__class__](instance)
+        try:
+            return self.state_finders[instance.__class__](instance)
+        except KeyError:
+            raise AttributeError("%r is not instrumented" % instance.__class__)
 
     def state_or_default(self, instance, default=None):
         if instance is None:
