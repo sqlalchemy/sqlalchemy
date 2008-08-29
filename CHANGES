@@ -49,6 +49,11 @@ CHANGES
       change the state of the Session before the flush proceeds.
       [ticket:1128]
 
+    - The "extension" argument to Session and others can now
+      optionally be a list, supporting events sent to multiple
+      SessionExtension instances.  Session places SessionExtensions
+      in Session.extensions.
+      
     - Reentrant calls to flush() raise an error.  This also serves
       as a rudimentary, but not foolproof, check against concurrent
       calls to Session.flush().
