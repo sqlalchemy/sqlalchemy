@@ -243,7 +243,7 @@ class AttributeImpl(object):
         else:
             self.is_equal = compare_function
         self.extensions = util.to_list(extension or [])
-        self.active_history = active_history or bool(self.extensions)
+        self.active_history = active_history
 
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to the given item.
@@ -374,7 +374,7 @@ class ScalarAttributeImpl(AttributeImpl):
     def delete(self, state):
 
         # TODO: catch key errors, convert to attributeerror?
-        if self.active_history:
+        if self.active_history or self.extensions:
             old = self.get(state)
         else:
             old = state.dict.get(self.key, NO_VALUE)
@@ -395,7 +395,7 @@ class ScalarAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
-        if self.active_history:
+        if self.active_history or self.extensions:
             old = self.get(state)
         else:
             old = state.dict.get(self.key, NO_VALUE)
