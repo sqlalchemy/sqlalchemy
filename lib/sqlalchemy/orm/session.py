@@ -1370,11 +1370,13 @@ class Session(object):
             self.identity_map.modified = False
             return
 
-        flush_context = UOWTransaction(self)
+        flush_context   = UOWTransaction(self)
 
-        for ext in self.extensions:
-            ext.before_flush(self, flush_context, objects)
-
+        if self.extensions:
+            for ext in self.extensions:
+                ext.before_flush(self, flush_context, objects)
+            dirty = self._dirty_states
+            
         deleted = set(self._deleted)
         new = set(self._new)
 

@@ -929,7 +929,7 @@ class SessionTest(_fixtures.FixtureTest):
                     if isinstance(obj, User):
                         x = session.query(User).filter(User.name=='another %s' % obj.name).one()
                         session.delete(x)
-                        
+                    
         sess = create_session(extension = MyExt(), autoflush=True)
         u = User(name='u1')
         sess.add(u)
@@ -964,6 +964,35 @@ class SessionTest(_fixtures.FixtureTest):
         self.assertEquals(sess.query(User).order_by(User.name).all(), 
             [
                 User(name='another u1'),
+            ]
+        )
+
+    @testing.resolve_artifact_names
+    def test_before_flush_affects_dirty(self):
+        mapper(User, users)
+        
+        class MyExt(sa.orm.session.SessionExtension):
+            def before_flush(self, session, flush_context, objects):
+                for obj in list(session.identity_map.values()):
+                    obj.name += " modified"
+                    
+        sess = create_session(extension = MyExt(), autoflush=True)
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        self.assertEquals(sess.query(User).order_by(User.name).all(), 
+            [
+                User(name='u1')
+            ]
+        )
+        
+        sess.add(User(name='u2'))
+        sess.flush()
+        sess.clear()
+        self.assertEquals(sess.query(User).order_by(User.name).all(), 
+            [
+                User(name='u1 modified'),
+                User(name='u2')
             ]
         )
 
