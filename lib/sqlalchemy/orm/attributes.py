@@ -1241,9 +1241,7 @@ class ClassManager(dict):
         if self.has_state(instance):
             return False
         else:
-            new_state = self.instance_state_factory(instance, self)
-            self.install_state(instance, new_state)
-            return new_state
+            return self.setup_instance(instance)
 
     def has_parent(self, state, key, optimistic=False):
         """TODO"""

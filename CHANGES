@@ -84,6 +84,10 @@ CHANGES
     - Fixed bug whereby changing a primary key attribute on an 
       entity where the attribute's previous value had been expired 
       would produce an error upon flush(). [ticket:1151]
+      
+    - Fixed custom instrumentation bug whereby get_instance_dict()
+      was not called for newly constructed instances not loaded
+      by the ORM.
 
     - Session.delete() adds the given object to the session if 
       not already present.  This was a regression bug from 0.4
