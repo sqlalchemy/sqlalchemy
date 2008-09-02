@@ -7,9 +7,9 @@ from sqlalchemy.orm.interfaces import AttributeExtension, InstrumentationManager
 
 class InstallListeners(InstrumentationManager):
     def instrument_attribute(self, class_, key, inst):
-        """Add an event listener to all InstrumentedAttributes."""
+        """Add an event listener to an InstrumentedAttribute."""
         
-        inst.impl.extensions.append(AttributeListener(key))
+        inst.impl.extensions.insert(0, AttributeListener(key))
         return super(InstallListeners, self).instrument_attribute(class_, key, inst)
         
 class AttributeListener(AttributeExtension):
@@ -25,12 +25,14 @@ class AttributeListener(AttributeExtension):
     
     def append(self, state, value, initiator):
         self._report(state, value, None, "appended")
+        return value
 
     def remove(self, state, value, initiator):
         self._report(state, value, None, "removed")
 
     def set(self, state, value, oldvalue, initiator):
         self._report(state, value, oldvalue, "set")
+        return value
     
     def _report(self, state, value, oldvalue, verb):
         state.obj().receive_change_event(verb, self.key, value, oldvalue)

@@ -584,7 +584,9 @@ class CollectionAdapter(object):
 
         """
         if initiator is not False and item is not None:
-            self.attr.fire_append_event(self.owner_state, item, initiator)
+            return self.attr.fire_append_event(self.owner_state, item, initiator)
+        else:
+            return item
 
     def fire_remove_event(self, item, initiator=None):
         """Notify that a entity has been removed from the collection.
@@ -881,11 +883,13 @@ def _instrument_membership_mutator(method, before, argument, after):
 
 def __set(collection, item, _sa_initiator=None):
     """Run set events, may eventually be inlined into decorators."""
+
     if _sa_initiator is not False and item is not None:
         executor = getattr(collection, '_sa_adapter', None)
         if executor:
-            getattr(executor, 'fire_append_event')(item, _sa_initiator)
-
+            item = getattr(executor, 'fire_append_event')(item, _sa_initiator)
+    return item
+    
 def __del(collection, item, _sa_initiator=None):
     """Run del events, may eventually be inlined into decorators."""
     if _sa_initiator is not False and item is not None:
@@ -908,7 +912,7 @@ def _list_decorators():
 
     def append(fn):
         def append(self, item, _sa_initiator=None):
-            __set(self, item, _sa_initiator)
+            item = __set(self, item, _sa_initiator)
             fn(self, item)
         _tidy(append)
         return append
@@ -924,7 +928,7 @@ def _list_decorators():
 
     def insert(fn):
         def insert(self, index, value):
-            __set(self, value)
+            value = __set(self, value)
             fn(self, index, value)
         _tidy(insert)
         return insert
@@ -935,7 +939,7 @@ def _list_decorators():
                 existing = self[index]
                 if existing is not None:
                     __del(self, existing)
-                __set(self, value)
+                value = __set(self, value)
                 fn(self, index, value)
             else:
                 # slice assignment requires __delitem__, insert, __len__
@@ -985,8 +989,7 @@ def _list_decorators():
         def __setslice__(self, start, end, values):
             for value in self[start:end]:
                 __del(self, value)
-            for value in values:
-                __set(self, value)
+            values = [__set(self, value) for value in values]
             fn(self, start, end, values)
         _tidy(__setslice__)
         return __setslice__
@@ -1047,7 +1050,7 @@ def _dict_decorators():
         def __setitem__(self, key, value, _sa_initiator=None):
             if key in self:
                 __del(self, self[key], _sa_initiator)
-            __set(self, value, _sa_initiator)
+            value = __set(self, value, _sa_initiator)
             fn(self, key, value)
         _tidy(__setitem__)
         return __setitem__
@@ -1154,7 +1157,7 @@ def _set_decorators():
     def add(fn):
         def add(self, value, _sa_initiator=None):
             if value not in self:
-                __set(self, value, _sa_initiator)
+                value = __set(self, value, _sa_initiator)
             # testlib.pragma exempt:__hash__
             fn(self, value)
         _tidy(add)

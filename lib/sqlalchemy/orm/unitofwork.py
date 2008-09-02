@@ -46,7 +46,8 @@ class UOWEventHandler(interfaces.AttributeExtension):
             prop = _state_mapper(state).get_property(self.key)
             if prop.cascade.save_update and item not in sess:
                 sess.save_or_update(item)
-
+        return item
+        
     def remove(self, state, item, initiator):
         sess = _state_session(state)
         if sess:
@@ -60,7 +61,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
     def set(self, state, newvalue, oldvalue, initiator):
         # process "save_update" cascade rules for when an instance is attached to another instance
         if oldvalue is newvalue:
-            return
+            return newvalue
         sess = _state_session(state)
         if sess:
             prop = _state_mapper(state).get_property(self.key)
@@ -68,7 +69,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
                 sess.save_or_update(newvalue)
             if prop.cascade.delete_orphan and oldvalue in sess.new:
                 sess.expunge(oldvalue)
-
+        return newvalue
 
 def register_attribute(class_, key, *args, **kwargs):
     """overrides attributes.register_attribute() to add UOW event handlers

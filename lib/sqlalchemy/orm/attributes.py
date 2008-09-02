@@ -382,8 +382,8 @@ class ScalarAttributeImpl(AttributeImpl):
         state.modified_event(self, False, old)
 
         if self.extensions:
-            del state.dict[self.key]
             self.fire_remove_event(state, old, None)
+            del state.dict[self.key]
         else:
             del state.dict[self.key]
 
@@ -403,14 +403,15 @@ class ScalarAttributeImpl(AttributeImpl):
         state.modified_event(self, False, old)
 
         if self.extensions:
+            value = self.fire_replace_event(state, value, old, initiator)
             state.dict[self.key] = value
-            self.fire_replace_event(state, value, old, initiator)
         else:
             state.dict[self.key] = value
 
     def fire_replace_event(self, state, value, previous, initiator):
         for ext in self.extensions:
-            ext.set(state, value, previous, initiator or self)
+            value = ext.set(state, value, previous, initiator or self)
+        return value
 
     def fire_remove_event(self, state, value, initiator):
         for ext in self.extensions:
@@ -457,8 +458,8 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
 
         if self.extensions:
             old = self.get(state)
+            value = self.fire_replace_event(state, value, old, initiator)
             state.dict[self.key] = value
-            self.fire_replace_event(state, value, old, initiator)
         else:
             state.dict[self.key] = value
 
@@ -483,9 +484,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
     def delete(self, state):
         old = self.get(state)
-        # TODO: catch key errors, convert to attributeerror?
-        del state.dict[self.key]
         self.fire_remove_event(state, old, self)
+        del state.dict[self.key]
 
     def get_history(self, state, passive=False):
         if self.key in state.dict:
@@ -510,8 +510,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
         # may want to add options to allow the get() here to be passive
         old = self.get(state)
+        value = self.fire_replace_event(state, value, old, initiator)
         state.dict[self.key] = value
-        self.fire_replace_event(state, value, old, initiator)
 
     def fire_remove_event(self, state, value, initiator):
         state.modified_event(self, False, value)
@@ -532,7 +532,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                 self.sethasparent(instance_state(previous), False)
 
         for ext in self.extensions:
-            ext.set(state, value, previous, initiator or self)
+            value = ext.set(state, value, previous, initiator or self)
+        return value
 
 
 class CollectionAttributeImpl(AttributeImpl):
@@ -582,7 +583,8 @@ class CollectionAttributeImpl(AttributeImpl):
             self.sethasparent(instance_state(value), True)
 
         for ext in self.extensions:
-            ext.append(state, value, initiator or self)
+            value = ext.append(state, value, initiator or self)
+        return value
 
     def fire_pre_remove_event(self, state, initiator):
         state.modified_event(self, True, NEVER_SET, passive=True)
@@ -624,8 +626,8 @@ class CollectionAttributeImpl(AttributeImpl):
 
         collection = self.get_collection(state, passive=passive)
         if collection is PASSIVE_NORESULT:
+            value = self.fire_append_event(state, value, initiator)
             state.get_pending(self.key).append(value)
-            self.fire_append_event(state, value, initiator)
         else:
             collection.append_with_event(value, initiator)
 
@@ -635,8 +637,8 @@ class CollectionAttributeImpl(AttributeImpl):
 
         collection = self.get_collection(state, passive=passive)
         if collection is PASSIVE_NORESULT:
-            state.get_pending(self.key).remove(value)
             self.fire_remove_event(state, value, initiator)
+            state.get_pending(self.key).remove(value)
         else:
             collection.remove_with_event(value, initiator)
 
@@ -745,7 +747,7 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
 
     def set(self, state, child, oldchild, initiator):
         if oldchild is child:
-            return
+            return child
         if oldchild is not None:
             # With lazy=None, there's no guarantee that the full collection is
             # present when updating via a backref.
@@ -758,11 +760,13 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
         if child is not None:
             new_state = instance_state(child)
             new_state.get_impl(self.key).append(new_state, state.obj(), initiator, passive=True)
-
+        return child
+        
     def append(self, state, child, initiator):
         child_state = instance_state(child)
         child_state.get_impl(self.key).append(child_state, state.obj(), initiator, passive=True)
-
+        return child
+        
     def remove(self, state, child, initiator):
         if child is not None:
             child_state = instance_state(child)

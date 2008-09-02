@@ -33,6 +33,17 @@ CHANGES
       clause will appear in the WHERE clause of the query as well
       since this discrimination has multiple trigger points.
 
+    - AttributeListener has been refined such that the event
+      is fired before the mutation actually occurs.  Addtionally,
+      the append() and set() methods must now return the given value,
+      which is used as the value to be used in the mutation operation.
+      This allows creation of validating AttributeListeners which
+      raise before the action actually occurs, and which can change
+      the given value into something else before its used.
+      A new example "validate_attributes.py" shows one such recipe
+      for doing this.   AttributeListener helper functions are
+      also on the way.
+      
     - class.someprop.in_() raises NotImplementedError pending the
       implementation of "in_" for relation [ticket:1140]
 

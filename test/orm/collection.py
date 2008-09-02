@@ -22,15 +22,19 @@ class Canary(sa.orm.interfaces.AttributeExtension):
         assert value not in self.added
         self.data.add(value)
         self.added.add(value)
+        return value
     def remove(self, obj, value, initiator):
         assert value not in self.removed
         self.data.remove(value)
         self.removed.add(value)
     def set(self, obj, value, oldvalue, initiator):
+        if isinstance(value, str):
+            value = CollectionsTest.entity_maker()
+
         if oldvalue is not None:
             self.remove(obj, oldvalue, None)
         self.append(obj, value, None)
-
+        return value
 
 class CollectionsTest(_base.ORMTest):
     class Entity(object):

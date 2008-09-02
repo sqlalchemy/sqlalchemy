@@ -214,6 +214,7 @@ class AttributesTest(_base.ORMTest):
 
             def set(self, state, child, oldchild, initiator):
                 results.append(("set", state.obj(), child, oldchild))
+                return child
         
         attributes.register_class(Foo)
         attributes.register_attribute(Foo, 'x', uselist=False, mutable_scalars=False, useobject=False, extension=ReceiveEvents())
@@ -1250,6 +1251,47 @@ class HistoryTest(_base.ORMTest):
         assert f.bar is None
         eq_(attributes.get_history(attributes.instance_state(f), 'bar'), ([None], (), [bar1]))
 
+class ListenerTest(_base.ORMTest):
+    def test_receive_changes(self):
+        """test that Listeners can mutate the given value.
+        
+        This is a rudimentary test which would be better suited by a full-blown inclusion
+        into collection.py.
+        
+        """
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+
+        class AlteringListener(AttributeExtension):
+            def append(self, state, child, initiator):
+                b2 = Bar()
+                b2.data = b1.data + " appended"
+                return b2
+
+            def set(self, state, value, oldvalue, initiator):
+                return value + " modified"
+
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+        attributes.register_attribute(Foo, 'data', uselist=False, useobject=False, extension=AlteringListener())
+        attributes.register_attribute(Foo, 'barlist', uselist=True, useobject=True, extension=AlteringListener())
+        attributes.register_attribute(Foo, 'barset', typecallable=set, uselist=True, useobject=True, extension=AlteringListener())
+        attributes.register_attribute(Bar, 'data', uselist=False, useobject=False)
+        
+        f1 = Foo()
+        f1.data = "some data"
+        eq_(f1.data, "some data modified")
+        b1 = Bar()
+        b1.data = "some bar"
+        f1.barlist.append(b1)
+        assert b1.data == "some bar"
+        assert f1.barlist[0].data == "some bar appended"
+        
+        f1.barset.add(b1)
+        assert f1.barset.pop().data == "some bar appended"
+    
     
 if __name__ == "__main__":
     testenv.main()

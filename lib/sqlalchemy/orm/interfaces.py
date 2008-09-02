@@ -705,18 +705,35 @@ class AttributeExtension(object):
     """An event handler for individual attribute change events.
     
     AttributeExtension is assembled within the descriptors associated 
-    with a mapped class.
+    with a mapped class. 
     
     """
 
     def append(self, state, value, initiator):
-        pass
+        """Receive a collection append event.
+        
+        The returned value will be used as the actual value to be
+        appended.
+        
+        """
+        return value
 
     def remove(self, state, value, initiator):
+        """Receive a remove event.
+        
+        No return value is defined.
+        
+        """
         pass
 
     def set(self, state, value, oldvalue, initiator):
-        pass
+        """Receive a set event.
+        
+        The returned value will be used as the actual value to be
+        set.
+        
+        """
+        return value
 
 
 class StrategizedOption(PropertyOption):
