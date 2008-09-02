@@ -23,6 +23,10 @@ class DefaultColumnLoader(LoaderStrategy):
     def _register_attribute(self, compare_function, copy_function, mutable_scalars, comparator_factory, callable_=None, proxy_property=None, active_history=False):
         self.logger.info("%s register managed attribute" % self)
 
+        attribute_ext = util.to_list(self.parent_property.extension) or []
+        if self.key in self.parent._validators:
+            attribute_ext.append(mapperutil.Validator(self.key, self.parent._validators[self.key]))
+
         for mapper in self.parent.polymorphic_iterator():
             if (mapper is self.parent or not mapper.concrete) and mapper.has_property(self.key):
                 sessionlib.register_attribute(
@@ -36,6 +40,7 @@ class DefaultColumnLoader(LoaderStrategy):
                     comparator=comparator_factory(self.parent_property, mapper), 
                     parententity=mapper,
                     callable_=callable_,
+                    extension=attribute_ext,
                     proxy_property=proxy_property,
                     active_history=active_history
                     )
@@ -303,11 +308,14 @@ class AbstractRelationLoader(LoaderStrategy):
     def _register_attribute(self, class_, callable_=None, impl_class=None, **kwargs):
         self.logger.info("%s register managed %s attribute" % (self, (self.uselist and "collection" or "scalar")))
         
-        if self.parent_property.backref:
-            attribute_ext = self.parent_property.backref.extension
-        else:
-            attribute_ext = None
+        attribute_ext = util.to_list(self.parent_property.extension) or []
         
+        if self.parent_property.backref:
+            attribute_ext.append(self.parent_property.backref.extension)
+        
+        if self.key in self.parent._validators:
+            attribute_ext.append(mapperutil.Validator(self.key, self.parent._validators[self.key]))
+            
         sessionlib.register_attribute(
             class_, 
             self.key, 

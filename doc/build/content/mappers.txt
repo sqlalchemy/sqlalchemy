@@ -139,18 +139,54 @@ Correlated subqueries may be used as well:
             )
     })
 
-#### Overriding Attribute Behavior with Synonyms {@name=overriding}
+#### Changing Attribute Behavior {@name=attributes}
 
-A common request is the ability to create custom class properties that override the behavior of setting/getting an attribute.  As of 0.4.2, the `synonym()` construct provides an easy way to do this in conjunction with a normal Python `property` constructs.  Below, we re-map the `email` column of our mapped table to a custom attribute setter/getter, mapping the actual column to the property named `_email`:
+##### Simple Validators {@name=validators}
+
+A quick way to add a "validation" routine to an attribute is to use the `@validates` decorator.  This is a shortcut for using the [docstrings_sqlalchemy.orm_Validator](rel:docstrings_sqlalchemy.orm_Validator) attribute extension with individual column or relation based attributes.   An attribute validator can raise an exception, halting the process of mutating the attribute's value, or can change the given value into something different.   Validators, like all attribute extensions, are only called by normal userland code; they are not issued when the ORM is populating the object.
 
     {python}
-    class MyAddress(object):
+    addresses_table = Table('addresses', metadata, 
+        Column('id', Integer, primary_key=True),
+        Column('email', String)
+    )
+    
+    class EmailAddress(object):
+        @validates('email')
+        def validate_email(self, key, address):
+            assert '@' in address
+            return address
+            
+    mapper(EmailAddress, addresses_table)
+        
+Validators also receive collection events, when items are added to a collection:
+
+    {python}
+    class User(object):
+        @validates('addresses')
+        def validate_address(self, key, address):
+            assert '@' in address.email
+            return address
+    
+##### Using Descriptors {@name=overriding}
+
+A more comprehensive way to produce modified behavior for an attribute is to use descriptors.   These are commonly used in Python using the `property()` function.   The standard SQLAlchemy technique for descriptors is to create a plain descriptor, and to have it read/write from a mapped attribute with a different name.  To have the descriptor named the same as a column, map the column under a different name, i.e.:
+
+    {python}
+    class EmailAddress(object):
        def _set_email(self, email):
           self._email = email
        def _get_email(self):
           return self._email
        email = property(_get_email, _set_email)
 
+    mapper(MyAddress, addresses_table, properties={
+        '_email': addresses_table.c.email
+    })
+    
+However, the approach above is not complete.  While our `EmailAddress` object will shuttle the value through the `email` descriptor and into the `_email` mapped attribute, the class level `EmailAddress.email` attribute does not have the usual expression semantics usable with `Query`.  To provide these, we instead use the `synonym()` function as follows:
+
+    {python}
     mapper(MyAddress, addresses_table, properties={
         'email': synonym('_email', map_column=True)
     })

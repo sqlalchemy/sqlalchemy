@@ -3,7 +3,7 @@
 import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper, reconstructor
+from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper, reconstructor, validates
 from testlib.sa.orm import defer, deferred, synonym, attributes
 from testlib.testing import eq_
 import pickleable
@@ -1086,7 +1086,49 @@ class DeepOptionsTest(_fixtures.FixtureTest):
             x = u[0].orders[1].items[0].keywords[1]
         self.sql_count_(2, go)
 
+class ValidatorTest(_fixtures.FixtureTest):
+    @testing.resolve_artifact_names
+    def test_scalar(self):
+        class User(_base.ComparableEntity):
+            @validates('name')
+            def validate_name(self, key, name):
+                assert name != 'fred'
+                return name + ' modified'
+                
+        mapper(User, users)
+        sess = create_session()
+        u1 = User(name='ed')
+        eq_(u1.name, 'ed modified')
+        self.assertRaises(AssertionError, setattr, u1, "name", "fred")
+        eq_(u1.name, 'ed modified')
+        sess.add(u1)
+        sess.flush()
+        sess.clear()
+        eq_(sess.query(User).filter_by(name='ed modified').one(), User(name='ed'))
+        
 
+    @testing.resolve_artifact_names
+    def test_collection(self):
+        class User(_base.ComparableEntity):
+            @validates('addresses')
+            def validate_address(self, key, ad):
+                assert '@' in ad.email_address
+                return ad
+                
+        mapper(User, users, properties={'addresses':relation(Address)})
+        mapper(Address, addresses)
+        sess = create_session()
+        u1 = User(name='edward')
+        self.assertRaises(AssertionError, u1.addresses.append, Address(email_address='noemail'))
+        u1.addresses.append(Address(id=15, email_address='foo@bar.com'))
+        sess.add(u1)
+        sess.flush()
+        sess.clear()
+        eq_(
+            sess.query(User).filter_by(name='edward').one(), 
+            User(name='edward', addresses=[Address(email_address='foo@bar.com')])
+        )
+        
 class DeferredTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names

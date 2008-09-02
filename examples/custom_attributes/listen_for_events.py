@@ -1,5 +1,6 @@
 """
-Illustrates how to use AttributeExtension to listen for change events.
+Illustrates how to use AttributeExtension to listen for change events 
+across the board.
 
 """
 

@@ -42,6 +42,7 @@ class ColumnProperty(StrategizedProperty):
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
         self.comparator_factory = kwargs.pop('comparator_factory', ColumnProperty.ColumnComparator)
+        self.extension = kwargs.pop('extension', None)
         util.set_creation_order(self)
         if self.deferred:
             self.strategy_class = strategies.DeferredColumnLoader
@@ -100,7 +101,7 @@ log.class_logger(ColumnProperty)
 
 class CompositeProperty(ColumnProperty):
     """subclasses ColumnProperty to provide composite type support."""
-
+    
     def __init__(self, class_, *columns, **kwargs):
         super(CompositeProperty, self).__init__(*columns, **kwargs)
         self._col_position_map = dict((c, i) for i, c in enumerate(columns))
@@ -161,6 +162,9 @@ class CompositeProperty(ColumnProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 class SynonymProperty(MapperProperty):
+
+    extension = None
+
     def __init__(self, name, map_column=None, descriptor=None, comparator_factory=None):
         self.name = name
         self.map_column = map_column
@@ -210,6 +214,8 @@ log.class_logger(SynonymProperty)
 class ComparableProperty(MapperProperty):
     """Instruments a Python property for use in query expressions."""
 
+    extension = None
+    
     def __init__(self, comparator_factory, descriptor=None):
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
@@ -244,7 +250,7 @@ class PropertyLoader(StrategizedProperty):
         backref=None,
         _is_backref=False,
         post_update=False,
-        cascade=False,
+        cascade=False, extension=None,
         viewonly=False, lazy=True,
         collection_class=None, passive_deletes=False,
         passive_updates=True, remote_side=None,
@@ -269,6 +275,7 @@ class PropertyLoader(StrategizedProperty):
         self.comparator = PropertyLoader.Comparator(self, None)
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
+        self.extension = extension
         self.__join_cache = {}
         self.comparator_factory = PropertyLoader.Comparator
         util.set_creation_order(self)

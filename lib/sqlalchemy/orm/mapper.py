@@ -133,6 +133,7 @@ class Mapper(object):
         self.column_prefix = column_prefix
         self.polymorphic_on = polymorphic_on
         self._dependency_processors = []
+        self._validators = {}
         self._clause_adapter = None
         self._requires_row_aliasing = False
         self.__inherits_equated_pairs = None
@@ -868,11 +869,13 @@ class Mapper(object):
         event_registry.add_listener('on_init', _event_on_init)
         event_registry.add_listener('on_init_failure', _event_on_init_failure)
         for key, method in util.iterate_attributes(self.class_):
-            if (isinstance(method, types.FunctionType) and
-                hasattr(method, '__sa_reconstructor__')):
-                event_registry.add_listener('on_load', method)
-                break
-
+            if isinstance(method, types.FunctionType):
+                if hasattr(method, '__sa_reconstructor__'):
+                    event_registry.add_listener('on_load', method)
+                elif hasattr(method, '__sa_validators__'):
+                    for name in method.__sa_validators__:
+                        self._validators[name] = method
+                        
         if 'reconstruct_instance' in self.extension.methods:
             def reconstruct(instance):
                 self.extension.reconstruct_instance(self, instance)
@@ -1652,7 +1655,22 @@ def reconstructor(fn):
     fn.__sa_reconstructor__ = True
     return fn
 
-
+def validates(*names):
+    """Decorate a method as a 'validator' for one or more named properties.
+    
+    Designates a method as a validator, a method which receives the 
+    name of the attribute as well as a value to be assigned, or in the
+    case of a collection to be added to the collection.  The function 
+    can then raise validation exceptions to halt the process from continuing,
+    or can modify or replace the value before proceeding.   The function
+    should otherwise return the given value.
+    
+    """
+    def wrap(fn):
+        fn.__sa_validators__ = names
+        return fn
+    return wrap
+    
 def _event_on_init(state, instance, args, kwargs):
     """Trigger mapper compilation and run init_instance hooks."""
 

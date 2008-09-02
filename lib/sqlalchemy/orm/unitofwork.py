@@ -81,7 +81,8 @@ def register_attribute(class_, key, *args, **kwargs):
         # for object-holding attributes, instrument UOWEventHandler
         # to process per-attribute cascades
         extension = util.to_list(kwargs.pop('extension', None) or [])
-        extension.insert(0, UOWEventHandler(key))
+        extension.append(UOWEventHandler(key))
+        
         kwargs['extension'] = extension
     return attributes.register_attribute(class_, key, *args, **kwargs)
 

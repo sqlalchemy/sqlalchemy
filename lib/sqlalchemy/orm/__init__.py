@@ -29,6 +29,7 @@ from sqlalchemy.orm.interfaces import (
      )
 from sqlalchemy.orm.util import (
      AliasedClass as aliased,
+     Validator,
      join,
      object_mapper,
      outerjoin,
@@ -44,7 +45,7 @@ from sqlalchemy.orm.properties import (
      SynonymProperty,
      )
 from sqlalchemy.orm import mapper as mapperlib
-from sqlalchemy.orm.mapper import reconstructor
+from sqlalchemy.orm.mapper import reconstructor, validates
 from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import AliasOption, Query
 from sqlalchemy.sql import util as sql_util
@@ -59,6 +60,7 @@ __all__ = (
     'EXT_STOP',
     'InstrumentationManager',
     'MapperExtension',
+    'Validator',
     'PropComparator',
     'Query',
     'aliased',
@@ -91,6 +93,7 @@ __all__ = (
     'synonym',
     'undefer',
     'undefer_group',
+    'validates'
     )
 
 
@@ -206,6 +209,14 @@ def relation(argument, secondary=None, **kwargs):
           a class or function that returns a new list-holding object. will be
           used in place of a plain list for storing elements.
 
+        extension
+          an [sqlalchemy.orm.interfaces#AttributeExtension] instance, 
+          or list of extensions, which will be prepended to the list of 
+          attribute listeners for the resulting descriptor placed on the class.
+          These listeners will receive append and set events before the 
+          operation proceeds, and may be used to halt (via exception throw)
+          or change the value used in the operation.
+          
         foreign_keys
           a list of columns which are to be used as "foreign key" columns.
           this parameter should be used in conjunction with explicit
@@ -396,6 +407,14 @@ def column_property(*args, **kwargs):
           attribute is first accessed on an instance.  See also
           [sqlalchemy.orm#deferred()].
 
+      extension
+        an [sqlalchemy.orm.interfaces#AttributeExtension] instance, 
+        or list of extensions, which will be prepended to the list of 
+        attribute listeners for the resulting descriptor placed on the class.
+        These listeners will receive append and set events before the 
+        operation proceeds, and may be used to halt (via exception throw)
+        or change the value used in the operation.
+
     """
 
     return ColumnProperty(*args, **kwargs)
@@ -460,6 +479,14 @@ def composite(class_, *cols, **kwargs):
     comparator
       An optional instance of [sqlalchemy.orm#PropComparator] which provides
       SQL expression generation functions for this composite type.
+
+    extension
+      an [sqlalchemy.orm.interfaces#AttributeExtension] instance, 
+      or list of extensions, which will be prepended to the list of 
+      attribute listeners for the resulting descriptor placed on the class.
+      These listeners will receive append and set events before the 
+      operation proceeds, and may be used to halt (via exception throw)
+      or change the value used in the operation.
 
     """
     return CompositeProperty(class_, *cols, **kwargs)
