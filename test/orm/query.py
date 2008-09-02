@@ -2355,5 +2355,22 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
+    @testing.resolve_artifact_names
+    def test_update_returns_rowcount(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        rowcount = sess.query(User).filter(User.age > 29).update({'age': User.age + 0})
+        self.assertEquals(rowcount, 2)
+
+        rowcount = sess.query(User).filter(User.age > 29).update({'age': User.age - 10})
+        self.assertEquals(rowcount, 2)
+
+    @testing.resolve_artifact_names
+    def test_delete_returns_rowcount(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        rowcount = sess.query(User).filter(User.age > 26).delete(synchronize_session=False)
+        self.assertEquals(rowcount, 3)
+
 if __name__ == '__main__':
     testenv.main()

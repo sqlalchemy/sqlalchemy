@@ -1254,6 +1254,8 @@ class Query(object):
           The expression evaluator currently doesn't account for differing string
           collations between the database and Python.
 
+        Returns the number of rows deleted, excluding any cascades.
+
         Warning - this currently doesn't account for any foreign key/relation cascades.
         """
         #TODO: lots of duplication and ifs - probably needs to be refactored to strategies
@@ -1285,7 +1287,7 @@ class Query(object):
 
         if self._autoflush:
             session._autoflush()
-        session.execute(delete_stmt)
+        result = session.execute(delete_stmt)
 
         if synchronize_session == 'evaluate':
             target_cls = self._mapper_zero().class_
@@ -1301,6 +1303,8 @@ class Query(object):
                 identity_key = target_mapper.identity_key_from_primary_key(list(primary_key))
                 if identity_key in session.identity_map:
                     session._remove_newly_deleted(attributes.instance_state(session.identity_map[identity_key]))
+
+        return result.rowcount
 
     def update(self, values, synchronize_session='expire'):
         """Perform a bulk update query.
@@ -1326,6 +1330,8 @@ class Query(object):
 
           The expression evaluator currently doesn't account for differing string
           collations between the database and Python.
+
+        Returns the number of rows matched by the update.
 
         Warning - this currently doesn't account for any foreign key/relation cascades.
         """
@@ -1363,7 +1369,7 @@ class Query(object):
 
         if self._autoflush:
             session._autoflush()
-        session.execute(update_stmt)
+        result = session.execute(update_stmt)
 
         if synchronize_session == 'evaluate':
             target_cls = self._mapper_zero().class_
@@ -1391,6 +1397,8 @@ class Query(object):
                 identity_key = target_mapper.identity_key_from_primary_key(list(primary_key))
                 if identity_key in session.identity_map:
                     session.expire(session.identity_map[identity_key], values.keys())
+
+        return result.rowcount
 
 
     def _compile_context(self, labels=True):
