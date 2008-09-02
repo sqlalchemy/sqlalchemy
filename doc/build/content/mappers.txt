@@ -187,19 +187,19 @@ A more comprehensive way to produce modified behavior for an attribute is to use
 However, the approach above is not complete.  While our `EmailAddress` object will shuttle the value through the `email` descriptor and into the `_email` mapped attribute, the class level `EmailAddress.email` attribute does not have the usual expression semantics usable with `Query`.  To provide these, we instead use the `synonym()` function as follows:
 
     {python}
-    mapper(MyAddress, addresses_table, properties={
+    mapper(EmailAddress, addresses_table, properties={
         'email': synonym('_email', map_column=True)
     })
 
 The `email` attribute is now usable in the same way as any other mapped attribute, including filter expressions, get/set operations, etc.:
 
     {python}
-    address = sess.query(MyAddress).filter(MyAddress.email == 'some address').one()
+    address = sess.query(EmailAddress).filter(EmailAddress.email == 'some address').one()
 
     address.email = 'some other address'
     sess.flush()
 
-    q = sess.query(MyAddress).filter_by(email='some other address')
+    q = sess.query(EmailAddress).filter_by(email='some other address')
 
 If the mapped class does not provide a property, the `synonym()` construct will create a default getter/setter object automatically.
 
