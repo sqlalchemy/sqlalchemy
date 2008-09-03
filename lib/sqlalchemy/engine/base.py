@@ -174,7 +174,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def has_sequence(self, connection, sequence_name):
+    def has_sequence(self, connection, sequence_name, schema=None):
         """Check the existence of a particular sequence in the database.
 
         Given a [sqlalchemy.engine#Connection] object and a string
@@ -1904,6 +1904,7 @@ def connection_memoize(key):
     """
     @util.decorator
     def decorated(fn, self, connection):
+        connection = connection.connect()
         try:
             return connection.info[key]
         except KeyError:

@@ -142,7 +142,8 @@ CHANGES
       and instead uses subqueries in conjunction with a special
       Oracle optimization comment.  Allows LIMIT/OFFSET to work
       in conjunction with DISTINCT. [ticket:536]
-
+    - has_sequence() now takes the current "schema" argument into
+      account [ticket:1155]
 
 0.5beta3
 ========
