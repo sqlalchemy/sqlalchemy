@@ -60,8 +60,9 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         
         s = select([t]).limit(10).offset(20)
 
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2, "
-            "ROW_NUMBER() OVER (ORDER BY sometable.rowid) AS ora_rn FROM sometable) WHERE ora_rn>20 AND ora_rn<=30"
+        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM AS ora_rn "
+            "FROM (SELECT  sometable.col1 AS col1, sometable.col2 AS col2 "
+            "FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1"
         )
 
         # assert that despite the subquery, the columns from the table,
@@ -71,17 +72,16 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         
         s = select([s.c.col1, s.c.col2])
 
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.rowid) AS ora_rn FROM sometable) WHERE ora_rn>20 AND ora_rn<=30)")
+        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM AS ora_rn FROM (SELECT  sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
 
         # testing this twice to ensure oracle doesn't modify the original statement
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.rowid) AS ora_rn FROM sometable) WHERE ora_rn>20 AND ora_rn<=30)")
+        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM AS ora_rn FROM (SELECT  sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
 
         s = select([t]).limit(10).offset(20).order_by(t.c.col2)
 
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2, ROW_NUMBER() OVER (ORDER BY sometable.col2) AS ora_rn FROM sometable) WHERE ora_rn>20 AND ora_rn<=30")
+        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM "
+            "AS ora_rn FROM (SELECT  sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable "
+            "ORDER BY sometable.col2) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1")
 
     def test_outer_join(self):
         table1 = table('mytable',
@@ -128,13 +128,18 @@ AND mytable.myid = myothertable.otherid(+)",
         self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE thirdtable.userid = myothertable.otherid AND mytable.myid = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))
 
         query = table1.join(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
-        self.assert_compile(query.select().order_by(table1.oid_column).limit(10).offset(5), "SELECT myid, name, description, otherid, othername, userid, \
-otherstuff FROM (SELECT mytable.myid AS myid, mytable.name AS name, \
-mytable.description AS description, myothertable.otherid AS otherid, \
-myothertable.othername AS othername, thirdtable.userid AS userid, \
-thirdtable.otherstuff AS otherstuff, ROW_NUMBER() OVER (ORDER BY mytable.rowid) AS ora_rn \
-FROM mytable, myothertable, thirdtable WHERE thirdtable.userid(+) = myothertable.otherid AND mytable.myid = myothertable.otherid) \
-WHERE ora_rn>5 AND ora_rn<=15", dialect=oracle.dialect(use_ansi=False))
+
+        self.assert_compile(query.select().order_by(table1.oid_column).limit(10).offset(5), 
+        
+            "SELECT myid, name, description, otherid, othername, userid, "
+            "otherstuff FROM (SELECT /*+ FIRST_ROWS(10) */ myid, name, description, "
+            "otherid, othername, userid, otherstuff, ROWNUM AS ora_rn FROM (SELECT  "
+            "mytable.myid AS myid, mytable.name AS name, mytable.description AS description, "
+            "myothertable.otherid AS otherid, myothertable.othername AS othername, "
+            "thirdtable.userid AS userid, thirdtable.otherstuff AS otherstuff FROM mytable, "
+            "myothertable, thirdtable WHERE thirdtable.userid(+) = myothertable.otherid AND "
+            "mytable.myid = myothertable.otherid ORDER BY mytable.rowid) WHERE "
+            "ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1", dialect=oracle.dialect(use_ansi=False))
 
     def test_alias_outer_join(self):
         address_types = table('address_types',

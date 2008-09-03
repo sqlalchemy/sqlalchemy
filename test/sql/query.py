@@ -317,31 +317,7 @@ class QueryTest(TestBase):
 
         print repr(users.select().execute().fetchall())
 
-    def test_select_limit(self):
-        users.insert().execute(user_id=1, user_name='john')
-        users.insert().execute(user_id=2, user_name='jack')
-        users.insert().execute(user_id=3, user_name='ed')
-        users.insert().execute(user_id=4, user_name='wendy')
-        users.insert().execute(user_id=5, user_name='laura')
-        users.insert().execute(user_id=6, user_name='ralph')
-        users.insert().execute(user_id=7, user_name='fido')
-        r = users.select(limit=3, order_by=[users.c.user_id]).execute().fetchall()
-        self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
 
-    @testing.crashes('mssql', 'FIXME: guessing')
-    @testing.fails_on('maxdb')
-    def test_select_limit_offset(self):
-        users.insert().execute(user_id=1, user_name='john')
-        users.insert().execute(user_id=2, user_name='jack')
-        users.insert().execute(user_id=3, user_name='ed')
-        users.insert().execute(user_id=4, user_name='wendy')
-        users.insert().execute(user_id=5, user_name='laura')
-        users.insert().execute(user_id=6, user_name='ralph')
-        users.insert().execute(user_id=7, user_name='fido')
-        r = users.select(limit=3, offset=2, order_by=[users.c.user_id]).execute().fetchall()
-        self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
-        r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
-        self.assert_(r==[(6, 'ralph'), (7, 'fido')])
 
     @testing.exclude('mysql', '<', (5, 0, 37), 'database bug')
     def test_scalar_select(self):
@@ -556,7 +532,7 @@ class QueryTest(TestBase):
         finally:
             shadowed.drop(checkfirst=True)
 
-    @testing.fails_on('firebird', 'maxdb')
+    @testing.fails_on('firebird', 'maxdb', 'oracle')
     def test_in_filtering(self):
         """test the behavior of the in_() function."""
 
@@ -607,6 +583,74 @@ class QueryTest(TestBase):
         r = s.execute().fetchall()
         assert len(r) == 1
 
+
+class LimitTest(TestBase):
+
+    def setUpAll(self):
+        global users, addresses, metadata
+        metadata = MetaData(testing.db)
+        users = Table('query_users', metadata,
+            Column('user_id', INT, primary_key = True),
+            Column('user_name', VARCHAR(20)),
+        )
+        addresses = Table('query_addresses', metadata,
+            Column('address_id', Integer, primary_key=True),
+            Column('user_id', Integer, ForeignKey('query_users.user_id')),
+            Column('address', String(30)))
+        metadata.create_all()
+        self._data()
+        
+    def _data(self):
+        users.insert().execute(user_id=1, user_name='john')
+        addresses.insert().execute(address_id=1, user_id=1, address='addr1')
+        users.insert().execute(user_id=2, user_name='jack')
+        addresses.insert().execute(address_id=2, user_id=2, address='addr1')
+        users.insert().execute(user_id=3, user_name='ed')
+        addresses.insert().execute(address_id=3, user_id=3, address='addr2')
+        users.insert().execute(user_id=4, user_name='wendy')
+        addresses.insert().execute(address_id=4, user_id=4, address='addr3')
+        users.insert().execute(user_id=5, user_name='laura')
+        addresses.insert().execute(address_id=5, user_id=5, address='addr4')
+        users.insert().execute(user_id=6, user_name='ralph')
+        addresses.insert().execute(address_id=6, user_id=6, address='addr5')
+        users.insert().execute(user_id=7, user_name='fido')
+        addresses.insert().execute(address_id=7, user_id=7, address='addr5')
+        
+    def tearDownAll(self):
+        metadata.drop_all()
+
+    def test_select_limit(self):
+        r = users.select(limit=3, order_by=[users.c.user_id]).execute().fetchall()
+        self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
+
+    @testing.crashes('mssql', 'FIXME: guessing')
+    @testing.fails_on('maxdb')
+    def test_select_limit_offset(self):
+        r = users.select(limit=3, offset=2, order_by=[users.c.user_id]).execute().fetchall()
+        self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
+        r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
+        self.assert_(r==[(6, 'ralph'), (7, 'fido')])
+
+    def test_select_distinct_limit(self):
+        """Test the interaction between limit and distinct"""
+
+        r = sorted([x[0] for x in select([addresses.c.address]).distinct().limit(3).execute().fetchall()])
+        self.assert_(len(r) == 3, repr(r))
+        self.assert_(r[0] != r[1] and r[1] != r[2], repr(r))
+
+    def test_select_distinct_offset(self):
+        """Test the interaction between limit and offset"""
+
+        r = sorted([x[0] for x in select([addresses.c.address]).distinct().offset(1).execute().fetchall()])
+        self.assert_(len(r) == 4, repr(r))
+        self.assert_(r[0] != r[1] and r[1] != r[2] and r[2] != [3], repr(r))
+
+    def test_select_distinct_limit_offset(self):
+        """Test the interaction between limit and limit/offset"""
+
+        r = select([addresses.c.address]).order_by(addresses.c.address).distinct().offset(2).limit(3).execute().fetchall()
+        self.assert_(len(r) == 3, repr(r))
+        self.assert_(r[0] != r[1] and r[1] != r[2], repr(r))
 
 class CompoundTest(TestBase):
     """test compound statements like UNION, INTERSECT, particularly their ability to nest on

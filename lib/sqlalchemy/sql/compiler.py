@@ -477,7 +477,8 @@ class DefaultCompiler(engine.Compiled):
 
         if asfrom or (prev_entry and 'select' in prev_entry):
             stack_entry['is_subquery'] = True
-            if prev_entry and 'iswrapper' in prev_entry:
+            stack_entry['iswrapper'] = iswrapper
+            if not iswrapper and prev_entry and 'iswrapper' in prev_entry:
                 column_clause_args = {'result_map':self.result_map}
             else:
                 column_clause_args = {}

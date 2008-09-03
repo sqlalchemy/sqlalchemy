@@ -137,6 +137,13 @@ CHANGES
       
     - Added MSMediumInteger type [ticket:1146].
 
+- oracle
+    - limit/offset no longer uses ROW NUMBER OVER to limit rows,
+      and instead uses subqueries in conjunction with a special
+      Oracle optimization comment.  Allows LIMIT/OFFSET to work
+      in conjunction with DISTINCT. [ticket:536]
+
+
 0.5beta3
 ========
 
