@@ -369,8 +369,11 @@ class OracleDialect(default.DefaultDialect):
         cursor = connection.execute("""select table_name from all_tables where table_name=:name and owner=:schema_name""", {'name':self._denormalize_name(table_name), 'schema_name':self._denormalize_name(schema)})
         return bool( cursor.fetchone() is not None )
 
-    def has_sequence(self, connection, sequence_name):
-        cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name""", {'name':self._denormalize_name(sequence_name)})
+    def has_sequence(self, connection, sequence_name, schema=None):
+        if not schema:
+            schema = self.get_default_schema_name(connection)
+
+        cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name and sequence_owner=:schema_name""", {'name':self._denormalize_name(sequence_name), 'schema_name':self._denormalize_name(schema)})
         return bool( cursor.fetchone() is not None )
 
     def _normalize_name(self, name):
@@ -728,13 +731,13 @@ class OracleSchemaGenerator(compiler.SchemaGenerator):
         return colspec
 
     def visit_sequence(self, sequence):
-        if not self.checkfirst  or not self.dialect.has_sequence(self.connection, sequence.name):
+        if not self.checkfirst  or not self.dialect.has_sequence(self.connection, sequence.name, sequence.schema):
             self.append("CREATE SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
 
 class OracleSchemaDropper(compiler.SchemaDropper):
     def visit_sequence(self, sequence):
-        if not self.checkfirst or self.dialect.has_sequence(self.connection, sequence.name):
+        if not self.checkfirst or self.dialect.has_sequence(self.connection, sequence.name, sequence.schema):
             self.append("DROP SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
 

@@ -1883,6 +1883,7 @@ def connection_memoize(key):
         assert spec[1:3] == (None, None)
 
         def decorated(self, connection):
+            connection = connection.connect()
             try:
                 return connection.info[key]
             except KeyError:
