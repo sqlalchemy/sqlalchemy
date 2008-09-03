@@ -144,6 +144,7 @@ CHANGES
       in conjunction with DISTINCT. [ticket:536]
     - has_sequence() now takes the current "schema" argument into
       account [ticket:1155]
+    - added BFILE to reflected type names [ticket:1121]
 
 0.5beta3
 ========
