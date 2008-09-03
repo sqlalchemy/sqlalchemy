@@ -61,7 +61,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         s = select([t]).limit(10).offset(20)
 
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM AS ora_rn "
-            "FROM (SELECT  sometable.col1 AS col1, sometable.col2 AS col2 "
+            "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
             "FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1"
         )
 
@@ -72,15 +72,15 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         
         s = select([s.c.col1, s.c.col2])
 
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM AS ora_rn FROM (SELECT  sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
+        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM AS ora_rn FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
 
         # testing this twice to ensure oracle doesn't modify the original statement
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM AS ora_rn FROM (SELECT  sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
+        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM AS ora_rn FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
 
         s = select([t]).limit(10).offset(20).order_by(t.c.col2)
 
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT /*+ FIRST_ROWS(10) */ col1, col2, ROWNUM "
-            "AS ora_rn FROM (SELECT  sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable "
+            "AS ora_rn FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable "
             "ORDER BY sometable.col2) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1")
 
     def test_outer_join(self):
@@ -133,7 +133,7 @@ AND mytable.myid = myothertable.otherid(+)",
         
             "SELECT myid, name, description, otherid, othername, userid, "
             "otherstuff FROM (SELECT /*+ FIRST_ROWS(10) */ myid, name, description, "
-            "otherid, othername, userid, otherstuff, ROWNUM AS ora_rn FROM (SELECT  "
+            "otherid, othername, userid, otherstuff, ROWNUM AS ora_rn FROM (SELECT "
             "mytable.myid AS myid, mytable.name AS name, mytable.description AS description, "
             "myothertable.otherid AS otherid, myothertable.othername AS othername, "
             "thirdtable.userid AS userid, thirdtable.otherstuff AS otherstuff FROM mytable, "
