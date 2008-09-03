@@ -179,6 +179,7 @@ ischema_names = {
     'DATETIME' : OracleDateTime,
     'NUMBER' : OracleNumeric,
     'BLOB' : OracleBinary,
+    'BFILE' : OracleBinary,
     'CLOB' : OracleText,
     'TIMESTAMP' : OracleTimestamp,
     'RAW' : OracleRaw,

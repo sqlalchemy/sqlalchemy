@@ -10,6 +10,12 @@ CHANGES
 
 - mysql
     - Added MSMediumInteger type [ticket:1146].
+
+- oracle
+    - has_sequence() now takes schema name into account
+      [ticket:1155]
+    - added BFILE to the list of reflected types
+      [ticket:1121]
       
 0.4.7p1
 =====
