@@ -47,7 +47,7 @@ def _generative(*assertions):
     @util.decorator
     def generate(fn, *args, **kw):
         self = args[0]._clone()
-        fn_name = fn.func_name
+        fn_name = kw.pop('generative_name', fn.func_name)
         for assertion in assertions:
             assertion(self, fn_name)
         fn(self, *args[1:], **kw)
@@ -292,7 +292,7 @@ class Query(object):
             )
 
     @_generative(__no_criterion_condition)
-    def __no_criterion(self):
+    def __no_criterion(self, generative_name=None):
         """generate a Query with no criterion, warn if criterion was present"""
 
     def __get_options(self, populate_existing=None, version_check=None, only_load_props=None, refresh_state=None):
@@ -1151,7 +1151,7 @@ class Query(object):
             ident = util.to_list(ident)
 
         if refresh_state is None:
-            q = self.__no_criterion()
+            q = self.__no_criterion(generative_name="get")
         else:
             q = self._clone()
 
