@@ -4,7 +4,7 @@ from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint, asc
-from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers
+from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref
 from testlib.testing import eq_
 from orm._base import ComparableEntity
 
@@ -114,7 +114,27 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             id = Column(Integer, primary_key=True)
             rel = relation("User", primaryjoin="User.addresses==Foo.id")
         self.assertRaisesMessage(exc.InvalidRequestError, "'addresses' is not an instance of ColumnProperty", compile_mappers)
-    
+
+    def test_string_dependency_resolution_in_backref(self):
+        class User(Base, ComparableEntity):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            addresses = relation("Address", 
+                primaryjoin="User.id==Address.user_id", 
+                backref="user"
+                )
+
+        class Address(Base, ComparableEntity):
+            __tablename__ = 'addresses'
+            id = Column(Integer, primary_key=True)
+            email = Column(String(50))
+            user_id = Column(Integer, ForeignKey('users.id'))  
+
+        compile_mappers()
+        eq_(str(User.addresses.property.primaryjoin), str(Address.user.property.primaryjoin))
+        
+        
     def test_uncompiled_attributes_in_relation(self):
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'

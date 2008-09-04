@@ -374,6 +374,12 @@ def _deferred_relation(cls, prop):
             if isinstance(v, basestring):
                 setattr(prop, attr, resolve_arg(v))
 
+        if prop.backref:
+            for attr in ('primaryjoin', 'secondaryjoin'):
+               if attr in prop.backref.kwargs and isinstance(prop.backref.kwargs[attr], basestring):
+                   prop.backref.kwargs[attr] = resolve_arg(prop.backref.kwargs[attr])
+
+
     return prop
 
 def synonym_for(name, map_column=False):

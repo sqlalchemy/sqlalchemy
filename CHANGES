@@ -107,7 +107,7 @@ CHANGES
       by the ORM.
 
     - Session.delete() adds the given object to the session if 
-      not already present.  This was a regression bug from 0.4
+      not already present.  This was a regression bug from 0.4.
       [ticket:1150]
       
     - The `echo_uow` flag on `Session` is deprecated, and unit-of-work
@@ -116,7 +116,10 @@ CHANGES
 - declarative
     - Fixed bug whereby mapper couldn't initialize if a composite
       primary key referenced another table that was not defined
-      yet [ticket:1161]
+      yet. [ticket:1161]
+    
+    - Fixed exception throw which would occur when string-based
+      primaryjoin condition was used in conjunction with backref.
       
 - schema
     - Added "sorted_tables" accessor to MetaData, which returns
