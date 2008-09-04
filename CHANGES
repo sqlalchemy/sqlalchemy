@@ -112,6 +112,11 @@ CHANGES
       
     - The `echo_uow` flag on `Session` is deprecated, and unit-of-work
       logging is now application-level only, not per-session level.
+
+- declarative
+    - Fixed bug whereby mapper couldn't initialize if a composite
+      primary key referenced another table that was not defined
+      yet [ticket:1161]
       
 - schema
     - Added "sorted_tables" accessor to MetaData, which returns

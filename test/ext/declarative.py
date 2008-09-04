@@ -679,6 +679,22 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
               Address(email='one'),
               Address(email='two')])])
 
+    def test_pk_with_fk_init(self):
+        class Bar(Base):
+            __tablename__ = 'bar'
+
+            id = sa.Column(sa.Integer, sa.ForeignKey("foo.id"), primary_key=True)
+            ex = sa.Column(sa.Integer, primary_key=True)
+
+        class Foo(Base):
+            __tablename__ = 'foo'
+
+            id = sa.Column(sa.Integer, primary_key=True)
+            bars = sa.orm.relation(Bar)
+        
+        assert Bar.__mapper__.primary_key[0] is Bar.__table__.c.id
+        assert Bar.__mapper__.primary_key[1] is Bar.__table__.c.ex
+        
     def test_single_inheritance(self):
         class Company(Base, ComparableEntity):
             __tablename__ = 'companies'

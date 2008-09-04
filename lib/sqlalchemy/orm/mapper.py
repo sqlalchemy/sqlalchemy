@@ -545,11 +545,11 @@ class Mapper(object):
             # determine primary key from argument or mapped_table pks - reduce to the minimal set of columns
             if self.primary_key_argument:
                 primary_key = sqlutil.reduce_columns(
-                    self.mapped_table.corresponding_column(c)
-                    for c in self.primary_key_argument)
+                    [self.mapped_table.corresponding_column(c) for c in self.primary_key_argument], 
+                    ignore_nonexistent_tables=True)
             else:
                 primary_key = sqlutil.reduce_columns(
-                    self._pks_by_table[self.mapped_table])
+                    self._pks_by_table[self.mapped_table], ignore_nonexistent_tables=True)
 
             if len(primary_key) == 0:
                 raise sa_exc.ArgumentError("Mapper %s could not assemble any primary key columns for mapped table '%s'" % (self, self.mapped_table.description))

@@ -190,7 +190,7 @@ def splice_joins(left, right, stop_on=None):
 
     return ret
     
-def reduce_columns(columns, *clauses):
+def reduce_columns(columns, *clauses, **kw):
     """given a list of columns, return a 'reduced' set based on natural equivalents.
 
     the set is reduced to the smallest list of columns which have no natural
@@ -200,12 +200,17 @@ def reduce_columns(columns, *clauses):
     \*clauses is an optional list of join clauses which will be traversed
     to further identify columns that are "equivalent".
 
+    \**kw may specify 'ignore_nonexistent_tables' to ignore foreign keys
+    whose tables are not yet configured.
+    
     This function is primarily used to determine the most minimal "primary key"
     from a selectable, by reducing the set of primary key columns present
     in the the selectable to just those that are not repeated.
 
     """
 
+    ignore_nonexistent_tables = kw.pop('ignore_nonexistent_tables', False)
+    
     columns = util.OrderedSet(columns)
 
     omit = set()
@@ -214,7 +219,14 @@ def reduce_columns(columns, *clauses):
             for c in columns:
                 if c is col:
                     continue
-                if fk.column.shares_lineage(c):
+                try:
+                    fk_col = fk.column
+                except exc.NoReferencedTableError:
+                    if ignore_nonexistent_tables:
+                        continue
+                    else:
+                        raise
+                if fk_col.shares_lineage(c):
                     omit.add(col)
                     break
 
