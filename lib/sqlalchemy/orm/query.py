@@ -267,7 +267,9 @@ class Query(object):
         return equivs
 
     def __no_criterion_condition(self, meth):
-        if self._criterion or self._statement or self._from_obj or self._limit is not None or self._offset is not None or self._group_by or self._order_by:
+        if self._criterion or self._statement or self._from_obj or \
+                self._limit is not None or self._offset is not None or \
+                self._group_by or self._order_by:
             raise sa_exc.InvalidRequestError("Query.%s() being called on a Query with existing criterion. " % meth)
 
         self._statement = self._criterion = self._from_obj = None

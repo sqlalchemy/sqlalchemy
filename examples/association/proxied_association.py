@@ -29,21 +29,22 @@ orderitems = Table('orderitems', metadata,
 
 metadata.create_all()
 
+class OrderItem(object):
+    def __init__(self, item, price=None):
+        self.item = item
+        self.price = price is None and item.price or price
+
 class Order(object):
     def __init__(self, customer_name):
         self.customer_name = customer_name
     items = AssociationProxy('itemassociations', 'item',
-                             creator=lambda x: OrderItem(x))
+                             creator=OrderItem)
 
 class Item(object):
     def __init__(self, description, price):
         self.description = description
         self.price = price
 
-class OrderItem(object):
-    def __init__(self, item, price=None):
-        self.item = item
-        self.price = price is None and item.price or price
 
 mapper(Order, orders, properties={
     'itemassociations':relation(OrderItem, cascade="all, delete-orphan", lazy=False)

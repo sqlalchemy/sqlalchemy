@@ -1223,12 +1223,12 @@ class Mapper(object):
                     mapper.__postfetch(uowtransaction, connection, table, state, c, c.last_inserted_params(), value_params)
 
                     # synchronize newly inserted ids from one table to the next
-                    # TODO: this fires off more than needed, try to organize syncrules
-                    # per table
-                    for m in reversed(list(mapper.iterate_to_root())):
-                        if m.__inherits_equated_pairs:
-                            m.__synchronize_inherited(state)
-
+                    # TODO: this performs some unnecessary attribute transfers
+                    # from an attribute to itself, since the attribute is often mapped
+                    # to multiple, equivalent columns
+                    if mapper.__inherits_equated_pairs:
+                        sync.populate(state, mapper, state, mapper, mapper.__inherits_equated_pairs)
+                        
                     # testlib.pragma exempt:__hash__
                     inserted_objects.add((state, connection))
 
@@ -1258,9 +1258,6 @@ class Mapper(object):
                 else:
                     if 'after_update' in mapper.extension.methods:
                         mapper.extension.after_update(mapper, connection, state.obj())
-
-    def __synchronize_inherited(self, state):
-        sync.populate(state, self, state, self, self.__inherits_equated_pairs)
 
     def __postfetch(self, uowtransaction, connection, table, state, resultproxy, params, value_params):
         """For a given Table that has just been inserted/updated,
