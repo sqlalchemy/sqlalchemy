@@ -1144,12 +1144,28 @@ class Session(object):
         except exc.NO_STATE:
             raise exc.UnmappedInstanceError(instance)
 
-        # grab the full cascade list first, since lazyloads/autoflush
-        # may be triggered by this operation (delete cascade lazyloads by default)
+        if state.key is None:
+            raise sa_exc.InvalidRequestError(
+                "Instance '%s' is not persisted" %
+                mapperutil.state_str(state))
+
+        if state in self._deleted:
+            return
+            
+        # ensure object is attached to allow the 
+        # cascade operation to load deferred attributes
+        # and collections
+        self._attach(state)
+
+        # grab the cascades before adding the item to the deleted list
+        # so that autoflush does not delete the item
         cascade_states = list(_cascade_state_iterator('delete', state))
-        self._delete_impl(state)
+
+        self._deleted[state] = state.obj()
+        self.identity_map.add(state)
+
         for state, m, o in cascade_states:
-            self._delete_impl(state, ignore_transient=True)
+            self._delete_impl(state)
 
     def merge(self, instance, dont_load=False,
               _recursive=None):
@@ -1252,17 +1268,11 @@ class Session(object):
         if (self.identity_map.contains_state(state) and
             state not in self._deleted):
             return
+            
         if state.key is None:
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is not persisted" %
                 mapperutil.state_str(state))
-
-        if (state.key in self.identity_map and
-            not self.identity_map.contains_state(state)):
-            raise sa_exc.InvalidRequestError(
-                "Could not update instance '%s', identity key %s; a different "
-                "instance with the same identity key already exists in this "
-                "session." % (mapperutil.state_str(state), state.key))
 
         self._attach(state)
         self._deleted.pop(state, None)
@@ -1274,38 +1284,36 @@ class Session(object):
         else:
             self._update_impl(state)
 
-    def _delete_impl(self, state, ignore_transient=False):
-        if self.identity_map.contains_state(state) and state in self._deleted:
+    def _delete_impl(self, state):
+        if state in self._deleted:
             return
 
         if state.key is None:
-            if ignore_transient:
-                return
-            else:
-                raise sa_exc.InvalidRequestError(
-                    "Instance '%s' is not persisted" %
-                    mapperutil.state_str(state))
-        if (state.key in self.identity_map and
-            not self.identity_map.contains_state(state)):
-            raise sa_exc.InvalidRequestError(
-                "Instance '%s' is with key %s already persisted with a "
-                "different identity" % (mapperutil.state_str(state),
-                                        state.key))
-
+            return
+                    
         self._attach(state)
         self._deleted[state] = state.obj()
         self.identity_map.add(state)
-
+    
     def _attach(self, state):
+        if state.key and \
+            state.key in self.identity_map and \
+            not self.identity_map.contains_state(state):
+            raise sa_exc.InvalidRequestError(
+                "Can't attach instance %s; another instance with key %s is already present in this session." % 
+                    (mapperutil.state_str(state), state.key)
+                )
+                
         if state.session_id and state.session_id is not self.hash_key:
             raise sa_exc.InvalidRequestError(
                 "Object '%s' is already attached to session '%s' "
                 "(this is '%s')" % (mapperutil.state_str(state),
                                     state.session_id, self.hash_key))
+                                    
         if state.session_id != self.hash_key:
             state.session_id = self.hash_key
-        for ext in self.extensions:
-            ext.after_attach(self, state.obj())
+            for ext in self.extensions:
+                ext.after_attach(self, state.obj())
 
     def __contains__(self, instance):
         """Return True if the instance is associated with this session.

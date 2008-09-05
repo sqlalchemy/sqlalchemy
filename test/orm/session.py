@@ -621,7 +621,10 @@ class SessionTest(_fixtures.FixtureTest):
     def test_save_update_delete(self):
 
         s = create_session()
-        mapper(User, users)
+        mapper(User, users, properties={
+            'addresses':relation(Address, cascade="all, delete")
+        })
+        mapper(Address, addresses)
 
         user = User(name='u1')
 
@@ -658,8 +661,9 @@ class SessionTest(_fixtures.FixtureTest):
         self.assertRaisesMessage(sa.exc.InvalidRequestError, "is already attached to session", s2.delete, user)
 
         u2 = s2.query(User).get(user.id)
-        self.assertRaisesMessage(sa.exc.InvalidRequestError, "already persisted with a different identity", s.delete, u2)
+        self.assertRaisesMessage(sa.exc.InvalidRequestError, "another instance with key", s.delete, u2)
 
+        s.expire(user)
         s.expunge(user)
         assert user not in s
         s.delete(user)
