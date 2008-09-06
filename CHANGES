@@ -44,6 +44,9 @@ CHANGES
     - column_property(), composite_property(), and relation() now 
       accept a single or list of AttributeExtensions using the 
       "extension" keyword argument.
+
+    - query.order_by().get() silently drops the "ORDER BY" from 
+      the query issued by GET but does not raise an exception.
       
     - Added a Validator AttributeExtension, as well as a 
       @validates decorator which is used in a similar fashion

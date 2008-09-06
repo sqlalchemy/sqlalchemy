@@ -47,9 +47,8 @@ def _generative(*assertions):
     @util.decorator
     def generate(fn, *args, **kw):
         self = args[0]._clone()
-        fn_name = kw.pop('generative_name', fn.func_name)
         for assertion in assertions:
-            assertion(self, fn_name)
+            assertion(self, fn.func_name)
         fn(self, *args[1:], **kw)
         return self
     return generate
@@ -269,17 +268,18 @@ class Query(object):
     def __no_criterion_condition(self, meth):
         if self._criterion or self._statement or self._from_obj or \
                 self._limit is not None or self._offset is not None or \
-                self._group_by or self._order_by:
+                self._group_by:
             raise sa_exc.InvalidRequestError("Query.%s() being called on a Query with existing criterion. " % meth)
 
         self._statement = self._criterion = self._from_obj = None
         self._order_by = self._group_by = self._distinct = False
         self.__joined_tables = {}
 
-    def __no_from_condition(self, meth):
-        if self._from_obj:
-            raise sa_exc.InvalidRequestError("Query.%s() being called on a Query which already has a FROM clause established.  This usage is deprecated." % meth)
-
+    def __no_clauseelement_condition(self, meth):
+        if self._order_by:
+            raise sa_exc.InvalidRequestError("Query.%s() being called on a Query with existing criterion. " % meth)
+        self.__no_criterion_condition(meth)
+    
     def __no_statement_condition(self, meth):
         if self._statement:
             raise sa_exc.InvalidRequestError(
@@ -293,9 +293,6 @@ class Query(object):
             "To modify the row-limited results of a Query, call from_self() first.  Otherwise, call %s() before limit() or offset() are applied." % (meth, meth)
             )
 
-    @_generative(__no_criterion_condition)
-    def __no_criterion(self, generative_name=None):
-        """generate a Query with no criterion, warn if criterion was present"""
 
     def __get_options(self, populate_existing=None, version_check=None, only_load_props=None, refresh_state=None):
         if populate_existing:
@@ -356,7 +353,7 @@ class Query(object):
         """
         self._current_path = path
 
-    @_generative(__no_from_condition, __no_criterion_condition)
+    @_generative(__no_clauseelement_condition)
     def with_polymorphic(self, cls_or_mappers, selectable=None):
         """Load columns for descendant mappers of this Query's mapper.
 
@@ -907,7 +904,7 @@ class Query(object):
         """
         self.__reset_joinpoint()
 
-    @_generative(__no_from_condition, __no_criterion_condition)
+    @_generative(__no_clauseelement_condition)
     def select_from(self, from_obj):
         """Set the `from_obj` parameter of the query and return the newly
         resulting ``Query``.  This replaces the table which this Query selects
@@ -982,7 +979,7 @@ class Query(object):
         """
         return list(self)
 
-    @_generative(__no_criterion_condition)
+    @_generative(__no_clauseelement_condition)
     def from_statement(self, statement):
         """Execute the given SELECT statement and return results.
 
@@ -1153,7 +1150,8 @@ class Query(object):
             ident = util.to_list(ident)
 
         if refresh_state is None:
-            q = self.__no_criterion(generative_name="get")
+            q = self._clone()
+            q.__no_criterion_condition("get")
         else:
             q = self._clone()
 
