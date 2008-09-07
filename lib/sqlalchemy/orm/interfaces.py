@@ -442,10 +442,6 @@ class PropComparator(expression.ColumnOperators):
         raise NotImplementedError("%r" % self)
 
     @staticmethod
-    def contains_op(a, b):
-        return a.contains(b)
-
-    @staticmethod
     def any_op(a, b, **kwargs):
         return a.any(b, **kwargs)
 
@@ -479,10 +475,6 @@ class PropComparator(expression.ColumnOperators):
         """
 
         return self.operate(PropComparator.of_type_op, class_)
-
-    def contains(self, other):
-        """Return true if this collection contains other"""
-        return self.operate(PropComparator.contains_op, other)
 
     def any(self, criterion=None, **kwargs):
         """Return true if this collection contains any member that meets the given criterion.

@@ -116,6 +116,10 @@ CHANGES
     - The `echo_uow` flag on `Session` is deprecated, and unit-of-work
       logging is now application-level only, not per-session level.
 
+    - Removed conflicting `contains()` operator from 
+      `InstrumentedAttribute` which didn't accept `escape` kwaarg
+      [ticket:1153].
+      
 - declarative
     - Fixed bug whereby mapper couldn't initialize if a composite
       primary key referenced another table that was not defined
