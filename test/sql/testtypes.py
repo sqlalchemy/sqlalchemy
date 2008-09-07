@@ -108,9 +108,15 @@ class UserDefinedTest(TestBase):
     def testprocessing(self):
 
         global users
-        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy4=u'jack', goofy5=u'jack', goofy6='jack', goofy7=u'jack', goofy8=12, goofy9=12)
-        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy4=u'lala', goofy5=u'lala', goofy6='lala', goofy7=u'lala', goofy8=15, goofy9=15)
-        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy4=u'fred', goofy5=u'fred', goofy6='fred', goofy7=u'fred', goofy8=9, goofy9=9)
+        users.insert().execute(
+            user_id=2, goofy='jack', goofy2='jack', goofy4=u'jack',
+            goofy7=u'jack', goofy8=12, goofy9=12)
+        users.insert().execute(
+            user_id=3, goofy='lala', goofy2='lala', goofy4=u'lala',
+            goofy7=u'lala', goofy8=15, goofy9=15)
+        users.insert().execute(
+            user_id=4, goofy='fred', goofy2='fred', goofy4=u'fred',
+            goofy7=u'fred', goofy8=9, goofy9=9)
 
         l = users.select().execute().fetchall()
         for assertstr, assertint, assertint2, row in zip(
@@ -118,13 +124,12 @@ class UserDefinedTest(TestBase):
             [1200, 1500, 900],
             [1800, 2250, 1350],
             l
-
         ):
-            for col in row[1:7]:
+            for col in row[1:5]:
                 self.assertEquals(col, assertstr)
-            self.assertEquals(row[7], assertint)
-            self.assertEquals(row[8], assertint2)
-            for col in (row[3], row[4], row[6]):
+            self.assertEquals(row[5], assertint)
+            self.assertEquals(row[6], assertint2)
+            for col in row[3], row[4]:
                 assert isinstance(col, unicode)
 
     def setUpAll(self):
@@ -209,28 +214,6 @@ class UserDefinedTest(TestBase):
             def copy(self):
                 return MyUnicodeType(self.impl.length)
 
-        class LegacyType(types.TypeEngine):
-            def get_col_spec(self):
-                return "VARCHAR(100)"
-            def convert_bind_param(self, value, dialect):
-                return "BIND_IN"+ value
-            def convert_result_value(self, value, dialect):
-                return value + "BIND_OUT"
-            def adapt(self, typeobj):
-                return typeobj()
-
-        class LegacyUnicodeType(types.TypeDecorator):
-            impl = Unicode
-
-            def convert_bind_param(self, value, dialect):
-                return "BIND_IN" + super(LegacyUnicodeType, self).convert_bind_param(value, dialect)
-
-            def convert_result_value(self, value, dialect):
-                return super(LegacyUnicodeType, self).convert_result_value(value, dialect) + "BIND_OUT"
-
-            def copy(self):
-                return LegacyUnicodeType(self.impl.length)
-
         metadata = MetaData(testing.db)
         users = Table('type_users', metadata,
             Column('user_id', Integer, primary_key = True),
@@ -241,12 +224,9 @@ class UserDefinedTest(TestBase):
             Column('goofy2', MyDecoratedType(50), nullable = False),
 
             Column('goofy4', MyUnicodeType(50), nullable = False),
-            Column('goofy5', LegacyUnicodeType(50), nullable = False),
-            Column('goofy6', LegacyType, nullable = False),
             Column('goofy7', MyNewUnicodeType(50), nullable = False),
             Column('goofy8', MyNewIntType, nullable = False),
             Column('goofy9', MyNewIntSubClass, nullable = False),
-
         )
 
         metadata.create_all()

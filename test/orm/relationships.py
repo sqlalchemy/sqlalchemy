@@ -721,9 +721,9 @@ class TypedAssociationTable(_base.MappedTest):
     def define_tables(self, metadata):
         class MySpecialType(sa.types.TypeDecorator):
             impl = String
-            def convert_bind_param(self, value, dialect):
+            def process_bind_param(self, value, dialect):
                 return "lala" + value
-            def convert_result_value(self, value, dialect):
+            def process_result_value(self, value, dialect):
                 return value[4:]
 
         Table('t1', metadata,

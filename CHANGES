@@ -136,7 +136,10 @@ CHANGES
     - The 'length' argument to all Numeric types has been renamed
       to 'scale'.  'length' is deprecated and is still accepted
       with a warning.
-      
+
+    - Dropped 0.3-compatibility for user defined types
+      (convert_result_value, convert_bind_param).
+
 - sql
     - Temporarily rolled back the "ORDER BY" enhancement from
       [ticket:1068].  This feature is on hold pending further

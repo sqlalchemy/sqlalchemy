@@ -29,87 +29,14 @@ from sqlalchemy import exc
 from sqlalchemy.util import pickle
 import sqlalchemy.util as util
 NoneType = type(None)
-
-class _UserTypeAdapter(type):
-    """adapts 0.3 style user-defined types with convert_bind_param/convert_result_value
-    to use newer bind_processor()/result_processor() methods."""
-
-    def __init__(cls, clsname, bases, dict):
-        if not hasattr(cls.convert_result_value, '_sa_override'):
-            cls.__instrument_result_proc(cls)
-
-        if not hasattr(cls.convert_bind_param, '_sa_override'):
-            cls.__instrument_bind_proc(cls)
-
-        return super(_UserTypeAdapter, cls).__init__(clsname, bases, dict)
-
-    def __instrument_bind_proc(cls, class_):
-        def bind_processor(self, dialect):
-            def process(value):
-                return self.convert_bind_param(value, dialect)
-            return process
-        class_.super_bind_processor = class_.bind_processor
-        class_.bind_processor = bind_processor
-
-    def __instrument_result_proc(cls, class_):
-        def result_processor(self, dialect):
-            def process(value):
-                return self.convert_result_value(value, dialect)
-            return process
-        class_.super_result_processor = class_.result_processor
-        class_.result_processor = result_processor
-
-
+    
 class AbstractType(object):
-    __metaclass__ = _UserTypeAdapter
 
     def __init__(self, *args, **kwargs):
         pass
 
     def copy_value(self, value):
         return value
-
-    def convert_result_value(self, value, dialect):
-        """Legacy convert_result_value() compatibility method.
-
-        This adapter method is provided for user-defined types that implement
-        the older convert_* interface and need to call their super method.
-        These calls are adapted behind the scenes to use the newer
-        callable-based interface via result_processor().
-
-        Compatibility is configured on a case-by-case basis at class
-        definition time by a legacy adapter metaclass.  This method is only
-        available and functional if the concrete subclass implements the
-        legacy interface.
-        """
-
-        processor = self.super_result_processor(dialect)
-        if processor:
-            return processor(value)
-        else:
-            return value
-    convert_result_value._sa_override = True
-
-    def convert_bind_param(self, value, dialect):
-        """Legacy convert_bind_param() compatability method.
-
-        This adapter method is provided for user-defined types that implement
-        the older convert_* interface and need to call their super method.
-        These calls are adapted behind the scenes to use the newer
-        callable-based interface via bind_processor().
-
-        Compatibility is configured on a case-by-case basis at class
-        definition time by a legacy adapter metaclass.  This method is only
-        available and functional if the concrete subclass implements the
-        legacy interface.
-        """
-
-        processor = self.super_bind_processor(dialect)
-        if processor:
-            return processor(value)
-        else:
-            return value
-    convert_bind_param._sa_override = True
 
     def bind_processor(self, dialect):
         """Defines a bind parameter processing function."""
