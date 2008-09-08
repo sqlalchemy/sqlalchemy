@@ -36,11 +36,24 @@ class AnsiFunction(GenericFunction):
     def __init__(self, **kwargs):
         GenericFunction.__init__(self, **kwargs)
 
-
-class coalesce(GenericFunction):
+class ReturnTypeFromArgs(GenericFunction):
+    """Define a function whose return type is the same as its arguments."""
+    
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('type_', _type_from_args(args))
         GenericFunction.__init__(self, args=args, **kwargs)
+
+class coalesce(ReturnTypeFromArgs):
+    pass
+
+class max(ReturnTypeFromArgs):
+    pass
+
+class min(ReturnTypeFromArgs):
+    pass
+
+class sum(ReturnTypeFromArgs):
+    pass
 
 class now(GenericFunction):
     __return_type__ = sqltypes.DateTime

@@ -149,6 +149,15 @@ CHANGES
       [ticket:1068].  This feature is on hold pending further
       development.
 
+    - Added func.min(), func.max(), func.sum() as "generic functions",
+      which basically allows for their return type to be determined
+      automatically.  Helps with dates on SQLite, decimal types, 
+      others. [ticket:1160]
+    
+    - added decimal.Decimal as an "auto-detect" type; bind parameters
+      and generic functions will set their type to Numeric when a 
+      Decimal is used.
+      
 - mysql
     - The 'length' argument to MSInteger, MSBigInteger, MSTinyInteger,
       MSSmallInteger and MSYear has been renamed to 'display_width'.

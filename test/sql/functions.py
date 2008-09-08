@@ -10,6 +10,7 @@ from sqlalchemy import types as sqltypes
 from testlib import *
 from sqlalchemy.sql.functions import GenericFunction
 from testlib.testing import eq_
+from decimal import Decimal as _python_Decimal
 
 from sqlalchemy.databases import *
 
@@ -90,12 +91,20 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         except TypeError:
             assert True
 
-    def test_typing(self):
-        assert isinstance(func.coalesce(datetime.date(2007, 10, 5), datetime.date(2005, 10, 15)).type, sqltypes.Date)
-
-        assert isinstance(func.coalesce(None, datetime.date(2005, 10, 15)).type, sqltypes.Date)
-
+    def test_return_type_detection(self):
+        
+        for fn in [func.coalesce, func.max, func.min, func.sum]:
+            for args, type_ in [
+                            ((datetime.date(2007, 10, 5), datetime.date(2005, 10, 15)), sqltypes.Date),
+                            ((3, 5), sqltypes.Integer),
+                            ((_python_Decimal(3), _python_Decimal(5)), sqltypes.Numeric),
+                            (("foo", "bar"), sqltypes.String),
+                            ((datetime.datetime(2007, 10, 5, 8, 3, 34), datetime.datetime(2005, 10, 15, 14, 45, 33)), sqltypes.DateTime)
+                        ]:
+                assert isinstance(fn(*args).type, type_), "%s / %s" % (fn(), type_)
+        
         assert isinstance(func.concat("foo", "bar").type, sqltypes.String)
+
 
     def test_assorted(self):
         table1 = table('mytable',
