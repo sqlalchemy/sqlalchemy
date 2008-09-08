@@ -1225,9 +1225,11 @@ class Mapper(object):
                     # synchronize newly inserted ids from one table to the next
                     # TODO: this performs some unnecessary attribute transfers
                     # from an attribute to itself, since the attribute is often mapped
-                    # to multiple, equivalent columns
-                    if mapper.__inherits_equated_pairs:
-                        sync.populate(state, mapper, state, mapper, mapper.__inherits_equated_pairs)
+                    # to multiple, equivalent columns.  it also may fire off more
+                    # than needed overall.
+                    for m in mapper.iterate_to_root():
+                        if m.__inherits_equated_pairs:
+                            sync.populate(state, m, state, m, m.__inherits_equated_pairs)
                         
                     # testlib.pragma exempt:__hash__
                     inserted_objects.add((state, connection))
