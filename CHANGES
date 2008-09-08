@@ -149,6 +149,14 @@ CHANGES
       [ticket:1068].  This feature is on hold pending further
       development.
 
+    - The exists() construct won't "export" its contained list 
+      of elements as FROM clauses, allowing them to be used more
+      effectively in the columns clause of a SELECT.
+      
+    - and_() and or_() now generate a ColumnElement, allowing
+      boolean expressions as result columns, i.e.
+      select([and_(1, 0)]).  [ticket:798]
+    
     - Added func.min(), func.max(), func.sum() as "generic functions",
       which basically allows for their return type to be determined
       automatically.  Helps with dates on SQLite, decimal types, 

@@ -356,7 +356,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         x = func.lala(users.c.id).label('foo')
         self.assert_compile(sess.query(x).filter(x==5).statement, 
             "SELECT lala(users.id) AS foo FROM users WHERE lala(users.id) = :param_1", dialect=default.DefaultDialect())
-        
+
 class CompileTest(QueryTest):
         
     def test_deferred(self):

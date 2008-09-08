@@ -372,7 +372,7 @@ def and_(*clauses):
     """
     if len(clauses) == 1:
         return clauses[0]
-    return ClauseList(operator=operators.and_, *clauses)
+    return BooleanClauseList(operator=operators.and_, *clauses)
 
 def or_(*clauses):
     """Join a list of clauses together using the ``OR`` operator.
@@ -384,7 +384,7 @@ def or_(*clauses):
 
     if len(clauses) == 1:
         return clauses[0]
-    return ClauseList(operator=operators.or_, *clauses)
+    return BooleanClauseList(operator=operators.or_, *clauses)
 
 def not_(clause):
     """Return a negation of the given clause, i.e. ``NOT(clause)``.
@@ -1993,6 +1993,7 @@ class ClauseList(ClauseElement):
     """Describe a list of clauses, separated by an operator.
 
     By default, is comma-separated, such as a column listing.
+
     """
     __visit_name__ = 'clauselist'
 
@@ -2052,6 +2053,16 @@ class ClauseList(ClauseElement):
         else:
             return False
 
+class BooleanClauseList(ClauseList, ColumnElement):
+    __visit_name__ = 'clauselist'
+    
+    def __init__(self, *clauses, **kwargs):
+        super(BooleanClauseList, self).__init__(*clauses, **kwargs)
+        self.type = sqltypes.to_instance(kwargs.get('type_', sqltypes.Boolean))
+
+    def self_group(self, against=None):
+        return _Grouping(self)
+    
 class _CalculatedClause(ColumnElement):
     """Describe a calculated SQL expression that has a type, like ``CASE``.
 
@@ -2276,6 +2287,9 @@ class _Exists(_UnaryExpression):
         e = self._clone()
         e.element = self.element.correlate(fromclause).self_group()
         return e
+
+    def _get_from_objects(self, **modifiers):
+        return []
 
     def where(self, clause):
         """return a new exists() construct with the given expression added to its WHERE clause, joined

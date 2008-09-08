@@ -200,6 +200,26 @@ class QueryTest(TestBase):
         self.assert_(not (rp != equal))
         self.assert_(not (equal != equal))
 
+    def test_or_and_as_columns(self):
+        if testing.against('sqlite'):
+            true, false = 1, 0
+        else:
+            true, false = literal_column('true'), literal_column('false')
+        
+        self.assertEquals(testing.db.execute(select([and_(true, false)])).scalar(), False)
+        self.assertEquals(testing.db.execute(select([and_(true, true)])).scalar(), True)
+        self.assertEquals(testing.db.execute(select([or_(true, false)])).scalar(), True)
+        self.assertEquals(testing.db.execute(select([or_(false, false)])).scalar(), False)
+        self.assertEquals(testing.db.execute(select([not_(or_(false, false))])).scalar(), True)
+
+        row = testing.db.execute(select([or_(false, false).label("x"), and_(true, false).label("y")])).fetchone()
+        assert row.x == False
+        assert row.y == False
+
+        row = testing.db.execute(select([or_(true, false).label("x"), and_(true, false).label("y")])).fetchone()
+        assert row.x == True
+        assert row.y == False
+        
     def test_fetchmany(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'ed')
