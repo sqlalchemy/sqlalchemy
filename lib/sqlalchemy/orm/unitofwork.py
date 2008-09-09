@@ -183,15 +183,19 @@ class UnitOfWork(object):
         if not dirty and not self.deleted and not self.new:
             return
         
-        deleted = util.Set(self.deleted)
-        new = util.Set(self.new)
-        
-        dirty = util.Set(dirty).difference(deleted)
-        
         flush_context = UOWTransaction(self, session)
 
         if session.extension is not None:
             session.extension.before_flush(session, flush_context, objects)
+            dirty = [x for x in self.identity_map.all_states()
+                if x.modified
+                or (x.class_._class_state.has_mutable_scalars and x.is_modified())
+            ]
+
+        deleted = util.Set(self.deleted)
+        new = util.Set(self.new)
+        
+        dirty = util.Set(dirty).difference(deleted)
 
         # create the set of all objects we want to operate upon
         if objects:

@@ -8,6 +8,11 @@ CHANGES
       with "A=B" versus "B=A" leading to errors
       [ticket:1039]
 
+    - Changes made to new, dirty and deleted 
+      collections in
+      SessionExtension.before_flush() will take
+      effect for that flush.
+
 - mysql
     - Added MSMediumInteger type [ticket:1146].
 

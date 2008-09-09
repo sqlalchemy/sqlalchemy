@@ -927,6 +927,36 @@ class SessionTest(TestBase, AssertsExecutionResults):
         conn = sess.connection()
         assert log == ['after_begin']
 
+    def test_before_flush_affects_dirty(self):
+        class User(fixtures.Base):
+            pass
+        mapper(User, users)
+
+        class MyExt(SessionExtension):
+            def before_flush(self, session, flush_context, objects):
+                for obj in list(session.identity_map.values()):
+                    obj.user_name += " modified"
+
+        sess = create_session(extension = MyExt(), autoflush=True)
+        u = User(user_name='u1')
+        sess.add(u)
+        sess.flush()
+        self.assertEquals(sess.query(User).order_by(User.user_name).all(),
+            [
+                User(user_name='u1')
+            ]
+        )
+
+        sess.add(User(user_name='u2'))
+        sess.flush()
+        sess.clear()
+        self.assertEquals(sess.query(User).order_by(User.user_name).all(),
+            [
+                User(user_name='u1 modified'),
+                User(user_name='u2')
+            ]
+        )
+
     def test_pickled_update(self):
         mapper(User, users)
         sess1 = create_session()
