@@ -157,6 +157,13 @@ CHANGES
       boolean expressions as result columns, i.e.
       select([and_(1, 0)]).  [ticket:798]
     
+    - Bind params now subclass ColumnElement which allows them to be
+      selectable by orm.query (they already had most ColumnElement
+      semantics).
+      
+    - Added select_from() method to exists() construct, which becomes
+      more and more compatible with a regular select().
+      
     - Added func.min(), func.max(), func.sum() as "generic functions",
       which basically allows for their return type to be determined
       automatically.  Helps with dates on SQLite, decimal types, 

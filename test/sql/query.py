@@ -201,10 +201,7 @@ class QueryTest(TestBase):
         self.assert_(not (equal != equal))
 
     def test_or_and_as_columns(self):
-        if testing.against('sqlite'):
-            true, false = 1, 0
-        else:
-            true, false = literal_column('true'), literal_column('false')
+        true, false = literal(True), literal(False)
         
         self.assertEquals(testing.db.execute(select([and_(true, false)])).scalar(), False)
         self.assertEquals(testing.db.execute(select([and_(true, true)])).scalar(), True)

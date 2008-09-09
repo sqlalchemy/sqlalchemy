@@ -1097,6 +1097,7 @@ UNION SELECT mytable.myid FROM mytable"
 
         s = select([t, literal('lala').label('hoho')])
         self.assert_compile(s, "SELECT foo.id, :param_1 AS hoho FROM foo")
+        
         assert [str(c) for c in s.c] == ["id", "hoho"]
 
     def test_in(self):

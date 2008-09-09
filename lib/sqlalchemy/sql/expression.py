@@ -1814,7 +1814,7 @@ class FromClause(Selectable):
     def _populate_column_collection(self):
         pass
 
-class _BindParamClause(ClauseElement, _CompareMixin):
+class _BindParamClause(ColumnElement):
     """Represent a bind parameter.
 
     Public constructor is the ``bindparam()`` function.
@@ -1874,7 +1874,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
             self.type = type_()
         else:
             self.type = type_
-
+    
     def _clone(self):
         c = ClauseElement._clone(self)
         if self.unique:
@@ -2291,6 +2291,13 @@ class _Exists(_UnaryExpression):
     def _get_from_objects(self, **modifiers):
         return []
 
+    def select_from(self, clause):
+        """return a new exists() construct with the given expression set as its FROM clause."""
+    
+        e = self._clone()
+        e.element = self.element.select_from(clause).self_group()
+        return e
+        
     def where(self, clause):
         """return a new exists() construct with the given expression added to its WHERE clause, joined
         to the existing clause via AND, if any."""

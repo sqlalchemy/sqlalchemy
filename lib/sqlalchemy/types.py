@@ -625,6 +625,7 @@ type_map = {
     unicode : NCHAR,
     int : Integer,
     float : Numeric,
+    bool: Boolean,
     _python_Decimal : Numeric,
     dt.date : Date,
     dt.datetime : DateTime,
