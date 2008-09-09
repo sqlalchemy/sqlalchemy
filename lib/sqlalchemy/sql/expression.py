@@ -2278,7 +2278,7 @@ class _Exists(_UnaryExpression):
                 args = ([literal_column('*')],)
             s = select(*args, **kwargs).as_scalar().self_group()
             
-        _UnaryExpression.__init__(self, s, operator=operators.exists)
+        _UnaryExpression.__init__(self, s, operator=operators.exists, type_=sqltypes.Boolean)
 
     def select(self, whereclause=None, **params):
         return select([self], whereclause, **params)
