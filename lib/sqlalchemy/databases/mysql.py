@@ -1948,7 +1948,8 @@ class MySQLCompiler(compiler.DefaultCompiler):
     })
     functions = compiler.DefaultCompiler.functions.copy()
     functions.update ({
-        sql_functions.random: 'rand%(expr)s'
+        sql_functions.random: 'rand%(expr)s',
+        "utc_timestamp":"UTC_TIMESTAMP"
         })
 
 

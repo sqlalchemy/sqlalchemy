@@ -864,6 +864,9 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1"
             )
 
+    def test_utc_timestamp(self):
+        self.assert_compile(func.utc_timestamp(), "UTC_TIMESTAMP")
+        
     def test_cast(self):
         t = sql.table('t', sql.column('col'))
         m = mysql

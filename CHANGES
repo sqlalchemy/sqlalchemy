@@ -178,6 +178,10 @@ CHANGES
       MSSmallInteger and MSYear has been renamed to 'display_width'.
       
     - Added MSMediumInteger type [ticket:1146].
+    
+    - the function func.utc_timestamp() compiles to UTC_TIMESTAMP, without
+      the parenthesis, which seem to get in the way when using in 
+      conjunction with executemany().
 
 - oracle
     - limit/offset no longer uses ROW NUMBER OVER to limit rows,
