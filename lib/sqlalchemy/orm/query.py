@@ -1037,6 +1037,17 @@ class Query(object):
             raise orm_exc.MultipleResultsFound(
                 "Multiple rows were found for one()")
 
+    def scalar(self):
+        """Return """
+
+        ret = list(self)[0]
+        if not isinstance(ret, tuple):
+            return ret
+        try:
+            return ret[0]
+        except IndexError:
+            return None
+
     def __iter__(self):
         context = self._compile_context()
         context.statement.use_labels = True
