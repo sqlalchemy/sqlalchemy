@@ -196,8 +196,8 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                     exists().where(table2.c.otherid=='bar')
                 )
             ]),
-            "SELECT ((EXISTS (SELECT * FROM myothertable WHERE myothertable.otherid = :otherid_1)) "\
-            "OR (EXISTS (SELECT * FROM myothertable WHERE myothertable.otherid = :otherid_2))) AS anon_1"
+            "SELECT (EXISTS (SELECT * FROM myothertable WHERE myothertable.otherid = :otherid_1)) "\
+            "OR (EXISTS (SELECT * FROM myothertable WHERE myothertable.otherid = :otherid_2)) AS anon_1"
         )
         
 
@@ -348,7 +348,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         assert str(x) == 'a AND b AND c'
         self.assert_compile(
             select([x.label('foo')]),
-            'SELECT (a AND b AND c) AS foo'
+            'SELECT a AND b AND c AS foo'
         )
         
         self.assert_compile(

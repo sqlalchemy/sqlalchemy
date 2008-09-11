@@ -2060,9 +2060,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
         super(BooleanClauseList, self).__init__(*clauses, **kwargs)
         self.type = sqltypes.to_instance(kwargs.get('type_', sqltypes.Boolean))
 
-    def self_group(self, against=None):
-        return _Grouping(self)
-    
+
 class _CalculatedClause(ColumnElement):
     """Describe a calculated SQL expression that has a type, like ``CASE``.
 
