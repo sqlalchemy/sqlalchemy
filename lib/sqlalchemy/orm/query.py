@@ -1038,8 +1038,20 @@ class Query(object):
                 "Multiple rows were found for one()")
 
     def scalar(self):
-        """Return """
+        """Return the first element of the first result or None.
 
+          >>> session.query(Item).scalar()
+          <Item>
+          >>> session.query(Item.id).scalar()
+          1
+          >>> session.query(Item.id, Item.name).scalar()
+          1
+          >>> session.query(func.count(Parent.id)).scalar()
+          20
+
+        This results in an execution of the underlying query.
+
+        """
         ret = list(self)[0]
         if not isinstance(ret, tuple):
             return ret
