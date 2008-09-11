@@ -550,6 +550,11 @@ class Query(object):
         return iter(q)
     _values = values
 
+    def value(self, column):
+        """Return a scalar result corresponding to the given column expression."""
+        
+        return self.values(column).next()[0]
+        
     @_generative()
     def add_column(self, column):
         """Add a SQL ColumnElement to the list of result columns to be returned."""

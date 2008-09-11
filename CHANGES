@@ -19,6 +19,12 @@ CHANGES
       objects such as Query(table.c.col) will return the "key"
       attribute of the Column.
 
+    - Added scalar() and value() methods to Query, each return a
+      single scalar value.  scalar() takes no arguments and is
+      roughly equivalent to first()[0], value()
+      takes a single column expression and is roughly equivalent to
+      values(expr).next()[0].
+      
     - Improved the determination of the FROM clause when placing SQL
       expressions in the query() list of entities.  In particular
       scalar subqueries should not "leak" their inner FROM objects

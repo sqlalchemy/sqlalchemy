@@ -568,6 +568,7 @@ class AggregateTest(QueryTest):
         sess = create_session()
         orders = sess.query(Order).filter(Order.id.in_([2, 3, 4]))
         self.assertEquals(orders.values(func.sum(Order.user_id * Order.address_id)).next(), (79,))
+        self.assertEquals(orders.value(func.sum(Order.user_id * Order.address_id)), 79)
 
     def test_apply(self):
         sess = create_session()
