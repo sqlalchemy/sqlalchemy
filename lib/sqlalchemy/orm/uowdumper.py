@@ -8,6 +8,7 @@
 
 from sqlalchemy.orm import unitofwork
 from sqlalchemy.orm import util as mapperutil
+import StringIO
 
 class UOWDumper(unitofwork.UOWExecutor):
     def __init__(self, tasks, buf):
@@ -15,6 +16,12 @@ class UOWDumper(unitofwork.UOWExecutor):
         self.tasks = tasks
         self.buf = buf
         self.execute(None, tasks)
+
+    @classmethod
+    def dump(cls, tasks):
+        buf = StringIO.StringIO()
+        UOWDumper(tasks, buf)
+        return buf.getvalue()
 
     def execute(self, trans, tasks, isdelete=None):
         if isdelete is not True:
@@ -100,11 +107,7 @@ class UOWDumper(unitofwork.UOWExecutor):
                 name = repr(task.mapper)
         else:
             name = '(none)'
-        sd = getattr(task, '_superduper', False)
-        if sd:
-            return ("SD UOWTask(%s, %s)" % (hex(id(task)), name))
-        else:
-            return ("UOWTask(%s, %s)" % (hex(id(task)), name))
+        return ("UOWTask(%s, %s)" % (hex(id(task)), name))
 
     def _repr_task_class(self, task):
         if task.mapper is not None and task.mapper.__class__.__name__ == 'Mapper':

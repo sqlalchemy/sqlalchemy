@@ -20,8 +20,6 @@ changes at once.
 
 """
 
-import StringIO
-
 from sqlalchemy import util, log, topological
 from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
@@ -265,14 +263,13 @@ class UOWTransaction(object):
             self.logger.info("Execute Complete")
 
     def _dump(self, tasks):
-        buf = StringIO.StringIO()
-        import uowdumper
-        uowdumper.UOWDumper(tasks, buf)
-        return buf.getvalue()
+        from uowdumper import UOWDumper
+        return UOWDumper.dump(tasks)
 
     @property
     def elements(self):
-        """An iterator of all UOWTaskElements within this UOWTransaction."""
+        """Iterate UOWTaskElements."""
+        
         for task in self.tasks.values():
             for elem in task.elements:
                 yield elem
@@ -314,10 +311,8 @@ class UOWTransaction(object):
 log.class_logger(UOWTransaction)
 
 class UOWTask(object):
-    """Represents all of the objects in the UOWTransaction which correspond to
-    a particular mapper.
-
-    """
+    """A collection of mapped states corresponding to a particular mapper."""
+    
     def __init__(self, uowtransaction, mapper, base_task=None):
         self.uowtransaction = uowtransaction
 
@@ -344,6 +339,7 @@ class UOWTask(object):
         self.dependencies = set()
         self.cyclical_dependencies = set()
 
+    @property
     def polymorphic_tasks(self):
         """Return an iterator of UOWTask objects corresponding to the
         inheritance sequence of this UOWTask's mapper.
@@ -409,7 +405,7 @@ class UOWTask(object):
     def __contains__(self, state):
         """return True if the given object is contained within this UOWTask or inheriting tasks."""
 
-        for task in self.polymorphic_tasks():
+        for task in self.polymorphic_tasks:
             if state in task._objects:
                 return True
         else:
@@ -423,21 +419,24 @@ class UOWTask(object):
         except KeyError:
             return False
 
-    def _polymorphic_collection(callable):
+    def _polymorphic_collection(fn):
         """return a property that will adapt the collection returned by the
         given callable into a polymorphic traversal."""
 
+        @property
         def collection(self):
-            for task in self.polymorphic_tasks():
-                for rec in callable(task):
+            for task in self.polymorphic_tasks:
+                for rec in fn(task):
                     yield rec
-        return property(collection)
+        return collection
 
-    def _elements(self):
+    @property
+    def elements(self):
         return self._objects.values()
 
-    elements = property(_elements)
-    polymorphic_elements = _polymorphic_collection(_elements)
+    @_polymorphic_collection
+    def polymorphic_elements(self):
+        return self.elements
 
     @property
     def polymorphic_tosave_elements(self):
@@ -470,62 +469,51 @@ class UOWTask(object):
         return self.cyclical_dependencies
 
     def _sort_circular_dependencies(self, trans, cycles):
-        """Create a hierarchical tree of *subtasks*
-        which associate specific dependency actions with individual
-        objects.  This is used for a *cyclical* task, or a task where
-        elements of its object list contain dependencies on each
-        other.
-
-        This is not the normal case; this logic only kicks in when
-        something like a hierarchical tree is being represented.
+        """Topologically sort individual entities with row-level dependencies.
+        
+        Builds a modified UOWTask structure, and is invoked when the
+        per-mapper topological structure is found to have cycles.
+        
         """
-        allobjects = []
-        for task in cycles:
-            allobjects += [e.state for e in task.polymorphic_elements]
-        tuples = []
-
-        cycles = set(cycles)
-
-        extradeplist = []
         dependencies = {}
-
-        def get_dependency_task(state, depprocessor):
-            try:
-                dp = dependencies[state]
-            except KeyError:
-                dp = dependencies.setdefault(state, {})
-            try:
-                l = dp[depprocessor]
-            except KeyError:
-                l = UOWTask(self.uowtransaction, depprocessor.targettask.mapper)
-                dp[depprocessor] = l
-            return l
-
+        def set_processor_for_state(state, depprocessor, target_state, isdelete):
+            if state not in dependencies:
+                dependencies[state] = {}
+            tasks = dependencies[state]
+            if depprocessor not in tasks:
+                tasks[depprocessor] = UOWDependencyProcessor(
+                                            depprocessor.processor, 
+                                            UOWTask(self.uowtransaction, depprocessor.targettask.mapper)
+                                      )
+            tasks[depprocessor].targettask.append(target_state, isdelete=isdelete)
+            
+        cycles = set(cycles)
         def dependency_in_cycles(dep):
             proctask = trans.get_task_by_mapper(dep.processor.mapper.base_mapper, True)
             targettask = trans.get_task_by_mapper(dep.targettask.mapper.base_mapper, True)
             return targettask in cycles and (proctask is not None and proctask in cycles)
 
-        # organize all original UOWDependencyProcessors by their target task
         deps_by_targettask = {}
+        extradeplist = []
         for task in cycles:
             for dep in task.polymorphic_dependencies:
                 if not dependency_in_cycles(dep):
                     extradeplist.append(dep)
-                for t in dep.targettask.polymorphic_tasks():
+                for t in dep.targettask.polymorphic_tasks:
                     l = deps_by_targettask.setdefault(t, [])
                     l.append(dep)
 
         object_to_original_task = {}
+        tuples = []
 
         for task in cycles:
-            for subtask in task.polymorphic_tasks():
+            for subtask in task.polymorphic_tasks:
                 for taskelement in subtask.elements:
                     state = taskelement.state
                     object_to_original_task[state] = subtask
-                    for dep in deps_by_targettask.get(subtask, []):
-                        # is this dependency involved in one of the cycles ?
-                        # (don't count the DetectKeySwitch prop)
+                    if subtask not in deps_by_targettask:
+                        continue
+                    for dep in deps_by_targettask[subtask]:
                         if dep.processor.no_dependencies or not dependency_in_cycles(dep):
                             continue
                         (processor, targettask) = (dep.processor, dep.targettask)
@@ -542,65 +530,61 @@ class UOWTask(object):
                         childlist = added + unchanged + deleted
 
                         for o in childlist:
-                            # other object is None.  this can occur if the relationship is many-to-one
-                            # or one-to-one, and None was set.  the "removed" object will be picked
-                            # up in this iteration via the deleted_items() part of the collection.
                             if o is None:
                                 continue
 
-                            # the other object is not in the UOWTransaction !  but if we are many-to-one,
-                            # we need a task in order to attach dependency operations, so establish a "listonly"
-                            # task
                             if o not in childtask:
                                 childtask.append(o, listonly=True)
                                 object_to_original_task[o] = childtask
 
-                            # create a tuple representing the "parent/child"
                             whosdep = dep.whose_dependent_on_who(state, o)
                             if whosdep is not None:
-                                # append the tuple to the partial ordering.
                                 tuples.append(whosdep)
 
-                                # create a UOWDependencyProcessor representing this pair of objects.
-                                # append it to a UOWTask
                                 if whosdep[0] is state:
-                                    get_dependency_task(whosdep[0], dep).append(whosdep[0], isdelete=isdelete)
+                                    set_processor_for_state(whosdep[0], dep, whosdep[0], isdelete=isdelete)
                                 else:
-                                    get_dependency_task(whosdep[0], dep).append(whosdep[1], isdelete=isdelete)
+                                    set_processor_for_state(whosdep[0], dep, whosdep[1], isdelete=isdelete)
                             else:
                                 # TODO: no test coverage here
-                                get_dependency_task(state, dep).append(state, isdelete=isdelete)
-
-        head = topological.sort_as_tree(tuples, allobjects)
-
-        used_tasks = set()
-        def make_task_tree(node, parenttask, nexttasks):
-            (state, cycles, children) = node
-            originating_task = object_to_original_task[state]
-            used_tasks.add(originating_task)
-            t = nexttasks.get(originating_task, None)
-            if t is None:
-                t = UOWTask(self.uowtransaction, originating_task.mapper)
-                nexttasks[originating_task] = t
-                parenttask.dependent_tasks.append(t)
-            t.append(state, originating_task._objects[state].listonly, isdelete=originating_task._objects[state].isdelete)
-
-            if state in dependencies:
-                for depprocessor, deptask in dependencies[state].iteritems():
-                    t.cyclical_dependencies.add(depprocessor.branch(deptask))
-            nd = {}
-            for n in children:
-                t2 = make_task_tree(n, t, nd)
-            return t
+                                set_processor_for_state(state, dep, state, isdelete=isdelete)
 
         t = UOWTask(self.uowtransaction, self.mapper)
+        t.dependencies.update(extradeplist)
 
-        # stick the non-circular dependencies onto the new UOWTask
-        for d in extradeplist:
-            t.dependencies.add(d)
+        used_tasks = set()
 
+        # rationale for "tree" sort as opposed to a straight
+        # dependency - keep non-dependent objects
+        # grouped together, so that insert ordering as determined
+        # by session.add() is maintained.
+        # An alternative might be to represent the "insert order"
+        # as part of the topological sort itself, which would
+        # eliminate the need for this step (but may make the original
+        # topological sort more expensive)
+        head = topological.sort_as_tree(tuples, object_to_original_task.keys())
         if head is not None:
-            make_task_tree(head, t, {})
+            original_to_tasks = {}
+            stack = [(head, t)]
+            while stack:
+                ((state, cycles, children), parenttask) = stack.pop()
+
+                originating_task = object_to_original_task[state]
+                used_tasks.add(originating_task)
+
+                if (parenttask, originating_task) not in original_to_tasks:
+                    task = UOWTask(self.uowtransaction, originating_task.mapper)
+                    original_to_tasks[(parenttask, originating_task)] = task
+                    parenttask.dependent_tasks.append(task)
+                else:
+                    task = original_to_tasks[(parenttask, originating_task)]
+
+                task.append(state, originating_task._objects[state].listonly, isdelete=originating_task._objects[state].isdelete)
+
+                if state in dependencies:
+                    task.cyclical_dependencies.update(dependencies[state].values())
+
+                stack += [(n, task) for n in children]
 
         ret = [t]
 
@@ -630,37 +614,23 @@ class UOWTaskElement(object):
         self.state = state
         self.listonly = True
         self.isdelete = False
-        self.__preprocessed = {}
+        self.preprocessed = set()
 
     def update(self, listonly, isdelete):
         if not listonly and self.listonly:
             self.listonly = False
-            self.__preprocessed.clear()
+            self.preprocessed.clear()
         if isdelete and not self.isdelete:
             self.isdelete = True
-            self.__preprocessed.clear()
-
-    def mark_preprocessed(self, processor):
-        """Mark this element as *preprocessed* by a particular ``UOWDependencyProcessor``.
-
-        Preprocessing is used by dependency.py to apply
-        flush-time cascade rules to relations and bring all
-        required objects into the flush context.
-
-        each processor as marked as "processed" when complete, however
-        changes to the state of this UOWTaskElement will reset
-        the list of completed processors, so that they
-        execute again, until no new objects or state changes
-        are brought in.
-        """
-
-        self.__preprocessed[processor] = True
-
-    def is_preprocessed(self, processor):
-        return self.__preprocessed.get(processor, False)
+            self.preprocessed.clear()
 
     def __repr__(self):
-        return "UOWTaskElement/%d: %s/%d %s" % (id(self), self.state.class_.__name__, id(self.state.obj()), (self.listonly and 'listonly' or (self.isdelete and 'delete' or 'save')) )
+        return "UOWTaskElement/%d: %s/%d %s" % (
+            id(self), 
+            self.state.class_.__name__, 
+            id(self.state.obj()), 
+            (self.listonly and 'listonly' or (self.isdelete and 'delete' or 'save')) 
+        )
 
 class UOWDependencyProcessor(object):
     """In between the saving and deleting of objects, process
@@ -675,9 +645,6 @@ class UOWDependencyProcessor(object):
 
     def __repr__(self):
         return "UOWDependencyProcessor(%s, %s)" % (str(self.processor), str(self.targettask))
-
-    def __str__(self):
-        return repr(self)
 
     def __eq__(self, other):
         return other.processor is self.processor and other.targettask is self.targettask
@@ -702,16 +669,16 @@ class UOWDependencyProcessor(object):
         """
 
         def getobj(elem):
-            elem.mark_preprocessed(self)
+            elem.preprocessed.add(self)
             return elem.state
 
         ret = False
-        elements = [getobj(elem) for elem in self.targettask.polymorphic_tosave_elements if not elem.is_preprocessed(self)]
+        elements = [getobj(elem) for elem in self.targettask.polymorphic_tosave_elements if self not in elem.preprocessed]
         if elements:
             ret = True
             self.processor.preprocess_dependencies(self.targettask, elements, trans, delete=False)
 
-        elements = [getobj(elem) for elem in self.targettask.polymorphic_todelete_elements if not elem.is_preprocessed(self)]
+        elements = [getobj(elem) for elem in self.targettask.polymorphic_todelete_elements if self not in elem.preprocessed]
         if elements:
             ret = True
             self.processor.preprocess_dependencies(self.targettask, elements, trans, delete=True)
@@ -720,10 +687,16 @@ class UOWDependencyProcessor(object):
     def execute(self, trans, delete):
         """process all objects contained within this ``UOWDependencyProcessor``s target task."""
 
-        if not delete:
-            self.processor.process_dependencies(self.targettask, [elem.state for elem in self.targettask.polymorphic_tosave_elements], trans, delete=False)
+        if delete:
+            elements = self.targettask.polymorphic_todelete_elements
         else:
-            self.processor.process_dependencies(self.targettask, [elem.state for elem in self.targettask.polymorphic_todelete_elements], trans, delete=True)
+            elements = self.targettask.polymorphic_tosave_elements
+
+        self.processor.process_dependencies(
+            self.targettask, 
+            [elem.state for elem in elements], 
+            trans, 
+            delete=delete)
 
     def get_object_dependencies(self, state, trans, passive):
         return trans.get_attribute_history(state, self.processor.key, passive=passive)
@@ -737,16 +710,6 @@ class UOWDependencyProcessor(object):
 
         """
         return self.processor.whose_dependent_on_who(state1, state2)
-
-    def branch(self, task):
-        """create a copy of this ``UOWDependencyProcessor`` against a new ``UOWTask`` object.
-
-        this is used within the instance-level sorting operation when a single ``UOWTask``
-        is broken up into many individual ``UOWTask`` objects.
-
-        """
-        return UOWDependencyProcessor(self.processor, task)
-
 
 class UOWExecutor(object):
     """Encapsulates the execution traversal of a UOWTransaction structure."""

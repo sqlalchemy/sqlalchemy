@@ -145,7 +145,7 @@ class DependencyProcessor(object):
     def _pks_changed(self, uowcommit, state):
         raise NotImplementedError()
 
-    def __str__(self):
+    def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, str(self.prop))
 
 class OneToManyDP(DependencyProcessor):

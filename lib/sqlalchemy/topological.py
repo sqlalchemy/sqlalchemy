@@ -46,7 +46,7 @@ def sort_as_tree(tuples, allitems, with_cycles=False):
     as a hierarchical tree structure.
     
     returns results as an iterable of 3-tuples, containing the item,
-    and a list containing items involved in a cycle with this item, if any,
+    a list containing items involved in a cycle with this item, if any,
     and a list of child tuples.  
     
     if with_cycles is False, the returned structure is of the same form
@@ -155,9 +155,6 @@ class _EdgeCollection(object):
         for parent, children in self.parent_to_children.iteritems():
             for child in children:
                 yield (parent, child)
-
-    def __str__(self):
-        return repr(list(self))
 
     def __repr__(self):
         return repr(list(self))
