@@ -1334,14 +1334,18 @@ class _CompareMixin(ColumnOperators):
 
     def _in_impl(self, op, negate_op, *other):
         # Handle old style *args argument passing
-        if len(other) != 1 or not isinstance(other[0], Selectable) and (not hasattr(other[0], '__iter__') or isinstance(other[0], basestring)):
+        if len(other) != 1 or not isinstance(other[0], (_ScalarSelect, Selectable)) and (not hasattr(other[0], '__iter__') or isinstance(other[0], basestring)):
             util.warn_deprecated('passing in_ arguments as varargs is deprecated, in_ takes a single argument that is a sequence or a selectable')
             seq_or_selectable = other
         else:
             seq_or_selectable = other[0]
 
-        if isinstance(seq_or_selectable, Selectable):
-            return self.__compare( op, seq_or_selectable, negate=negate_op)
+        if isinstance(seq_or_selectable, _ScalarSelect):
+             return self.__compare( op, seq_or_selectable, negate=negate_op)
+        elif isinstance(seq_or_selectable, _SelectBaseMixin):
+             return self.__compare( op, seq_or_selectable.as_scalar(), negate=negate_op)
+        elif isinstance(seq_or_selectable, Selectable):
+             return self.__compare( op, seq_or_selectable, negate=negate_op)
 
         # Handle non selectable arguments as sequences
         args = []
@@ -2862,7 +2866,7 @@ class _ScalarSelect(_Grouping):
 
     def __init__(self, elem):
         self.elem = elem
-        cols = list(elem.inner_columns)
+        cols = list(elem.c)
         if len(cols) != 1:
             raise exceptions.InvalidRequestError("Scalar select can only be created from a Select object that has exactly one column expression.")
         self.type = cols[0].type
@@ -2905,7 +2909,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                 self.selects.append(s)
 
         _SelectBaseMixin.__init__(self, **kwargs)
-        
+
     def self_group(self, against=None):
         return _FromGrouping(self)
 

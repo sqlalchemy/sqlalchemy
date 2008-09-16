@@ -13,6 +13,11 @@ CHANGES
       SessionExtension.before_flush() will take
       effect for that flush.
 
+- sql
+    - column.in_(someselect) can now be used as 
+      a columns-clause expression without the subquery
+      bleeding into the FROM clause [ticket:1074]
+      
 - mysql
     - Added MSMediumInteger type [ticket:1146].
 
