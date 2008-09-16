@@ -4,6 +4,14 @@
 CHANGES
 =======
 
+0.5.0rc2
+========
+
+- sql
+    - column.in_(someselect) can now be used as 
+      a columns-clause expression without the subquery
+      bleeding into the FROM clause [ticket:1074]
+    
 0.5.0rc1
 ========
 

@@ -979,12 +979,12 @@ class ClauseElement(object):
 
         return c
 
+    @property
     def _cloned_set(self):
         f = self
         while f is not None:
             yield f
             f = getattr(f, '_is_clone_of', None)
-    _cloned_set = property(_cloned_set)
 
     def _get_from_objects(self, **modifiers):
         """Return objects represented in this ``ClauseElement`` that
@@ -1075,6 +1075,7 @@ class ClauseElement(object):
     def self_group(self, against=None):
         return self
 
+    @property
     def bind(self):
         """Returns the Engine or Connection to which this ClauseElement is bound, or None if none found."""
 
@@ -1091,7 +1092,6 @@ class ClauseElement(object):
                 return engine
         else:
             return None
-    bind = property(bind)
 
     def execute(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``."""
@@ -1360,7 +1360,16 @@ class _CompareMixin(ColumnOperators):
         return self._in_impl(operators.in_op, operators.notin_op, other)
 
     def _in_impl(self, op, negate_op, seq_or_selectable):
-        if isinstance(seq_or_selectable, Selectable):
+        if isinstance(seq_or_selectable, _ScalarSelect):
+            return self.__compare( op, seq_or_selectable, negate=negate_op)
+            
+        elif isinstance(seq_or_selectable, _SelectBaseMixin):
+            # TODO: if we ever want to support (x, y, z) IN (select x, y, z from table),
+            # we would need a multi-column version of as_scalar() to produce a multi-
+            # column selectable that does not export itself as a FROM clause
+            return self.__compare( op, seq_or_selectable.as_scalar(), negate=negate_op)
+            
+        elif isinstance(seq_or_selectable, Selectable):
             return self.__compare( op, seq_or_selectable, negate=negate_op)
 
         # Handle non selectable arguments as sequences
@@ -1501,13 +1510,14 @@ class ColumnElement(ClauseElement, _CompareMixin):
     foreign_keys = []
     quote = None
     
+    @property
     def base_columns(self):
         if not hasattr(self, '_base_columns'):
             self._base_columns = set(c for c in self.proxy_set
                                      if not hasattr(c, 'proxies'))
         return self._base_columns
-    base_columns = property(base_columns)
 
+    @property
     def proxy_set(self):
         if not hasattr(self, '_proxy_set'):
             s = set([self])
@@ -1516,7 +1526,6 @@ class ColumnElement(ClauseElement, _CompareMixin):
                     s.update(c.proxy_set)
             self._proxy_set = s
         return self._proxy_set
-    proxy_set = property(proxy_set)
 
     def shares_lineage(self, othercolumn):
         """Return True if the given ``ColumnElement`` has a common ancestor to this ``ColumnElement``.
@@ -1540,6 +1549,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         selectable.columns[name] = co
         return co
 
+    @property
     def anon_label(self):
         """provides a constant 'anonymous label' for this ColumnElement.
 
@@ -1556,7 +1566,6 @@ class ColumnElement(ClauseElement, _CompareMixin):
         if not hasattr(self, '_ColumnElement__anon_label'):
             self.__anon_label = "{ANON %d %s}" % (id(self), getattr(self, 'name', 'anon'))
         return self.__anon_label
-    anon_label = property(anon_label)
 
 class ColumnCollection(util.OrderedProperties):
     """An ordered dictionary that stores a list of ColumnElement
@@ -1767,13 +1776,13 @@ class FromClause(Selectable):
                 col, intersect = c, i
         return col
 
+    @property
     def description(self):
         """a brief description of this FromClause.
 
         Used primarily for error message formatting.
         """
         return getattr(self, 'name', self.__class__.__name__ + " object")
-    description = property(description)
 
     def _reset_exported(self):
         # delete all the "generated" collections of columns for a
@@ -1959,12 +1968,12 @@ class _TextClause(ClauseElement):
             for b in bindparams:
                 self.bindparams[b.key] = b
 
+    @property
     def type(self):
         if self.typemap is not None and len(self.typemap) == 1:
             return list(self.typemap)[0]
         else:
             return None
-    type = property(type)
 
     def _copy_internals(self, clone=_clone):
         self.bindparams = dict((b.key, clone(b))
@@ -2082,19 +2091,19 @@ class _CalculatedClause(ColumnElement):
         else:
             self.clause_expr = clauses
 
+    @property
     def key(self):
         return self.name or '_calc_'
-    key = property(key)
 
     def _copy_internals(self, clone=_clone):
         self.clause_expr = clone(self.clause_expr)
 
+    @property
     def clauses(self):
         if isinstance(self.clause_expr, _Grouping):
             return self.clause_expr.element
         else:
             return self.clause_expr
-    clauses = property(clauses)
 
     def get_children(self, **kwargs):
         return self.clause_expr,
@@ -2132,13 +2141,13 @@ class _Function(_CalculatedClause, FromClause):
         self.clause_expr = ClauseList(operator=operators.comma_op, group_contents=True, *args).self_group()
         self.type = sqltypes.to_instance(kwargs.get('type_', None))
 
+    @property
     def key(self):
         return self.name
-    key = property(key)
 
+    @property
     def columns(self):
         return [self]
-    columns = property(columns)
 
     def _copy_internals(self, clone=_clone):
         _CalculatedClause._copy_internals(self, clone=clone)
@@ -2324,9 +2333,9 @@ class Join(FromClause):
         self.isouter = isouter
         self.__folded_equivalents = None
 
+    @property
     def description(self):
         return "Join object on %s(%d) and %s(%d)" % (self.left.description, id(self.left), self.right.description, id(self.right))
-    description = property(description)
 
     def is_derived_from(self, fromclause):
         return fromclause is self or self.left.is_derived_from(fromclause) or self.right.is_derived_from(fromclause)
@@ -2392,9 +2401,9 @@ class Join(FromClause):
 
         return select(collist, whereclause, from_obj=[self], **kwargs)
 
+    @property
     def bind(self):
         return self.left.bind or self.right.bind
-    bind = property(bind)
 
     def alias(self, name=None):
         """Create a ``Select`` out of this ``Join`` clause and return an ``Alias`` of it.
@@ -2404,9 +2413,9 @@ class Join(FromClause):
 
         return self.select(use_labels=True, correlate=False).alias(name)
 
+    @property
     def _hide_froms(self):
         return itertools.chain(*[_from_objects(x.left, x.right) for x in self._cloned_set])
-    _hide_froms = property(_hide_froms)
 
     def _get_from_objects(self, **modifiers):
         return [self] + self.onclause._get_from_objects(**modifiers) + self.left._get_from_objects(**modifiers) + self.right._get_from_objects(**modifiers)
@@ -2438,9 +2447,9 @@ class Alias(FromClause):
             alias = '{ANON %d %s}' % (id(self), alias or 'anon')
         self.name = alias
 
+    @property
     def description(self):
         return self.name.encode('ascii', 'backslashreplace')
-    description = property(description)
 
     def is_derived_from(self, fromclause):
         if fromclause in set(self._cloned_set):
@@ -2471,9 +2480,9 @@ class Alias(FromClause):
     def _get_from_objects(self, **modifiers):
         return [self]
 
+    @property
     def bind(self):
         return self.element.bind
-    bind = property(bind)
 
 class _Grouping(ColumnElement):
     """Represent a grouping within a column expression"""
@@ -2483,16 +2492,16 @@ class _Grouping(ColumnElement):
         self.element = element
         self.type = getattr(element, 'type', None)
 
+    @property
     def key(self):
         return self.element.key
-    key = property(key)
 
+    @property
     def _label(self):
         try:
             return self.element._label
         except AttributeError:
             return self.anon_label
-    _label = property(_label)
 
     def _copy_internals(self, clone=_clone):
         self.element = clone(self.element)
@@ -2520,13 +2529,14 @@ class _FromGrouping(FromClause):
     def __init__(self, element):
         self.element = element
 
+    @property
     def columns(self):
         return self.element.columns
-    columns = c = property(columns)
+    c = columns
 
+    @property
     def _hide_froms(self):
         return self.element._hide_froms
-    _hide_froms = property(_hide_froms)
 
     def get_children(self, **kwargs):
         return self.element,
@@ -2559,13 +2569,13 @@ class _Label(ColumnElement):
         self.type = sqltypes.to_instance(type_ or getattr(element, 'type', None))
         self.quote = element.quote
 
+    @property
     def key(self):
         return self.name
-    key = property(key)
 
+    @property
     def _label(self):
         return self.name
-    _label = property(_label)
 
     def _proxy_attr(name):
         get = attrgetter(name)
@@ -2632,10 +2642,11 @@ class _ColumnClause(_Immutable, ColumnElement):
         self.__label = None
         self.is_literal = is_literal
 
+    @property
     def description(self):
         return self.name.encode('ascii', 'backslashreplace')
-    description = property(description)
 
+    @property
     def _label(self):
         if self.is_literal:
             return None
@@ -2656,7 +2667,6 @@ class _ColumnClause(_Immutable, ColumnElement):
             else:
                 self.__label = self.name
         return self.__label
-    _label = property(_label)
 
     def label(self, name):
         if name is None:
@@ -2709,9 +2719,9 @@ class TableClause(_Immutable, FromClause):
     def _export_columns(self):
         raise NotImplementedError()
 
+    @property
     def description(self):
         return self.name.encode('ascii', 'backslashreplace')
-    description = property(description)
 
     def append_column(self, c):
         self._columns[c.name] = c
@@ -2876,14 +2886,15 @@ class _ScalarSelect(_Grouping):
 
     def __init__(self, element):
         self.element = element
-        cols = list(element.inner_columns)
+        cols = list(element.c)
         if len(cols) != 1:
             raise exc.InvalidRequestError("Scalar select can only be created from a Select object that has exactly one column expression.")
         self.type = cols[0].type
 
+    @property
     def columns(self):
         raise exc.InvalidRequestError("Scalar Select expression has no columns; use this object directly within a column-level expression.")
-    columns = c = property(columns)
+    c = columns
 
     def self_group(self, **kwargs):
         return self
@@ -2919,7 +2930,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                 self.selects.append(s)
 
         _SelectBaseMixin.__init__(self, **kwargs)
-        
+
     def self_group(self, against=None):
         return _FromGrouping(self)
 
@@ -3048,11 +3059,15 @@ class Select(_SelectBaseMixin, FromClause):
                     
         return froms
 
-    froms = property(_get_display_froms, doc="""Return a list of all FromClause elements which will be applied to the FROM clause of the resulting statement.""")
+    @property
+    def froms(self):
+        """Return a list of all FromClause elements which will be applied to the FROM clause of the resulting statement."""
+        
+        return self._get_display_froms()
 
+    @property
     def type(self):
         raise exc.InvalidRequestError("Select objects don't have a type.  Call as_scalar() on this Select object to return a 'scalar' version of this Select.")
-    type = property(type)
 
     def locate_all_froms(self):
         """return a Set of all FromClause elements referenced by this Select.
@@ -3066,6 +3081,7 @@ class Select(_SelectBaseMixin, FromClause):
 
         return self._all_froms
 
+    @property
     def inner_columns(self):
         """an iteratorof all ColumnElement expressions which would
         be rendered into the columns clause of the resulting SELECT statement.
@@ -3077,7 +3093,6 @@ class Select(_SelectBaseMixin, FromClause):
                     yield co
             else:
                 yield c
-    inner_columns = property(inner_columns)
 
     def is_derived_from(self, fromclause):
         if self in set(fromclause._cloned_set):
