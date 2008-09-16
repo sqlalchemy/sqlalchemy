@@ -3,6 +3,7 @@ import sys, weakref
 from sqlalchemy import create_engine, exceptions, select, MetaData, Table, Column, Integer, String
 from testlib import *
 import time
+import gc
 
 class MockDisconnect(Exception):
     pass
@@ -93,6 +94,7 @@ class MockReconnectTest(TestBase):
         assert id(db.pool) != pid
 
         # ensure all connections closed (pool was recycled)
+        gc.collect()
         assert len(dbapi.connections) == 0
 
         conn =db.connect()
@@ -112,6 +114,7 @@ class MockReconnectTest(TestBase):
             pass
 
         # assert was invalidated
+        gc.collect()
         assert len(dbapi.connections) == 0
         assert not conn.closed
         assert conn.invalidated
@@ -161,6 +164,7 @@ class MockReconnectTest(TestBase):
         assert conn.invalidated
 
         # ensure all connections closed (pool was recycled)
+        gc.collect()
         assert len(dbapi.connections) == 0
 
         # test reconnects
