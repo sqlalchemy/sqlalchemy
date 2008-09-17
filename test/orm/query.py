@@ -249,6 +249,9 @@ class OperatorTest(QueryTest):
     def test_op(self):
         assert str(User.name.op('ilike')('17').compile(dialect=default.DefaultDialect())) == "users.name ilike :name_1"
 
+    def test_label(self):
+        assert str(User.name.label('foobar').compile() == "users.name AS foobar")
+
     def test_in(self):
          self._test(User.id.in_(['a', 'b']),
                     "users.id IN (:id_1, :id_2)")
@@ -1132,7 +1135,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             sess.clear()
 
         self.assertRaises(exceptions.InvalidRequestError, sess.query(User).add_column, object())
-    
+   
     def test_ambiguous_column(self):
         sess = create_session()
         

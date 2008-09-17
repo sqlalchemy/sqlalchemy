@@ -13,6 +13,9 @@ CHANGES
       SessionExtension.before_flush() will take
       effect for that flush.
 
+    - Added label() method to InstrumentedAttribute 
+      to establish forwards compatibility with 0.5.
+
 - sql
     - column.in_(someselect) can now be used as 
       a columns-clause expression without the subquery

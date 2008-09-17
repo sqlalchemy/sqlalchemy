@@ -52,6 +52,9 @@ class InstrumentedAttribute(interfaces.PropComparator):
     def expression_element(self):
         return self.comparator.expression_element()
 
+    def label(self, name):
+        return self.clause_element().label(name)
+
     def operate(self, op, *other, **kwargs):
         return op(self.comparator, *other, **kwargs)
 
