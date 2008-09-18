@@ -422,6 +422,9 @@ class PropertyLoader(StrategizedProperty):
             return ~self._criterion_exists(criterion)
 
         def __ne__(self, other):
+            # TODO: simplify MANYTOONE comparsion when 
+            # the 'use_get' flag is enabled
+            
             if other is None:
                 if self.prop.direction == MANYTOONE:
                     return sql.or_(*[x!=None for x in self.prop._foreign_keys])

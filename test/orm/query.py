@@ -337,6 +337,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         self._test(Address.user == User(id=7), ":param_1 = addresses.user_id")
 
     def test_selfref_relation(self):
+        nalias = aliased(Node)
 
         # auto self-referential aliasing
         self._test(
@@ -344,9 +345,42 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
                 "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE "
                 "nodes.id = nodes_1.parent_id AND nodes_1.data = :data_1)"
         )
+
+        # fails, needs autoaliasing
+        #self._test(
+        #    Node.children==None, 
+        #    "NOT (EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id))"
+        #)
         
-        # manual aliasing
-        nalias = aliased(Node)
+        self._test(
+            Node.parent==None,
+            "nodes.parent_id IS NULL"
+        )
+
+        self._test(
+            nalias.parent==None,
+            "nodes_1.parent_id IS NULL"
+        )
+
+        # fails, needs autoaliasing
+        #self._test(
+        #    Node.children==[Node(id=1), Node(id=2)],
+        #    "(EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id AND nodes_1.id = :id_1)) "
+        #    "AND (EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id AND nodes_1.id = :id_2))"
+        #)
+
+        # fails, overaliases
+        #self._test(
+        #    nalias.children==[Node(id=1), Node(id=2)],
+        #    "(EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id AND nodes_1.id = :id_1)) "
+        #    "AND (EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id AND nodes_1.id = :id_2))"
+        #)
+        
+        # fails, overaliases
+        #self._test(
+        #    nalias.children==None, 
+        #    "NOT (EXISTS (SELECT 1 FROM nodes AS nodes WHERE nodes_1.id = nodes.parent_id))"
+        #)
         
         # fails
         #self._test(
@@ -361,10 +395,33 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         #        "nodes.id = nodes_1.parent_id AND nodes_1.data = :data_1)"
         #        )
 
+        # fails, overaliases
+        #self._test(
+        #    nalias.parent.has(Node.data=='some data'), 
+        #   "EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id AND nodes.data = :data_1)"
+        #)
+
+        self._test(
+            Node.parent.has(Node.data=='some data'), 
+           "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes_1.id = nodes.parent_id AND nodes_1.data = :data_1)"
+        )
+        
+        self._test(
+            Node.parent == Node(id=7), 
+            ":param_1 = nodes.parent_id"
+        )
+
         self._test(
             nalias.parent == Node(id=7), 
             ":param_1 = nodes_1.parent_id"
         )
+
+        # fails
+        # (also why are we doing an EXISTS for this??)
+        #self._test(
+        #    nalias.parent != Node(id=7), 
+        #    'NOT (EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id AND nodes.id = :id_1))'
+        #)
         
         self._test(
             nalias.children.contains(Node(id=7)), "nodes_1.id = :param_1"
