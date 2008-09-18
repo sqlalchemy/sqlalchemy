@@ -6,7 +6,12 @@ CHANGES
 
 0.5.0rc2
 ========
-
+- orm
+    - "non-batch" mode in mapper(), a feature which allows
+      mapper extension methods to be called as each instance
+      is updated/inserted, now honors the insert order
+      of the objects given. 
+      
 - sql
     - column.in_(someselect) can now be used as 
       a columns-clause expression without the subquery

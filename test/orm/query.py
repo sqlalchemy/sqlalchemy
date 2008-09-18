@@ -250,12 +250,30 @@ class InvalidGenerationsTest(QueryTest):
         q = s.query(User).order_by(User.name)
         self.assertRaises(sa_exc.InvalidRequestError, q.from_statement, "x")
         
-class OperatorTest(QueryTest):
+class OperatorTest(QueryTest, AssertsCompiledSQL):
     """test sql.Comparator implementation for MapperProperties"""
 
     def _test(self, clause, expected):
-        c = str(clause.compile(dialect = default.DefaultDialect()))
-        assert c == expected, "%s != %s" % (c, expected)
+        self.assert_compile(clause, expected, dialect=default.DefaultDialect())
+
+    def define_tables(self, metadata):
+        global nodes
+        nodes = Table('nodes', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')),
+            Column('data', String(30)))
+        
+    def insert_data(self):
+        global Node
+
+        class Node(Base):
+            pass
+
+        mapper(Node, nodes, properties={
+            'children':relation(Node, 
+                backref=backref('parent', remote_side=[nodes.c.id])
+            )
+        })
 
     def test_arithmetic(self):
         create_session().query(User)
@@ -276,6 +294,8 @@ class OperatorTest(QueryTest):
 
     def test_comparison(self):
         create_session().query(User)
+        ualias = aliased(User)
+        
         for (py_op, fwd_op, rev_op) in ((operator.lt, '<', '>'),
                                         (operator.gt, '>', '<'),
                                         (operator.eq, '=', '='),
@@ -291,6 +311,10 @@ class OperatorTest(QueryTest):
                 (literal('a'), 'b', ':param_1', ':param_2'),
                 (literal('a'), User.id, ':param_1', 'users.id'),
                 (literal('a'), literal('b'), ':param_1', ':param_2'),
+                (ualias.id, literal('b'), 'users_1.id', ':param_1'),
+                (User.id, ualias.name, 'users.id', 'users_1.name'),
+                (User.name, ualias.name, 'users.name', 'users_1.name'),
+                (ualias.name, User.name, 'users_1.name', 'users.name'),
                 ):
 
                 # the compiled clause should match either (e.g.):
@@ -303,8 +327,51 @@ class OperatorTest(QueryTest):
                              "\n'" + compiled + "'\n does not match\n'" +
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
 
+    def test_relation(self):
+        self._test(User.addresses.any(Address.id==17), 
+                        "EXISTS (SELECT 1 "
+                        "FROM addresses "
+                        "WHERE users.id = addresses.user_id AND addresses.id = :id_1)"
+                    )
+
+        self._test(Address.user == User(id=7), ":param_1 = addresses.user_id")
+
+    def test_selfref_relation(self):
+
+        # auto self-referential aliasing
+        self._test(
+            Node.children.any(Node.data=='n1'), 
+                "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE "
+                "nodes.id = nodes_1.parent_id AND nodes_1.data = :data_1)"
+        )
+        
+        # manual aliasing
+        nalias = aliased(Node)
+        
+        # fails
+        #self._test(
+        #        nalias.children.any(Node.data=='some data'), 
+        #        "EXISTS (SELECT 1 FROM nodes WHERE "
+        #        "nodes_1.id = nodes.parent_id AND nodes.data = :data_1)")
+        
+        # fails
+        #self._test(
+        #        Node.children.any(nalias.data=='some data'), 
+        #        "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE "
+        #        "nodes.id = nodes_1.parent_id AND nodes_1.data = :data_1)"
+        #        )
+
+        self._test(
+            nalias.parent == Node(id=7), 
+            ":param_1 = nodes_1.parent_id"
+        )
+        
+        self._test(
+            nalias.children.contains(Node(id=7)), "nodes_1.id = :param_1"
+        )
+        
     def test_op(self):
-        assert str(User.name.op('ilike')('17').compile(dialect=default.DefaultDialect())) == "users.name ilike :name_1"
+        self._test(User.name.op('ilike')('17'), "users.name ilike :name_1")
 
     def test_in(self):
          self._test(User.id.in_(['a', 'b']),
@@ -313,6 +380,12 @@ class OperatorTest(QueryTest):
     def test_between(self):
         self._test(User.id.between('a', 'b'),
                    "users.id BETWEEN :id_1 AND :id_2")
+
+    def test_selfref_between(self):
+        ualias = aliased(User)
+        self._test(User.id.between(ualias.id, ualias.id), "users.id BETWEEN users_1.id AND users_1.id")
+        # fails:
+        # self._test(ualias.id.between(User.id, User.id), "users_1.id BETWEEN users.id AND users.id")
 
     def test_clauses(self):
         for (expr, compare) in (
@@ -324,6 +397,7 @@ class OperatorTest(QueryTest):
         ):
             c = expr.compile(dialect=default.DefaultDialect())
             assert str(c) == compare, "%s != %s" % (str(c), compare)
+
 
 class RawSelectTest(QueryTest, AssertsCompiledSQL):
     """compare a bunch of select() tests with the equivalent Query using straight table/columns.

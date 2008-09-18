@@ -1047,7 +1047,9 @@ class Mapper(object):
 
         # if batch=false, call _save_obj separately for each object
         if not single and not self.batch:
-            for state in states:
+            def comparator(a, b):
+                return cmp(getattr(a, 'insert_order', 0), getattr(b, 'insert_order', 0))
+            for state in sorted(states, comparator):
                 self._save_obj([state], uowtransaction, postupdate=postupdate, post_update_cols=post_update_cols, single=True)
             return
 

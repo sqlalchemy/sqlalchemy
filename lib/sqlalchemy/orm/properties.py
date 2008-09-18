@@ -155,6 +155,7 @@ class CompositeProperty(ColumnProperty):
             else:
                 values = other.__composite_values__()
             return sql.and_(*[a==b for a, b in zip(self.prop.columns, values)])
+            
         def __ne__(self, other):
             return sql.not_(self.__eq__(other))
 

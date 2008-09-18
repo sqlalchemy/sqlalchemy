@@ -1511,9 +1511,11 @@ class SaveTest(_fixtures.FixtureTest):
     def test_batch_mode(self):
         """The 'batch=False' flag on mapper()"""
 
+        names = []
         class TestExtension(sa.orm.MapperExtension):
             def before_insert(self, mapper, connection, instance):
                 self.current_instance = instance
+                names.append(instance.name)
             def after_insert(self, mapper, connection, instance):
                 assert instance is self.current_instance
 
@@ -1524,18 +1526,25 @@ class SaveTest(_fixtures.FixtureTest):
         session = create_session()
         session.add_all((u1, u2))
         session.flush()
+        
+        u3 = User(name='user3')
+        u4 = User(name='user4')
+        u5 = User(name='user5')
+        
+        session.add_all([u4, u5, u3])
+        session.flush()
+        
+        # test insert ordering is maintained
+        assert names == ['user1', 'user2', 'user4', 'user5', 'user3']
         session.clear()
-
+        
         sa.orm.clear_mappers()
 
         m = mapper(User, users, extension=TestExtension())
         u1 = User(name='user1')
         u2 = User(name='user2')
-        try:
-            session.flush()
-            assert False
-        except AssertionError:
-            assert True
+        session.add_all((u1, u2))
+        self.assertRaises(AssertionError, session.flush)
 
 
 class ManyToOneTest(_fixtures.FixtureTest):
