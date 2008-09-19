@@ -54,14 +54,12 @@ class SLSmallInteger(sqltypes.Smallinteger):
         return "SMALLINT"
 
 class DateTimeMixin(object):
-    def _bind_processor(self, format, element_range):
-        elem = ("year", "month", "day", "hour", 
-                    "minute", "second", "microsecond")[element_range[0]:element_range[1]]
+    def _bind_processor(self, format, elements):
         def process(value):
             if not isinstance(value, (NoneType, datetime.date, datetime.datetime, datetime.time)):
                 raise TypeError("SQLite Date, Time, and DateTime types only accept Python datetime objects as input.")
             elif value is not None:
-                return format % tuple([getattr(value, attr, 0) for attr in elem])
+                return format % tuple([getattr(value, attr, 0) for attr in elements])
             else:
                 return None
         return process
@@ -82,9 +80,15 @@ class SLDateTime(DateTimeMixin, sqltypes.DateTime):
 
     def bind_processor(self, dialect):
         if self.__legacy_microseconds__:
-            return self._bind_processor("%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d.%s", (0, 7))
+            return self._bind_processor(
+                        "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d.%s", 
+                        ("year", "month", "day", "hour", "minute", "second", "microsecond")
+                        )
         else:
-            return self._bind_processor("%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d.%06d", (0, 7))
+            return self._bind_processor(
+                        "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d.%06d", 
+                        ("year", "month", "day", "hour", "minute", "second", "microsecond")
+                        )
 
     _reg = re.compile(r"(\d+)-(\d+)-(\d+)(?: (\d+):(\d+):(\d+)(?:\.(\d+))?)?")
     def result_processor(self, dialect):
@@ -95,7 +99,10 @@ class SLDate(DateTimeMixin, sqltypes.Date):
         return "DATE"
 
     def bind_processor(self, dialect):
-        return self._bind_processor("%4.4d-%2.2d-%2.2d", (0, 3))
+        return self._bind_processor(
+                        "%4.4d-%2.2d-%2.2d", 
+                        ("year", "month", "day")
+                )
 
     _reg = re.compile(r"(\d+)-(\d+)-(\d+)")
     def result_processor(self, dialect):
@@ -109,9 +116,15 @@ class SLTime(DateTimeMixin, sqltypes.Time):
 
     def bind_processor(self, dialect):
         if self.__legacy_microseconds__:
-            return self._bind_processor("%2.2d:%2.2d:%2.2d.%s", (3, 7))
+            return self._bind_processor(
+                            "%2.2d:%2.2d:%2.2d.%s", 
+                            ("hour", "minute", "second", "microsecond")
+                    )
         else:
-            return self._bind_processor("%2.2d:%2.2d:%2.2d.%06d", (3, 7))
+            return self._bind_processor(
+                            "%2.2d:%2.2d:%2.2d.%06d", 
+                            ("hour", "minute", "second", "microsecond")
+                    )
 
     _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
     def result_processor(self, dialect):
