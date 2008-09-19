@@ -607,13 +607,13 @@ class RelationTest6(_base.MappedTest):
     
     def define_tables(self, metadata):
         Table('tags', metadata, Column("id", Integer, primary_key=True),
-            Column("data", Integer),
+            Column("data", String(50)),
         )
 
         Table('tag_foo', metadata, 
             Column("id", Integer, primary_key=True),
             Column('tagid', Integer),
-            Column("data", Integer),
+            Column("data", String(50)),
         )
 
     @testing.resolve_artifact_names
