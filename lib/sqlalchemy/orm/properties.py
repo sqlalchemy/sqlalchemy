@@ -628,7 +628,7 @@ class PropertyLoader(StrategizedProperty):
                     self.synchronize_pairs.append((r, l))
         else:
             eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=self.viewonly)
-            eq_pairs = [(l, r) for l, r in eq_pairs if (self._col_is_part_of_mappings(l) and self._col_is_part_of_mappings(r)) or r in self._foreign_keys]
+            eq_pairs = [(l, r) for l, r in eq_pairs if (self._col_is_part_of_mappings(l) and self._col_is_part_of_mappings(r)) or self.viewonly and r in self._foreign_keys]
 
             if not eq_pairs:
                 if not self.viewonly and criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=True):

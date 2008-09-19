@@ -598,7 +598,58 @@ class RelationTest5(_base.MappedTest):
         for old, new in zip(con.lineItems, newcon.lineItems):
             assert old.id == new.id
 
+class RelationTest6(_base.MappedTest):
+    """test a relation with a non-column entity in the primary join, 
+    is not viewonly, and also has the non-column's clause mentioned in the 
+    foreign keys list.
+    
+    """
+    
+    def define_tables(self, metadata):
+        Table('tags', metadata, Column("id", Integer, primary_key=True),
+            Column("data", Integer),
+        )
 
+        Table('tag_foo', metadata, 
+            Column("id", Integer, primary_key=True),
+            Column('tagid', Integer),
+            Column("data", Integer),
+        )
+
+    @testing.resolve_artifact_names
+    def test_basic(self):
+        class Tag(_base.ComparableEntity):
+            pass
+        class TagInstance(_base.ComparableEntity):
+            pass
+
+        mapper(Tag, tags, properties={
+            'foo':relation(TagInstance, 
+               primaryjoin=sa.and_(tag_foo.c.data=='iplc_case',
+                                tag_foo.c.tagid==tags.c.id),
+               foreign_keys=[tag_foo.c.tagid, tag_foo.c.data],
+               ),
+        })
+
+        mapper(TagInstance, tag_foo)
+
+        sess = create_session()
+        t1 = Tag(data='some tag')
+        t1.foo.append(TagInstance(data='iplc_case'))
+        t1.foo.append(TagInstance(data='not_iplc_case'))
+        sess.add(t1)
+        sess.flush()
+        sess.clear()
+        
+        # relation works
+        eq_(sess.query(Tag).all(), [Tag(data='some tag', foo=[TagInstance(data='iplc_case')])])
+        
+        # both TagInstances were persisted
+        eq_(
+            sess.query(TagInstance).order_by(TagInstance.data).all(), 
+            [TagInstance(data='iplc_case'), TagInstance(data='not_iplc_case')]
+        )
+        
 class TypeMatchTest(_base.MappedTest):
     """test errors raised when trying to add items whose type is not handled by a relation"""
 

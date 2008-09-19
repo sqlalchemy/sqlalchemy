@@ -1012,7 +1012,7 @@ class Mapper(object):
             if prop:
                 raise exc.UnmappedColumnError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
             else:
-                raise exc.UnmappedColumnError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
+                raise exc.UnmappedColumnError("No column %s is configured on mapper %s..." % (column, self))
 
     # TODO: improve names
     def _get_state_attr_by_column(self, state, column):
