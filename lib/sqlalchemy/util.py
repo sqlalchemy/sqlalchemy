@@ -646,8 +646,8 @@ class OrderedDict(dict):
         self._list = []
         dict.clear(self)
 
-    def sort(self, fn=None):
-        self._list.sort(fn)
+    def sort(self, *arg, **kw):
+        self._list.sort(*arg, **kw)
 
     def update(self, ____sequence=None, **kwargs):
         if ____sequence is not None:
