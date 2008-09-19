@@ -7,6 +7,7 @@
 import inspect, itertools, new, operator, sets, sys, warnings, weakref
 import __builtin__
 types = __import__('types')
+import re
 
 from sqlalchemy import exceptions
 
@@ -410,43 +411,31 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
         exec py in env
         setattr(into_cls, method, env[method])
 
-class SimpleProperty(object):
-    """A *default* property accessor."""
-
-    def __init__(self, key):
-        self.key = key
-
-    def __set__(self, obj, value):
-        setattr(obj, self.key, value)
-
-    def __delete__(self, obj):
-        delattr(obj, self.key)
-
-    def __get__(self, obj, owner):
-        if obj is None:
-            return self
-        else:
-            return getattr(obj, self.key)
-
-
-class NotImplProperty(object):
-  """a property that raises ``NotImplementedError``."""
-
-  def __init__(self, doc):
-      self.__doc__ = doc
-
-  def __set__(self, obj, value):
-      raise NotImplementedError()
-
-  def __delete__(self, obj):
-      raise NotImplementedError()
-
-  def __get__(self, obj, owner):
-      if obj is None:
-          return self
-      else:
-          raise NotImplementedError()
-
+_strftime_conversions = {
+    "Y":lambda dt: "%4.4d" % getattr(dt, 'year', 0),
+    "m":lambda dt: "%2.2d" % getattr(dt, 'month', 0),
+    "d":lambda dt: "%2.2d" % getattr(dt, 'day', 0),
+    "H":lambda dt: "%2.2d" % getattr(dt, 'hour', 0),
+    "M":lambda dt: "%2.2d" % getattr(dt, 'minute', 0),
+    "S":lambda dt: "%2.2d" % getattr(dt, 'second', 0),
+    "c":lambda dt: '%06d' % getattr(dt, 'microsecond', 0)
+}
+_strftime_regexp = re.compile(r'%(\w)')
+    
+def strftime(dt, format):
+    """format a date, time or datetime object.
+    
+    Partially compatible with datetime.strftime().
+    
+    handles years before 1900.
+    
+    Also adds "c", representing microseconds.
+    
+    """
+    def repl(m):
+        return _strftime_conversions[m.group(1)](dt)
+    return _strftime_regexp.sub(repl, format)
+    
 class OrderedProperties(object):
     """An object that maintains the order in which attributes are set upon it.
 

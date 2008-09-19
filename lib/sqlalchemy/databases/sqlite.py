@@ -65,11 +65,11 @@ class DateTimeMixin(object):
             elif value is not None:
                 if self.__microsecond__ and getattr(value, 'microsecond', None) is not None:
                     if self.__legacy_microseconds__:
-                        return value.strftime(self.__format__ + '.' + str(value.microsecond))
+                        return util.strftime(value, self.__format__ + '.' + str(value.microsecond))
                     else:
-                        return value.strftime(self.__format__ + ('.%06d' % value.microsecond))
+                        return util.strftime(value, self.__format__ + ('.%06d' % value.microsecond))
                 else:
-                    return value.strftime(self.__format__)
+                    return util.strftime(value, self.__format__)
             else:
                 return None
         return process

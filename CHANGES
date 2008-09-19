@@ -24,6 +24,10 @@ CHANGES
 - mysql
     - Added MSMediumInteger type [ticket:1146].
 
+- sqlite
+    - Supplied a custom strftime() function which
+      handles dates before 1900.  [ticket:968]
+      
 - oracle
     - has_sequence() now takes schema name into account
       [ticket:1155]
