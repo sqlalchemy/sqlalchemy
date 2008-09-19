@@ -781,7 +781,8 @@ class InstanceState(object):
     key = None
     runid = None
     expired_attributes = EMPTY_SET
-
+    insert_order = None
+    
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
         self.manager = manager
@@ -797,6 +798,10 @@ class InstanceState(object):
     def dispose(self):
         del self.session_id
 
+    @property
+    def sort_key(self):
+        return self.key and self.key[1] or self.insert_order
+        
     def check_modified(self):
         if self.modified:
             return True

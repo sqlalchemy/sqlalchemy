@@ -1027,7 +1027,7 @@ class Mapper(object):
 
     def _get_committed_state_attr_by_column(self, state, column, passive=False):
         return self._get_col_to_prop(column).getcommitted(state, column, passive=passive)
-
+    
     def _save_obj(self, states, uowtransaction, postupdate=False, post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
 
@@ -1047,9 +1047,7 @@ class Mapper(object):
 
         # if batch=false, call _save_obj separately for each object
         if not single and not self.batch:
-            def comparator(a, b):
-                return cmp(getattr(a, 'insert_order', 0), getattr(b, 'insert_order', 0))
-            for state in sorted(states, comparator):
+            for state in _sort_states(states):
                 self._save_obj([state], uowtransaction, postupdate=postupdate, post_update_cols=post_update_cols, single=True)
             return
 
@@ -1057,10 +1055,10 @@ class Mapper(object):
         # organize individual states with the connection to use for insert/update
         if 'connection_callable' in uowtransaction.mapper_flush_opts:
             connection_callable = uowtransaction.mapper_flush_opts['connection_callable']
-            tups = [(state, _state_mapper(state), connection_callable(self, state.obj()), _state_has_identity(state)) for state in states]
+            tups = [(state, _state_mapper(state), connection_callable(self, state.obj()), _state_has_identity(state)) for state in _sort_states(states)]
         else:
             connection = uowtransaction.transaction.connection(self)
-            tups = [(state, _state_mapper(state), connection, _state_has_identity(state)) for state in states]
+            tups = [(state, _state_mapper(state), connection, _state_has_identity(state)) for state in _sort_states(states)]
 
         if not postupdate:
             # call before_XXX extensions
@@ -1185,20 +1183,11 @@ class Mapper(object):
                     clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type_=col.type))
 
                 statement = table.update(clause)
-                pks = mapper._pks_by_table[table]
-                def comparator(a, b):
-                    for col in pks:
-                        x = cmp(a[1][col._label], b[1][col._label])
-                        if x != 0:
-                            return x
-                    return 0
-                update.sort(comparator)
-
                 rows = 0
                 for rec in update:
                     (state, params, mapper, connection, value_params) = rec
                     c = connection.execute(statement.values(value_params), params)
-                    mapper.__postfetch(uowtransaction, connection, table, state, c, c.last_updated_params(), value_params)
+                    mapper._postfetch(uowtransaction, connection, table, state, c, c.last_updated_params(), value_params)
 
                     # testlib.pragma exempt:__hash__
                     updated_objects.add((state, connection))
@@ -1209,9 +1198,6 @@ class Mapper(object):
 
             if insert:
                 statement = table.insert()
-                def comparator(a, b):
-                    return cmp(a[0].insert_order, b[0].insert_order)
-                insert.sort(comparator)
                 for rec in insert:
                     (state, params, mapper, connection, value_params) = rec
                     c = connection.execute(statement.values(value_params), params)
@@ -1222,7 +1208,7 @@ class Mapper(object):
                         for i, col in enumerate(mapper._pks_by_table[table]):
                             if mapper._get_state_attr_by_column(state, col) is None and len(primary_key) > i:
                                 mapper._set_state_attr_by_column(state, col, primary_key[i])
-                    mapper.__postfetch(uowtransaction, connection, table, state, c, c.last_inserted_params(), value_params)
+                    mapper._postfetch(uowtransaction, connection, table, state, c, c.last_inserted_params(), value_params)
 
                     # synchronize newly inserted ids from one table to the next
                     # TODO: this performs some unnecessary attribute transfers
@@ -1263,7 +1249,7 @@ class Mapper(object):
                     if 'after_update' in mapper.extension.methods:
                         mapper.extension.after_update(mapper, connection, state.obj())
 
-    def __postfetch(self, uowtransaction, connection, table, state, resultproxy, params, value_params):
+    def _postfetch(self, uowtransaction, connection, table, state, resultproxy, params, value_params):
         """For a given Table that has just been inserted/updated,
         mark as 'expired' those attributes which correspond to columns
         that are marked as 'postfetch', and populate attributes which
@@ -1303,10 +1289,10 @@ class Mapper(object):
 
         if 'connection_callable' in uowtransaction.mapper_flush_opts:
             connection_callable = uowtransaction.mapper_flush_opts['connection_callable']
-            tups = [(state, _state_mapper(state), connection_callable(self, state.obj())) for state in states]
+            tups = [(state, _state_mapper(state), connection_callable(self, state.obj())) for state in _sort_states(states)]
         else:
             connection = uowtransaction.transaction.connection(self)
-            tups = [(state, _state_mapper(state), connection) for state in states]
+            tups = [(state, _state_mapper(state), connection) for state in _sort_states(states)]
 
         for state, mapper, connection in tups:
             if 'before_delete' in mapper.extension.methods:
@@ -1335,13 +1321,6 @@ class Mapper(object):
 
             for connection, del_objects in delete.iteritems():
                 mapper = table_to_mapper[table]
-                def comparator(a, b):
-                    for col in mapper._pks_by_table[table]:
-                        x = cmp(a[col.key], b[col.key])
-                        if x != 0:
-                            return x
-                    return 0
-                del_objects.sort(comparator)
                 clause = sql.and_()
                 for col in mapper._pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.key, type_=col.type))
@@ -1694,6 +1673,8 @@ def _event_on_init_failure(state, instance, args, kwargs):
             instrumenting_mapper, instrumenting_mapper.class_,
             state.manager.events.original_init, instance, args, kwargs)
 
+def _sort_states(states):
+    return sorted(states, lambda a, b:cmp(a.sort_key, b.sort_key))
 
 def _load_scalar_attributes(state, attribute_names):
     mapper = _state_mapper(state)

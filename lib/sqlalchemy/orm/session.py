@@ -1039,9 +1039,6 @@ class Session(object):
             self.identity_map.remove(state)
             state.key = instance_key
 
-        if hasattr(state, 'insert_order'):
-            delattr(state, 'insert_order')
-
         obj = state.obj()
         # prevent against last minute dereferences of the object
         # TODO: identify a code path where state.obj() is None
