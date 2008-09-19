@@ -45,7 +45,7 @@ class UOWDumper(unitofwork.UOWExecutor):
 
 
     def save_objects(self, trans, task):
-        for rec in sorted(task.polymorphic_tosave_elements, lambda a, b:cmp(a.state.sort_key, b.state.sort_key)):
+        for rec in sorted(task.polymorphic_tosave_elements, key=lambda a: a.state.sort_key):
             if rec.listonly:
                 continue
             self.buf.write(self._indent()[:-1] + "+-" + self._repr_task_element(rec)  + "\n")

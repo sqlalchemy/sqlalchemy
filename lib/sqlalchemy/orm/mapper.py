@@ -16,6 +16,7 @@ available in [sqlalchemy.orm#].
 
 import types
 import weakref
+import operator
 from itertools import chain
 
 from sqlalchemy import sql, util, log
@@ -545,7 +546,7 @@ class Mapper(object):
             # determine primary key from argument or mapped_table pks - reduce to the minimal set of columns
             if self.primary_key_argument:
                 primary_key = sqlutil.reduce_columns(
-                    [self.mapped_table.corresponding_column(c) for c in self.primary_key_argument], 
+                    [self.mapped_table.corresponding_column(c) for c in self.primary_key_argument],
                     ignore_nonexistent_tables=True)
             else:
                 primary_key = sqlutil.reduce_columns(
@@ -640,7 +641,7 @@ class Mapper(object):
 
     def _is_userland_descriptor(self, obj):
         return not isinstance(obj, (MapperProperty, attributes.InstrumentedAttribute)) and hasattr(obj, '__get__')
-        
+
     def _should_exclude(self, name, local):
         """determine whether a particular property should be implicitly present on the class.
 
@@ -875,7 +876,7 @@ class Mapper(object):
                 elif hasattr(method, '__sa_validators__'):
                     for name in method.__sa_validators__:
                         self._validators[name] = method
-                        
+
         if 'reconstruct_instance' in self.extension.methods:
             def reconstruct(instance):
                 self.extension.reconstruct_instance(self, instance)
@@ -1027,7 +1028,7 @@ class Mapper(object):
 
     def _get_committed_state_attr_by_column(self, state, column, passive=False):
         return self._get_col_to_prop(column).getcommitted(state, column, passive=passive)
-    
+
     def _save_obj(self, states, uowtransaction, postupdate=False, post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
 
@@ -1218,7 +1219,7 @@ class Mapper(object):
                     for m in mapper.iterate_to_root():
                         if m.__inherits_equated_pairs:
                             sync.populate(state, m, state, m, m.__inherits_equated_pairs)
-                        
+
                     # testlib.pragma exempt:__hash__
                     inserted_objects.add((state, connection))
 
@@ -1637,20 +1638,20 @@ def reconstructor(fn):
 
 def validates(*names):
     """Decorate a method as a 'validator' for one or more named properties.
-    
-    Designates a method as a validator, a method which receives the 
+
+    Designates a method as a validator, a method which receives the
     name of the attribute as well as a value to be assigned, or in the
-    case of a collection to be added to the collection.  The function 
+    case of a collection to be added to the collection.  The function
     can then raise validation exceptions to halt the process from continuing,
     or can modify or replace the value before proceeding.   The function
     should otherwise return the given value.
-    
+
     """
     def wrap(fn):
         fn.__sa_validators__ = names
         return fn
     return wrap
-    
+
 def _event_on_init(state, instance, args, kwargs):
     """Trigger mapper compilation and run init_instance hooks."""
 
@@ -1674,7 +1675,7 @@ def _event_on_init_failure(state, instance, args, kwargs):
             state.manager.events.original_init, instance, args, kwargs)
 
 def _sort_states(states):
-    return sorted(states, lambda a, b:cmp(a.sort_key, b.sort_key))
+    return sorted(states, key=operator.attrgetter('sort_key'))
 
 def _load_scalar_attributes(state, attribute_names):
     mapper = _state_mapper(state)

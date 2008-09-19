@@ -197,8 +197,8 @@ def proxied_attribute_factory(descriptor):
 class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
 
-    def __init__(self, class_, key, 
-                    callable_, class_manager, trackparent=False, extension=None, 
+    def __init__(self, class_, key,
+                    callable_, class_manager, trackparent=False, extension=None,
                     compare_function=None, active_history=False, **kwargs):
         """Construct an AttributeImpl.
 
@@ -219,13 +219,13 @@ class AttributeImpl(object):
           to it via this attribute.
 
         extension
-          a single or list of AttributeExtension object(s) which will 
+          a single or list of AttributeExtension object(s) which will
           receive set/delete/append/remove/etc. events.
 
         compare_function
           a function that compares two values which are normally
           assignable to this attribute.
-        
+
         active_history
           indicates that get_history() should always return the "old" value,
           even if it means executing a lazy callable upon attribute change.
@@ -399,7 +399,7 @@ class ScalarAttributeImpl(AttributeImpl):
             old = self.get(state)
         else:
             old = state.dict.get(self.key, NO_VALUE)
-            
+
         state.modified_event(self, False, old)
 
         if self.extensions:
@@ -429,10 +429,10 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
 
     uses_objects = False
 
-    def __init__(self, class_, key, callable_, 
-                    class_manager, copy_function=None, 
+    def __init__(self, class_, key, callable_,
+                    class_manager, copy_function=None,
                     compare_function=None, **kwargs):
-        super(ScalarAttributeImpl, self).__init__(class_, key, callable_, 
+        super(ScalarAttributeImpl, self).__init__(class_, key, callable_,
                                 class_manager, compare_function=compare_function, **kwargs)
         class_manager.mutable_attributes.add(key)
         if copy_function is None:
@@ -473,8 +473,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     accepts_scalar_loader = False
     uses_objects = True
 
-    def __init__(self, class_, key, callable_, class_manager, 
-                    trackparent=False, extension=None, copy_function=None, 
+    def __init__(self, class_, key, callable_, class_manager,
+                    trackparent=False, extension=None, copy_function=None,
                     compare_function=None, **kwargs):
         super(ScalarObjectAttributeImpl, self).__init__(class_, key,
           callable_, class_manager, trackparent=trackparent, extension=extension,
@@ -550,8 +550,8 @@ class CollectionAttributeImpl(AttributeImpl):
     accepts_scalar_loader = False
     uses_objects = True
 
-    def __init__(self, class_, key, callable_, class_manager, 
-                    typecallable=None, trackparent=False, extension=None, 
+    def __init__(self, class_, key, callable_, class_manager,
+                    typecallable=None, trackparent=False, extension=None,
                     copy_function=None, compare_function=None, **kwargs):
         super(CollectionAttributeImpl, self).__init__(class_,
           key, callable_, class_manager, trackparent=trackparent,
@@ -761,12 +761,12 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
             new_state = instance_state(child)
             new_state.get_impl(self.key).append(new_state, state.obj(), initiator, passive=True)
         return child
-        
+
     def append(self, state, child, initiator):
         child_state = instance_state(child)
         child_state.get_impl(self.key).append(child_state, state.obj(), initiator, passive=True)
         return child
-        
+
     def remove(self, state, child, initiator):
         if child is not None:
             child_state = instance_state(child)
@@ -782,7 +782,7 @@ class InstanceState(object):
     runid = None
     expired_attributes = EMPTY_SET
     insert_order = None
-    
+
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
         self.manager = manager
@@ -801,7 +801,7 @@ class InstanceState(object):
     @property
     def sort_key(self):
         return self.key and self.key[1] or self.insert_order
-        
+
     def check_modified(self):
         if self.modified:
             return True
@@ -1443,8 +1443,8 @@ def unregister_class(class_):
     manager.instantiable = False
     manager.unregister()
 
-def register_attribute(class_, key, uselist, useobject, 
-                        callable_=None, proxy_property=None, 
+def register_attribute(class_, key, uselist, useobject,
+                        callable_=None, proxy_property=None,
                         mutable_scalars=False, impl_class=None, **kwargs):
     manager = manager_of_class(class_)
     if manager.is_instrumented(key):
