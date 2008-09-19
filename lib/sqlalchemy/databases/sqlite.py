@@ -54,76 +54,68 @@ class SLSmallInteger(sqltypes.Smallinteger):
         return "SMALLINT"
 
 class DateTimeMixin(object):
-    __format__ = "%Y-%m-%d %H:%M:%S"
-    __legacy_microseconds__ = False
-    
-    def bind_processor(self, dialect):
+    def _bind_processor(self, format, element_range):
+        elem = ("year", "month", "day", "hour", 
+                    "minute", "second", "microsecond")[element_range[0]:element_range[1]]
         def process(value):
             if not isinstance(value, (NoneType, datetime.date, datetime.datetime, datetime.time)):
-                raise TypeError("SQLite Date, Time, and DateTime types only accept Python datetime objects as input.r")
+                raise TypeError("SQLite Date, Time, and DateTime types only accept Python datetime objects as input.")
             elif value is not None:
-                if self.__microsecond__ and getattr(value, 'microsecond', None) is not None:
-                    if self.__legacy_microseconds__:
-                        return value.strftime(self.__format__ + '.' + str(value.microsecond))
-                    else:
-                        return value.strftime(self.__format__ + ('.%06d' % value.microsecond))
-                else:
-                    return value.strftime(self.__format__)
+                return format % tuple([getattr(value, attr, 0) for attr in elem])
             else:
                 return None
         return process
 
-    def _cvt(self, value, dialect):
-        if value is None:
-            return None
-        try:
-            (value, microsecond) = value.split('.')
-            if self.__legacy_microseconds__:
-                microsecond = int(microsecond)
+    def _result_processor(self, fn, regexp):
+        def process(value):
+            if value is not None:
+                return fn(*[int(x or 0) for x in regexp.match(value).groups()])
             else:
-                microsecond = int((microsecond + '000000')[0:6])
-        except ValueError:
-            microsecond = 0
-        return time.strptime(value, self.__format__)[0:6] + (microsecond,)
+                return None
+        return process
 
 class SLDateTime(DateTimeMixin, sqltypes.DateTime):
-    __format__ = "%Y-%m-%d %H:%M:%S"
-    __microsecond__ = True
+    __legacy_microseconds__ = False
 
     def get_col_spec(self):
         return "TIMESTAMP"
 
+    def bind_processor(self, dialect):
+        if self.__legacy_microseconds__:
+            return self._bind_processor("%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d.%s", (0, 7))
+        else:
+            return self._bind_processor("%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d.%06d", (0, 7))
+
+    _reg = re.compile(r"(\d+)-(\d+)-(\d+)(?: (\d+):(\d+):(\d+)(?:\.(\d+))?)?")
     def result_processor(self, dialect):
-        def process(value):
-            tup = self._cvt(value, dialect)
-            return tup and datetime.datetime(*tup)
-        return process
+        return self._result_processor(datetime.datetime, self._reg)
 
 class SLDate(DateTimeMixin, sqltypes.Date):
-    __format__ = "%Y-%m-%d"
-    __microsecond__ = False
-
     def get_col_spec(self):
         return "DATE"
 
+    def bind_processor(self, dialect):
+        return self._bind_processor("%4.4d-%2.2d-%2.2d", (0, 3))
+
+    _reg = re.compile(r"(\d+)-(\d+)-(\d+)")
     def result_processor(self, dialect):
-        def process(value):
-            tup = self._cvt(value, dialect)
-            return tup and datetime.date(*tup[0:3])
-        return process
+        return self._result_processor(datetime.date, self._reg)
 
 class SLTime(DateTimeMixin, sqltypes.Time):
-    __format__ = "%H:%M:%S"
-    __microsecond__ = True
+    __legacy_microseconds__ = False
 
     def get_col_spec(self):
         return "TIME"
 
+    def bind_processor(self, dialect):
+        if self.__legacy_microseconds__:
+            return self._bind_processor("%2.2d:%2.2d:%2.2d.%s", (3, 7))
+        else:
+            return self._bind_processor("%2.2d:%2.2d:%2.2d.%06d", (3, 7))
+
+    _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
     def result_processor(self, dialect):
-        def process(value):
-            tup = self._cvt(value, dialect)
-            return tup and datetime.time(*tup[3:7])
-        return process
+        return self._result_processor(datetime.time, self._reg)
 
 class SLText(sqltypes.Text):
     def get_col_spec(self):

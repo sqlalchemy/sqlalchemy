@@ -21,6 +21,13 @@ CHANGES
     - column.in_(someselect) can now be used as 
       a columns-clause expression without the subquery
       bleeding into the FROM clause [ticket:1074]
+
+- sqlite
+    - Overhauled SQLite date/time bind/result processing
+      to use regular expressions and format strings, rather
+      than strptime/strftime, to generically support
+      pre-1900 dates, dates with microseconds.  [ticket:968]
+
     
 0.5.0rc1
 ========

@@ -521,19 +521,19 @@ class DateTest(TestBase, AssertsExecutionResults):
         if testing.against('oracle'):
             import sqlalchemy.databases.oracle as oracle
             insert_data =  [
-                    [7, 'jack',
+                    (7, 'jack',
                      datetime.datetime(2005, 11, 10, 0, 0),
                      datetime.date(2005,11,10),
-                     datetime.datetime(2005, 11, 10, 0, 0, 0, 29384)],
-                    [8, 'roy',
+                     datetime.datetime(2005, 11, 10, 0, 0, 0, 29384)),
+                    (8, 'roy',
                      datetime.datetime(2005, 11, 10, 11, 52, 35),
                      datetime.date(2005,10,10),
-                     datetime.datetime(2006, 5, 10, 15, 32, 47, 6754)],
-                    [9, 'foo',
+                     datetime.datetime(2006, 5, 10, 15, 32, 47, 6754)),
+                    (9, 'foo',
                      datetime.datetime(2006, 11, 10, 11, 52, 35),
                      datetime.date(1970,4,1),
-                     datetime.datetime(2004, 9, 18, 4, 0, 52, 1043)],
-                    [10, 'colber', None, None, None]
+                     datetime.datetime(2004, 9, 18, 4, 0, 52, 1043)),
+                    (10, 'colber', None, None, None),
              ]
             fnames = ['user_id', 'user_name', 'user_datetime',
                       'user_date', 'user_time']
@@ -555,20 +555,22 @@ class DateTest(TestBase, AssertsExecutionResults):
                 time_micro = 0
 
             insert_data =  [
-                [7, 'jack',
+                (7, 'jack',
                  datetime.datetime(2005, 11, 10, 0, 0),
                  datetime.date(2005, 11, 10),
-                 datetime.time(12, 20, 2)],
-                [8, 'roy',
+                 datetime.time(12, 20, 2)),
+                (8, 'roy',
                  datetime.datetime(2005, 11, 10, 11, 52, 35),
                  datetime.date(2005, 10, 10),
-                 datetime.time(0, 0, 0)],
-                [9, 'foo',
+                 datetime.time(0, 0, 0)),
+                (9, 'foo',
                  datetime.datetime(2005, 11, 10, 11, 52, 35, datetime_micro),
                  datetime.date(1970, 4, 1),
-                 datetime.time(23, 59, 59, time_micro)],
-                [10, 'colber', None, None, None]
+                 datetime.time(23, 59, 59, time_micro)),
+                (10, 'colber', None, None, None),
             ]
+            
+            
             fnames = ['user_id', 'user_name', 'user_datetime',
                       'user_date', 'user_time']
 
@@ -577,6 +579,14 @@ class DateTest(TestBase, AssertsExecutionResults):
                        Column('user_datetime', DateTime(timezone=False)),
                        Column('user_date', Date),
                        Column('user_time', Time)]
+
+        if testing.against('sqlite', 'postgres'):
+            insert_data.append(
+                (11, 'historic',
+                datetime.datetime(1850, 11, 10, 11, 52, 35, datetime_micro),
+                datetime.date(1727,4,1),
+                None),
+            )
 
         users_with_date = Table('query_users_with_date',
                                 MetaData(testing.db), *collist)
@@ -592,7 +602,7 @@ class DateTest(TestBase, AssertsExecutionResults):
     def testdate(self):
         global insert_data
 
-        l = map(list, users_with_date.select().execute().fetchall())
+        l = map(tuple, users_with_date.select().execute().fetchall())
         self.assert_(l == insert_data,
                      'DateTest mismatch: got:%s expected:%s' % (l, insert_data))
 

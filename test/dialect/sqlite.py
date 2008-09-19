@@ -25,6 +25,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
         self.assertEquals(rp(bp(dt)), dt)
         
         sldt.__legacy_microseconds__ = True
+        bp = sldt.bind_processor(None)
         self.assertEquals(bp(dt), '2008-06-27 12:00:00.125')
         self.assertEquals(rp(bp(dt)), dt)
         
