@@ -418,7 +418,6 @@ _strftime_conversions = {
     "H":lambda dt: "%2.2d" % getattr(dt, 'hour', 0),
     "M":lambda dt: "%2.2d" % getattr(dt, 'minute', 0),
     "S":lambda dt: "%2.2d" % getattr(dt, 'second', 0),
-    "c":lambda dt: '%06d' % getattr(dt, 'microsecond', 0)
 }
 _strftime_regexp = re.compile(r'%(\w)')
     
@@ -428,8 +427,6 @@ def strftime(dt, format):
     Partially compatible with datetime.strftime().
     
     handles years before 1900.
-    
-    Also adds "c", representing microseconds.
     
     """
     def repl(m):
