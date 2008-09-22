@@ -70,10 +70,12 @@ class UOWEventHandler(interfaces.AttributeExtension):
         return newvalue
 
 def register_attribute(class_, key, *args, **kwargs):
-    """overrides attributes.register_attribute() to add UOW event handlers
-    to new InstrumentedAttributes.
+    """Register an attribute with the attributes module.
+    
+    Overrides attributes.register_attribute() to add 
+    unitofwork-specific event handlers.
+    
     """
-
     useobject = kwargs.get('useobject', False)
     if useobject:
         # for object-holding attributes, instrument UOWEventHandler
@@ -159,6 +161,7 @@ class UOWTransaction(object):
 
         this indicates that an INSERT statement elsewhere corresponds to this DELETE;
         the INSERT is converted to an UPDATE and the DELETE does not occur.
+        
         """
         mapper = _state_mapper(state)
         task = self.get_task_by_mapper(mapper)
@@ -177,6 +180,7 @@ class UOWTransaction(object):
 
         Will create a new UOWTask, including a UOWTask corresponding to the
         "base" inherited mapper, if needed, unless the dontcreate flag is True.
+        
         """
         try:
             return self.tasks[mapper]
@@ -205,8 +209,8 @@ class UOWTransaction(object):
         Called by ``mapper.PropertyLoader`` to register the objects
         handled by one mapper being dependent on the objects handled
         by another.
-        """
 
+        """
         # correct for primary mapper
         # also convert to the "base mapper", the parentmost task at the top of an inheritance chain
         # dependency sorting is done via non-inheriting mappers only, dependencies between mappers
@@ -221,7 +225,6 @@ class UOWTransaction(object):
         the two given mappers.
 
         """
-
         # correct for primary mapper
         mapper = mapper.primary_mapper()
         mapperfrom = mapperfrom.primary_mapper()
@@ -734,20 +737,18 @@ class UOWExecutor(object):
     def execute_save_steps(self, trans, task):
         self.save_objects(trans, task)
         self.execute_cyclical_dependencies(trans, task, False)
-        self.execute_dependencies(trans, task, False)
-        self.execute_dependencies(trans, task, True)
+        self.execute_dependencies(trans, task)
 
     def execute_delete_steps(self, trans, task):
         self.execute_cyclical_dependencies(trans, task, True)
         self.delete_objects(trans, task)
 
-    def execute_dependencies(self, trans, task, isdelete=None):
-        if isdelete is not True:
-            for dep in task.polymorphic_dependencies:
-                self.execute_dependency(trans, dep, False)
-        if isdelete is not False:
-            for dep in reversed(list(task.polymorphic_dependencies)):
-                self.execute_dependency(trans, dep, True)
+    def execute_dependencies(self, trans, task):
+        polymorphic_dependencies = list(task.polymorphic_dependencies)
+        for dep in polymorphic_dependencies:
+            self.execute_dependency(trans, dep, False)
+        for dep in reversed(polymorphic_dependencies):
+            self.execute_dependency(trans, dep, True)
 
     def execute_cyclical_dependencies(self, trans, task, isdelete):
         for dep in task.polymorphic_cyclical_dependencies:

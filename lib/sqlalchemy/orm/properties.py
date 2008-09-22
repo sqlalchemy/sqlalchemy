@@ -582,10 +582,10 @@ class PropertyLoader(StrategizedProperty):
         # if join conditions were not specified, figure them out based on foreign keys
 
         def _search_for_join(mapper, table):
-            """find a join between the given mapper's mapped table and the given table.
-            will try the mapper's local table first for more specificity, then if not
-            found will try the more general mapped table, which in the case of inheritance
-            is a join."""
+            # find a join between the given mapper's mapped table and the given table.
+            # will try the mapper's local table first for more specificity, then if not
+            # found will try the more general mapped table, which in the case of inheritance
+            # is a join.
             try:
                 return sql.join(mapper.local_table, table)
             except sa_exc.ArgumentError, e:
@@ -601,8 +601,10 @@ class PropertyLoader(StrategizedProperty):
                 if self.primaryjoin is None:
                     self.primaryjoin = _search_for_join(self.parent, self.target).onclause
         except sa_exc.ArgumentError, e:
-            raise sa_exc.ArgumentError("Could not determine join condition between parent/child tables on relation %s.  "
-                        "Specify a 'primaryjoin' expression.  If this is a many-to-many relation, 'secondaryjoin' is needed as well." % (self))
+            raise sa_exc.ArgumentError("Could not determine join condition between "
+                        "parent/child tables on relation %s.  "
+                        "Specify a 'primaryjoin' expression.  If this is a "
+                        "many-to-many relation, 'secondaryjoin' is needed as well." % (self))
 
     def _col_is_part_of_mappings(self, column):
         if self.secondary is None:
@@ -632,16 +634,22 @@ class PropertyLoader(StrategizedProperty):
 
             if not eq_pairs:
                 if not self.viewonly and criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=True):
-                    raise sa_exc.ArgumentError("Could not locate any equated, locally mapped column pairs for primaryjoin condition '%s' on relation %s. "
-                        "For more relaxed rules on join conditions, the relation may be marked as viewonly=True." % (self.primaryjoin, self)
+                    raise sa_exc.ArgumentError("Could not locate any equated, locally "
+                        "mapped column pairs for primaryjoin condition '%s' on relation %s. "
+                        "For more relaxed rules on join conditions, the relation may be "
+                        "marked as viewonly=True." % (self.primaryjoin, self)
                     )
                 else:
                     if self._foreign_keys:
-                        raise sa_exc.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
-                            "Are the columns in 'foreign_keys' present within the given join condition ?" % (self.primaryjoin, self))
+                        raise sa_exc.ArgumentError("Could not determine relation direction for "
+                            "primaryjoin condition '%s', on relation %s. "
+                            "Are the columns in 'foreign_keys' present within the given "
+                            "join condition ?" % (self.primaryjoin, self))
                     else:
-                        raise sa_exc.ArgumentError("Could not determine relation direction for primaryjoin condition '%s', on relation %s. "
-                            "Specify the 'foreign_keys' argument to indicate which columns on the relation are foreign." % (self.primaryjoin, self))
+                        raise sa_exc.ArgumentError("Could not determine relation direction for "
+                            "primaryjoin condition '%s', on relation %s. "
+                            "Specify the 'foreign_keys' argument to indicate which columns "
+                            "on the relation are foreign." % (self.primaryjoin, self))
 
             self.synchronize_pairs = eq_pairs
 
@@ -651,12 +659,16 @@ class PropertyLoader(StrategizedProperty):
 
             if not sq_pairs:
                 if not self.viewonly and criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=True):
-                    raise sa_exc.ArgumentError("Could not locate any equated, locally mapped column pairs for secondaryjoin condition '%s' on relation %s. "
-                        "For more relaxed rules on join conditions, the relation may be marked as viewonly=True." % (self.secondaryjoin, self)
+                    raise sa_exc.ArgumentError("Could not locate any equated, locally mapped "
+                        "column pairs for secondaryjoin condition '%s' on relation %s. "
+                        "For more relaxed rules on join conditions, the "
+                        "relation may be marked as viewonly=True." % (self.secondaryjoin, self)
                     )
                 else:
-                    raise sa_exc.ArgumentError("Could not determine relation direction for secondaryjoin condition '%s', on relation %s. "
-                    "Specify the foreign_keys argument to indicate which columns on the relation are foreign." % (self.secondaryjoin, self))
+                    raise sa_exc.ArgumentError("Could not determine relation direction "
+                    "for secondaryjoin condition '%s', on relation %s. "
+                    "Specify the foreign_keys argument to indicate which "
+                    "columns on the relation are foreign." % (self.secondaryjoin, self))
 
             self.secondary_synchronize_pairs = sq_pairs
         else:
@@ -738,10 +750,14 @@ class PropertyLoader(StrategizedProperty):
         for l, r in self.local_remote_pairs:
 
             if self.direction is ONETOMANY and not self._col_is_part_of_mappings(l):
-                raise sa_exc.ArgumentError("Local column '%s' is not part of mapping %s.  Specify remote_side argument to indicate which column lazy join condition should compare against." % (l, self.parent))
+                raise sa_exc.ArgumentError("Local column '%s' is not part of mapping %s.  "
+                        "Specify remote_side argument to indicate which column "
+                        "lazy join condition should compare against." % (l, self.parent))
 
             elif self.direction is MANYTOONE and not self._col_is_part_of_mappings(r):
-                raise sa_exc.ArgumentError("Remote column '%s' is not part of mapping %s.  Specify remote_side argument to indicate which column lazy join condition should bind." % (r, self.mapper))
+                raise sa_exc.ArgumentError("Remote column '%s' is not part of mapping %s. "
+                        "Specify remote_side argument to indicate which column lazy "
+                        "join condition should bind." % (r, self.mapper))
 
         self.local_side, self.remote_side = [util.OrderedSet(x) for x in zip(*list(self.local_remote_pairs))]
 
@@ -769,7 +785,10 @@ class PropertyLoader(StrategizedProperty):
             if self.backref is not None:
                 self.backref.compile(self)
         elif not mapper.class_mapper(self.parent.class_, compile=False)._get_property(self.key, raiseerr=False):
-            raise sa_exc.ArgumentError("Attempting to assign a new relation '%s' to a non-primary mapper on class '%s'.  New relations can only be added to the primary mapper, i.e. the very first mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
+            raise sa_exc.ArgumentError("Attempting to assign a new relation '%s' to "
+                "a non-primary mapper on class '%s'.  New relations can only be "
+                "added to the primary mapper, i.e. the very first "
+                "mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
 
         super(PropertyLoader, self).do_init()
 
@@ -851,7 +870,9 @@ class PropertyLoader(StrategizedProperty):
         else:
             target_adapter = None
 
-        self.__join_cache[key] = ret = (primaryjoin, secondaryjoin, (source_selectable or self.parent.local_table), (dest_selectable or self.mapper.local_table), secondary, target_adapter)
+        self.__join_cache[key] = ret = (primaryjoin, secondaryjoin, 
+                (source_selectable or self.parent.local_table), 
+                (dest_selectable or self.mapper.local_table), secondary, target_adapter)
         return ret
 
     def _get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
@@ -867,7 +888,6 @@ class PropertyLoader(StrategizedProperty):
             return sj
         else:
             raise AssertionError("illegal condition")
-
 
     def register_dependencies(self, uowcommit):
         if not self.viewonly:
@@ -920,7 +940,8 @@ class BackRef(object):
             mapper._get_property(self.key)._reverse_property = prop
 
         else:
-            raise sa_exc.ArgumentError("Error creating backref '%s' on relation '%s': property of that name exists on mapper '%s'" % (self.key, prop, mapper))
+            raise sa_exc.ArgumentError("Error creating backref '%s' on relation '%s': "
+                "property of that name exists on mapper '%s'" % (self.key, prop, mapper))
 
 mapper.ColumnProperty = ColumnProperty
 mapper.SynonymProperty = SynonymProperty

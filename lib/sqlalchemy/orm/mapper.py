@@ -1041,8 +1041,8 @@ class Mapper(object):
         ordering among a polymorphic chain of instances. Therefore
         _save_obj is typically called only on a *base mapper*, or a
         mapper which does not inherit from any other mapper.
+        
         """
-
         if self._should_log_debug:
             self.__log_debug("_save_obj() start, " + (single and "non-batched" or "batched"))
 
@@ -1085,9 +1085,6 @@ class Mapper(object):
                     self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, state_str(state), state_str(existing)))
                 uowtransaction.set_row_switch(existing)
 
-        inserted_objects = set()
-        updated_objects = set()
-
         table_to_mapper = {}
         for mapper in self.base_mapper.polymorphic_iterator():
             for t in mapper.tables:
@@ -1107,6 +1104,7 @@ class Mapper(object):
                     self.__log_debug("_save_obj() table '%s' instance %s identity %s" % (table.name, state_str(state), str(instance_key)))
 
                 isinsert = not instance_key in uowtransaction.session.identity_map and not postupdate and not has_identity
+                
                 params = {}
                 value_params = {}
                 hasdata = False
@@ -1185,13 +1183,10 @@ class Mapper(object):
 
                 statement = table.update(clause)
                 rows = 0
-                for rec in update:
-                    (state, params, mapper, connection, value_params) = rec
+                for state, params, mapper, connection, value_params in update:
                     c = connection.execute(statement.values(value_params), params)
                     mapper._postfetch(uowtransaction, connection, table, state, c, c.last_updated_params(), value_params)
 
-                    # testlib.pragma exempt:__hash__
-                    updated_objects.add((state, connection))
                     rows += c.rowcount
 
                 if c.supports_sane_rowcount() and rows != len(update):
@@ -1199,8 +1194,7 @@ class Mapper(object):
 
             if insert:
                 statement = table.insert()
-                for rec in insert:
-                    (state, params, mapper, connection, value_params) = rec
+                for state, params, mapper, connection, value_params in insert:
                     c = connection.execute(statement.values(value_params), params)
                     primary_key = c.last_inserted_ids()
 
@@ -1219,9 +1213,6 @@ class Mapper(object):
                     for m in mapper.iterate_to_root():
                         if m.__inherits_equated_pairs:
                             sync.populate(state, m, state, m, m.__inherits_equated_pairs)
-
-                    # testlib.pragma exempt:__hash__
-                    inserted_objects.add((state, connection))
 
         if not postupdate:
             for state, mapper, connection, has_identity in tups:
