@@ -350,31 +350,33 @@ class Mapper(object):
             return self
 
         _COMPILE_MUTEX.acquire()
-        global _already_compiling
-        if _already_compiling:
-            # re-entrance to compile() occurs rarely, when a class-mapped construct is
-            # used within a ForeignKey, something that is possible
-            # when using the declarative layer
-            self.__initialize_properties()
-            return
-        _already_compiling = True
         try:
+            global _already_compiling
+            if _already_compiling:
+                # re-entrance to compile() occurs rarely, when a class-mapped construct is
+                # used within a ForeignKey, something that is possible
+                # when using the declarative layer
+                self.__initialize_properties()
+                return
+            _already_compiling = True
+            try:
 
-            # double-check inside mutex
-            if self.compiled and not _new_mappers:
+                # double-check inside mutex
+                if self.compiled and not _new_mappers:
+                    return self
+
+                # initialize properties on all mappers
+                for mapper in list(_mapper_registry):
+                    if not mapper.compiled:
+                        mapper.__initialize_properties()
+
+                _new_mappers = False
                 return self
-
-            # initialize properties on all mappers
-            for mapper in list(_mapper_registry):
-                if not mapper.compiled:
-                    mapper.__initialize_properties()
-
-            _new_mappers = False
-            return self
+            finally:
+                _already_compiling = False
         finally:
-            _already_compiling = False
             _COMPILE_MUTEX.release()
-
+            
     def __initialize_properties(self):
         """Call the ``init()`` method on all ``MapperProperties``
         attached to this mapper.

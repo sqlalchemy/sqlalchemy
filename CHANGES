@@ -17,6 +17,11 @@ CHANGES
       is updated/inserted, now honors the insert order
       of the objects given. 
       
+    - fixed RLock-related bug in mapper which could deadlock
+      upon reentrant mapper compile() calls, something that
+      occurs when using declarative constructs inside of
+      ForeignKey objects.
+      
 - sql
     - column.in_(someselect) can now be used as 
       a columns-clause expression without the subquery
