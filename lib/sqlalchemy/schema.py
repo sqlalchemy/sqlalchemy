@@ -1036,7 +1036,7 @@ class CheckConstraint(Constraint):
 
         super(CheckConstraint, self).__init__(name, deferrable, initially)
         if not isinstance(sqltext, basestring):
-            raise exc.ArgumentError(
+            raise exceptions.ArgumentError(
                 "sqltext must be a string and will be used verbatim.")
         self.sqltext = sqltext
 
