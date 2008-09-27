@@ -21,7 +21,10 @@ CHANGES
       upon reentrant mapper compile() calls, something that
       occurs when using declarative constructs inside of
       ForeignKey objects.
-      
+
+    - ScopedSession.query_property now accepts a query_cls factory,
+      overriding the session's configured query_cls.
+
 - sql
     - column.in_(someselect) can now be used as 
       a columns-clause expression without the subquery

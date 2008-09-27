@@ -77,7 +77,7 @@ class ScopedSession(object):
 
         self.session_factory.configure(**kwargs)
 
-    def query_property(self):
+    def query_property(self, query_cls=None):
         """return a class property which produces a `Query` object against the
         class when called.
 
@@ -90,13 +90,26 @@ class ScopedSession(object):
             # after mappers are defined
             result = MyClass.query.filter(MyClass.name=='foo').all()
 
-        """
+        Produces instances of the session's configured query class by
+        default.  To override and use a custom implementation, provide
+        a ``query_cls`` callable.  The callable will be invoked with
+        the class's mapper as a positional argument and a session
+        keyword argument.
 
+        There is no limit to the number of query properties placed on
+        a class.
+
+        """
         class query(object):
             def __get__(s, instance, owner):
                 mapper = class_mapper(owner, raiseerror=False)
                 if mapper:
-                    return self.registry().query(mapper)
+                    if query_cls:
+                        # custom query class
+                        return query_cls(mapper, session=self.registry())
+                    else:
+                        # session's configured query class
+                        return self.registry().query(mapper)
                 else:
                     return None
         return query()

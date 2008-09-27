@@ -54,7 +54,7 @@ class EnsureZeroed(_base.ORMTest):
         _sessions.clear()
         _mapper_registry.clear()
 
-class MemUsageTest(EnsureZeroed):
+class MemUsageTest(object):
     
     # ensure a pure growing test trips the assertion
     @testing.fails_if(lambda:True)
