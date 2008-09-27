@@ -46,7 +46,7 @@ class MockCursor(object):
         pass
 
 db, dbapi = None, None
-class MockReconnectTest(object):
+class MockReconnectTest(TestBase):
     def setUp(self):
         global db, dbapi
         dbapi = MockDBAPI()
@@ -175,7 +175,7 @@ class MockReconnectTest(object):
         assert len(dbapi.connections) == 1
 
 engine = None
-class RealReconnectTest(object):
+class RealReconnectTest(TestBase):
     def setUp(self):
         global engine
         engine = engines.reconnecting_engine()
@@ -281,7 +281,7 @@ class RealReconnectTest(object):
         self.assertEquals(conn.execute(select([1])).scalar(), 1)
         assert not conn.invalidated
 
-class RecycleTest(object):
+class RecycleTest(TestBase):
     def test_basic(self):
         for threadlocal in (False, True):
             engine = engines.reconnecting_engine(options={'pool_recycle':1, 'pool_threadlocal':threadlocal})
