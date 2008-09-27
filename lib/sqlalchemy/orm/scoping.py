@@ -142,7 +142,7 @@ class _ScopedExt(MapperExtension):
         self.context = context
         self.validate = validate
         self.save_on_init = save_on_init
-        self.set_kwargs_on_init = None
+        self.set_kwargs_on_init = True
 
     def validating(self):
         return _ScopedExt(self.context, validate=True)
@@ -162,26 +162,23 @@ class _ScopedExt(MapperExtension):
         if not 'query' in class_.__dict__:
             class_.query = query()
 
-        if self.set_kwargs_on_init is None:
-            self.set_kwargs_on_init = class_.__init__ is object.__init__
-        if self.set_kwargs_on_init:
-            def __init__(self, **kwargs):
-                pass
-            class_.__init__ = __init__
+        if self.set_kwargs_on_init and class_.__init__ is object.__init__:
+            class_.__init__ = self._default__init__(mapper)
 
-    def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
-        if self.save_on_init:
-            session = kwargs.pop('_sa_session', None)
-
-        if self.set_kwargs_on_init:
+    def _default__init__(ext, mapper):
+        def __init__(self, **kwargs):
             for key, value in kwargs.items():
-                if self.validate:
+                if ext.validate:
                     if not mapper.get_property(key, resolve_synonyms=False,
                                                raiseerr=False):
                         raise sa_exc.ArgumentError(
                             "Invalid __init__ argument: '%s'" % key)
-                setattr(instance, key, value)
-            kwargs.clear()
+                setattr(self, key, value)
+        return __init__
+
+    def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
+        if self.save_on_init:
+            session = kwargs.pop('_sa_session', None)
 
         if self.save_on_init:
             session = session or self.context.registry()

@@ -7,36 +7,38 @@ CHANGES
 0.5.0rc2
 ========
 - orm
-    - Fixed bug involving read/write relation()s that 
-      contain literal or other non-column expressions 
-      within their primaryjoin condition equated
-      to a foreign key column.
-      
-    - "non-batch" mode in mapper(), a feature which allows
-      mapper extension methods to be called as each instance
-      is updated/inserted, now honors the insert order
-      of the objects given. 
-      
-    - fixed RLock-related bug in mapper which could deadlock
-      upon reentrant mapper compile() calls, something that
-      occurs when using declarative constructs inside of
-      ForeignKey objects.
+    - Fixed bug involving read/write relation()s that contain
+      literal or other non-column expressions within their
+      primaryjoin condition equated to a foreign key column.
+
+    - "non-batch" mode in mapper(), a feature which allows mapper
+      extension methods to be called as each instance is
+      updated/inserted, now honors the insert order of the objects
+      given.
+
+    - Fixed RLock-related bug in mapper which could deadlock upon
+      reentrant mapper compile() calls, something that occurs when
+      using declarative constructs inside of ForeignKey objects.
 
     - ScopedSession.query_property now accepts a query_cls factory,
       overriding the session's configured query_cls.
 
+    - Fixed shared state bug interfering with ScopedSession.mapper's
+      ability to apply default __init__ implementations on object
+      subclasses.
+
 - sql
-    - column.in_(someselect) can now be used as 
-      a columns-clause expression without the subquery
-      bleeding into the FROM clause [ticket:1074]
+    - column.in_(someselect) can now be used as a columns-clause
+      expression without the subquery bleeding into the FROM clause
+      [ticket:1074]
 
 - sqlite
-    - Overhauled SQLite date/time bind/result processing
-      to use regular expressions and format strings, rather
-      than strptime/strftime, to generically support
-      pre-1900 dates, dates with microseconds.  [ticket:968]
+    - Overhauled SQLite date/time bind/result processing to use
+      regular expressions and format strings, rather than
+      strptime/strftime, to generically support pre-1900 dates,
+      dates with microseconds.  [ticket:968]
 
-    
+
 0.5.0rc1
 ========
 

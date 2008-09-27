@@ -132,6 +132,36 @@ class ScopedMapperTest(_ScopedTest):
         assert hasattr(Baz, 'query')
 
     @testing.resolve_artifact_names
+    def test_default_constructor_state_not_shared(self):
+        scope = scoped_session(sa.orm.sessionmaker())
+
+        class A(object):
+            pass
+        class B(object):
+            def __init__(self):
+                pass
+
+        scope.mapper(A, table1)
+        scope.mapper(B, table2)
+
+        A(foo='bar')
+        self.assertRaises(TypeError, B, foo='bar')
+
+        scope = scoped_session(sa.orm.sessionmaker())
+
+        class C(object):
+            def __init__(self):
+                pass
+        class D(object):
+            pass
+
+        scope.mapper(C, table1)
+        scope.mapper(D, table2)
+
+        self.assertRaises(TypeError, C, foo='bar')
+        D(foo='bar')
+
+    @testing.resolve_artifact_names
     def test_validating_constructor(self):
         s2 = SomeObject(someid=12)
         s3 = SomeOtherObject(someid=123, bogus=345)
