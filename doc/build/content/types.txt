@@ -146,13 +146,13 @@ To build a type object from scratch, which will not have a corresponding databas
             def process(value):
                 return value
             return process
+
         def result_processor(self, dialect):
             def process(value):
                 return value
             return process
 
-        def convert_result_value(self, value, dialect):
-            return value
+The `bind_processor` and `result_processor` methods return a callable which will be used to process data at the bind parameter and result row level.  If either processing is not necessary, the method can return `None` (this reduces the workload as well).
 
 Once you make your type, it's immediately useable:
 
