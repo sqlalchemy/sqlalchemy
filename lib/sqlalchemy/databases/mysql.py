@@ -2406,7 +2406,7 @@ class MySQLSchemaReflector(object):
                             self.preparer._escape_identifier(_final))]))
 
         self._pr_name = _pr_compile(
-            r'^CREATE TABLE +'
+            r'^CREATE (?:\w+ +)?TABLE +'
             r'%(iq)s(?P<name>(?:%(esc_fq)s|[^%(fq)s])+)%(fq)s +\($' % quotes,
             self.preparer._unescape_identifier)
 

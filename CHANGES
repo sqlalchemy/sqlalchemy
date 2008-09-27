@@ -38,6 +38,9 @@ CHANGES
       strptime/strftime, to generically support pre-1900 dates,
       dates with microseconds.  [ticket:968]
 
+- mysql
+    - Temporary tables are now reflectable.
+
 
 0.5.0rc1
 ========
