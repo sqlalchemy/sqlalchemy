@@ -179,9 +179,8 @@ class _ScopedExt(MapperExtension):
     def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
         if self.save_on_init:
             session = kwargs.pop('_sa_session', None)
-
-        if self.save_on_init:
-            session = session or self.context.registry()
+            if session is None:
+                session = self.context.registry()
             session._save_without_cascade(instance)
         return EXT_CONTINUE
 
