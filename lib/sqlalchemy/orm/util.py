@@ -170,7 +170,7 @@ def identity_key(*args, **kwargs):
     mapper = object_mapper(instance)
     return mapper.identity_key_from_instance(instance)
     
-class ExtensionCarrier(object):
+class ExtensionCarrier(dict):
     """Fronts an ordered collection of MapperExtension objects.
 
     Bundles multiple MapperExtensions into a unified callable unit,
@@ -179,9 +179,9 @@ class ExtensionCarrier(object):
 
       carrier.after_insert(...args...)
 
-    Also includes a 'methods' dictionary accessor which allows for a quick
-    check if a particular method is overridden on any contained
-    MapperExtensions.
+    The dictionary interface provides containment for implemented
+    method names mapped to a callable which executes that method
+    for participating extensions.
 
     """
 
@@ -189,7 +189,6 @@ class ExtensionCarrier(object):
                     if not method.startswith('_'))
 
     def __init__(self, extensions=None):
-        self.methods = {}
         self._extensions = []
         for ext in extensions or ():
             self.append(ext)
@@ -213,12 +212,11 @@ class ExtensionCarrier(object):
 
     def _register(self, extension):
         """Register callable fronts for overridden interface methods."""
-        for method in self.interface:
-            if method in self.methods:
-                continue
+        
+        for method in self.interface.difference(self):
             impl = getattr(extension, method, None)
             if impl and impl is not getattr(MapperExtension, method):
-                self.methods[method] = self._create_do(method)
+                self[method] = self._create_do(method)
 
     def _create_do(self, method):
         """Return a closure that loops over impls of the named method."""
@@ -230,10 +228,7 @@ class ExtensionCarrier(object):
                     return ret
             else:
                 return EXT_CONTINUE
-        try:
-            _do.__name__ = method.im_func.func_name
-        except:
-            pass
+        _do.__name__ = method
         return _do
 
     @staticmethod
@@ -242,9 +237,10 @@ class ExtensionCarrier(object):
 
     def __getattr__(self, key):
         """Delegate MapperExtension methods to bundled fronts."""
+        
         if key not in self.interface:
             raise AttributeError(key)
-        return self.methods.get(key, self._pass)
+        return self.get(key, self._pass)
 
 class ORMAdapter(sql_util.ColumnAdapter):
     def __init__(self, entity, equivalents=None, chain_to=None):
@@ -320,6 +316,11 @@ class AliasedComparator(PropComparator):
         return self.adapter.traverse(self.comparator.reverse_operate(op, *other, **kwargs))
 
 def _orm_annotate(element, exclude=None):
+    """Deep copy the given ClauseElement, annotating each element with the "_orm_adapt" flag.
+    
+    Elements within the exclude collection will be cloned but not annotated.
+    
+    """
     def clone(elem):
         if exclude and elem in exclude:
             elem = elem._clone()
@@ -334,7 +335,8 @@ def _orm_annotate(element, exclude=None):
 
 
 class _ORMJoin(expression.Join):
-
+    """Extend Join to support ORM constructs as input."""
+    
     __visit_name__ = expression.Join.__visit_name__
 
     def __init__(self, left, right, onclause=None, isouter=False):
@@ -387,9 +389,27 @@ class _ORMJoin(expression.Join):
         return _ORMJoin(self, right, onclause, True)
 
 def join(left, right, onclause=None, isouter=False):
+    """Produce an inner join between left and right clauses.
+    
+    In addition to the interface provided by 
+    sqlalchemy.sql.join(), left and right may be mapped 
+    classes or AliasedClass instances. The onclause may be a 
+    string name of a relation(), or a class-bound descriptor 
+    representing a relation.
+    
+    """
     return _ORMJoin(left, right, onclause, isouter)
 
 def outerjoin(left, right, onclause=None):
+    """Produce a left outer join between left and right clauses.
+    
+    In addition to the interface provided by 
+    sqlalchemy.sql.outerjoin(), left and right may be mapped 
+    classes or AliasedClass instances. The onclause may be a 
+    string name of a relation(), or a class-bound descriptor 
+    representing a relation.
+    
+    """
     return _ORMJoin(left, right, onclause, True)
 
 def with_parent(instance, prop):
@@ -417,6 +437,16 @@ def with_parent(instance, prop):
 
 
 def _entity_info(entity, compile=True):
+    """Return mapping information given a class, mapper, or AliasedClass.
+    
+    Returns 3-tuple of: mapper, mapped selectable, boolean indicating if this
+    is an aliased() construct.
+    
+    If the given entity is not a mapper, mapped class, or aliased construct,
+    returns None, the entity, False.  This is typically used to allow
+    unmapped selectables through.
+    
+    """
     if isinstance(entity, AliasedClass):
         return entity._AliasedClass__mapper, entity._AliasedClass__alias, True
     elif _is_mapped_class(entity):
@@ -432,6 +462,11 @@ def _entity_info(entity, compile=True):
         return None, entity, False
 
 def _entity_descriptor(entity, key):
+    """Return attribute/property information given an entity and string name.
+    
+    Returns a 2-tuple representing InstrumentedAttribute/MapperProperty.
+    
+    """
     if isinstance(entity, AliasedClass):
         desc = getattr(entity, key)
         return desc, desc.property
@@ -459,33 +494,26 @@ def _is_aliased_class(entity):
 def _state_mapper(state):
     return state.manager.mapper
 
-def object_mapper(object, raiseerror=True):
+def object_mapper(instance):
     """Given an object, return the primary Mapper associated with the object instance.
-
-        object
-            The object instance.
-
-        raiseerror
-            Defaults to True: raise an ``InvalidRequestError`` if no mapper can
-            be located.  If False, return None.
-
+    
+    Raises UnmappedInstanceError if no mapping is configured.
+    
     """
     try:
-        state = attributes.instance_state(object)
+        state = attributes.instance_state(instance)
+        if not state.manager.mapper:
+            raise exc.UnmappedInstanceError(instance)
+        return state.manager.mapper
     except exc.NO_STATE:
-        if not raiseerror:
-            return None
-        raise exc.UnmappedInstanceError(object)
-    return class_mapper(
-        type(object), compile=False, raiseerror=raiseerror)
+        raise exc.UnmappedInstanceError(instance)
 
-def class_mapper(class_, compile=True, raiseerror=True):
+def class_mapper(class_, compile=True):
     """Given a class (or an object), return the primary Mapper associated with the key.
 
-    If no mapper can be located, raises ``InvalidRequestError``.
-
-    """
+    Raises UnmappedClassError if no mapping is configured.
     
+    """
     if not isinstance(class_, type):
         class_ = type(class_)
     try:
@@ -497,9 +525,8 @@ def class_mapper(class_, compile=True, raiseerror=True):
             raise AttributeError
             
     except exc.NO_STATE:
-        if not raiseerror:
-            return
         raise exc.UnmappedClassError(class_)
+
     if compile:
         mapper = mapper.compile()
     return mapper
@@ -538,11 +565,12 @@ def instance_str(instance):
     return state_str(attributes.instance_state(instance))
 
 def state_str(state):
-    """Return a string describing an instance."""
+    """Return a string describing an instance via its InstanceState."""
+    
     if state is None:
         return "None"
     else:
-        return state.class_.__name__ + "@" + hex(id(state.obj()))
+        return '<%s at 0x%x>' % (state.class_.__name__, id(state.obj()))
 
 def attribute_str(instance, attribute):
     return instance_str(instance) + "." + attribute

@@ -4,7 +4,7 @@ import inspect
 import pickle
 from sqlalchemy.orm import create_session, sessionmaker, attributes
 from testlib import engines, sa, testing, config
-from testlib.sa import Table, Column, Integer, String
+from testlib.sa import Table, Column, Integer, String, Sequence
 from testlib.sa.orm import mapper, relation, backref
 from testlib.testing import eq_
 from engine import _base as engine_base
@@ -62,6 +62,17 @@ class SessionTest(_fixtures.FixtureTest):
         finally:
             c.close()
 
+    @testing.requires.sequences
+    def test_sequence_execute(self):
+        seq = Sequence("some_sequence")
+        seq.create(testing.db)
+        try:
+            sess = create_session(bind=testing.db)
+            eq_(sess.execute(seq), 1)
+        finally:
+            seq.drop(testing.db)
+        
+        
     @testing.resolve_artifact_names
     def test_expunge_cascade(self):
         mapper(Address, addresses)
@@ -841,33 +852,6 @@ class SessionTest(_fixtures.FixtureTest):
         s.clear()
         assert s.query(Address).one().id == a.id
         assert s.query(User).first() is None
-
-    @testing.resolve_artifact_names
-    def test_identity_key_1(self):
-        mapper(User, users)
-        s = create_session()
-        key = s.identity_key(User, 1)
-        eq_(key, (User, (1,)))
-        key = s.identity_key(User, ident=1)
-        eq_(key, (User, (1,)))
-
-    @testing.resolve_artifact_names
-    def test_identity_key_2(self):
-        mapper(User, users)
-        s = create_session()
-        u = User(name='u1')
-        s.add(u)
-        s.flush()
-        key = s.identity_key(instance=u)
-        eq_(key, (User, (u.id,)))
-
-    @testing.resolve_artifact_names
-    def test_identity_key_3(self):
-        mapper(User, users)
-        s = create_session()
-        row = {users.c.id: 1, users.c.name: "Frank"}
-        key = s.identity_key(User, row=row)
-        eq_(key, (User, (1,)))
 
     @testing.resolve_artifact_names
     def test_extension(self):

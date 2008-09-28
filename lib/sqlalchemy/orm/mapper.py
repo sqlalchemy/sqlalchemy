@@ -630,9 +630,9 @@ class Mapper(object):
             class_mapper(cls)
 
             if cls.__dict__.get(clskey) is self:
-                # FIXME: there should not be any scenarios where
-                # a mapper compile leaves this CompileOnAttr in
-                # place.
+                # if this warning occurs, it usually means mapper
+                # compilation has failed, but operations upon the mapped
+                # classes have proceeded.
                 util.warn(
                     ("Attribute '%s' on class '%s' was not replaced during "
                      "mapper compilation operation") % (clskey, cls.__name__))
@@ -755,11 +755,18 @@ class Mapper(object):
                 for c in columns:
                     mc = self.mapped_table.corresponding_column(c)
                     if not mc:
-                        raise sa_exc.ArgumentError("Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(c))
+                        raise sa_exc.ArgumentError("Column '%s' is not represented in mapper's table.  "
+                            "Use the `column_property()` function to force this column "
+                            "to be mapped as a read-only attribute." % c)
                     mapped_column.append(mc)
                 prop = ColumnProperty(*mapped_column)
             else:
-                raise sa_exc.ArgumentError("WARNING: column '%s' conflicts with property '%s'.  To resolve this, map the column to the class under a different name in the 'properties' dictionary.  Or, to remove all awareness of the column entirely (including its availability as a foreign key), use the 'include_properties' or 'exclude_properties' mapper arguments to control specifically which table columns get mapped." % (column.key, repr(prop)))
+                raise sa_exc.ArgumentError("WARNING: column '%s' conflicts with property '%r'.  "
+                    "To resolve this, map the column to the class under a different "
+                    "name in the 'properties' dictionary.  Or, to remove all awareness "
+                    "of the column entirely (including its availability as a foreign key), "
+                    "use the 'include_properties' or 'exclude_properties' mapper arguments "
+                    "to control specifically which table columns get mapped." % (column.key, prop))
 
         if isinstance(prop, ColumnProperty):
             col = self.mapped_table.corresponding_column(prop.columns[0])
@@ -879,7 +886,7 @@ class Mapper(object):
                     for name in method.__sa_validators__:
                         self._validators[name] = method
 
-        if 'reconstruct_instance' in self.extension.methods:
+        if 'reconstruct_instance' in self.extension:
             def reconstruct(instance):
                 self.extension.reconstruct_instance(self, instance)
             event_registry.add_listener('on_load', reconstruct)
@@ -1067,10 +1074,10 @@ class Mapper(object):
             # call before_XXX extensions
             for state, mapper, connection, has_identity in tups:
                 if not has_identity:
-                    if 'before_insert' in mapper.extension.methods:
+                    if 'before_insert' in mapper.extension:
                         mapper.extension.before_insert(mapper, connection, state.obj())
                 else:
-                    if 'before_update' in mapper.extension.methods:
+                    if 'before_update' in mapper.extension:
                         mapper.extension.before_update(mapper, connection, state.obj())
 
         for state, mapper, connection, has_identity in tups:
@@ -1237,10 +1244,10 @@ class Mapper(object):
 
                 # call after_XXX extensions
                 if not has_identity:
-                    if 'after_insert' in mapper.extension.methods:
+                    if 'after_insert' in mapper.extension:
                         mapper.extension.after_insert(mapper, connection, state.obj())
                 else:
-                    if 'after_update' in mapper.extension.methods:
+                    if 'after_update' in mapper.extension:
                         mapper.extension.after_update(mapper, connection, state.obj())
 
     def _postfetch(self, uowtransaction, connection, table, state, resultproxy, params, value_params):
@@ -1289,7 +1296,7 @@ class Mapper(object):
             tups = [(state, _state_mapper(state), connection) for state in _sort_states(states)]
 
         for state, mapper, connection in tups:
-            if 'before_delete' in mapper.extension.methods:
+            if 'before_delete' in mapper.extension:
                 mapper.extension.before_delete(mapper, connection, state.obj())
 
         table_to_mapper = {}
@@ -1326,7 +1333,7 @@ class Mapper(object):
                     raise exc.ConcurrentModificationError("Deleted rowcount %d does not match number of objects deleted %d" % (c.rowcount, len(del_objects)))
 
         for state, mapper, connection in tups:
-            if 'after_delete' in mapper.extension.methods:
+            if 'after_delete' in mapper.extension:
                 mapper.extension.after_delete(mapper, connection, state.obj())
 
     def _register_dependencies(self, uowcommit):
@@ -1419,15 +1426,15 @@ class Mapper(object):
         if not extension:
             extension = self.extension
 
-        translate_row = 'translate_row' in extension.methods
-        create_instance = 'create_instance' in extension.methods
-        populate_instance = 'populate_instance' in extension.methods
-        append_result = 'append_result' in extension.methods
+        translate_row = extension.get('translate_row', None)
+        create_instance = extension.get('create_instance', None)
+        populate_instance = extension.get('populate_instance', None)
+        append_result = extension.get('append_result', None)
         populate_existing = context.populate_existing or self.always_refresh
 
         def _instance(row, result):
             if translate_row:
-                ret = extension.translate_row(self, context, row)
+                ret = translate_row(self, context, row)
                 if ret is not EXT_CONTINUE:
                     row = ret
 
@@ -1489,7 +1496,7 @@ class Mapper(object):
                 loaded_instance = True
 
                 if create_instance:
-                    instance = extension.create_instance(self, context, row, self.class_)
+                    instance = create_instance(self, context, row, self.class_)
                     if instance is EXT_CONTINUE:
                         instance = self.class_manager.new_instance()
                     else:
@@ -1517,7 +1524,7 @@ class Mapper(object):
                     state.runid = context.runid
                     context.progress.add(state)
 
-                if not populate_instance or extension.populate_instance(self, context, row, instance, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+                if not populate_instance or populate_instance(self, context, row, instance, only_load_props=only_load_props, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                     populate_state(state, row, isnew, only_load_props)
 
             else:
@@ -1533,13 +1540,13 @@ class Mapper(object):
                         attrs = state.unloaded
                         context.partials[state] = attrs  #<-- allow query.instances to commit the subset of attrs
 
-                    if not populate_instance or extension.populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
+                    if not populate_instance or populate_instance(self, context, row, instance, only_load_props=attrs, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE:
                         populate_state(state, row, isnew, attrs, instancekey=identitykey)
 
             if loaded_instance:
                 state._run_on_load(instance)
 
-            if result is not None and (not append_result or extension.append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE):
+            if result is not None and (not append_result or append_result(self, context, row, instance, result, instancekey=identitykey, isnew=isnew) is EXT_CONTINUE):
                 result.append(instance)
 
             return instance
@@ -1651,7 +1658,7 @@ def _event_on_init(state, instance, args, kwargs):
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
     # compile() always compiles all mappers
     instrumenting_mapper.compile()
-    if 'init_instance' in instrumenting_mapper.extension.methods:
+    if 'init_instance' in instrumenting_mapper.extension:
         instrumenting_mapper.extension.init_instance(
             instrumenting_mapper, instrumenting_mapper.class_,
             state.manager.events.original_init,
@@ -1661,7 +1668,7 @@ def _event_on_init_failure(state, instance, args, kwargs):
     """Run init_failed hooks."""
 
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
-    if 'init_failed' in instrumenting_mapper.extension.methods:
+    if 'init_failed' in instrumenting_mapper.extension:
         util.warn_exception(
             instrumenting_mapper.extension.init_failed,
             instrumenting_mapper, instrumenting_mapper.class_,

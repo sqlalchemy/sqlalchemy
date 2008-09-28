@@ -20,7 +20,8 @@ from sqlalchemy.orm import util as mapperutil
 
 
 class DefaultColumnLoader(LoaderStrategy):
-    def _register_attribute(self, compare_function, copy_function, mutable_scalars, comparator_factory, callable_=None, proxy_property=None, active_history=False):
+    def _register_attribute(self, compare_function, copy_function, mutable_scalars, 
+            comparator_factory, callable_=None, proxy_property=None, active_history=False):
         self.logger.info("%s register managed attribute" % self)
 
         attribute_ext = util.to_list(self.parent_property.extension) or []

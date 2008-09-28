@@ -880,7 +880,10 @@ def _compound_select(keyword, *selects, **kwargs):
     return CompoundSelect(keyword, *selects, **kwargs)
 
 def _is_literal(element):
-    return not isinstance(element, (ClauseElement, Operators))
+    global schema
+    if not schema:
+        from sqlalchemy import schema
+    return not isinstance(element, (ClauseElement, Operators, schema.SchemaItem))
 
 def _from_objects(*elements, **kwargs):
     return itertools.chain(*[element._get_from_objects(**kwargs) for element in elements])

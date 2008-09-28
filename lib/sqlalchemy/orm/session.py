@@ -1535,18 +1535,7 @@ class Session(object):
 
         return util.IdentitySet(self._new.values())
 
-def _expire_state(state, attribute_names):
-    """Stand-alone expire instance function.
-
-    Installs a callable with the given instance's _state which will fire off
-    when any of the named attributes are accessed; their existing value is
-    removed.
-
-    If the list is None or blank, the entire instance is expired.
-
-    """
-    state.expire_attributes(attribute_names)
-
+_expire_state = attributes.InstanceState.expire_attributes
 register_attribute = unitofwork.register_attribute
 
 _sessions = weakref.WeakValueDictionary()
@@ -1591,6 +1580,7 @@ def _state_for_unknown_persistence_instance(instance):
 
 def object_session(instance):
     """Return the ``Session`` to which instance belongs, or None."""
+
     return _state_session(attributes.instance_state(instance))
 
 def _state_session(state):

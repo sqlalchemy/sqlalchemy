@@ -7,8 +7,9 @@
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy.util import ScopedRegistry, to_list, get_cls_kwargs
 from sqlalchemy.orm import (
-    EXT_CONTINUE, MapperExtension, class_mapper, object_session,
+    EXT_CONTINUE, MapperExtension, class_mapper, object_session
     )
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm.session import Session
 
 
@@ -102,15 +103,16 @@ class ScopedSession(object):
         """
         class query(object):
             def __get__(s, instance, owner):
-                mapper = class_mapper(owner, raiseerror=False)
-                if mapper:
-                    if query_cls:
-                        # custom query class
-                        return query_cls(mapper, session=self.registry())
-                    else:
-                        # session's configured query class
-                        return self.registry().query(mapper)
-                else:
+                try:
+                    mapper = class_mapper(owner)
+                    if mapper:
+                        if query_cls:
+                            # custom query class
+                            return query_cls(mapper, session=self.registry())
+                        else:
+                            # session's configured query class
+                            return self.registry().query(mapper)
+                except orm_exc.UnmappedClassError:
                     return None
         return query()
 

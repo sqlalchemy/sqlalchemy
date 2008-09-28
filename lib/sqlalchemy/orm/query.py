@@ -1109,7 +1109,7 @@ class Query(object):
         else:
             filter = None
 
-        custom_rows = single_entity and 'append_result' in self._entities[0].extension.methods
+        custom_rows = single_entity and 'append_result' in self._entities[0].extension
 
         (process, labels) = zip(*[query_entity.row_processor(self, context, custom_rows) for query_entity in self._entities])
 
@@ -1433,7 +1433,6 @@ class Query(object):
 
         return result.rowcount
 
-
     def _compile_context(self, labels=True):
         context = QueryContext(self)
 
@@ -1562,9 +1561,6 @@ class Query(object):
                     crit = adapter.traverse(crit)
                 crit = self._adapt_clause(crit, False, False)
                 context.whereclause = sql.and_(context.whereclause, crit)
-
-    def __log_debug(self, msg):
-        self.logger.debug(msg)
 
     def __str__(self):
         return str(self._compile_context().statement)

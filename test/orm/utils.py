@@ -7,16 +7,18 @@ from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import mapper, create_session
+from orm import _fixtures
+from testlib.testing import eq_
 
 
 class ExtensionCarrierTest(TestBase):
     def test_basic(self):
         carrier = util.ExtensionCarrier()
 
-        assert 'translate_row' not in carrier.methods
+        assert 'translate_row' not in carrier
         assert carrier.translate_row() is interfaces.EXT_CONTINUE
-        assert 'translate_row' not in carrier.methods
+        assert 'translate_row' not in carrier
 
         self.assertRaises(AttributeError, lambda: carrier.snickysnack)
 
@@ -27,15 +29,15 @@ class ExtensionCarrierTest(TestBase):
                 return self.marker
 
         carrier.append(Partial('end'))
-        assert 'translate_row' in carrier.methods
+        assert 'translate_row' in carrier
         assert carrier.translate_row(None) == 'end'
 
         carrier.push(Partial('front'))
         assert carrier.translate_row(None) == 'front'
 
-        assert 'populate_instance' not in carrier.methods
+        assert 'populate_instance' not in carrier
         carrier.append(interfaces.MapperExtension)
-        assert 'populate_instance' in carrier.methods
+        assert 'populate_instance' in carrier
 
         assert carrier.interface
         for m in carrier.interface:
@@ -201,8 +203,37 @@ class AliasedClassTest(TestBase):
 
         assert_table(Point.left_of(p2), table)
         assert_table(alias.left_of(p2), alias_table)
-    
 
+class IdentityKeyTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @testing.resolve_artifact_names
+    def test_identity_key_1(self):
+        mapper(User, users)
+
+        key = util.identity_key(User, 1)
+        eq_(key, (User, (1,)))
+        key = util.identity_key(User, ident=1)
+        eq_(key, (User, (1,)))
+
+    @testing.resolve_artifact_names
+    def test_identity_key_2(self):
+        mapper(User, users)
+        s = create_session()
+        u = User(name='u1')
+        s.add(u)
+        s.flush()
+        key = util.identity_key(instance=u)
+        eq_(key, (User, (u.id,)))
+
+    @testing.resolve_artifact_names
+    def test_identity_key_3(self):
+        mapper(User, users)
+
+        row = {users.c.id: 1, users.c.name: "Frank"}
+        key = util.identity_key(User, row=row)
+        eq_(key, (User, (1,)))
+    
 if __name__ == '__main__':
     testenv.main()
 

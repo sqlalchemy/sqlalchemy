@@ -31,6 +31,15 @@ CHANGES
       for zero length slices, slices with None on either end.
       [ticket:1177]
 
+    - Added an example illustrating Celko's "nested sets" as a 
+      SQLA mapping.
+      
+    - session.execute() will execute a Sequence object passed to
+      it (regression from 0.4).
+    
+    - Removed the "raiseerror" keyword argument from object_mapper()
+      and class_mapper().  These functions raise in all cases
+      if the given class/instance is not mapped.
 - sql
     - column.in_(someselect) can now be used as a columns-clause
       expression without the subquery bleeding into the FROM clause
