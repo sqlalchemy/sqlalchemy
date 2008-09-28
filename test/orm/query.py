@@ -497,13 +497,53 @@ class CompileTest(QueryTest):
         l = list(session.query(User).instances(s.execute(emailad = 'jack@bean.com')))
         assert [User(id=7)] == l
 
+# more slice tests are available in test/orm/generative.py
 class SliceTest(QueryTest):
     def test_first(self):
         assert  User(id=7) == create_session().query(User).first()
 
         assert create_session().query(User).filter(User.id==27).first() is None
 
-        # more slice tests are available in test/orm/generative.py
+    @testing.fails_on_everything_except('sqlite')
+    def test_limit_offset_applies(self):
+        """Test that the expected LIMIT/OFFSET is applied for slices.
+        
+        The LIMIT/OFFSET syntax differs slightly on all databases, and
+        query[x:y] executes immediately, so we are asserting against
+        SQL strings using sqlite's syntax.
+        
+        """
+        sess = create_session()
+        q = sess.query(User)
+        
+        self.assert_sql(testing.db, lambda: q[10:20], [
+            ("SELECT users.id AS users_id, users.name AS users_name FROM users  LIMIT 10 OFFSET 10", {})
+        ])
+
+        self.assert_sql(testing.db, lambda: q[:20], [
+            ("SELECT users.id AS users_id, users.name AS users_name FROM users  LIMIT 20 OFFSET 0", {})
+        ])
+
+        self.assert_sql(testing.db, lambda: q[5:], [
+            ("SELECT users.id AS users_id, users.name AS users_name FROM users  LIMIT -1 OFFSET 5", {})
+        ])
+
+        self.assert_sql(testing.db, lambda: q[2:2], [])
+
+        self.assert_sql(testing.db, lambda: q[-2:-5], [])
+
+        self.assert_sql(testing.db, lambda: q[-5:-2], [
+            ("SELECT users.id AS users_id, users.name AS users_name FROM users", {})
+        ])
+
+        self.assert_sql(testing.db, lambda: q[-5:], [
+            ("SELECT users.id AS users_id, users.name AS users_name FROM users", {})
+        ])
+
+        self.assert_sql(testing.db, lambda: q[:], [
+            ("SELECT users.id AS users_id, users.name AS users_name FROM users", {})
+        ])
+
 
 class TextTest(QueryTest):
     def test_fulltext(self):

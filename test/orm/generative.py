@@ -41,13 +41,19 @@ class GenerativeQueryTest(_base.MappedTest):
         sess = create_session()
         query = sess.query(Foo)
         orig = query.all()
+        
         assert query[1] == orig[1]
         assert list(query[10:20]) == orig[10:20]
         assert list(query[10:]) == orig[10:]
         assert list(query[:10]) == orig[:10]
         assert list(query[:10]) == orig[:10]
+        assert list(query[5:5]) == orig[5:5]
         assert list(query[10:40:3]) == orig[10:40:3]
         assert list(query[-5:]) == orig[-5:]
+        assert list(query[-2:-5]) == orig[-2:-5]
+        assert list(query[-5:-2]) == orig[-5:-2]
+        assert list(query[:-2]) == orig[:-2]
+        
         assert query[10:20][5] == orig[10:20][5]
 
     @testing.uses_deprecated('Call to deprecated function apply_max')

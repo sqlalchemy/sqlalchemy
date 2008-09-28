@@ -27,6 +27,10 @@ CHANGES
       ability to apply default __init__ implementations on object
       subclasses.
 
+    - Fixed up slices on Query (i.e. query[x:y]) to work properly
+      for zero length slices, slices with None on either end.
+      [ticket:1177]
+
 - sql
     - column.in_(someselect) can now be used as a columns-clause
       expression without the subquery bleeding into the FROM clause

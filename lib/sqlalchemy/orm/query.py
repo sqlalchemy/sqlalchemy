@@ -927,16 +927,21 @@ class Query(object):
     def __getitem__(self, item):
         if isinstance(item, slice):
             start, stop, step = util.decode_slice(item)
-            # if we slice from the end we need to execute the query before
-            # slicing
-            if start < 0 or stop < 0:
+
+            if isinstance(stop, int) and isinstance(start, int) and stop - start <= 0:
+                return []
+            
+            # perhaps we should execute a count() here so that we
+            # can still use LIMIT/OFFSET ?
+            elif (isinstance(start, int) and start < 0) \
+                or (isinstance(stop, int) and stop < 0):
                 return list(self)[item]
+                
+            res = self.slice(start, stop)
+            if step is not None:
+                return list(res)[None:None:item.step]
             else:
-                res = self.slice(start, stop)
-                if step is not None:
-                    return list(res)[None:None:item.step]
-                else:
-                    return list(res)
+                return list(res)
         else:
             return list(self[item:item+1])[0]
 
