@@ -572,6 +572,15 @@ class SessionTest(_fixtures.FixtureTest):
         self.assertRaisesMessage(sa.exc.InvalidRequestError, "inactive due to a rollback in a subtransaction", sess.begin, subtransactions=True)
         sess.close()
 
+    @testing.resolve_artifact_names
+    def test_no_autocommit_with_explicit_commit(self):
+        mapper(User, users)
+        session = create_session(autocommit=False)
+
+        session.add(User(name='ed'))
+        session.transaction.commit()
+        assert session.transaction is not None, "autocommit=False should start a new transaction"
+
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_bound_connection(self):

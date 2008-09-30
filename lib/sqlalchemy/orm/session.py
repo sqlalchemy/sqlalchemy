@@ -428,6 +428,8 @@ class SessionTransaction(object):
                     connection.close()
                 else:
                     transaction.close()
+            if not self.session.autocommit:
+                self.session.begin()
         self._deactivate()
         self.session = None
         self._connections = None
@@ -641,8 +643,6 @@ class Session(object):
             pass
         else:
             self.transaction.rollback()
-        if self.transaction is None and not self.autocommit:
-            self.begin()
 
     def commit(self):
         """Flush pending changes and commit the current transaction.
@@ -667,8 +667,6 @@ class Session(object):
                 raise sa_exc.InvalidRequestError("No transaction is begun.")
 
         self.transaction.commit()
-        if self.transaction is None and not self.autocommit:
-            self.begin()
 
     def prepare(self):
         """Prepare the current transaction in progress for two phase commit.
@@ -772,9 +770,6 @@ class Session(object):
         if self.transaction is not None:
             for transaction in self.transaction._iterate_parents():
                 transaction.close()
-        if not self.autocommit:
-            # note this doesnt use any connection resources
-            self.begin()
 
     def close_all(cls):
         """Close *all* sessions in memory."""

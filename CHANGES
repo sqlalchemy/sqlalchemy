@@ -40,6 +40,9 @@ CHANGES
     - Removed the "raiseerror" keyword argument from object_mapper()
       and class_mapper().  These functions raise in all cases
       if the given class/instance is not mapped.
+
+    - Fixed session.transaction.commit() on a autocommit=False
+      session not starting a new transaction.
 - sql
     - column.in_(someselect) can now be used as a columns-clause
       expression without the subquery bleeding into the FROM clause
