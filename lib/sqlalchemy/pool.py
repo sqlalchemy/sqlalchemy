@@ -314,6 +314,8 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
 class _ConnectionFairy(object):
     """Proxies a DB-API connection and provides return-on-dereference support."""
 
+    __slots__ = '_pool', '__counter', 'connection', '_connection_record', '__weakref__', '_detached_info'
+    
     def __init__(self, pool):
         self._pool = pool
         self.__counter = 0
@@ -437,6 +439,8 @@ class _ConnectionFairy(object):
         self._connection_record = None
 
 class _CursorFairy(object):
+    __slots__ = '__parent', 'cursor'
+
     def __init__(self, parent, cursor):
         self.__parent = parent
         self.cursor = cursor

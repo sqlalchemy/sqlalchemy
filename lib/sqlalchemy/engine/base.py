@@ -556,24 +556,25 @@ class Connection(Connectable):
         """
         return self.engine.Connection(self.engine, self.__connection, _branch=True)
 
+    @property
     def dialect(self):
         "Dialect used by this Connection."
 
         return self.engine.dialect
-    dialect = property(dialect)
 
+    @property
     def closed(self):
         """return True if this connection is closed."""
 
         return not self.__invalid and '_Connection__connection' not in self.__dict__
-    closed = property(closed)
 
+    @property
     def invalidated(self):
         """return True if this connection was invalidated."""
 
         return self.__invalid
-    invalidated = property(invalidated)
 
+    @property
     def connection(self):
         "The underlying DB-API connection managed by this Connection."
 
@@ -587,20 +588,19 @@ class Connection(Connectable):
                 self.__invalid = False
                 return self.__connection
             raise exc.InvalidRequestError("This Connection is closed")
-    connection = property(connection)
 
+    @property
     def should_close_with_result(self):
         """Indicates if this Connection should be closed when a corresponding
         ResultProxy is closed; this is essentially an auto-release mode.
         """
 
         return self.__close_with_result
-    should_close_with_result = property(should_close_with_result)
 
+    @property
     def info(self):
         """A collection of per-DB-API connection instance properties."""
         return self.connection.info
-    info = property(info)
 
     properties = property(info, doc="""An alias for the .info collection, will be removed in 0.5.""")
 
@@ -1012,19 +1012,10 @@ class Transaction(object):
     """
 
     def __init__(self, connection, parent):
-        self._connection = connection
+        self.connection = connection
         self._parent = parent or self
-        self._is_active = True
-
-    def connection(self):
-        "The Connection object referenced by this Transaction"
-        return self._connection
-    connection = property(connection)
-
-    def is_active(self):
-        return self._is_active
-    is_active = property(is_active)
-
+        self.is_active = True
+    
     def close(self):
         """Close this transaction.
 
@@ -1035,25 +1026,25 @@ class Transaction(object):
         This is used to cancel a Transaction without affecting the scope of
         an enclosing transaction.
         """
-        if not self._parent._is_active:
+        if not self._parent.is_active:
             return
         if self._parent is self:
             self.rollback()
 
     def rollback(self):
-        if not self._parent._is_active:
+        if not self._parent.is_active:
             return
-        self._is_active = False
+        self.is_active = False
         self._do_rollback()
 
     def _do_rollback(self):
         self._parent.rollback()
 
     def commit(self):
-        if not self._parent._is_active:
+        if not self._parent.is_active:
             raise exc.InvalidRequestError("This transaction is inactive")
         self._do_commit()
-        self._is_active = False
+        self.is_active = False
 
     def _do_commit(self):
         pass
@@ -1062,7 +1053,7 @@ class Transaction(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        if type is None and self._is_active:
+        if type is None and self.is_active:
             self.commit()
         else:
             self.rollback()
@@ -1070,43 +1061,43 @@ class Transaction(object):
 class RootTransaction(Transaction):
     def __init__(self, connection):
         super(RootTransaction, self).__init__(connection, None)
-        self._connection._begin_impl()
+        self.connection._begin_impl()
 
     def _do_rollback(self):
-        self._connection._rollback_impl()
+        self.connection._rollback_impl()
 
     def _do_commit(self):
-        self._connection._commit_impl()
+        self.connection._commit_impl()
 
 class NestedTransaction(Transaction):
     def __init__(self, connection, parent):
         super(NestedTransaction, self).__init__(connection, parent)
-        self._savepoint = self._connection._savepoint_impl()
+        self._savepoint = self.connection._savepoint_impl()
 
     def _do_rollback(self):
-        self._connection._rollback_to_savepoint_impl(self._savepoint, self._parent)
+        self.connection._rollback_to_savepoint_impl(self._savepoint, self._parent)
 
     def _do_commit(self):
-        self._connection._release_savepoint_impl(self._savepoint, self._parent)
+        self.connection._release_savepoint_impl(self._savepoint, self._parent)
 
 class TwoPhaseTransaction(Transaction):
     def __init__(self, connection, xid):
         super(TwoPhaseTransaction, self).__init__(connection, None)
         self._is_prepared = False
         self.xid = xid
-        self._connection._begin_twophase_impl(self.xid)
+        self.connection._begin_twophase_impl(self.xid)
 
     def prepare(self):
-        if not self._parent._is_active:
+        if not self._parent.is_active:
             raise exc.InvalidRequestError("This transaction is inactive")
-        self._connection._prepare_twophase_impl(self.xid)
+        self.connection._prepare_twophase_impl(self.xid)
         self._is_prepared = True
 
     def _do_rollback(self):
-        self._connection._rollback_twophase_impl(self.xid, self._is_prepared)
+        self.connection._rollback_twophase_impl(self.xid, self._is_prepared)
 
     def commit(self):
-        self._connection._commit_twophase_impl(self.xid, self._is_prepared)
+        self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
 class Engine(Connectable):
     """
@@ -1126,11 +1117,11 @@ class Engine(Connectable):
         else:
             self.Connection = Connection
 
+    @property
     def name(self):
         "String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``."
         
         return self.dialect.name
-    name = property(name)
 
     echo = log.echo_property()
 
@@ -1158,9 +1149,9 @@ class Engine(Connectable):
         finally:
             connection.close()
 
+    @property
     def func(self):
         return expression._FunctionGenerator(bind=self)
-    func = property(func)
 
     def text(self, text, *args, **kwargs):
         """Return a sql.text() object for performing literal queries."""
@@ -1430,26 +1421,26 @@ class ResultProxy(object):
         else:
             self._rowcount = context.get_rowcount()
             self.close()
-
+    
+    @property
     def rowcount(self):
         if self._rowcount is not None:
             return self._rowcount
         else:
             return self.context.get_rowcount()
-    rowcount = property(rowcount)
 
+    @property
     def lastrowid(self):
         return self.cursor.lastrowid
-    lastrowid = property(lastrowid)
 
+    @property
     def out_parameters(self):
         return self.context.out_parameters
-    out_parameters = property(out_parameters)
 
     def _init_metadata(self):
         self.__props = {}
         self._key_cache = self._create_key_cache()
-        self.__keys = []
+        self.keys = []
         metadata = self.cursor.description
 
         if metadata is not None:
@@ -1483,7 +1474,7 @@ class ResultProxy(object):
                     if self.__props.setdefault(origname.lower(), rec) is not rec:
                         self.__props[origname.lower()] = (type_, self.__ambiguous_processor(origname), 0)
 
-                self.__keys.append(colname)
+                self.keys.append(colname)
                 self.__props[i] = rec
                 if obj:
                     for o in obj:
@@ -1540,10 +1531,6 @@ class ResultProxy(object):
             if self.connection.should_close_with_result:
                 self.connection.close()
 
-    def keys(self):
-        return self.__keys
-    keys = property(keys)
-
     def _has_key(self, row, key):
         try:
             # _key_cache uses __missing__ in 2.5, so not much alternative
@@ -1565,38 +1552,39 @@ class ResultProxy(object):
         """Return ``last_inserted_ids()`` from the underlying ExecutionContext.
 
         See ExecutionContext for details.
-        """
 
+        """
         return self.context.last_inserted_ids()
 
     def last_updated_params(self):
         """Return ``last_updated_params()`` from the underlying ExecutionContext.
 
         See ExecutionContext for details.
-        """
 
+        """
         return self.context.last_updated_params()
 
     def last_inserted_params(self):
         """Return ``last_inserted_params()`` from the underlying ExecutionContext.
 
         See ExecutionContext for details.
-        """
 
+        """
         return self.context.last_inserted_params()
 
     def lastrow_has_defaults(self):
         """Return ``lastrow_has_defaults()`` from the underlying ExecutionContext.
 
         See ExecutionContext for details.
+        
         """
-
         return self.context.lastrow_has_defaults()
 
     def postfetch_cols(self):
         """Return ``postfetch_cols()`` from the underlying ExecutionContext.
 
         See ExecutionContext for details.
+        
         """
         return self.context.postfetch_cols
     
@@ -1604,14 +1592,12 @@ class ResultProxy(object):
         return self.context.prefetch_cols
         
     def supports_sane_rowcount(self):
-        """Return ``supports_sane_rowcount`` from the dialect.
-
-        """
+        """Return ``supports_sane_rowcount`` from the dialect."""
+        
         return self.dialect.supports_sane_rowcount
 
     def supports_sane_multi_rowcount(self):
-        """Return ``supports_sane_multi_rowcount`` from the dialect.
-        """
+        """Return ``supports_sane_multi_rowcount`` from the dialect."""
 
         return self.dialect.supports_sane_multi_rowcount
 
@@ -1728,7 +1714,6 @@ class BufferedRowResultProxy(ResultProxy):
     def __buffer_rows(self):
         size = getattr(self, '_bufsize', 1)
         self.__rowbuffer = self.cursor.fetchmany(size)
-        #self.context.engine.logger.debug("Buffered %d rows" % size)
         self._bufsize = self.size_growth.get(size, size)
 
     def _fetchone_impl(self):

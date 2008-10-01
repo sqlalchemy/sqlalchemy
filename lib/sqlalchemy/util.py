@@ -1128,6 +1128,8 @@ class WeakCompositeKey(object):
     """
     keys = set()
 
+    __slots__ = 'args', '__weakref__'
+    
     def __init__(self, *args):
         self.args = [self.__ref(arg) for arg in args]
         WeakCompositeKey.keys.add(self)
