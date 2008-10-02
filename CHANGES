@@ -43,6 +43,10 @@ CHANGES
 
     - Fixed session.transaction.commit() on a autocommit=False
       session not starting a new transaction.
+      
+    - Some adjustments to Session.identity_map's weak referencing
+      behavior to reduce asynchronous GC side effects.
+      
 - sql
     - column.in_(someselect) can now be used as a columns-clause
       expression without the subquery bleeding into the FROM clause

@@ -12,7 +12,7 @@ from sqlalchemy.orm import attributes
 
 class IdentityMap(dict):
     def __init__(self):
-        self._mutable_attrs = weakref.WeakKeyDictionary()
+        self._mutable_attrs = {}
         self.modified = False
         
     def add(self, state):
@@ -41,7 +41,7 @@ class IdentityMap(dict):
         """return True if any InstanceStates present have been marked as 'modified'."""
         
         if not self.modified:
-            for state in self._mutable_attrs:
+            for state in list(self._mutable_attrs):
                 if state.check_modified():
                     return True
             else:
