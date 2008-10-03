@@ -1026,19 +1026,20 @@ class Session(object):
 
     def _register_newly_persistent(self, state):
         mapper = _state_mapper(state)
-        instance_key = mapper._identity_key_from_state(state)
 
-        if state.key is None:
-            state.key = instance_key
-        elif state.key != instance_key:
-            # primary key switch
-            self.identity_map.remove(state)
-            state.key = instance_key
-
-        obj = state.obj()
         # prevent against last minute dereferences of the object
-        # TODO: identify a code path where state.obj() is None
+        obj = state.obj()
         if obj is not None:
+
+            instance_key = mapper._identity_key_from_state(state)
+
+            if state.key is None:
+                state.key = instance_key
+            elif state.key != instance_key:
+                # primary key switch
+                self.identity_map.remove(state)
+                state.key = instance_key
+
             if state.key in self.identity_map and not self.identity_map.contains_state(state):
                 self.identity_map.remove_key(state.key)
             self.identity_map.add(state)
@@ -1435,7 +1436,7 @@ class Session(object):
         except:
             transaction.rollback()
             raise
-
+        
         flush_context.finalize_flush_changes()
 
         if not objects:

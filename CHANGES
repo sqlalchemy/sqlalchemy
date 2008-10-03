@@ -46,6 +46,10 @@ CHANGES
       
     - Some adjustments to Session.identity_map's weak referencing
       behavior to reduce asynchronous GC side effects.
+    
+    - Adjustment to Session's post-flush accounting of newly
+      "clean" objects to better protect against operating on
+      objects as they're asynchronously gc'ed. [ticket:1182]
       
 - sql
     - column.in_(someselect) can now be used as a columns-clause
