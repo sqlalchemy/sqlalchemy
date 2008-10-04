@@ -819,7 +819,7 @@ class CallableTest(TestBase):
         ucode = partial(Unicode, assert_unicode=None)
 
         thing_table = Table('thing', meta,
-            Column('name', ucode, primary_key=True)
+            Column('name', ucode(20))
         )
         assert isinstance(thing_table.c.name.type, Unicode)
         thing_table.create()
@@ -828,7 +828,7 @@ class CallableTest(TestBase):
         ucode = partial(Unicode, assert_unicode=None)
 
         thang_table = Table('thang', meta,
-            Column('name', type_=ucode, primary_key=True)
+            Column('name', type_=ucode(20), primary_key=True)
         )
         assert isinstance(thang_table.c.name.type, Unicode)
         thang_table.create()
