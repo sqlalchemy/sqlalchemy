@@ -33,6 +33,15 @@ CHANGES
 
     - Added an example illustrating Celko's "nested sets" as a 
       SQLA mapping.
+    
+    - contains_eager() with an alias argument works even when 
+      the alias is embedded in a SELECT, as when sent to the
+      Query via query.select_from().
+      
+    - contains_eager() usage is now compatible with a Query that
+      also contains a regular eager load and limit/offset, in that
+      the columns are added to the Query-generated subquery.
+      [ticket:1180]
       
     - session.execute() will execute a Sequence object passed to
       it (regression from 0.4).

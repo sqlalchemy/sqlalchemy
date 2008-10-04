@@ -595,24 +595,28 @@ class EagerLoader(AbstractRelationLoader):
         path = path + (self.key,)
 
         # check for user-defined eager alias
-        if ("eager_row_processor", path) in context.attributes:
-            clauses = context.attributes[("eager_row_processor", path)]
+        if ("user_defined_eager_row_processor", path) in context.attributes:
+            clauses = context.attributes[("user_defined_eager_row_processor", path)]
             
             adapter = entity._get_entity_clauses(context.query, context)
             if adapter and clauses:
-                context.attributes[("eager_row_processor", path)] = clauses = adapter.wrap(clauses)
+                context.attributes[("user_defined_eager_row_processor", path)] = clauses = clauses.wrap(adapter)
             elif adapter:
-                context.attributes[("eager_row_processor", path)] = clauses = adapter
-                
+                context.attributes[("user_defined_eager_row_processor", path)] = clauses = adapter
+            
+            add_to_collection = context.primary_columns
+            
         else:
             clauses = self._create_eager_join(context, entity, path, adapter, parentmapper)
             if not clauses:
                 return
 
             context.attributes[("eager_row_processor", path)] = clauses
+
+            add_to_collection = context.secondary_columns
             
         for value in self.mapper._iterate_polymorphic_properties():
-            value.setup(context, entity, path + (self.mapper.base_mapper,), clauses, parentmapper=self.mapper, column_collection=context.secondary_columns)
+            value.setup(context, entity, path + (self.mapper.base_mapper,), clauses, parentmapper=self.mapper, column_collection=add_to_collection)
     
     def _create_eager_join(self, context, entity, path, adapter, parentmapper):
         # check for join_depth or basic recursion,
@@ -691,7 +695,15 @@ class EagerLoader(AbstractRelationLoader):
         return clauses
         
     def _create_eager_adapter(self, context, row, adapter, path):
-        if ("eager_row_processor", path) in context.attributes:
+        if ("user_defined_eager_row_processor", path) in context.attributes:
+            decorator = context.attributes[("user_defined_eager_row_processor", path)]
+            # user defined eagerloads are part of the "primary" portion of the load.
+            # the adapters applied to the Query should be honored.
+            if context.adapter and decorator:
+                decorator = decorator.wrap(context.adapter)
+            elif context.adapter:
+                decorator = context.adapter
+        elif ("eager_row_processor", path) in context.attributes:
             decorator = context.attributes[("eager_row_processor", path)]
         else:
             if self._should_log_debug:
@@ -789,8 +801,8 @@ class LoadEagerFromAliasOption(PropertyOption):
 
                 prop = mapper.get_property(propname, resolve_synonyms=True)
                 self.alias = prop.target.alias(self.alias)
-            query._attributes[("eager_row_processor", paths[-1])] = sql_util.ColumnAdapter(self.alias)
+            query._attributes[("user_defined_eager_row_processor", paths[-1])] = sql_util.ColumnAdapter(self.alias)
         else:
-            query._attributes[("eager_row_processor", paths[-1])] = None
+            query._attributes[("user_defined_eager_row_processor", paths[-1])] = None
 
         
