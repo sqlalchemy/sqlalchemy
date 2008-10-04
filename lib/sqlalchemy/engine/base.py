@@ -873,7 +873,7 @@ class Connection(Connectable):
                 return [{}]
         elif len(multiparams) == 1:
             if isinstance(multiparams[0], (list, tuple)):
-                if isinstance(multiparams[0][0], (list, tuple, dict)):
+                if not multiparams[0] or isinstance(multiparams[0][0], (list, tuple, dict)):
                     return multiparams[0]
                 else:
                     return [multiparams[0]]

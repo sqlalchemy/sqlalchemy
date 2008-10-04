@@ -78,6 +78,13 @@ class ExecuteTest(TestBase):
             except tsa.exc.DBAPIError:
                 assert True
 
+    def test_empty_insert(self):
+        try:
+            result = testing.db.execute(users.insert(), [])
+            assert [] == list(result)
+        except:
+            assert False
+
 class ProxyConnectionTest(TestBase):
     @testing.fails_on('firebird') # Data type unknown
     def test_proxy(self):
