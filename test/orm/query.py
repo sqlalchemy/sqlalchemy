@@ -1355,7 +1355,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             # then eagerload the addresses.  User + Order columns go into the subquery, address
             # left outer joins to the subquery, eagerloader for User.orders applies context.adapter 
             # to result rows.  This was [ticket:1180].
-            l = q.outerjoin(User.orders).options(eagerload(User.addresses), contains_eager(User.orders)).offset(1).limit(2).all()
+            l = q.outerjoin(User.orders).options(eagerload(User.addresses), contains_eager(User.orders)).order_by(User.id, Order.id).offset(1).limit(2).all()
             eq_(l, [User(id=7,
             addresses=[Address(email_address=u'jack@bean.com',user_id=7,id=1)],
             name=u'jack',
@@ -1364,14 +1364,13 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 Order(address_id=None,user_id=7,description=u'order 5',isopen=0,id=5)
             ])])
         self.assert_sql_count(testing.db, go, 1)
-
         sess.clear()
-        
+
         def go():
             # same as above, except Order is aliased, so two adapters are applied by the
             # eager loader
             oalias = aliased(Order)
-            l = q.outerjoin(User.orders, oalias).options(eagerload(User.addresses), contains_eager(User.orders, alias=oalias)).offset(1).limit(2).all()
+            l = q.outerjoin((User.orders, oalias)).options(eagerload(User.addresses), contains_eager(User.orders, alias=oalias)).order_by(User.id, oalias.id).offset(1).limit(2).all()
             eq_(l, [User(id=7,
             addresses=[Address(email_address=u'jack@bean.com',user_id=7,id=1)],
             name=u'jack',
