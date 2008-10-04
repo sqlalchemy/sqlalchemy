@@ -805,12 +805,9 @@ except:
             newkeywords = keywords.copy()
             newkeywords.update(fkeywords)
             return func(*(args + fargs), **newkeywords)
-        newfunc.func = func
-        newfunc.args = args
-        newfunc.keywords = keywords
         return newfunc
 
-class CallableTest(TestBase, AssertsExecutionResults):
+class CallableTest(TestBase):
     def setUpAll(self):
         global meta
         meta = MetaData(testing.db)
@@ -824,6 +821,8 @@ class CallableTest(TestBase, AssertsExecutionResults):
         thing_table = Table('thing', meta,
             Column('name', ucode, primary_key=True)
         )
+        assert isinstance(thing_table.c.name.type, Unicode)
+        thing_table.create()
 
     def test_callable_as_kwarg(self):
         ucode = partial(Unicode, assert_unicode=None)
@@ -831,6 +830,8 @@ class CallableTest(TestBase, AssertsExecutionResults):
         thang_table = Table('thang', meta,
             Column('name', type_=ucode, primary_key=True)
         )
+        assert isinstance(thang_table.c.name.type, Unicode)
+        thang_table.create()
 
 if __name__ == "__main__":
     testenv.main()

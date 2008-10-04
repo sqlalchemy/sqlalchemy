@@ -548,6 +548,8 @@ class Column(SchemaItem, expression._ColumnClause):
                 name = args.pop(0)
         if args:
             coltype = args[0]
+            
+            # adjust for partials
             if callable(coltype):
                 coltype = args[0]()
 
