@@ -547,9 +547,13 @@ class Column(SchemaItem, expression._ColumnClause):
                         "May not pass name positionally and as a keyword.")
                 name = args.pop(0)
         if args:
-            if (isinstance(args[0], types.AbstractType) or
-                (isinstance(args[0], type) and
-                 issubclass(args[0], types.AbstractType))):
+            coltype = args[0]
+            if callable(coltype):
+                coltype = args[0]()
+
+            if (isinstance(coltype, types.AbstractType) or
+                (isinstance(coltype, type) and
+                 issubclass(coltype, types.AbstractType))):
                 if type_ is not None:
                     raise exc.ArgumentError(
                         "May not pass type_ positionally and as a keyword.")

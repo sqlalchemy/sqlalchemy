@@ -797,5 +797,29 @@ class BooleanTest(TestBase, AssertsExecutionResults):
         print res2
         assert(res2==[(2, False)])
 
+class CallableTest(TestBase, AssertsExecutionResults):
+    def setUpAll(self):
+        global meta
+        meta = MetaData(testing.db)
+
+    def tearDownAll(self):
+        meta.drop_all()
+
+    def test_callable_as_arg(self):
+        from functools import partial
+        ucode = partial(Unicode, assert_unicode=None)
+
+        thing_table = Table('thing', meta,
+            Column('name', ucode, primary_key=True)
+        )
+
+    def test_callable_as_kwarg(self):
+        from functools import partial
+        ucode = partial(Unicode, assert_unicode=None)
+
+        thang_table = Table('thang', meta,
+            Column('name', type_=ucode, primary_key=True)
+        )
+
 if __name__ == "__main__":
     testenv.main()

@@ -246,9 +246,10 @@ class MutableType(object):
 def to_instance(typeobj):
     if typeobj is None:
         return NULLTYPE
-    elif isinstance(typeobj, type):
+
+    try: 
         return typeobj()
-    else:
+    except TypeError:
         return typeobj
 
 def adapt_type(typeobj, colspecs):
