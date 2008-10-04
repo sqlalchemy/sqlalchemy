@@ -797,6 +797,19 @@ class BooleanTest(TestBase, AssertsExecutionResults):
         print res2
         assert(res2==[(2, False)])
 
+try:
+    from functools import partial
+except:
+    def partial(func, *args, **keywords):
+        def newfunc(*fargs, **fkeywords):
+            newkeywords = keywords.copy()
+            newkeywords.update(fkeywords)
+            return func(*(args + fargs), **newkeywords)
+        newfunc.func = func
+        newfunc.args = args
+        newfunc.keywords = keywords
+        return newfunc
+
 class CallableTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global meta
@@ -806,7 +819,6 @@ class CallableTest(TestBase, AssertsExecutionResults):
         meta.drop_all()
 
     def test_callable_as_arg(self):
-        from functools import partial
         ucode = partial(Unicode, assert_unicode=None)
 
         thing_table = Table('thing', meta,
@@ -814,7 +826,6 @@ class CallableTest(TestBase, AssertsExecutionResults):
         )
 
     def test_callable_as_kwarg(self):
-        from functools import partial
         ucode = partial(Unicode, assert_unicode=None)
 
         thang_table = Table('thang', meta,
