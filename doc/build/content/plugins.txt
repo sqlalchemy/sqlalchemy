@@ -123,7 +123,7 @@ class after the fact:
     User.addresses = relation(Address, primaryjoin=Address.user_id==User.id)
 
 Synonyms are one area where `declarative` needs to slightly change the usual SQLAlchemy configurational syntax. To define a
-getter/setter which proxies to an underlying attribute, use `synonym` with the `instruments` argument:
+getter/setter which proxies to an underlying attribute, use `synonym` with the `descriptor` argument:
 
     {python}
     class MyClass(Base):
@@ -133,9 +133,9 @@ getter/setter which proxies to an underlying attribute, use `synonym` with the `
         
         def _get_attr(self):
             return self._some_attr
-        def _set_attr(self, attr)
+        def _set_attr(self, attr):
             self._some_attr = attr
-        attr = synonym('_attr', instruments=property(_get_attr, _set_attr))
+        attr = synonym('_attr', descriptor=property(_get_attr, _set_attr))
         
 The above synonym is then usable as an instance attribute as well as a class-level expression construct:
 
