@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import re
 from sqlalchemy.interfaces import ConnectionProxy
 from testlib.sa import MetaData, Table, Column, Integer, String, INT, \
-     VARCHAR, func
+     VARCHAR, func, bindparam
 import testlib.sa as tsa
 from testlib import TestBase, testing, engines
 
@@ -79,11 +79,10 @@ class ExecuteTest(TestBase):
                 assert True
 
     def test_empty_insert(self):
-        try:
-            result = testing.db.execute(users.insert(), [])
-            assert [] == list(result)
-        except:
-            assert False
+        """test that execute() interprets [] as a list with no params"""
+        
+        result = testing.db.execute(users.insert().values(user_name=bindparam('name')), [])
+        assert result.rowcount == 1
 
 class ProxyConnectionTest(TestBase):
     @testing.fails_on('firebird') # Data type unknown
