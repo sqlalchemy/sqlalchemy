@@ -57,7 +57,7 @@ Recall that the `Dialect` is used to describe how to talk to a specific kind of 
 Downloads for each DBAPI at the time of this writing are as follows:
 
 * Postgres:  [psycopg2](http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo)
-* SQLite:  [pysqlite](http://initd.org/tracker/pysqlite)
+* SQLite:  [sqlite3](http://www.python.org/doc/2.5.2/lib/module-sqlite3.html) [pysqlite](http://initd.org/tracker/pysqlite)
 * MySQL:   [MySQLDB](http://sourceforge.net/projects/mysql-python)
 * Oracle:  [cx_Oracle](http://www.cxtools.net/default.aspx?nav=home)
 * MS-SQL:  [pyodbc](http://pyodbc.sourceforge.net/) (recommended) [adodbapi](http://adodbapi.sourceforge.net/)  [pymssql](http://pymssql.sourceforge.net/)
