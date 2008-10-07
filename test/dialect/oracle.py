@@ -356,6 +356,10 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
         seq = Sequence("My_Seq", schema="Some_Schema")
         assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
 
+class ExecuteTest(TestBase):
+    __only_on__ = 'oracle'
+    def test_basic(self):
+        assert testing.db.execute("/*+ this is a comment */ SELECT 1 FROM DUAL").fetchall() == [(1,)]
 
 if __name__ == '__main__':
     testenv.main()

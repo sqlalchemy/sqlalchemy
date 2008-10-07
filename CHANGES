@@ -74,7 +74,10 @@ CHANGES
 - mysql
     - Temporary tables are now reflectable.
 
-
+- oracle
+    - Oracle will detect string-based statements which contain 
+      comments at the front before a SELECT as SELECT statements.
+      [ticket:1187]
 0.5.0rc1
 ========
 

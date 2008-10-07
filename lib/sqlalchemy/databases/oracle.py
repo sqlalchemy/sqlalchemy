@@ -14,6 +14,8 @@ from sqlalchemy.sql import operators as sql_operators, functions as sql_function
 from sqlalchemy import types as sqltypes
 
 
+SELECT_REGEXP = re.compile(r'(\s*/\*\+.*?\*/)?\s*SELECT', re.I | re.UNICODE)
+
 class OracleNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         if self.precision is None:
@@ -205,6 +207,9 @@ class OracleExecutionContext(default.DefaultExecutionContext):
                         self.out_parameters = {}
                     self.out_parameters[name] = self.cursor.var(dbtype)
                     self.parameters[0][name] = self.out_parameters[name]
+
+    def returns_rows_text(self, statement):
+        return SELECT_REGEXP.match(statement)
 
     def create_cursor(self):
         c = self._connection.connection.cursor()
