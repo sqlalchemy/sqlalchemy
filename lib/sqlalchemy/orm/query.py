@@ -1025,8 +1025,8 @@ class Query(object):
     def one(self):
         """Return exactly one result or raise an exception.
 
-        Raises ``sqlalchemy.orm.NoResultError`` if the query selects no rows.
-        Raisees ``sqlalchemy.orm.MultipleResultsError`` if multiple rows are
+        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects no rows.
+        Raises ``sqlalchemy.orm.exc.MultipleResultsFound`` if multiple rows are
         selected.
 
         This results in an execution of the underlying query.
