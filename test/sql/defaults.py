@@ -33,14 +33,13 @@ class DefaultTest(testing.TestBase):
                 # since its a "branched" connection
                 conn.close()
 
-        use_function_defaults = testing.against('postgres', 'oracle')
+        use_function_defaults = testing.against('postgres', 'mssql', 'maxdb')
         is_oracle = testing.against('oracle')
 
         # select "count(1)" returns different results on different DBs also
         # correct for "current_date" compatible as column default, value
         # differences
         currenttime = func.current_date(type_=sa.Date, bind=db)
-
         if is_oracle:
             ts = db.scalar(sa.select([func.trunc(func.sysdate(), sa.literal_column("'DAY'"), type_=sa.Date).label('today')]))
             assert isinstance(ts, datetime.date) and not isinstance(ts, datetime.datetime)
@@ -56,11 +55,13 @@ class DefaultTest(testing.TestBase):
             f = sa.select([func.length('abcdef')], bind=db).scalar()
             f2 = sa.select([func.length('abcdefghijk')], bind=db).scalar()
             def1 = currenttime
+            deftype = sa.Date
             if testing.against('maxdb'):
                 def2 = sa.text("curdate")
+            elif testing.against('mssql'):
+                def2 = sa.text("getdate()")
             else:
                 def2 = sa.text("current_date")
-            deftype = sa.Date
             ts = db.func.current_date().scalar()
         else:
             f = len('abcdef')

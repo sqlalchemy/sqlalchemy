@@ -882,10 +882,12 @@ class MSSQLCompiler(compiler.DefaultCompiler):
     functions = compiler.DefaultCompiler.functions.copy()
     functions.update (
         {
-            sql_functions.now: 'CURRENT_TIMESTAMP'
+            sql_functions.now: 'CURRENT_TIMESTAMP',
+            sql_functions.current_date: 'GETDATE()',
+            'length': lambda x: "LEN(%s)" % x
         }
     )
-    
+
     def __init__(self, *args, **kwargs):
         super(MSSQLCompiler, self).__init__(*args, **kwargs)
         self.tablealiases = {}
@@ -983,14 +985,6 @@ class MSSQLCompiler(compiler.DefaultCompiler):
             return column.label(None)
         else:
             return super(MSSQLCompiler, self).label_select_column(select, column, asfrom)
-
-    # TODO: update this to use generic functions
-    function_rewrites =  {'current_date': 'getdate',
-                          'length':     'len',
-                          }
-    def visit_function(self, func, **kwargs):
-        func.name = self.function_rewrites.get(func.name, func.name)
-        return super(MSSQLCompiler, self).visit_function(func, **kwargs)
 
     def for_update_clause(self, select):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use

@@ -105,6 +105,10 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         t = Table('sometable', m, Column('col1', Integer), Column('col2', Integer))
         self.assert_compile(select([func.max(t.c.col1)]), "SELECT max(sometable.col1) AS max_1 FROM sometable")
 
+    def test_function_overrides(self):
+        self.assert_compile(func.current_date(), "GETDATE()")
+        self.assert_compile(func.length(3), "LEN(:length_1)")
+
 class ReflectionTest(TestBase):
     __only_on__ = 'mssql'
 
