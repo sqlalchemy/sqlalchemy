@@ -1444,7 +1444,6 @@ class InlineDefaultTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(t.update(inline=True, values={'col3':'foo'}), "UPDATE test SET col1=foo(:foo_1), col2=(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM foo), col3=:col3")
 
 class SchemaTest(TestBase, AssertsCompiledSQL):
-    @testing.fails_on('mssql')
     def test_select(self):
         # these tests will fail with the MS-SQL compiler since it will alias schema-qualified tables
         self.assert_compile(table4.select(), "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id, remote_owner.remotetable.value FROM remote_owner.remotetable")

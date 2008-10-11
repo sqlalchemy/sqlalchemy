@@ -545,7 +545,6 @@ class MSSQLDialect(default.DefaultDialect):
 
     def reflecttable(self, connection, table, include_columns):
         import sqlalchemy.databases.information_schema as ischema
-
         # Get base columns
         if table.schema is not None:
             current_schema = table.schema
@@ -669,7 +668,12 @@ class MSSQLDialect(default.DefaultDialect):
         fknm, scols, rcols = (None, [], [])
         for r in rows:
             scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r
-            schema.Table(rtbl, table.metadata, schema=rschema, autoload=True, autoload_with=connection)               
+            # if the reflected schema is the default schema then don't set it because this will
+            # play into the metadata key causing duplicates.
+            if rschema == current_schema:
+                schema.Table(rtbl, table.metadata, autoload=True, autoload_with=connection)
+            else:
+                schema.Table(rtbl, table.metadata, schema=rschema, autoload=True, autoload_with=connection)
             if rfknm != fknm:
                 if fknm:
                     table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, s, t, c) for s, t, c in rcols], fknm))
