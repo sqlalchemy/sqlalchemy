@@ -126,15 +126,43 @@ class SLTime(DateTimeMixin, sqltypes.Time):
             return tup and datetime.time(*tup[3:7])
         return process
 
-class SLText(sqltypes.Text):
+class SLUnicodeMixin(object):
+    def bind_processor(self, dialect):
+        if self.convert_unicode or dialect.convert_unicode:
+            if self.assert_unicode is None:
+                assert_unicode = dialect.assert_unicode
+            else:
+                assert_unicode = self.assert_unicode
+
+            if not assert_unicode:
+                return None
+
+            def process(value):
+                if not isinstance(value, (unicode, sqltypes.NoneType)):
+                    if assert_unicode == 'warn':
+                        util.warn("Unicode type received non-unicode bind "
+                                  "param value %r" % value)
+                        return value
+                    else:
+                        raise exceptions.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
+                else:
+                    return value
+            return process
+        else:
+            return None
+
+    def result_processor(self, dialect):
+        return None
+
+class SLText(SLUnicodeMixin, sqltypes.Text):
     def get_col_spec(self):
         return "TEXT"
 
-class SLString(sqltypes.String):
+class SLString(SLUnicodeMixin, sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
 
-class SLChar(sqltypes.CHAR):
+class SLChar(SLUnicodeMixin, sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
 

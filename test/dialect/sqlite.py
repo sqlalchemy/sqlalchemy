@@ -46,6 +46,25 @@ class TestTypes(TestBase, AssertsExecutionResults):
         self.assertEquals(bp(dt), '2008-06-27 12:00:00.000125')
         self.assertEquals(rp(bp(dt)), dt)
         
+    
+    def test_no_convert_unicode(self):
+        """test no utf-8 encoding occurs"""
+        
+        dialect = sqlite.dialect()
+        for t in (
+                String(convert_unicode=True),
+                CHAR(convert_unicode=True),
+                Unicode(),
+                UnicodeText(),
+                String(assert_unicode=True, convert_unicode=True),
+                CHAR(assert_unicode=True, convert_unicode=True),
+                Unicode(assert_unicode=True),
+                UnicodeText(assert_unicode=True)
+            ):
+            
+            bindproc = t.dialect_impl(dialect).bind_processor(dialect)
+            assert not bindproc or isinstance(bindproc(u"some string"), unicode)
+        
         
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)

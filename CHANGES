@@ -27,6 +27,12 @@ CHANGES
 - sqlite
     - Supplied a custom strftime() function which
       handles dates before 1900.  [ticket:968]
+
+    - String's (and Unicode's, UnicodeText's, etc.) 
+      convert_unicode logic disabled in the sqlite dialect, 
+      to adjust for pysqlite 2.5.0's new requirement that 
+      only Python unicode objects are accepted;
+      http://itsystementwicklung.de/pipermail/list-pysqlite/2008-March/000018.html
       
 - oracle
     - has_sequence() now takes schema name into account
