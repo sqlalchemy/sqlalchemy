@@ -222,23 +222,9 @@ log.class_logger(DeferredColumnLoader)
 class LoadDeferredColumns(object):
     """serializable loader object used by DeferredColumnLoader"""
     
-    def __init__(self, state, key, keys):
-        self.state = state
-        self.key = key
-        self.keys = keys
+    def __init__(self, *args):
+        self.state, self.key, self.keys = args
 
-    def __getstate__(self):
-        return {
-            'state':self.state, 
-            'key':self.key, 
-            'keys':self.keys
-        }
-    
-    def __setstate__(self, state):
-        self.state = state['state']
-        self.key = state['key']
-        self.keys = state['keys']
-        
     def __call__(self):
         state = self.state
         
@@ -502,25 +488,15 @@ log.class_logger(LazyLoader)
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
 
-    def __init__(self, state, key, options, path):
-        self.state = state
-        self.key = key
-        self.options = options
-        self.path = path
+    def __init__(self, *args):
+        self.state, self.key, self.options, self.path = args
         
     def __getstate__(self):
-        return {
-            'state':self.state, 
-            'key':self.key, 
-            'options':self.options, 
-            'path':serialize_path(self.path)
-        }
+        return (self.state, self.key, self.options, serialize_path(self.path))
 
     def __setstate__(self, state):
-        self.state = state['state']
-        self.key = state['key']
-        self.options = state['options']
-        self.path = deserialize_path(state['path'])
+        self.state, self.key, self.options, path = state
+        self.path = deserialize_path(path)
         
     def __call__(self):
         state = self.state
