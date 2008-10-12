@@ -28,6 +28,24 @@ class TestTypes(TestBase, AssertsExecutionResults):
         bp = sldt.bind_processor(None)
         self.assertEquals(bp(dt), '2008-06-27 12:00:00.125')
         self.assertEquals(rp(bp(dt)), dt)
+
+    def test_no_convert_unicode(self):
+        """test no utf-8 encoding occurs"""
+        
+        dialect = sqlite.dialect()
+        for t in (
+                String(convert_unicode=True),
+                CHAR(convert_unicode=True),
+                Unicode(),
+                UnicodeText(),
+                String(assert_unicode=True, convert_unicode=True),
+                CHAR(assert_unicode=True, convert_unicode=True),
+                Unicode(assert_unicode=True),
+                UnicodeText(assert_unicode=True)
+            ):
+
+            bindproc = t.dialect_impl(dialect).bind_processor(dialect)
+            assert not bindproc or isinstance(bindproc(u"some string"), unicode)
         
     @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
