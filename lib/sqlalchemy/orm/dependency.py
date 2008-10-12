@@ -42,6 +42,7 @@ class DependencyProcessor(object):
         self.passive_updates = prop.passive_updates
         self.enable_typechecks = prop.enable_typechecks
         self.key = prop.key
+        self.dependency_marker = MapperStub(self.parent, self.mapper, self.key)
         if not self.prop.synchronize_pairs:
             raise sa_exc.ArgumentError("Can't build a DependencyProcessor for relation %s.  No target attributes to populate between parent and child are present" % self.prop)
 
@@ -152,10 +153,9 @@ class OneToManyDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
         if self.post_update:
             if not self.is_backref:
-                stub = MapperStub(self.parent, self.mapper, self.key)
-                uowcommit.register_dependency(self.mapper, stub)
-                uowcommit.register_dependency(self.parent, stub)
-                uowcommit.register_processor(stub, self, self.parent)
+                uowcommit.register_dependency(self.mapper, self.dependency_marker)
+                uowcommit.register_dependency(self.parent, self.dependency_marker)
+                uowcommit.register_processor(self.dependency_marker, self, self.parent)
         else:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent)
@@ -306,10 +306,9 @@ class ManyToOneDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
         if self.post_update:
             if not self.is_backref:
-                stub = MapperStub(self.parent, self.mapper, self.key)
-                uowcommit.register_dependency(self.mapper, stub)
-                uowcommit.register_dependency(self.parent, stub)
-                uowcommit.register_processor(stub, self, self.parent)
+                uowcommit.register_dependency(self.mapper, self.dependency_marker)
+                uowcommit.register_dependency(self.parent, self.dependency_marker)
+                uowcommit.register_processor(self.dependency_marker, self, self.parent)
         else:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, self, self.parent)
@@ -386,10 +385,9 @@ class ManyToManyDP(DependencyProcessor):
         # related mappers.  its dependency processor then populates the
         # association table.
 
-        stub = MapperStub(self.parent, self.mapper, self.key)
-        uowcommit.register_dependency(self.parent, stub)
-        uowcommit.register_dependency(self.mapper, stub)
-        uowcommit.register_processor(stub, self, self.parent)
+        uowcommit.register_dependency(self.parent, self.dependency_marker)
+        uowcommit.register_dependency(self.mapper, self.dependency_marker)
+        uowcommit.register_processor(self.dependency_marker, self, self.parent)
 
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
@@ -496,8 +494,7 @@ class MapperStub(object):
     so that a depedendency can be corresponded to it.
 
     """
-    __metaclass__ = util.ArgSingleton
-
+    
     def __init__(self, parent, mapper, key):
         self.mapper = mapper
         self.base_mapper = self

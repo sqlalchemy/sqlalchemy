@@ -89,28 +89,6 @@ class ColumnCollectionTest(TestBase):
         assert (cc1==cc2).compare(c1 == c2)
         assert not (cc1==cc3).compare(c2 == c3)
 
-class ArgSingletonTest(unittest.TestCase):
-    def test_cleanout(self):
-        util.ArgSingleton.instances.clear()
-
-        class MyClass(object):
-            __metaclass__ = util.ArgSingleton
-            def __init__(self, x, y):
-                self.x = x
-                self.y = y
-
-        m1 = MyClass(3, 4)
-        m2 = MyClass(1, 5)
-        m3 = MyClass(3, 4)
-        assert m1 is m3
-        assert m2 is not m3
-        eq_(len(util.ArgSingleton.instances), 2)
-
-        m1 = m2 = m3 = None
-        MyClass.dispose(MyClass)
-        eq_(len(util.ArgSingleton.instances), 0)
-
-
 class ImmutableSubclass(str):
     pass
 

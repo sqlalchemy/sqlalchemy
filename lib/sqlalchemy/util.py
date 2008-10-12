@@ -218,24 +218,6 @@ def flatten_iterator(x):
         else:
             yield elem
 
-class ArgSingleton(type):
-    instances = weakref.WeakValueDictionary()
-
-    def dispose(cls):
-        for key in list(ArgSingleton.instances):
-            if key[0] is cls:
-                del ArgSingleton.instances[key]
-    dispose = staticmethod(dispose)
-
-    def __call__(self, *args):
-        hashkey = (self, args)
-        try:
-            return ArgSingleton.instances[hashkey]
-        except KeyError:
-            instance = type.__call__(self, *args)
-            ArgSingleton.instances[hashkey] = instance
-            return instance
-
 def get_cls_kwargs(cls):
     """Return the full set of inherited kwargs for the given `cls`.
 
