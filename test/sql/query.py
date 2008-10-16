@@ -200,6 +200,7 @@ class QueryTest(TestBase):
         self.assert_(not (rp != equal))
         self.assert_(not (equal != equal))
 
+    @testing.fails_on('mssql')
     def test_or_and_as_columns(self):
         true, false = literal(True), literal(False)
         
