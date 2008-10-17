@@ -342,6 +342,10 @@ class UOWTask(object):
         self.dependencies = set()
         self.cyclical_dependencies = set()
 
+    @util.lazy_property
+    def inheriting_mappers(self):
+        return list(self.mapper.polymorphic_iterator())
+
     @property
     def polymorphic_tasks(self):
         """Return an iterator of UOWTask objects corresponding to the
@@ -372,7 +376,7 @@ class UOWTask(object):
         those mappers.
 
         """
-        for mapper in self.mapper.polymorphic_iterator():
+        for mapper in self.inheriting_mappers:
             t = self.base_task._inheriting_tasks.get(mapper, None)
             if t is not None:
                 yield t
