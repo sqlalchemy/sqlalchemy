@@ -83,7 +83,7 @@ class ColumnProperty(StrategizedProperty):
         return value
 
     class ColumnComparator(PropComparator):
-        @util.memoize
+        @util.memoized_instancemethod
         def __clause_element__(self):
             return self.prop.columns[0]._annotate({"parententity": self.mapper})
 

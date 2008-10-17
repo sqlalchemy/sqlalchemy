@@ -342,7 +342,7 @@ class UOWTask(object):
         self.dependencies = set()
         self.cyclical_dependencies = set()
 
-    @util.lazy_property
+    @util.memoized_property
     def inheriting_mappers(self):
         return list(self.mapper.polymorphic_iterator())
 

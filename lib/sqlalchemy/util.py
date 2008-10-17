@@ -395,19 +395,6 @@ def iterate_attributes(cls):
                 yield (key, c.__dict__[key])
                 break
 
-class lazy_property(object):
-    """A read-only @property that is only evaluated once."""
-    def __init__(self, fget, doc=None):
-        self.fget = fget
-        self.__doc__ = doc or fget.__doc__
-        self.__name__ = fget.__name__
-
-    def __get__(self, obj, cls):
-        if obj is None:
-            return None
-        obj.__dict__[self.__name__] = result = self.fget(obj)
-        return result
-
 # from paste.deploy.converters
 def asbool(obj):
     if isinstance(obj, (str, unicode)):
@@ -1283,23 +1270,52 @@ def function_named(fn, name):
                           fn.func_defaults, fn.func_closure)
     return fn
 
-@decorator
-def memoize(fn, self):
-    """apply caching to the return value of a function."""
+class memoized_property(object):
+    """A read-only @property that is only evaluated once."""
+    def __init__(self, fget, doc=None):
+        self.fget = fget
+        self.__doc__ = doc or fget.__doc__
+        self.__name__ = fget.__name__
 
-    name = '_cached_' + fn.__name__
+    def __get__(self, obj, cls):
+        if obj is None:
+            return None
+        obj.__dict__[self.__name__] = result = self.fget(obj)
+        return result
 
-    try:
-        return getattr(self, name)
-    except AttributeError:
-        value = fn(self)
-        setattr(self, name, value)
-        return value
+
+class memoized_instancemethod(object):
+    """Decorate a method memoize its return value.
+
+    Best applied to no-arg methods: memoization is not sensitive to
+    argument values, and will always return the same value even when
+    called with different arguments.
+
+    """
+    def __init__(self, fget, doc=None):
+        self.fget = fget
+        self.__doc__ = doc or fget.__doc__
+        self.__name__ = fget.__name__
+
+    def __get__(self, obj, cls):
+        if obj is None:
+            return None
+        def oneshot(*args, **kw):
+            result = self.fget(obj, *args, **kw)
+            memo = lambda *a, **kw: result
+            memo.__name__ = self.__name__
+            memo.__doc__ = self.__doc__
+            obj.__dict__[self.__name__] = memo
+            return result
+        oneshot.__name__ = self.__name__
+        oneshot.__doc__ = self.__doc__
+        return oneshot
+
 
 def reset_memoized(instance, name):
     try:
-        delattr(instance, '_cached_' + name)
-    except AttributeError:
+        del instance.__dict__[name]
+    except KeyError:
         pass
 
 class WeakIdentityMapping(weakref.WeakKeyDictionary):

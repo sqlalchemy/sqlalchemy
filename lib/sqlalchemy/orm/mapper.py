@@ -281,15 +281,13 @@ class Mapper(object):
 
         return from_obj
 
-    @property
-    @util.memoize
+    @util.memoized_property
     def _with_polymorphic_mappers(self):
         if not self.with_polymorphic:
             return [self]
         return self.__mappers_from_spec(*self.with_polymorphic)
 
-    @property
-    @util.memoize
+    @util.memoized_property
     def _with_polymorphic_selectable(self):
         if not self.with_polymorphic:
             return self.mapped_table
@@ -560,8 +558,7 @@ class Mapper(object):
             self.primary_key = primary_key
             self.__log("Identified primary key columns: " + str(primary_key))
 
-    @property
-    @util.memoize
+    @util.memoized_property
     def _get_clause(self):
         """create a "get clause" based on the primary key.  this is used
         by query.get() and many-to-one lazyloads to load this item
@@ -571,8 +568,7 @@ class Mapper(object):
         params = [(primary_key, sql.bindparam(None, type_=primary_key.type)) for primary_key in self.primary_key]
         return sql.and_(*[k==v for (k, v) in params]), dict(params)
 
-    @property
-    @util.memoize
+    @util.memoized_property
     def _equivalent_columns(self):
         """Create a map of all *equivalent* columns, based on
         the determination of column pairs that are equated to
