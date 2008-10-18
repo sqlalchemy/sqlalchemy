@@ -315,9 +315,8 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                                        unicode_text=unicodedata,
                                        plain_varchar=rawdata)
                                        
-        x = union(unicode_table.select(), unicode_table.select()).execute().fetchone()
+        x = union(select([unicode_table.c.unicode_varchar]), select([unicode_table.c.unicode_varchar])).execute().fetchone()
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
-        self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
         
 
     def test_assertions(self):
@@ -659,12 +658,8 @@ class DateTest(TestBase, AssertsExecutionResults):
             t.drop(checkfirst=True)
 
 class StringTest(TestBase, AssertsExecutionResults):
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'oracle')
     def test_nolength_string(self):
-        # this tests what happens with String DDL with no length.  seems like
-        # we need to decide amongst "VARCHAR" (sqlite, postgres), "TEXT"
-        # (mysql) i.e. theres some inconsisency here.
-
         metadata = MetaData(testing.db)
         foo = Table('foo', metadata, Column('one', String))
 
