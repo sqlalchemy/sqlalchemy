@@ -23,7 +23,7 @@ class CompileTest(TestBase, AssertsExecutionResults):
     def test_update(self):
         t1.update().compile()
 
-    @profiling.function_call_count(228, versions={'2.3': 153, '2.4':122})
+    @profiling.function_call_count(228, versions={'2.3': 153, '2.4':131})
     def test_select(self):
         s = select([t1], t1.c.c2==t2.c.c1)
         s.compile()
