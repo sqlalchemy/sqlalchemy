@@ -95,10 +95,8 @@ class SelectableTest(TestBase, AssertsExecutionResults):
 
     def test_singular_union(self):
         u = union(select([table.c.col1, table.c.col2, table.c.col3]), select([table.c.col1, table.c.col2, table.c.col3]))
-        assert u.oid_column is not None
 
         u = union(select([table.c.col1, table.c.col2, table.c.col3]))
-        assert u.oid_column
         assert u.c.col1
         assert u.c.col2
         assert u.c.col3
@@ -214,24 +212,6 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         assert j4.corresponding_column(j2.c.aid) is j4.c.aid
         assert j4.corresponding_column(a.c.id) is j4.c.id
 
-    @testing.emits_warning('.*replaced by another column with the same key')
-    def test_oid(self):
-        # the oid column of a selectable currently proxies all
-        # oid columns found within.
-        s = table.select()
-        s2 = table2.select()
-        s3 = select([s, s2])
-        assert s3.corresponding_column(table.oid_column) is s3.oid_column
-        assert s3.corresponding_column(table2.oid_column) is s3.oid_column
-        assert s3.corresponding_column(s.oid_column) is s3.oid_column
-        assert s3.corresponding_column(s2.oid_column) is s3.oid_column
-
-        u = s.union(s2)
-        assert u.corresponding_column(table.oid_column) is u.oid_column
-        assert u.corresponding_column(table2.oid_column) is u.oid_column
-        assert u.corresponding_column(s.oid_column) is u.oid_column
-        assert u.corresponding_column(s2.oid_column) is u.oid_column
-    
     def test_two_metadata_join_raises(self):
         m = MetaData()
         m2 = MetaData()

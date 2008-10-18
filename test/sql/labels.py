@@ -137,16 +137,5 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
 
         print x.execute().fetchall()
 
-    def test_oid(self):
-        """test that a primary key column compiled as the 'oid' column gets proper length truncation"""
-        from sqlalchemy.databases import postgres
-        dialect = postgres.PGDialect()
-        dialect.max_identifier_length = 30
-        tt = table1.select(use_labels=True).alias('foo')
-        x = select([tt], use_labels=True, order_by=tt.oid_column).compile(dialect=dialect)
-        #print x
-        # assert it doesnt end with "ORDER BY foo.some_large_named_table_this_is_the_primarykey_column"
-        assert str(x).endswith("""ORDER BY foo.some_large_named_table_t_2""")
-
 if __name__ == '__main__':
     testenv.main()

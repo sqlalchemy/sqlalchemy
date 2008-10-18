@@ -3,6 +3,31 @@
 =======
 CHANGES
 =======
+0.5.0rc3
+========
+- orm
+    - "not equals" comparisons of simple many-to-one relation
+      to an instance will not drop into an EXISTS clause
+      and will compare foreign key columns instead.
+  
+    - removed not-really-working use cases of comparing 
+      a collection to an iterable.  Use contains() to test
+      for collection membership.
+
+- sql
+    - Further simplified SELECT compilation and its relationship
+      to result row processing.
+
+    - Direct execution of a union() construct will properly set up
+      result-row processing. [ticket:1194]
+
+    - The internal notion of an "OID" or "ROWID" column has been
+      removed.  It's basically not used by any dialect, and the
+      possibility of its usage with psycopg2's cursor.lastrowid
+      is basically gone now that INSERT..RETURNING is available.
+  
+    - Removed "default_order_by()" method on all FromClause
+      objects.
 
 0.5.0rc2
 ========
@@ -60,25 +85,11 @@ CHANGES
       "clean" objects to better protect against operating on
       objects as they're asynchronously gc'ed. [ticket:1182]
     
-    - "not equals" comparisons of simple many-to-one relation
-      to an instance will not drop into an EXISTS clause
-      and will compare foreign key columns instead.
-      
-    - removed not-really-working use cases of comparing 
-      a collection to an iterable.  Use contains() to test
-      for collection membership.
-        
 - sql
     - column.in_(someselect) can now be used as a columns-clause
       expression without the subquery bleeding into the FROM clause
       [ticket:1074]
       
-    - Further simplified SELECT compilation and its relationship
-      to result row processing.
-    
-    - Direct execution of a union() construct will properly set up
-      result-row processing. [ticket:1194]
-
 - sqlite
     - Overhauled SQLite date/time bind/result processing to use
       regular expressions and format strings, rather than
@@ -98,6 +109,7 @@ CHANGES
     - Oracle will detect string-based statements which contain 
       comments at the front before a SELECT as SELECT statements.
       [ticket:1187]
+
 0.5.0rc1
 ========
 

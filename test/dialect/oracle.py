@@ -129,7 +129,7 @@ AND mytable.myid = myothertable.otherid(+)",
 
         query = table1.join(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
 
-        self.assert_compile(query.select().order_by(table1.oid_column).limit(10).offset(5), 
+        self.assert_compile(query.select().order_by(table1.c.name).limit(10).offset(5), 
         
             "SELECT myid, name, description, otherid, othername, userid, "
             "otherstuff FROM (SELECT /*+ FIRST_ROWS(10) */ myid, name, description, "
@@ -138,7 +138,7 @@ AND mytable.myid = myothertable.otherid(+)",
             "myothertable.otherid AS otherid, myothertable.othername AS othername, "
             "thirdtable.userid AS userid, thirdtable.otherstuff AS otherstuff FROM mytable, "
             "myothertable, thirdtable WHERE thirdtable.userid(+) = myothertable.otherid AND "
-            "mytable.myid = myothertable.otherid ORDER BY mytable.rowid) WHERE "
+            "mytable.myid = myothertable.otherid ORDER BY mytable.name) WHERE "
             "ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1", dialect=oracle.dialect(use_ansi=False))
 
     def test_alias_outer_join(self):
@@ -157,11 +157,11 @@ AND mytable.myid = myothertable.otherid(+)",
         s = select([at_alias, addresses]).\
             select_from(addresses.outerjoin(at_alias, addresses.c.address_type_id==at_alias.c.id)).\
             where(addresses.c.user_id==7).\
-            order_by(addresses.oid_column, address_types.oid_column)
+            order_by(addresses.c.id, address_types.c.id)
         self.assert_compile(s, "SELECT address_types_1.id, address_types_1.name, addresses.id, addresses.user_id, "
             "addresses.address_type_id, addresses.email_address FROM addresses LEFT OUTER JOIN address_types address_types_1 "
-            "ON addresses.address_type_id = address_types_1.id WHERE addresses.user_id = :user_id_1 ORDER BY addresses.rowid, "
-            "address_types.rowid")
+            "ON addresses.address_type_id = address_types_1.id WHERE addresses.user_id = :user_id_1 ORDER BY addresses.id, "
+            "address_types.id")
 
 class MultiSchemaTest(TestBase, AssertsCompiledSQL):
     """instructions:

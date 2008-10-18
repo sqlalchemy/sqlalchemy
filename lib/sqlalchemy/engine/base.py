@@ -128,23 +128,6 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def oid_column_name(self, column):
-        """Return the oid column name for this Dialect
-
-        May return ``None`` if the dialect can't o won't support
-        OID/ROWID features.
-
-        The [sqlalchemy.schema#Column] instance which represents OID
-        for the query being compiled is passed, so that the dialect
-        can inspect the column and its parent selectable to determine
-        if OID/ROWID is not selected for a particular selectable
-        (i.e. Oracle doesnt support ROWID for UNION, GROUP BY,
-        DISTINCT, etc.)
-        """
-
-        raise NotImplementedError()
-
-
 
     def server_version_info(self, connection):
         """Return a tuple of the database's version number."""

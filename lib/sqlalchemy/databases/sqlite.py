@@ -298,9 +298,6 @@ class SQLiteDialect(default.DefaultDialect):
     def create_execution_context(self, connection, **kwargs):
         return SQLiteExecutionContext(self, connection, **kwargs)
 
-    def oid_column_name(self, column):
-        return "oid"
-
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.ProgrammingError) and "Cannot operate on a closed database." in str(e)
 

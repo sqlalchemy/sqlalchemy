@@ -917,9 +917,6 @@ FROM myothertable UNION SELECT thirdtable.userid, thirdtable.otherstuff FROM thi
 
         assert u1.corresponding_column(table2.c.otherid) is u1.c.myid
         
-        assert u1.corresponding_column(table1.oid_column) is u1.oid_column
-        assert u1.corresponding_column(table2.oid_column) is u1.oid_column
-
         # TODO - why is there an extra space before the LIMIT ?
         self.assert_compile(
             union(
@@ -979,7 +976,6 @@ SELECT thirdtable.userid FROM thirdtable)"
 UNION SELECT mytable.myid FROM mytable"
         )
         
-        # test unions working with non-oid selectables
         s = select([column('foo'), column('bar')])
         s = union(s, s)
         s = union(s, s)

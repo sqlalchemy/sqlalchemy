@@ -148,7 +148,7 @@ class DefaultCompiler(engine.Compiled):
         # actually present in the generated SQL
         self.bind_names = {}
 
-        # a stack.  what recursive compiler doesn't have a stack ? :)
+        # stack which keeps track of nested SELECT statements
         self.stack = []
 
         # relates label names in the final SQL to
@@ -236,15 +236,7 @@ class DefaultCompiler(engine.Compiled):
             
     def visit_column(self, column, result_map=None, **kwargs):
 
-        if column._is_oid:
-            name = self.dialect.oid_column_name(column)
-            if name is None:
-                if len(column.table.primary_key) != 0:
-                    pk = list(column.table.primary_key)[0]
-                    return self.visit_column(pk, result_map=result_map, **kwargs)
-                else:
-                    return None
-        elif not column.is_literal:
+        if not column.is_literal:
             name = self._truncated_identifier("colident", column.name)
         else:
             name = column.name

@@ -75,9 +75,6 @@ class DefaultDialect(base.Dialect):
         if len(ident) > self.max_identifier_length:
             raise exc.IdentifierError("Identifier '%s' exceeds maximum length of %d characters" % (ident, self.max_identifier_length))
         
-    def oid_column_name(self, column):
-        return None
-
     def do_begin(self, connection):
         """Implementations might want to put logic here for turning
         autocommit on/off, etc.

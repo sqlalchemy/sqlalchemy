@@ -292,19 +292,6 @@ class PGExecutionContext(default.DefaultExecutionContext):
         else:
             return base.ResultProxy(self)
 
-    def post_exec(self):
-        if self.compiled.isinsert and self.last_inserted_ids is None:
-            if not self.dialect.use_oids:
-                pass
-                # will raise invalid error when they go to get them
-            else:
-                table = self.compiled.statement.table
-                if self.cursor.lastrowid is not None and table is not None and len(table.primary_key):
-                    s = sql.select(table.primary_key, table.oid_column == self.cursor.lastrowid)
-                    row = self.connection.execute(s).fetchone()
-                self._last_inserted_ids = [v for v in row]
-        super(PGExecutionContext, self).post_exec()
-
 class PGDialect(default.DefaultDialect):
     name = 'postgres'
     supports_alter = True
@@ -316,9 +303,8 @@ class PGDialect(default.DefaultDialect):
     supports_pk_autoincrement = False
     default_paramstyle = 'pyformat'
 
-    def __init__(self, use_oids=False, server_side_cursors=False, **kwargs):
+    def __init__(self, server_side_cursors=False, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
-        self.use_oids = use_oids
         self.server_side_cursors = server_side_cursors
 
     def dbapi(cls):
@@ -381,12 +367,6 @@ class PGDialect(default.DefaultDialect):
             raise exc.InvalidRequestError("no INSERT executed, or can't use cursor.lastrowid without Postgres OIDs enabled")
         else:
             return self.context.last_inserted_ids
-
-    def oid_column_name(self, column):
-        if self.use_oids:
-            return "oid"
-        else:
-            return None
 
     def has_table(self, connection, table_name, schema=None):
         # seems like case gets folded in pg_class...

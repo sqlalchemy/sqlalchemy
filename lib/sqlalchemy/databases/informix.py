@@ -242,9 +242,6 @@ class InfoDialect(default.DefaultDialect):
     def create_execution_context(self , *args, **kwargs):
         return InfoExecutionContext(self, *args, **kwargs)
 
-    def oid_column_name(self, column):
-        return "rowid"
-
     def table_names(self, connection, schema):
         s = "select tabname from systables"
         return [row[0] for row in connection.execute(s)]
@@ -396,7 +393,7 @@ class InfoCompiler(compiler.DefaultCompiler):
         # TODO: dont modify the original select, generate a new one
         a = [ __label(c) for c in select._raw_columns ]
         for c in select._order_by_clause.clauses:
-            if ( __label(c) not in a ) and getattr( c , 'name' , '' ) != 'oid':
+            if ( __label(c) not in a ):
                 select.append_column( c )
 
         return compiler.DefaultCompiler.visit_select(self, select)
@@ -415,11 +412,7 @@ class InfoCompiler(compiler.DefaultCompiler):
             return compiler.DefaultCompiler.visit_function( self , func )
 
     def visit_clauselist(self, list, **kwargs):
-        try:
-            li = [ c for c in list.clauses if c.name != 'oid' ]
-        except:
-            li = [ c for c in list.clauses ]
-        return ', '.join([s for s in [self.process(c) for c in li] if s is not None])
+        return ', '.join([s for s in [self.process(c) for c in list.clauses] if s is not None])
 
 class InfoSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, first_pk=False):

@@ -646,17 +646,17 @@ class EagerTest7(_base.MappedTest):
 
         mapper(Address, addresses, properties={
             'phones': relation(Phone, lazy=False, backref='address',
-                               order_by=phone_numbers.default_order_by())})
+                               order_by=phone_numbers.c.phone_id)})
 
         mapper(Company, companies, properties={
             'addresses': relation(Address, lazy=False, backref='company',
-                                  order_by=addresses.default_order_by())})
+                                  order_by=addresses.c.address_id)})
 
         mapper(Item, items)
 
         mapper(Invoice, invoices, properties={
             'items': relation(Item, lazy=False, backref='invoice',
-                              order_by=items.default_order_by()),
+                              order_by=items.c.item_id),
             'company': relation(Company, lazy=False, backref='invoices')})
 
         c1 = Company(company_name='company 1', addresses=[

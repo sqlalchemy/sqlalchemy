@@ -325,12 +325,6 @@ class OracleDialect(default.DefaultDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def oid_column_name(self, column):
-        if not isinstance(column.table, (sql.TableClause, sql.Select)):
-            return None
-        else:
-            return "rowid"
-
     def create_xid(self):
         """create a two-phase transaction ID.
 

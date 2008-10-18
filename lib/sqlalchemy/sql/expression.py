@@ -1689,9 +1689,6 @@ class FromClause(Selectable):
     def _get_from_objects(self, **modifiers):
         return []
 
-    def default_order_by(self):
-        return [self.oid_column]
-
     def count(self, whereclause=None, **params):
         """return a SELECT COUNT generated against this ``FromClause``."""
 
@@ -1769,8 +1766,6 @@ class FromClause(Selectable):
         col, intersect = None, None
         target_set = column.proxy_set
         cols = self.c
-        if self.oid_column:
-            cols += [self.oid_column]
         for c in cols:
             i = c.proxy_set.intersection(target_set)
             if i and \
@@ -1793,7 +1788,7 @@ class FromClause(Selectable):
         # from the item.  this is because FromClause subclasses, when
         # cloned, need to reestablish new "proxied" columns that are
         # linked to the new item
-        for attr in ('_columns', '_primary_key' '_foreign_keys', '_oid_column', '_embedded_columns', '_all_froms'):
+        for attr in ('_columns', '_primary_key' '_foreign_keys', '_embedded_columns', '_all_froms'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -1810,7 +1805,6 @@ class FromClause(Selectable):
     columns = c = _expr_attr_func('_columns')
     primary_key = _expr_attr_func('_primary_key')
     foreign_keys = _expr_attr_func('_foreign_keys')
-    oid_column = _expr_attr_func('_oid_column')
 
     def _export_columns(self):
         """Initialize column collections."""
@@ -1820,7 +1814,6 @@ class FromClause(Selectable):
         self._columns = ColumnCollection()
         self._primary_key = ColumnSet()
         self._foreign_keys = set()
-        self._oid_column = None
         self._populate_column_collection()
 
     def _populate_column_collection(self):
@@ -1949,7 +1942,6 @@ class _TextClause(ClauseElement):
     supports_execution = True
 
     _hide_froms = []
-    oid_column = None
 
     def __init__(self, text = "", bind=None, bindparams=None, typemap=None, autocommit=False):
         self._bind = bind
@@ -2356,7 +2348,6 @@ class Join(FromClause):
                 (c for c in columns if c.primary_key), self.onclause))
         self._columns.update((col._label, col) for col in columns)
         self._foreign_keys.update(itertools.chain(*[col.foreign_keys for col in columns]))    
-        self._oid_column = self.left.oid_column
 
     def _copy_internals(self, clone=_clone):
         self._reset_exported()
@@ -2462,8 +2453,6 @@ class Alias(FromClause):
     def _populate_column_collection(self):
         for col in self.element.columns:
             col._make_proxy(self)
-        if self.element.oid_column is not None:
-            self._oid_column = self.element.oid_column._make_proxy(self)
 
     def _copy_internals(self, clone=_clone):
         self._reset_exported()
@@ -2636,12 +2625,11 @@ class _ColumnClause(_Immutable, ColumnElement):
       ``_ColumnClause``.
     """
 
-    def __init__(self, text, selectable=None, type_=None, _is_oid=False, is_literal=False):
+    def __init__(self, text, selectable=None, type_=None, is_literal=False):
         ColumnElement.__init__(self)
         self.key = self.name = text
         self.table = selectable
         self.type = sqltypes.to_instance(type_)
-        self._is_oid = _is_oid
         self.__label = None
         self.is_literal = is_literal
 
@@ -2690,9 +2678,9 @@ class _ColumnClause(_Immutable, ColumnElement):
         # propigate the "is_literal" flag only if we are keeping our name,
         # otherwise its considered to be a label
         is_literal = self.is_literal and (name is None or name == self.name)
-        c = _ColumnClause(name or self.name, selectable=selectable, _is_oid=self._is_oid, type_=self.type, is_literal=is_literal)
+        c = _ColumnClause(name or self.name, selectable=selectable, type_=self.type, is_literal=is_literal)
         c.proxies = [self]
-        if attach and not self._is_oid:
+        if attach:
             selectable.columns[c.name] = c
         return c
 
@@ -2712,7 +2700,6 @@ class TableClause(_Immutable, FromClause):
     def __init__(self, name, *columns):
         super(TableClause, self).__init__()
         self.name = self.fullname = name
-        self._oid_column = _ColumnClause('oid', self, _is_oid=True)
         self._columns = ColumnCollection()
         self._primary_key = ColumnSet()
         self._foreign_keys = set()
@@ -2941,15 +2928,6 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         for cols in zip(*[s.c for s in self.selects]):
             proxy = cols[0]._make_proxy(self, name=self.use_labels and cols[0]._label or None)
             proxy.proxies = cols
-
-        oid_proxies = [
-            c for c in [f.oid_column for f in self.selects] if c is not None
-        ]
-
-        if oid_proxies:
-            col = oid_proxies[0]._make_proxy(self)
-            col.proxies = oid_proxies
-            self._oid_column = col
 
     def _copy_internals(self, clone=_clone):
         self._reset_exported()
@@ -3283,16 +3261,6 @@ class Select(_SelectBaseMixin, FromClause):
     def _populate_column_collection(self):
         for c in self.__exportable_columns():
             c._make_proxy(self, name=self.use_labels and c._label or None)
-
-        oid_proxies = [c for c in 
-            [f.oid_column for f in self.locate_all_froms()
-            if f is not self] if c is not None
-        ]
-
-        if oid_proxies:
-            col = oid_proxies[0]._make_proxy(self)
-            col.proxies = oid_proxies
-            self._oid_column = col
     
     def self_group(self, against=None):
         """return a 'grouping' construct as per the ClauseElement specification.
