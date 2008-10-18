@@ -798,7 +798,7 @@ class SybaseSQLCompiler(compiler.DefaultCompiler):
         order_by = self.process(select._order_by_clause)
 
         # SybaseSQL only allows ORDER BY in subqueries if there is a LIMIT
-        if order_by and (not self.is_subquery(select) or select._limit):
+        if order_by and (not self.is_subquery() or select._limit):
             return " ORDER BY " + order_by
         else:
             return ""

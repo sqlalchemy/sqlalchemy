@@ -829,7 +829,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
 
         # No ORDER BY in subqueries.
         if order_by:
-            if self.is_subquery(select):
+            if self.is_subquery():
                 # It's safe to simply drop the ORDER BY if there is no
                 # LIMIT.  Right?  Other dialects seem to get away with
                 # dropping order.
@@ -845,7 +845,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
     def get_select_precolumns(self, select):
         # Convert a subquery's LIMIT to TOP
         sql = select._distinct and 'DISTINCT ' or ''
-        if self.is_subquery(select) and select._limit:
+        if self.is_subquery() and select._limit:
             if select._offset:
                 raise exc.InvalidRequestError(
                     'MaxDB does not support LIMIT with an offset.')
@@ -855,7 +855,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
     def limit_clause(self, select):
         # The docs say offsets are supported with LIMIT.  But they're not.
         # TODO: maybe emulate by adding a ROWNO/ROWNUM predicate?
-        if self.is_subquery(select):
+        if self.is_subquery():
             # sub queries need TOP
             return ''
         elif select._offset:

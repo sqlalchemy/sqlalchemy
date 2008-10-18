@@ -174,19 +174,13 @@ class DefaultCompiler(engine.Compiled):
     def compile(self):
         self.string = self.process(self.statement)
 
-    def process(self, obj, stack=None, **kwargs):
-        if stack:
-            self.stack.append(stack)
-        try:
-            meth = getattr(self, "visit_%s" % obj.__visit_name__, None)
-            if meth:
-                return meth(obj, **kwargs)
-        finally:
-            if stack:
-                self.stack.pop(-1)
+    def process(self, obj, **kwargs):
+        meth = getattr(self, "visit_%s" % obj.__visit_name__, None)
+        if meth:
+            return meth(obj, **kwargs)
 
-    def is_subquery(self, select):
-        return self.stack and self.stack[-1].get('is_subquery')
+    def is_subquery(self):
+        return self.stack and self.stack[-1].get('from')
 
     def construct_params(self, params=None):
         """return a dictionary of bind parameter keys and values"""
@@ -342,16 +336,9 @@ class DefaultCompiler(engine.Compiled):
         return self.functions.get(func.__class__, self.functions.get(func.name, func.name + "%(expr)s"))
 
     def visit_compound_select(self, cs, asfrom=False, parens=True, **kwargs):
-        stack_entry = {'select':cs}
 
-        if asfrom:
-            stack_entry['is_subquery'] = True
-        elif self.stack and self.stack[-1].get('select'):
-            stack_entry['is_subquery'] = True
-        self.stack.append(stack_entry)
-
-        text = string.join((self.process(c, asfrom=asfrom, parens=False)
-                            for c in cs.selects),
+        text = string.join((self.process(c, asfrom=asfrom, parens=False, compound_index=i)
+                            for i, c in enumerate(cs.selects)),
                            " " + cs.keyword + " ")
         group_by = self.process(cs._group_by_clause, asfrom=asfrom)
         if group_by:
@@ -359,8 +346,6 @@ class DefaultCompiler(engine.Compiled):
 
         text += self.order_by_clause(cs)
         text += (cs._limit is not None or cs._offset is not None) and self.limit_clause(cs) or ""
-
-        self.stack.pop(-1)
 
         if asfrom and parens:
             return "(" + text + ")"
@@ -470,28 +455,11 @@ class DefaultCompiler(engine.Compiled):
         else:
             return column
 
-    def visit_select(self, select, asfrom=False, parens=True, iswrapper=False, **kwargs):
+    def visit_select(self, select, asfrom=False, parens=True, iswrapper=False, compound_index=1, **kwargs):
 
-        stack_entry = {'select':select}
-        prev_entry = self.stack and self.stack[-1] or None
-
-        if asfrom or (prev_entry and 'select' in prev_entry):
-            stack_entry['is_subquery'] = True
-            stack_entry['iswrapper'] = iswrapper
-            if not iswrapper and prev_entry and 'iswrapper' in prev_entry:
-                column_clause_args = {'result_map':self.result_map}
-            else:
-                column_clause_args = {}
-        elif iswrapper:
-            column_clause_args = {}
-            stack_entry['iswrapper'] = True
-        else:
-            column_clause_args = {'result_map':self.result_map}
-
-        if self.stack and 'from' in self.stack[-1]:
-            existingfroms = self.stack[-1]['from']
-        else:
-            existingfroms = None
+        entry = self.stack and self.stack[-1] or {}
+        
+        existingfroms = entry.get('from', None)
 
         froms = select._get_display_froms(existingfroms)
 
@@ -499,10 +467,15 @@ class DefaultCompiler(engine.Compiled):
 
         # TODO: might want to propigate existing froms for select(select(select))
         # where innermost select should correlate to outermost
-#        if existingfroms:
-#            correlate_froms = correlate_froms.union(existingfroms)
-        stack_entry['from'] = correlate_froms
-        self.stack.append(stack_entry)
+        # if existingfroms:
+        #     correlate_froms = correlate_froms.union(existingfroms)
+
+        if compound_index==1 and not entry or entry.get('iswrapper', False):
+            column_clause_args = {'result_map':self.result_map}
+        else:
+            column_clause_args = {}
+
+        self.stack.append({'from':correlate_froms, 'iswrapper':iswrapper})
 
         # the actual list of columns to print in the SELECT column list.
         inner_columns = util.OrderedSet(
@@ -520,13 +493,9 @@ class DefaultCompiler(engine.Compiled):
         text += self.get_select_precolumns(select)
         text += ', '.join(inner_columns)
 
-        from_strings = []
-        for f in froms:
-            from_strings.append(self.process(f, asfrom=True))
-
         if froms:
             text += " \nFROM "
-            text += ', '.join(from_strings)
+            text += ', '.join(self.process(f, asfrom=True) for f in froms)
         else:
             text += self.default_from()
 

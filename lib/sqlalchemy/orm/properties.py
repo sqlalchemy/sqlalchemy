@@ -347,18 +347,7 @@ class PropertyLoader(StrategizedProperty):
                 else:
                     return self.prop._optimized_compare(None)
             elif self.prop.uselist:
-                if not hasattr(other, '__iter__'):
-                    raise sa_exc.InvalidRequestError("Can only compare a collection to an iterable object.  Use contains().")
-                else:
-                    j = self.prop.primaryjoin
-                    if self.prop.secondaryjoin:
-                        j = j & self.prop.secondaryjoin
-                    clauses = []
-                    for o in other:
-                        clauses.append(
-                            sql.exists([1], j & sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(o))]))
-                        )
-                    return sql.and_(*clauses)
+                raise sa_exc.InvalidRequestError("Can't compare a collection to an object or collection; use contains() to test for membership.")
             else:
                 return self.prop._optimized_compare(other)
 
@@ -418,25 +407,30 @@ class PropertyLoader(StrategizedProperty):
             return clause
 
         def __negated_contains_or_equals(self, other):
+            if self.prop.direction == MANYTOONE:
+                state = attributes.instance_state(other)
+                strategy = self.prop._get_strategy(strategies.LazyLoader)
+                if strategy.use_get:
+                    return sql.and_(*[
+                        sql.or_(
+                        x !=
+                        self.prop.mapper._get_committed_state_attr_by_column(state, y),
+                        x == None)
+                        for (x, y) in self.prop.local_remote_pairs])
+                    
             criterion = sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(other))])
             return ~self._criterion_exists(criterion)
 
         def __ne__(self, other):
-            # TODO: simplify MANYTOONE comparsion when 
-            # the 'use_get' flag is enabled
-            
             if other is None:
                 if self.prop.direction == MANYTOONE:
                     return sql.or_(*[x!=None for x in self.prop._foreign_keys])
-                elif self.prop.uselist:
-                    return self.any()
                 else:
-                    return self.has()
-
-            if self.prop.uselist and not hasattr(other, '__iter__'):
-                raise sa_exc.InvalidRequestError("Can only compare a collection to an iterable object")
-
-            return self.__negated_contains_or_equals(other)
+                    return self._criterion_exists()
+            elif self.prop.uselist:
+                raise sa_exc.InvalidRequestError("Can't compare a collection to an object or collection; use contains() to test for membership.")
+            else:
+                return self.__negated_contains_or_equals(other)
 
     def compare(self, op, value, value_is_parent=False):
         if op == operators.eq:

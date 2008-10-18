@@ -59,11 +59,25 @@ CHANGES
     - Adjustment to Session's post-flush accounting of newly
       "clean" objects to better protect against operating on
       objects as they're asynchronously gc'ed. [ticket:1182]
+    
+    - "not equals" comparisons of simple many-to-one relation
+      to an instance will not drop into an EXISTS clause
+      and will compare foreign key columns instead.
       
+    - removed not-really-working use cases of comparing 
+      a collection to an iterable.  Use contains() to test
+      for collection membership.
+        
 - sql
     - column.in_(someselect) can now be used as a columns-clause
       expression without the subquery bleeding into the FROM clause
       [ticket:1074]
+      
+    - Further simplified SELECT compilation and its relationship
+      to result row processing.
+    
+    - Direct execution of a union() construct will properly set up
+      result-row processing. [ticket:1194]
 
 - sqlite
     - Overhauled SQLite date/time bind/result processing to use

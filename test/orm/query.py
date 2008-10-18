@@ -5,6 +5,7 @@ from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.sql import compiler
 from sqlalchemy.engine import default
 from sqlalchemy.orm import *
+from sqlalchemy.orm import attributes
 
 from testlib import *
 from orm import _base
@@ -334,7 +335,16 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
                         "WHERE users.id = addresses.user_id AND addresses.id = :id_1)"
                     )
 
-        self._test(Address.user == User(id=7), ":param_1 = addresses.user_id")
+        u7 = User(id=7)
+        attributes.instance_state(u7).commit_all()
+        
+        self._test(Address.user == u7, ":param_1 = addresses.user_id")
+
+        self._test(Address.user != u7, "addresses.user_id != :user_id_1 OR addresses.user_id IS NULL")
+
+        self._test(Address.user == None, "addresses.user_id IS NULL")
+
+        self._test(Address.user != None, "addresses.user_id IS NOT NULL")
 
     def test_selfref_relation(self):
         nalias = aliased(Node)

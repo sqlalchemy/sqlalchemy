@@ -65,20 +65,20 @@ class SchemaItem(object):
     def __repr__(self):
         return "%s()" % self.__class__.__name__
 
+    @property
     def bind(self):
         """Return the connectable associated with this SchemaItem."""
 
         m = self.metadata
         return m and m.bind or None
-    bind = property(bind)
 
+    @property
     def info(self):
         try:
             return self._info
         except AttributeError:
             self._info = {}
             return self._info
-    info = property(info)
 
 
 def _get_table_key(name, schema):
@@ -291,9 +291,9 @@ class Table(SchemaItem, expression.TableClause):
     def __post_init(self, *args, **kwargs):
         self._init_items(*args)
 
+    @property
     def key(self):
         return _get_table_key(self.name, self.schema)
-    key = property(key)
 
     def _set_primary_key(self, pk):
         if getattr(self, '_primary_key', None) in self.constraints:
