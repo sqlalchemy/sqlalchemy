@@ -40,6 +40,7 @@ if sys.version_info >= (2, 5):
 
         def __init__(self, creator):
             self.creator = creator
+            
         def __missing__(self, key):
             self[key] = val = self.creator(key)
             return val
@@ -49,6 +50,7 @@ else:
 
         def __init__(self, creator):
             self.creator = creator
+            
         def __getitem__(self, key):
             try:
                 return dict.__getitem__(self, key)
@@ -1009,6 +1011,9 @@ class OrderedIdentitySet(IdentitySet):
             for o in iterable:
                 self.add(o)
 
+def unique_list(seq, compare_with=set):
+    seen = compare_with()
+    return [x for x in seq if x not in seen and not seen.add(x)]    
 
 class UniqueAppender(object):
     """Appends items to a collection ensuring uniqueness.

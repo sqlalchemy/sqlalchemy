@@ -314,7 +314,7 @@ class Mapper(object):
     def _iterate_polymorphic_properties(self, mappers=None):
         if mappers is None:
             mappers = self._with_polymorphic_mappers
-        return iter(util.OrderedSet(
+        return iter(util.unique_list(
             chain(*[list(mapper.iterate_properties) for mapper in [self] + mappers])
         ))
 
@@ -842,7 +842,7 @@ class Mapper(object):
         if manager is not None:
             if manager.class_ is not self.class_:
                 # An inherited manager.  Install one for this subclass.
-                raise "eh?"
+                # TODO: no coverage here
                 manager = None
             elif manager.mapper:
                 raise sa_exc.ArgumentError(
@@ -970,8 +970,8 @@ class Mapper(object):
           A ``sqlalchemy.engine.base.RowProxy`` instance or a
           dictionary corresponding result-set ``ColumnElement``
           instances to their values within a row.
-        """
 
+        """
         pk_cols = self.primary_key
         if adapter:
             pk_cols = [adapter.columns[c] for c in pk_cols]
@@ -984,6 +984,7 @@ class Mapper(object):
 
         primary_key
           A list of values indicating the identifier.
+
         """
         return (self._identity_class, tuple(util.to_list(primary_key)))
 
@@ -1003,6 +1004,7 @@ class Mapper(object):
     def primary_key_from_instance(self, instance):
         """Return the list of primary key values for the given
         instance.
+
         """
         state = attributes.instance_state(instance)
         return self._primary_key_from_state(state)
@@ -1020,7 +1022,7 @@ class Mapper(object):
             else:
                 raise exc.UnmappedColumnError("No column %s is configured on mapper %s..." % (column, self))
 
-    # TODO: improve names
+    # TODO: improve names?
     def _get_state_attr_by_column(self, state, column):
         return self._get_col_to_prop(column).getattr(state, column)
 

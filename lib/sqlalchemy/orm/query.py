@@ -1103,9 +1103,9 @@ class Query(object):
 
         if filtered:
             if single_entity:
-                filter = util.OrderedIdentitySet
+                filter = lambda x: util.unique_list(x, util.IdentitySet)
             else:
-                filter = util.OrderedSet
+                filter = util.unique_list
         else:
             filter = None
 

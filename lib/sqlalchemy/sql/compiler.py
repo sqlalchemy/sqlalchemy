@@ -470,18 +470,20 @@ class DefaultCompiler(engine.Compiled):
         self.stack.append({'from':correlate_froms, 'iswrapper':iswrapper})
 
         # the actual list of columns to print in the SELECT column list.
-        inner_columns = util.OrderedSet(
-            [c for c in [
+        inner_columns = util.unique_list(
+            c for c in [
                 self.process(
                     self.label_select_column(select, co, asfrom=asfrom), 
                     within_columns_clause=True,
                     **column_clause_args) 
                 for co in select.inner_columns
             ]
-            if c is not None]
+            if c is not None
         )
-
-        text = " ".join(["SELECT"] + [self.process(x) for x in select._prefixes]) + " "
+        
+        text = "SELECT "  # we're off to a good start !
+        if select._prefixes:
+            text += " ".join(self.process(x) for x in select._prefixes) + " "
         text += self.get_select_precolumns(select)
         text += ', '.join(inner_columns)
 
@@ -985,8 +987,8 @@ class IdentifierPreparer(object):
         self.initial_quote = initial_quote
         self.final_quote = final_quote or self.initial_quote
         self.omit_schema = omit_schema
-        self.__strings = {}
-
+        self._strings = {}
+        
     def _escape_identifier(self, value):
         """Escape an identifier.
 
@@ -1021,21 +1023,21 @@ class IdentifierPreparer(object):
                 or self.illegal_initial_characters.match(value[0])
                 or not self.legal_characters.match(unicode(value))
                 or (lc_value != value))
-
+    
     def quote(self, ident, force):
-        if force:
-            return self.quote_identifier(ident)
-        elif force is False:
-            return ident
-            
-        if ident in self.__strings:
-            return self.__strings[ident]
-        else:
-            if self._requires_quotes(ident):
-                self.__strings[ident] = self.quote_identifier(ident)
+        if force is None:
+            if ident in self._strings:
+                return self._strings[ident]
             else:
-                self.__strings[ident] = ident
-            return self.__strings[ident]
+                if self._requires_quotes(ident):
+                    self._strings[ident] = self.quote_identifier(ident)
+                else:
+                    self._strings[ident] = ident
+                return self._strings[ident]
+        elif force:
+            return self.quote_identifier(ident)
+        else:
+            return ident
 
     def format_sequence(self, sequence, use_schema=True):
         name = self.quote(sequence.name, sequence.quote)

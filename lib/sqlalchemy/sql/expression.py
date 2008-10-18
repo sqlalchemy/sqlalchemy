@@ -870,20 +870,17 @@ def _cloned_intersection(a, b):
     
     """
     all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
-    return a.intersection(
-        [
-            elem for elem in a if all_overlap.intersection(elem._cloned_set)
-        ]
-    )
+    return a.intersection(elem for elem in a if all_overlap.intersection(elem._cloned_set))
 
 def _compound_select(keyword, *selects, **kwargs):
     return CompoundSelect(keyword, *selects, **kwargs)
 
 def _is_literal(element):
-    global schema
-    if not schema:
-        from sqlalchemy import schema
-    return not isinstance(element, (ClauseElement, Operators, schema.SchemaItem))
+    global _is_literal
+    from sqlalchemy import schema
+    def _is_literal(element):
+        return not isinstance(element, (ClauseElement, Operators, schema.SchemaItem))
+    return _is_literal(element)
 
 def _from_objects(*elements, **kwargs):
     return itertools.chain(*[element._get_from_objects(**kwargs) for element in elements])
@@ -2960,8 +2957,8 @@ class Select(_SelectBaseMixin, FromClause):
 
     Select statements support appendable clauses, as well as the
     ability to execute themselves and return a result set.
-    """
 
+    """
     def __init__(self, columns, whereclause=None, from_obj=None, distinct=False, having=None, correlate=True, prefixes=None, **kwargs):
         """Construct a Select object.
 
@@ -2971,8 +2968,8 @@ class Select(_SelectBaseMixin, FromClause):
 
         Additional generative and mutator methods are available on the
         [sqlalchemy.sql.expression#_SelectBaseMixin] superclass.
-        """
 
+        """
         self._should_correlate = correlate
         self._distinct = distinct
 
