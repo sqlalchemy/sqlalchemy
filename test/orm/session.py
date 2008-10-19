@@ -748,7 +748,7 @@ class SessionTest(_fixtures.FixtureTest):
         gc.collect()
         assert len(s.identity_map) == 1
         assert len(s.dirty) == 1
-
+        assert None not in s.dirty
         s.flush()
         gc.collect()
         assert not s.dirty

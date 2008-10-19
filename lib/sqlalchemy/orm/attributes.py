@@ -796,7 +796,8 @@ class InstanceState(object):
         self.expired = False
 
     def dispose(self):
-        del self.session_id
+        if self.session_id:
+            del self.session_id
 
     @property
     def sort_key(self):

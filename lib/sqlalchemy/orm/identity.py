@@ -75,15 +75,12 @@ class WeakInstanceDict(IdentityMap):
     def __init__(self):
         IdentityMap.__init__(self)
         self._wr = weakref.ref(self)
-        # RLock because the mutex is used by a cleanup
-        # handler, which can be called at any time (including within an already mutexed block)
-        self._mutex = base_util.threading.RLock()
 
     def __getitem__(self, key):
         state = dict.__getitem__(self, key)
         o = state.obj()
         if o is None:
-            o = state._check_resurrect(self)
+            o = state._is_really_none()
         if o is None:
             raise KeyError, key
         return o
@@ -93,7 +90,7 @@ class WeakInstanceDict(IdentityMap):
             state = dict.__getitem__(self, key)
             o = state.obj()
             if o is None:
-                o = state._check_resurrect(self)
+                o = state._is_really_none()
         except KeyError:
             return False
         return o is not None
@@ -198,52 +195,58 @@ class IdentityManagedState(attributes.InstanceState):
     def _instance_dict(self):
         return None
     
-    def _check_resurrect(self, instance_dict):
-        instance_dict._mutex.acquire()
-        try:
-            return self.obj() or self.__resurrect(instance_dict)
-        finally:
-            instance_dict._mutex.release()
-    
     def modified_event(self, attr, should_copy, previous, passive=False):
         attributes.InstanceState.modified_event(self, attr, should_copy, previous, passive)
         
         instance_dict = self._instance_dict()
         if instance_dict:
             instance_dict.modified = True
+    
+    def _is_really_none(self):
+        """do a check modified/resurrect.
         
-    def _cleanup(self, ref):
-        # tiptoe around Python GC unpredictableness
-        try:
-            instance_dict = self._instance_dict()
-            instance_dict._mutex.acquire()
-        except:
-            return
-        # the mutexing here is based on the assumption that gc.collect()
-        # may be firing off cleanup handlers in a different thread than that
-        # which is normally operating upon the instance dict.
-        try:
-            try:
-                self.__resurrect(instance_dict)
-            except:
-                # catch app cleanup exceptions.  no other way around this
-                # without warnings being produced
-                pass
-        finally:
-            instance_dict._mutex.release()
-
-    def __resurrect(self, instance_dict):
+        This would be called in the extremely rare
+        race condition that the weakref returned None but
+        the cleanup handler had not yet established the 
+        __resurrect callable as its replacement.
+        
+        """
         if self.check_modified():
-            # store strong ref'ed version of the object; will revert
-            # to weakref when changes are persisted
-            obj = self.manager.new_instance(state=self)
-            self.obj = weakref.ref(obj, self._cleanup)
-            self._strong_obj = obj
-            obj.__dict__.update(self.dict)
-            self.dict = obj.__dict__
-            self._run_on_load(obj)
-            return obj
+            self.obj = self.__resurrect
+            return self.obj()
         else:
-            instance_dict.remove(self)
-            self.dispose()
             return None
+            
+    def _cleanup(self, ref):
+        """weakref callback.
+        
+        This method may be called by an asynchronous
+        gc.
+        
+        If the state shows pending changes, the weakref
+        is replaced by the __resurrect callable which will
+        re-establish an object reference on next access,
+        else removes this InstanceState from the owning
+        identity map, if any.
+        
+        """
+        if self.check_modified():
+            self.obj = self.__resurrect
+        else:
+            instance_dict = self._instance_dict()
+            if instance_dict:
+                instance_dict.remove(self)
+            self.dispose()
+            
+    def __resurrect(self):
+        """A substitute for the obj() weakref function which resurrects."""
+        
+        # store strong ref'ed version of the object; will revert
+        # to weakref when changes are persisted
+        obj = self.manager.new_instance(state=self)
+        self.obj = weakref.ref(obj, self._cleanup)
+        self._strong_obj = obj
+        obj.__dict__.update(self.dict)
+        self.dict = obj.__dict__
+        self._run_on_load(obj)
+        return obj

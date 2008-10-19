@@ -1,11 +1,12 @@
 import testenv; testenv.configure_for_tests()
 import operator
 from sqlalchemy import *
+from sqlalchemy.orm import attributes
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from testlib import *
 from testlib.fixtures import *
-
+import gc
 
 class TransactionTest(FixtureTest):
     keep_mappers = True
@@ -89,7 +90,34 @@ class AutoExpireTest(TransactionTest):
         s.rollback()
         assert u1 in s
         assert u1 not in s.deleted
-
+    
+    def test_gced_delete_on_rollback(self):
+        s = self.session()
+        u1 = User(name='ed')
+        s.add(u1)
+        s.commit()
+        
+        s.delete(u1)
+        u1_state = attributes.instance_state(u1)
+        assert u1_state in s.identity_map.all_states()
+        assert u1_state in s._deleted
+        s.flush()
+        assert u1_state not in s.identity_map.all_states()
+        assert u1_state not in s._deleted
+        del u1
+        gc.collect()
+        assert u1_state.obj() is None
+        
+        s.rollback()
+        assert u1_state in s.identity_map.all_states()
+        u1 = s.query(User).filter_by(name='ed').one()
+        assert u1_state not in s.identity_map.all_states()
+        assert s.scalar(users.count()) == 1
+        s.delete(u1)
+        s.flush()
+        assert s.scalar(users.count()) == 0
+        s.commit()
+        
     def test_trans_deleted_cleared_on_rollback(self):
         s = self.session()
         u1 = User(name='ed')
