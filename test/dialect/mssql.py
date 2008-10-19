@@ -5,6 +5,7 @@ from sqlalchemy.orm import *
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
+import sqlalchemy.engine.url as url
 from testlib import *
 
 
@@ -361,6 +362,21 @@ class MatchTest(TestBase, AssertsCompiledSQL):
                                            ).order_by(matchtable.c.id).execute().fetchall()
         self.assertEquals([1, 3, 5], [r.id for r in results])
 
+
+class ParseConnectTest(TestBase, AssertsCompiledSQL):
+    __only_on__ = 'mssql'
+
+    def test_pyodbc_connect(self):
+        u = url.make_url('mssql://username:password@hostspec/database')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password'], {}], connection)
+
+    def test_pyodbc_extra_connect(self):
+        u = url.make_url('mssql://username:password@hostspec/database?LANGUAGE=us_english&foo=bar')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password;foo=bar;LANGUAGE=us_english'], {}], connection)
 
 if __name__ == "__main__":
     testenv.main()
