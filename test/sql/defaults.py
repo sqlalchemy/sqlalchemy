@@ -395,7 +395,7 @@ class PKDefaultTest(_base.TablesTest):
                      default=sa.select([func.max(t2.c.nextid)]).as_scalar()),
               Column('data', String(30)))
 
-    @testing.crashes('mssql', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('mssql')
     @testing.resolve_artifact_names
     def test_basic(self):
         t2.insert().execute(nextid=1)
