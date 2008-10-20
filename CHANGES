@@ -33,6 +33,11 @@ CHANGES
     - Removed "default_order_by()" method on all FromClause
       objects.
 
+    - Slightly changed behavior of IN operator for comparing to
+      empty collections. Now results in inequality comparison
+      against self. More portable, but breaks with stored
+      procedures that aren't pure functions.
+
 0.5.0rc2
 ========
 - orm

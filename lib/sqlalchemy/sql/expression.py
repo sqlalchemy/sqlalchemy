@@ -1383,8 +1383,8 @@ class _CompareMixin(ColumnOperators):
             args.append(o)
 
         if len(args) == 0:
-            # Special case handling for empty IN's
-            return _Grouping(case([(self.__eq__(None), text('NULL'))], else_=text('0')).__eq__(text('1')))
+            # Special case handling for empty IN's, behave like comparison against zero row selectable
+            return self != self
 
         return self.__compare(op, ClauseList(*args).self_group(against=op), negate=negate_op)
 

@@ -550,7 +550,6 @@ class QueryTest(TestBase):
         finally:
             shadowed.drop(checkfirst=True)
 
-    @testing.fails_on('firebird', 'maxdb', 'oracle')
     def test_in_filtering(self):
         """test the behavior of the in_() function."""
 
@@ -590,6 +589,14 @@ class QueryTest(TestBase):
         assert len(r) == 3
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
+
+    @testing.fails_on('firebird', 'maxdb', 'oracle')
+    def test_in_filtering_advanced(self):
+        """test the behavior of the in_() function when comparing against an empty collection."""
+
+        users.insert().execute(user_id = 7, user_name = 'jack')
+        users.insert().execute(user_id = 8, user_name = 'fred')
+        users.insert().execute(user_id = 9, user_name = None)
 
         s = users.select(users.c.user_name.in_([]) == True)
         r = s.execute().fetchall()

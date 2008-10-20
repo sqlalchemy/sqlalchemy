@@ -1185,7 +1185,7 @@ UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
 
         # test empty in clause
         self.assert_compile(select([table1], table1.c.myid.in_([])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (CASE WHEN (mytable.myid IS NULL) THEN NULL ELSE 0 END = 1)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != mytable.myid")
 
         self.assert_compile(
             select([table1.c.myid.in_(select([table2.c.otherid]))]),
