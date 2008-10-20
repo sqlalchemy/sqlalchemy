@@ -1,8 +1,9 @@
 import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import Sequence, Column, func
+from sqlalchemy.sql import select, text
 from testlib import sa, testing
-from testlib.sa import MetaData, Table, Integer, String, ForeignKey
+from testlib.sa import MetaData, Table, Integer, String, ForeignKey, Boolean
 from testlib.testing import eq_
 from sql import _base
 
@@ -471,6 +472,21 @@ class PKIncrementTest(_base.TablesTest):
         finally:
             con.close()
 
+
+class EmptyInsertTest(testing.TestBase):
+    @testing.exclude('sqlite', '<', (3, 3, 8), 'no empty insert support')
+    def test_empty_insert(self):
+        metadata = MetaData(testing.db)
+        t1 = Table('t1', metadata,
+                Column('is_true', Boolean, server_default=('1')))
+        metadata.create_all()
+        
+        try:
+            result = t1.insert().execute()
+            self.assertEquals(1, select([func.count(text('*'))], from_obj=t1).scalar())
+            self.assertEquals(True, t1.select().scalar())
+        finally:
+            metadata.drop_all()
 
 class AutoIncrementTest(_base.TablesTest):
     __requires__ = ('identity',)

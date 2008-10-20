@@ -242,6 +242,8 @@ class SQLiteDialect(default.DefaultDialect):
     supports_alter = False
     supports_unicode_statements = True
     default_paramstyle = 'qmark'
+    supports_default_values = True
+    supports_empty_insert = False
 
     def __init__(self, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -464,25 +466,6 @@ class SQLiteCompiler(compiler.DefaultCompiler):
     def for_update_clause(self, select):
         # sqlite has no "FOR UPDATE" AFAICT
         return ''
-
-    def visit_insert(self, insert_stmt):
-        self.isinsert = True
-        colparams = self._get_colparams(insert_stmt)
-        preparer = self.preparer
-
-        if not colparams:
-            if not self.dialect.supports_default_values:
-                raise exc.NotSupportedError(
-                    "The version of SQLite you are using, %s, does not support DEFAULT VALUES." % (self.dialect.dbapi.sqlite_version))
-
-            return ("INSERT INTO %s DEFAULT VALUES" % (
-                (preparer.format_table(insert_stmt.table),)))
-        else:
-            return ("INSERT INTO %s (%s) VALUES (%s)" %
-                    (preparer.format_table(insert_stmt.table),
-                     ', '.join([preparer.format_column(c[0])
-                                for c in colparams]),
-                     ', '.join([c[1] for c in colparams])))
 
 
 class SQLiteSchemaGenerator(compiler.SchemaGenerator):

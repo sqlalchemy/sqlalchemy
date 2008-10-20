@@ -39,7 +39,8 @@ class DefaultDialect(base.Dialect):
     supports_pk_autoincrement = True
     dbapi_type_map = {}
     default_paramstyle = 'named'
-    supports_default_values = True
+    supports_default_values = False 
+    supports_empty_insert = True
 
     def __init__(self, convert_unicode=False, assert_unicode=False, encoding='utf-8', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode

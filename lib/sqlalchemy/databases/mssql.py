@@ -361,6 +361,8 @@ class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):
 
 class MSSQLDialect(default.DefaultDialect):
     name = 'mssql'
+    supports_default_values = True
+    supports_empty_insert = False
 
     colspecs = {
         sqltypes.Unicode : MSNVarchar,

@@ -302,6 +302,8 @@ class PGDialect(default.DefaultDialect):
     preexecute_pk_sequences = True
     supports_pk_autoincrement = False
     default_paramstyle = 'pyformat'
+    supports_default_values = True
+    supports_empty_insert = False
 
     def __init__(self, server_side_cursors=False, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)

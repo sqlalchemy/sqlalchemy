@@ -570,11 +570,18 @@ class DefaultCompiler(engine.Compiled):
         insert = ' '.join(["INSERT"] +
                           [self.process(x) for x in insert_stmt._prefixes])
 
-        return (insert + " INTO %s (%s) VALUES (%s)" %
+        if not colparams and not self.dialect.supports_default_values and not self.dialect.supports_empty_insert:
+            raise exc.NotSupportedError(
+                "The version of %s you are using does not support empty inserts." % self.dialect.name)
+        elif not colparams and self.dialect.supports_default_values:
+            return (insert + " INTO %s DEFAULT VALUES" % (
+                (preparer.format_table(insert_stmt.table),)))
+        else: 
+            return (insert + " INTO %s (%s) VALUES (%s)" %
                 (preparer.format_table(insert_stmt.table),
-                 ', '.join(preparer.quote(c[0].name, c[0].quote)
-                           for c in colparams),
-                 ', '.join(c[1] for c in colparams)))
+                 ', '.join([preparer.format_column(c[0])
+                           for c in colparams]),
+                 ', '.join([c[1] for c in colparams])))
 
     def visit_update(self, update_stmt):
         self.stack.append({'from': set([update_stmt.table])})
