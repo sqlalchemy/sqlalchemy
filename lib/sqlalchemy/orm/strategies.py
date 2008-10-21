@@ -62,7 +62,7 @@ class ColumnLoader(LoaderStrategy):
         if self.is_composite:
             for c in self.columns:
                 if c not in row:
-                    break
+                    return (None, None, None)
             else:
                 def new_execute(instance, row, **flags):
                     if self._should_log_debug:

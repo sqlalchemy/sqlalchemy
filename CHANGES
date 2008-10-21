@@ -7,6 +7,10 @@ CHANGES
     - polymorphic_union() function respects the "key" of each 
       Column if they differ from the column's name.
 
+    - Fixed 0.4-only bug preventing composite columns
+      from working properly with inheriting mappers
+      [ticket:1199]
+      
 0.4.8
 =====
 - orm
