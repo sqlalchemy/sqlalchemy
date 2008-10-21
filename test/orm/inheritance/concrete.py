@@ -188,7 +188,54 @@ class ConcreteTest(ORMTest):
             assert set([repr(x) for x in c2.employees]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
         self.assert_sql_count(testing.db, go, 1)
 
+class ColKeysTest(ORMTest):
+    def define_tables(self, metadata):
+        global offices_table, refugees_table
+        refugees_table = Table('refugee', metadata,
+           Column('refugee_fid', Integer, primary_key=True),
+           Column('refugee_name', Unicode(30), key='name'))
 
+        offices_table = Table('office', metadata,
+           Column('office_fid', Integer, primary_key=True),
+           Column('office_name', Unicode(30), key='name'))
+    
+    def insert_data(self):
+        refugees_table.insert().execute(
+            dict(refugee_fid=1, name=u"refugee1"),
+            dict(refugee_fid=2, name=u"refugee2")
+        )
+        offices_table.insert().execute(
+            dict(office_fid=1, name=u"office1"),
+            dict(office_fid=2, name=u"office2")
+        )
+        
+    def test_keys(self):
+        pjoin = polymorphic_union({
+           'refugee': refugees_table,
+           'office': offices_table
+        }, 'type', 'pjoin')
+        class Location(object):
+           pass
+
+        class Refugee(Location):
+           pass
+
+        class Office(Location):
+           pass
+
+        location_mapper = mapper(Location, pjoin, polymorphic_on=pjoin.c.type,
+                                polymorphic_identity='location')
+        office_mapper   = mapper(Office, offices_table, inherits=location_mapper,
+                                concrete=True, polymorphic_identity='office')
+        refugee_mapper  = mapper(Refugee, refugees_table, inherits=location_mapper,
+                                concrete=True, polymorphic_identity='refugee')
+
+        sess = create_session()
+        assert sess.query(Refugee).get(1).name == "refugee1"
+        assert sess.query(Refugee).get(2).name == "refugee2"
+
+        assert sess.query(Office).get(1).name == "office1"
+        assert sess.query(Office).get(2).name == "office2"
 
 if __name__ == '__main__':
     testenv.main()

@@ -57,9 +57,9 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
 
         m = {}
         for c in table.c:
-            colnames.add(c.name)
-            m[c.name] = c
-            types[c.name] = c.type
+            colnames.add(c.key)
+            m[c.key] = c
+            types[c.key] = c.type
         colnamemaps[table] = m
 
     def col(name, table):

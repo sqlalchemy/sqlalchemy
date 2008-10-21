@@ -1,6 +1,12 @@
 =======
 CHANGES
 =======
+0.4.9
+=====
+- orm
+    - polymorphic_union() function respects the "key" of each 
+      Column if they differ from the column's name.
+
 0.4.8
 =====
 - orm
@@ -15,7 +21,7 @@ CHANGES
 
     - Added label() method to InstrumentedAttribute 
       to establish forwards compatibility with 0.5.
-
+     
 - sql
     - column.in_(someselect) can now be used as 
       a columns-clause expression without the subquery
