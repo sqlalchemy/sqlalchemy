@@ -10,6 +10,7 @@ from testlib import *
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
+    __only_on__ = 'mssql'
     __dialect__ = mssql.MSSQLDialect()
 
     def test_insert(self):
