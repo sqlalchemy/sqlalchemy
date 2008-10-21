@@ -180,7 +180,7 @@ class DefaultCompiler(engine.Compiled):
             return meth(obj, **kwargs)
 
     def is_subquery(self):
-        return self.stack and self.stack[-1].get('from')
+        return self.stack and len(self.stack) > 1 and self.stack[-1].get('from')
 
     def construct_params(self, params=None):
         """return a dictionary of bind parameter keys and values"""

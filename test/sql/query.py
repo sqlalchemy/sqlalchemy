@@ -590,7 +590,7 @@ class QueryTest(TestBase):
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
 
-    @testing.fails_on('firebird', 'maxdb', 'oracle')
+    @testing.fails_on('firebird', 'maxdb', 'oracle', 'mssql')
     def test_in_filtering_advanced(self):
         """test the behavior of the in_() function when comparing against an empty collection."""
 
