@@ -17,7 +17,11 @@ CHANGES
     - Improved weakref identity map memory management to no longer 
       require mutexing, resurrects garbage collected instance
       on a lazy basis for an InstanceState with pending changes.
-      
+
+    - relation() won't hide unrelated ForeignKey errors inside of
+      the "please specify primaryjoin" message when determining
+      join condition.
+
 - sql
     - Further simplified SELECT compilation and its relationship
       to result row processing.

@@ -13,7 +13,7 @@ attributes.
 
 from sqlalchemy import sql, util, log
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs
+from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, join_condition
 from sqlalchemy.sql import operators, expression
 from sqlalchemy.orm import (
     attributes, dependency, mapper, object_mapper, strategies,
@@ -581,19 +581,19 @@ class PropertyLoader(StrategizedProperty):
             # found will try the more general mapped table, which in the case of inheritance
             # is a join.
             try:
-                return sql.join(mapper.local_table, table)
+                return join_condition(mapper.local_table, table)
             except sa_exc.ArgumentError, e:
-                return sql.join(mapper.mapped_table, table)
+                return join_condition(mapper.mapped_table, table)
 
         try:
             if self.secondary is not None:
                 if self.secondaryjoin is None:
-                    self.secondaryjoin = _search_for_join(self.mapper, self.secondary).onclause
+                    self.secondaryjoin = _search_for_join(self.mapper, self.secondary)
                 if self.primaryjoin is None:
-                    self.primaryjoin = _search_for_join(self.parent, self.secondary).onclause
+                    self.primaryjoin = _search_for_join(self.parent, self.secondary)
             else:
                 if self.primaryjoin is None:
-                    self.primaryjoin = _search_for_join(self.parent, self.target).onclause
+                    self.primaryjoin = _search_for_join(self.parent, self.target)
         except sa_exc.ArgumentError, e:
             raise sa_exc.ArgumentError("Could not determine join condition between "
                         "parent/child tables on relation %s.  "

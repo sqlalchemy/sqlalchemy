@@ -63,8 +63,14 @@ class InvalidRequestError(SQLAlchemyError):
 class NoSuchColumnError(KeyError, InvalidRequestError):
     """A nonexistent column is requested from a ``RowProxy``."""
 
-class NoReferencedTableError(InvalidRequestError):
+class NoReferenceError(InvalidRequestError):
+    """Raised by ``ForeignKey`` to indicate a reference cannot be resolved."""
+    
+class NoReferencedTableError(NoReferenceError):
     """Raised by ``ForeignKey`` when the referred ``Table`` cannot be located."""
+
+class NoReferencedColumnError(NoReferenceError):
+    """Raised by ``ForeignKey`` when the referred ``Column`` cannot be located."""
 
 class NoSuchTableError(InvalidRequestError):
     """Table does not exist or is not visible to a connection."""

@@ -856,7 +856,7 @@ class ForeignKey(SchemaItem):
                     else:
                         self._column = table.c[colname]
                 except KeyError, e:
-                    raise exc.ArgumentError(
+                    raise exc.NoReferencedColumnError(
                         "Could not create ForeignKey '%s' on table '%s': "
                         "table '%s' has no column named '%s'" % (
                         self._colspec, parenttable.name, table.name, str(e)))

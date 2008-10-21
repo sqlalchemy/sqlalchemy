@@ -1,8 +1,8 @@
 import testenv; testenv.configure_for_tests()
 import datetime
 from testlib import sa, testing
-from testlib.sa import Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import mapper, relation, backref, create_session
+from testlib.sa import Table, Column, Integer, String, ForeignKey, MetaData
+from testlib.sa.orm import mapper, relation, backref, create_session, compile_mappers, clear_mappers
 from testlib.testing import eq_, startswith_
 from orm import _base
 
@@ -649,6 +649,60 @@ class RelationTest6(_base.MappedTest):
             sess.query(TagInstance).order_by(TagInstance.data).all(), 
             [TagInstance(data='iplc_case'), TagInstance(data='not_iplc_case')]
         )
+
+
+class JoinConditionErrorTest(testing.TestBase):
+    def test_fk_error_raised(self):
+        m = MetaData()
+        t1 = Table('t1', m, 
+            Column('id', Integer, primary_key=True),
+            Column('foo_id', Integer, ForeignKey('t2.nonexistent_id')),
+        )
+        t2 = Table('t2', m,
+            Column('id', Integer, primary_key=True),
+            )
+
+        t3 = Table('t3', m,
+            Column('id', Integer, primary_key=True),
+            Column('t1id', Integer, ForeignKey('t1.id'))
+        )
+        
+        class C1(object):
+            pass
+        class C2(object):
+            pass
+        
+        mapper(C1, t1, properties={'c2':relation(C2)})
+        mapper(C2, t3)
+        
+        self.assertRaises(sa.exc.NoReferencedColumnError, compile_mappers)
+
+    def test_join_error_raised(self):
+        m = MetaData()
+        t1 = Table('t1', m, 
+            Column('id', Integer, primary_key=True),
+        )
+        t2 = Table('t2', m,
+            Column('id', Integer, primary_key=True),
+            )
+
+        t3 = Table('t3', m,
+            Column('id', Integer, primary_key=True),
+            Column('t1id', Integer)
+        )
+
+        class C1(object):
+            pass
+        class C2(object):
+            pass
+
+        mapper(C1, t1, properties={'c2':relation(C2)})
+        mapper(C2, t3)
+
+        self.assertRaises(sa.exc.ArgumentError, compile_mappers)
+    
+    def tearDown(self):
+        clear_mappers()    
         
 class TypeMatchTest(_base.MappedTest):
     """test errors raised when trying to add items whose type is not handled by a relation"""
