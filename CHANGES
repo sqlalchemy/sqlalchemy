@@ -21,7 +21,10 @@ CHANGES
     - relation() won't hide unrelated ForeignKey errors inside of
       the "please specify primaryjoin" message when determining
       join condition.
-
+     
+    - polymorphic_union() function respects the "key" of each 
+      Column if they differ from the column's name.
+      
 - sql
     - Further simplified SELECT compilation and its relationship
       to result row processing.
