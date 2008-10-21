@@ -212,11 +212,11 @@ class ColKeysTest(ORMTest):
         global offices_table, refugees_table
         refugees_table = Table('refugee', metadata,
            Column('refugee_fid', Integer, primary_key=True),
-           Column('refugee_name', Unicode, key='name'))
+           Column('refugee_name', Unicode(30), key='name'))
 
         offices_table = Table('office', metadata,
            Column('office_fid', Integer, primary_key=True),
-           Column('office_name', Unicode, key='name'))
+           Column('office_name', Unicode(30), key='name'))
     
     def insert_data(self):
         refugees_table.insert().execute(
