@@ -34,6 +34,21 @@ ATTR_WAS_SET = util.symbol('ATTR_WAS_SET')
 NO_VALUE = util.symbol('NO_VALUE')
 NEVER_SET = util.symbol('NEVER_SET')
 
+# "passive" get settings
+# TODO: the True/False values need to be factored out
+# of the rest of ORM code
+# don't fire off any callables, and don't initialize the attribute to
+# an empty value
+PASSIVE_NO_INITIALIZE = True #util.symbol('PASSIVE_NO_INITIALIZE')
+
+# don't fire off any callables, but if no callables present
+# then initialize to an empty value/collection
+# this is used by backrefs.
+PASSIVE_NO_CALLABLES = util.symbol('PASSIVE_NO_CALLABLES')
+
+# fire callables/initialize as needed
+PASSIVE_OFF = False #util.symbol('PASSIVE_OFF')
+
 INSTRUMENTATION_MANAGER = '__sa_instrumentation_manager__'
 """Attribute, elects custom instrumentation when present on a mapped class.
 
@@ -290,7 +305,7 @@ class AttributeImpl(object):
         else:
             state.callables[self.key] = callable_
 
-    def get_history(self, state, passive=False):
+    def get_history(self, state, passive=PASSIVE_OFF):
         raise NotImplementedError()
 
     def _get_callable(self, state):
@@ -307,7 +322,7 @@ class AttributeImpl(object):
         state.dict[self.key] = None
         return None
 
-    def get(self, state, passive=False):
+    def get(self, state, passive=PASSIVE_OFF):
         """Retrieve a value from the given object.
 
         If a callable is assembled on this object's attribute, and
@@ -320,9 +335,12 @@ class AttributeImpl(object):
         except KeyError:
             # if no history, check for lazy callables, etc.
             if state.committed_state.get(self.key, NEVER_SET) is NEVER_SET:
+                if passive is PASSIVE_NO_INITIALIZE:
+                    return PASSIVE_NORESULT
+                    
                 callable_ = self._get_callable(state)
                 if callable_ is not None:
-                    if passive:
+                    if passive is not PASSIVE_OFF:
                         return PASSIVE_NORESULT
                     value = callable_()
                     if value is not ATTR_WAS_SET:
@@ -335,16 +353,16 @@ class AttributeImpl(object):
             # Return a new, empty value
             return self.initialize(state)
 
-    def append(self, state, value, initiator, passive=False):
+    def append(self, state, value, initiator, passive=PASSIVE_OFF):
         self.set(state, value, initiator)
 
-    def remove(self, state, value, initiator, passive=False):
+    def remove(self, state, value, initiator, passive=PASSIVE_OFF):
         self.set(state, None, initiator)
 
     def set(self, state, value, initiator):
         raise NotImplementedError()
 
-    def get_committed_value(self, state, passive=False):
+    def get_committed_value(self, state, passive=PASSIVE_OFF):
         """return the unchanged value of this attribute"""
 
         if self.key in state.committed_state:
@@ -387,7 +405,7 @@ class ScalarAttributeImpl(AttributeImpl):
         else:
             del state.dict[self.key]
 
-    def get_history(self, state, passive=False):
+    def get_history(self, state, passive=PASSIVE_OFF):
         return History.from_attribute(
             self, state, state.dict.get(self.key, NO_VALUE))
 
@@ -439,7 +457,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
             raise sa_exc.ArgumentError("MutableScalarAttributeImpl requires a copy function")
         self.copy = copy_function
 
-    def get_history(self, state, passive=False):
+    def get_history(self, state, passive=PASSIVE_OFF):
         return History.from_attribute(
             self, state, state.dict.get(self.key, NO_VALUE))
 
@@ -447,7 +465,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         dest[self.key] = self.copy(state.dict[self.key])
 
     def check_mutable_modified(self, state):
-        (added, unchanged, deleted) = self.get_history(state, passive=True)
+        (added, unchanged, deleted) = self.get_history(state, passive=PASSIVE_NO_INITIALIZE)
         return bool(added or deleted)
 
     def set(self, state, value, initiator):
@@ -487,7 +505,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         self.fire_remove_event(state, old, self)
         del state.dict[self.key]
 
-    def get_history(self, state, passive=False):
+    def get_history(self, state, passive=PASSIVE_OFF):
         if self.key in state.dict:
             return History.from_attribute(self, state, state.dict[self.key])
         else:
@@ -569,7 +587,7 @@ class CollectionAttributeImpl(AttributeImpl):
     def __copy(self, item):
         return [y for y in list(collections.collection_adapter(item))]
 
-    def get_history(self, state, passive=False):
+    def get_history(self, state, passive=PASSIVE_OFF):
         current = self.get(state, passive=passive)
         if current is PASSIVE_NORESULT:
             return (None, None, None)
@@ -577,7 +595,7 @@ class CollectionAttributeImpl(AttributeImpl):
             return History.from_attribute(self, state, current)
 
     def fire_append_event(self, state, value, initiator):
-        state.modified_event(self, True, NEVER_SET, passive=True)
+        state.modified_event(self, True, NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
 
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), True)
@@ -587,10 +605,10 @@ class CollectionAttributeImpl(AttributeImpl):
         return value
 
     def fire_pre_remove_event(self, state, initiator):
-        state.modified_event(self, True, NEVER_SET, passive=True)
+        state.modified_event(self, True, NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
 
     def fire_remove_event(self, state, value, initiator):
-        state.modified_event(self, True, NEVER_SET, passive=True)
+        state.modified_event(self, True, NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
 
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), False)
@@ -620,7 +638,7 @@ class CollectionAttributeImpl(AttributeImpl):
         return state.manager.initialize_collection(
             self.key, state, self.collection_factory)
 
-    def append(self, state, value, initiator, passive=False):
+    def append(self, state, value, initiator, passive=PASSIVE_OFF):
         if initiator is self:
             return
 
@@ -631,7 +649,7 @@ class CollectionAttributeImpl(AttributeImpl):
         else:
             collection.append_with_event(value, initiator)
 
-    def remove(self, state, value, initiator, passive=False):
+    def remove(self, state, value, initiator, passive=PASSIVE_OFF):
         if initiator is self:
             return
 
@@ -721,7 +739,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
         return user_data
 
-    def get_collection(self, state, user_data=None, passive=False):
+    def get_collection(self, state, user_data=None, passive=PASSIVE_OFF):
         """Retrieve the CollectionAdapter associated with the given state.
 
         Creates a new CollectionAdapter if one does not exist.
@@ -754,23 +772,23 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
             old_state = instance_state(oldchild)
             impl = old_state.get_impl(self.key)
             try:
-                impl.remove(old_state, state.obj(), initiator, passive=True)
+                impl.remove(old_state, state.obj(), initiator, passive=PASSIVE_NO_CALLABLES)
             except (ValueError, KeyError, IndexError):
                 pass
         if child is not None:
             new_state = instance_state(child)
-            new_state.get_impl(self.key).append(new_state, state.obj(), initiator, passive=True)
+            new_state.get_impl(self.key).append(new_state, state.obj(), initiator, passive=PASSIVE_NO_CALLABLES)
         return child
 
     def append(self, state, child, initiator):
         child_state = instance_state(child)
-        child_state.get_impl(self.key).append(child_state, state.obj(), initiator, passive=True)
+        child_state.get_impl(self.key).append(child_state, state.obj(), initiator, passive=PASSIVE_NO_CALLABLES)
         return child
 
     def remove(self, state, child, initiator):
         if child is not None:
             child_state = instance_state(child)
-            child_state.get_impl(self.key).remove(child_state, state.obj(), initiator, passive=True)
+            child_state.get_impl(self.key).remove(child_state, state.obj(), initiator, passive=PASSIVE_NO_CALLABLES)
 
 
 class InstanceState(object):
@@ -840,12 +858,12 @@ class InstanceState(object):
             self.pending[key] = PendingCollection()
         return self.pending[key]
 
-    def value_as_iterable(self, key, passive=False):
+    def value_as_iterable(self, key, passive=PASSIVE_OFF):
         """return an InstanceState attribute as a list,
         regardless of it being a scalar or collection-based
         attribute.
 
-        returns None if passive=True and the getter returns
+        returns None if passive is not PASSIVE_OFF and the getter returns
         PASSIVE_NORESULT.
         """
 
@@ -961,7 +979,7 @@ class InstanceState(object):
         self.dict.pop(key, None)
         self.callables.pop(key, None)
 
-    def modified_event(self, attr, should_copy, previous, passive=False):
+    def modified_event(self, attr, should_copy, previous, passive=PASSIVE_OFF):
         needs_committed = attr.key not in self.committed_state
 
         if needs_committed:

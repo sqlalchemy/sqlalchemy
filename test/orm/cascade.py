@@ -15,10 +15,13 @@ class O2MCascadeTest(_fixtures.FixtureTest):
     def setup_mappers(self):
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
-            addresses = relation(Address, cascade="all, delete-orphan"),
+            addresses = relation(Address, cascade="all, delete-orphan", backref="user"),
             orders = relation(
                 mapper(Order, orders), cascade="all, delete-orphan")
         ))
+        mapper(Dingaling,dingalings, properties={
+            'address':relation(Address)
+        })
 
     @testing.resolve_artifact_names
     def test_list_assignment(self):
@@ -120,6 +123,32 @@ class O2MCascadeTest(_fixtures.FixtureTest):
             [User(name='newuser',
                   orders=[Order(description='someorder')])])
 
+    @testing.resolve_artifact_names
+    def test_cascade_nosideeffects(self):
+        """test that cascade leaves the state of unloaded scalars/collections unchanged."""
+        
+        sess = create_session()
+        u = User(name='jack')
+        sess.add(u)
+        assert 'orders' not in u.__dict__
+
+        sess.flush()
+        
+        assert 'orders' not in u.__dict__
+
+        a = Address(email_address='foo@bar.com')
+        sess.add(a)
+        assert 'user' not in a.__dict__
+        a.user = u
+        sess.flush()
+        
+        d = Dingaling(data='d1')
+        d.address_id = a.id
+        sess.add(d)
+        assert 'address' not in d.__dict__
+        sess.flush()
+        assert d.address is a
+        
     @testing.resolve_artifact_names
     def test_cascade_delete_plusorphans(self):
         sess = create_session()

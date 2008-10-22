@@ -495,8 +495,13 @@ class PropertyLoader(StrategizedProperty):
     def cascade_iterator(self, type_, state, visited_instances, halt_on=None):
         if not type_ in self.cascade:
             return
+
         # only actively lazy load on the 'delete' cascade
-        passive = type_ != 'delete' or self.passive_deletes
+        if type_ != 'delete' or self.passive_deletes:
+            passive = attributes.PASSIVE_NO_INITIALIZE
+        else:
+            passive = attributes.PASSIVE_OFF
+
         mapper = self.mapper.primary_mapper()
         instances = state.value_as_iterable(self.key, passive=passive)
         if instances:

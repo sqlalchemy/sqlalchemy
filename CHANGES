@@ -24,6 +24,13 @@ CHANGES
      
     - polymorphic_union() function respects the "key" of each 
       Column if they differ from the column's name.
+
+    - Added more granularity to internal attribute access, such 
+      that cascade and flush operations will not initialize
+      unloaded attributes and collections, leaving them intact for
+      a lazy-load later on.  Backref events still initialize 
+      attrbutes and collections for pending instances.
+      [ticket:1202]
       
 - sql
     - Further simplified SELECT compilation and its relationship
