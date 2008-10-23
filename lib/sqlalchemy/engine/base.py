@@ -355,11 +355,6 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def get_rowcount(self):
-        """Return the count of rows updated/deleted for an UPDATE/DELETE statement."""
-
-        raise NotImplementedError()
-
     def should_autocommit_compiled(self, compiled):
         """return True if the given Compiled object refers to a "committable" statement."""
 
@@ -1400,17 +1395,12 @@ class ResultProxy(object):
         self.__echo = context.engine._should_log_info
         if context.returns_rows:
             self._init_metadata()
-            self._rowcount = None
         else:
-            self._rowcount = context.get_rowcount()
             self.close()
     
     @property
     def rowcount(self):
-        if self._rowcount is not None:
-            return self._rowcount
-        else:
-            return self.context.get_rowcount()
+        return self.context.get_rowcount()
 
     @property
     def lastrowid(self):
@@ -1421,8 +1411,8 @@ class ResultProxy(object):
         return self.context.out_parameters
 
     def _init_metadata(self):
-        self.__props = {}
-        self._key_cache = self._create_key_cache()
+        self._props = util.PopulateDict(None)
+        self._props.creator = self.__key_fallback()
         self.keys = []
         metadata = self.cursor.description
 
@@ -1449,49 +1439,45 @@ class ResultProxy(object):
 
                 rec = (type_, type_.dialect_impl(self.dialect).result_processor(self.dialect), i)
 
-                if self.__props.setdefault(name.lower(), rec) is not rec:
-                    self.__props[name.lower()] = (type_, self.__ambiguous_processor(name), 0)
+                if self._props.setdefault(name.lower(), rec) is not rec:
+                    self._props[name.lower()] = (type_, self.__ambiguous_processor(name), 0)
 
                 # store the "origname" if we truncated (sqlite only)
                 if origname:
-                    if self.__props.setdefault(origname.lower(), rec) is not rec:
-                        self.__props[origname.lower()] = (type_, self.__ambiguous_processor(origname), 0)
+                    if self._props.setdefault(origname.lower(), rec) is not rec:
+                        self._props[origname.lower()] = (type_, self.__ambiguous_processor(origname), 0)
 
                 self.keys.append(colname)
-                self.__props[i] = rec
+                self._props[i] = rec
                 if obj:
                     for o in obj:
-                        self.__props[o] = rec
+                        self._props[o] = rec
 
             if self.__echo:
                 self.context.engine.logger.debug(
                     "Col " + repr(tuple(x[0] for x in metadata)))
-
-    def _create_key_cache(self):
-        # local copies to avoid circular ref against 'self'
-        props = self.__props
-        def lookup_key(key):
-            """Given a key, which could be a ColumnElement, string, etc.,
-            matches it to the appropriate key we got from the result set's
-            metadata; then cache it locally for quick re-access."""
-
+    
+    def __key_fallback(self):
+        # create a closure without 'self' to avoid circular references
+        props = self._props
+        
+        def fallback(key):
             if isinstance(key, basestring):
                 key = key.lower()
-            try:
-                rec = props[key]
-            except KeyError:
-                # fallback for targeting a ColumnElement to a textual expression
-                # this is a rare use case which only occurs when matching text()
-                # constructs to ColumnElements
-                if isinstance(key, expression.ColumnElement):
-                    if key._label and key._label.lower() in props:
-                        return props[key._label.lower()]
-                    elif hasattr(key, 'name') and key.name.lower() in props:
-                        return props[key.name.lower()]
-                raise exc.NoSuchColumnError("Could not locate column in row for column '%s'" % (str(key)))
+                if key in props:
+                    return props[key]
 
-            return rec
-        return util.PopulateDict(lookup_key)
+            # fallback for targeting a ColumnElement to a textual expression
+            # this is a rare use case which only occurs when matching text()
+            # constructs to ColumnElements
+            if isinstance(key, expression.ColumnElement):
+                if key._label and key._label.lower() in props:
+                    return props[key._label.lower()]
+                elif hasattr(key, 'name') and key.name.lower() in props:
+                    return props[key.name.lower()]
+
+            raise exc.NoSuchColumnError("Could not locate column in row for column '%s'" % (str(key)))
+        return fallback
 
     def __ambiguous_processor(self, colname):
         def process(value):
@@ -1518,7 +1504,7 @@ class ResultProxy(object):
         try:
             # _key_cache uses __missing__ in 2.5, so not much alternative
             # to catching KeyError
-            self._key_cache[key]
+            self._props[key]
             return True
         except KeyError:
             return False
@@ -1586,7 +1572,7 @@ class ResultProxy(object):
 
     def _get_col(self, row, key):
         try:
-            type_, processor, index = self._key_cache[key]
+            type_, processor, index = self._props[key]
         except TypeError:
             # the 'slice' use case is very infrequent,
             # so we use an exception catch to reduce conditionals in _get_col
@@ -1735,7 +1721,7 @@ class BufferedColumnResultProxy(ResultProxy):
 
     def _get_col(self, row, key):
         try:
-            rec = self._key_cache[key]
+            rec = self._props[key]
             return row[rec[2]]
         except TypeError:
             # the 'slice' use case is very infrequent,

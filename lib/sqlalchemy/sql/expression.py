@@ -944,7 +944,6 @@ def is_column(col):
     """True if ``col`` is an instance of ``ColumnElement``."""
     return isinstance(col, ColumnElement)
 
-
 class _FigureVisitName(type):
     def __init__(cls, clsname, bases, dict):
         if not '__visit_name__' in cls.__dict__:
@@ -952,6 +951,21 @@ class _FigureVisitName(type):
             x = m.group(1)
             x = re.sub(r'(?!^)[A-Z]', lambda m:'_'+m.group(0).lower(), x)
             cls.__visit_name__ = x.lower()
+        
+        # set up an optimized visit dispatch function
+        # for use by the compiler
+        visit_name = cls.__dict__["__visit_name__"]
+        if isinstance(visit_name, str):
+            func_text = "def _compiler_dispatch(self, visitor, **kw):\n"\
+            "    return visitor.visit_%s(self, **kw)" % visit_name
+        else:
+            func_text = "def _compiler_dispatch(self, visitor, **kw):\n"\
+            "    return getattr(visitor, 'visit_%s' % self.__visit_name__)(self, **kw)"
+    
+        env = locals().copy()
+        exec func_text in env
+        cls._compiler_dispatch = env['_compiler_dispatch']
+        
         super(_FigureVisitName, cls).__init__(clsname, bases, dict)
 
 class ClauseElement(object):
@@ -1682,6 +1696,7 @@ class FromClause(Selectable):
     named_with_column = False
     _hide_froms = []
     quote = None
+    schema = None
 
     def _get_from_objects(self, **modifiers):
         return []
@@ -2553,19 +2568,19 @@ class _Label(ColumnElement):
     def __init__(self, name, element, type_=None):
         while isinstance(element, _Label):
             element = element.element
-        self.name = name or "{ANON %d %s}" % (id(self), getattr(element, 'name', 'anon'))
-        self.element = element.self_group(against=operators.as_)
-        self.type = sqltypes.to_instance(type_ or getattr(element, 'type', None))
+        self.name = self.key = self._label = name or "{ANON %d %s}" % (id(self), getattr(element, 'name', 'anon'))
+        self._element = element
+        self._type = type_
         self.quote = element.quote
-
-    @property
-    def key(self):
-        return self.name
-
-    @property
-    def _label(self):
-        return self.name
-
+    
+    @util.memoized_property
+    def type(self):
+        return sqltypes.to_instance(self._type or getattr(element, 'type', None))
+        
+    @util.memoized_property
+    def element(self):
+        return self._element.self_group(against=operators.as_)
+        
     def _proxy_attr(name):
         get = attrgetter(name)
         def attr(self):
@@ -2693,7 +2708,7 @@ class TableClause(_Immutable, FromClause):
     """
 
     named_with_column = True
-
+    
     def __init__(self, name, *columns):
         super(TableClause, self).__init__()
         self.name = self.fullname = name

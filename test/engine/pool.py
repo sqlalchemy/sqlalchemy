@@ -29,6 +29,8 @@ class MockConnection(object):
     def cursor(self):
         return MockCursor()
 class MockCursor(object):
+    def execute(self, *args, **kw):
+        pass
     def close(self):
         pass
 mock_dbapi = MockDBAPI()

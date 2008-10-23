@@ -439,12 +439,13 @@ class _ConnectionFairy(object):
         self._connection_record = None
 
 class _CursorFairy(object):
-    __slots__ = '__parent', 'cursor'
+    __slots__ = '__parent', 'cursor', 'execute'
 
     def __init__(self, parent, cursor):
         self.__parent = parent
         self.cursor = cursor
-
+        self.execute = cursor.execute
+        
     def invalidate(self, e=None):
         self.__parent.invalidate(e=e)
 

@@ -260,7 +260,6 @@ class DefaultExecutionContext(base.ExecutionContext):
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_REGEXP.match(statement)
 
-
     def create_cursor(self):
         return self._connection.connection.cursor()
 
@@ -287,7 +286,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             return self._rowcount
         else:
             return self.cursor.rowcount
-
+        
     def supports_sane_rowcount(self):
         return self.dialect.supports_sane_rowcount
 

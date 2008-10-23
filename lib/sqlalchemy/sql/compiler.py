@@ -109,6 +109,22 @@ FUNCTIONS = {
     functions.user: 'USER'
 }
 
+
+class _CompileLabel(object):
+    """lightweight label object which acts as an expression._Label."""
+
+    __metaclass__ = sql._FigureVisitName
+    __visit_name__ = 'label'
+    __slots__ = 'element', 'name'
+    
+    def __init__(self, col, name):
+        self.element = col
+        self.name = name
+        
+    @property
+    def quote(self):
+        return self.element.quote
+
 class DefaultCompiler(engine.Compiled):
     """Default implementation of Compiled.
 
@@ -175,9 +191,7 @@ class DefaultCompiler(engine.Compiled):
         self.string = self.process(self.statement)
 
     def process(self, obj, **kwargs):
-        meth = getattr(self, "visit_%s" % obj.__visit_name__, None)
-        if meth:
-            return meth(obj, **kwargs)
+        return obj._compiler_dispatch(self, **kwargs)
 
     def is_subquery(self):
         return self.stack and len(self.stack) > 1 and self.stack[-1].get('from')
@@ -243,8 +257,8 @@ class DefaultCompiler(engine.Compiled):
 
         if result_map is not None:
             result_map[name.lower()] = (name, (column, ), column.type)
-
-        if getattr(column, "is_literal", False):
+        
+        if column.is_literal:
             name = self.escape_literal_column(name)
         else:
             name = self.preparer.quote(name, column.quote)
@@ -252,7 +266,7 @@ class DefaultCompiler(engine.Compiled):
         if column.table is None or not column.table.named_with_column:
             return name
         else:
-            if getattr(column.table, 'schema', None):
+            if column.table.schema:
                 schema_prefix = self.preparer.quote(column.table.schema, column.table.quote_schema) + '.'
             else:
                 schema_prefix = ''
@@ -432,8 +446,8 @@ class DefaultCompiler(engine.Compiled):
         if isinstance(column, sql._Label):
             return column
 
-        if select.use_labels and getattr(column, '_label', None):
-            return column.label(column._label)
+        if select.use_labels and column._label:
+            return _CompileLabel(column, column._label)
 
         if \
             asfrom and \
@@ -441,9 +455,9 @@ class DefaultCompiler(engine.Compiled):
             not column.is_literal and \
             column.table is not None and \
             not isinstance(column.table, sql.Select):
-            return column.label(column.name)
+            return _CompileLabel(column, column.name)
         elif not isinstance(column, (sql._UnaryExpression, sql._TextClause, sql._BindParamClause)) and (not hasattr(column, 'name') or isinstance(column, sql._Function)):
-            return column.label(column.anon_label)
+            return _CompileLabel(column, column.anon_label)
         else:
             return column
 

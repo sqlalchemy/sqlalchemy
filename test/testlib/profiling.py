@@ -60,7 +60,6 @@ def profiled(target=None, **target_opts):
                     stats.print_stats(limit)
                 else:
                     stats.print_stats()
-
             os.unlink(filename)
             return result
         return _function_named(profiled, fn.__name__)
@@ -116,7 +115,7 @@ def function_call_count(count=None, versions={}, variance=0.05):
                 if testlib.config.options.verbose:
                     stats.sort_stats('calls', 'cumulative')
                     stats.print_stats()
-
+                    #stats.print_callers()
                 deviance = int(count * variance)
                 if (calls < (count - deviance) or
                     calls > (count + deviance)):
