@@ -90,6 +90,8 @@ As an alternative to `sessionmaker()`, `create_session()` is a function which ca
 
 Configurational arguments accepted by `sessionmaker()` and `create_session()` are the same as that of the `Session` class itself, and are described at [docstrings_sqlalchemy.orm_modfunc_sessionmaker](rel:docstrings_sqlalchemy.orm_modfunc_sessionmaker).
 
+Note that the defaults of `create_session()` are the opposite of that of `sessionmaker()`: autoflush and expire_on_commit are False, autocommit is True. It is recommended to use the `sessionmaker()` function instead of `create_session()`. `create_session()` is used to get a session with no automation turned on and is useful for testing.
+
 ## Using the Session 
 
 ### Quickie Intro to Object States {@name=states}
