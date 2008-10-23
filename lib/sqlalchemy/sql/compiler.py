@@ -194,7 +194,7 @@ class DefaultCompiler(engine.Compiled):
         return obj._compiler_dispatch(self, **kwargs)
 
     def is_subquery(self):
-        return self.stack and len(self.stack) > 1 and self.stack[-1].get('from')
+        return len(self.stack) > 1
 
     def construct_params(self, params=None):
         """return a dictionary of bind parameter keys and values"""
@@ -342,6 +342,8 @@ class DefaultCompiler(engine.Compiled):
         return self.functions.get(func.__class__, self.functions.get(func.name, func.name + "%(expr)s"))
 
     def visit_compound_select(self, cs, asfrom=False, parens=True, **kwargs):
+        entry = self.stack and self.stack[-1] or {}
+        self.stack.append({'from':entry.get('from', None), 'iswrapper':True})
 
         text = string.join((self.process(c, asfrom=asfrom, parens=False, compound_index=i)
                             for i, c in enumerate(cs.selects)),
@@ -353,6 +355,7 @@ class DefaultCompiler(engine.Compiled):
         text += self.order_by_clause(cs)
         text += (cs._limit is not None or cs._offset is not None) and self.limit_clause(cs) or ""
 
+        self.stack.pop(-1)
         if asfrom and parens:
             return "(" + text + ")"
         else:
