@@ -1,5 +1,6 @@
 -*- coding: utf-8; fill-column: 68 -*-
 
+
 =======
 CHANGES
 =======
@@ -60,6 +61,11 @@ CHANGES
     - Wrote a docstring for Oracle dialect.  Apparently that
       Ohloh "few source code comments" label is starting to sting
       :).
+
+    - Setting the auto_convert_lobs to False on create_engine()
+      will also instruct the OracleBinary type to return the
+      cx_oracle LOB object unchanged.
+
 0.5.0rc2
 ========
 - orm

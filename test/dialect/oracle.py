@@ -3,6 +3,7 @@ from sqlalchemy import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import oracle
 from testlib import *
+from testlib.testing import eq_
 from testlib.engines import testing_engine
 import os
 
@@ -311,6 +312,19 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             testing.db.execute("DROP TABLE Z_TEST")
 
+    def test_raw_lobs(self):
+        engine = testing_engine(options=dict(auto_convert_lobs=False))
+        metadata = MetaData()
+        t = Table("z_test", metadata, Column('id', Integer, primary_key=True), 
+                 Column('data', Text), Column('bindata', Binary))
+        t.create(engine)
+        try:
+            engine.execute(t.insert(), id=1, data='this is text', bindata='this is binary')
+            row = engine.execute(t.select()).fetchone()
+            eq_(row['data'].read(), 'this is text')
+            eq_(row['bindata'].read(), 'this is binary')
+        finally:
+            t.drop(engine)
 class BufferedColumnTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 

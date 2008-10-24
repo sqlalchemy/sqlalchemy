@@ -81,10 +81,7 @@ The conversion of LOB objects by this dialect is unique in SQLAlchemy in that it
 for all statement executions, even plain string-based statements for which SQLA has no awareness
 of result typing.  This is so that calls like fetchmany() and fetchall() can work in all cases
 without raising cursor errors.  The conversion of LOB in all cases, as well as the "prefetch"
-of LOB objects, can be disabled using auto_convert_lobs=False.  However, OracleBinary type 
-objects will still issue the conversion of LOBs upon access - use a string-based or otherwise
-untyped select() construct, or a custom Binary type, to retrieve LOB objects directly in this case.
-A future release may include a flag on OracleBinary to further disable LOB conversion at that level.
+of LOB objects, can be disabled using auto_convert_lobs=False.  
 
 LIMIT/OFFSET Support
 
@@ -207,6 +204,8 @@ class OracleText(sqltypes.Text):
 
     def result_processor(self, dialect):
         super_process = super(OracleText, self).result_processor(dialect)
+        if not dialect.auto_convert_lobs:
+            return super_process
         lob = dialect.dbapi.LOB
         def process(value):
             if isinstance(value, lob):
@@ -237,6 +236,8 @@ class OracleBinary(sqltypes.Binary):
         return None
 
     def result_processor(self, dialect):
+        if not dialect.auto_convert_lobs:
+            return None
         lob = dialect.dbapi.LOB
         def process(value):
             if isinstance(value, lob):
