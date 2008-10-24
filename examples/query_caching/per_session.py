@@ -18,8 +18,6 @@ class CachingQuery(Query):
     def with_cache_key(self, cachekey):
         self.cachekey = cachekey
 
-    # single point of object loading is __iter__().  objects in the cache are not associated
-    # with a session and are never returned directly; only merged copies.
     def __iter__(self):
         if hasattr(self, 'cachekey'):
             try:

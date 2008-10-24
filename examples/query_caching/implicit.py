@@ -7,8 +7,6 @@ from sqlalchemy.orm.session import Session
 
 class CachingQuery(Query):
     
-    # single point of object loading is __iter__().  objects in the cache are not associated
-    # with a session and are never returned directly; only merged copies.
     def __iter__(self):
         try:
             cache = self.session._cache
