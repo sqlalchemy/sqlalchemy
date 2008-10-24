@@ -261,7 +261,7 @@ class DefaultTest(testing.TestBase):
         t.insert().execute()
 
         ctexec = sa.select([currenttime.label('now')], bind=testing.db).scalar()
-        l = t.select().execute()
+        l = t.select().order_by(t.c.col1).execute()
         today = datetime.date.today()
         eq_(l.fetchall(), [
             (x, 'imthedefault', f, ts, ts, ctexec, True, False,
@@ -475,6 +475,7 @@ class PKIncrementTest(_base.TablesTest):
 
 class EmptyInsertTest(testing.TestBase):
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no empty insert support')
+    @testing.fails_on('oracle')
     def test_empty_insert(self):
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,

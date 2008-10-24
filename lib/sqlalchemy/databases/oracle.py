@@ -3,7 +3,119 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
+"""Support for the Oracle database.
 
+Oracle version 8 through current (11g at the time of this writing) are supported.
+
+Driver
+
+The Oracle dialect uses the cx_oracle driver, available at 
+http://python.net/crew/atuining/cx_Oracle/ .   The dialect has several behaviors 
+which are specifically tailored towards compatibility with this module.
+
+Connecting
+
+Connecting with create_engine() uses the standard URL approach of 
+oracle://user:pass@host:port/dbname[?key=value&key=value...].  If dbname is present, the 
+host, port, and dbname tokens are converted to a TNS name using the cx_oracle 
+makedsn() function.  Otherwise, the host token is taken directly as a TNS name.
+
+Additional arguments which may be specified either as query string arguments on the
+URL, or as keyword arguments to create_engine() include:
+
+   mode - This is given the string value of SYSDBA or SYSOPER, or alternatively an
+   integer value.  This value is only available as a URL query string argument.
+
+   allow_twophase - enable two-phase transactions.  This feature is not yet supported.
+
+   threaded - defaults to True with SQLAlchemy, enable multithreaded access to 
+   cx_oracle connections.
+
+   use_ansi - defaults to True, use ANSI JOIN constructs (see the section on Oracle 8).
+
+   auto_convert_lobs - defaults to True, see the section on LOB objects.
+
+   auto_setinputsizes - the cx_oracle.setinputsizes() call is issued for all bind parameters.
+   This is required for LOB datatypes but can be disabled to reduce overhead.
+
+   optimize_limits - defaults to False, see the section on LIMIT/OFFSET.
+
+Auto Increment Behavior
+
+SQLAlchemy Table objects which include integer primary keys are usually assumed to have
+"autoincrementing" behavior, meaning they can generate their own primary key values upon
+INSERT.  Since Oracle has no "autoincrement" feature, SQLAlchemy relies upon sequences 
+to produce these values.   With the Oracle dialect, *a sequence must always be explicitly
+specified to enable autoincrement*.  This is divergent with the majority of documentation 
+examples which assume the usage of an autoincrement-capable database.   To specify sequences,
+use the sqlalchemy.schema.Sequence object which is passed to a Column construct::
+
+  t = Table('mytable', metadata, 
+        Column('id', Integer, Sequence('id_seq'), primary_key=True),
+        Column(...), ...
+  )
+
+This step is also required when using table reflection, i.e. autoload=True:
+
+  t = Table('mytable', metadata, 
+        Column('id', Integer, Sequence('id_seq'), primary_key=True),
+        autoload=True
+  ) 
+
+LOB Objects
+
+cx_oracle presents some challenges when fetching LOB objects.  A LOB object in a result set
+is presented by cx_oracle as a cx_oracle.LOB object which has a read() method.  By default, 
+SQLAlchemy converts these LOB objects into Python strings.  This is for two reasons.  First,
+the LOB object requires an active cursor association, meaning if you were to fetch many rows
+at once such that cx_oracle had to go back to the database and fetch a new batch of rows,
+the LOB objects in the already-fetched rows are now unreadable and will raise an error. 
+SQLA "pre-reads" all LOBs so that their data is fetched before further rows are read.  
+The size of a "batch of rows" is controlled by the cursor.arraysize value, which SQLAlchemy
+defaults to 50 (cx_oracle normally defaults this to one).  
+
+Secondly, the LOB object is not a standard DBAPI return value so SQLAlchemy seeks to 
+"normalize" the results to look more like other DBAPIs.
+
+The conversion of LOB objects by this dialect is unique in SQLAlchemy in that it takes place
+for all statement executions, even plain string-based statements for which SQLA has no awareness
+of result typing.  This is so that calls like fetchmany() and fetchall() can work in all cases
+without raising cursor errors.  The conversion of LOB in all cases, as well as the "prefetch"
+of LOB objects, can be disabled using auto_convert_lobs=False.  However, OracleBinary type 
+objects will still issue the conversion of LOBs upon access - use a string-based or otherwise
+untyped select() construct, or a custom Binary type, to retrieve LOB objects directly in this case.
+A future release may include a flag on OracleBinary to further disable LOB conversion at that level.
+
+LIMIT/OFFSET Support
+
+Oracle has no support for the LIMIT or OFFSET keywords.  Whereas previous versions of SQLAlchemy
+used the "ROW NUMBER OVER..." construct to simulate LIMIT/OFFSET, SQLAlchemy 0.5 now uses 
+a wrapped subquery approach in conjunction with ROWNUM.  The exact methodology is taken from
+http://www.oracle.com/technology/oramag/oracle/06-sep/o56asktom.html .  Note that the 
+"FIRST ROWS()" optimization keyword mentioned is not used by default, as the user community felt
+this was stepping into the bounds of optimization that is better left on the DBA side, but this
+prefix can be added by enabling the optimize_limits=True flag on create_engine().
+
+Two Phase Transaction Support
+
+Two Phase transactions are partially implemented using XA transactions but at the time of this
+writing have not been successfully tested.  The author of cx_oracle also stated that he's never
+seen them work so this may be a cx_oracle issue.
+
+Oracle 8 Compatibility
+
+When using Oracle 8, a "use_ansi=False" flag is available which converts all
+JOIN phrases into the WHERE clause, and in the case of LEFT OUTER JOIN
+makes use of Oracle's (+) operator.
+
+Synonym/DBLINK Reflection
+
+When using reflection with Table objects, the dialect can optionally search for tables
+indicated by synonyms that reference DBLINK-ed tables by passing the flag 
+oracle_resolve_synonyms=True as a keyword argument to the Table construct.  If DBLINK 
+is not in use this flag should be left off.
+
+"""
 
 import datetime, random, re
 
@@ -247,12 +359,13 @@ class OracleDialect(default.DefaultDialect):
     supports_pk_autoincrement = False
     default_paramstyle = 'named'
 
-    def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, arraysize=50, **kwargs):
+    def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, allow_twophase=True, optimize_limits=False, arraysize=50, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         self.use_ansi = use_ansi
         self.threaded = threaded
         self.arraysize = arraysize
         self.allow_twophase = allow_twophase
+        self.optimize_limits = optimize_limits
         self.supports_timestamp = self.dbapi is None or hasattr(self.dbapi, 'TIMESTAMP' )
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
@@ -689,7 +802,7 @@ class OracleCompiler(compiler.DefaultCompiler):
 
                 # Wrap the middle select and add the hint
                 limitselect = sql.select([c for c in select.c])
-                if select._limit:
+                if select._limit and self.dialect.optimize_limits:
                     limitselect = limitselect.prefix_with("/*+ FIRST_ROWS(%d) */" % select._limit)
 
                 limitselect._oracle_visit = True

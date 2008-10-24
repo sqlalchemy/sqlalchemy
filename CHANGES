@@ -52,6 +52,14 @@ CHANGES
       against self. More portable, but breaks with stored
       procedures that aren't pure functions.
 
+- oracle
+    - Removed FIRST_ROWS() optimize flag when using LIMIT/OFFSET,
+      can be reenabled with optimize_limits=True create_engine()
+      flag.  [ticket:536]
+
+    - Wrote a docstring for Oracle dialect.  Apparently that
+      Ohloh "few source code comments" label is starting to sting
+      :).
 0.5.0rc2
 ========
 - orm
