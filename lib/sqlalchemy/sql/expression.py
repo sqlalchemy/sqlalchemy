@@ -1951,6 +1951,10 @@ class _TextClause(ClauseElement):
     _bind_params_regex = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
     supports_execution = True
 
+    @property
+    def _select_iterable(self):
+        return (self,)
+        
     _hide_froms = []
 
     def __init__(self, text = "", bind=None, bindparams=None, typemap=None, autocommit=False):
