@@ -1,11 +1,11 @@
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql.expression import (
-    ClauseList, _FigureVisitName, _Function, _literal_as_binds, text
+    ClauseList, _Function, _literal_as_binds, text
     )
 from sqlalchemy.sql import operators
+from sqlalchemy.sql.visitors import VisitableType
 
-
-class _GenericMeta(_FigureVisitName):
+class _GenericMeta(VisitableType):
     def __init__(cls, clsname, bases, dict):
         cls.__visit_name__ = 'function'
         type.__init__(cls, clsname, bases, dict)

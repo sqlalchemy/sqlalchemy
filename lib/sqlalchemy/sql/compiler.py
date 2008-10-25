@@ -20,7 +20,7 @@ is otherwise internal to SQLAlchemy.
 
 import string, re
 from sqlalchemy import schema, engine, util, exc
-from sqlalchemy.sql import operators, functions, util as sql_util
+from sqlalchemy.sql import operators, functions, util as sql_util, visitors
 from sqlalchemy.sql import expression as sql
 
 RESERVED_WORDS = set([
@@ -110,10 +110,9 @@ FUNCTIONS = {
 }
 
 
-class _CompileLabel(object):
+class _CompileLabel(visitors.Visitable):
     """lightweight label object which acts as an expression._Label."""
 
-    __metaclass__ = sql._FigureVisitName
     __visit_name__ = 'label'
     __slots__ = 'element', 'name'
     

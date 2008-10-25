@@ -40,10 +40,9 @@ __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
            'DefaulClause', 'FetchedValue', 'ColumnDefault', 'DDL']
 
 
-class SchemaItem(object):
+class SchemaItem(visitors.Visitable):
     """Base class for items that define a database schema."""
 
-    __metaclass__ = expression._FigureVisitName
     quote = None
 
     def _init_items(self, *args):
@@ -87,7 +86,7 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
 
-class _TableSingleton(expression._FigureVisitName):
+class _TableSingleton(visitors.VisitableType):
     """A metaclass used by the ``Table`` object to provide singleton behavior."""
 
     def __call__(self, name, metadata, *args, **kwargs):
@@ -2050,3 +2049,4 @@ def _bind_or_error(schemaitem):
                'assign %s to enable implicit execution.') % (item, bindable)
         raise exc.UnboundExecutionError(msg)
     return bind
+
