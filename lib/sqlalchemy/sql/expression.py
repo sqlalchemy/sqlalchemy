@@ -876,11 +876,7 @@ def _compound_select(keyword, *selects, **kwargs):
     return CompoundSelect(keyword, *selects, **kwargs)
 
 def _is_literal(element):
-    global _is_literal
-    from sqlalchemy import schema
-    def _is_literal(element):
-        return not isinstance(element, (ClauseElement, Operators, schema.SchemaItem))
-    return _is_literal(element)
+    return not isinstance(element, ClauseElement)
 
 def _from_objects(*elements, **kwargs):
     return itertools.chain(*[element._get_from_objects(**kwargs) for element in elements])
@@ -894,7 +890,7 @@ def _labeled(element):
 def _literal_as_text(element):
     if hasattr(element, '__clause_element__'):
         return element.__clause_element__()
-    elif _is_literal(element):
+    elif not isinstance(element, ClauseElement):
         return _TextClause(unicode(element))
     else:
         return element
@@ -902,7 +898,7 @@ def _literal_as_text(element):
 def _literal_as_column(element):
     if hasattr(element, '__clause_element__'):
         return element.__clause_element__()
-    elif _is_literal(element):
+    elif not isinstance(element, ClauseElement):
         return literal_column(str(element))
     else:
         return element
@@ -910,7 +906,7 @@ def _literal_as_column(element):
 def _literal_as_binds(element, name=None, type_=None):
     if hasattr(element, '__clause_element__'):
         return element.__clause_element__()
-    elif _is_literal(element):
+    elif not isinstance(element, ClauseElement):
         if element is None:
             return null()
         else:
@@ -921,7 +917,7 @@ def _literal_as_binds(element, name=None, type_=None):
 def _no_literals(element):
     if hasattr(element, '__clause_element__'):
         return element.__clause_element__()
-    elif _is_literal(element):
+    elif not isinstance(element, ClauseElement):
         raise exc.ArgumentError("Ambiguous literal: %r.  Use the 'text()' function to indicate a SQL expression literal, or 'literal()' to indicate a bound value." % element)
     else:
         return element
@@ -1486,7 +1482,7 @@ class _CompareMixin(ColumnOperators):
             return other
         elif hasattr(other, '__clause_element__'):
             return other.__clause_element__()
-        elif _is_literal(other):
+        elif not isinstance(other, ClauseElement):
             return self._bind_param(other)
         else:
             return other
@@ -1524,6 +1520,10 @@ class ColumnElement(ClauseElement, _CompareMixin):
     foreign_keys = []
     quote = None
     
+    @property
+    def _select_iterable(self):
+        return (self, )
+        
     @property
     def base_columns(self):
         if not hasattr(self, '_base_columns'):
@@ -1563,7 +1563,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         selectable.columns[name] = co
         return co
 
-    @property
+    @util.memoized_property
     def anon_label(self):
         """provides a constant 'anonymous label' for this ColumnElement.
 
@@ -1577,9 +1577,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         expressions and function calls.
         """
 
-        if not hasattr(self, '_ColumnElement__anon_label'):
-            self.__anon_label = "{ANON %d %s}" % (id(self), getattr(self, 'name', 'anon'))
-        return self.__anon_label
+        return "{ANON %d %s}" % (id(self), getattr(self, 'name', 'anon'))
 
 class ColumnCollection(util.OrderedProperties):
     """An ordered dictionary that stores a list of ColumnElement
@@ -1688,7 +1686,7 @@ class ColumnSet(util.OrderedSet):
 
 class Selectable(ClauseElement):
     """mark a class as being selectable"""
-
+    
 class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM`` clause of a ``SELECT`` statement."""
 
@@ -1814,7 +1812,7 @@ class FromClause(Selectable):
                 return get(self)
         return property(attr)
     
-    columns = c = _expr_attr_func('_columns')
+    columns = c = _select_iterable = _expr_attr_func('_columns')
     primary_key = _expr_attr_func('_primary_key')
     foreign_keys = _expr_attr_func('_foreign_keys')
 
@@ -2014,17 +2012,17 @@ class ClauseList(ClauseElement):
     __visit_name__ = 'clauselist'
 
     def __init__(self, *clauses, **kwargs):
-        self.clauses = []
         self.operator = kwargs.pop('operator', operators.comma_op)
         self.group = kwargs.pop('group', True)
         self.group_contents = kwargs.pop('group_contents', True)
-        for c in clauses:
-            if c is None:
-                continue
-            self.append(c)
+        if self.group_contents:
+            self.clauses = [_literal_as_text(clause).self_group(against=self.operator) for clause in clauses if clause is not None]
+        else:
+            self.clauses = [_literal_as_text(clause) for clause in clauses if clause is not None]
 
     def __iter__(self):
         return iter(self.clauses)
+
     def __len__(self):
         return len(self.clauses)
 
@@ -2645,11 +2643,11 @@ class _ColumnClause(_Immutable, ColumnElement):
         self.__label = None
         self.is_literal = is_literal
 
-    @property
+    @util.memoized_property
     def description(self):
         return self.name.encode('ascii', 'backslashreplace')
 
-    @property
+    @util.memoized_property
     def _label(self):
         if self.is_literal:
             return None
@@ -2767,8 +2765,8 @@ class _SelectBaseMixin(object):
         self._offset = offset
         self._bind = bind
 
-        self._order_by_clause = ClauseList(*util.to_list(order_by, []))
-        self._group_by_clause = ClauseList(*util.to_list(group_by, []))
+        self._order_by_clause = ClauseList(*util.to_list(order_by) or [])
+        self._group_by_clause = ClauseList(*util.to_list(group_by) or [])
 
     def as_scalar(self):
         """return a 'scalar' representation of this selectable, which can be used
@@ -3076,16 +3074,12 @@ class Select(_SelectBaseMixin, FromClause):
 
     @property
     def inner_columns(self):
-        """an iteratorof all ColumnElement expressions which would
+        """an iterator of all ColumnElement expressions which would
         be rendered into the columns clause of the resulting SELECT statement.
 
         """
-        for c in self._raw_columns:
-            if isinstance(c, Selectable):
-                for co in c.columns:
-                    yield co
-            else:
-                yield c
+        
+        return itertools.chain(*[c._select_iterable for c in self._raw_columns])
 
     def is_derived_from(self, fromclause):
         if self in set(fromclause._cloned_set):
