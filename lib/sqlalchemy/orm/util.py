@@ -379,7 +379,7 @@ class _ORMJoin(expression.Join):
                 else:
                     onclause = pj
                 self._target_adapter = target_adapter
-
+                
         expression.Join.__init__(self, left, right, onclause, isouter)
 
     def join(self, right, onclause=None, isouter=False):

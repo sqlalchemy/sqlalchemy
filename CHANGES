@@ -23,6 +23,12 @@ CHANGES
       the "please specify primaryjoin" message when determining
       join condition.
      
+    - When using Query.join() with an explicit clause for the 
+      ON clause, the clause will be aliased in terms of the left
+      side of the join, allowing scenarios like query(Source).
+      from_self().join((Dest, Source.id==Dest.source_id)) to work
+      properly.
+      
     - polymorphic_union() function respects the "key" of each 
       Column if they differ from the column's name.
 

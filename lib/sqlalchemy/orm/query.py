@@ -885,8 +885,12 @@ class Query(object):
                     onclause = right_adapter.traverse(onclause)
 
             if prop:
+                # MapperProperty based onclause
                 onclause = prop
-
+            else:
+                # ClauseElement based onclause
+                onclause = self._adapt_clause(onclause, False, True)
+                
             clause = orm_join(clause, right_entity, onclause, isouter=outerjoin)
             if alias_criterion:
                 self._filter_aliases = right_adapter

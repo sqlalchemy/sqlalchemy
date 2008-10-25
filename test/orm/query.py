@@ -976,6 +976,24 @@ class JoinTest(QueryTest):
             [('jack',)]
         )
 
+        # explicit onclause with from_self(), means
+        # the onclause must be aliased against the query's custom
+        # FROM object
+        self.assertEquals(
+            sess.query(User).offset(2).from_self().join(
+                (Order, User.id==Order.user_id)
+            ).all(),
+            [User(name='fred')]
+        )
+
+        # same with an explicit select_from()
+        self.assertEquals(
+            sess.query(User).select_from(select([users]).offset(2).alias()).join(
+                (Order, User.id==Order.user_id)
+            ).all(),
+            [User(name='fred')]
+        )
+        
         
     def test_aliased_classes(self):
         sess = create_session()
