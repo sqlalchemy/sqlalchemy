@@ -38,6 +38,10 @@ CHANGES
       a lazy-load later on.  Backref events still initialize 
       attrbutes and collections for pending instances.
       [ticket:1202]
+    
+    - InstanceState object now removes circular references to 
+      itself upon disposal to keep it outside of cyclic garbage
+      collection.
       
 - sql
     - Further simplified SELECT compilation and its relationship

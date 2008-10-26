@@ -787,7 +787,7 @@ class Session(object):
 
         """
         for state in self.identity_map.all_states() + list(self._new):
-            state.dispose()
+            state.detach()
 
         self.identity_map = self._identity_cls()
         self._new = {}
@@ -1012,11 +1012,11 @@ class Session(object):
     def _expunge_state(self, state):
         if state in self._new:
             self._new.pop(state)
-            state.dispose()
+            state.detach()
         elif self.identity_map.contains_state(state):
             self.identity_map.discard(state)
             self._deleted.pop(state, None)
-            state.dispose()
+            state.detach()
 
     def _register_newly_persistent(self, state):
         mapper = _state_mapper(state)

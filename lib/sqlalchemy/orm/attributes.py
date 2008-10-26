@@ -794,13 +794,13 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
 class InstanceState(object):
     """tracks state information at the instance level."""
 
-    _cleanup = None
     session_id = None
     key = None
     runid = None
     expired_attributes = EMPTY_SET
     insert_order = None
-
+    dict = None
+    
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
         self.manager = manager
@@ -813,10 +813,22 @@ class InstanceState(object):
         self.pending = {}
         self.expired = False
 
-    def dispose(self):
+    def detach(self):
         if self.session_id:
             del self.session_id
 
+    def dispose(self):
+        if self.session_id:
+            del self.session_id
+        del self.dict
+        del self.obj
+    
+    def _cleanup(self, ref):
+        self.dispose()
+    
+    def obj(self):
+        return None
+            
     @property
     def sort_key(self):
         return self.key and self.key[1] or self.insert_order
@@ -960,6 +972,9 @@ class InstanceState(object):
             if key not in self.committed_state and key not in self.dict)
 
     def expire_attributes(self, attribute_names):
+        if self.dict is None:
+            return
+            
         self.expired_attributes = set(self.expired_attributes)
 
         if attribute_names is None:
