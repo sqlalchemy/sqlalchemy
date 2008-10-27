@@ -7,74 +7,75 @@ CHANGES
 0.5.0rc3
 ========
 - orm
-    - "not equals" comparisons of simple many-to-one relation
-      to an instance will not drop into an EXISTS clause
-      and will compare foreign key columns instead.
-  
-    - removed not-really-working use cases of comparing 
-      a collection to an iterable.  Use contains() to test
-      for collection membership.
+    - "not equals" comparisons of simple many-to-one relation to an
+      instance will not drop into an EXISTS clause and will compare
+      foreign key columns instead.
 
-    - Improved weakref identity map memory management to no longer 
-      require mutexing, resurrects garbage collected instance
-      on a lazy basis for an InstanceState with pending changes.
+    - Removed not-really-working use cases of comparing a collection
+      to an iterable.  Use contains() to test for collection
+      membership.
+
+    - Improved weakref identity map memory management to no longer
+      require mutexing, resurrects garbage collected instance on a
+      lazy basis for an InstanceState with pending changes.
 
     - relation() won't hide unrelated ForeignKey errors inside of
-      the "please specify primaryjoin" message when determining
-      join condition.
-     
-    - When using Query.join() with an explicit clause for the 
-      ON clause, the clause will be aliased in terms of the left
-      side of the join, allowing scenarios like query(Source).
+      the "please specify primaryjoin" message when determining join
+      condition.
+
+    - When using Query.join() with an explicit clause for the ON
+      clause, the clause will be aliased in terms of the left side
+      of the join, allowing scenarios like query(Source).
       from_self().join((Dest, Source.id==Dest.source_id)) to work
       properly.
-      
-    - polymorphic_union() function respects the "key" of each 
-      Column if they differ from the column's name.
 
-    - Added more granularity to internal attribute access, such 
-      that cascade and flush operations will not initialize
-      unloaded attributes and collections, leaving them intact for
-      a lazy-load later on.  Backref events still initialize 
-      attrbutes and collections for pending instances.
-      [ticket:1202]
-    
-    - InstanceState object now removes circular references to 
-      itself upon disposal to keep it outside of cyclic garbage
-      collection.
-      
+    - polymorphic_union() function respects the "key" of each Column
+      if they differ from the column's name.
+
+    - Added more granularity to internal attribute access, such that
+      cascade and flush operations will not initialize unloaded
+      attributes and collections, leaving them intact for a
+      lazy-load later on.  Backref events still initialize attrbutes
+      and collections for pending instances.  [ticket:1202]
+
+    - InstanceState object now removes circular references to itself
+      upon disposal to keep it outside of cyclic garbage collection.
+
 - sql
-    - Further simplified SELECT compilation and its relationship
-      to result row processing.
+    - Further simplified SELECT compilation and its relationship to
+      result row processing.
 
     - Direct execution of a union() construct will properly set up
       result-row processing. [ticket:1194]
 
     - The internal notion of an "OID" or "ROWID" column has been
       removed.  It's basically not used by any dialect, and the
-      possibility of its usage with psycopg2's cursor.lastrowid
-      is basically gone now that INSERT..RETURNING is available.
-  
-    - Removed "default_order_by()" method on all FromClause
-      objects.
+      possibility of its usage with psycopg2's cursor.lastrowid is
+      basically gone now that INSERT..RETURNING is available.
+
+    - Removed "default_order_by()" method on all FromClause objects.
 
     - Slightly changed behavior of IN operator for comparing to
       empty collections. Now results in inequality comparison
-      against self. More portable, but breaks with stored
-      procedures that aren't pure functions.
+      against self. More portable, but breaks with stored procedures
+      that aren't pure functions.
 
 - oracle
     - Removed FIRST_ROWS() optimize flag when using LIMIT/OFFSET,
       can be reenabled with optimize_limits=True create_engine()
       flag.  [ticket:536]
 
-    - Wrote a docstring for Oracle dialect.  Apparently that
-      Ohloh "few source code comments" label is starting to sting
-      :).
+    - Wrote a docstring for Oracle dialect.  Apparently that Ohloh
+      "few source code comments" label is starting to sting :).
 
-    - Setting the auto_convert_lobs to False on create_engine()
-      will also instruct the OracleBinary type to return the
-      cx_oracle LOB object unchanged.
+    - Setting the auto_convert_lobs to False on create_engine() will
+      also instruct the OracleBinary type to return the cx_oracle
+      LOB object unchanged.
+
+- mysql
+    - Fixed foreign key reflection in the edge case where a Table's
+      explicit schema= is the same as the schema (database) the
+      connection is attached to.
 
 0.5.0rc2
 ========

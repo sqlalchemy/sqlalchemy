@@ -2334,10 +2334,19 @@ class MySQLSchemaReflector(object):
     def _set_constraints(self, table, constraints, connection, only):
         """Apply constraints to a ``Table``."""
 
+        default_schema = None
+
         for spec in constraints:
             # only FOREIGN KEYs
             ref_name = spec['table'][-1]
             ref_schema = len(spec['table']) > 1 and spec['table'][-2] or None
+
+            if not ref_schema:
+                if default_schema is None:
+                    default_schema = connection.dialect.get_default_schema_name(
+                        connection)
+                if table.schema == default_schema:
+                    ref_schema = table.schema
 
             loc_names = spec['local']
             if only and not set(loc_names).issubset(only):

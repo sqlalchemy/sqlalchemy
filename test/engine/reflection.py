@@ -696,19 +696,23 @@ class SchemaTest(TestBase):
         metadata = MetaData(engine)
         table1 = Table('table1', metadata,
                        Column('col1', sa.Integer, primary_key=True),
+                       test_needs_fk=True,
                        schema=schema)
         table2 = Table('table2', metadata,
                        Column('col1', sa.Integer, primary_key=True),
                        Column('col2', sa.Integer,
                               sa.ForeignKey('%s.table1.col1' % schema)),
+                       test_needs_fk=True,
                        schema=schema)
         try:
             metadata.create_all()
             metadata.create_all(checkfirst=True)
+            assert len(metadata.tables) == 2
             metadata.clear()
 
             table1 = Table('table1', metadata, autoload=True, schema=schema)
             table2 = Table('table2', metadata, autoload=True, schema=schema)
+            assert len(metadata.tables) == 2
         finally:
             metadata.drop_all()
 
