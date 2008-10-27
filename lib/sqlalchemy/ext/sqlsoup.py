@@ -322,10 +322,10 @@ Boring tests here.  Nothing of real expository value.
     1
 """
 
-from sqlalchemy import *
+from sqlalchemy import Table, MetaData, join
 from sqlalchemy import schema, sql
-from sqlalchemy.orm import *
-from sqlalchemy.exceptions import *
+from sqlalchemy.orm import scoped_session, sessionmaker, mapper, class_mapper, relation
+from sqlalchemy.exceptions import SQLAlchemyError, InvalidRequestError
 from sqlalchemy.sql import expression
 
 _testsql = """
