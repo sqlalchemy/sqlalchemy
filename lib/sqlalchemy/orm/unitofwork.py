@@ -119,24 +119,20 @@ class UOWTransaction(object):
         # prevents newly loaded objects from being dereferenced during the
         # flush process
         if hashkey in self.attributes:
-            (added, unchanged, deleted, cached_passive) = self.attributes[hashkey]
+            (history, cached_passive) = self.attributes[hashkey]
             # if the cached lookup was "passive" and now we want non-passive, do a non-passive
             # lookup and re-cache
             if cached_passive and not passive:
-                (added, unchanged, deleted) = attributes.get_history(state, key, passive=False)
-                self.attributes[hashkey] = (added, unchanged, deleted, passive)
+                history = attributes.get_history(state, key, passive=False)
+                self.attributes[hashkey] = (history, passive)
         else:
-            (added, unchanged, deleted) = attributes.get_history(state, key, passive=passive)
-            self.attributes[hashkey] = (added, unchanged, deleted, passive)
+            history = attributes.get_history(state, key, passive=passive)
+            self.attributes[hashkey] = (history, passive)
 
-        if added is None or not state.get_impl(key).uses_objects:
-            return (added, unchanged, deleted)
+        if not history or not state.get_impl(key).uses_objects:
+            return history
         else:
-            return (
-                [c is not None and attributes.instance_state(c) or None for c in added],
-                [c is not None and attributes.instance_state(c) or None for c in unchanged],
-                [c is not None and attributes.instance_state(c) or None for c in deleted],
-                )
+            return history.as_state()
 
     def register_object(self, state, isdelete=False, listonly=False, postupdate=False, post_update_cols=None):
         # if object is not in the overall session, do nothing

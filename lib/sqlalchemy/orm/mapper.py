@@ -1148,8 +1148,8 @@ class Mapper(object):
                             params[col._label] = mapper._get_state_attr_by_column(state, col)
                             params[col.key] = params[col._label] + 1
                             for prop in mapper._columntoproperty.values():
-                                (added, unchanged, deleted) = attributes.get_history(state, prop.key, passive=True)
-                                if added:
+                                history = attributes.get_history(state, prop.key, passive=True)
+                                if history.added:
                                     hasdata = True
                         elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col):
                             pass
@@ -1160,18 +1160,18 @@ class Mapper(object):
                                 continue
 
                             prop = mapper._columntoproperty[col]
-                            (added, unchanged, deleted) = attributes.get_history(state, prop.key, passive=True)
-                            if added:
-                                if isinstance(added[0], sql.ClauseElement):
-                                    value_params[col] = added[0]
+                            history = attributes.get_history(state, prop.key, passive=True)
+                            if history.added:
+                                if isinstance(history.added[0], sql.ClauseElement):
+                                    value_params[col] = history.added[0]
                                 else:
-                                    params[col.key] = prop.get_col_value(col, added[0])
+                                    params[col.key] = prop.get_col_value(col, history.added[0])
                                 if col in pks:
-                                    if deleted:
-                                        params[col._label] = deleted[0]
+                                    if history.deleted:
+                                        params[col._label] = history.deleted[0]
                                     else:
                                         # row switch logic can reach us here
-                                        params[col._label] = added[0]
+                                        params[col._label] = history.added[0]
                                 hasdata = True
                             elif col in pks:
                                 params[col._label] = mapper._get_state_attr_by_column(state, col)

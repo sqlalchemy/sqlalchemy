@@ -56,8 +56,8 @@ def source_changes(uowcommit, source, source_mapper, synchronize_pairs):
             prop = source_mapper._get_col_to_prop(l)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
-        (added, unchanged, deleted) = uowcommit.get_attribute_history(source, prop.key, passive=True)
-        if added and deleted:
+        history = uowcommit.get_attribute_history(source, prop.key, passive=True)
+        if history.has_changes():
             return True
     else:
         return False
@@ -68,8 +68,8 @@ def dest_changes(uowcommit, dest, dest_mapper, synchronize_pairs):
             prop = dest_mapper._get_col_to_prop(r)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(True, None, l, dest_mapper, r)
-        (added, unchanged, deleted) = uowcommit.get_attribute_history(dest, prop.key, passive=True)
-        if added and deleted:
+        history = uowcommit.get_attribute_history(dest, prop.key, passive=True)
+        if history.has_changes():
             return True
     else:
         return False

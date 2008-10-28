@@ -32,6 +32,9 @@ CHANGES
     - polymorphic_union() function respects the "key" of each Column
       if they differ from the column's name.
 
+    - Repaired support for "passive-deletes" on a many-to-one
+      relation() with "delete" cascade. [ticket:1183]
+
     - Added more granularity to internal attribute access, such that
       cascade and flush operations will not initialize unloaded
       attributes and collections, leaving them intact for a

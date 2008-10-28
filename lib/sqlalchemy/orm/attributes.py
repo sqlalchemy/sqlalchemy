@@ -511,7 +511,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         else:
             current = self.get(state, passive=passive)
             if current is PASSIVE_NORESULT:
-                return (None, None, None)
+                return HISTORY_BLANK
             else:
                 return History.from_attribute(self, state, current)
 
@@ -590,7 +590,7 @@ class CollectionAttributeImpl(AttributeImpl):
     def get_history(self, state, passive=PASSIVE_OFF):
         current = self.get(state, passive=passive)
         if current is PASSIVE_NORESULT:
-            return (None, None, None)
+            return HISTORY_BLANK
         else:
             return History.from_attribute(self, state, current)
 
@@ -1387,7 +1387,29 @@ class History(tuple):
 
     def __new__(cls, added, unchanged, deleted):
         return tuple.__new__(cls, (added, unchanged, deleted))
-
+    
+    def __nonzero__(self):
+        return self != HISTORY_BLANK
+    
+    def sum(self):
+        return self.added + self.unchanged + self.deleted
+    
+    def non_deleted(self):
+        return self.added + self.unchanged
+    
+    def non_added(self):
+        return self.unchanged + self.deleted
+    
+    def has_changes(self):
+        return bool(self.added or self.deleted)
+        
+    def as_state(self):
+        return History(
+            [c is not None and instance_state(c) or None for c in self.added],
+            [c is not None and instance_state(c) or None for c in self.unchanged],
+            [c is not None and instance_state(c) or None for c in self.deleted],
+        )
+    
     @classmethod
     def from_attribute(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, NEVER_SET)
@@ -1424,6 +1446,7 @@ class History(tuple):
                     deleted = ()
                 return cls([current], (), deleted)
 
+HISTORY_BLANK = History(None, None, None)
 
 class PendingCollection(object):
     """A writable placeholder for an unloaded collection.

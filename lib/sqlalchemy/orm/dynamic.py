@@ -100,7 +100,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         
     def get_history(self, state, passive=False):
         c = self._get_collection_history(state, passive)
-        return (c.added_items, c.unchanged_items, c.deleted_items)
+        return attributes.History(c.added_items, c.unchanged_items, c.deleted_items)
         
     def _get_collection_history(self, state, passive=False):
         if self.key in state.committed_state:

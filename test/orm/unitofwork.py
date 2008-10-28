@@ -694,15 +694,12 @@ class PassiveDeletesTest(_base.MappedTest):
             pass
 
     @testing.resolve_artifact_names
-    def setup_mappers(self):
+    def test_basic(self):
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
             'children':relation(MyOtherClass,
                                 passive_deletes=True,
                                 cascade="all")})
-
-    @testing.resolve_artifact_names
-    def test_basic(self):
         session = create_session()
         mc = MyClass()
         mc.children.append(MyOtherClass())
@@ -721,7 +718,33 @@ class PassiveDeletesTest(_base.MappedTest):
 
         assert mytable.count().scalar() == 0
         assert myothertable.count().scalar() == 0
+    
+    @testing.resolve_artifact_names
+    def test_backwards_pd(self):
+        # the unusual scenario where a trigger or something might be deleting
+        # a many-to-one on deletion of the parent row
+        mapper(MyOtherClass, myothertable, properties={
+            'myclass':relation(MyClass, cascade="all, delete", passive_deletes=True)
+        })
+        mapper(MyClass, mytable)
+        
+        session = create_session()
+        mc = MyClass()
+        mco = MyOtherClass()
+        mco.myclass = mc
+        session.add(mco)
+        session.flush()
 
+        assert mytable.count().scalar() == 1
+        assert myothertable.count().scalar() == 1
+        
+        session.expire(mco, ['myclass'])
+        session.delete(mco)
+        session.flush()
+        
+        assert mytable.count().scalar() == 1
+        assert myothertable.count().scalar() == 0
+        
 class ExtraPassiveDeletesTest(_base.MappedTest):
     __requires__ = ('foreign_keys',)
 
