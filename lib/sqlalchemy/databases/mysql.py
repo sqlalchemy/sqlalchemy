@@ -2216,7 +2216,7 @@ class MySQLSchemaReflector(object):
         name, type_, args, notnull = \
               spec['name'], spec['coltype'], spec['arg'], spec['notnull']
 
-        if only and name.lower() not in only:
+        if only and name not in only:
             self.logger.info("Omitting reflected column %s.%s" %
                              (table.name, name))
             return

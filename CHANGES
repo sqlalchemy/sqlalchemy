@@ -77,6 +77,9 @@ CHANGES
       explicit schema= is the same as the schema (database) the
       connection is attached to.
 
+    - No longer expects include_columns in table reflection to be
+      lower case.
+
 0.5.0rc2
 ========
 - orm

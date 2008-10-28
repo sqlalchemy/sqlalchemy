@@ -656,6 +656,29 @@ class TypesTest(TestBase, AssertsExecutionResults):
         finally:
             def_table.drop()
 
+    def test_reflection_on_include_columns(self):
+        """Test reflection of include_columns to be sure they respect case."""
+
+        case_table = Table('mysql_case', MetaData(testing.db),
+            Column('c1', String(10)),
+            Column('C2', String(10)),
+            Column('C3', String(10)))
+
+        try:
+            case_table.create()
+            reflected = Table('mysql_case', MetaData(testing.db),
+                              autoload=True, include_columns=['c1', 'C2'])
+            for t in case_table, reflected:
+                assert 'c1' in t.c.keys()
+                assert 'C2' in t.c.keys()
+            reflected2 = Table('mysql_case', MetaData(testing.db),
+                              autoload=True, include_columns=['c1', 'c2'])
+            assert 'c1' in reflected2.c.keys()
+            for c in ['c2', 'C2', 'C3']:
+                assert c not in reflected2.c.keys()
+        finally:
+            case_table.drop()
+
     @testing.exclude('mysql', '<', (5, 0, 0), 'early types are squirrely')
     @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
