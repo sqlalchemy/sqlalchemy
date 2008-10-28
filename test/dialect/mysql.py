@@ -889,7 +889,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 
     def test_utc_timestamp(self):
         self.assert_compile(func.utc_timestamp(), "UTC_TIMESTAMP")
-        
+
     def test_cast(self):
         t = sql.table('t', sql.column('col'))
         m = mysql
@@ -983,6 +983,23 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             self.assert_compile(cast(t.c.col, type_), expected)
 
 
+class RawReflectionTest(TestBase):
+    def setUp(self):
+        self.dialect = mysql.dialect()
+        self.reflector = mysql.MySQLSchemaReflector(
+            self.dialect.identifier_preparer)
+
+    def test_key_reflection(self):
+        regex = self.reflector._re_key
+
+        assert regex.match('  PRIMARY KEY (`id`),')
+        assert regex.match('  PRIMARY KEY USING BTREE (`id`),')
+        assert regex.match('  PRIMARY KEY (`id`) USING BTREE,')
+        assert regex.match('  PRIMARY KEY (`id`)')
+        assert regex.match('  PRIMARY KEY USING BTREE (`id`)')
+        assert regex.match('  PRIMARY KEY (`id`) USING BTREE')
+
+
 class ExecutionTest(TestBase):
     """Various MySQL execution special cases."""
 
@@ -1049,51 +1066,83 @@ class MatchTest(TestBase, AssertsCompiledSQL):
             {'id': 2, 'description': 'Ruby'},
         ])
         matchtable.insert().execute([
-            {'id': 1, 'title': 'Agile Web Development with Rails', 'category_id': 2},
-            {'id': 2, 'title': 'Dive Into Python', 'category_id': 1},
-            {'id': 3, 'title': 'Programming Matz''s Ruby', 'category_id': 2},
-            {'id': 4, 'title': 'The Definitive Guide to Django', 'category_id': 1},
-            {'id': 5, 'title': 'Python in a Nutshell', 'category_id': 1}
+            {'id': 1,
+             'title': 'Agile Web Development with Rails',
+             'category_id': 2},
+            {'id': 2,
+             'title': 'Dive Into Python',
+             'category_id': 1},
+            {'id': 3,
+             'title': 'Programming Matz''s Ruby',
+             'category_id': 2},
+            {'id': 4,
+             'title': 'The Definitive Guide to Django',
+             'category_id': 1},
+            {'id': 5,
+             'title': 'Python in a Nutshell',
+             'category_id': 1}
         ])
 
     def tearDownAll(self):
         metadata.drop_all()
 
     def test_expression(self):
-        self.assert_compile(matchtable.c.title.match('somstr'), "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)")
+        self.assert_compile(
+            matchtable.c.title.match('somstr'),
+            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)")
 
     def test_simple_match(self):
-        results = matchtable.select().where(matchtable.c.title.match('python')).order_by(matchtable.c.id).execute().fetchall()
+        results = (matchtable.select().
+                   where(matchtable.c.title.match('python')).
+                   order_by(matchtable.c.id).
+                   execute().
+                   fetchall())
         self.assertEquals([2, 5], [r.id for r in results])
 
     def test_simple_match_with_apostrophe(self):
-        results = matchtable.select().where(matchtable.c.title.match('"Matz''s"')).execute().fetchall()
+        results = (matchtable.select().
+                   where(matchtable.c.title.match('"Matz''s"')).
+                   execute().
+                   fetchall())
         self.assertEquals([3], [r.id for r in results])
 
     def test_or_match(self):
-        results1 = matchtable.select().where(or_(matchtable.c.title.match('nutshell'), 
-                                                 matchtable.c.title.match('ruby'))
-                                            ).order_by(matchtable.c.id).execute().fetchall()
+        results1 = (matchtable.select().
+                    where(or_(matchtable.c.title.match('nutshell'),
+                              matchtable.c.title.match('ruby'))).
+                    order_by(matchtable.c.id).
+                    execute().
+                    fetchall())
         self.assertEquals([3, 5], [r.id for r in results1])
-        results2 = matchtable.select().where(matchtable.c.title.match('nutshell ruby'), 
-                                            ).order_by(matchtable.c.id).execute().fetchall()
+        results2 = (matchtable.select().
+                    where(matchtable.c.title.match('nutshell ruby')).
+                    order_by(matchtable.c.id).
+                    execute().
+                    fetchall())
         self.assertEquals([3, 5], [r.id for r in results2])
-        
+
 
     def test_and_match(self):
-        results1 = matchtable.select().where(and_(matchtable.c.title.match('python'), 
-                                                  matchtable.c.title.match('nutshell'))
-                                            ).execute().fetchall()
+        results1 = (matchtable.select().
+                    where(and_(matchtable.c.title.match('python'),
+                               matchtable.c.title.match('nutshell'))).
+                    execute().
+                    fetchall())
         self.assertEquals([5], [r.id for r in results1])
-        results2 = matchtable.select().where(matchtable.c.title.match('+python +nutshell'), 
-                                            ).execute().fetchall()
+        results2 = (matchtable.select().
+                    where(matchtable.c.title.match('+python +nutshell')).
+                    execute().
+                    fetchall())
         self.assertEquals([5], [r.id for r in results2])
 
     def test_match_across_joins(self):
-        results = matchtable.select().where(and_(cattable.c.id==matchtable.c.category_id, 
-                                            or_(cattable.c.description.match('Ruby'), 
-                                                matchtable.c.title.match('nutshell')))
-                                           ).order_by(matchtable.c.id).execute().fetchall()
+        results = (matchtable.select().
+                   where(and_(cattable.c.id==matchtable.c.category_id,
+                              or_(cattable.c.description.match('Ruby'),
+                                  matchtable.c.title.match('nutshell')))).
+                   order_by(matchtable.c.id).
+                   execute().
+                   fetchall())
         self.assertEquals([1, 3, 5], [r.id for r in results])
 
 
