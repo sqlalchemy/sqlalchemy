@@ -444,6 +444,9 @@ def _selectable_name(selectable):
 def class_for_table(selectable, **mapper_kwargs):
     selectable = expression._selectable(selectable)
     mapname = 'Mapped' + _selectable_name(selectable)
+    if isinstance(mapname, unicode): 
+        engine_encoding = selectable.metadata.bind.dialect.encoding 
+        mapname = mapname.encode(engine_encoding)
     if isinstance(selectable, Table):
         klass = TableClassType(mapname, (object,), {})
     else:
