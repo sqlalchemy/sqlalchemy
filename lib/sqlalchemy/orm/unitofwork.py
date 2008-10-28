@@ -43,7 +43,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
         if sess:
             prop = _state_mapper(state).get_property(self.key)
             if prop.cascade.save_update and item not in sess:
-                sess.save_or_update(item)
+                sess.add(item)
         return item
         
     def remove(self, state, item, initiator):
@@ -64,7 +64,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
         if sess:
             prop = _state_mapper(state).get_property(self.key)
             if newvalue is not None and prop.cascade.save_update and newvalue not in sess:
-                sess.save_or_update(newvalue)
+                sess.add(newvalue)
             if prop.cascade.delete_orphan and oldvalue in sess.new:
                 sess.expunge(oldvalue)
         return newvalue
