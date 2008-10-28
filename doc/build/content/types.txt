@@ -43,7 +43,7 @@ Numeric types return `decimal.Decimal` objects by default.  The flag `asdecimal=
 
 Float types return Python floats.  Float also takes a "precision" argument which is used when CREATE TABLE is issued.
 
-#### Datetime/Date/Time
+#### DateTime/Date/Time
 
 Date and time types return objects from the Python `datetime` module.  Most DBAPIs have built in support for the datetime module, with the noted exception of SQLite.  In the case of SQLite, date and time types are stored as strings which are then converted back to datetime objects when rows are returned.
 
